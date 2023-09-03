@@ -120,13 +120,13 @@ eval("\n\n/* istanbul ignore next  */\nfunction styleTagTransform(css, styleElem
 
 /***/ }),
 
-/***/ "./src/toDo.js":
+/***/ "./src/main.js":
 /*!*********************!*\
-  !*** ./src/toDo.js ***!
+  !*** ./src/main.js ***!
   \*********************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   toDo: () => (/* binding */ toDo)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\n\n// FACTORY FUNCTION: TODO OBJECT\n// Store list items in objects\nconst toDo = (title, description, dueDate, priority) => {\n    let tit = title;\n    let desc = description;\n    let due = dueDate;\n    let pri = priority;\n\n    console.log(\"Called toDo Object\");\n\n    \n    return {tit, desc, due, pri};\n  };\n  \n\n  \n\n//# sourceURL=webpack://todolist_main/./src/toDo.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (/* binding */ component)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\nfunction component() {\n\n    console.log(\"Opened Initial page\");\n\n    const element = document.createElement('div');\n\n\n\n\n\n\n\n\n    return element; \n\n};    \n\n//# sourceURL=webpack://todolist_main/./src/main.js?");
 
 /***/ }),
 
@@ -253,7 +253,7 @@ eval("module.exports = __webpack_require__.p + \"31d6cfe0d16ae931b73c.png\";\n\n
 /******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
 /******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
 /******/ 		var installedChunks = {
-/******/ 			"toDo": 0
+/******/ 			"main": 0
 /******/ 		};
 /******/ 		
 /******/ 		// no chunk on demand loading
@@ -281,7 +281,7 @@ eval("module.exports = __webpack_require__.p + \"31d6cfe0d16ae931b73c.png\";\n\n
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module can't be inlined because the eval devtool is used.
-/******/ 	var __webpack_exports__ = __webpack_require__("./src/toDo.js");
+/******/ 	var __webpack_exports__ = __webpack_require__("./src/main.js");
 /******/ 	
 /******/ })()
 ;

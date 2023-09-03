@@ -1,24 +1,56 @@
 import _ from 'lodash';
 import './style.css';
+import './main.js';
+import { toDo } from './toDo.js';
 import Icon from './icon.png';
 
-function component() {
-    const element = document.createElement('div');
-  
-    // Lodash, now imported by this script
-    element.innerHTML = _.join(['Hello', 'webpack'], ' ');
-    element.classList.add('hello');
+var initialPage = () => {
 
-    return element;
-  }
-  
-  document.body.appendChild(component());
+
+    // define allProjects array - local 
+    const allProjects = []; // Creates an empty array
+
+    // define projects array - module
+    const project = []; // Creates an empty array
+
+    // define toDo object - module***
+    let listItem = toDo('title', 'description', 'dueDate', 'priority');
+
+    project.push(listItem);
+
+    console.log(listItem); // prints item
+    console.log(project); // prints projects array
+
+    
+
+
+    // event listeners for button clicks will remain here with the caveat that,
+    // the actual actions that will change the DOM will take place using a different module
+
+    // on 'Add' button click (should be in sidebar),
+    // - prompt user for project title
+    // - creates project_array that is stored in allProjects array
+
+    // on 'Add' button click (should be in center under project heading)
+    // - prompts user for toDo[title, description, dueDate, priority]
+    // - creates and stores itself into proejcts_array
+
+
+
+
+    
+
+}; // Ends CurrentSession
+
+
+// document.body.appendChild(component());
+initialPage();
 
 
 
 // Personal notes,
 // Start with console logic,
-// 1.) Create js module for objects, p
+// 1.) Create js module for objects
 
 
 // PROJECT TIPS  
