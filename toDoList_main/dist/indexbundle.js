@@ -147,7 +147,7 @@ eval("\n\n/* istanbul ignore next  */\nfunction styleTagTransform(css, styleElem
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ \"./node_modules/lodash/lodash.js\");\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n/* harmony import */ var _icon_png__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./icon.png */ \"./src/icon.png\");\n\n\n\n\nfunction component() {\n    const element = document.createElement('div');\n  \n    // Lodash, now imported by this script\n    element.innerHTML = lodash__WEBPACK_IMPORTED_MODULE_0___default().join(['Hello', 'webpack'], ' ');\n    element.classList.add('hello');\n\n    return element;\n  }\n  \n  document.body.appendChild(component());\n\n//# sourceURL=webpack://todolist_main/./src/index.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ \"./node_modules/lodash/lodash.js\");\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n/* harmony import */ var _icon_png__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./icon.png */ \"./src/icon.png\");\n\n\n\n\nfunction component() {\n    const element = document.createElement('div');\n  \n    // Lodash, now imported by this script\n    element.innerHTML = lodash__WEBPACK_IMPORTED_MODULE_0___default().join(['Hello', 'webpack'], ' ');\n    element.classList.add('hello');\n\n    return element;\n  }\n  \n  document.body.appendChild(component());\n\n\n\n// Personal notes,\n// Start with console logic,\n// 1.) Create js module for objects, p\n\n\n// PROJECT TIPS  \n// 1 - define todo objects in own module\n//     should have the following properties, title, description,\n//     dueDate, and priority. later include notes & checklist\n\n// 2 - should have projects or separate lists of 'todo's'\n\n// 3 - Keep Application Logic separated form DOM-related changes\n\n// 4 - toDo list should be able to do the following,\n//     1. view all projects\n//     2. view all todos in each project (probably just the title and duedate… perhaps changing color for different priorities)\n//     3. expand a single todo to see/edit its details\n//     4. delete a todo\n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/index.js?");
 
 /***/ }),
 
@@ -287,7 +287,7 @@ eval("module.exports = __webpack_require__.p + \"31d6cfe0d16ae931b73c.png\";\n\n
 /******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
 /******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
 /******/ 		var installedChunks = {
-/******/ 			"main": 0
+/******/ 			"index": 0
 /******/ 		};
 /******/ 		
 /******/ 		// no chunk on demand loading
