@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _, { remove } from 'lodash';
 import './style.css';
 import './main.js';
 import { toDo } from './toDo.js';
@@ -54,10 +54,25 @@ var initialPage = () => {
         // empty array (empty item) NEEDS to also be pushed for allProjects to 'recognize' as an array
         allProjects[projectName].push(listItem);
 
+        console.log(projectName + " added");
+
     }
 
 
-    // FUNCTION (NEW TODO LIST ITEMS): - responsible for adding new items to a designated project
+    // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
+    //                             - projectName property needs to be passed to function to identify 
+    function removeProject(){
+
+        let projectDes = prompt("Which project would you like to remove?");
+        console.log(allProjects);
+
+        delete allProjects[projectDes]; // user try/catch for error when user doesn't match projectName
+        console.log(projectDes + " deleted");
+
+    }
+
+
+    // FUNCTION (ADD TODO LIST ITEMS): - responsible for adding new items to a designated project
     //                                 - called when add button under a project is clicked
     function addToDo(projectName) {
         console.log("called addToDo function");
@@ -83,12 +98,22 @@ var initialPage = () => {
     };
 
 
+
+
+
+
+
+
+
     // **************** TESTING INPUTS/FUNCTIONS **************** //
 
     
     // addToDo(projectName); // - ADDS TO DEFAULT PROJECT
 
-    addProject(); // - ADDS NEW PROJECT
+    addProject(); // - Adds new project
+    
+    removeProject(); // -  Removes designated Project
+    
 
     // ********************* TESTING PRINTS ********************* //
 
