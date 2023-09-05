@@ -34,7 +34,13 @@ var initialPage = () => {
     allProjects[projectName].push(listItem);
     
 
+    // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
+    //                              - 
+    function listProjects(){
 
+        console.log(allProjects);
+
+    }
 
     // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
     //           - activates when onClick for new project takes place.
@@ -58,16 +64,19 @@ var initialPage = () => {
 
     }
 
-
+    // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
     function removeProject(){
 
+        
+
         let projectDes = prompt("Which project would you like to remove?");
-        console.log(allProjects);
 
         delete allProjects[projectDes]; // user try/catch for error when user doesn't match projectName
-        console.log(projectDes + " deleted");
+            
+
+        listProjects();
 
     }
 
@@ -118,7 +127,7 @@ var initialPage = () => {
     // ********************* TESTING PRINTS ********************* //
 
     
-    console.log(allProjects);
+    
 
     
     // *********************************************************** // 
