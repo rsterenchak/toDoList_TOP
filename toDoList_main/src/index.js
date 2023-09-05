@@ -4,25 +4,99 @@ import './main.js';
 import { toDo } from './toDo.js';
 import Icon from './icon.png';
 
+
+
 var initialPage = () => {
 
+    // INITIAL: toDo item variables
+    let itemTitle = '';
+    let itemDesc = '';
+    let itemDue = '';
+    let itemPri = 1;
 
-    // define allProjects array - local 
-    const allProjects = []; // Creates an empty array
 
-    // define projects array - module
-    const project = []; // Creates an empty array
+    // INITIAL: define allProjects object that dynamically stores arrays as new properties 
+    const allProjects = {
+        // new array properties would be stored here
 
-    // define toDo object - module***
-    let listItem = toDo('title', 'description', 'dueDate', 'priority');
+    }; 
 
-    project.push(listItem);
+    // INITIAL: Sets the initial Project name and is used later to store new project names within addProject
+    var projectName = 'Default';  
 
-    console.log(listItem); // prints item
-    console.log(project); // prints projects array
+    // INITIAL: Initial Empty Item
+    let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
 
+    // INITIAL: Sets Default project
+    allProjects[projectName] = [];
+
+    // INITIAL: Adds 'empty' list item to project array
+    allProjects[projectName].push(listItem);
     
 
+
+
+    // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
+    //           - activates when onClick for new project takes place.
+    //           - takes in user input for project name and stores it in the allProjects array
+    function addProject(){
+
+        // Sets variable for 'empty' list item
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
+
+        // store prompted user input for project name
+        var projectName = prompt("Enter New Project Name: ");
+
+
+        // set projectName as a new property of the allProjects object
+        allProjects[projectName] = [];
+
+        // empty array (empty item) NEEDS to also be pushed for allProjects to 'recognize' as an array
+        allProjects[projectName].push(listItem);
+
+    }
+
+
+    // FUNCTION (NEW TODO LIST ITEMS): - responsible for adding new items to a designated project
+    //                                 - called when add button under a project is clicked
+    function addToDo(projectName) {
+        console.log("called addToDo function");
+
+        // Project should be passed into function as variable - 'projectName'
+        // var selectedProject = projectName;
+
+        // based on the project selected, take in new variables for object
+        let itemTitle = 'addToDo_title';
+        let itemDesc = 'addToDo_Desc';
+        let itemDue = 'addToDo_DateDue';
+        let itemPri = 1;
+    
+
+        // with the new variables, instantiate the new toDo list object
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);    
+
+        // push that new object to the allProjects array
+        allProjects[projectName].push(listItem);
+
+        // add new DOM element with toDo list to the DOM
+
+    };
+
+
+    // **************** TESTING INPUTS/FUNCTIONS **************** //
+
+    
+    // addToDo(projectName); // - ADDS TO DEFAULT PROJECT
+
+    addProject(); // - ADDS NEW PROJECT
+
+    // ********************* TESTING PRINTS ********************* //
+
+    
+    console.log(allProjects);
+
+    
+    // *********************************************************** // 
 
     // event listeners for button clicks will remain here with the caveat that,
     // the actual actions that will change the DOM will take place using a different module
