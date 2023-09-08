@@ -7,6 +7,7 @@ module.exports = {
     index: './src/index.js',
     main: './src/main.js',
     toDo: './src/toDo.js',
+    list: './src/listLogic.js',
   },
   plugins: [
     new HtmlWebpackPlugin({
