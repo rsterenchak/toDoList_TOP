@@ -1,13 +1,13 @@
 import _, { remove } from 'lodash';
 import './style.css';
-import './main.js';
-import { initialPage } from './listLogic';
+import { component } from'./main.js';
+import { listLogic } from './listLogic';
 import Icon from './icon.png';
 
 
 
-// document.body.appendChild(component()); // page DOM elements
-listLogic(); // page logic
+document.body.appendChild(component()); // page DOM elements
+// listLogic(); // page logic
 
 
 

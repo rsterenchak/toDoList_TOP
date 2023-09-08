@@ -126,7 +126,7 @@ eval("\n\n/* istanbul ignore next  */\nfunction styleTagTransform(css, styleElem
   \*********************/
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (/* binding */ component)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\nfunction component() {\n\n    console.log(\"Opened Initial page\");\n\n    const element = document.createElement('div');\n\n\n\n\n\n\n\n\n    return element; \n\n};    \n\n//# sourceURL=webpack://todolist_main/./src/main.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   component: () => (/* binding */ component)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\nfunction component() {\n\n    console.log(\"Initialized DOM\");\n\n    const element = document.createElement('div');\n\n\n\n\n\n\n\n\n    return element; \n\n};    \n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/main.js?");
 
 /***/ }),
 

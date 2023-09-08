@@ -1,9 +1,9 @@
 import './style.css';
 
 
-export default function component() {
+function component() {
 
-    console.log("Opened Initial page");
+    console.log("Initialized DOM");
 
     const element = document.createElement('div');
 
@@ -17,3 +17,6 @@ export default function component() {
     return element; 
 
 };    
+
+
+export { component };
