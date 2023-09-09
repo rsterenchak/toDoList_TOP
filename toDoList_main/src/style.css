@@ -1,3 +1,4 @@
+
 body {
   margin: 0px;
   padding: 0px;
@@ -37,12 +38,19 @@ body {
 #sideBar {
   display: grid;
   border: 2px solid green;
-  grid-template-rows: 1fr 7fr;
+  grid-template-rows: 1fr 11fr;
 }
 
 #sideTit {
-
+  display: grid;
   border: 2px solid violet;
+  justify-content: center;
+  align-content: center;
+}
+
+#sideHead {
+
+  font-size: 14px;
 
 }
 
@@ -52,6 +60,24 @@ body {
 
 }
 
+
+
+
+#addProj {
+  display: grid;
+  height: 15px;
+  border: 1px solid black;
+  justify-content: center;
+  align-content: center;
+}
+
+#projButton {
+  background-image: url('./addProj_button.svg');
+  background-size: cover; /* Adjust as needed */
+  border: 1px solid blue;
+  width: 10px;
+  height: 10px;
+}
 
 #mainBar {
 

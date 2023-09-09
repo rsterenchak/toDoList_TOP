@@ -3,6 +3,7 @@ import './style.css';
 import { component } from'./main.js';
 import { listLogic } from './listLogic';
 import Icon from './icon.png';
+import button from './addProj_button.svg';
 
 
 

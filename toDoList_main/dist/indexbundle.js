@@ -16,7 +16,7 @@
 /***/ ((module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../node_modules/css-loader/dist/runtime/noSourceMaps.js */ \"./node_modules/css-loader/dist/runtime/noSourceMaps.js\");\n/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../node_modules/css-loader/dist/runtime/api.js */ \"./node_modules/css-loader/dist/runtime/api.js\");\n/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);\n// Imports\n\n\nvar ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));\n// Module\n___CSS_LOADER_EXPORT___.push([module.id, `body {\n  margin: 0px;\n  padding: 0px;\n}\n\n#outerContainer {\n  display: grid;\n  border: 2px solid red;\n  grid-template-rows: 5vh 85vh 10vh;\n\n}\n\n#navBar {\n\n  border: 2px solid blue;\n\n}\n\n\n#mainSec {\n  display: grid;\n  border: 2px solid red;\n  grid-template-columns: 1fr 3fr;\n\n}\n\n\n#footBar {\n\n  border: 2px solid blue;\n\n}\n\n\n\n\n#sideBar {\n  display: grid;\n  border: 2px solid green;\n  \n}\n\n#sideTit {\n\n  border: 2px solid violet;\n\n}\n\n#sideMa {\n\n  border: 2px solid violet;\n\n}\n\n\n#mainBar {\n\n  border: 2px solid green;\n\n}\n`, \"\"]);\n// Exports\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);\n\n\n//# sourceURL=webpack://todolist_main/./src/style.css?./node_modules/css-loader/dist/cjs.js");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../node_modules/css-loader/dist/runtime/noSourceMaps.js */ \"./node_modules/css-loader/dist/runtime/noSourceMaps.js\");\n/* harmony import */ var _node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../node_modules/css-loader/dist/runtime/api.js */ \"./node_modules/css-loader/dist/runtime/api.js\");\n/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);\n/* harmony import */ var _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../node_modules/css-loader/dist/runtime/getUrl.js */ \"./node_modules/css-loader/dist/runtime/getUrl.js\");\n/* harmony import */ var _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2__);\n// Imports\n\n\n\nvar ___CSS_LOADER_URL_IMPORT_0___ = new URL(/* asset import */ __webpack_require__(/*! ./addProj_button.svg */ \"./src/addProj_button.svg\"), __webpack_require__.b);\nvar ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_noSourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));\nvar ___CSS_LOADER_URL_REPLACEMENT_0___ = _node_modules_css_loader_dist_runtime_getUrl_js__WEBPACK_IMPORTED_MODULE_2___default()(___CSS_LOADER_URL_IMPORT_0___);\n// Module\n___CSS_LOADER_EXPORT___.push([module.id, `\nbody {\n  margin: 0px;\n  padding: 0px;\n}\n\n#outerContainer {\n  display: grid;\n  border: 2px solid red;\n  grid-template-rows: 5vh 85vh 10vh;\n\n}\n\n#navBar {\n\n  border: 2px solid blue;\n\n}\n\n\n#mainSec {\n  display: grid;\n  border: 2px solid red;\n  grid-template-columns: 1fr 3fr;\n\n}\n\n\n#footBar {\n\n  border: 2px solid blue;\n\n}\n\n\n\n\n#sideBar {\n  display: grid;\n  border: 2px solid green;\n  grid-template-rows: 1fr 11fr;\n}\n\n#sideTit {\n  display: grid;\n  border: 2px solid violet;\n  justify-content: center;\n  align-content: center;\n}\n\n#sideHead {\n\n  font-size: 14px;\n\n}\n\n#sideMa {\n\n  border: 2px solid violet;\n\n}\n\n\n\n\n#addProj {\n  display: grid;\n  height: 15px;\n  border: 1px solid black;\n  justify-content: center;\n  align-content: center;\n}\n\n#projButton {\n  background-image: url(${___CSS_LOADER_URL_REPLACEMENT_0___});\n  background-size: cover; /* Adjust as needed */\n  border: 1px solid blue;\n  width: 10px;\n  height: 10px;\n}\n\n#mainBar {\n\n  border: 2px solid green;\n\n}\n`, \"\"]);\n// Exports\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);\n\n\n//# sourceURL=webpack://todolist_main/./src/style.css?./node_modules/css-loader/dist/cjs.js");
 
 /***/ }),
 
@@ -28,6 +28,17 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 
 "use strict";
 eval("\n\n/*\n  MIT License http://www.opensource.org/licenses/mit-license.php\n  Author Tobias Koppers @sokra\n*/\nmodule.exports = function (cssWithMappingToString) {\n  var list = [];\n\n  // return the list of modules as css string\n  list.toString = function toString() {\n    return this.map(function (item) {\n      var content = \"\";\n      var needLayer = typeof item[5] !== \"undefined\";\n      if (item[4]) {\n        content += \"@supports (\".concat(item[4], \") {\");\n      }\n      if (item[2]) {\n        content += \"@media \".concat(item[2], \" {\");\n      }\n      if (needLayer) {\n        content += \"@layer\".concat(item[5].length > 0 ? \" \".concat(item[5]) : \"\", \" {\");\n      }\n      content += cssWithMappingToString(item);\n      if (needLayer) {\n        content += \"}\";\n      }\n      if (item[2]) {\n        content += \"}\";\n      }\n      if (item[4]) {\n        content += \"}\";\n      }\n      return content;\n    }).join(\"\");\n  };\n\n  // import a list of modules into the list\n  list.i = function i(modules, media, dedupe, supports, layer) {\n    if (typeof modules === \"string\") {\n      modules = [[null, modules, undefined]];\n    }\n    var alreadyImportedModules = {};\n    if (dedupe) {\n      for (var k = 0; k < this.length; k++) {\n        var id = this[k][0];\n        if (id != null) {\n          alreadyImportedModules[id] = true;\n        }\n      }\n    }\n    for (var _k = 0; _k < modules.length; _k++) {\n      var item = [].concat(modules[_k]);\n      if (dedupe && alreadyImportedModules[item[0]]) {\n        continue;\n      }\n      if (typeof layer !== \"undefined\") {\n        if (typeof item[5] === \"undefined\") {\n          item[5] = layer;\n        } else {\n          item[1] = \"@layer\".concat(item[5].length > 0 ? \" \".concat(item[5]) : \"\", \" {\").concat(item[1], \"}\");\n          item[5] = layer;\n        }\n      }\n      if (media) {\n        if (!item[2]) {\n          item[2] = media;\n        } else {\n          item[1] = \"@media \".concat(item[2], \" {\").concat(item[1], \"}\");\n          item[2] = media;\n        }\n      }\n      if (supports) {\n        if (!item[4]) {\n          item[4] = \"\".concat(supports);\n        } else {\n          item[1] = \"@supports (\".concat(item[4], \") {\").concat(item[1], \"}\");\n          item[4] = supports;\n        }\n      }\n      list.push(item);\n    }\n  };\n  return list;\n};\n\n//# sourceURL=webpack://todolist_main/./node_modules/css-loader/dist/runtime/api.js?");
+
+/***/ }),
+
+/***/ "./node_modules/css-loader/dist/runtime/getUrl.js":
+/*!********************************************************!*\
+  !*** ./node_modules/css-loader/dist/runtime/getUrl.js ***!
+  \********************************************************/
+/***/ ((module) => {
+
+"use strict";
+eval("\n\nmodule.exports = function (url, options) {\n  if (!options) {\n    options = {};\n  }\n  if (!url) {\n    return url;\n  }\n  url = String(url.__esModule ? url.default : url);\n\n  // If url is already wrapped in quotes, remove them\n  if (/^['\"].*['\"]$/.test(url)) {\n    url = url.slice(1, -1);\n  }\n  if (options.hash) {\n    url += options.hash;\n  }\n\n  // Should url be wrapped?\n  // See https://drafts.csswg.org/css-values-3/#urls\n  if (/[\"'() \\t\\n]|(%20)/.test(url) || options.needQuotes) {\n    return \"\\\"\".concat(url.replace(/\"/g, '\\\\\"').replace(/\\n/g, \"\\\\n\"), \"\\\"\");\n  }\n  return url;\n};\n\n//# sourceURL=webpack://todolist_main/./node_modules/css-loader/dist/runtime/getUrl.js?");
 
 /***/ }),
 
@@ -136,7 +147,7 @@ eval("\n\n/* istanbul ignore next  */\nfunction styleTagTransform(css, styleElem
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ \"./node_modules/lodash/lodash.js\");\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n/* harmony import */ var _main_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./main.js */ \"./src/main.js\");\n/* harmony import */ var _listLogic__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./listLogic */ \"./src/listLogic.js\");\n/* harmony import */ var _icon_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./icon.png */ \"./src/icon.png\");\n\n\n\n\n\n\n\n\ndocument.body.appendChild((0,_main_js__WEBPACK_IMPORTED_MODULE_2__.component)()); // page DOM elements\n// listLogic(); // page logic\n\n\n\n// Personal notes,\n// Start with console logic,\n// 1.) Create js module for objects\n\n\n// PROJECT TIPS  \n// 1 - define todo objects in own module\n//     should have the following properties, title, description,\n//     dueDate, and priority. later include notes & checklist\n\n// 2 - should have projects or separate lists of 'todo's'\n\n// 3 - Keep Application Logic separated form DOM-related changes\n\n// 4 - toDo list should be able to do the following,\n//     1. view all projects\n//     2. view all todos in each project (probably just the title and duedate… perhaps changing color for different priorities)\n//     3. expand a single todo to see/edit its details\n//     4. delete a todo\n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/index.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! lodash */ \"./node_modules/lodash/lodash.js\");\n/* harmony import */ var lodash__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(lodash__WEBPACK_IMPORTED_MODULE_0__);\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n/* harmony import */ var _main_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./main.js */ \"./src/main.js\");\n/* harmony import */ var _listLogic__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./listLogic */ \"./src/listLogic.js\");\n/* harmony import */ var _icon_png__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./icon.png */ \"./src/icon.png\");\n/* harmony import */ var _addProj_button_svg__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./addProj_button.svg */ \"./src/addProj_button.svg\");\n\n\n\n\n\n\n\n\n\ndocument.body.appendChild((0,_main_js__WEBPACK_IMPORTED_MODULE_2__.component)()); // page DOM elements\n// listLogic(); // page logic\n\n\n\n// Personal notes,\n// Start with console logic,\n// 1.) Create js module for objects\n\n\n// PROJECT TIPS  \n// 1 - define todo objects in own module\n//     should have the following properties, title, description,\n//     dueDate, and priority. later include notes & checklist\n\n// 2 - should have projects or separate lists of 'todo's'\n\n// 3 - Keep Application Logic separated form DOM-related changes\n\n// 4 - toDo list should be able to do the following,\n//     1. view all projects\n//     2. view all todos in each project (probably just the title and duedate… perhaps changing color for different priorities)\n//     3. expand a single todo to see/edit its details\n//     4. delete a todo\n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/index.js?");
 
 /***/ }),
 
@@ -158,7 +169,7 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   component: () => (/* binding */ component)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\nfunction component() {\n\n    console.log(\"Initialized DOM\");\n\n    const base = document.createElement('div');\n    const nav = document.createElement('div');\n    const main = document.createElement('div');\n    const foot = document.createElement('div');\n\n    const main1 = document.createElement('div');\n    const main2 = document.createElement('div');\n\n    const sideTitle = document.createElement('div');\n    const sideMain = document.createElement('div');\n\n\n    base.id ='outerContainer';\n    nav.id = 'navBar';\n    main.id = 'mainSec';\n    foot.id = 'footBar';\n\n    main1.id = 'sideBar';\n    main2.id = 'mainBar';\n\n    sideTitle.id = 'sideTit';\n    sideMain.id = 'sideMa';\n\n    base.appendChild(nav);\n    base.appendChild(main);\n    base.appendChild(foot);\n\n    main.appendChild(main1);\n    main.appendChild(main2);\n\n    main1.appendChild(sideTitle);\n    main1.appendChild(sideMain);\n\n\n\n    return base; \n\n};    \n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/main.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   component: () => (/* binding */ component)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n/* harmony import */ var _addProj_button_svg__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./addProj_button.svg */ \"./src/addProj_button.svg\");\n\n\n\n\nfunction component() {\n\n    console.log(\"Initialized DOM\");\n\n    const base = document.createElement('div');\n    const nav = document.createElement('div');\n    const main = document.createElement('div');\n    const foot = document.createElement('div');\n\n    const main1 = document.createElement('div');\n    const main2 = document.createElement('div');\n\n    const sideTitle = document.createElement('div');\n    const sideMain = document.createElement('div');\n\n    const sideHead = document.createElement('div');\n\n    const addProj = document.createElement('div');\n    const projButton = document.createElement('div');\n\n\n    base.id ='outerContainer';\n    nav.id = 'navBar';\n    main.id = 'mainSec';\n    foot.id = 'footBar';\n\n    main1.id = 'sideBar';\n    main2.id = 'mainBar';\n\n    sideTitle.id = 'sideTit';\n    sideMain.id = 'sideMa';\n\n    sideHead.id = 'sideHead';\n\n    addProj.id = 'addProj';\n    projButton.id = 'projButton';\n\n    base.appendChild(nav);\n    base.appendChild(main);\n    base.appendChild(foot);\n\n    main.appendChild(main1);\n    main.appendChild(main2);\n\n    main1.appendChild(sideTitle);\n    main1.appendChild(sideMain);\n\n    sideTitle.appendChild(sideHead);\n\n\n    sideMain.appendChild(addProj);\n    addProj.appendChild(projButton);\n  \n\n    sideHead.textContent = 'Projects';\n\n    // FUNCTION: That adds new project\n\n\n    return base; \n\n};    \n\n\n\n\n//# sourceURL=webpack://todolist_main/./src/main.js?");
 
 /***/ }),
 
@@ -170,6 +181,17 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 
 "use strict";
 eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   toDo: () => (/* binding */ toDo)\n/* harmony export */ });\n/* harmony import */ var _style_css__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./style.css */ \"./src/style.css\");\n\n\n\n\n// FACTORY FUNCTION: TODO OBJECT\n// Store list items in objects\nconst toDo = (title, description, dueDate, priority) => {\n    let tit = title;\n    let desc = description;\n    let due = dueDate;\n    let pri = priority;\n\n    console.log(\"Called toDo Object\");\n\n    \n    return {tit, desc, due, pri};\n  };\n  \n\n  \n\n//# sourceURL=webpack://todolist_main/./src/toDo.js?");
+
+/***/ }),
+
+/***/ "./src/addProj_button.svg":
+/*!********************************!*\
+  !*** ./src/addProj_button.svg ***!
+  \********************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+eval("module.exports = __webpack_require__.p + \"3be0ea4ac64cead2bf95.svg\";\n\n//# sourceURL=webpack://todolist_main/./src/addProj_button.svg?");
 
 /***/ }),
 
@@ -212,6 +234,9 @@ eval("module.exports = __webpack_require__.p + \"31d6cfe0d16ae931b73c.png\";\n\n
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
+/******/ 	
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = __webpack_modules__;
 /******/ 	
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat get default export */
@@ -296,6 +321,32 @@ eval("module.exports = __webpack_require__.p + \"31d6cfe0d16ae931b73c.png\";\n\n
 /******/ 		if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
 /******/ 		scriptUrl = scriptUrl.replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
 /******/ 		__webpack_require__.p = scriptUrl;
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/jsonp chunk loading */
+/******/ 	(() => {
+/******/ 		__webpack_require__.b = document.baseURI || self.location.href;
+/******/ 		
+/******/ 		// object to store loaded and loading chunks
+/******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
+/******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
+/******/ 		var installedChunks = {
+/******/ 			"index": 0
+/******/ 		};
+/******/ 		
+/******/ 		// no chunk on demand loading
+/******/ 		
+/******/ 		// no prefetching
+/******/ 		
+/******/ 		// no preloaded
+/******/ 		
+/******/ 		// no HMR
+/******/ 		
+/******/ 		// no HMR manifest
+/******/ 		
+/******/ 		// no on chunks loaded
+/******/ 		
+/******/ 		// no jsonp function
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/nonce */
