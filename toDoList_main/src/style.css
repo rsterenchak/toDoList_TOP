@@ -1,4 +1,60 @@
-.hello {
-    color: red;
-    background: url('./icon.png');
-  }
+body {
+  margin: 0px;
+  padding: 0px;
+}
+
+#outerContainer {
+  display: grid;
+  border: 2px solid red;
+  grid-template-rows: 5vh 85vh 10vh;
+
+}
+
+#navBar {
+
+  border: 2px solid blue;
+
+}
+
+
+#mainSec {
+  display: grid;
+  border: 2px solid red;
+  grid-template-columns: 1fr 3fr;
+
+}
+
+
+#footBar {
+
+  border: 2px solid blue;
+
+}
+
+
+
+
+#sideBar {
+  display: grid;
+  border: 2px solid green;
+  grid-template-rows: 1fr 7fr;
+}
+
+#sideTit {
+
+  border: 2px solid violet;
+
+}
+
+#sideMa {
+
+  border: 2px solid violet;
+
+}
+
+
+#mainBar {
+
+  border: 2px solid green;
+
+}
