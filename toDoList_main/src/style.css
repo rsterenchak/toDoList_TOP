@@ -1,3 +1,7 @@
+@font-face {
+  font-family: 'MyFont';
+  src: url('./Zector.otf');
+}
 
 body {
   margin: 0px;
@@ -49,13 +53,13 @@ body {
 }
 
 #sideHead {
-
-  font-size: 14px;
-
+  font-family: 'MyFont';
+  font-size: 12px;
+  
 }
 
 #sideMa {
-
+  display: grid;
   border: 2px solid violet;
 
 }
@@ -79,8 +83,47 @@ body {
   height: 10px;
 }
 
-#mainBar {
 
+#mainBar {
+  display: grid;
   border: 2px solid green;
+  grid-template-rows: 1fr 11fr;
+}
+
+#mainTitle {
+  display: grid;
+  border: 2px solid violet;
+  justify-content: center;
+  align-content: center;
 
 }
+
+#mainHead {
+  font-family: 'MyFont';
+  font-size: 12px;
+
+}
+
+#mainList {
+  display: grid;
+  border: 2px solid violet;
+
+}
+
+#addItem {
+  display: grid;
+  height: 15px;
+  border: 1px solid black;
+  justify-content: center;
+  align-content: center;
+}
+
+#itemButton {
+  background-image: url('./addProj_button.svg');
+  background-size: cover; /* Adjust as needed */
+  border: 1px solid blue;
+  width: 10px;
+  height: 10px;
+}
+
+
