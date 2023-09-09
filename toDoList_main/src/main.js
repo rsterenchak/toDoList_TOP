@@ -87,7 +87,81 @@ function component() {
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
-    // FUNCTION: That adds new project
+
+
+
+    // Click Listener: That adds new project element
+    projButton.addEventListener("click", function(){
+
+        console.log("Pressed add project button.");
+
+        // on click should temporarily disable ability to continue clicking
+        projButton.style.pointerEvents = "none";  
+        
+        // click ability returns dependent on if user successfully adds title to project
+
+
+        // selects projects list div by ID
+        const sideMaDiv = document.getElementById("sideMa");
+
+        const projChild = document.createElement("div");
+        const titleInput = document.createElement("input");
+
+
+
+        projChild.style.border = "1px solid black";
+        projChild.id = "projChild";
+
+        titleInput.type = "text";
+        titleInput.id = "projInput";
+        titleInput.placeholder = "Enter project title here";
+        titleInput.value = "";
+        titleInput.style.border = "none";
+
+
+        // Create element with textbox for input
+        sideMaDiv.appendChild(projChild);
+        projChild.appendChild(titleInput);
+        
+        // Press enter after Project title input to set element information
+
+
+
+        // if title entered has a length > 0 characters
+        // send title to addProject() in listLogic.js to add property to allProjects array
+
+    
+
+    });
+
+    // Click Listener: That adds new item element
+
+
+
+
+
+
+    // addProj Shadow listener
+    projButton.addEventListener("mouseenter", function() {
+        this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
+      });
+      
+    projButton.addEventListener("mouseleave", function() {
+        this.style.boxShadow = "none";
+    });
+
+
+
+    // addItem Shadow listener
+
+    itemButton.addEventListener("mouseenter", function() {
+        this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
+      });
+      
+    itemButton.addEventListener("mouseleave", function() {
+        this.style.boxShadow = "none";
+    });
+
 
 
     return base; 

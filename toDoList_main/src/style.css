@@ -61,15 +61,12 @@ body {
 #sideMa {
   display: grid;
   border: 2px solid violet;
-
+  grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
 }
-
-
 
 
 #addProj {
   display: grid;
-  height: 15px;
   border: 1px solid black;
   justify-content: center;
   align-content: center;
@@ -78,11 +75,27 @@ body {
 #projButton {
   background-image: url('./addProj_button.svg');
   background-size: cover; /* Adjust as needed */
-  border: 1px solid blue;
+  border: 0.5px solid black;
   width: 10px;
   height: 10px;
 }
 
+#projChild {
+  display: grid;
+  place-items: center;
+}
+
+#projInput {
+  font-size: 8px;
+  text-align: center;
+  
+}
+
+#projInput:focus {
+
+  outline: none;
+
+}
 
 #mainBar {
   display: grid;
@@ -107,12 +120,12 @@ body {
 #mainList {
   display: grid;
   border: 2px solid violet;
-
+  grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
 }
 
 #addItem {
   display: grid;
-  height: 15px;
+ 
   border: 1px solid black;
   justify-content: center;
   align-content: center;
@@ -121,7 +134,7 @@ body {
 #itemButton {
   background-image: url('./addProj_button.svg');
   background-size: cover; /* Adjust as needed */
-  border: 1px solid blue;
+  border: 0.5px solid black;
   width: 10px;
   height: 10px;
 }
