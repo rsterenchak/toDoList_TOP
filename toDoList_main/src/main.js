@@ -1,10 +1,12 @@
 import './style.css';
+import {addProject} from './listLogic.js';
 import button from './addProj_button.svg';
-import { add } from 'lodash';
 
 
 function component() {
 
+
+    
     console.log("Initialized DOM");
 
     const base = document.createElement('div');
@@ -133,7 +135,7 @@ function component() {
         titleInput.addEventListener("keydown", function(event) {
 
             let enteredText = "";
-            console.log("Entered key down listener.");
+            // console.log("Entered key down listener.");
 
             if (event.key === "Enter") {
                 enteredText = titleInput.value;
@@ -157,7 +159,8 @@ function component() {
                 titleInput.parentNode.replaceChild(projTemp, titleInput);
 
                 // - send title to addProject() in listLogic.js to add property to allProjects array
-                
+               addProject(enteredText);
+               
 
                 // On Click - should bring back ability to use add projects button 
                 projButton.style.pointerEvents = "auto"; 
@@ -166,7 +169,7 @@ function component() {
 
         }); // Ends "Enter" keydown function
 
-        // CREATE: click listener for editing the current title titleInput/projChild
+        // CREATE - click listener for editing the current title titleInput/projChild
         
 
 
