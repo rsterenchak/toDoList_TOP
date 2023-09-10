@@ -1,5 +1,5 @@
 import './style.css';
-import {addProject} from './listLogic.js';
+import { addProject } from './listLogic.js';
 import button from './addProj_button.svg';
 
 

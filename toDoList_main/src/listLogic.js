@@ -1,8 +1,11 @@
+import { add } from 'lodash';
 import './style.css';
 import { toDo } from './toDo.js';
 
+
+
 // ORIGINAL FUNCTION CALL,
-//var listLogic = () => {
+// var listLogic = () => {
     
 
     console.log("Initialized ListLogic");
@@ -45,7 +48,7 @@ import { toDo } from './toDo.js';
     // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
     //           - activates when onClick for new project takes place.
     //           - takes in user input for project name and stores it in the allProjects array
-   export function addProject(projectName){
+    export function addProject(projectName){
 
         console.log("Enter addProject function");
         // Sets variable for 'empty' list item
@@ -65,7 +68,6 @@ import { toDo } from './toDo.js';
         console.log(projectName + " added");
 
     }
-    
     // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
@@ -171,4 +173,5 @@ import { toDo } from './toDo.js';
 // }; // Ends CurrentSession
 
 
-
+// **** IMPORTANT IDEA ****: To get around the issue of not being able to export nested functions
+//            Attach each function to the listLogic() object prototype
