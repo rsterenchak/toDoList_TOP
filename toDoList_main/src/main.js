@@ -108,7 +108,7 @@ function component() {
         const projChild = document.createElement("div");
         const titleInput = document.createElement("input");
 
-
+        const projTemp = document.createElement("div");
 
 
         projChild.style.border = "1px solid black";
@@ -146,18 +146,21 @@ function component() {
             // if title entered has a length > 0 characters
             if (enteredText.length > 0){
 
-                // - replaceChild() new div for the input div
+                // assign id of the input element to the new div
+                projTemp.id = titleInput.id;
+                
                 // - set newDiv textContent to 'enteredText'
+                projTemp.textContent = enteredText;
+                projTemp.style.fontSize = "9px";
 
-                // - disable ability to edit titleInput
-                titleInput.readOnly = true;
-                // titleInput.style.cursor = "default";
-
-                // make elements hoverable
-                projChild.id = "projChildSet";
+                // - replaceChild() titleInput with projTemp
+                titleInput.parentNode.replaceChild(projTemp, titleInput);
 
                 // - send title to addProject() in listLogic.js to add property to allProjects array
+                
 
+                // On Click - should bring back ability to use add projects button 
+                projButton.style.pointerEvents = "auto"; 
 
             }
 
