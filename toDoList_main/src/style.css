@@ -85,6 +85,24 @@ body {
   place-items: center;
 }
 
+#projChildSet {
+  display: grid;
+  place-items: center;
+
+  border: 1px solid #ccc;
+  background-color: white;
+  transition: background-color 0.2s, color 0.2s, border-color 0.3s;
+  cursor: pointer;
+}
+
+#projChildSet:hover {
+  display: grid;
+  place-items: center;
+
+  background-color: lightgray;
+}
+
+
 #projInput {
   font-size: 8px;
   text-align: center;
@@ -96,6 +114,9 @@ body {
   outline: none;
 
 }
+
+
+
 
 #mainBar {
   display: grid;

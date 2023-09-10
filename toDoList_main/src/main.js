@@ -89,6 +89,7 @@ function component() {
 
 
 
+    // ********************** CLICK LISTENERS ********************** //
 
     // Click Listener: That adds new project element
     projButton.addEventListener("click", function(){
@@ -109,6 +110,7 @@ function component() {
 
 
 
+
         projChild.style.border = "1px solid black";
         projChild.id = "projChild";
 
@@ -123,16 +125,51 @@ function component() {
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
         
+
+
+        // ****** INPUT LISTENER ****** 
         // Press enter after Project title input to set element information
 
+        titleInput.addEventListener("keydown", function(event) {
+
+            let enteredText = "";
+            console.log("Entered key down listener.");
+
+            if (event.key === "Enter") {
+                enteredText = titleInput.value;
+
+                console.log("You entered: " + enteredText);
+                titleInput.blur();
+
+            }
+
+            // if title entered has a length > 0 characters
+            if (enteredText.length > 0){
+
+                // - replaceChild() new div for the input div
+                // - set newDiv textContent to 'enteredText'
+
+                // - disable ability to edit titleInput
+                titleInput.readOnly = true;
+                // titleInput.style.cursor = "default";
+
+                // make elements hoverable
+                projChild.id = "projChildSet";
+
+                // - send title to addProject() in listLogic.js to add property to allProjects array
 
 
-        // if title entered has a length > 0 characters
-        // send title to addProject() in listLogic.js to add property to allProjects array
+            }
 
-    
+        }); // Ends "Enter" keydown function
 
-    });
+        // CREATE: click listener for editing the current title titleInput/projChild
+        
+
+
+
+
+    }); // Ends Project button listener
 
     // Click Listener: That adds new item element
 
@@ -140,6 +177,7 @@ function component() {
 
 
 
+    // ********************** SHADOW LISTENERS ********************** //
 
     // addProj Shadow listener
     projButton.addEventListener("mouseenter", function() {
