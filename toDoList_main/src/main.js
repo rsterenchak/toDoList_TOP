@@ -1,6 +1,7 @@
 import './style.css';
-import { addProject } from './listLogic.js';
+import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
+
 
 
 function component() {
@@ -159,8 +160,8 @@ function component() {
                 titleInput.parentNode.replaceChild(projTemp, titleInput);
 
                 // - send title to addProject() in listLogic.js to add property to allProjects array
-               addProject(enteredText);
-               
+                listLogic.addProject(enteredText);
+                // Array.prototype.listProjects();
 
                 // On Click - should bring back ability to use add projects button 
                 projButton.style.pointerEvents = "auto"; 

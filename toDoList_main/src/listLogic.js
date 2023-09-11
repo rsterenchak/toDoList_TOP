@@ -5,8 +5,11 @@ import { toDo } from './toDo.js';
 
 
 // ORIGINAL FUNCTION CALL,
-// var listLogic = () => {
+export const listLogic = (function () {
     
+    
+    // Array.prototype.addProject = addProject;
+    // Array.prototype.listProjects = listProjects;
 
     console.log("Initialized ListLogic");
 
@@ -48,7 +51,7 @@ import { toDo } from './toDo.js';
     // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
     //           - activates when onClick for new project takes place.
     //           - takes in user input for project name and stores it in the allProjects array
-    export function addProject(projectName){
+    function addProject(projectName){
 
         console.log("Enter addProject function");
         // Sets variable for 'empty' list item
@@ -144,7 +147,7 @@ import { toDo } from './toDo.js';
 
     };
 
-
+    return { addProject }
 
 
     // **************** TESTING INPUTS/FUNCTIONS **************** //
@@ -170,7 +173,7 @@ import { toDo } from './toDo.js';
 
 
     // window.addProject = addProject; // makes addProject() function available to user globally
-// }; // Ends CurrentSession
+})();// Ends CurrentSession
 
 
 // **** IMPORTANT IDEA ****: To get around the issue of not being able to export nested functions

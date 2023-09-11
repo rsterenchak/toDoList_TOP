@@ -1,7 +1,7 @@
 import _, { remove } from 'lodash';
 import './style.css';
 import { component } from'./main.js';
-import { addProject, listLogic } from './listLogic.js';
+import { listLogic } from './listLogic.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
@@ -9,7 +9,6 @@ import button from './addProj_button.svg';
 
 
 document.body.appendChild(component()); // page DOM elements
-
 
 
 
