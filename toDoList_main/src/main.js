@@ -132,7 +132,6 @@ function component() {
 
         // ****** INPUT LISTENER ****** 
         // Press enter after Project title input to set element information
-
         titleInput.addEventListener("keydown", function(event) {
 
             let enteredText = "";
@@ -150,7 +149,7 @@ function component() {
             if (enteredText.length > 0){
 
                 // assign id of the input element to the new div
-                projTemp.id = titleInput.id;
+                projTemp.id = projTemp;
                 
                 // - set newDiv textContent to 'enteredText'
                 projTemp.textContent = enteredText;
@@ -159,9 +158,11 @@ function component() {
                 // - replaceChild() titleInput with projTemp
                 titleInput.parentNode.replaceChild(projTemp, titleInput);
 
+
                 // - send title to addProject() in listLogic.js to add property to allProjects array
                 listLogic.addProject(enteredText);
-                // Array.prototype.listProjects();
+                listLogic.listProjects();
+                
 
                 // On Click - should bring back ability to use add projects button 
                 projButton.style.pointerEvents = "auto"; 
@@ -174,6 +175,18 @@ function component() {
         
 
 
+
+        projTemp.addEventListener("mouseenter", function() {
+            this.style.border = "1px solid red";
+            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+            this.style.background = "lightgrey";  
+          });
+    
+        projTemp.addEventListener("mouseleave", function() {
+            this.style.border = "none";
+            this.style.boxShadow = "none";
+            this.style.background = "white";  
+        });  
 
 
     }); // Ends Project button listener

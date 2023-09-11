@@ -1,4 +1,3 @@
-import { add } from 'lodash';
 import './style.css';
 import { toDo } from './toDo.js';
 
@@ -147,7 +146,13 @@ export const listLogic = (function () {
 
     };
 
-    return { addProject }
+    return { 
+        addProject, 
+        removeProject, 
+        listProjects,
+        addToDo, 
+        editToDo 
+    };
 
 
     // **************** TESTING INPUTS/FUNCTIONS **************** //

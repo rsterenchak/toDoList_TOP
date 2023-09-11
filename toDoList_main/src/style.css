@@ -82,24 +82,8 @@ body {
 
 #projChild {
   display: grid;
-  place-items: center;
-}
+  grid-template-rows: 1fr 2fr 1fr;
 
-#projChildSet {
-  display: grid;
-  place-items: center;
-
-  border: 1px solid #ccc;
-  background-color: white;
-  transition: background-color 0.2s, color 0.2s, border-color 0.3s;
-  cursor: pointer;
-}
-
-#projChildSet:hover {
-  display: grid;
-  place-items: center;
-
-  background-color: lightgray;
 }
 
 
@@ -115,6 +99,11 @@ body {
 
 }
 
+
+#projTemp {
+  font-size: 7px;
+  
+}
 
 
 

@@ -7,9 +7,7 @@ import button from './addProj_button.svg';
 
 
 
-
 document.body.appendChild(component()); // page DOM elements
-
 
 
 
