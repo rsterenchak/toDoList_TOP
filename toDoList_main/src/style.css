@@ -82,27 +82,41 @@ body {
 
 #projChild {
   display: grid;
-  grid-template-rows: 1fr 2fr 1fr;
-
+  align-content: center;
+  justify-content: center;
+  
 }
 
 
 #projInput {
   font-size: 7px;
   text-align: center;
-  
+  background-color: rgba(0, 0, 0, 0);
 }
 
 #projInput:focus {
-
+  box-shadow: none;
+  background: white;
   outline: none;
+  
+}
 
+#projInput::placeholder {
+  
+  color: black;
+
+}
+
+#projInput:focus::placeholder {
+  
+  color: transparent;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 
 #projTemp {
   font-size: 7px;
-  
+  opacity: 0%;
 }
 
 

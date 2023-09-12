@@ -120,6 +120,7 @@ function component() {
         titleInput.type = "text";
         titleInput.id = "projInput";
         titleInput.placeholder = "Enter project title here";
+        
         titleInput.value = "";
         titleInput.style.border = "none";
 
@@ -166,24 +167,34 @@ function component() {
 
                 // On Click - should bring back ability to use add projects button 
                 projButton.style.pointerEvents = "auto"; 
+                
+
 
             }
 
         }); // Ends "Enter" keydown function
 
-        // CREATE - click listener for editing the current title titleInput/projChild
+        // CREATE (EDIT) - click listener for editing the current title titleInput/projChild
+        
+        
+        
+        // ****** Focus/Shadow LISTENERS ******
+
+        titleInput.addEventListener("focus", function() {
+            this.style.background = "rgba(0, 0, 0, 0)";
+            projChild.style.boxShadow = "none";
+            projChild.style.background = "white";             
+        });
         
 
-
-
-        projTemp.addEventListener("mouseenter", function() {
-            this.style.border = "1px solid red";
+        projChild.addEventListener("mouseenter", function() {
+            // this.style.border = "1px solid red";
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
             this.style.background = "lightgrey";  
-          });
-    
-        projTemp.addEventListener("mouseleave", function() {
-            this.style.border = "none";
+        });
+        
+        projChild.addEventListener("mouseleave", function() {
+            // this.style.border = "none";
             this.style.boxShadow = "none";
             this.style.background = "white";  
         });  
