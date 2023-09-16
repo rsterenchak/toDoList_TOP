@@ -7,6 +7,9 @@ import button from './addProj_button.svg';
 function component() {
 
 
+    // GLOBAL
+
+
     
     console.log("Initialized DOM");
 
@@ -104,6 +107,7 @@ function component() {
         
         // click ability returns dependent on if user successfully adds title to project
 
+        
 
         // selects projects list div by ID
         const sideMaDiv = document.getElementById("sideMa");
@@ -111,35 +115,50 @@ function component() {
         const projChild = document.createElement("div");
         const titleInput = document.createElement("input");
 
+        const editedInput = document.createElement("input");
+
         const projTemp = document.createElement("div");
 
 
-        projChild.style.border = "1px solid black";
+        projChild.style.border = "1px solid blue"; 
         projChild.id = "projChild";
 
+        // First Project Input
         titleInput.type = "text";
         titleInput.id = "projInput";
         titleInput.placeholder = "Enter project title here";
         
         titleInput.value = "";
-        titleInput.style.border = "none";
+        titleInput.style.border = "1px solid red";
+
+
+        // Edited Project Input
+        editedInput.type = "text";
+        editedInput.id = "projInput";
+        editedInput.placeholder = "Enter project title here";
+        
+        editedInput.value = "";
+        editedInput.style.border = "1px solid green";
 
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        
 
+        let currentProperty = "";
+        let newProperty = "";
+        let firstTime = 0;
 
         // ****** INPUT LISTENER ****** 
         // Press enter after Project title input to set element information
         titleInput.addEventListener("keydown", function(event) {
 
             let enteredText = "";
-            // console.log("Entered key down listener.");
+            
 
             if (event.key === "Enter") {
                 enteredText = titleInput.value;
+                newProperty = titleInput.value;
 
                 console.log("You entered: " + enteredText);
                 titleInput.blur();
@@ -150,42 +169,69 @@ function component() {
             if (enteredText.length > 0){
 
                 // assign id of the input element to the new div
-                projTemp.id = projTemp;
-                
+                // projTemp.id = projTemp; - ORIGINAL
+                // titleInput.id = projTemp; - NEW
+
                 // - set newDiv textContent to 'enteredText'
-                projTemp.textContent = enteredText;
-                projTemp.style.fontSize = "9px";
+                // projTemp.textContent = enteredText; - ORIGINAL
+                // projTemp.style.fontSize = "9px"; - ORIGINAL
+
+                titleInput.textContent = enteredText; // - NEW
+                titleInput.style.fontSize = "9px"; // - NEW
 
                 // - replaceChild() titleInput with projTemp
-                titleInput.parentNode.replaceChild(projTemp, titleInput);
+                // titleInput.parentNode.replaceChild(projTemp, titleInput); - ORIGINAL
 
+                
+                // projTemp.style.border = "1px solid orange"; - ORIGINAL
 
-                // - send title to addProject() in listLogic.js to add property to allProjects array
-                listLogic.addProject(enteredText);
+                
+                if(firstTime === 0){
+
+                    // - send title to addProject() in listLogic.js to add property to allProjects array
+                    listLogic.addProject(enteredText);
+                    firstTime = 1;
+                    currentProperty = titleInput.textContent;
+                }
+
+                else{
+                    
+                    // console.log("Current Property: " + currentProperty);
+                    // console.log("New Property: " + newProperty);
+
+                    // - send title to editToDo() in listLogic.js to edit currentProperty to allProjects array 
+                    listLogic.editToDo(currentProperty, newProperty);
+
+                    currentProperty = newProperty;
+                }
+
                 listLogic.listProjects();
                 
 
                 // On Click - should bring back ability to use add projects button 
                 projButton.style.pointerEvents = "auto"; 
                 
-
+                // NOTE: projChild > titleInput
 
             }
 
+            
         }); // Ends "Enter" keydown function
 
-        // CREATE (EDIT) - click listener for editing the current title titleInput/projChild
-        
-        
-        
-        // ****** Focus/Shadow LISTENERS ******
 
+
+        // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
             this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
             projChild.style.background = "white";             
         });
-        
+
+        editedInput.addEventListener("focus", function() {
+            this.style.background = "rgba(0, 0, 0, 0)";
+            projChild.style.boxShadow = "none";
+            projChild.style.background = "white";             
+        });       
 
         projChild.addEventListener("mouseenter", function() {
             // this.style.border = "1px solid red";

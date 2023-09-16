@@ -10,7 +10,7 @@ const toDo = (title, description, dueDate, priority) => {
     let due = dueDate;
     let pri = priority;
 
-    console.log("Called toDo Object");
+    // console.log("Called toDo Object");
 
     
     return {tit, desc, due, pri};

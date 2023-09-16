@@ -10,7 +10,7 @@ export const listLogic = (function () {
     // Array.prototype.addProject = addProject;
     // Array.prototype.listProjects = listProjects;
 
-    console.log("Initialized ListLogic");
+    // console.log("Initialized ListLogic");
 
     // INITIAL: toDo item variables
     let itemTitle = '';
@@ -52,7 +52,7 @@ export const listLogic = (function () {
     //           - takes in user input for project name and stores it in the allProjects array
     function addProject(projectName){
 
-        console.log("Enter addProject function");
+        // console.log("Enter addProject function");
         // Sets variable for 'empty' list item
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
 
@@ -70,6 +70,7 @@ export const listLogic = (function () {
         console.log(projectName + " added");
 
     }
+
     // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
@@ -131,17 +132,15 @@ export const listLogic = (function () {
     };
 
     // FUNCTION (EDIT TODO LIST ITEMS): - responsible for editing specified project array items
-    //                                 - called when gui item section is clicked on
-    function editToDo() {
+    //                                  - called when gui item section is clicked on
+    //                                  - **** WILL NOT WORK AFTER SECOND EDIT ****
+    function editToDo(currentProperty, newProperty) {
 
-        console.log("called editToDo function");
+        // set projectName as a new property of the allProjects object
+        allProjects[newProperty] = allProjects[currentProperty];
+        delete allProjects[currentProperty];
 
-        let projectDes = prompt("Which project would you like to edit?");
-        let itemPos = prompt("Indicate item position within project array.");
-
-        console.log(allProjects[projectDes][itemPos]);
-
-
+        allProjectsTotal = Object.keys(allProjects).length;
 
 
     };
