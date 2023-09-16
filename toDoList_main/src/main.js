@@ -115,10 +115,6 @@ function component() {
         const projChild = document.createElement("div");
         const titleInput = document.createElement("input");
 
-        const editedInput = document.createElement("input");
-
-        const projTemp = document.createElement("div");
-
 
         projChild.style.border = "1px solid blue"; 
         projChild.id = "projChild";
@@ -129,16 +125,7 @@ function component() {
         titleInput.placeholder = "Enter project title here";
         
         titleInput.value = "";
-        titleInput.style.border = "1px solid red";
-
-
-        // Edited Project Input
-        editedInput.type = "text";
-        editedInput.id = "projInput";
-        editedInput.placeholder = "Enter project title here";
-        
-        editedInput.value = "";
-        editedInput.style.border = "1px solid green";
+        titleInput.style.border = "none";
 
 
         // Create element with textbox for input
@@ -154,7 +141,7 @@ function component() {
         titleInput.addEventListener("keydown", function(event) {
 
             let enteredText = "";
-            
+            let trimmedText = "";
 
             if (event.key === "Enter") {
                 enteredText = titleInput.value;
@@ -168,37 +155,24 @@ function component() {
             // if title entered has a length > 0 characters
             if (enteredText.length > 0){
 
-                // assign id of the input element to the new div
-                // projTemp.id = projTemp; - ORIGINAL
-                // titleInput.id = projTemp; - NEW
-
-                // - set newDiv textContent to 'enteredText'
-                // projTemp.textContent = enteredText; - ORIGINAL
-                // projTemp.style.fontSize = "9px"; - ORIGINAL
-
-                titleInput.textContent = enteredText; // - NEW
+                trimmedText = enteredText.trim();
+                
+                titleInput.textContent = trimmedText; // - NEW
+                titleInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 titleInput.style.fontSize = "9px"; // - NEW
-
-                // - replaceChild() titleInput with projTemp
-                // titleInput.parentNode.replaceChild(projTemp, titleInput); - ORIGINAL
-
                 
-                // projTemp.style.border = "1px solid orange"; - ORIGINAL
-
                 
+
                 if(firstTime === 0){
 
                     // - send title to addProject() in listLogic.js to add property to allProjects array
-                    listLogic.addProject(enteredText);
+                    listLogic.addProject(trimmedText);
                     firstTime = 1;
                     currentProperty = titleInput.textContent;
                 }
 
                 else{
                     
-                    // console.log("Current Property: " + currentProperty);
-                    // console.log("New Property: " + newProperty);
-
                     // - send title to editToDo() in listLogic.js to edit currentProperty to allProjects array 
                     listLogic.editToDo(currentProperty, newProperty);
 
@@ -226,12 +200,7 @@ function component() {
             projChild.style.boxShadow = "none";
             projChild.style.background = "white";             
         });
-
-        editedInput.addEventListener("focus", function() {
-            this.style.background = "rgba(0, 0, 0, 0)";
-            projChild.style.boxShadow = "none";
-            projChild.style.background = "white";             
-        });       
+  
 
         projChild.addEventListener("mouseenter", function() {
             // this.style.border = "1px solid red";

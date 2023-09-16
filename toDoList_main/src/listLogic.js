@@ -59,6 +59,7 @@ export const listLogic = (function () {
         // store prompted user input for project name
         // var projectName = prompt("Enter New Project Name: ");
 
+        projectName = projectName.trim();
 
         // set projectName as a new property of the allProjects object
         allProjects[projectName] = [];
@@ -74,11 +75,11 @@ export const listLogic = (function () {
     // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
-    function removeProject(allProjectsTotal){
+    function removeProject(allProjectsTotal, projectName){
 
         let before =  allProjectsTotal;
 
-        let projectDes = prompt("Which project would you like to remove?");
+        let projectDes = projectName;
 
         delete allProjects[projectDes]; 
 
