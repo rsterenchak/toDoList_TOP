@@ -84,6 +84,7 @@ body {
   display: grid;
   align-content: center;
   justify-content: center;
+  grid-template-columns: 2fr 1fr 2px;
   
 }
 
@@ -113,10 +114,12 @@ body {
   background-color: rgba(0, 0, 0, 0);
 }
 
-
-#projTemp {
-  font-size: 7px;
-  opacity: 0%;
+#closeButton {
+  background-image: url('./close-svgrepo-com.svg');
+  background-size: cover; /* Adjust as needed */
+  
+  width: 8px;
+  height: 8px;
   
 }
 

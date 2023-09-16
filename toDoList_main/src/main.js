@@ -113,7 +113,10 @@ function component() {
         const sideMaDiv = document.getElementById("sideMa");
 
         const projChild = document.createElement("div");
+
         const titleInput = document.createElement("input");
+        const closeButton = document.createElement("div");
+        const spacer = document.createElement("div");
 
 
         projChild.style.border = "1px solid blue"; 
@@ -127,10 +130,15 @@ function component() {
         titleInput.value = "";
         titleInput.style.border = "none";
 
+        closeButton.id = "closeButton";
+        // closeButton.style.border = "0.5px solid black";
+
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
+        projChild.appendChild(closeButton);
+        projChild.appendChild(spacer);
 
         let currentProperty = "";
         let newProperty = "";
@@ -193,6 +201,10 @@ function component() {
         }); // Ends "Enter" keydown function
 
 
+        
+
+
+
 
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
@@ -214,6 +226,19 @@ function component() {
             this.style.background = "white";  
         });  
 
+        closeButton.addEventListener("mouseenter", function() {
+            // this.style.border = "1px solid red";
+            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+            this.style.border = "0.1px solid black";
+            // this.style.background = "lightgrey";  
+        });
+        
+        closeButton.addEventListener("mouseleave", function() {
+            // this.style.border = "none";
+            this.style.boxShadow = "none";
+            this.style.border = "none";
+            // this.style.background = "white";         
+        });
 
     }); // Ends Project button listener
 
