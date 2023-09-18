@@ -235,12 +235,19 @@ function component() {
             let property = titleInput.value;
 
 
-            // Need to remove the DOM element
+            // DOM - Removes the DOM element
             projChild.parentNode.removeChild(projChild);
 
-            // Need to call logic function that removes property from allProjects[] array
+            // LOGIC - Need to call logic function that removes property from allProjects[] array
             listLogic.removeProject(property);
 
+
+            // DOM - Removes toDo DOM elements associated with project
+
+            // LOGIC - Removes toDo logic elements associated with project
+
+            
+            // LOGIC - Lists all existing projects in logic
             listLogic.listProjects();
 
             // On Click - should bring back ability to use add projects button 
@@ -329,9 +336,6 @@ function component() {
         let counter = 0;
 
         console.log(items);
-        // console.log(items.length);
-        // console.log(items[0]);
-        // console.log(items[0]["tit"]);
 
 
         // declare elements needed, make similar to the adding projects version
@@ -359,10 +363,8 @@ function component() {
         // adds 'existing items' to project items list
         while(counter < toDoArray.length){
 
-            addtoDo(toDoArray[counter], counter); // designates project and item position in array
+            addtoDo(toDoArray[counter], counter); // designates project item, along with array position
             
-            
-
             counter++;
         }
 
@@ -411,7 +413,7 @@ function component() {
 
                     
                     console.log("item title: " + item["tit"]);
-                    console.log(toDoArray);
+                    console.log(item);
                 }
 
                 
@@ -426,16 +428,35 @@ function component() {
                 let pos = closeButtonToDo.dataset.info;
                 let project = toDoName;
                 
-                // need function to return current length of the project array
+                let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
 
-                // console.log("pos: " + pos);
-                // console.log("project: " + toDoName);
 
-                // remove item from DOM
-                mainListDiv.removeChild(toDoChild);
-    
-                // remove item from project array, needs to identify the index of project effected
-                listLogic.removeToDo(project, pos);
+                // if currentLength is 1, clear div information
+                if(currentLength === 1){
+
+                    toDoInput.value = "";
+                    
+                    // remove item from project array, needs to identify the index of project effected
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    // create function that lists project elements
+                    let array = listLogic.listItems(project);
+                    console.log(array);
+                }
+
+                else{
+
+                    // remove item from DOM
+                    mainListDiv.removeChild(toDoChild);
+
+                    // remove item from project array, needs to identify the index of project effected
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    // create function that lists project elements
+                    listLogic.listItems(project);
+
+                }
+
 
                 // re-generate DOM array elements using function
 

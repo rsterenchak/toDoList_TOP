@@ -119,11 +119,10 @@ export const listLogic = (function () {
         // var selectedProject = projectName;
 
         // based on the project selected, take in new variables for object
-        let itemTitle = 'addToDo_title';
-        let itemDesc = 'addToDo_Desc';
-        let itemDue = 'addToDo_DateDue';
+        let itemTitle = '';
+        let itemDesc = '';
+        let itemDue = '';
         let itemPri = 1;
-    
 
         // with the new variables, instantiate the new toDo list object
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);    
@@ -138,23 +137,46 @@ export const listLogic = (function () {
 
     };
 
-    function removeToDo(project, index) {
+    function removeToDo(project, index, length) {
         console.log("called removeToDo function");
 
-        console.log(project);
-        console.log(index);
+        // based on the project selected, take in new variables for object
+        let itemTitle = '';
+        let itemDesc = '';
+        let itemDue = '';
+        let itemPri = 1;
+    
+
+        // with the new variables, instantiate the new toDo list object
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);    
+    
+
+        index = parseInt(index, 10);
+
 
         // if the length of the project array is 1 and the index is 0,
         // instead of removing the array logic/DOM entirely just reset it
         // otherwise just remove the logic/DOM
 
+        if((length === 1) && (index === 0)){
+
+            console.log("Only a single item exists");
+
+            // pop() item from project array
+            allProjects[project].pop(index);
+
+            // push that new object to the allProjects array
+            allProjects[project].push(listItem);    
 
 
+        }
 
+        else{
 
-
-        // pop() item from project array
-        allProjects[project].pop(index);
+            // pop() item from project array
+            allProjects[project].pop(index);
+        
+        }
 
     };
 
@@ -186,10 +208,16 @@ export const listLogic = (function () {
 
         return projectArray;
 
-    }
+    };
 
-    
+    function projectLength(project){
 
+        let projectLength = (allProjects[project]).length;
+
+        return projectLength;
+    };
+
+  
 
     return { 
         addProject, 
@@ -198,7 +226,8 @@ export const listLogic = (function () {
         addToDo, 
         removeToDo, 
         editProject,
-        listItems 
+        listItems, 
+        projectLength 
         
     };
 
