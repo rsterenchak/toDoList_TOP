@@ -70,14 +70,20 @@ export const listLogic = (function () {
         allProjectsTotal = Object.keys(allProjects).length;
         console.log(projectName + " added");
 
+        // console.log(allProjects[projectName]);
+        return {
+            array: allProjects[projectName],
+            string: projectName
+        };// return project array
+
     }
 
     // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
-    function removeProject(allProjectsTotal, projectName){
+    function removeProject(projectName){
 
-        let before =  allProjectsTotal;
+        let before =  Object.keys(allProjects).length;
 
         let projectDes = projectName;
 
@@ -132,10 +138,30 @@ export const listLogic = (function () {
 
     };
 
+    function removeToDo(project, index) {
+        console.log("called removeToDo function");
+
+        console.log(project);
+        console.log(index);
+
+        // if the length of the project array is 1 and the index is 0,
+        // instead of removing the array logic/DOM entirely just reset it
+        // otherwise just remove the logic/DOM
+
+
+
+
+
+
+        // pop() item from project array
+        allProjects[project].pop(index);
+
+    };
+
     // FUNCTION (EDIT TODO LIST ITEMS): - responsible for editing specified project array items
     //                                  - called when gui item section is clicked on
     //                                  - **** WILL NOT WORK AFTER SECOND EDIT ****
-    function editToDo(currentProperty, newProperty) {
+    function editProject(currentProperty, newProperty) {
 
         // set projectName as a new property of the allProjects object
         allProjects[newProperty] = allProjects[currentProperty];
@@ -143,15 +169,37 @@ export const listLogic = (function () {
 
         allProjectsTotal = Object.keys(allProjects).length;
 
+        
+
+        return {
+            array: allProjects[newProperty],
+            string: newProperty
+        }; // return project array
 
     };
+
+    function listItems(project){
+
+        let projectName = project;
+        let projectArray = allProjects[projectName];
+
+
+        return projectArray;
+
+    }
+
+    
+
 
     return { 
         addProject, 
         removeProject, 
         listProjects,
         addToDo, 
-        editToDo 
+        removeToDo, 
+        editProject,
+        listItems 
+        
     };
 
 

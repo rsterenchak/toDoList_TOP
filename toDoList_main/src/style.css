@@ -60,7 +60,7 @@ body {
 
 #sideMa {
   display: grid;
-  border: 2px solid violet;
+  border: 2px solid blue;
   grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
 }
 
@@ -84,7 +84,8 @@ body {
   display: grid;
   align-content: center;
   justify-content: center;
-  grid-template-columns: 2fr 1fr 2px;
+  grid-template-columns: 1fr 22px 12px;
+  cursor: pointer;
   
 }
 
@@ -117,7 +118,6 @@ body {
 #closeButton {
   background-image: url('./close-svgrepo-com.svg');
   background-size: cover; /* Adjust as needed */
-  
   width: 8px;
   height: 8px;
   
@@ -147,7 +147,7 @@ body {
 
 #mainList {
   display: grid;
-  border: 2px solid violet;
+  border: 2px solid red;
   grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
 }
 
@@ -167,4 +167,44 @@ body {
   height: 10px;
 }
 
+#toDoChild{
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  grid-template-columns: 90px 4px 1px;
+  cursor: pointer;
 
+}
+
+#toDoInput {
+  font-size: 7px;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#toDoInput:focus {
+  box-shadow: none;
+  background: white;
+  outline: none;
+  
+}
+
+#toDoInput::placeholder {
+  
+  color: black;
+
+}
+
+#toDoInput:focus::placeholder {
+  
+  color: transparent;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#closeButtonToDo {
+  background-image: url('./close-svgrepo-com.svg');
+  background-size: cover; /* Adjust as needed */
+  width: 8px;
+  height: 8px;
+
+}
