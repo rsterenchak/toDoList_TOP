@@ -116,7 +116,7 @@ function component() {
         const spacer = document.createElement("div");
 
 
-        projChild.style.border = "1px solid blue"; 
+        projChild.classList.add("unselectedProject"); 
         projChild.id = "projChild";
 
         // First Project Input
@@ -232,17 +232,27 @@ function component() {
         // Removes selected project elements from DOM/Logic
         closeButton.addEventListener("click", function() {
 
+            const mainList = document.getElementById("mainList");
+            const mainChild = document.getElementById("toDoChild");
+
             let property = titleInput.value;
+            let projectLength = listLogic.projectLength(property);
+            let i = 0;
 
-
-            // DOM - Removes the DOM element
+            // DOM - Removes project DOM element
             projChild.parentNode.removeChild(projChild);
+
+            // DOM - Removes item DOM elements associated with project
+            while(i < projectLength){
+
+                mainList.removeChild(mainChild);
+
+                i++;
+            }
+            
 
             // LOGIC - Need to call logic function that removes property from allProjects[] array
             listLogic.removeProject(property);
-
-
-            // DOM - Removes toDo DOM elements associated with project
 
             // LOGIC - Removes toDo logic elements associated with project
 
@@ -256,7 +266,35 @@ function component() {
 
         }); // Ends "closeButton" click function
 
+        // Clicking on projChild needs remove old items then generate items based on a project's existing array items
+        projChild.addEventListener("click", function(){
 
+            
+            // what if each projChild had datasetinfo to be able to point to it and manipulate its stylings
+
+            // querySelect all the projChild elements, change their classes to unselectedProject
+            var projOnChild = document.querySelector('.selectedProject');
+
+            if(projOnChild != null){
+            
+                projOnChild.classList.remove("selectedProject");
+                projOnChild.classList.add("unselectedProject");
+            
+            }
+            // changing ONLY the selected project
+            if(projChild.classList.contains("unselectedProject")){
+
+                projChild.classList.remove("unselectedProject");
+                projChild.classList.add("selectedProject");
+
+
+                console.log("Class changed to selectedProject");
+                
+            }
+
+
+        });
+        
 
 
         // ****** Focus/Shadow LISTENERS ******
