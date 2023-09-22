@@ -144,22 +144,32 @@ function component() {
         let newProperty = "";
         let firstTime = 0;
 
+        let projectArray = [];
+        let projectName = "";
+
         // ****** INPUT LISTENER ****** 
         // Press enter after Project title input to set element information
         titleInput.addEventListener("keydown", function(event) {
+
+            const mainDiv = document.querySelector('#mainList');
+
+            var childNodes = mainDiv.childNodes;
+
+            // querySelect all the projChild elements, change their classes to unselectedProject
+            var projOnChild = document.querySelector('.selectedProject');
 
             let enteredText = "";
             let trimmedText = "";
             let projectItems = [];
 
-            let projectArray = [];
-            let projectName = "";
+            // let projectArray = [];
+            // let projectName = "";
 
             if (event.key === "Enter") {
                 enteredText = titleInput.value;
                 newProperty = titleInput.value;
 
-                console.log("You entered: " + enteredText);
+                // console.log("You entered: " + enteredText);
                 titleInput.blur();
 
             }
@@ -180,9 +190,6 @@ function component() {
                     // - send title to addProject() in listLogic.js to add property to allProjects array
                     projectItems = listLogic.addProject(trimmedText); 
                     
-                    // console.log(projectItems.array); // refers to project array
-                    // console.log(projectItems.string); // refers to project name
-
                     projectArray = projectItems.array;
                     projectName = projectItems.string;
 
@@ -190,6 +197,9 @@ function component() {
                     firstTime = 1;
                     currentProperty = titleInput.textContent;
                     
+                    selectProject(); // changes selection to element
+                    clearToDos();
+
                     // function returns updated project array for DOM
                     // projectItems = listLogic.listItems(); 
                     
@@ -204,6 +214,10 @@ function component() {
                     projectName = projectItems.string;
 
                     currentProperty = newProperty;
+
+                    selectProject(); // changes selection to element
+                    clearToDos();
+
 
                     // function returns updated project array for DOM
                     // projectItems = listLogic.listItems();
@@ -223,6 +237,92 @@ function component() {
                 projButton.style.pointerEvents = "auto"; 
                 
                 // NOTE: projChild > titleInput
+
+
+                // *** LISTENERS ***
+
+                // when element is clicked change selection to that element
+                projChild.addEventListener("click", function(){
+                    
+                    // console.log("*** Project selection Changed ***");
+                    let fresh = 0;
+
+
+                    if(fresh === 0){
+
+                        projOnChild = document.querySelector('.selectedProject'); //  latest selection
+                    
+                        fresh = 1;
+                    }
+
+                    console.log("projOnChild: " + projOnChild);
+
+                    selectProject(); // 1 - Changes selected element
+
+                    projOnChild = document.querySelector('.selectedProject'); //  latest selection
+
+                    var innerValue = projOnChild.textContent; // pulls projectName
+                    var arrayValues = listLogic.listItems(innerValue);// pulls projectArray
+
+                    console.log(innerValue);
+                    console.log(arrayValues);
+
+                    
+
+                    clearToDos(); // 2 - Clears previous childNode under toDo List
+                    
+                    /** NOT WORKING */
+                    addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
+                    
+                
+                });
+
+
+                // *** FUNCTIONS ***
+
+                // changes an elements selection
+                function selectProject(){
+
+                    if(projOnChild != null){
+            
+                        console.log("selectedProject exists");
+
+                        projOnChild.classList.remove("selectedProject");
+                        projOnChild.classList.add("unselectedProject");
+                    
+                    }
+                    // changing ONLY the selected project
+                    if(projChild.classList.contains("unselectedProject")){
+        
+                        projChild.classList.remove("unselectedProject");
+                        projChild.classList.add("selectedProject");
+        
+        
+                        // console.log("Class changed to selectedProject");
+                        
+                    }
+
+
+
+                }
+
+                function clearToDos(){
+
+                    const mainDiv = document.querySelector('#mainList');                    
+
+
+                    if(mainDiv.contains(childNodes[1])){
+
+                        console.log("Contains more than one node");
+    
+                        mainDiv.removeChild(childNodes[1]); // remove childNodes
+                        
+                        console.log(childNodes);
+                    
+                    }                    
+
+                }
+
 
             }
 
@@ -267,33 +367,67 @@ function component() {
         }); // Ends "closeButton" click function
 
         // Clicking on projChild needs remove old items then generate items based on a project's existing array items
-        projChild.addEventListener("click", function(){
+        // IDEAS: 
+        // - Need listener to work when projChild is clicked or when input for new element is set
+/*         projChild.addEventListener("click", function(){
 
+            console.log("Entered projChild click listener");
             
             // what if each projChild had datasetinfo to be able to point to it and manipulate its stylings
 
+            const mainDiv = document.querySelector('#mainList');
+
+            var childNodes = mainDiv.childNodes;
+            let inputLength = (titleInput.value).length;
+
             // querySelect all the projChild elements, change their classes to unselectedProject
             var projOnChild = document.querySelector('.selectedProject');
+            var toDoChildren = document.querySelector('#projChild');
 
-            if(projOnChild != null){
+
+
+
+
+            if(inputLength > 0){
+
+                if(projOnChild != null){
             
-                projOnChild.classList.remove("selectedProject");
-                projOnChild.classList.add("unselectedProject");
-            
-            }
-            // changing ONLY the selected project
-            if(projChild.classList.contains("unselectedProject")){
-
-                projChild.classList.remove("unselectedProject");
-                projChild.classList.add("selectedProject");
-
-
-                console.log("Class changed to selectedProject");
+                    projOnChild.classList.remove("selectedProject");
+                    projOnChild.classList.add("unselectedProject");
                 
+                }
+                // changing ONLY the selected project
+                if(projChild.classList.contains("unselectedProject")){
+    
+                    projChild.classList.remove("unselectedProject");
+                    projChild.classList.add("selectedProject");
+    
+    
+                    console.log("Class changed to selectedProject");
+                    
+                }
+
+                // need projectName
+                let projArray = listLogic.listItems(projectName);// need function to return array
+
+                if(mainDiv.contains(childNodes[1])){
+
+                    console.log("Contains more than one node");
+
+                    mainDiv.removeChild(childNodes[1]); // remove childNodes
+                    
+                    console.log(childNodes);
+                
+                }
+
+                console.log(projArray);
+                // addAllToDo_DOM(projArray, projectName);
+            
             }
 
 
-        });
+
+        }); */
         
 
 
@@ -373,7 +507,6 @@ function component() {
         let toDoName = name;
         let counter = 0;
 
-        console.log(items);
 
 
         // declare elements needed, make similar to the adding projects version
@@ -397,23 +530,34 @@ function component() {
 
         closeButtonToDo.id = "closeButtonToDo";       
 
+/*      console.log(toDoArray[0].tit);
+        console.log(toDoArray.length);
+        console.log((toDoArray[0].tit).length);
+ */
 
-        // adds 'existing items' to project items list
-        while(counter < toDoArray.length){
+        if(((toDoArray[0].tit).length) > 0){
 
-            addtoDo(toDoArray[counter], counter); // designates project item, along with array position
-            
-            counter++;
+            while(counter < toDoArray.length){
+
+                
+                regenToDos(toDoArray[counter], counter); // designates project item, along with array position
+                    
+                counter++;
+            }            
+
         }
 
-        // console.log(toDoArray);
-        // console.log(items[0]);
+        else{
+
+            addNewToDo(toDoArray[counter], counter); // designates project item, along with array position
+
+        }
 
 
 
 
-        // place generation of each toDoChild within a function with listeners for actions placed on them
-        function addtoDo(item, index){
+        // Meant for newToDos
+        function addNewToDo(item, index){
 
 
             mainListDiv.appendChild(toDoChild);
@@ -513,7 +657,116 @@ function component() {
 
         }
 
+        // Meant for oldToDos re-generation
+        function regenToDos(item, index){
 
+
+            mainListDiv.appendChild(toDoChild);
+            toDoChild.appendChild(toDoInput);
+            toDoChild.appendChild(spacer);
+            toDoChild.appendChild(closeButtonToDo);   
+            
+            
+            console.log("inside re-gen toDo function: " + item.tit);
+
+
+            toDoInput.textContent = item.tit; // - NEW
+            toDoInput.value = item.tit; // - NEW - ensures text is moved to the middle of div
+            toDoInput.style.fontSize = "9px"; // - NEW
+            
+            item["tit"] = item.tit;
+
+            closeButtonToDo.dataset.info = index;
+
+
+            // EDITS TITLE OF ITEM ELEMENT
+            toDoInput.addEventListener("keydown", function(event) {
+
+                let enteredText = "";
+                let trimmedText = "";
+
+                if (event.key === "Enter") {
+                    enteredText = toDoInput.value;
+
+                    console.log("You entered: " + enteredText);
+                    toDoInput.blur();
+
+                }
+
+                // if title entered has a length > 0 characters
+                if (enteredText.length > 0){
+
+                    trimmedText = enteredText.trim();
+                    
+                    toDoInput.textContent = trimmedText; // - NEW
+                    toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
+                    toDoInput.style.fontSize = "9px"; // - NEW
+                    
+                    item["tit"] = trimmedText;
+
+                    closeButtonToDo.dataset.info = index;
+
+
+                }
+
+                
+            }); // Ends "Enter" keydown function
+
+            closeButtonToDo.addEventListener("click", function(){
+
+                console.log("Entered click function");
+                // console.log(closeButtonToDo.dataset.info);
+ 
+                // store index of toDo item in variable
+                let pos = closeButtonToDo.dataset.info;
+                let project = toDoName;
+                
+                let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
+
+
+                // if currentLength is 1, clear div information
+                if(currentLength === 1){
+
+                    toDoInput.value = "";
+                    
+                    // remove item from project array, needs to identify the index of project effected
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    // create function that lists project elements
+                    let array = listLogic.listItems(project);
+                    console.log(array);
+                }
+
+                else{
+
+                    // remove item from DOM
+                    mainListDiv.removeChild(toDoChild);
+
+                    // remove item from project array, needs to identify the index of project effected
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    // create function that lists project elements
+                    listLogic.listItems(project);
+
+                }
+
+
+                // re-generate DOM array elements using function
+
+            });
+
+
+            closeButtonToDo.addEventListener("mouseenter", function() {
+                this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+                this.style.border = "0.05px solid black";
+            });
+            
+            closeButtonToDo.addEventListener("mouseleave", function() {
+                this.style.boxShadow = "none";
+                this.style.border = "none";
+            });            
+        
+        }
 
         // if you decide to use the addToDo DOM button, use a listener
 

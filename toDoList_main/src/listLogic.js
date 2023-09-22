@@ -68,7 +68,7 @@ export const listLogic = (function () {
         allProjects[projectName].push(listItem);
 
         allProjectsTotal = Object.keys(allProjects).length;
-        console.log(projectName + " added");
+        // console.log(projectName + " added");
 
         // console.log(allProjects[projectName]);
         return {
