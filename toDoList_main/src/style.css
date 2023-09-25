@@ -5,34 +5,37 @@
 
 body {
   margin: 0px;
-  padding: 0px;
+  padding: 30px;
+  
 }
 
 #outerContainer {
   display: grid;
-  border: 2px solid red;
+  
   grid-template-rows: 5vh 85vh 10vh;
 
 }
 
 #navBar {
 
-  border: 2px solid blue;
+  border: 1px solid black;
+  background-color: white;
+  
 
 }
 
 
 #mainSec {
   display: grid;
-  border: 2px solid red;
   grid-template-columns: 1fr 3fr;
-
+  
 }
 
 
 #footBar {
 
-  border: 2px solid blue;
+  border: 1px solid black;
+  background-color: white;
 
 }
 
@@ -41,43 +44,47 @@ body {
 
 #sideBar {
   display: grid;
-  border: 2px solid green;
   grid-template-rows: 1fr 11fr;
 }
 
 #sideTit {
   display: grid;
-  border: 2px solid violet;
   justify-content: center;
   align-content: center;
+  border: 1px solid black;
+  background-color: white;
+  
 }
 
 #sideHead {
   font-family: 'MyFont';
-  font-size: 12px;
+  font-size: 24px;
+  background-color: white;
   
 }
 
 #sideMa {
   display: grid;
-  border: 2px solid blue;
-  grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
+  border: 0.5px solid black;
+  grid-template-rows: repeat(auto-fit, minmax(30px, 30px));
 }
 
 
 #addProj {
   display: grid;
-  border: 1px solid black;
+  border-bottom: 0.5px solid black;
   justify-content: center;
   align-content: center;
+  background-color: white;
 }
 
 #projButton {
   background-image: url('./addProj_button.svg');
   background-size: cover; /* Adjust as needed */
   border: 0.5px solid black;
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
+  background-color: white;
 }
 
 #projChild {
@@ -86,6 +93,7 @@ body {
   justify-content: center;
   grid-template-columns: 1fr 22px 12px;
   cursor: pointer;
+  background-color: white;
   
 }
 
@@ -103,7 +111,7 @@ body {
 
 
 #projInput {
-  font-size: 7px;
+  font-size: 12px;
   text-align: center;
   background-color: rgba(0, 0, 0, 0);
 }
@@ -115,11 +123,6 @@ body {
   
 }
 
-#projInput::placeholder {
-  
-  color: black;
-
-}
 
 #projInput:focus::placeholder {
   
@@ -132,68 +135,72 @@ body {
 #closeButton {
   background-image: url('./close-svgrepo-com.svg');
   background-size: cover; /* Adjust as needed */
-  width: 8px;
-  height: 8px;
-  
+  width: 12px;
+  height: 12px;
+  align-self: center;
 }
 
 
 
 #mainBar {
   display: grid;
-  border: 2px solid green;
   grid-template-rows: 1fr 11fr;
 }
 
 #mainTitle {
   display: grid;
-  border: 2px solid violet;
+  border: 1px solid black;
   justify-content: center;
   align-content: center;
+  background-color: white;
 
 }
 
 #mainHead {
   font-family: 'MyFont';
-  font-size: 12px;
+  font-size: 24px;  
+  background-color: white;
 
 }
 
 #mainList {
   display: grid;
-  border: 2px solid red;
-  grid-template-rows: repeat(auto-fit, minmax(20px, 20px));
+  border: 0.5px solid black;
+  grid-template-rows: repeat(auto-fit, minmax(30px, 30px));
 }
 
 #addItem {
   display: grid;
- 
-  border: 1px solid black;
+  border-bottom: 0.5px solid black;
   justify-content: center;
   align-content: center;
+  background-color: white;
+  
 }
 
 #itemButton {
   background-image: url('./addProj_button.svg');
   background-size: cover; /* Adjust as needed */
   border: 0.5px solid black;
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
 }
 
 #toDoChild{
   display: grid;
   align-content: center;
   justify-content: center;
-  grid-template-columns: 90px 4px 1px;
+  grid-template-columns: 6fr 1fr 1fr 50px 20px;
   cursor: pointer;
+  background-color: white;
 
 }
 
 #toDoInput {
-  font-size: 7px;
+  font-size: 14px;
   text-align: center;
-  background-color: rgba(0, 0, 0, 0);
+  justify-self: center;
+  background-color: rgb(242, 242, 242);
 }
 
 #toDoInput:focus {
@@ -205,7 +212,6 @@ body {
 
 #toDoInput::placeholder {
   
-  color: black;
 
 }
 
@@ -215,10 +221,105 @@ body {
   background-color: rgba(0, 0, 0, 0);
 }
 
+#dateText {
+  text-align: right;
+
+}
+
+#dueInput {
+  display: grid;
+  grid-template-columns: 18px 7px 18px 6px 40px;
+  border-radius: 2px;
+  background-color: rgb(242, 242, 242);
+  width: 95px;
+  text-align: center;
+  justify-content: center;
+  justify-self: end;
+
+
+}
+
+#dueInput:focus::placeholder {
+  
+  color: transparent;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+
+
+#month {
+
+  font-size: 12px;
+  border: none;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#month:focus {
+  outline: none;
+  border: none;
+  
+}
+
+#month:focus::placeholder {
+  color: transparent;
+}
+
+#day {
+
+  font-size: 12px;
+  border: none;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#day:focus {
+  outline: none;
+  border: none;
+  
+}
+
+#day:focus::placeholder {
+  color: transparent;
+}
+
+#year {
+
+  font-size: 12px;
+  border: none;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#year:focus {
+  outline: none;
+  border: none;
+  
+}
+
+#year:focus::placeholder {
+  color: transparent;
+}
+
+#dash {
+  align-self: center;
+  justify-self: center;
+  justify-content: center;
+  
+
+}
+
+#spacer {
+
+  border: 1px solid white;
+
+
+}
+
 #closeButtonToDo {
   background-image: url('./close-svgrepo-com.svg');
   background-size: cover; /* Adjust as needed */
-  width: 8px;
-  height: 8px;
-
+  width: 12px;
+  height: 12px;
+  align-self: center;
 }

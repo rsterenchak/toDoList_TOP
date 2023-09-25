@@ -110,49 +110,54 @@ export const listLogic = (function () {
 
     // FUNCTION (ADD TODO LIST ITEMS): - responsible for adding new items to a designated project
     //                                 - called when add button under a project is clicked
-    function addToDo(projectName) {
-        console.log("called addToDo function");
+    function addToDo(projectName, toDoName) {
 
-        let projectDes = prompt("Which project would you like to add a list item to?");
+        // console.log("called addToDo function");
+
+        let projectDes = projectName;
 
         // Project should be passed into function as variable - 'projectName'
         // var selectedProject = projectName;
 
         // based on the project selected, take in new variables for object
-        let itemTitle = '';
+        let itemTitle = toDoName;
         let itemDesc = '';
         let itemDue = '';
         let itemPri = 1;
+        let itemPos = 0;
 
         // with the new variables, instantiate the new toDo list object
-        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);    
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
 
         // push that new object to the allProjects array
         allProjects[projectDes].push(listItem);
 
-        console.log(allProjects[projectDes]);// show items in project
+        return {
+            array: allProjects[projectName],
+            string: projectName, 
+            lengths: (allProjects[projectName]).length
+        };// return project array        
 
-
-        // add new DOM element with toDo list to the DOM
 
     };
 
-    function removeToDo(project, index, length) {
-        console.log("called removeToDo function");
+    function removeToDo(project, index, length) { // project 1, pos 1, length is 3
+        // console.log("called removeToDo function");
 
         // based on the project selected, take in new variables for object
         let itemTitle = '';
         let itemDesc = '';
         let itemDue = '';
         let itemPri = 1;
-    
+        let itemPos = 0;
 
         // with the new variables, instantiate the new toDo list object
-        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);    
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
     
 
         index = parseInt(index, 10);
 
+        // console.log("index: " + index);
 
         // if the length of the project array is 1 and the index is 0,
         // instead of removing the array logic/DOM entirely just reset it
@@ -165,17 +170,20 @@ export const listLogic = (function () {
             // pop() item from project array
             allProjects[project].pop(index);
 
+            // console.log(allProjects[project]); //  check array
+
             // push that new object to the allProjects array
             allProjects[project].push(listItem);    
 
+            // console.log(allProjects[project]); //  check array
 
         }
 
         else{
+            
+            removeElementAtIndex(allProjects[project], index);
+            // console.log((allProjects[project]));
 
-            // pop() item from project array
-            allProjects[project].pop(index);
-        
         }
 
     };
@@ -217,6 +225,16 @@ export const listLogic = (function () {
         return projectLength;
     };
 
+    function removeElementAtIndex(arr, index) {
+        if (index >= 0 && index < arr.length) {
+          arr.splice(index, 1);
+          return arr;
+        } else {
+          console.log("else error: " + index);  
+          console.error("Index out of bounds");
+          return arr; // Return the original array if the index is out of bounds
+        }
+    }
   
 
     return { 
