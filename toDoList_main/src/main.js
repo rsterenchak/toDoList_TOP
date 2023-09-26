@@ -598,7 +598,14 @@ function component() {
                 toDoInput.textContent = trimmedText; // - NEW
                 toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 toDoInput.style.fontSize = "14px"; // - NEW
-                    
+                
+                let monthValue = month.value;
+                let dayValue = day.value;
+                let yearValue = year.value;
+
+                let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
+
+                arraySlot["due"] = dateSet;    
                 arraySlot["tit"] = trimmedText;
 
                 closeButtonToDo.dataset.info = (toDoLength - 1);
@@ -887,6 +894,14 @@ function component() {
                     toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                     toDoInput.style.fontSize = "14px"; // - NEW
                     
+
+                    let monthValue = month.value;
+                    let dayValue = day.value;
+                    let yearValue = year.value;
+
+                    let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
+
+                    item["due"] = dateSet;
                     item["pri"] = 2;
                     item["tit"] = trimmedText;
 
@@ -1082,6 +1097,43 @@ function component() {
             toDoInput.value = item.tit; 
             toDoInput.style.fontSize = "16px"; 
             
+/*             let monthValue = month.value;
+            let dayValue = day.value;
+            let yearValue = year.value;
+ */
+
+            let dateSet = item["due"];
+            let dateSplit = item["due"].split('-');
+
+            let monthSet = "";
+            let daySet = "";
+            let yearSet = "";
+            
+            if((dateSet === "--") || (dateSet === "X-X-XXXX")){
+                
+                console.log("Date has not been set by user.");
+                
+            }
+
+            else{
+
+                monthSet = parseInt(dateSplit[0], 10); // Convert to an integer (base 10)
+                daySet = parseInt(dateSplit[1], 10);
+                yearSet = parseInt(dateSplit[2], 10);
+                
+                month.textContent = monthSet;
+                month.value = monthSet;
+    
+                day.textContent = daySet;
+                day.value = daySet;
+    
+                year.textContent = yearSet;
+                year.value = yearSet;            
+            
+            }
+
+
+            item["due"] = dateSet;            
             item["tit"] = item.tit;
 
             closeButtonToDo.dataset.info = index;
@@ -1114,7 +1166,14 @@ function component() {
                     toDoInput.textContent = trimmedText; // - NEW
                     toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                     toDoInput.style.fontSize = "14px"; // - NEW
-                    
+
+                    let monthValue = month.value;
+                    let dayValue = day.value;
+                    let yearValue = year.value;
+
+                    let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
+
+                    item["due"] = dateSet;
                     item["tit"] = trimmedText;
 
                     closeButtonToDo.dataset.info = index;
