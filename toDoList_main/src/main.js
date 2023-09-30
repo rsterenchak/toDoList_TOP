@@ -94,7 +94,7 @@ function component() {
     sideHead.textContent = 'Projects';
 
 
-    var mainChild = mainList.childNodes[1];
+    // var mainChild = mainList.childNodes[1];
 
     // on click should temporarily disable ability to continue clicking
     itemButton.style.pointerEvents = "none";
@@ -242,6 +242,7 @@ function component() {
                 addAllToDo_DOM(projectArray, projectName);
                 
 
+
                 listLogic.listProjects();
                 
 
@@ -256,7 +257,38 @@ function component() {
                 // when element is clicked change selection to that element
                 projChild.addEventListener("click", function(){
                     
-                    // console.log("*** Project selection Changed ***");
+                    // check if latest DOM element's title is '' 'blank',
+                    // if it is blank 'turn on' the toDo item button to allow clicking
+                    const toDoContainer = document.getElementById('mainList');
+
+                    var containerLength = toDoContainer.childNodes.length;
+                    
+                    var lastChildRef = containerLength - 1;
+                    
+                    if(containerLength > 1){
+
+                        // console.log(toDoContainer.childNodes[lastChildRef].firstChild.value); // gets toDo item title
+                        
+                        let lastChildTitle = toDoContainer.childNodes[lastChildRef].firstChild.value;
+
+                        if(lastChildTitle === ""){
+                            
+                            // onclick makes sure to enable add item button when appropriate
+                            itemButton.style.pointerEvents = "none";     
+
+                        }
+
+                        else {
+
+                            // should turn off the add item button when appropriate
+                            itemButton.style.pointerEvents = "auto";
+
+                        }
+
+                    }
+
+
+
                     let fresh = 0;
 
 
@@ -356,11 +388,11 @@ function component() {
             console.log("Called projButton > closeButton");
 
             const mainList = document.getElementById("mainList");
-            const mainChild = document.getElementById("toDoChild");
+            let mainChild = document.getElementById("toDoChild");
 
             let property = titleInput.value;
-            let projectLength = listLogic.projectLength(property);
-            let i = 0;
+            // let projectLength = listLogic.projectLength(property);
+            // let i = 0;
 
             // DOM - Removes project DOM element
             projChild.parentNode.removeChild(projChild);
@@ -368,9 +400,15 @@ function component() {
             // DOM - Removes item DOM elements associated with project
             while(mainList.contains(mainChild)){
 
+                console.log(mainChild);
+
                 mainList.removeChild(mainChild);
 
+                mainChild = document.getElementById("toDoChild"); // should re-assign mainChild to next DOM element
+                
                 // i++;
+
+
             }
             
             listLogic.listItems(property);
@@ -605,6 +643,8 @@ function component() {
 
                 let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
 
+                let switcher = 0; // used for turning on/off description node
+
                 arraySlot["due"] = dateSet;    
                 arraySlot["tit"] = trimmedText;
 
@@ -617,6 +657,80 @@ function component() {
 
                 // on click should temporarily disable ability to continue clicking
                 itemButton.style.pointerEvents = "auto";
+
+                // *************************** WORK IN PROGRESS *************************** // 
+
+                toDoChild.addEventListener("click", function(){
+
+                    // need way to turn on and off, so essentially add the descSibling node and 
+                    // remove it upon clicking
+                    
+                    // console.log("Called toDoChild element click");
+
+                    const mainList = toDoChild.parentElement;
+
+                    // create and reference description div element
+                    const descSibling = document.createElement('div');
+
+                    const descSpacer1 = document.createElement('div');
+                    const descInput = document.createElement('input');
+                    const descSpacer2 = document.createElement('div');
+
+                    descSibling.id ="descSibling";
+
+                    descSpacer1.id = "descSpacer1";
+                    descInput.id = "descInput";
+                    descSpacer2.id = "descSpacer2";
+
+                    // descSibling.textContent = 'This the description node';
+
+                    // apppend new element to toDoChild
+                    // toDoChild.appendChild(descSibling);
+                    
+                    // Switches description node on/off depending on click value - switcher
+                    if(switcher === 0){
+
+                        console.log("if: " + switcher);
+                        mainList.insertBefore(descSibling, toDoChild.nextSibling);
+
+                        descSibling.appendChild(descSpacer1);
+                        descSibling.appendChild(descInput);
+                        descSibling.appendChild(descSpacer2);
+
+
+                        switcher = 1;
+                    }
+
+                    else{
+
+                        console.log("else: " + switcher);
+                        console.log(mainList.removeChild(toDoChild.nextSibling));
+
+                        switcher = 0;
+                    }
+
+                    // set up descSpacer1
+                    // set up descInput
+                    // set up descSpacer2
+
+
+                    // ***** CLICK LISTENERS *****
+                    
+                    // Need listener to be able to set DOM descInput value
+
+                        // Also set desc input of the logic array project[0]['desc']
+
+
+
+
+
+                });
+
+
+                // *********************************************************************** //
+
+
+
             }            
             
                 
@@ -1256,15 +1370,31 @@ export { component };
 
 
 
-// ********************* BUGS LIST ********************* //
+// ********************************************** BUGS LIST ********************************************** //
 /** 
  * FIXED - 1. When multiple projects are added, then all are removed, 
  * it will not remove the last project to exist other than 'Default'.
  * The existing properties will be { 'Default', 'Project 1' }
  *  
  * PROBLEM - 2. Having issues with deletion/addition of DOM/Array elements
- *   
+ *         - issue is still present when deleting first element and adding new element,
+ *         - two new DOM elements remain after deletion of each element 
+ * 
+ * FIXED - 3. When clicking on different projects the addToDo button will disable
+ *              unnecessarily, leading to not being able to add new toDo items. 
+ * 
+ * FIXED - 4. When removing projects, the initial project is also removed BUT,
+ *         -    all projects after the initial project remain and are unable to be
+ *         -    removed.
+ * 
+ * PROBLEM - 5. When creating a new project with the same name as another the toDo items
+ *              end up being deleted unexpectedly. I think the regen function takes the project name
+ *              and regenerating the listed array according to that name.
+ *           - use validation to prevent duplicate project names from being created mistakenly
+ * 
+ * PROBLEM - 6. Enable drop down to see toDo item descriptions
+ * 
  * 
  * 
 */
-// ***************************************************** //
+// ******************************************************************************************************** //

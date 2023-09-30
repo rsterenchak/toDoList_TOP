@@ -323,3 +323,25 @@ body {
   height: 12px;
   align-self: center;
 }
+
+
+#descSibling {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+
+}
+
+#descSpacer1 {
+ 
+
+}
+
+#descInput {
+  border: 1px solid red;
+
+}
+
+#descSpacer2 {
+ 
+
+}
