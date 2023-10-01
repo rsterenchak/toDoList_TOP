@@ -327,7 +327,8 @@ body {
 
 #descSibling {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: 10px 3fr 10px;
+  border: 1px solid black;
 
 }
 
@@ -337,8 +338,25 @@ body {
 }
 
 #descInput {
-  border: 1px solid red;
+  font-size: 12px;
+  text-align: center;
+  justify-self: center;
+  width: 400px;
+  background-color: rgb(242, 242, 242);
+  border: none;
 
+}
+
+#descInput:focus {
+  box-shadow: none;
+  background: rgb(242, 242, 242);;
+  outline: none;
+}
+
+#descInput:focus::placeholder {
+  
+  color: transparent;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 #descSpacer2 {
