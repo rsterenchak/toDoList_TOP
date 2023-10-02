@@ -201,6 +201,7 @@ body {
   text-align: center;
   justify-self: center;
   background-color: rgb(242, 242, 242);
+  border: 1px solid red;
 }
 
 #toDoInput:focus {

@@ -46,6 +46,15 @@ export const listLogic = (function () {
         console.log(Object.keys(allProjects));
 
     }
+    // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
+    //                              - 
+    function listProjectsArray(){
+
+        let projectsArray = Object.keys(allProjects);
+
+        return projectsArray;
+
+    }
 
     // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
     //           - activates when onClick for new project takes place.
@@ -241,6 +250,7 @@ export const listLogic = (function () {
         addProject, 
         removeProject, 
         listProjects,
+        listProjectsArray,
         addToDo, 
         removeToDo, 
         editProject,

@@ -160,6 +160,14 @@ function component() {
 
             console.log("Called projButton > titleInput");
 
+
+            // Get Project names and store into an array using - logicList.js
+            let projectsList = listLogic.listProjectsArray();
+
+            let exists = 0;
+
+            let count = 0;
+
             // on click should temporarily disable ability to continue clicking
             itemButton.style.pointerEvents = "none";
 
@@ -174,20 +182,46 @@ function component() {
             let trimmedText = "";
             let projectItems = [];
 
-            // let projectArray = [];
-            // let projectName = "";
+
 
             if (event.key === "Enter") {
+
+                console.log("Clicked Enter");
+
                 enteredText = titleInput.value;
                 newProperty = titleInput.value;
 
                 // console.log("You entered: " + enteredText);
                 titleInput.blur();
 
+
+                // CHECKER - name variable set to switch on/off when a project name match occurs - variable
+                while(count < projectsList.length){
+
+                    if(projectsList[count] === enteredText){
+
+
+                        exists = 1;
+
+                        titleInput.textContent = "INVALID";
+                        titleInput.style.color = 'red';
+                        
+                        return;
+                    }
+
+                    count++;
+
+                }
+
             }
 
-            // if title entered has a length > 0 characters
-            if (enteredText.length > 0){
+
+
+            // if title entered has a length > 0 characters & there are no project name matches
+            if ((enteredText.length > 0) && (exists === 0)){
+
+                // projChild.style.backgroundColor = "none";
+                titleInput.style.color = 'black';
 
                 trimmedText = enteredText.trim();
                 
@@ -256,7 +290,11 @@ function component() {
 
                 // when element is clicked change selection to that element
                 projChild.addEventListener("click", function(){
-                    
+
+
+
+                    console.log("called project selection")
+
                     // check if latest DOM element's title is '' 'blank',
                     // if it is blank 'turn on' the toDo item button to allow clicking
                     const toDoContainer = document.getElementById('mainList');
@@ -307,6 +345,9 @@ function component() {
 
                     if(projOnChild != null){
 
+                        // on click should temporarily disable ability to continue clicking
+                        itemButton.style.pointerEvents = "auto";
+
                         var innerValue = projOnChild.textContent; // pulls projectName
                         var arrayValues = listLogic.listItems(innerValue);// pulls projectArray
 
@@ -314,6 +355,8 @@ function component() {
                         console.log(arrayValues);
 
                         clearToDos(); // 2 - Clears previous childNode under toDo List
+
+
 
                         /** WORKING MOSTLY */
                         addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
@@ -379,6 +422,7 @@ function component() {
 
             }
 
+
             
         }); // Ends "Enter" keydown function
 
@@ -402,12 +446,17 @@ function component() {
 
                 console.log(mainChild);
 
+                if((mainChild.nextSibling != null) && (mainChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
+                    
+                    mainList.removeChild(mainChild.nextSibling);
+                
+                }                
+
+
                 mainList.removeChild(mainChild);
 
                 mainChild = document.getElementById("toDoChild"); // should re-assign mainChild to next DOM element
                 
-                // i++;
-
 
             }
             
@@ -578,6 +627,9 @@ function component() {
 
         let counter = 1;
 
+
+        let clickSwitch = 0;
+
         // Need logic to edit current DOM info
         toDoInput.addEventListener("keydown", function(event) {
 
@@ -632,7 +684,7 @@ function component() {
                     toDoName = toDoItems.string; // projectName
                     toDoLength = toDoItems.lengths; // >>> 2
 
-
+                    clickSwitch = 1;
                 }
                 
                 else{ 
@@ -680,100 +732,139 @@ function component() {
 
                 // *************************** WORK IN PROGRESS *************************** // 
 
-                toDoChild.addEventListener("click", function(){
+                toDoChild.addEventListener("click", function(event){
 
-                    const mainList = toDoChild.parentElement;
+                    console.log("clickSwitch: " + clickSwitch);
 
-                    let descText = "";
-                    let descTrimmed = "";
+                    if(clickSwitch === 1){
 
-                    
-                    // Switches description node on/off depending on click value - switcher
-                    if((switcher === 0) && (mainList != null)){
-
-                        mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                        descSibling.appendChild(descSpacer1);
-                        descSibling.appendChild(descInput);
-                        descSibling.appendChild(descSpacer2);
+                        console.log("Calling itemButton > toDoChild click");
 
 
-                        // if descInput value is greater than 0 set it as the textContent
-                        if(arraySlot["desc"] > 0){
-
-                            console.log("Previously inputted value is valid");
-                            descInput.textContent = arraySlot["desc"];
+                        const clickedElement = event.target;
 
 
-                        }
+                        const mainList = toDoChild.parentElement;
 
+                        let descText = "";
+                        let descTrimmed = "";
 
-                        switcher = 1;
-                    }
-
-                    else{
-
-                        
-                        if(toDoChild.nextSibling != null){
-
-                            mainList.removeChild(toDoChild.nextSibling)
-                        
-                        }
-                        
-
-                        switcher = 0;
-                    }
-
-
-
-                    // ***** CLICK LISTENERS *****
-                    
-                    // Need listener to be able to set DOM descInput value
-                    descInput.addEventListener("keydown", function(event) {
- 
-                        descText = "";
-
-                        if (event.key === "Enter") {
-                            descText = descInput.value;
-            
-                            console.log("Entered descInput keydown function: " + descText);
-            
-                            descInput.blur();
-            
-                        }
-            
-            
-                        // if description entered has a length > 0 characters
-                        if (descText.length > 0){
+                        // Covers the clicking of CloseButtonToDo
+                        if(clickedElement.id === 'closeButtonToDo'){
                             
-                            // DOM - set the text within the element
-                            descTrimmed = descText.trim();
+                            console.log("Called stop propagation of DIV");
+                            event.stopPropagation(); // Prevent the parent's click event
+                            
+                        }
+
+                        // Covers the clicking of toDoInput
+                        if(clickedElement.tagName === 'INPUT'){
+
+                            console.log(clickedElement);
+                            
+                            console.log("Called stop propagation of INPUT");
+                            event.stopPropagation(); // Prevent the parent's click event
+
+                            
+                        }                    
                     
-                            descInput.textContent = descTrimmed; // - NEW
-                            descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                            descInput.style.fontSize = "12px"; // - NEW
+
+                        if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
+
+                            console.log("Called descSibling append if statement");
+
+                            // Switches description node on/off depending on click value - switcher
+                            if(switcher === 0){
+
+                                mainList.insertBefore(descSibling, toDoChild.nextSibling);
+
+                                descSibling.appendChild(descSpacer1);
+                                descSibling.appendChild(descInput);
+                                descSibling.appendChild(descSpacer2);
+
+                                descInput.textContent = arraySlot["desc"];
+                                descInput.value = arraySlot["desc"];
+
+                                // if descInput value is greater than 0 set it as the textContent
+                                if(arraySlot["desc"].length > 0){
+
+                                    console.log("Previously inputted value is valid");
+                                    descInput.textContent = arraySlot["desc"];
+                                    descInput.value = arraySlot["desc"];
+
+                                }
+
+
+                                switcher = 1;
+                            }
+
+                            else{
+
+                        
+                                if(toDoChild.nextSibling != null){
+
+                                    mainList.removeChild(toDoChild.nextSibling)
+                                
+                                }
+                                
+
+                                switcher = 0;
+                            }
+
+
+                       
+
+                            // ***** CLICK LISTENERS *****
+                            
+                            // Need listener to be able to set DOM descInput value
+                            descInput.addEventListener("keydown", function(event) {
+        
+                                descText = "";
+
+                                if (event.key === "Enter") {
+                                    descText = descInput.value;
+                    
+                                    console.log("Entered descInput keydown function: " + descText);
+                    
+                                    descInput.blur();
+                    
+                                }
+                    
+                    
+                                // if description entered has a length > 0 characters
+                                if (descText.length > 0){
+                                    
+                                    // DOM - set the text within the element
+                                    descTrimmed = descText.trim();
+                            
+                                    descInput.textContent = descTrimmed; // - NEW
+                                    descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
+                                    descInput.style.fontSize = "12px"; // - NEW
 
 
 
-                            // LOGIC - set the array parameter array project[0]['desc']
-                            arraySlot["desc"] = descTrimmed;
+                                    // LOGIC - set the array parameter array project[0]['desc']
+                                    arraySlot["desc"] = descTrimmed;
 
-                            toDoArray = listLogic.listItems(currentProject); // project array
-                            console.log(toDoArray);
+                                    toDoArray = listLogic.listItems(currentProject); // project array
+                                    console.log(toDoArray);
 
-                            descInput.style.border = "none";
+                                    descInput.style.border = "none";
 
+                                }
+                                else{
+
+                                    descInput.style.border = "1px solid red";
+                                    // console.log("Your description is not long enough.");
+
+
+                                }
+
+
+                            }); 
                         }
-                        else{
-
-                            descInput.style.border = "1px solid red";
-                            // console.log("Your description is not long enough.");
-
-
-                        }
-
-
-                    });
+                    }
+                    
                 });
 
 
@@ -801,7 +892,11 @@ function component() {
                 // if currentLength is 1, clear div information
                 if(currentLength === 1){
 
-                    mainListDiv.removeChild(toDoChild.nextSibling);
+                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
+                    
+                        mainListDiv.removeChild(toDoChild.nextSibling);
+                    
+                    }
 
                     toDoInput.value = "";
                     
@@ -1117,6 +1212,8 @@ function component() {
             // Set to generate array ['desc'] up on clicking
             toDoChild.addEventListener("click", function(event){
 
+                console.log("clickSwitch: " + clickSwitch);
+
                 if(clickSwitch === 1){
                     console.log("initialToDo > toDoChild click listener - BEFORE");
                     
@@ -1131,7 +1228,7 @@ function component() {
                     let descTrimmed = "";
 
                     // Covers the clicking of CloseButtonToDo
-                    if(clickedElement.tagName === 'DIV'){
+                    if(clickedElement.id === 'closeButtonToDo'){
                         
                         console.log("Called stop propagation of DIV");
                         event.stopPropagation(); // Prevent the parent's click event
@@ -1148,92 +1245,93 @@ function component() {
                     }
 
                 
-                    else{
+                    if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
 
-                    // Switches description node on/off depending on click value - switcher
-                    if(switcher === 0){
+                        // Switches description node on/off depending on click value - switcher
+                        if(switcher === 0){
 
-                        mainList.insertBefore(descSibling, toDoChild.nextSibling);
+                            mainList.insertBefore(descSibling, toDoChild.nextSibling);
 
-                        descSibling.appendChild(descSpacer1);
-                        descSibling.appendChild(descInput);
-                        descSibling.appendChild(descSpacer2);
+                            descSibling.appendChild(descSpacer1);
+                            descSibling.appendChild(descInput);
+                            descSibling.appendChild(descSpacer2);
 
-                        descInput.textContent = item["desc"];
-                        descInput.value = item["desc"];
-
-                        // if descInput value is greater than 0 set it as the textContent
-                        if(item["desc"].length > 0){
-
-                            console.log("Previously inputted value is valid");
                             descInput.textContent = item["desc"];
                             descInput.value = item["desc"];
 
+                            // if descInput value is greater than 0 set it as the textContent
+                            if(item["desc"].length > 0){
+
+                                console.log("Previously inputted value is valid");
+                                descInput.textContent = item["desc"];
+                                descInput.value = item["desc"];
+
+                            }
+
+
+                            switcher = 1;
                         }
 
+                        else{
 
-                        switcher = 1;
-                    }
+                                if(toDoChild.nextSibling != null){
 
-                    else{
-
-                            if(toDoChild.nextSibling != null){
-
-                                mainList.removeChild(toDoChild.nextSibling);
-                            
-                            }
-                            switcher = 0;
-                        }
-
-
-
-                        // allow keydown event for descInput to change the current description
-                        descInput.addEventListener("keydown", function(event) {
-        
-                            descText = "";
-
-                            if (event.key === "Enter") {
-                                descText = descInput.value;
-                    
-                                console.log("Entered descInput keydown function: " + descText);
-                    
-                                descInput.blur();
-                    
-                            }
-                    
-                    
-                                // if description entered has a length > 0 characters
-                            if (descText.length > 0){
-                                    
-                                // DOM - set the text within the element
-                                descTrimmed = descText.trim();
-                            
-                                descInput.textContent = descTrimmed; // - NEW
-                                descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                                descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                                // LOGIC - set the array parameter array project[0]['desc']
-                                item["desc"] = descTrimmed;
-
-                                toDoArray = listLogic.listItems(toDoName); // project array
-                                console.log(toDoArray);
-
-                                descInput.style.border = "none";
-
+                                    mainList.removeChild(toDoChild.nextSibling);
+                                
+                                }
+                                switcher = 0;
                             }
 
-                            else{
+                            // ***** CLICK LISTENERS *****
 
-                                descInput.style.border = "1px solid red";
-                                // console.log("Your description is not long enough.");
+                            // allow keydown event for descInput to change the current description
+                            descInput.addEventListener("keydown", function(event) {
+            
+                                descText = "";
+
+                                if (event.key === "Enter") {
+                                    descText = descInput.value;
+                        
+                                    console.log("Entered descInput keydown function: " + descText);
+                        
+                                    descInput.blur();
+                        
+                                }
+                        
+                        
+                                    // if description entered has a length > 0 characters
+                                if (descText.length > 0){
+                                        
+                                    // DOM - set the text within the element
+                                    descTrimmed = descText.trim();
+                                
+                                    descInput.textContent = descTrimmed; // - NEW
+                                    descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
+                                    descInput.style.fontSize = "12px"; // - NEW
 
 
-                            }
+
+                                    // LOGIC - set the array parameter array project[0]['desc']
+                                    item["desc"] = descTrimmed;
+
+                                    toDoArray = listLogic.listItems(toDoName); // project array
+                                    console.log(toDoArray);
+
+                                    descInput.style.border = "none";
+
+                                }
+
+                                else{
+
+                                    descInput.style.border = "1px solid red";
+                                    // console.log("Your description is not long enough.");
 
 
-                        });
+                                }
+
+
+                            });
+
                     }
                 }
             });
@@ -1315,7 +1413,7 @@ function component() {
 
                         console.log(closeButtonElements[pos].dataset.info);
 
-                        clickSwitch = 0;
+                        clickSwitch = 0; // unsure if this is necessary?
                     }
 
                     adjustedValue++;
@@ -1336,6 +1434,7 @@ function component() {
 
                 }
 
+                clickSwitch = 0;
 
             });
 
@@ -1496,7 +1595,7 @@ function component() {
 
             let switcher = 0;
 
-            let clickSwitch = 0;
+            let clickSwitch = 1;
 
             // EDITS TITLE OF ITEM ELEMENT
             toDoInput.addEventListener("keydown", function(event) {
@@ -1547,6 +1646,8 @@ function component() {
             // Set to generate array ['desc'] up on clicking
             toDoChild.addEventListener("click", function(event){
 
+                console.log("clickSwitch: " + clickSwitch);
+
                 if(clickSwitch === 1){
 
                 console.log("regenToDos > toDoChild click listener");
@@ -1560,97 +1661,113 @@ function component() {
                 let descText = "";
                 let descTrimmed = "";
 
+                // Covers the clicking of CloseButtonToDo
+                if(clickedElement.id === 'closeButtonToDo'){
+                        
+                    console.log("Called stop propagation of DIV");
+                    event.stopPropagation(); // Prevent the parent's click event
+                        
+                }
+
+                    // Covers the clicking of toDoInput
                 if(clickedElement.tagName === 'INPUT'){
-                    
+                        
+                    console.log("Called stop propagation of INPUT");
                     event.stopPropagation(); // Prevent the parent's click event
 
-                }                
-
+                        
+                }
                 
-                // Switches description node on/off depending on click value - switcher
-                if((switcher === 0) && (mainList != null)){
+                if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
 
-                    mainList.insertBefore(descSibling, toDoChild.nextSibling);
+                    // Switches description node on/off depending on click value - switcher
+                    if(switcher === 0){
 
-                    descSibling.appendChild(descSpacer1);
-                    descSibling.appendChild(descInput);
-                    descSibling.appendChild(descSpacer2);
+                        mainList.insertBefore(descSibling, toDoChild.nextSibling);
 
+                        descSibling.appendChild(descSpacer1);
+                        descSibling.appendChild(descInput);
+                        descSibling.appendChild(descSpacer2);
 
-                    // if descInput value is greater than 0 set it as the textContent
-                    if(item["desc"].length > 0){
-
-                        console.log("Previously inputted value is valid");
                         descInput.textContent = item["desc"];
                         descInput.value = item["desc"];
 
-                    }
+                        // if descInput value is greater than 0 set it as the textContent
+                        if(item["desc"].length > 0){
+
+                            console.log("Previously inputted value is valid");
+                            descInput.textContent = item["desc"];
+                            descInput.value = item["desc"];
+
+                        }
 
 
-                    switcher = 1;
-                }
-
-                else{
-
-                    if(mainList != null){
-
-                        mainList.removeChild(toDoChild.nextSibling)
-                    
-                    }
-                    switcher = 0;
-                }
-
-
-
-                // allow keydown event for descInput to change the current description
-                descInput.addEventListener("keydown", function(event) {
- 
-                    descText = "";
-
-                    if (event.key === "Enter") {
-                        descText = descInput.value;
-            
-                        console.log("Entered descInput keydown function: " + descText);
-            
-                        descInput.blur();
-            
-                    }
-            
-            
-                        // if description entered has a length > 0 characters
-                    if (descText.length > 0){
-                            
-                        // DOM - set the text within the element
-                        descTrimmed = descText.trim();
-                    
-                        descInput.textContent = descTrimmed; // - NEW
-                        descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                        descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                        // LOGIC - set the array parameter array project[0]['desc']
-                        arraySlot["desc"] = descTrimmed;
-
-                        toDoArray = listLogic.listItems(currentProject); // project array
-                        console.log(toDoArray);
-
-                        descInput.style.border = "none";
-
+                        switcher = 1;
                     }
 
                     else{
 
-                        descInput.style.border = "1px solid red";
-                        // console.log("Your description is not long enough.");
+                            if(toDoChild.nextSibling != null){
+
+                                mainList.removeChild(toDoChild.nextSibling);
+                            
+                            }
+                            switcher = 0;
+                        }
+
+                        // ***** CLICK LISTENERS *****
+
+                        // allow keydown event for descInput to change the current description
+                        descInput.addEventListener("keydown", function(event) {
+        
+                            descText = "";
+
+                            if (event.key === "Enter") {
+                                descText = descInput.value;
+                    
+                                console.log("Entered descInput keydown function: " + descText);
+                    
+                                descInput.blur();
+                    
+                            }
+                    
+                    
+                                // if description entered has a length > 0 characters
+                            if (descText.length > 0){
+                                    
+                                // DOM - set the text within the element
+                                descTrimmed = descText.trim();
+                            
+                                descInput.textContent = descTrimmed; // - NEW
+                                descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
+                                descInput.style.fontSize = "12px"; // - NEW
 
 
-                    }
+
+                                // LOGIC - set the array parameter array project[0]['desc']
+                                item["desc"] = descTrimmed;
+
+                                toDoArray = listLogic.listItems(toDoName); // project array
+                                console.log(toDoArray);
+
+                                descInput.style.border = "none";
+
+                            }
+
+                            else{
+
+                                descInput.style.border = "1px solid red";
+                                // console.log("Your description is not long enough.");
 
 
-                });
+                            }
+
+
+                        });
 
                 }
+            }
+
 
             });
 
@@ -1669,10 +1786,16 @@ function component() {
                 // if currentLength is 1, clear div information
                 if(currentLength === 1){
 
+                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
+                    
+                        mainListDiv.removeChild(toDoChild.nextSibling);
+                    
+                    }
+
                     toDoInput.value = "";
                     
                     // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength);
+                    listLogic.removeToDo(project, pos, currentLength); // ******* ERROR - Index out of bounds ******* 
 
                     // create function that lists project elements
                     let array = listLogic.listItems(project);
@@ -1682,14 +1805,21 @@ function component() {
                 }
 
                 else{
-                    // removes description node form DOM
-                    mainListDiv.removeChild(toDoChild.nextSibling);
+
+                    console.log("Entered regenToDo > else > removeChild");
+
+                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
+
+                        // removes description node form DOM
+                        mainListDiv.removeChild(toDoChild.nextSibling);
+
+                    }
 
                     // remove item from DOM
                     mainListDiv.removeChild(toDoChild);
 
                     // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength);
+                    listLogic.removeToDo(project, pos, currentLength); // ******* ERROR - Index out of bounds *******
 
                     // create function that lists project elements
                     listLogic.listItems(project);
@@ -1755,22 +1885,28 @@ export { component };
  * 
  * FIXED - 6. Enable drop down to see toDo item descriptions
  * 
- * PROBLEM - 7. Pressing close button on initial toDo item causes description to populate 
+ * FIXED - 7. Pressing close button on initial toDo item causes description to populate 
  *              ISSUE: when pressing the closebutton it is also activating the toDoChild click for turning on/off the description leading to an error
  * 
  * FIXED - 8. Continuing toDo elements do not clear the descInput of the description element after removing 
  *            parent toDoChild node.
  * 
- * PROBLEM - 9. Unable to append descSibling elements to mainList after regenToDo is run, so after swapping
+ * FIXED - 9. Unable to append descSibling elements to mainList after regenToDo is run, so after swapping
  *              between projects. 
  * 
  * FIXED - 10. When creating three toDo items, the first one with a desc and the third one with a desc, and
  *               clicking the closeButton of the second item, this removes it's 'sibling' being the third
  *               toDoChild. This shouldn't happen.
  * 
- * PROBLEM - 11. When clicking the closeButton of the 'initial toDo' it is also removing the next element,
+ * FIXED - 11. When clicking the closeButton of the 'initial toDo' it is also removing the next element,
  *               prevent this by manipulating your eventpropagation() commands. The if/else on the second one 
  *               is improper.
+ * 
+ * FIXED - 12. When clicking CloseButtonToDo on project 2 > item 1, descSibling element is not being removed 
+ *               for some reason.
+ * 
+ * FIXED - 13. When clicking on CloseButtonToDo for project 2, not properly removing toDoChild.nextSibling 
+ * 
  * 
  * 
  * 
