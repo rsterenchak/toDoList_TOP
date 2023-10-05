@@ -6,11 +6,9 @@ import { toDo } from './toDo.js';
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
     
-    
-    // Array.prototype.addProject = addProject;
-    // Array.prototype.listProjects = listProjects;
 
-    // console.log("Initialized ListLogic");
+    // localStorage.clear(); // using only for testing
+
 
     // INITIAL: toDo item variables
     let itemTitle = '';
@@ -18,14 +16,46 @@ export const listLogic = (function () {
     let itemDue = '';
     let itemPri = 1;
 
-
     // INITIAL: define allProjects object that dynamically stores arrays as new properties 
     const allProjects = {
+    
         // new array properties would be stored here
 
     }; 
 
-    // INITIAL: Sets the initial Project name and is used later to store new project names within addProject
+
+    // ********************* STORAGE HANDLING ********************* //
+
+
+
+    // stores serialized version of 'AllProjects'
+    let stored_serialized = JSON.stringify(allProjects);
+
+
+    // checking if storedProjects was never set
+    if(allProjects.length === undefined){ 
+
+        console.log("Fresh project");
+
+        localStorage.setItem('allProjects', stored_serialized); // sets a fresh object to local storage
+
+    }
+
+    // if storedProjects was never set
+    else{ 
+
+        console.log("Projects exists");
+        
+        let stored_deserialized = JSON.parse(localStorage.getItem('allProjects')); // Retrieves exisisting projects from storedProjects object 
+        
+    }
+
+    // console.log(localStorage);
+
+    // ************************************************************* //
+
+
+/*     // INITIAL: Sets the initial Project name and is used later to store new project names within addProject
     var projectName = 'Default';  
 
     // INITIAL: Initial Empty Item
@@ -35,8 +65,10 @@ export const listLogic = (function () {
     allProjects[projectName] = [];
 
     // INITIAL: Adds 'empty' list item to project array
-    allProjects[projectName].push(listItem);
+    allProjects[projectName].push(listItem); */
     
+
+
     let allProjectsTotal = Object.keys(allProjects).length; 
 
     // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
@@ -46,6 +78,7 @@ export const listLogic = (function () {
         console.log(Object.keys(allProjects));
 
     }
+
     // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
     //                              - 
     function listProjectsArray(){
@@ -65,8 +98,6 @@ export const listLogic = (function () {
         // Sets variable for 'empty' list item
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
 
-        // store prompted user input for project name
-        // var projectName = prompt("Enter New Project Name: ");
 
         projectName = projectName.trim();
 
@@ -79,7 +110,16 @@ export const listLogic = (function () {
         allProjectsTotal = Object.keys(allProjects).length;
         // console.log(projectName + " added");
 
-        // console.log(allProjects[projectName]);
+
+        // serializes for local storage
+        // let projectName_serialized = JSON.stringify
+
+
+        stored_serialized = JSON.stringify(allProjects); // Requires call for setItem
+        localStorage.setItem('allProjects', stored_serialized); // sets current object to local storage
+        console.log(localStorage); // prints local storage to user
+
+        
         return {
             array: allProjects[projectName],
             string: projectName
@@ -284,6 +324,7 @@ export const listLogic = (function () {
 
     // window.addProject = addProject; // makes addProject() function available to user globally
 })();// Ends CurrentSession
+
 
 
 // **** IMPORTANT IDEA ****: To get around the issue of not being able to export nested functions

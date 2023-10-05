@@ -11,12 +11,7 @@ document.body.appendChild(component()); // page DOM elements
 
 
 
-// Personal notes,
-// Start with console logic,
-// 1.) Create js module for objects
-
-
-// PROJECT TIPS  
+// ******** PROJECT TIPS ********  
 // 1 - define todo objects in own module
 //     should have the following properties, title, description,
 //     dueDate, and priority. later include notes & checklist
@@ -32,3 +27,10 @@ document.body.appendChild(component()); // page DOM elements
 //     4. delete a todo
 
 
+// ******** LOADING STORAGE ********
+// 1. SET - Figure out how to store data (within storage ie LocalStorage()) populated within array
+//
+// 2. GET - Figure out how to display that information from session -> session
+//
+//
+//
