@@ -12,6 +12,7 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       title: 'Task Management',
+      favicon: './src/favicon.svg',
     }),
   ],
   output: {
