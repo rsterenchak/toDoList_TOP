@@ -1016,7 +1016,7 @@ function component() {
     // add to button and event listeners after 
     function addAllToDo_DOM(items, name){
 
-        console.log("Called addAllToDo_DOM");
+        console.log("Called addAllToDo_DOM  ");
 
         // project name
         let toDoArray = items; //  items array [] without project name
