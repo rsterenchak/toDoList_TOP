@@ -563,7 +563,7 @@ function component() {
 
 
 
-        toDoChild.style.border = "0.5px solid black"; 
+        toDoChild.style.border = "0.5px solid #3A3A3A";
         toDoChild.id = "toDoChild";
 
         dateText.id = "dateText";
