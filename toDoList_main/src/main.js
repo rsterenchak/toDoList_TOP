@@ -1,6 +1,7 @@
 import './style.css';
 import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
+import emptyStateIcon from './empty_state.svg';
 
 
 
@@ -96,6 +97,13 @@ function component() {
     
     mainList.appendChild(addItem);       // ← restore
     addItem.appendChild(itemButton); 
+
+    const emptyState = document.createElement('div');
+    const emptyImg = document.createElement('img');
+    emptyState.id = 'emptyState';
+    emptyImg.src = emptyStateIcon;
+    emptyState.appendChild(emptyImg);
+    mainList.appendChild(emptyState);
 
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
@@ -421,8 +429,9 @@ function component() {
                     
                     }                 
 
-                    // console.log(childNodes);
 
+                    const emptyStateEl = document.getElementById('emptyState');
+                    if (emptyStateEl) emptyStateEl.style.display = 'flex';
 
                 }
 
@@ -1016,6 +1025,9 @@ function component() {
     // add to button and event listeners after 
     function addAllToDo_DOM(items, name){
 
+        const emptyStateEl = document.getElementById('emptyState');
+        if (emptyStateEl) emptyStateEl.style.display = 'none';
+
         console.log("Called addAllToDo_DOM  ");
 
         // project name
@@ -1388,6 +1400,9 @@ function component() {
                     // create function that lists project elements
                     let array = listLogic.listItems(project);
                     console.log(array);
+
+                    const emptyStateEl = document.getElementById('emptyState');
+                    if(emptyStateEl) emptyStateEl.style.display = 'flex';
                 }
 
                 else{
@@ -1442,6 +1457,8 @@ function component() {
                 }
 
                 clickSwitch = 0;
+
+                
 
             });
 
@@ -1809,6 +1826,12 @@ function component() {
                     console.log(array);
 
                     clickSwitch = 0;
+                    
+                    // NOT WORKING
+                    const emptyStateEl = document.getElementById('emptyState');
+                    if(emptyStateEl) emptyStateEl.style.display = 'flex';
+                    
+                    console.log('No projects left');
                 }
 
                 else{
@@ -1832,6 +1855,7 @@ function component() {
                     listLogic.listItems(project);
 
                     clickSwitch = 0;
+
                 }
 
 
@@ -1870,6 +1894,11 @@ export { component };
 
 // ********************************************** BUG BASHING ********************************************** //
 /** 
+ * PROBLEM - 1. Work first, after removing projects svg icon for middle of toDo list items section is not
+ *              reappearing within interface. Already added several lines to differen section. 
+ *              Start with following trail after adding/removing one project.
+ * 
+ * 
  * FIXED - 1. When multiple projects are added, then all are removed, 
  *            it will not remove the last project to exist other than 'Default'.
  *            The existing properties will be { 'Default', 'Project 1' }
