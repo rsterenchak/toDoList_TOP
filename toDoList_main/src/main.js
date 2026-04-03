@@ -75,20 +75,27 @@ function component() {
     main1.appendChild(sideTitle);
     main1.appendChild(sideMain);
 
+    // sideTitle.appendChild(sideHead);
+    // sideTitle.appendChild(projButton);   // ← button moves into header
+    
+    // main2.appendChild(mainTitle);
+    // main2.appendChild(mainList);
+    
+    // mainTitle.appendChild(mainHead);
+    // mainTitle.appendChild(itemButton);
+
     sideTitle.appendChild(sideHead);
 
-    sideMain.appendChild(addProj);
-    addProj.appendChild(projButton);
-
-
+    sideMain.appendChild(addProj);       // ← restore
+    addProj.appendChild(projButton);     // ← restore
+    
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
-
+    
     mainTitle.appendChild(mainHead);
-
-    mainList.appendChild(addItem);
-    addItem.appendChild(itemButton);
-
+    
+    mainList.appendChild(addItem);       // ← restore
+    addItem.appendChild(itemButton); 
 
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
@@ -221,7 +228,7 @@ function component() {
             if ((enteredText.length > 0) && (exists === 0)){
 
                 // projChild.style.backgroundColor = "none";
-                titleInput.style.color = 'black';
+                titleInput.style.color = '#E8E8E8';
 
                 trimmedText = enteredText.trim();
                 
@@ -479,22 +486,22 @@ function component() {
 
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
-            this.style.background = "rgba(0, 0, 0, 0)";
+            this.style.background = "rgba(0, 0, 0, 0)";  // ← keep this as-is, it's fine
             projChild.style.boxShadow = "none";
-            projChild.style.background = "white";             
+            projChild.style.background = "#1C1C1C"; // ← change "white" to "#1C1C1C"
         });
   
 
         projChild.addEventListener("mouseenter", function() {
             // this.style.border = "1px solid red";
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "lightgrey";  
+            this.style.background = "#222222"; 
         });
         
         projChild.addEventListener("mouseleave", function() {
             // this.style.border = "none";
             this.style.boxShadow = "none";
-            this.style.background = "white";  
+            this.style.background = "transparent"; 
         });  
 
         closeButton.addEventListener("mouseenter", function() {

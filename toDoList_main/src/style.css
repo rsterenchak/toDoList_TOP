@@ -3,364 +3,526 @@
   src: url('./Zector.otf');
 }
 
-body {
-  margin: 0px;
-  padding: 30px;
-  
+/* ── VOID THEME ── dark, purple-accented, precision tool aesthetic ── */
+
+:root {
+  --bg-base:       #0F0F0F;
+  --bg-elevated:   #161616;
+  --bg-surface:    #1C1C1C;
+  --bg-hover:      #1a1828;
+  --bg-active:     #16142a;
+
+  --border-dim:    #242424;
+  --border-mid:    #2E2E2E;
+  --border-bright: #3A3A3A;
+
+  --accent:        #6C5DF5;
+  --accent-dim:    rgba(108, 93, 245, 0.25);
+  --accent-text:   #9D8FFF;
+
+  --text-primary:  #E4E4E4;
+  --text-secondary:#888888;
+  --text-muted:    #484848;
+  --text-danger:   #E05555;
+
+  --radius-sm:     4px;
+  --radius-md:     6px;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+}
+
+/* ── OUTER SHELL ── */
 #outerContainer {
   display: grid;
-  
-  grid-template-rows: 5vh 85vh 10vh;
-
+  grid-template-rows: 44px 1fr 36px;
+  height: calc(100vh - 48px);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
 }
 
+/* ── NAV BAR ── */
 #navBar {
-
-  border: 1px solid black;
-  background-color: white;
-  
-
+  background: var(--bg-elevated);
+  border-bottom: 0.5px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
 }
 
+#navBar::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: auto;
+}
 
+#navBar::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #444;
+  box-shadow: 18px 0 0 #444;
+  margin-right: 8px;
+}
+
+/* ── FOOTER ── */
+#footBar {
+  background: var(--bg-elevated);
+  border-top: 0.5px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+#footBar::after {
+  content: 'task management v1.1';
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+/* ── MAIN SECTION ── */
 #mainSec {
   display: grid;
-  grid-template-columns: 1fr 3fr;
-  
+  grid-template-columns: 200px 1fr;
+  overflow: hidden;
 }
 
-
-#footBar {
-
-  border: 1px solid black;
-  background-color: white;
-
-}
-
-
-
-
+/* ── SIDEBAR ── */
 #sideBar {
   display: grid;
-  grid-template-rows: 1fr 11fr;
+  grid-template-rows: 48px 1fr;
+  border-right: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
 }
 
 #sideTit {
-  display: grid;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-content: center;
-  border: 1px solid black;
-  background-color: white;
-  
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
 }
 
 #sideHead {
-  font-family: 'MyFont';
-  font-size: 24px;
-  background-color: white;
-  
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  text-transform: uppercase;
+  background: transparent;
 }
 
 #sideMa {
   display: grid;
-  border: 0.5px solid black;
-  grid-template-rows: repeat(auto-fit, minmax(30px, 30px));
+  background: var(--bg-elevated);
+  grid-template-rows: repeat(auto-fit, minmax(44px, 44px));
+  align-content: start;
+  overflow-y: auto;
 }
 
-
+/* ── ADD PROJECT ROW ── */
 #addProj {
   display: grid;
-  border-bottom: 0.5px solid black;
+  border-bottom: 0.5px solid var(--border-dim);
   justify-content: center;
   align-content: center;
-  background-color: white;
+  background: transparent;
+  height: 48px;
 }
 
 #projButton {
   background-image: url('./addProj_button.svg');
-  background-size: cover; /* Adjust as needed */
-  border: 0.5px solid black;
-  width: 16px;
-  height: 16px;
-  background-color: white;
+  background-size: cover;
+  border: none;
+  width: 22px;
+  height: 22px;
+  background-color: transparent;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
+#projButton:hover {
+  opacity: 1;
+}
+
+/* ── PROJECT ITEMS ── */
 #projChild {
   display: grid;
   align-content: center;
-  justify-content: center;
   grid-template-columns: 1fr 22px 12px;
   cursor: pointer;
-  background-color: white;
-  
+  background: transparent;
+  height: 44px;
+  padding: 0 12px 0 14px;
+  transition: background 0.12s ease;
+  border-bottom: 0.5px solid var(--border-dim);
+  border-left: 3px solid transparent;
+}
+
+#projChild:hover {
+  background: var(--bg-hover);
 }
 
 .unselectedProject {
-
-  border: 1px solid black;
-
+  border-left: 3px solid transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: 0.5px solid var(--border-dim);
 }
 
 .selectedProject {
-
-  border: 1px solid red;
-
+  border-left: 3px solid var(--accent) !important;
+  border-top: none;
+  border-right: none;
+  border-bottom: 0.5px solid var(--border-dim) !important;
+  background: var(--bg-active) !important;
 }
 
-
 #projInput {
-  font-size: 12px;
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0);
+  font-size: 14px;
+  font-family: 'Trebuchet MS', sans-serif;
+  text-align: left;
+  background: transparent;
+  color: #E8E8E8;
+  border: none;
+  width: 100%;
+  letter-spacing: 0.02em;
+  caret-color: #9D8FFF;
+  padding: 0;
+  border-radius: 0;
+}
+
+#projInput::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 #projInput:focus {
   box-shadow: none;
-  background: white;
+  background: transparent;
   outline: none;
-  
+  color: #E8E8E8;
 }
 
+#projInput:-webkit-autofill,
+#projInput:-webkit-autofill:hover,
+#projInput:-webkit-autofill:focus {
+  -webkit-text-fill-color: #E8E8E8;
+  -webkit-box-shadow: 0 0 0px 1000px #1C1C1C inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
 
 #projInput:focus::placeholder {
-  
   color: transparent;
-  background-color: rgba(0, 0, 0, 0);
 }
-
-
 
 #closeButton {
-  background-image: url('./close-svgrepo-com.svg');
-  background-size: cover; /* Adjust as needed */
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   align-self: center;
+  justify-self: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 16px;
+  line-height: 1;
+  color: #777;
 }
 
+#closeButton::after {
+  content: '×';
+  display: block;
+}
 
+#closeButton:hover {
+  color: #E8E8E8;
+  background: rgba(255,255,255,0.08);
+}
 
+/* ── MAIN BAR ── */
 #mainBar {
   display: grid;
-  grid-template-rows: 1fr 11fr;
+  grid-template-rows: 48px 1fr;
+  background: var(--bg-base);
+  overflow: hidden;
 }
 
 #mainTitle {
-  display: grid;
-  border: 1px solid black;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-content: center;
-  background-color: white;
-
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
 }
 
 #mainHead {
-  font-family: 'MyFont';
-  font-size: 24px;  
-  background-color: white;
-
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  text-transform: uppercase;
+  background: transparent;
 }
 
 #mainList {
   display: grid;
-  border: 0.5px solid black;
-  grid-template-rows: repeat(auto-fit, minmax(30px, 30px));
+  grid-template-rows: repeat(auto-fit, minmax(44px, 44px));
+  align-content: start;
+  background: var(--bg-base);
+  overflow-y: auto;
 }
 
+/* ── ADD ITEM ROW ── */
 #addItem {
   display: grid;
-  border-bottom: 0.5px solid black;
+  border-bottom: 0.5px solid var(--border-dim);
   justify-content: center;
   align-content: center;
-  background-color: white;
-  
+  background: transparent;
+  height: 48px;
 }
 
 #itemButton {
   background-image: url('./addProj_button.svg');
-  background-size: cover; /* Adjust as needed */
-  border: 0.5px solid black;
-  width: 16px;
-  height: 16px;
+  background-size: cover;
+  border: none;
+  width: 22px;
+  height: 22px;
+  background-color: transparent;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
 }
 
-#toDoChild{
+#itemButton:hover {
+  opacity: 1;
+}
+
+/* ── TODO CHILD ROWS ── */
+#toDoChild {
   display: grid;
   align-content: center;
-  justify-content: center;
-  grid-template-columns: 6fr 1fr 1fr 50px 20px;
+  grid-template-columns: 6fr 60px 95px 50px 20px;
   cursor: pointer;
-  background-color: white;
+  background: var(--bg-base);
+  height: 44px;
+  padding: 0 10px 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  transition: background 0.10s ease;
+  gap: 6px;
+}
 
+#toDoChild:hover {
+  background: var(--bg-surface);
 }
 
 #toDoInput {
-  font-size: 14px;
-  text-align: center;
-  justify-self: center;
-  background-color: rgb(242, 242, 242);
-  border: 1px solid red;
+  font-size: 13px;
+  font-family: 'Trebuchet MS', sans-serif;
+  text-align: left;
+  background: transparent;
+  color: #E8E8E8;
+  border: none;
+  letter-spacing: 0.02em;
+  caret-color: #9D8FFF;
+}
+
+#toDoInput:-webkit-autofill,
+#toDoInput:-webkit-autofill:hover,
+#toDoInput:-webkit-autofill:focus {
+  -webkit-text-fill-color: #E8E8E8;
+  -webkit-box-shadow: 0 0 0px 1000px #141414 inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+#toDoInput::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 #toDoInput:focus {
   box-shadow: none;
-  background: white;
+  background: transparent;
   outline: none;
-  
-}
-
-#toDoInput::placeholder {
-  
-
+  color: var(--text-primary);
 }
 
 #toDoInput:focus::placeholder {
-  
   color: transparent;
-  background-color: rgba(0, 0, 0, 0);
 }
 
+/* ── DATE INPUTS ── */
 #dateText {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #666;
   text-align: right;
-
+  align-self: center;
 }
 
 #dueInput {
   display: grid;
   grid-template-columns: 18px 7px 18px 6px 40px;
-  border-radius: 2px;
-  background-color: rgb(242, 242, 242);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
   width: 95px;
   text-align: center;
   justify-content: center;
   justify-self: end;
-
-
+  align-self: center;
+  padding: 2px 0;
 }
 
-#dueInput:focus::placeholder {
-  
-  color: transparent;
-  background-color: rgba(0, 0, 0, 0);
-}
-
-
-
-#month {
-
-  font-size: 12px;
+#month, #day, #year {
+  font-size: 11px;
+  font-family: 'Trebuchet MS', monospace;
   border: none;
   text-align: center;
-  background-color: rgba(0, 0, 0, 0);
+  background: transparent;
+  color: #AAAAAA;
 }
 
-#month:focus {
+#month:focus, #day:focus, #year:focus {
   outline: none;
   border: none;
-  
+  color: #E8E8E8;
 }
 
-#month:focus::placeholder {
-  color: transparent;
-}
-
-#day {
-
-  font-size: 12px;
-  border: none;
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0);
-}
-
-#day:focus {
-  outline: none;
-  border: none;
-  
-}
-
-#day:focus::placeholder {
-  color: transparent;
-}
-
-#year {
-
-  font-size: 12px;
-  border: none;
-  text-align: center;
-  background-color: rgba(0, 0, 0, 0);
-}
-
-#year:focus {
-  outline: none;
-  border: none;
-  
-}
-
+#month:focus::placeholder,
+#day:focus::placeholder,
 #year:focus::placeholder {
   color: transparent;
+}
+
+#month::placeholder, #day::placeholder, #year::placeholder {
+  color: #555;
 }
 
 #dash {
   align-self: center;
   justify-self: center;
-  justify-content: center;
-  
-
+  font-size: 11px;
+  color: #555;
 }
 
 #spacer {
-
-  border: 1px solid white;
-
-
+  border: none;
 }
 
+/* ── CLOSE BUTTONS ── */
 #closeButtonToDo {
-  background-image: url('./close-svgrepo-com.svg');
-  background-size: cover; /* Adjust as needed */
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   align-self: center;
+  justify-self: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 16px;
+  line-height: 1;
+  color: #555;
 }
 
+#closeButtonToDo::after {
+  content: '×';
+  display: block;
+}
 
+#closeButtonToDo:hover {
+  color: #E8E8E8;
+  background: rgba(255,255,255,0.08);
+}
+
+/* ── DESCRIPTION SIBLING ROW ── */
 #descSibling {
   display: grid;
-  grid-template-columns: 10px 3fr 10px;
-  border: 1px solid black;
-
+  grid-template-columns: 14px 1fr 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-surface);
+  border-left: 2px solid var(--accent-dim);
+  min-height: 34px;
+  align-items: center;
 }
 
-#descSpacer1 {
- 
-
+#descSpacer1, #descSpacer2 {
+  /* spacing only */
 }
 
 #descInput {
   font-size: 12px;
-  text-align: center;
-  justify-self: center;
-  width: 400px;
-  background-color: rgb(242, 242, 242);
+  font-family: 'Trebuchet MS', sans-serif;
+  text-align: left;
+  background: transparent;
+  color: #BBBBBB;
   border: none;
+  width: 100%;
+  padding: 8px 0;
+  letter-spacing: 0.02em;
+}
 
+#descInput::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 #descInput:focus {
   box-shadow: none;
-  background: rgb(242, 242, 242);;
+  background: transparent;
   outline: none;
+  color: var(--text-primary);
+  border-bottom: 0.5px solid var(--accent-dim);
 }
 
 #descInput:focus::placeholder {
-  
   color: transparent;
-  background-color: rgba(0, 0, 0, 0);
 }
 
-#descSpacer2 {
- 
+/* ── SCROLLBAR STYLING ── */
+#sideMa::-webkit-scrollbar,
+#mainList::-webkit-scrollbar {
+  width: 3px;
+}
 
+#sideMa::-webkit-scrollbar-track,
+#mainList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#sideMa::-webkit-scrollbar-thumb,
+#mainList::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 2px;
 }
