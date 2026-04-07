@@ -308,7 +308,7 @@ function component() {
 
 
 
-                    // console.log("called project selection")
+                    console.log("called project selection")
 
                     // check if latest DOM element's title is '' 'blank',
                     // if it is blank 'turn on' the toDo item button to allow clicking
@@ -360,21 +360,21 @@ function component() {
 
                     if(projOnChild != null){
 
-                        // on click should temporarily disable ability to continue clicking
-                        itemButton.style.pointerEvents = "auto";
+                        var innerValue = projOnChild.textContent;
+                        var arrayValues = listLogic.listItems(innerValue);
 
-                        var innerValue = projOnChild.textContent; // pulls projectName
-                        var arrayValues = listLogic.listItems(innerValue);// pulls projectArray
+                        clearToDos();
+                        addAllToDo_DOM(arrayValues, innerValue);
 
-                        // console.log(innerValue);
-                        // console.log(arrayValues);
+                        // check the last todo item's title AFTER the DOM has been rebuilt
+                        const toDoContainer = document.getElementById('mainList');
+                        const lastChild = toDoContainer.childNodes[toDoContainer.childNodes.length - 1];
 
-                        clearToDos(); // 2 - Clears previous childNode under toDo List
-
-
-
-                        /** WORKING MOSTLY */
-                        addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
+                        if(lastChild && lastChild.firstChild && lastChild.firstChild.value === ""){
+                            itemButton.style.pointerEvents = "none";
+                        } else {
+                            itemButton.style.pointerEvents = "auto";
+                        }
                     }
 
                     
@@ -1141,7 +1141,7 @@ function component() {
         // Meant for newToDos
         function addInitialToDo(item, index){
 
-            // console.log("Called addAllToDo_DOM > addInitialToDo");
+            console.log("Called addAllToDo_DOM > addInitialToDo");
 
             mainListDiv.appendChild(toDoChild);
             toDoChild.appendChild(toDoInput);
@@ -1163,6 +1163,8 @@ function component() {
             let switcher = 0;
 
             let clickSwitch = 0;
+
+            // const thisToDoChild = toDoChild;
 
             // EDITS TITLE & DATE OF ITEM ELEMENT
             toDoInput.addEventListener("keydown", function(event) {
@@ -1357,18 +1359,16 @@ function component() {
 
             closeButtonToDo.addEventListener("click", function(){
 
-                // console.log("Entered closeButtonToDo");
-                // console.log(descInput);
+                console.log("Entered closeButtonToDo - within addInitialToDo");
 
-                // remove toDoChild sibling
-                const mainList = toDoChild.parentElement;
+                event.stopPropagation();
 
-
-                    if(toDoChild.nextSibling != null){
-
-                        mainList.removeChild(toDoChild.nextSibling);
-                    
-                    }
+                if(clickSwitch === 0){
+                
+                    itemButton.style.pointerEvents = "none"; // block adding more items until this one is titled
+                    return;
+                
+                }
 
 
                 //  Clears and renews old toDoChild information 
@@ -1377,7 +1377,6 @@ function component() {
                 item['desc'] = "";
                 item['due'] = "";
 
-                // console.log("Entered initialToDo closeButton function");
  
                 // store index of toDo item in variable
                 let pos = closeButtonToDo.dataset.info;
@@ -1385,39 +1384,65 @@ function component() {
                 
                 let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
 
+                // console.log("currentLength = " + currentLength);  
 
                 // if currentLength is 1, clear div information
                 if(currentLength === 1){
-
-                    // on click should temporarily disable ability to continue clicking
-                    itemButton.style.pointerEvents = "none";
-
-                    toDoInput.value = "";
                     
-                    // remove item from project array, needs to identify the index of project effected
+                    console.log('Entered if statement within addInitialToDo')
+
+                    // only safe to remove nextSibling here — and only if it's a descSibling
+                    if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
+                        toDoChild.parentElement.removeChild(toDoChild.nextSibling);
+                    }
+
+                    itemButton.style.pointerEvents = "none";
+                    toDoInput.value = "";
+
                     listLogic.removeToDo(project, pos, currentLength);
-
-                    // create function that lists project elements
+                    
                     let array = listLogic.listItems(project);
-                    // console.log(array);
-
-                    const emptyStateEl = document.getElementById('emptyState');
-                    if(emptyStateEl) emptyStateEl.style.display = 'flex';
                 }
 
                 else{
 
-                    // remove item from DOM
+                    console.log('Entered else statement within addInitialToDo')
+
+                    // same guard here before removing toDoChild
+                    if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
+                        mainListDiv.removeChild(toDoChild.nextSibling);
+                    }
+
                     mainListDiv.removeChild(toDoChild);
 
+
+                    console.log("pos:", pos);
+                    console.log("currentLength:", currentLength);
+                    console.log("array before removal:", JSON.stringify(listLogic.listItems(project)));
+
                     // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength); 
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    console.log("array after removal:", JSON.stringify(listLogic.listItems(project)));
 
                     // create function that lists project elements
                     listLogic.listItems(project);
 
-
                     const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
+
+                    const remainingItems = listLogic.listItems(project);
+
+                    // console.log(remainingItems[0].tit);
+
+                    if(remainingItems[0].tit === ""){
+                        console.log('turned off')
+                        itemButton.style.pointerEvents = "none";
+                    } else {
+                        console.log('turned on')
+                        itemButton.style.pointerEvents = "auto";
+                    }
+
+                    // BUG: issue with itemButton improperly being set to on, condition above SHOULD be TRUE // 
 
                     let currentValue = "";
 
@@ -1478,7 +1503,7 @@ function component() {
         // Meant for oldToDos re-generation, passes in array[i] and starting index of 0
         function regenToDos(item, index){ 
 
-            // console.log("Called addAllToDo_DOM > regenToDos");
+            console.log("Called addAllToDo_DOM > regenToDos");
 
 
             // declare elements needed, make similar to the adding projects version
@@ -1894,14 +1919,17 @@ export { component };
 
 // ********************************************** BUG BASHING ********************************************** //
 /** 
- * PROBLEM - 1. Work first, after removing projects svg icon for middle of toDo list items section is not
- *              reappearing within interface. Already added several lines to differen section. 
- *              Start with following trail after adding/removing one project.
+ * PROBLEM - Item button remains 'clickable' after deleting first todo then deleting second 'remaining todo'
  * 
  * 
- * FIXED - 1. When multiple projects are added, then all are removed, 
- *            it will not remove the last project to exist other than 'Default'.
- *            The existing properties will be { 'Default', 'Project 1' }
+ * PROBLEM - After removing projects svg icon for middle of toDo list items section is not
+ *           reappearing within interface. Already added several lines to differen section. 
+ *           Start with following trail after adding/removing one project.
+ * 
+ * 
+ * FIXED - When multiple projects are added, then all are removed, 
+ *         it will not remove the last project to exist other than 'Default'.
+ *         The existing properties will be { 'Default', 'Project 1' }
  *  
  * PROBLEM - 2. Having issues with deletion/addition of DOM/Array elements
  *         - issue is still present when deleting first element and adding new element,

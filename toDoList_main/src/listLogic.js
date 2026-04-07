@@ -224,7 +224,7 @@ export const listLogic = (function () {
             // push that new object to the allProjects array
             allProjects[project].push(listItem);    
 
-            // console.log(allProjects[project]); //  check array
+            console.log(allProjects[project]); //  check array
 
         }
 
