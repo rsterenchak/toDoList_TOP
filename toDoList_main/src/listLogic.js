@@ -187,49 +187,56 @@ export const listLogic = (function () {
 
     };
 
-    function removeToDo(project, index, length) { // project 1, pos 1, length is 3
-        // console.log("called removeToDo function");
+    function removeToDo(project, index, length) {
 
-        // based on the project selected, take in new variables for object
-        let itemTitle = '';
-        let itemDesc = '';
-        let itemDue = '';
-        let itemPri = 1;
-        let itemPos = 0;
-
-        // with the new variables, instantiate the new toDo list object
-        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
-    
+        if (!allProjects[project]) return;
 
         index = parseInt(index, 10);
 
-        // console.log("index: " + index);
+        const actualLength = allProjects[project].length;
 
-        // if the length of the project array is 1 and the index is 0,
-        // instead of removing the array logic/DOM entirely just reset it
-        // otherwise just remove the logic/DOM
+        // if this is the only real item, reset to a single blank placeholder
+        if (actualLength <= 1) {
 
-        if((length === 1) && (index === 0)){
+            const listItem = toDo('', '', '', 1, 0);
+            allProjects[project] = [listItem];
 
-            console.log("Only a single item exists");
+        } else {
 
-            // pop() item from project array
-            allProjects[project].pop(index);
+            removeElementAtIndex(allProjects[project], index);
 
-            // console.log(allProjects[project]); //  check array
-
-            // push that new object to the allProjects array
-            allProjects[project].push(listItem);    
-
-            console.log(allProjects[project]); //  check array
+            // if after removal no real items remain (only blanks), ensure exactly one blank
+            const hasReal = allProjects[project].some(function(i){ return i.tit !== ""; });
+            if (!hasReal) {
+                const listItem = toDo('', '', '', 1, 0);
+                allProjects[project] = [listItem];
+            }
 
         }
 
-        else{
-            
-            removeElementAtIndex(allProjects[project], index);
-            // console.log((allProjects[project]));
+        saveToStorage();
 
+    };
+
+    // Remove a todo item by its title — avoids index/DOM sync issues
+    function removeToDoByTitle(project, title) {
+
+        if (!allProjects[project]) return;
+
+        const arr = allProjects[project];
+        const idx = arr.findIndex(function(i){ return i.tit === title; });
+
+        if (idx === -1) {
+            console.warn("removeToDoByTitle: title not found —", title);
+            return;
+        }
+
+        arr.splice(idx, 1);
+
+        // if no real items remain, reset to a single blank placeholder
+        const hasReal = arr.some(function(i){ return i.tit !== ""; });
+        if (!hasReal) {
+            allProjects[project] = [toDo('', '', '', 1, 0)];
         }
 
         saveToStorage();
@@ -294,6 +301,7 @@ export const listLogic = (function () {
         listProjectsArray,
         addToDo, 
         removeToDo, 
+        removeToDoByTitle,
         editProject,
         listItems, 
         projectLength,

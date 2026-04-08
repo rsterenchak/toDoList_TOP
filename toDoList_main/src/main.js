@@ -345,41 +345,33 @@ function addAllToDo_DOM(items, name){
             let project = toDoName;
             let currentLength = listLogic.projectLength(project);
 
-            if(currentLength === 1){
-
-                if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                    toDoChild.parentElement.removeChild(toDoChild.nextSibling);
-                }
-
-                toDoInput.value = "";
-                listLogic.removeToDo(project, pos, currentLength);
-                updateItemButton_restore(project);
+            // remove descSibling if open
+            if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
+                toDoChild.parentElement.removeChild(toDoChild.nextSibling);
             }
 
-            else{
+            // snapshot close buttons before DOM removal
+            const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
 
-                if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
+            const titleToRemove = toDoInput.value;
+            mainListDiv.removeChild(toDoChild);
+            listLogic.removeToDoByTitle(project, titleToRemove);
 
-                // snapshot before removal so indices are correct
-                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(project, pos, currentLength);
-                listLogic.listItems(project);
-
-                let pos_int = parseInt(pos, 10);
-                let adjustedValue = pos_int;
-                while(closeButtonElements[adjustedValue + 1] != null){
-                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                    adjustedValue++;
-                }
-
-                updateItemButton_restore(project);
+            // re-index remaining close buttons
+            let pos_int = parseInt(pos, 10);
+            let adjustedValue = pos_int;
+            while(closeButtonElements[adjustedValue + 1] != null){
+                closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
+                adjustedValue++;
             }
+
+            // if no real items remain, render blank input row
+            const remaining = listLogic.listItems(project);
+            const hasReal = remaining && remaining.some(function(i){ return i.tit !== ""; });
+            if(!hasReal){ addAllToDo_DOM(remaining, project); }
 
             clickSwitch = 0;
+            updateItemButton_restore(project);
 
         });
 
@@ -734,42 +726,29 @@ function addAllToDo_DOM(items, name){
             let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
 
 
-            // if currentLength is 1, clear div information
-            if(currentLength === 1){
-
-                if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
-
-                toDoInput.value = "";
-                listLogic.removeToDo(project, pos, currentLength);
-                clickSwitch = 0;
-                updateItemButton_restore(project);
+            if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
+                mainListDiv.removeChild(toDoChild.nextSibling);
             }
 
-            else{
+            const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
 
-                if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
+            const titleToRemove2 = toDoInput.value;
+            mainListDiv.removeChild(toDoChild);
+            listLogic.removeToDoByTitle(project, titleToRemove2);
 
-                // snapshot before removal so indices are correct
-                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(project, pos, currentLength);
-                listLogic.listItems(project);
-
-                let pos_int = parseInt(pos, 10);
-                let adjustedValue = pos_int;
-                while(closeButtonElements[adjustedValue + 1] != null){
-                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                    adjustedValue++;
-                }
-
-                clickSwitch = 0;
-                updateItemButton_restore(project);
+            let pos_int = parseInt(pos, 10);
+            let adjustedValue = pos_int;
+            while(closeButtonElements[adjustedValue + 1] != null){
+                closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
+                adjustedValue++;
             }
+
+            const remaining = listLogic.listItems(project);
+            const hasReal = remaining && remaining.some(function(i){ return i.tit !== ""; });
+            if(!hasReal){ addAllToDo_DOM(remaining, project); }
+
+            clickSwitch = 0;
+            updateItemButton_restore(project);
 
         });
 
@@ -821,7 +800,9 @@ function component() {
     const addItem = document.createElement('div');
     const itemButton = document.createElement('div');
 
-    
+    // ── mobile sidebar toggle ──
+    const sidebarToggle  = document.createElement('button');
+    const sidebarOverlay = document.createElement('div');
 
     base.id ='outerContainer';
     nav.id = 'navBar';
@@ -847,10 +828,19 @@ function component() {
     addItem.id = 'addItem';
     itemButton.id = 'itemButton';
 
+    sidebarToggle.id        = 'sidebarToggle';
+    sidebarToggle.innerHTML = '☰';
+    sidebarToggle.setAttribute('aria-label', 'Toggle projects sidebar');
+
+    sidebarOverlay.id = 'sidebarOverlay';
+
 
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);
+    base.appendChild(sidebarOverlay);
+
+    nav.appendChild(sidebarToggle);
 
     main.appendChild(main1);
     main.appendChild(main2);
@@ -877,6 +867,49 @@ function component() {
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
+    // ── sidebar toggle logic ──
+    // Desktop (>700px): collapse the grid column via .sidebar-collapsed on #mainSec
+    // Mobile  (≤700px): slide sidebar over content via .sidebar-open on #sideBar
+
+    function isMobile() { return window.innerWidth <= 700; }
+
+    function openSidebar() {
+        if (isMobile()) {
+            main1.classList.add('sidebar-open');
+            sidebarOverlay.classList.add('visible');
+        } else {
+            main.classList.remove('sidebar-collapsed');
+        }
+    }
+
+    function closeSidebar() {
+        if (isMobile()) {
+            main1.classList.remove('sidebar-open');
+            sidebarOverlay.classList.remove('visible');
+        } else {
+            main.classList.add('sidebar-collapsed');
+        }
+    }
+
+    function sidebarIsOpen() {
+        return isMobile()
+            ? main1.classList.contains('sidebar-open')
+            : !main.classList.contains('sidebar-collapsed');
+    }
+
+    sidebarToggle.addEventListener('click', function() {
+        sidebarIsOpen() ? closeSidebar() : openSidebar();
+    });
+
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // on true touch devices auto-close sidebar after project selection;
+    // on desktop the sidebar stays open — only hamburger closes it
+    if (window.matchMedia('(pointer: coarse)').matches) {
+        main1.addEventListener('click', function(e) {
+            if (e.target.closest('#projChild')) { closeSidebar(); }
+        });
+    }
 
     // var mainChild = mainList.childNodes[1];
 
@@ -1650,40 +1683,28 @@ function component() {
                 let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
 
 
-                // if currentLength is 1, clear div information
-                if(currentLength === 1){
-
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
-                    toDoInput.value = "";
-                    listLogic.removeToDo(project, 0, currentLength);
-                    updateItemButton(project);
+                if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
+                    mainListDiv.removeChild(toDoChild.nextSibling);
                 }
 
-                else{
+                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
 
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
+                const titleToRemove3 = toDoInput.value;
+                mainListDiv.removeChild(toDoChild);
+                listLogic.removeToDoByTitle(project, titleToRemove3);
 
-                    // snapshot before removal so indices are correct
-                    const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                    mainListDiv.removeChild(toDoChild);
-                    listLogic.removeToDo(project, pos, currentLength);
-                    listLogic.listItems(project);
-
-                    let pos_int = parseInt(pos, 10);
-                    let adjustedValue = pos_int;
-                    while(closeButtonElements[adjustedValue + 1] != null){
-                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                        adjustedValue++;
-                    }
-
-                    updateItemButton(project);
+                let pos_int = parseInt(pos, 10);
+                let adjustedValue = pos_int;
+                while(closeButtonElements[adjustedValue + 1] != null){
+                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
+                    adjustedValue++;
                 }
+
+                const remaining = listLogic.listItems(project);
+                const hasReal = remaining && remaining.some(function(i){ return i.tit !== ""; });
+                if(!hasReal){ addAllToDo_DOM(remaining, project); }
+
+                updateItemButton_restore(project);
 
 
         });
@@ -1747,6 +1768,13 @@ function appendNewToDoRow(toDoName) {
     // guard against invalid or missing project name
     if (!toDoName || !listLogic.listItems(toDoName)) {
         console.error("appendNewToDoRow: invalid project —", toDoName);
+        return;
+    }
+
+    // guard: don't add another blank row if the last item is already blank
+    const existing = listLogic.listItems(toDoName);
+    if (existing && existing.length > 0 && existing[existing.length - 1].tit === "") {
+        console.log("appendNewToDoRow: blank row already exists, skipping");
         return;
     }
 
@@ -1905,19 +1933,24 @@ function appendNewToDoRow(toDoName) {
             mainListDiv.removeChild(toDoChild.nextSibling);
         }
 
-        if (currentLength === 1) {
-            toDoInput.value = "";
-            listLogic.removeToDo(toDoName, 0, currentLength);
-        } else {
-            const allClose = document.querySelectorAll("#closeButtonToDo");
-            mainListDiv.removeChild(toDoChild);
-            listLogic.removeToDo(toDoName, pos, currentLength);
-            let adj = pos;
-            while (allClose[adj + 1] != null) {
-                allClose[adj + 1].dataset.info = adj;
-                adj++;
-            }
+        if (toDoChild.nextSibling && toDoChild.nextSibling.id === "descSibling") {
+            mainListDiv.removeChild(toDoChild.nextSibling);
         }
+
+        const allClose = document.querySelectorAll("#closeButtonToDo");
+        const titleToRemove4 = toDoInput.value;
+        mainListDiv.removeChild(toDoChild);
+        listLogic.removeToDoByTitle(toDoName, titleToRemove4);
+
+        let adj = pos;
+        while (allClose[adj + 1] != null) {
+            allClose[adj + 1].dataset.info = adj;
+            adj++;
+        }
+
+        const remaining4 = listLogic.listItems(toDoName);
+        const hasReal4 = remaining4 && remaining4.some(function(i){ return i.tit !== ""; });
+        if (!hasReal4) { addAllToDo_DOM(remaining4, toDoName); }
 
         updateItemButton_restore(toDoName);
 
@@ -2274,19 +2307,20 @@ function addToDos_restore(toDoArray, toDoName) {
                 mainListDiv.removeChild(toDoChild.nextSibling);
             }
 
-            if (currentLength === 1) {
-                toDoInput.value = "";
-                listLogic.removeToDo(toDoName, 0, currentLength);
-            } else {
-                const allClose = document.querySelectorAll('#closeButtonToDo');
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(toDoName, pos, currentLength);
-                let adj = pos;
-                while (allClose[adj + 1] != null) {
-                    allClose[adj + 1].dataset.info = adj;
-                    adj++;
-                }
+            const allClose5 = document.querySelectorAll('#closeButtonToDo');
+            const titleToRemove5 = toDoInput.value;
+            mainListDiv.removeChild(toDoChild);
+            listLogic.removeToDoByTitle(toDoName, titleToRemove5);
+
+            let adj5 = pos;
+            while (allClose5[adj5 + 1] != null) {
+                allClose5[adj5 + 1].dataset.info = adj5;
+                adj5++;
             }
+
+            const remaining5 = listLogic.listItems(toDoName);
+            const hasReal5 = remaining5 && remaining5.some(function(i){ return i.tit !== ""; });
+            if (!hasReal5) { addAllToDo_DOM(remaining5, toDoName); }
 
             updateItemButton_restore(toDoName);
 
