@@ -46,7 +46,7 @@ export const listLogic = (function () {
 
         console.log("Projects exists");
         
-        let stored_deserialized = JSON.parse(localStorage.getItem('allProjects')); // Retrieves exisisting projects from storedProjects object 
+        let stored_deserialized = JSON.parse(localStorage.getItem('allProjects')); // Retrieves existing projects from storedProjects object 
         
     }
 

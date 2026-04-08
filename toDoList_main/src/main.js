@@ -1,7 +1,6 @@
 import './style.css';
 import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
-import emptyStateIcon from './empty_state.svg';
 
 
 
@@ -11,7 +10,7 @@ function component() {
     // GLOBAL VARIABLES
 
     
-    // console.log("Initialized DOM");
+    console.log("Initialized DOM");
 
     const base = document.createElement('div');
     const nav = document.createElement('div');
@@ -76,34 +75,20 @@ function component() {
     main1.appendChild(sideTitle);
     main1.appendChild(sideMain);
 
-    // sideTitle.appendChild(sideHead);
-    // sideTitle.appendChild(projButton);   // ← button moves into header
-    
-    // main2.appendChild(mainTitle);
-    // main2.appendChild(mainList);
-    
-    // mainTitle.appendChild(mainHead);
-    // mainTitle.appendChild(itemButton);
-
     sideTitle.appendChild(sideHead);
 
-    sideMain.appendChild(addProj);       // ← restore
-    addProj.appendChild(projButton);     // ← restore
-    
+    sideMain.appendChild(addProj);
+    addProj.appendChild(projButton);
+
+
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
-    
-    mainTitle.appendChild(mainHead);
-    
-    mainList.appendChild(addItem);       // ← restore
-    addItem.appendChild(itemButton); 
 
-    const emptyState = document.createElement('div');
-    const emptyImg = document.createElement('img');
-    emptyState.id = 'emptyState';
-    emptyImg.src = emptyStateIcon;
-    emptyState.appendChild(emptyImg);
-    mainList.appendChild(emptyState);
+    mainTitle.appendChild(mainHead);
+
+    mainList.appendChild(addItem);
+    addItem.appendChild(itemButton);
+
 
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
@@ -114,13 +99,28 @@ function component() {
     // on click should temporarily disable ability to continue clicking
     itemButton.style.pointerEvents = "none";
 
+    // *** HELPER: single source of truth for itemButton state ***
+    function updateItemButton(project) {
+        const items = listLogic.listItems(project);
+        if(!items || items.length === 0){
+            itemButton.style.pointerEvents = "none";
+            return;
+        }
+        const lastItem = items[items.length - 1];
+        if(lastItem.tit === ""){
+            itemButton.style.pointerEvents = "none";
+        } else {
+            itemButton.style.pointerEvents = "auto";
+        }
+    }
+
 
     // ********************** CLICK LISTENERS ********************** //
 
     // Click Listener: That adds new project element
     projButton.addEventListener("click", function(){
 
-        // console.log("Called projButton");
+        console.log("Called projButton");
 
         // on click should temporarily disable ability to continue clicking
         projButton.style.pointerEvents = "none";
@@ -173,7 +173,7 @@ function component() {
         // Press enter after Project title input to set element information
         titleInput.addEventListener("keydown", function(event) {
 
-            // console.log("Called projButton > titleInput");
+            console.log("Called projButton > titleInput");
 
 
             // Get Project names and store into an array using - logicList.js
@@ -201,7 +201,7 @@ function component() {
 
             if (event.key === "Enter") {
 
-                // console.log("Clicked Enter");
+                console.log("Clicked Enter");
 
                 enteredText = titleInput.value;
                 newProperty = titleInput.value;
@@ -236,7 +236,7 @@ function component() {
             if ((enteredText.length > 0) && (exists === 0)){
 
                 // projChild.style.backgroundColor = "none";
-                titleInput.style.color = '#E8E8E8';
+                titleInput.style.color = 'black';
 
                 trimmedText = enteredText.trim();
                 
@@ -318,63 +318,27 @@ function component() {
                     
                     var lastChildRef = containerLength - 1;
                     
-                    if(containerLength > 1){
-
-                        // console.log(toDoContainer.childNodes[lastChildRef].firstChild.value); // gets toDo item title
-                        
-                        let lastChildTitle = toDoContainer.childNodes[lastChildRef].firstChild.value;
-
-                        if(lastChildTitle === ""){
-                            
-                            // onclick makes sure to enable add item button when appropriate
-                            itemButton.style.pointerEvents = "none";     
-
-                        }
-
-                        else {
-
-                            // should turn off the add item button when appropriate
-                            itemButton.style.pointerEvents = "auto";
-
-                        }
-
-                    }
-
-
-
                     let fresh = 0;
 
-
                     if(fresh === 0){
-
-                        projOnChild = document.querySelector('.selectedProject'); //  latest selection
-                    
+                        projOnChild = document.querySelector('.selectedProject');
                         fresh = 1;
                     }
 
-                    // console.log("projOnChild: " + projOnChild);
-
                     selectProject(); // 1 - Changes selected element
 
-                    projOnChild = document.querySelector('.selectedProject'); //  latest selection
+                    projOnChild = document.querySelector('.selectedProject');
 
                     if(projOnChild != null){
 
                         var innerValue = projOnChild.textContent;
                         var arrayValues = listLogic.listItems(innerValue);
 
-                        clearToDos();
-                        addAllToDo_DOM(arrayValues, innerValue);
+                        clearToDos(); // 2 - Clears previous childNode under toDo List
 
-                        // check the last todo item's title AFTER the DOM has been rebuilt
-                        const toDoContainer = document.getElementById('mainList');
-                        const lastChild = toDoContainer.childNodes[toDoContainer.childNodes.length - 1];
+                        addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
 
-                        if(lastChild && lastChild.firstChild && lastChild.firstChild.value === ""){
-                            itemButton.style.pointerEvents = "none";
-                        } else {
-                            itemButton.style.pointerEvents = "auto";
-                        }
+                        updateItemButton(innerValue);
                     }
 
                     
@@ -429,9 +393,8 @@ function component() {
                     
                     }                 
 
+                    // console.log(childNodes);
 
-                    const emptyStateEl = document.getElementById('emptyState');
-                    if (emptyStateEl) emptyStateEl.style.display = 'flex';
 
                 }
 
@@ -445,7 +408,7 @@ function component() {
         // Removes selected project elements from DOM/Logic
         closeButton.addEventListener("click", function() {
 
-            // console.log("Called projButton > closeButton");
+            console.log("Called projButton > closeButton");
 
             const mainList = document.getElementById("mainList");
             let mainChild = document.getElementById("toDoChild");
@@ -460,7 +423,7 @@ function component() {
             // DOM - Removes item DOM elements associated with project
             while(mainList.contains(mainChild)){
 
-                // console.log(mainChild);
+                console.log(mainChild);
 
                 if((mainChild.nextSibling != null) && (mainChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
                     
@@ -495,23 +458,20 @@ function component() {
 
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
-            this.style.background = "rgba(0, 0, 0, 0)";  // ← keep this as-is, it's fine
+            this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
-            projChild.style.background = "#1C1C1C"; // ← change "white" to "#1C1C1C"
+            projChild.style.background = "#1C1C1C";
         });
-  
 
         projChild.addEventListener("mouseenter", function() {
-            // this.style.border = "1px solid red";
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
             this.style.background = "#222222"; 
         });
-        
+
         projChild.addEventListener("mouseleave", function() {
-            // this.style.border = "none";
             this.style.boxShadow = "none";
             this.style.background = "transparent"; 
-        });  
+        });
 
         closeButton.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
@@ -531,7 +491,7 @@ function component() {
     // Click Listener: That adds new item element
     itemButton.addEventListener("click", function() { 
 
-        // console.log("Called itemButton");
+        console.log("Called itemButton");
 
         // on click should temporarily disable ability to continue clicking
         itemButton.style.pointerEvents = "none";
@@ -540,7 +500,7 @@ function component() {
 
         const currentProject = document.querySelector('.selectedProject').textContent; //  latest selection
 
-        // console.log(currentProject);
+        console.log(currentProject);
         // const currentProject = (mainList.childNodes[1]).getAttribute('data-value');
 
         // declare elements needed, make similar to the adding projects version
@@ -572,7 +532,7 @@ function component() {
 
 
 
-        toDoChild.style.border = "0.5px solid #3A3A3A";
+        toDoChild.style.border = "0.5px solid black"; 
         toDoChild.id = "toDoChild";
 
         dateText.id = "dateText";
@@ -649,7 +609,7 @@ function component() {
         // Need logic to edit current DOM info
         toDoInput.addEventListener("keydown", function(event) {
 
-            // console.log("Called itemButton > toDoInput");
+            console.log("Called itemButton > toDoInput");
             
             // console.log("Pressed enter for new item - " + counter);
             // console.log("Project name - " + toDoName);
@@ -669,7 +629,7 @@ function component() {
             if (event.key === "Enter") {
                 enteredText = toDoInput.value;
 
-                // console.log("Entered newToDo keydown function: " + enteredText);
+                console.log("Entered newToDo keydown function: " + enteredText);
 
                 toDoInput.blur();
 
@@ -701,6 +661,7 @@ function component() {
                     toDoLength = toDoItems.lengths; // >>> 2
 
                     clickSwitch = 1;
+                    // updateItemButton(currentProject);
                 }
                 
                 else{ 
@@ -709,7 +670,7 @@ function component() {
                     toDoName = currentProject; // projectName
                     toDoLength = listLogic.projectLength(currentProject); // >>> 2
 
-
+                    // updateItemButton(currentProject);
                 }
 
 
@@ -740,21 +701,17 @@ function component() {
 
 
                 projectItems = listLogic.listItems(currentProject);  
-
-                // console.log(projectItems);
-
-                // on click should temporarily disable ability to continue clicking
-                itemButton.style.pointerEvents = "auto";
+                updateItemButton(currentProject);
 
                 // *************************** WORK IN PROGRESS *************************** // 
 
                 toDoChild.addEventListener("click", function(event){
 
-                    // console.log("clickSwitch: " + clickSwitch);
+                    console.log("clickSwitch: " + clickSwitch);
 
                     if(clickSwitch === 1){
 
-                        // console.log("Calling itemButton > toDoChild click");
+                        console.log("Calling itemButton > toDoChild click");
 
 
                         const clickedElement = event.target;
@@ -768,7 +725,7 @@ function component() {
                         // Covers the clicking of CloseButtonToDo
                         if(clickedElement.id === 'closeButtonToDo'){
                             
-                            // console.log("Called stop propagation of DIV");
+                            console.log("Called stop propagation of DIV");
                             event.stopPropagation(); // Prevent the parent's click event
                             
                         }
@@ -776,9 +733,9 @@ function component() {
                         // Covers the clicking of toDoInput
                         if(clickedElement.tagName === 'INPUT'){
 
-                            // console.log(clickedElement);
+                            console.log(clickedElement);
                             
-                            // console.log("Called stop propagation of INPUT");
+                            console.log("Called stop propagation of INPUT");
                             event.stopPropagation(); // Prevent the parent's click event
 
                             
@@ -787,7 +744,7 @@ function component() {
 
                         if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
 
-                            // console.log("Called descSibling append if statement");
+                            console.log("Called descSibling append if statement");
 
                             // Switches description node on/off depending on click value - switcher
                             if(switcher === 0){
@@ -804,7 +761,7 @@ function component() {
                                 // if descInput value is greater than 0 set it as the textContent
                                 if(arraySlot["desc"].length > 0){
 
-                                    // console.log("Previously inputted value is valid");
+                                    console.log("Previously inputted value is valid");
                                     descInput.textContent = arraySlot["desc"];
                                     descInput.value = arraySlot["desc"];
 
@@ -840,7 +797,7 @@ function component() {
                                 if (event.key === "Enter") {
                                     descText = descInput.value;
                     
-                                    // console.log("Entered descInput keydown function: " + descText);
+                                    console.log("Entered descInput keydown function: " + descText);
                     
                                     descInput.blur();
                     
@@ -863,7 +820,7 @@ function component() {
                                     arraySlot["desc"] = descTrimmed;
 
                                     toDoArray = listLogic.listItems(currentProject); // project array
-                                    // console.log(toDoArray);
+                                    console.log(toDoArray);
 
                                     descInput.style.border = "none";
 
@@ -895,7 +852,7 @@ function component() {
 
         closeButtonToDo.addEventListener("click", function(){
 
-            // console.log("Called itemButton > closeButtonToDo");
+            console.log("Called itemButton > closeButtonToDo");
                 
  
                 // store index of toDo item in variable
@@ -908,72 +865,36 @@ function component() {
                 // if currentLength is 1, clear div information
                 if(currentLength === 1){
 
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
-                    
+                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
                         mainListDiv.removeChild(toDoChild.nextSibling);
-                    
                     }
 
                     toDoInput.value = "";
-                    
-                    // remove item from project array, needs to identify the index of project effected
                     listLogic.removeToDo(project, 0, currentLength);
-
-                    // create function that lists project elements
-                    let array = listLogic.listItems(project);
-                    // console.log(array);
+                    updateItemButton(project);
                 }
 
                 else{
 
                     if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        
                         mainListDiv.removeChild(toDoChild.nextSibling);
-                    
                     }
-                    // remove item from DOM
-                    mainListDiv.removeChild(toDoChild);
 
-                    // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength);
-
-                    // create function that lists project elements
-                    listLogic.listItems(project);
-                    
-                    // Adjusts dataset-info for childNode elements
-
+                    // snapshot before removal so indices are correct
                     const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
 
-                    let currentValue = "";
+                    mainListDiv.removeChild(toDoChild);
+                    listLogic.removeToDo(project, pos, currentLength);
+                    listLogic.listItems(project);
 
-                    let adjustedValue = "";
-
-                    if(closeButtonElements[pos] != null){
-                       
-                        currentValue = closeButtonElements[pos].dataset.info; // 1
-
-                        adjustedValue = currentValue - 1;
-
-                        closeButtonElements[pos].dataset.info = adjustedValue; // 0
-
-                        // console.log(closeButtonElements[pos].dataset.info);
-                    }
-
-                    adjustedValue++;
-
-                    while(closeButtonElements[adjustedValue] != null){
-
-                        closeButtonElements[adjustedValue].dataset.info = adjustedValue;
-                        // console.log(closeButtonElements[adjustedValue].dataset.info);
-
+                    let pos_int = parseInt(pos, 10);
+                    let adjustedValue = pos_int;
+                    while(closeButtonElements[adjustedValue + 1] != null){
+                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
                         adjustedValue++;
                     }
 
-                    // console.log(closeButtonElements[pos].dataset.info); // new value is 0
-
-                    // create function that lists project elements
-                    let array = listLogic.listItems(project);
-                    // console.log(array);
+                    updateItemButton(project);
                 }
 
 
@@ -1025,10 +946,7 @@ function component() {
     // add to button and event listeners after 
     function addAllToDo_DOM(items, name){
 
-        const emptyStateEl = document.getElementById('emptyState');
-        if (emptyStateEl) emptyStateEl.style.display = 'none';
-
-        // console.log("Called addAllToDo_DOM  ");
+        console.log("Called addAllToDo_DOM");
 
         // project name
         let toDoArray = items; //  items array [] without project name
@@ -1129,7 +1047,7 @@ function component() {
         else{
 
 /*             console.log("passed into initialToDo,");
-            // console.log(toDoArray[counter]); */
+            console.log(toDoArray[counter]); */
             addInitialToDo(toDoArray[counter], counter); // designates project item, along with array position
             
             counter++;
@@ -1164,8 +1082,6 @@ function component() {
 
             let clickSwitch = 0;
 
-            // const thisToDoChild = toDoChild;
-
             // EDITS TITLE & DATE OF ITEM ELEMENT
             toDoInput.addEventListener("keydown", function(event) {
 
@@ -1183,7 +1099,7 @@ function component() {
                 if (event.key === "Enter") {
                     enteredText = toDoInput.value;
 
-                    // console.log("Entered initialToDo keydown function: " + enteredText);
+                    console.log("Entered initialToDo keydown function: " + enteredText);
 
                     toDoInput.blur();
 
@@ -1215,14 +1131,9 @@ function component() {
 
                     closeButtonToDo.dataset.info = index;
 
-                    // on click should temporarily disable ability to continue clicking
-                    itemButton.style.pointerEvents = "auto";
-                    
-                    // console.log("toDoName: " + toDoName);
-
                     projectItems = listLogic.listItems(toDoName);  
 
-                    // console.log(projectItems);
+                    updateItemButton(toDoName);
                     
                     clickSwitch = 1;
                 }
@@ -1233,12 +1144,12 @@ function component() {
             // Set to generate array ['desc'] up on clicking
             toDoChild.addEventListener("click", function(event){
 
-                // console.log("clickSwitch: " + clickSwitch);
+                console.log("clickSwitch: " + clickSwitch);
 
                 if(clickSwitch === 1){
-                    // console.log("initialToDo > toDoChild click listener - BEFORE");
+                    console.log("initialToDo > toDoChild click listener - BEFORE");
                     
-                    // console.log(switcher);
+                    console.log(switcher);
 
                     const clickedElement = event.target;
 
@@ -1251,7 +1162,7 @@ function component() {
                     // Covers the clicking of CloseButtonToDo
                     if(clickedElement.id === 'closeButtonToDo'){
                         
-                        // console.log("Called stop propagation of DIV");
+                        console.log("Called stop propagation of DIV");
                         event.stopPropagation(); // Prevent the parent's click event
                         
                     }
@@ -1259,7 +1170,7 @@ function component() {
                     // Covers the clicking of toDoInput
                     if(clickedElement.tagName === 'INPUT'){
                         
-                        // console.log("Called stop propagation of INPUT");
+                        console.log("Called stop propagation of INPUT");
                         event.stopPropagation(); // Prevent the parent's click event
 
                         
@@ -1283,7 +1194,7 @@ function component() {
                             // if descInput value is greater than 0 set it as the textContent
                             if(item["desc"].length > 0){
 
-                                // console.log("Previously inputted value is valid");
+                                console.log("Previously inputted value is valid");
                                 descInput.textContent = item["desc"];
                                 descInput.value = item["desc"];
 
@@ -1313,7 +1224,7 @@ function component() {
                                 if (event.key === "Enter") {
                                     descText = descInput.value;
                         
-                                    // console.log("Entered descInput keydown function: " + descText);
+                                    console.log("Entered descInput keydown function: " + descText);
                         
                                     descInput.blur();
                         
@@ -1336,7 +1247,7 @@ function component() {
                                     item["desc"] = descTrimmed;
 
                                     toDoArray = listLogic.listItems(toDoName); // project array
-                                    // console.log(toDoArray);
+                                    console.log(toDoArray);
 
                                     descInput.style.border = "none";
 
@@ -1359,131 +1270,45 @@ function component() {
 
             closeButtonToDo.addEventListener("click", function(){
 
-                console.log("Entered closeButtonToDo - within addInitialToDo");
-
-                event.stopPropagation();
-
-                if(clickSwitch === 0){
-                
-                    itemButton.style.pointerEvents = "none"; // block adding more items until this one is titled
-                    return;
-                
-                }
-
-
-                //  Clears and renews old toDoChild information 
-                item['tit'] = "";
-                item['pri'] = 0;
-                item['desc'] = "";
-                item['due'] = "";
-
- 
-                // store index of toDo item in variable
                 let pos = closeButtonToDo.dataset.info;
                 let project = toDoName;
-                
-                let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
+                let currentLength = listLogic.projectLength(project);
 
-                // console.log("currentLength = " + currentLength);  
-
-                // if currentLength is 1, clear div information
                 if(currentLength === 1){
-                    
-                    console.log('Entered if statement within addInitialToDo')
 
-                    // only safe to remove nextSibling here — and only if it's a descSibling
                     if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
                         toDoChild.parentElement.removeChild(toDoChild.nextSibling);
                     }
 
-                    itemButton.style.pointerEvents = "none";
                     toDoInput.value = "";
-
                     listLogic.removeToDo(project, pos, currentLength);
-                    
-                    let array = listLogic.listItems(project);
+                    updateItemButton(project);
                 }
 
                 else{
 
-                    console.log('Entered else statement within addInitialToDo')
-
-                    // same guard here before removing toDoChild
                     if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
                         mainListDiv.removeChild(toDoChild.nextSibling);
                     }
 
-                    mainListDiv.removeChild(toDoChild);
-
-
-                    console.log("pos:", pos);
-                    console.log("currentLength:", currentLength);
-                    console.log("array before removal:", JSON.stringify(listLogic.listItems(project)));
-
-                    // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength);
-
-                    console.log("array after removal:", JSON.stringify(listLogic.listItems(project)));
-
-                    // create function that lists project elements
-                    listLogic.listItems(project);
-
+                    // snapshot before removal so indices are correct
                     const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
 
-                    const remainingItems = listLogic.listItems(project);
+                    mainListDiv.removeChild(toDoChild);
+                    listLogic.removeToDo(project, pos, currentLength);
+                    listLogic.listItems(project);
 
-                    // console.log(remainingItems[0].tit);
-
-                    if(remainingItems[0].tit === ""){
-                        console.log('turned off')
-                        itemButton.style.pointerEvents = "none";
-                    } else {
-                        console.log('turned on')
-                        itemButton.style.pointerEvents = "auto";
-                    }
-
-                    // BUG: issue with itemButton improperly being set to on, condition above SHOULD be TRUE // 
-
-                    let currentValue = "";
-
-                    let adjustedValue = "";
-
-                    if(closeButtonElements[pos] != null){
-                       
-                        
-
-                        currentValue = closeButtonElements[pos].dataset.info; // 1
-
-                        adjustedValue = currentValue - 1;
-
-                        closeButtonElements[pos].dataset.info = adjustedValue; // 0
-
-                        // console.log(closeButtonElements[pos].dataset.info);
-
-                        clickSwitch = 0; // unsure if this is necessary?
-                    }
-
-                    adjustedValue++;
-
-                    while(closeButtonElements[adjustedValue] != null){
-
-                        closeButtonElements[adjustedValue].dataset.info = adjustedValue;
-                        // console.log(closeButtonElements[adjustedValue].dataset.info);
-
+                    let pos_int = parseInt(pos, 10);
+                    let adjustedValue = pos_int;
+                    while(closeButtonElements[adjustedValue + 1] != null){
+                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
                         adjustedValue++;
                     }
 
-                    // console.log(closeButtonElements[pos].dataset.info); // new value is 0
-
-                    // create function that lists project elements
-                    let array = listLogic.listItems(project);
-                    // console.log(array);
-
+                    updateItemButton(project);
                 }
 
                 clickSwitch = 0;
-
-                
 
             });
 
@@ -1615,7 +1440,7 @@ function component() {
             
             if((dateSet === "--") || (dateSet === "X-X-XXXX")){
                 
-                // console.log("Date has not been set by user.");
+                console.log("Date has not been set by user.");
                 
             }
 
@@ -1660,7 +1485,7 @@ function component() {
                 if (event.key === "Enter") {
                     enteredText = toDoInput.value;
 
-                    // console.log("You entered: " + enteredText);
+                    console.log("You entered: " + enteredText);
                     toDoInput.blur();
 
                 }
@@ -1695,11 +1520,11 @@ function component() {
             // Set to generate array ['desc'] up on clicking
             toDoChild.addEventListener("click", function(event){
 
-                // console.log("clickSwitch: " + clickSwitch);
+                console.log("clickSwitch: " + clickSwitch);
 
                 if(clickSwitch === 1){
 
-                // console.log("regenToDos > toDoChild click listener");
+                console.log("regenToDos > toDoChild click listener");
 
 
                 const clickedElement = event.target;
@@ -1713,7 +1538,7 @@ function component() {
                 // Covers the clicking of CloseButtonToDo
                 if(clickedElement.id === 'closeButtonToDo'){
                         
-                    // console.log("Called stop propagation of DIV");
+                    console.log("Called stop propagation of DIV");
                     event.stopPropagation(); // Prevent the parent's click event
                         
                 }
@@ -1721,7 +1546,7 @@ function component() {
                     // Covers the clicking of toDoInput
                 if(clickedElement.tagName === 'INPUT'){
                         
-                    // console.log("Called stop propagation of INPUT");
+                    console.log("Called stop propagation of INPUT");
                     event.stopPropagation(); // Prevent the parent's click event
 
                         
@@ -1744,7 +1569,7 @@ function component() {
                         // if descInput value is greater than 0 set it as the textContent
                         if(item["desc"].length > 0){
 
-                            // console.log("Previously inputted value is valid");
+                            console.log("Previously inputted value is valid");
                             descInput.textContent = item["desc"];
                             descInput.value = item["desc"];
 
@@ -1774,7 +1599,7 @@ function component() {
                             if (event.key === "Enter") {
                                 descText = descInput.value;
                     
-                                // console.log("Entered descInput keydown function: " + descText);
+                                console.log("Entered descInput keydown function: " + descText);
                     
                                 descInput.blur();
                     
@@ -1797,7 +1622,7 @@ function component() {
                                 item["desc"] = descTrimmed;
 
                                 toDoArray = listLogic.listItems(toDoName); // project array
-                                // console.log(toDoArray);
+                                console.log(toDoArray);
 
                                 descInput.style.border = "none";
 
@@ -1822,7 +1647,7 @@ function component() {
 
             closeButtonToDo.addEventListener("click", function(){
 
-                // console.log("Entered regenToDo closeButton function");
+                console.log("Entered regenToDo closeButton function");
                 // console.log(closeButtonToDo.dataset.info);
  
                 // store index of toDo item in variable
@@ -1835,56 +1660,39 @@ function component() {
                 // if currentLength is 1, clear div information
                 if(currentLength === 1){
 
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
-                    
+                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
                         mainListDiv.removeChild(toDoChild.nextSibling);
-                    
                     }
 
                     toDoInput.value = "";
-                    
-                    // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength); // ******* ERROR - Index out of bounds ******* 
-
-                    // create function that lists project elements
-                    let array = listLogic.listItems(project);
-                    // console.log(array);
-
+                    listLogic.removeToDo(project, pos, currentLength);
                     clickSwitch = 0;
-                    
-                    // NOT WORKING
-                    const emptyStateEl = document.getElementById('emptyState');
-                    if(emptyStateEl) emptyStateEl.style.display = 'flex';
-                    
-                    // console.log('No projects left');
+                    updateItemButton(project);
                 }
 
                 else{
 
-                    // console.log("Entered regenToDo > else > removeChild");
-
                     if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-
-                        // removes description node form DOM
                         mainListDiv.removeChild(toDoChild.nextSibling);
-
                     }
 
-                    // remove item from DOM
+                    // snapshot before removal so indices are correct
+                    const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
+
                     mainListDiv.removeChild(toDoChild);
-
-                    // remove item from project array, needs to identify the index of project effected
-                    listLogic.removeToDo(project, pos, currentLength); // ******* ERROR - Index out of bounds *******
-
-                    // create function that lists project elements
+                    listLogic.removeToDo(project, pos, currentLength);
                     listLogic.listItems(project);
 
+                    let pos_int = parseInt(pos, 10);
+                    let adjustedValue = pos_int;
+                    while(closeButtonElements[adjustedValue + 1] != null){
+                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
+                        adjustedValue++;
+                    }
+
                     clickSwitch = 0;
-
+                    updateItemButton(project);
                 }
-
-
-                // re-generate DOM array elements using function
 
             });
 
@@ -1919,17 +1727,9 @@ export { component };
 
 // ********************************************** BUG BASHING ********************************************** //
 /** 
- * PROBLEM - Item button remains 'clickable' after deleting first todo then deleting second 'remaining todo'
- * 
- * 
- * PROBLEM - After removing projects svg icon for middle of toDo list items section is not
- *           reappearing within interface. Already added several lines to differen section. 
- *           Start with following trail after adding/removing one project.
- * 
- * 
- * FIXED - When multiple projects are added, then all are removed, 
- *         it will not remove the last project to exist other than 'Default'.
- *         The existing properties will be { 'Default', 'Project 1' }
+ * FIXED - 1. When multiple projects are added, then all are removed, 
+ *            it will not remove the last project to exist other than 'Default'.
+ *            The existing properties will be { 'Default', 'Project 1' }
  *  
  * PROBLEM - 2. Having issues with deletion/addition of DOM/Array elements
  *         - issue is still present when deleting first element and adding new element,
