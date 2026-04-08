@@ -3,13 +3,13 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// restoreFromStorage is assigned at the bottom of component() and exported here
+// so index.js can call it after document.body.appendChild(component())
+let restoreFromStorage = function() {};
+
 
 function component() {
 
-
-    // GLOBAL VARIABLES
-
-    
     console.log("Initialized DOM");
 
     const base = document.createElement('div');
@@ -28,7 +28,6 @@ function component() {
     const addProj = document.createElement('div');
     const projButton = document.createElement('div');
 
-
     const mainTitle = document.createElement('div');
     const mainList = document.createElement('div');
 
@@ -36,8 +35,6 @@ function component() {
 
     const addItem = document.createElement('div');
     const itemButton = document.createElement('div');
-
-    
 
     base.id ='outerContainer';
     nav.id = 'navBar';
@@ -63,14 +60,12 @@ function component() {
     addItem.id = 'addItem';
     itemButton.id = 'itemButton';
 
-
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);
 
     main.appendChild(main1);
     main.appendChild(main2);
-
 
     main1.appendChild(sideTitle);
     main1.appendChild(sideMain);
@@ -80,7 +75,6 @@ function component() {
     sideMain.appendChild(addProj);
     addProj.appendChild(projButton);
 
-
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
@@ -89,1690 +83,779 @@ function component() {
     mainList.appendChild(addItem);
     addItem.appendChild(itemButton);
 
-
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
-
-    // var mainChild = mainList.childNodes[1];
-
-    // on click should temporarily disable ability to continue clicking
     itemButton.style.pointerEvents = "none";
+
+    // *** HELPER: clears all toDo DOM elements from mainList (index 1 onward) ***
+    function clearToDos_global() {
+        while (mainList.childNodes.length > 1) {
+            mainList.removeChild(mainList.childNodes[1]);
+        }
+    }
 
     // *** HELPER: single source of truth for itemButton state ***
     function updateItemButton(project) {
         const items = listLogic.listItems(project);
-        if(!items || items.length === 0){
-            itemButton.style.pointerEvents = "none";
-            return;
-        }
+        if (!items || items.length === 0) { itemButton.style.pointerEvents = "none"; return; }
         const lastItem = items[items.length - 1];
-        if(lastItem.tit === ""){
-            itemButton.style.pointerEvents = "none";
-        } else {
-            itemButton.style.pointerEvents = "auto";
-        }
+        itemButton.style.pointerEvents = (lastItem.tit === "") ? "none" : "auto";
     }
 
+    // *** HELPER: build a sidebar project row and wire all its listeners ***
+    // Used by both projButton click (new projects) AND restoreFromStorage (reload)
+    function createProjectRow(projectName, isNew) {
 
-    // ********************** CLICK LISTENERS ********************** //
-
-    // Click Listener: That adds new project element
-    projButton.addEventListener("click", function(){
-
-        console.log("Called projButton");
-
-        // on click should temporarily disable ability to continue clicking
-        projButton.style.pointerEvents = "none";
-        
-        
-        // click ability returns dependent on if user successfully adds title to project
-
-        // selects projects list div by ID
         const sideMaDiv = document.getElementById("sideMa");
 
-        const projChild = document.createElement("div");
-
-        const titleInput = document.createElement("input");
+        const projChild   = document.createElement("div");
+        const titleInput  = document.createElement("input");
         const closeButton = document.createElement("div");
-        const spacer = document.createElement("div");
+        const spacer      = document.createElement("div");
 
-
-        projChild.classList.add("unselectedProject"); 
+        projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
 
-        // First Project Input
         titleInput.type = "text";
         titleInput.id = "projInput";
         titleInput.placeholder = "New Project";
-        
-        titleInput.value = "";
+        titleInput.value = isNew ? "" : projectName;
         titleInput.style.border = "none";
+        titleInput.style.fontSize = "14px";
 
         closeButton.id = "closeButton";
-        // closeButton.style.border = "0.5px solid black";
+        spacer.style.width = "12px";
 
-
-        // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
         projChild.appendChild(closeButton);
         projChild.appendChild(spacer);
-   
-        // spacer.style.border = "1px solid red";
-        spacer.style.width = "12px";
 
-        let currentProperty = "";
-        let newProperty = "";
-        let firstTime = 0;
+        let currentProperty = projectName;
+        let firstTime = isNew ? 0 : 1; // if restoring, project already exists in logic
 
-        let projectArray = [];
-        let projectName = "";
+        // ── select this project ──
+        function selectThisProject() {
+            const prev = document.querySelector('.selectedProject');
+            if (prev) {
+                prev.classList.remove("selectedProject");
+                prev.classList.add("unselectedProject");
+            }
+            projChild.classList.remove("unselectedProject");
+            projChild.classList.add("selectedProject");
+        }
 
-        // ****** INPUT LISTENER ****** 
-        // Press enter after Project title input to set element information
+        // ── Enter key: name / rename project ──
         titleInput.addEventListener("keydown", function(event) {
+            if (event.key !== "Enter") return;
 
-            console.log("Called projButton > titleInput");
+            const enteredText = titleInput.value.trim();
+            if (enteredText.length === 0) return;
 
+            const projectsList = listLogic.listProjectsArray();
+            const duplicate = projectsList.some(function(n) {
+                return n === enteredText && n !== currentProperty;
+            });
 
-            // Get Project names and store into an array using - logicList.js
-            let projectsList = listLogic.listProjectsArray();
-
-            let exists = 0;
-
-            let count = 0;
-
-            // on click should temporarily disable ability to continue clicking
-            itemButton.style.pointerEvents = "none";
-
-            const mainDiv = document.querySelector('#mainList');
-
-            var childNodes = mainDiv.childNodes;
-
-            // querySelect all the projChild elements, change their classes to unselectedProject
-            var projOnChild = document.querySelector('.selectedProject');
-
-            let enteredText = "";
-            let trimmedText = "";
-            let projectItems = [];
-
-
-
-            if (event.key === "Enter") {
-
-                console.log("Clicked Enter");
-
-                enteredText = titleInput.value;
-                newProperty = titleInput.value;
-
-                // console.log("You entered: " + enteredText);
-                titleInput.blur();
-
-
-                // CHECKER - name variable set to switch on/off when a project name match occurs - variable
-                while(count < projectsList.length){
-
-                    if(projectsList[count] === enteredText){
-
-
-                        exists = 1;
-
-                        titleInput.textContent = "INVALID";
-                        titleInput.style.color = 'red';
-                        
-                        return;
-                    }
-
-                    count++;
-
-                }
-
+            if (duplicate) {
+                titleInput.textContent = "INVALID";
+                titleInput.style.color = 'red';
+                return;
             }
 
+            titleInput.style.color = '';
+            titleInput.value = enteredText;
+            titleInput.blur();
 
+            let projectItems;
 
-            // if title entered has a length > 0 characters & there are no project name matches
-            if ((enteredText.length > 0) && (exists === 0)){
-
-                // projChild.style.backgroundColor = "none";
-                titleInput.style.color = 'black';
-
-                trimmedText = enteredText.trim();
-                
-                titleInput.textContent = trimmedText; // - NEW
-                titleInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
-                titleInput.style.fontSize = "14px"; // - NEW
-                
-                
-
-                if(firstTime === 0){
-
-                    // - send title to addProject() in listLogic.js to add property to allProjects array
-                    projectItems = listLogic.addProject(trimmedText); 
-                    
-                    projectArray = projectItems.array;
-                    projectName = projectItems.string;
-
-
-                    firstTime = 1;
-                    currentProperty = titleInput.textContent;
-                    
-                    selectProject(); // changes selection to element
-                    clearToDos();
-
-                    // function returns updated project array for DOM
-                    projectItems = listLogic.listItems(projectName); 
-                    
-                }
-
-                else{
-                    
-                    // - send title to editToDo() in listLogic.js to edit currentProperty to allProjects array 
-                    projectItems = listLogic.editProject(currentProperty, newProperty); 
-
-                    projectArray = projectItems.array;
-                    projectName = projectItems.string;
-
-                    currentProperty = newProperty;
-
-                    selectProject(); // changes selection to element
-                    clearToDos();
-
-
-                    // function returns updated project array for DOM
-                    projectItems = listLogic.listItems(projectName);
-                    
-                }
-
-
-                // Based on the designated allProjects array, take those items and add them to the DOM in 
-                // the form of toDo items
-                addAllToDo_DOM(projectArray, projectName);
-                
-
-
-                listLogic.listProjects();
-                
-
-                // On Click - should bring back ability to use add projects button 
-                projButton.style.pointerEvents = "auto"; 
-                
-                // NOTE: projChild > titleInput
-
-
-                // *** LISTENERS ***
-
-                // when element is clicked change selection to that element
-                projChild.addEventListener("click", function(){
-
-
-
-                    console.log("called project selection")
-
-                    // check if latest DOM element's title is '' 'blank',
-                    // if it is blank 'turn on' the toDo item button to allow clicking
-                    const toDoContainer = document.getElementById('mainList');
-
-                    var containerLength = toDoContainer.childNodes.length;
-                    
-                    var lastChildRef = containerLength - 1;
-                    
-                    let fresh = 0;
-
-                    if(fresh === 0){
-                        projOnChild = document.querySelector('.selectedProject');
-                        fresh = 1;
-                    }
-
-                    selectProject(); // 1 - Changes selected element
-
-                    projOnChild = document.querySelector('.selectedProject');
-
-                    if(projOnChild != null){
-
-                        var innerValue = projOnChild.textContent;
-                        var arrayValues = listLogic.listItems(innerValue);
-
-                        clearToDos(); // 2 - Clears previous childNode under toDo List
-
-                        addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
-
-                        updateItemButton(innerValue);
-                    }
-
-                    
-
-                    
-                
-                });
-
-
-                // *** FUNCTIONS ***
-
-                // changes an elements selection
-                function selectProject(){
-
-                    if(projOnChild != null){
-            
-                        // console.log("selectedProject exists");
-
-                        projOnChild.classList.remove("selectedProject");
-                        projOnChild.classList.add("unselectedProject");
-                    
-                    }
-                    // changing ONLY the selected project
-                    if(projChild.classList.contains("unselectedProject")){
-        
-                        projChild.classList.remove("unselectedProject");
-                        projChild.classList.add("selectedProject");
-        
-        
-                        // console.log("Class changed to selectedProject");
-                        
-                    }
-
-
-
-                }
-
-                function clearToDos(){
-
-                    const mainDiv = document.getElementById('mainList');                    
-                    
-                    let elementIndex = 1;
-
-                    // let result = mainDiv.contains(childNodes[elementIndex]);
-
-                    while(mainDiv.contains(childNodes[elementIndex])){
-                        
-                        // mainDiv = document.getElementById('mainList');
-    
-                        mainDiv.removeChild(childNodes[elementIndex]); // remove childNodes
-                        
-                    
-                    }                 
-
-                    // console.log(childNodes);
-
-
-                }
-
-
+            if (firstTime === 0) {
+                // brand new project
+                projectItems = listLogic.addProject(enteredText);
+                currentProperty = enteredText;
+                firstTime = 1;
+            } else {
+                // rename existing
+                projectItems = listLogic.editProject(currentProperty, enteredText);
+                currentProperty = enteredText;
             }
 
+            selectThisProject();
+            clearToDos_global();
+            addAllToDo_DOM(listLogic.listItems(currentProperty), currentProperty);
+            projButton.style.pointerEvents = "auto";
+        });
 
-            
-        }); // Ends "Enter" keydown function
+        // ── click: select project and show its todos ──
+        projChild.addEventListener("click", function(event) {
+            if (event.target === titleInput) return; // let rename work
+            if (firstTime === 0) return;             // not named yet
 
-        // Removes selected project elements from DOM/Logic
+            selectThisProject();
+
+            const items = listLogic.listItems(currentProperty);
+            clearToDos_global();
+            if (items && items.length > 0) {
+                addAllToDo_DOM(items, currentProperty);
+            }
+            updateItemButton(currentProperty);
+        });
+
+        // ── close: remove project ──
         closeButton.addEventListener("click", function() {
-
-            console.log("Called projButton > closeButton");
-
-            const mainList = document.getElementById("mainList");
+            const mainListEl = document.getElementById("mainList");
             let mainChild = document.getElementById("toDoChild");
 
-            let property = titleInput.value;
-            // let projectLength = listLogic.projectLength(property);
-            // let i = 0;
-
-            // DOM - Removes project DOM element
             projChild.parentNode.removeChild(projChild);
 
-            // DOM - Removes item DOM elements associated with project
-            while(mainList.contains(mainChild)){
-
-                console.log(mainChild);
-
-                if((mainChild.nextSibling != null) && (mainChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
-                    
-                    mainList.removeChild(mainChild.nextSibling);
-                
-                }                
-
-
-                mainList.removeChild(mainChild);
-
-                mainChild = document.getElementById("toDoChild"); // should re-assign mainChild to next DOM element
-                
-
+            while (mainListEl.contains(mainChild)) {
+                if (mainChild.nextSibling && mainChild.nextSibling.id === 'descSibling') {
+                    mainListEl.removeChild(mainChild.nextSibling);
+                }
+                mainListEl.removeChild(mainChild);
+                mainChild = document.getElementById("toDoChild");
             }
-            
-            listLogic.listItems(property);
 
-            // LOGIC - Need to call logic function that removes property from allProjects[] array
-            listLogic.removeProject(property);
-
-            listLogic.listItems(property);
-            
-            // LOGIC - Lists all existing projects in logic
+            listLogic.removeProject(currentProperty);
             listLogic.listProjects();
+            projButton.style.pointerEvents = "auto";
+        });
 
-            // On Click - should bring back ability to use add projects button 
-            projButton.style.pointerEvents = "auto"; 
-
-
-        }); // Ends "closeButton" click function
-        
-
-        // ****** Focus/Shadow LISTENERS ******
+        // ── hover styles ──
+        projChild.addEventListener("mouseenter", function() {
+            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+            this.style.background = "#222222";
+        });
+        projChild.addEventListener("mouseleave", function() {
+            this.style.boxShadow = "none";
+            this.style.background = "transparent";
+        });
+        closeButton.addEventListener("mouseenter", function() {
+            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+            this.style.border = "0.05px solid black";
+        });
+        closeButton.addEventListener("mouseleave", function() {
+            this.style.boxShadow = "none";
+            this.style.border = "none";
+        });
         titleInput.addEventListener("focus", function() {
             this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
             projChild.style.background = "#1C1C1C";
         });
 
-        projChild.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "#222222"; 
-        });
+        return { projChild, titleInput, selectThisProject };
+    }
 
-        projChild.addEventListener("mouseleave", function() {
-            this.style.boxShadow = "none";
-            this.style.background = "transparent"; 
-        });
 
-        closeButton.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.border = "0.05px solid black";
-            // this.style.background = "lightgrey";  
-        });
-        
-        closeButton.addEventListener("mouseleave", function() {
-            // this.style.border = "none";
-            this.style.boxShadow = "none";
-            this.style.border = "none";
-            // this.style.background = "white";         
-        });
+    // ********************** CLICK LISTENERS ********************** //
 
-    }); 
+    // Click Listener: adds new project row
+    projButton.addEventListener("click", function() {
+        console.log("Called projButton");
+        projButton.style.pointerEvents = "none";
+        itemButton.style.pointerEvents = "none";
+        createProjectRow("", true);
+    });
 
-    // Click Listener: That adds new item element
-    itemButton.addEventListener("click", function() { 
+
+    // Click Listener: adds new todo item
+    itemButton.addEventListener("click", function() {
 
         console.log("Called itemButton");
-
-        // on click should temporarily disable ability to continue clicking
         itemButton.style.pointerEvents = "none";
 
-        // get currentProject based on the 'selectedElement'
+        const selectedEl = document.querySelector('.selectedProject');
+        if (!selectedEl) return;
+        const currentProject = selectedEl.querySelector('#projInput')
+            ? selectedEl.querySelector('#projInput').value
+            : selectedEl.dataset.project;
 
-        const currentProject = document.querySelector('.selectedProject').textContent; //  latest selection
-
-        console.log(currentProject);
-        // const currentProject = (mainList.childNodes[1]).getAttribute('data-value');
-
-        // declare elements needed, make similar to the adding projects version
         const mainListDiv = document.getElementById("mainList");
         const toDoChild = document.createElement("div");
-
         const toDoInput = document.createElement("input");
         const dueInput = document.createElement("div");
-
         const dateText = document.createElement("div");
-
         const month = document.createElement("input");
         const dash = document.createElement("div");
         const day = document.createElement("input");
         const dash2 = document.createElement("div");
         const year = document.createElement("input");
-
         const closeButtonToDo = document.createElement("div");
         const spacer = document.createElement("div");
-
-        
-
-        // ** DESCRIPTION ** - creates and reference description div element //
         const descSibling = document.createElement('div');
-
         const descSpacer1 = document.createElement('div');
         const descInput = document.createElement('input');
         const descSpacer2 = document.createElement('div');
 
-
-
-        toDoChild.style.border = "0.5px solid black"; 
+        toDoChild.style.border = "0.5px solid black";
         toDoChild.id = "toDoChild";
-
         dateText.id = "dateText";
         dateText.textContent = "Due:";
-
         dueInput.id = "dueInput";
-        dueInput.style.fontSize = "10px"; // - NEW
-        
-        month.id = "month";
-        month.placeholder = 1;
-
-        day.id = "day";
-        day.placeholder = 1;
-
-        year.id = "year";
-        year.placeholder = 2023;
-
-        dash.id = "dash";
-        dash.textContent = "/";
-
-        dash2.id = "dash";
-        dash2.textContent = "/";
-
+        dueInput.style.fontSize = "10px";
+        month.id = "month"; month.placeholder = 1;
+        day.id = "day"; day.placeholder = 1;
+        year.id = "year"; year.placeholder = 2023;
+        dash.id = "dash"; dash.textContent = "/";
+        dash2.id = "dash"; dash2.textContent = "/";
         spacer.id = "spacer";
-
-        // First Project Input
         toDoInput.type = "text";
         toDoInput.id = "toDoInput";
         toDoInput.placeholder = "New Item";
-        toDoInput.style.fontSize = "14px"; // - NEW
-        
+        toDoInput.style.fontSize = "14px";
         toDoInput.value = "";
         toDoInput.style.border = "none";
-
         closeButtonToDo.id = "closeButtonToDo";
-
-        descSibling.id ="descSibling";
-
+        descSibling.id = "descSibling";
         descSpacer1.id = "descSpacer1";
         descInput.id = "descInput";
         descSpacer2.id = "descSpacer2";
-
-        descInput.type ="text";
+        descInput.type = "text";
         descInput.placeholder = "Type description here...";
-        descInput.style.fontSize = "12px"; // - NEW
-
+        descInput.style.fontSize = "12px";
         descInput.value = "";
         descInput.style.border = "none";
-
 
         mainListDiv.appendChild(toDoChild);
         toDoChild.appendChild(toDoInput);
         toDoChild.appendChild(dateText);
         toDoChild.appendChild(dueInput);
-            
         dueInput.appendChild(month);
         dueInput.appendChild(dash);
         dueInput.appendChild(day);
         dueInput.appendChild(dash2);
         dueInput.appendChild(year);
-
         toDoChild.appendChild(spacer);
-        toDoChild.appendChild(closeButtonToDo);  
-            
+        toDoChild.appendChild(closeButtonToDo);
         toDoChild.setAttribute('data-value', currentProject);
-
-
-
-        let counter = 1;
-
 
         let clickSwitch = 0;
 
-        // Need logic to edit current DOM info
         toDoInput.addEventListener("keydown", function(event) {
+            if (event.key !== "Enter") return;
 
-            console.log("Called itemButton > toDoInput");
-            
-            // console.log("Pressed enter for new item - " + counter);
-            // console.log("Project name - " + toDoName);
+            const enteredText = toDoInput.value;
+            toDoInput.blur();
+            if (enteredText.length === 0) return;
 
-            let enteredText = "";
-            let trimmedText = "";
+            let toDoArray = listLogic.listItems(currentProject);
+            let toDoLength;
+            let arraySlot;
 
-            let arraySlot = "";
-            let toDoArray = [];
-            let toDoName = "";
-            let toDoLength = "";
-            let projectItems = [];
-            let toDoItems = [];
-
-            
-
-            if (event.key === "Enter") {
-                enteredText = toDoInput.value;
-
-                console.log("Entered newToDo keydown function: " + enteredText);
-
-                toDoInput.blur();
-
+            if (toDoArray[0]["tit"].length > 0) {
+                const toDoItems = listLogic.addToDo(currentProject, enteredText);
+                toDoArray = toDoItems.array;
+                toDoLength = toDoItems.lengths;
+                clickSwitch = 1;
+            } else {
+                toDoLength = listLogic.projectLength(currentProject);
             }
 
-
-            // if title entered has a length > 0 characters
-            if (enteredText.length > 0){
-
-
-                // ********************************* ISSUES STEM FROM HERE ********************************* //
-                
-                // newToDo elements are being added to the [1] index instead of 
-
-                // let currentProjectLength = listLogic.projectLength(currentProject); 
-                // console.log("currentProjectLength: " + currentProjectLength);
-
-                toDoArray = listLogic.listItems(currentProject); // project array
-                toDoName = currentProject; // projectName
-                toDoLength = listLogic.projectLength(currentProject); // >>> 2
-
-
-                if(toDoArray[0]["tit"].length > 0){ //  --> this should mean it's assigned a title already
-
-                    toDoItems = listLogic.addToDo(currentProject, enteredText); 
-
-                    toDoArray = toDoItems.array; // project array
-                    toDoName = toDoItems.string; // projectName
-                    toDoLength = toDoItems.lengths; // >>> 2
-
-                    clickSwitch = 1;
-                    // updateItemButton(currentProject);
-                }
-                
-                else{ 
-
-                    toDoArray = listLogic.listItems(currentProject); // project array
-                    toDoName = currentProject; // projectName
-                    toDoLength = listLogic.projectLength(currentProject); // >>> 2
-
-                    // updateItemButton(currentProject);
-                }
-
-
-                // ***************************************************************************************** //
-
-
-
-                arraySlot = toDoArray[toDoLength - 1]; //  >>> 2 - 1
-
-                trimmedText = enteredText.trim();
-                    
-                toDoInput.textContent = trimmedText; // - NEW
-                toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
-                toDoInput.style.fontSize = "14px"; // - NEW
-                
-                let monthValue = month.value;
-                let dayValue = day.value;
-                let yearValue = year.value;
-
-                let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
-
-                let switcher = 0; // used for turning on/off description node
-
-                arraySlot["due"] = dateSet;    
-                arraySlot["tit"] = trimmedText;
-
-                closeButtonToDo.dataset.info = (toDoLength - 1);
-
-
-                projectItems = listLogic.listItems(currentProject);  
-                updateItemButton(currentProject);
-
-                // *************************** WORK IN PROGRESS *************************** // 
-
-                toDoChild.addEventListener("click", function(event){
-
-                    console.log("clickSwitch: " + clickSwitch);
-
-                    if(clickSwitch === 1){
-
-                        console.log("Calling itemButton > toDoChild click");
-
-
-                        const clickedElement = event.target;
-
-
-                        const mainList = toDoChild.parentElement;
-
-                        let descText = "";
-                        let descTrimmed = "";
-
-                        // Covers the clicking of CloseButtonToDo
-                        if(clickedElement.id === 'closeButtonToDo'){
-                            
-                            console.log("Called stop propagation of DIV");
-                            event.stopPropagation(); // Prevent the parent's click event
-                            
-                        }
-
-                        // Covers the clicking of toDoInput
-                        if(clickedElement.tagName === 'INPUT'){
-
-                            console.log(clickedElement);
-                            
-                            console.log("Called stop propagation of INPUT");
-                            event.stopPropagation(); // Prevent the parent's click event
-
-                            
-                        }                    
-                    
-
-                        if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
-
-                            console.log("Called descSibling append if statement");
-
-                            // Switches description node on/off depending on click value - switcher
-                            if(switcher === 0){
-
-                                mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                                descSibling.appendChild(descSpacer1);
-                                descSibling.appendChild(descInput);
-                                descSibling.appendChild(descSpacer2);
-
-                                descInput.textContent = arraySlot["desc"];
-                                descInput.value = arraySlot["desc"];
-
-                                // if descInput value is greater than 0 set it as the textContent
-                                if(arraySlot["desc"].length > 0){
-
-                                    console.log("Previously inputted value is valid");
-                                    descInput.textContent = arraySlot["desc"];
-                                    descInput.value = arraySlot["desc"];
-
-                                }
-
-
-                                switcher = 1;
-                            }
-
-                            else{
-
-                        
-                                if(toDoChild.nextSibling != null){
-
-                                    mainList.removeChild(toDoChild.nextSibling)
-                                
-                                }
-                                
-
-                                switcher = 0;
-                            }
-
-
-                       
-
-                            // ***** CLICK LISTENERS *****
-                            
-                            // Need listener to be able to set DOM descInput value
-                            descInput.addEventListener("keydown", function(event) {
-        
-                                descText = "";
-
-                                if (event.key === "Enter") {
-                                    descText = descInput.value;
-                    
-                                    console.log("Entered descInput keydown function: " + descText);
-                    
-                                    descInput.blur();
-                    
-                                }
-                    
-                    
-                                // if description entered has a length > 0 characters
-                                if (descText.length > 0){
-                                    
-                                    // DOM - set the text within the element
-                                    descTrimmed = descText.trim();
-                            
-                                    descInput.textContent = descTrimmed; // - NEW
-                                    descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                                    descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                                    // LOGIC - set the array parameter array project[0]['desc']
-                                    arraySlot["desc"] = descTrimmed;
-
-                                    toDoArray = listLogic.listItems(currentProject); // project array
-                                    console.log(toDoArray);
-
-                                    descInput.style.border = "none";
-
-                                }
-                                else{
-
-                                    descInput.style.border = "1px solid red";
-                                    // console.log("Your description is not long enough.");
-
-
-                                }
-
-
-                            }); 
-                        }
+            arraySlot = toDoArray[toDoLength - 1];
+
+            const trimmedText = enteredText.trim();
+            toDoInput.textContent = trimmedText;
+            toDoInput.value = trimmedText;
+            toDoInput.style.fontSize = "14px";
+
+            const dateSet = month.value + '-' + day.value + '-' + year.value;
+            let switcher = 0;
+
+            arraySlot["due"] = dateSet;
+            arraySlot["tit"] = trimmedText;
+            closeButtonToDo.dataset.info = (toDoLength - 1);
+
+            updateItemButton(currentProject);
+
+            toDoChild.addEventListener("click", function(event) {
+                if (clickSwitch !== 1) return;
+
+                const clickedElement = event.target;
+                const mainListRef = toDoChild.parentElement;
+
+                if (clickedElement.id === 'closeButtonToDo') { event.stopPropagation(); return; }
+                if (clickedElement.tagName === 'INPUT') { event.stopPropagation(); return; }
+
+                if (switcher === 0) {
+                    mainListRef.insertBefore(descSibling, toDoChild.nextSibling);
+                    descSibling.appendChild(descSpacer1);
+                    descSibling.appendChild(descInput);
+                    descSibling.appendChild(descSpacer2);
+                    descInput.value = arraySlot["desc"];
+                    switcher = 1;
+                } else {
+                    if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                        mainListRef.removeChild(toDoChild.nextSibling);
                     }
-                    
+                    switcher = 0;
+                }
+
+                descInput.addEventListener("keydown", function(event) {
+                    if (event.key !== "Enter") return;
+                    const descText = descInput.value.trim();
+                    if (descText.length > 0) {
+                        descInput.value = descText;
+                        arraySlot["desc"] = descText;
+                        descInput.style.border = "none";
+                    } else {
+                        descInput.style.border = "1px solid red";
+                    }
+                    descInput.blur();
                 });
+            });
+        });
 
+        closeButtonToDo.addEventListener("click", function() {
+            const pos = closeButtonToDo.dataset.info;
+            const project = currentProject;
+            const currentLength = listLogic.projectLength(project);
 
-                // *********************************************************************** //
+            if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                mainListDiv.removeChild(toDoChild.nextSibling);
+            }
 
+            if (currentLength === 1) {
+                toDoInput.value = "";
+                listLogic.removeToDo(project, 0, currentLength);
+                updateItemButton(project);
+            } else {
+                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
+                mainListDiv.removeChild(toDoChild);
+                listLogic.removeToDo(project, pos, currentLength);
 
-
-            }            
-            
-                
-        }); // Ends "Enter" keydown function
-
-        closeButtonToDo.addEventListener("click", function(){
-
-            console.log("Called itemButton > closeButtonToDo");
-                
- 
-                // store index of toDo item in variable
-                let pos = closeButtonToDo.dataset.info;
-                let project = currentProject;
-                
-                let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
-
-
-                // if currentLength is 1, clear div information
-                if(currentLength === 1){
-
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
-                    toDoInput.value = "";
-                    listLogic.removeToDo(project, 0, currentLength);
-                    updateItemButton(project);
+                let pos_int = parseInt(pos, 10);
+                let adjustedValue = pos_int;
+                while (closeButtonElements[adjustedValue + 1] != null) {
+                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
+                    adjustedValue++;
                 }
-
-                else{
-
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
-                    // snapshot before removal so indices are correct
-                    const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                    mainListDiv.removeChild(toDoChild);
-                    listLogic.removeToDo(project, pos, currentLength);
-                    listLogic.listItems(project);
-
-                    let pos_int = parseInt(pos, 10);
-                    let adjustedValue = pos_int;
-                    while(closeButtonElements[adjustedValue + 1] != null){
-                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                        adjustedValue++;
-                    }
-
-                    updateItemButton(project);
-                }
-
-
+                updateItemButton(project);
+            }
         });
 
         closeButtonToDo.addEventListener("mouseenter", function() {
-                this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-                this.style.border = "0.05px solid black";
+            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+            this.style.border = "0.05px solid black";
         });
-            
         closeButtonToDo.addEventListener("mouseleave", function() {
-                this.style.boxShadow = "none";
-                this.style.border = "none";
-        });            
-
-
+            this.style.boxShadow = "none";
+            this.style.border = "none";
+        });
     });
-
-
 
 
     // ********************** SHADOW LISTENERS ********************** //
 
-    // addProj Shadow listener
-    projButton.addEventListener("mouseenter", function() {
-        this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
-      });
-      
-    projButton.addEventListener("mouseleave", function() {
-        this.style.boxShadow = "none";
-    });
-
-    // addItem Shadow listener
-    itemButton.addEventListener("mouseenter", function() {
-        this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
-      });
-      
-    itemButton.addEventListener("mouseleave", function() {
-        this.style.boxShadow = "none";
-    });
-
-
+    projButton.addEventListener("mouseenter", function() { this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)"; });
+    projButton.addEventListener("mouseleave", function() { this.style.boxShadow = "none"; });
+    itemButton.addEventListener("mouseenter", function() { this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)"; });
+    itemButton.addEventListener("mouseleave", function() { this.style.boxShadow = "none"; });
 
 
     // ********************** GLOBAL DOM FUNCTIONS ********************** //
 
-    // AddToDo Item function
-    // should just do the job of adding the DOM element
-    // add to button and event listeners after 
-    function addAllToDo_DOM(items, name){
+    function addAllToDo_DOM(items, name) {
 
         console.log("Called addAllToDo_DOM");
 
-        // project name
-        let toDoArray = items; //  items array [] without project name
-        let toDoName = name;
+        const toDoArray = items;
+        const toDoName = name;
         let counter = 0;
 
+        if (!toDoArray || toDoArray.length === 0) return;
 
-        // declare elements needed, make similar to the adding projects version
-        const mainListDiv = document.getElementById("mainList");
-        const toDoChild = document.createElement("div");
-
-        const toDoInput = document.createElement("input");
-        const dueInput = document.createElement("div");
-
-        const dateText = document.createElement("div");
-
-        const month = document.createElement("input");
-        const dash = document.createElement("div");
-        const day = document.createElement("input");
-        const dash2 = document.createElement("div");
-        const year = document.createElement("input");
-
-        const closeButtonToDo = document.createElement("div");
-        const spacer = document.createElement("div");
-
-        // ** DESCRIPTION ** - creates and reference description div element //
-        const descSibling = document.createElement('div');
-
-        const descSpacer1 = document.createElement('div');
-        const descInput = document.createElement('input');
-        const descSpacer2 = document.createElement('div');
-
-        toDoChild.style.border = "0.5px solid black"; 
-        toDoChild.id = "toDoChild";
-
-        dateText.id = "dateText";
-        dateText.textContent = "Due:";
-
-        dueInput.id = "dueInput";
-        dueInput.style.fontSize = "10px"; // - NEW
-        
-        month.id = "month";
-        month.placeholder = 1;
-
-        day.id = "day";
-        day.placeholder = 1;
-
-        year.id = "year";
-        year.placeholder = 2023;
-
-        dash.id = "dash";
-        dash.textContent = "/";
-
-        dash2.id = "dash";
-        dash2.textContent = "/";
-
-        spacer.id = "spacer";
-
-        // First Project Input
-        toDoInput.type = "text";
-        toDoInput.id = "toDoInput";
-        toDoInput.placeholder = "New Item";
-        toDoInput.style.fontSize = "14px"; // - NEW
-        
-        toDoInput.value = "";
-        toDoInput.style.border = "none";
-
-        closeButtonToDo.id = "closeButtonToDo";       
-
-        descSibling.id ="descSibling";
-
-        descSpacer1.id = "descSpacer1";
-        descInput.id = "descInput";
-        descSpacer2.id = "descSpacer2";
-
-        descInput.type ="text";
-        descInput.placeholder = "Type description here...";
-        descInput.style.fontSize = "12px"; // - NEW
-
-        descInput.value = "";
-        descInput.style.border = "none";
-
-
-
-        if(((toDoArray[0].tit).length) > 0){
-
-
-            while(counter < toDoArray.length){
-
-
-                regenToDos(toDoArray[counter], counter); // designates project item, along with array position
-                    
+        if (toDoArray[0].tit.length > 0) {
+            while (counter < toDoArray.length) {
+                regenToDos(toDoArray[counter], counter);
                 counter++;
-            }            
-
-        }
-
-        else{
-
-/*             console.log("passed into initialToDo,");
-            console.log(toDoArray[counter]); */
-            addInitialToDo(toDoArray[counter], counter); // designates project item, along with array position
-            
-            counter++;
+            }
+        } else {
+            addInitialToDo(toDoArray[counter], counter);
         }
 
 
-
-
-        // Meant for newToDos
-        function addInitialToDo(item, index){
+        function addInitialToDo(item, index) {
 
             console.log("Called addAllToDo_DOM > addInitialToDo");
 
-            mainListDiv.appendChild(toDoChild);
-            toDoChild.appendChild(toDoInput);
-            toDoChild.appendChild(dateText);
-            toDoChild.appendChild(dueInput);
-            
-            dueInput.appendChild(month);
-            dueInput.appendChild(dash);
-            dueInput.appendChild(day);
-            dueInput.appendChild(dash2);
-            dueInput.appendChild(year);
-
-
-            toDoChild.appendChild(spacer);
-            toDoChild.appendChild(closeButtonToDo);  
-            
-            toDoChild.setAttribute('data-value', toDoName); // sets the first toDo data-value
-
-            let switcher = 0;
-
-            let clickSwitch = 0;
-
-            // EDITS TITLE & DATE OF ITEM ELEMENT
-            toDoInput.addEventListener("keydown", function(event) {
-
-                toDoChild.setAttribute('data-value', toDoName); // sets the first toDo data-value
-
-                // need to re-reference item being the first item of a project
-                item = toDoArray[0];
-
-
-                let enteredText = "";
-                let trimmedText = "";
-                let projectItems = [];
-                let projects = [];
-
-                if (event.key === "Enter") {
-                    enteredText = toDoInput.value;
-
-                    console.log("Entered initialToDo keydown function: " + enteredText);
-
-                    toDoInput.blur();
-
-                }
-
-                // if title entered has a length > 0 characters
-                if (enteredText.length > 0){
-
-                    // console.log("entered value > 0, initialToDo");
-                    // console.log(item);
-
-                    trimmedText = enteredText.trim();
-                    
-                    toDoInput.textContent = trimmedText; // - NEW
-                    toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
-                    toDoInput.style.fontSize = "14px"; // - NEW
-                    
-
-                    let monthValue = month.value;
-                    let dayValue = day.value;
-                    let yearValue = year.value;
-
-                    let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
-
-                    item["due"] = dateSet;
-                    item["pri"] = 2;
-                    item["tit"] = trimmedText;
-
-
-                    closeButtonToDo.dataset.info = index;
-
-                    projectItems = listLogic.listItems(toDoName);  
-
-                    updateItemButton(toDoName);
-                    
-                    clickSwitch = 1;
-                }
-
-                
-            }); // Ends "Enter" keydown function
-
-            // Set to generate array ['desc'] up on clicking
-            toDoChild.addEventListener("click", function(event){
-
-                console.log("clickSwitch: " + clickSwitch);
-
-                if(clickSwitch === 1){
-                    console.log("initialToDo > toDoChild click listener - BEFORE");
-                    
-                    console.log(switcher);
-
-                    const clickedElement = event.target;
-
-                    // re-generate what already exists as a part of the item array
-                    const mainList = toDoChild.parentElement;
-
-                    let descText = "";
-                    let descTrimmed = "";
-
-                    // Covers the clicking of CloseButtonToDo
-                    if(clickedElement.id === 'closeButtonToDo'){
-                        
-                        console.log("Called stop propagation of DIV");
-                        event.stopPropagation(); // Prevent the parent's click event
-                        
-                    }
-
-                    // Covers the clicking of toDoInput
-                    if(clickedElement.tagName === 'INPUT'){
-                        
-                        console.log("Called stop propagation of INPUT");
-                        event.stopPropagation(); // Prevent the parent's click event
-
-                        
-                    }
-
-                
-                    if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
-
-                        // Switches description node on/off depending on click value - switcher
-                        if(switcher === 0){
-
-                            mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                            descSibling.appendChild(descSpacer1);
-                            descSibling.appendChild(descInput);
-                            descSibling.appendChild(descSpacer2);
-
-                            descInput.textContent = item["desc"];
-                            descInput.value = item["desc"];
-
-                            // if descInput value is greater than 0 set it as the textContent
-                            if(item["desc"].length > 0){
-
-                                console.log("Previously inputted value is valid");
-                                descInput.textContent = item["desc"];
-                                descInput.value = item["desc"];
-
-                            }
-
-
-                            switcher = 1;
-                        }
-
-                        else{
-
-                                if(toDoChild.nextSibling != null){
-
-                                    mainList.removeChild(toDoChild.nextSibling);
-                                
-                                }
-                                switcher = 0;
-                            }
-
-                            // ***** CLICK LISTENERS *****
-
-                            // allow keydown event for descInput to change the current description
-                            descInput.addEventListener("keydown", function(event) {
-            
-                                descText = "";
-
-                                if (event.key === "Enter") {
-                                    descText = descInput.value;
-                        
-                                    console.log("Entered descInput keydown function: " + descText);
-                        
-                                    descInput.blur();
-                        
-                                }
-                        
-                        
-                                    // if description entered has a length > 0 characters
-                                if (descText.length > 0){
-                                        
-                                    // DOM - set the text within the element
-                                    descTrimmed = descText.trim();
-                                
-                                    descInput.textContent = descTrimmed; // - NEW
-                                    descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                                    descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                                    // LOGIC - set the array parameter array project[0]['desc']
-                                    item["desc"] = descTrimmed;
-
-                                    toDoArray = listLogic.listItems(toDoName); // project array
-                                    console.log(toDoArray);
-
-                                    descInput.style.border = "none";
-
-                                }
-
-                                else{
-
-                                    descInput.style.border = "1px solid red";
-                                    // console.log("Your description is not long enough.");
-
-
-                                }
-
-
-                            });
-
-                    }
-                }
-            });
-
-            closeButtonToDo.addEventListener("click", function(){
-
-                let pos = closeButtonToDo.dataset.info;
-                let project = toDoName;
-                let currentLength = listLogic.projectLength(project);
-
-                if(currentLength === 1){
-
-                    if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                        toDoChild.parentElement.removeChild(toDoChild.nextSibling);
-                    }
-
-                    toDoInput.value = "";
-                    listLogic.removeToDo(project, pos, currentLength);
-                    updateItemButton(project);
-                }
-
-                else{
-
-                    if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
-                    // snapshot before removal so indices are correct
-                    const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                    mainListDiv.removeChild(toDoChild);
-                    listLogic.removeToDo(project, pos, currentLength);
-                    listLogic.listItems(project);
-
-                    let pos_int = parseInt(pos, 10);
-                    let adjustedValue = pos_int;
-                    while(closeButtonElements[adjustedValue + 1] != null){
-                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                        adjustedValue++;
-                    }
-
-                    updateItemButton(project);
-                }
-
-                clickSwitch = 0;
-
-            });
-
-
-            closeButtonToDo.addEventListener("mouseenter", function() {
-                this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-                this.style.border = "0.05px solid black";
-            });
-            
-            closeButtonToDo.addEventListener("mouseleave", function() {
-                this.style.boxShadow = "none";
-                this.style.border = "none";
-            });
-
-        }
-
-        // Meant for oldToDos re-generation, passes in array[i] and starting index of 0
-        function regenToDos(item, index){ 
-
-            console.log("Called addAllToDo_DOM > regenToDos");
-
-
-            // declare elements needed, make similar to the adding projects version
             const mainListDiv = document.getElementById("mainList");
             const toDoChild = document.createElement("div");
-
             const toDoInput = document.createElement("input");
             const dueInput = document.createElement("div");
-
             const dateText = document.createElement("div");
-
             const month = document.createElement("input");
             const dash = document.createElement("div");
             const day = document.createElement("input");
             const dash2 = document.createElement("div");
             const year = document.createElement("input");
-
             const closeButtonToDo = document.createElement("div");
             const spacer = document.createElement("div");
-
-            // ** DESCRIPTION ** - creates and reference description div element //
             const descSibling = document.createElement('div');
-
             const descSpacer1 = document.createElement('div');
             const descInput = document.createElement('input');
             const descSpacer2 = document.createElement('div');
 
-
-            toDoChild.style.border = "0.5px solid black"; 
+            toDoChild.style.border = "0.5px solid black";
             toDoChild.id = "toDoChild";
-
-            dateText.id = "dateText";
-            dateText.textContent = "Due:";
-
-            dueInput.id = "dueInput";
-            dueInput.style.fontSize = "10px"; // - NEW
-            
-            month.id = "month";
-            month.placeholder = 1;
-
-            day.id = "day";
-            day.placeholder = 1;
-
-            year.id = "year";
-            year.placeholder = 2023;
-
-            dash.id = "dash";
-            dash.textContent = "/";
-
-            dash2.id = "dash";
-            dash2.textContent = "/";
-
+            dateText.id = "dateText"; dateText.textContent = "Due:";
+            dueInput.id = "dueInput"; dueInput.style.fontSize = "10px";
+            month.id = "month"; month.placeholder = 1;
+            day.id = "day"; day.placeholder = 1;
+            year.id = "year"; year.placeholder = 2023;
+            dash.id = "dash"; dash.textContent = "/";
+            dash2.id = "dash"; dash2.textContent = "/";
             spacer.id = "spacer";
-
-            // First Project Input
-            toDoInput.type = "text";
-            toDoInput.id = "toDoInput";
-            toDoInput.placeholder = "New Item";
-            toDoInput.style.fontSize = "14px"; // - NEW
-            
-            toDoInput.value = "";
-            toDoInput.style.border = "none";
-
-            closeButtonToDo.id = "closeButtonToDo";  
-
-            descSibling.id ="descSibling";
-
-            descSpacer1.id = "descSpacer1";
-            descInput.id = "descInput";
-            descSpacer2.id = "descSpacer2";
-    
-            descInput.type ="text";
-            descInput.placeholder = "Type description here...";
-            descInput.style.fontSize = "12px"; // - NEW
-    
-            descInput.value = "";
-            descInput.style.border = "none";            
-
+            toDoInput.type = "text"; toDoInput.id = "toDoInput";
+            toDoInput.placeholder = "New Item"; toDoInput.style.fontSize = "14px";
+            toDoInput.value = ""; toDoInput.style.border = "none";
+            closeButtonToDo.id = "closeButtonToDo";
+            descSibling.id = "descSibling";
+            descSpacer1.id = "descSpacer1"; descInput.id = "descInput"; descSpacer2.id = "descSpacer2";
+            descInput.type = "text"; descInput.placeholder = "Type description here...";
+            descInput.style.fontSize = "12px"; descInput.value = ""; descInput.style.border = "none";
 
             mainListDiv.appendChild(toDoChild);
             toDoChild.appendChild(toDoInput);
             toDoChild.appendChild(dateText);
             toDoChild.appendChild(dueInput);
-            
-            dueInput.appendChild(month);
-            dueInput.appendChild(dash);
-            dueInput.appendChild(day);
-            dueInput.appendChild(dash2);
-            dueInput.appendChild(year);
-
-
+            dueInput.appendChild(month); dueInput.appendChild(dash);
+            dueInput.appendChild(day); dueInput.appendChild(dash2); dueInput.appendChild(year);
             toDoChild.appendChild(spacer);
-            toDoChild.appendChild(closeButtonToDo);  
-            
+            toDoChild.appendChild(closeButtonToDo);
             toDoChild.setAttribute('data-value', toDoName);
 
-
-            toDoInput.textContent = item.tit;
-            toDoInput.value = item.tit; 
-            toDoInput.style.fontSize = "16px"; 
-
-
-            let dateSet = item["due"];
-            let dateSplit = item["due"].split('-');
-
-            let monthSet = "";
-            let daySet = "";
-            let yearSet = "";
-            
-            if((dateSet === "--") || (dateSet === "X-X-XXXX")){
-                
-                console.log("Date has not been set by user.");
-                
-            }
-
-            else{
-
-                monthSet = parseInt(dateSplit[0], 10); // Convert to an integer (base 10)
-                daySet = parseInt(dateSplit[1], 10);
-                yearSet = parseInt(dateSplit[2], 10);
-                
-                month.textContent = monthSet;
-                month.value = monthSet;
-    
-                day.textContent = daySet;
-                day.value = daySet;
-    
-                year.textContent = yearSet;
-                year.value = yearSet;            
-            
-            }
-
-
-            item["due"] = dateSet;            
-            item["tit"] = item.tit;
-
-            closeButtonToDo.dataset.info = index;
-
             let switcher = 0;
+            let clickSwitch = 0;
 
-            let clickSwitch = 1;
-
-            // EDITS TITLE OF ITEM ELEMENT
             toDoInput.addEventListener("keydown", function(event) {
+                if (event.key !== "Enter") return;
+                const enteredText = toDoInput.value;
+                toDoInput.blur();
+                if (enteredText.length === 0) return;
 
-                toDoChild.setAttribute('data-value', toDoName); // sets the first toDo data-value
-
-                // need to re-reference item being the first item of a project
                 item = toDoArray[0];
-                
-                let enteredText = "";
-                let trimmedText = "";
+                const trimmedText = enteredText.trim();
+                toDoInput.value = trimmedText;
+                toDoInput.style.fontSize = "14px";
 
-                if (event.key === "Enter") {
-                    enteredText = toDoInput.value;
+                const dateSet = month.value + '-' + day.value + '-' + year.value;
+                item["due"] = dateSet;
+                item["pri"] = 2;
+                item["tit"] = trimmedText;
 
-                    console.log("You entered: " + enteredText);
-                    toDoInput.blur();
+                closeButtonToDo.dataset.info = index;
+                updateItemButton(toDoName);
+                clickSwitch = 1;
+            });
 
-                }
-
-                // if title entered has a length > 0 characters
-                if (enteredText.length > 0){
-
-                    trimmedText = enteredText.trim();
-                    
-                    toDoInput.textContent = trimmedText; // - NEW
-                    toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
-                    toDoInput.style.fontSize = "14px"; // - NEW
-
-                    let monthValue = month.value;
-                    let dayValue = day.value;
-                    let yearValue = year.value;
-
-                    let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
-
-                    item["due"] = dateSet;
-                    item["tit"] = trimmedText;
-
-
-                    closeButtonToDo.dataset.info = index;
-                    clickSwitch = 1;
-
-                }
-
-                
-            }); // Ends "Enter" keydown function
-
-            // Set to generate array ['desc'] up on clicking
-            toDoChild.addEventListener("click", function(event){
-
-                console.log("clickSwitch: " + clickSwitch);
-
-                if(clickSwitch === 1){
-
-                console.log("regenToDos > toDoChild click listener");
-
+            toDoChild.addEventListener("click", function(event) {
+                if (clickSwitch !== 1) return;
 
                 const clickedElement = event.target;
+                const mainListRef = toDoChild.parentElement;
 
-                // re-generate what already exists as a part of the item array
-                const mainList = toDoChild.parentElement;
+                if (clickedElement.id === 'closeButtonToDo') { event.stopPropagation(); return; }
+                if (clickedElement.tagName === 'INPUT') { event.stopPropagation(); return; }
 
-                let descText = "";
-                let descTrimmed = "";
-
-                // Covers the clicking of CloseButtonToDo
-                if(clickedElement.id === 'closeButtonToDo'){
-                        
-                    console.log("Called stop propagation of DIV");
-                    event.stopPropagation(); // Prevent the parent's click event
-                        
-                }
-
-                    // Covers the clicking of toDoInput
-                if(clickedElement.tagName === 'INPUT'){
-                        
-                    console.log("Called stop propagation of INPUT");
-                    event.stopPropagation(); // Prevent the parent's click event
-
-                        
-                }
-                
-                if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
-
-                    // Switches description node on/off depending on click value - switcher
-                    if(switcher === 0){
-
-                        mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                        descSibling.appendChild(descSpacer1);
-                        descSibling.appendChild(descInput);
-                        descSibling.appendChild(descSpacer2);
-
-                        descInput.textContent = item["desc"];
-                        descInput.value = item["desc"];
-
-                        // if descInput value is greater than 0 set it as the textContent
-                        if(item["desc"].length > 0){
-
-                            console.log("Previously inputted value is valid");
-                            descInput.textContent = item["desc"];
-                            descInput.value = item["desc"];
-
-                        }
-
-
-                        switcher = 1;
+                if (switcher === 0) {
+                    mainListRef.insertBefore(descSibling, toDoChild.nextSibling);
+                    descSibling.appendChild(descSpacer1);
+                    descSibling.appendChild(descInput);
+                    descSibling.appendChild(descSpacer2);
+                    descInput.value = item["desc"] || "";
+                    switcher = 1;
+                } else {
+                    if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                        mainListRef.removeChild(toDoChild.nextSibling);
                     }
-
-                    else{
-
-                            if(toDoChild.nextSibling != null){
-
-                                mainList.removeChild(toDoChild.nextSibling);
-                            
-                            }
-                            switcher = 0;
-                        }
-
-                        // ***** CLICK LISTENERS *****
-
-                        // allow keydown event for descInput to change the current description
-                        descInput.addEventListener("keydown", function(event) {
-        
-                            descText = "";
-
-                            if (event.key === "Enter") {
-                                descText = descInput.value;
-                    
-                                console.log("Entered descInput keydown function: " + descText);
-                    
-                                descInput.blur();
-                    
-                            }
-                    
-                    
-                                // if description entered has a length > 0 characters
-                            if (descText.length > 0){
-                                    
-                                // DOM - set the text within the element
-                                descTrimmed = descText.trim();
-                            
-                                descInput.textContent = descTrimmed; // - NEW
-                                descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                                descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                                // LOGIC - set the array parameter array project[0]['desc']
-                                item["desc"] = descTrimmed;
-
-                                toDoArray = listLogic.listItems(toDoName); // project array
-                                console.log(toDoArray);
-
-                                descInput.style.border = "none";
-
-                            }
-
-                            else{
-
-                                descInput.style.border = "1px solid red";
-                                // console.log("Your description is not long enough.");
-
-
-                            }
-
-
-                        });
-
+                    switcher = 0;
                 }
-            }
 
-
+                descInput.addEventListener("keydown", function(event) {
+                    if (event.key !== "Enter") return;
+                    const descText = descInput.value.trim();
+                    if (descText.length > 0) {
+                        descInput.value = descText;
+                        item["desc"] = descText;
+                        descInput.style.border = "none";
+                    } else {
+                        descInput.style.border = "1px solid red";
+                    }
+                    descInput.blur();
+                });
             });
 
-            closeButtonToDo.addEventListener("click", function(){
+            closeButtonToDo.addEventListener("click", function() {
+                const pos = closeButtonToDo.dataset.info;
+                const project = toDoName;
+                const currentLength = listLogic.projectLength(project);
 
-                console.log("Entered regenToDo closeButton function");
-                // console.log(closeButtonToDo.dataset.info);
- 
-                // store index of toDo item in variable
-                let pos = closeButtonToDo.dataset.info;
-                let project = toDoName;
-                
-                let currentLength = listLogic.projectLength(project);// need function to return current length of the project array
+                if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                    toDoChild.parentElement.removeChild(toDoChild.nextSibling);
+                }
 
-
-                // if currentLength is 1, clear div information
-                if(currentLength === 1){
-
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
+                if (currentLength === 1) {
                     toDoInput.value = "";
                     listLogic.removeToDo(project, pos, currentLength);
-                    clickSwitch = 0;
                     updateItemButton(project);
-                }
-
-                else{
-
-                    if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                        mainListDiv.removeChild(toDoChild.nextSibling);
-                    }
-
-                    // snapshot before removal so indices are correct
+                } else {
                     const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
                     mainListDiv.removeChild(toDoChild);
                     listLogic.removeToDo(project, pos, currentLength);
-                    listLogic.listItems(project);
 
                     let pos_int = parseInt(pos, 10);
-                    let adjustedValue = pos_int;
-                    while(closeButtonElements[adjustedValue + 1] != null){
-                        closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                        adjustedValue++;
+                    let adj = pos_int;
+                    while (closeButtonElements[adj + 1] != null) {
+                        closeButtonElements[adj + 1].dataset.info = adj;
+                        adj++;
                     }
-
-                    clickSwitch = 0;
                     updateItemButton(project);
                 }
-
+                clickSwitch = 0;
             });
-
 
             closeButtonToDo.addEventListener("mouseenter", function() {
                 this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
                 this.style.border = "0.05px solid black";
             });
-            
             closeButtonToDo.addEventListener("mouseleave", function() {
                 this.style.boxShadow = "none";
                 this.style.border = "none";
-            });            
-        
+            });
         }
 
+
+        function regenToDos(item, index) {
+
+            console.log("Called addAllToDo_DOM > regenToDos");
+
+            const mainListDiv = document.getElementById("mainList");
+            const toDoChild = document.createElement("div");
+            const toDoInput = document.createElement("input");
+            const dueInput = document.createElement("div");
+            const dateText = document.createElement("div");
+            const month = document.createElement("input");
+            const dash = document.createElement("div");
+            const day = document.createElement("input");
+            const dash2 = document.createElement("div");
+            const year = document.createElement("input");
+            const closeButtonToDo = document.createElement("div");
+            const spacer = document.createElement("div");
+            const descSibling = document.createElement('div');
+            const descSpacer1 = document.createElement('div');
+            const descInput = document.createElement('input');
+            const descSpacer2 = document.createElement('div');
+
+            toDoChild.style.border = "0.5px solid black";
+            toDoChild.id = "toDoChild";
+            dateText.id = "dateText"; dateText.textContent = "Due:";
+            dueInput.id = "dueInput"; dueInput.style.fontSize = "10px";
+            month.id = "month"; month.placeholder = 1;
+            day.id = "day"; day.placeholder = 1;
+            year.id = "year"; year.placeholder = 2023;
+            dash.id = "dash"; dash.textContent = "/";
+            dash2.id = "dash"; dash2.textContent = "/";
+            spacer.id = "spacer";
+            toDoInput.type = "text"; toDoInput.id = "toDoInput";
+            toDoInput.placeholder = "New Item"; toDoInput.style.fontSize = "16px";
+            toDoInput.value = item.tit; toDoInput.style.border = "none";
+            closeButtonToDo.id = "closeButtonToDo";
+            descSibling.id = "descSibling";
+            descSpacer1.id = "descSpacer1"; descInput.id = "descInput"; descSpacer2.id = "descSpacer2";
+            descInput.type = "text"; descInput.placeholder = "Type description here...";
+            descInput.style.fontSize = "12px";
+            descInput.value = item.desc || "";
+            descInput.style.border = "none";
+
+            mainListDiv.appendChild(toDoChild);
+            toDoChild.appendChild(toDoInput);
+            toDoChild.appendChild(dateText);
+            toDoChild.appendChild(dueInput);
+            dueInput.appendChild(month); dueInput.appendChild(dash);
+            dueInput.appendChild(day); dueInput.appendChild(dash2); dueInput.appendChild(year);
+            toDoChild.appendChild(spacer);
+            toDoChild.appendChild(closeButtonToDo);
+            toDoChild.setAttribute('data-value', toDoName);
+
+            // populate date
+            const dateSet = item["due"];
+            if (dateSet && dateSet !== "--" && dateSet !== "X-X-XXXX") {
+                const parts = dateSet.split('-');
+                month.value = parseInt(parts[0], 10) || "";
+                day.value   = parseInt(parts[1], 10) || "";
+                year.value  = parseInt(parts[2], 10) || "";
+            }
+
+            closeButtonToDo.dataset.info = index;
+
+            let switcher = 0;
+            let clickSwitch = 1;
+
+            toDoInput.addEventListener("keydown", function(event) {
+                if (event.key !== "Enter") return;
+                const enteredText = toDoInput.value;
+                toDoInput.blur();
+                if (enteredText.length === 0) return;
+
+                const trimmedText = enteredText.trim();
+                toDoInput.value = trimmedText;
+                toDoInput.style.fontSize = "14px";
+
+                const newDate = month.value + '-' + day.value + '-' + year.value;
+                item["due"] = newDate;
+                item["tit"] = trimmedText;
+                closeButtonToDo.dataset.info = index;
+                clickSwitch = 1;
+            });
+
+            toDoChild.addEventListener("click", function(event) {
+                if (clickSwitch !== 1) return;
+
+                const clickedElement = event.target;
+                const mainListRef = toDoChild.parentElement;
+
+                if (clickedElement.id === 'closeButtonToDo') { event.stopPropagation(); return; }
+                if (clickedElement.tagName === 'INPUT') { event.stopPropagation(); return; }
+
+                if (switcher === 0) {
+                    mainListRef.insertBefore(descSibling, toDoChild.nextSibling);
+                    descSibling.appendChild(descSpacer1);
+                    descSibling.appendChild(descInput);
+                    descSibling.appendChild(descSpacer2);
+                    descInput.value = item["desc"] || "";
+                    switcher = 1;
+                } else {
+                    if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                        mainListRef.removeChild(toDoChild.nextSibling);
+                    }
+                    switcher = 0;
+                }
+
+                descInput.addEventListener("keydown", function(event) {
+                    if (event.key !== "Enter") return;
+                    const descText = descInput.value.trim();
+                    if (descText.length > 0) {
+                        descInput.value = descText;
+                        item["desc"] = descText;
+                        descInput.style.border = "none";
+                    } else {
+                        descInput.style.border = "1px solid red";
+                    }
+                    descInput.blur();
+                });
+            });
+
+            closeButtonToDo.addEventListener("click", function() {
+                const pos = closeButtonToDo.dataset.info;
+                const project = toDoName;
+                const currentLength = listLogic.projectLength(project);
+
+                if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                    mainListDiv.removeChild(toDoChild.nextSibling);
+                }
+
+                if (currentLength === 1) {
+                    toDoInput.value = "";
+                    listLogic.removeToDo(project, pos, currentLength);
+                    clickSwitch = 0;
+                    updateItemButton(project);
+                } else {
+                    const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
+                    mainListDiv.removeChild(toDoChild);
+                    listLogic.removeToDo(project, pos, currentLength);
+
+                    let pos_int = parseInt(pos, 10);
+                    let adj = pos_int;
+                    while (closeButtonElements[adj + 1] != null) {
+                        closeButtonElements[adj + 1].dataset.info = adj;
+                        adj++;
+                    }
+                    clickSwitch = 0;
+                    updateItemButton(project);
+                }
+            });
+
+            closeButtonToDo.addEventListener("mouseenter", function() {
+                this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+                this.style.border = "0.05px solid black";
+            });
+            closeButtonToDo.addEventListener("mouseleave", function() {
+                this.style.boxShadow = "none";
+                this.style.border = "none";
+            });
+        }
+
+    } // end addAllToDo_DOM
+
+
+    // ********************** RESTORE FROM STORAGE ********************** //
+    // Assigned to the module-level variable so index.js can call it after
+    // component() is appended to the DOM.
+
+    restoreFromStorage = function() {
+
+        const savedProjects = listLogic.listProjectsArray();
+        if (savedProjects.length === 0) return;
+
+        savedProjects.forEach(function(projectName) {
+            createProjectRow(projectName, false);
+        });
+
+        // auto-select the last project and render its todos
+        const allProjRows = document.querySelectorAll('#projChild');
+        const lastRow = allProjRows[allProjRows.length - 1];
+        if (lastRow) {
+            lastRow.classList.remove("unselectedProject");
+            lastRow.classList.add("selectedProject");
+        }
+
+        const lastProject = savedProjects[savedProjects.length - 1];
+        const items = listLogic.listItems(lastProject);
+        clearToDos_global();
+        addAllToDo_DOM(items, lastProject);
+        updateItemButton(lastProject);
     };
 
 
+    return base;
+}
 
 
-
-    return base; 
-
-};    
-
-
-export { component };
-
-
+export { component, restoreFromStorage };
 
 
 // ********************************************** BUG BASHING ********************************************** //
-/** 
- * FIXED - 1. When multiple projects are added, then all are removed, 
+/**
+ * FIXED - 1. When multiple projects are added, then all are removed,
  *            it will not remove the last project to exist other than 'Default'.
- *            The existing properties will be { 'Default', 'Project 1' }
- *  
+ *
  * PROBLEM - 2. Having issues with deletion/addition of DOM/Array elements
- *         - issue is still present when deleting first element and adding new element,
- *         - two new DOM elements remain after deletion of each element 
- * 
+ *
  * FIXED - 3. When clicking on different projects the addToDo button will disable
- *              unnecessarily, leading to not being able to add new toDo items. 
- * 
+ *              unnecessarily.
+ *
  * FIXED - 4. When removing projects, the initial project is also removed BUT,
- *         -    all projects after the initial project remain and are unable to be
- *         -    removed.
- * 
- * PROBLEM - 5. When creating a new project with the same name as another the toDo items
- *              end up being deleted unexpectedly. I think the regen function takes the project name
- *              and regenerating the listed array according to that name.
- *           - use validation to prevent duplicate project names from being created mistakenly
- * 
+ *              all projects after the initial project remain.
+ *
+ * PROBLEM - 5. Duplicate project name causes unexpected todo deletion.
+ *           - validation added to prevent duplicate names.
+ *
  * FIXED - 6. Enable drop down to see toDo item descriptions
- * 
- * FIXED - 7. Pressing close button on initial toDo item causes description to populate 
- *              ISSUE: when pressing the closebutton it is also activating the toDoChild click for turning on/off the description leading to an error
- * 
- * FIXED - 8. Continuing toDo elements do not clear the descInput of the description element after removing 
- *            parent toDoChild node.
- * 
- * FIXED - 9. Unable to append descSibling elements to mainList after regenToDo is run, so after swapping
- *              between projects. 
- * 
- * FIXED - 10. When creating three toDo items, the first one with a desc and the third one with a desc, and
- *               clicking the closeButton of the second item, this removes it's 'sibling' being the third
- *               toDoChild. This shouldn't happen.
- * 
- * FIXED - 11. When clicking the closeButton of the 'initial toDo' it is also removing the next element,
- *               prevent this by manipulating your eventpropagation() commands. The if/else on the second one 
- *               is improper.
- * 
- * FIXED - 12. When clicking CloseButtonToDo on project 2 > item 1, descSibling element is not being removed 
- *               for some reason.
- * 
- * FIXED - 13. When clicking on CloseButtonToDo for project 2, not properly removing toDoChild.nextSibling 
- * 
- * 
- * 
- * 
+ *
+ * FIXED - 7. Pressing close button on initial toDo item causes description to populate.
+ *
+ * FIXED - 8. Continuing toDo elements do not clear the descInput after removing parent.
+ *
+ * FIXED - 9. Unable to append descSibling elements after regenToDo runs.
+ *
+ * FIXED - 10. Closing second item removes third item incorrectly.
+ *
+ * FIXED - 11. CloseButton on initial toDo removes next element.
+ *
+ * FIXED - 12. CloseButtonToDo on project 2 item 1 not removing descSibling.
+ *
+ * FIXED - 13. CloseButtonToDo for project 2 not removing toDoChild.nextSibling.
 */
 // ******************************************************************************************************** //

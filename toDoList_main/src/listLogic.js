@@ -26,31 +26,34 @@ export const listLogic = (function () {
 
     // ********************* STORAGE HANDLING ********************* //
 
-
-
-    // stores serialized version of 'AllProjects'
-    let stored_serialized = JSON.stringify(allProjects);
-
-
-    // checking if storedProjects was never set
-    if(allProjects.length === undefined){ 
-
-        console.log("Fresh project");
-
-        localStorage.setItem('allProjects', stored_serialized); // sets a fresh object to local storage
-
+    // HELPER: persist current state of allProjects to localStorage
+    function saveToStorage() {
+        localStorage.setItem('allProjects', JSON.stringify(allProjects));
     }
 
-    // if storedProjects was never set
-    else{ 
+    // INIT: restore any previously saved projects from localStorage
+    const stored_raw = localStorage.getItem('allProjects');
 
-        console.log("Projects exists");
-        
-        let stored_deserialized = JSON.parse(localStorage.getItem('allProjects')); // Retrieves existing projects from storedProjects object 
-        
+    if (stored_raw) {
+
+        const stored_deserialized = JSON.parse(stored_raw);
+        const savedKeys = Object.keys(stored_deserialized);
+
+        if (savedKeys.length > 0) {
+            console.log("Restoring projects from localStorage:", savedKeys);
+            savedKeys.forEach(function(key) {
+                allProjects[key] = stored_deserialized[key];
+            });
+        } else {
+            console.log("localStorage found but empty.");
+        }
+
+    } else {
+
+        console.log("No localStorage entry — fresh start.");
+        saveToStorage();
+
     }
-
-    // console.log(localStorage);
 
     // ************************************************************* //
 
@@ -108,16 +111,9 @@ export const listLogic = (function () {
         allProjects[projectName].push(listItem);
 
         allProjectsTotal = Object.keys(allProjects).length;
-        // console.log(projectName + " added");
 
-
-        // serializes for local storage
-        // let projectName_serialized = JSON.stringify
-
-
-        stored_serialized = JSON.stringify(allProjects); // Requires call for setItem
-        localStorage.setItem('allProjects', stored_serialized); // sets current object to local storage
-        console.log(localStorage); // prints local storage to user
+        saveToStorage();
+        console.log(localStorage);
 
         
         return {
@@ -140,19 +136,14 @@ export const listLogic = (function () {
 
         let after = Object.keys(allProjects).length;
 
-        // check if property was removed by checking if the number of allProjects properties was reduced*
         if(after < before){
-
             console.log(projectDes + " was removed");
-
         }
         else{
-
             console.log(projectDes + " was not removed");
-
         }
 
-        
+        saveToStorage();
 
     }
 
@@ -180,6 +171,8 @@ export const listLogic = (function () {
 
         // push that new object to the allProjects array
         allProjects[projectDes].push(listItem);
+
+        saveToStorage();
 
         return {
             array: allProjects[projectName],
@@ -235,6 +228,8 @@ export const listLogic = (function () {
 
         }
 
+        saveToStorage();
+
     };
 
     // FUNCTION (EDIT TODO LIST ITEMS): - responsible for editing specified project array items
@@ -248,7 +243,7 @@ export const listLogic = (function () {
 
         allProjectsTotal = Object.keys(allProjects).length;
 
-        
+        saveToStorage();
 
         return {
             array: allProjects[newProperty],
