@@ -367,6 +367,7 @@ function component() {
             arraySlot["tit"] = trimmedText;
             closeButtonToDo.dataset.info = (toDoLength - 1);
 
+            listLogic.saveProjects();
             updateItemButton(currentProject);
 
             toDoChild.addEventListener("click", function(event) {
@@ -398,6 +399,7 @@ function component() {
                     if (descText.length > 0) {
                         descInput.value = descText;
                         arraySlot["desc"] = descText;
+                        listLogic.saveProjects();
                         descInput.style.border = "none";
                     } else {
                         descInput.style.border = "1px solid red";
@@ -405,7 +407,7 @@ function component() {
                     descInput.blur();
                 });
             });
-        });
+        }); // end itemButton toDoInput keydown
 
         closeButtonToDo.addEventListener("click", function() {
             const pos = closeButtonToDo.dataset.info;
@@ -546,6 +548,7 @@ function component() {
                 item["tit"] = trimmedText;
 
                 closeButtonToDo.dataset.info = index;
+                listLogic.saveProjects();
                 updateItemButton(toDoName);
                 clickSwitch = 1;
             });
@@ -579,6 +582,7 @@ function component() {
                     if (descText.length > 0) {
                         descInput.value = descText;
                         item["desc"] = descText;
+                        listLogic.saveProjects();
                         descInput.style.border = "none";
                     } else {
                         descInput.style.border = "1px solid red";
@@ -707,6 +711,7 @@ function component() {
                 item["due"] = newDate;
                 item["tit"] = trimmedText;
                 closeButtonToDo.dataset.info = index;
+                listLogic.saveProjects();
                 clickSwitch = 1;
             });
 
@@ -739,6 +744,7 @@ function component() {
                     if (descText.length > 0) {
                         descInput.value = descText;
                         item["desc"] = descText;
+                        listLogic.saveProjects();
                         descInput.style.border = "none";
                     } else {
                         descInput.style.border = "1px solid red";

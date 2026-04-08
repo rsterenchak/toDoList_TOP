@@ -26,50 +26,30 @@ export const listLogic = (function () {
 
     // ********************* STORAGE HANDLING ********************* //
 
-    // HELPER: persist current state of allProjects to localStorage
-    function saveToStorage() {
-        localStorage.setItem('allProjects', JSON.stringify(allProjects));
-    }
+    const existingData = localStorage.getItem('allProjects');
 
-    // INIT: restore any previously saved projects from localStorage
-    const stored_raw = localStorage.getItem('allProjects');
+    if (existingData) {
 
-    if (stored_raw) {
-
-        const stored_deserialized = JSON.parse(stored_raw);
-        const savedKeys = Object.keys(stored_deserialized);
-
-        if (savedKeys.length > 0) {
-            console.log("Restoring projects from localStorage:", savedKeys);
-            savedKeys.forEach(function(key) {
-                allProjects[key] = stored_deserialized[key];
-            });
-        } else {
-            console.log("localStorage found but empty.");
-        }
+        // Restore saved projects back into allProjects
+        console.log("Projects exist — restoring from storage");
+        const stored_deserialized = JSON.parse(existingData);
+        Object.assign(allProjects, stored_deserialized);
 
     } else {
 
-        console.log("No localStorage entry — fresh start.");
-        saveToStorage();
+        // Nothing saved yet — write an empty object as the baseline
+        console.log("Fresh start — initializing storage");
+        localStorage.setItem('allProjects', JSON.stringify(allProjects));
 
     }
 
     // ************************************************************* //
 
 
-/*     // INITIAL: Sets the initial Project name and is used later to store new project names within addProject
-    var projectName = 'Default';  
-
-    // INITIAL: Initial Empty Item
-    let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
-
-    // INITIAL: Sets Default project
-    allProjects[projectName] = [];
-
-    // INITIAL: Adds 'empty' list item to project array
-    allProjects[projectName].push(listItem); */
-    
+    // Helper: call after any mutation to keep localStorage in sync
+    function saveProjects() {
+        localStorage.setItem('allProjects', JSON.stringify(allProjects));
+    }
 
 
     let allProjectsTotal = Object.keys(allProjects).length; 
@@ -97,10 +77,8 @@ export const listLogic = (function () {
     //           - takes in user input for project name and stores it in the allProjects array
     function addProject(projectName){
 
-        // console.log("Enter addProject function");
         // Sets variable for 'empty' list item
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
-
 
         projectName = projectName.trim();
 
@@ -112,7 +90,7 @@ export const listLogic = (function () {
 
         allProjectsTotal = Object.keys(allProjects).length;
 
-        saveToStorage();
+        saveProjects();
         console.log(localStorage);
 
         
@@ -123,12 +101,11 @@ export const listLogic = (function () {
 
     }
 
-    // **************** WORKING ON ****************
     // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
     //                             - projectName property needs to be passed to function to identify 
     function removeProject(projectName){
 
-        let before =  Object.keys(allProjects).length;
+        let before = Object.keys(allProjects).length;
 
         let projectDes = projectName;
 
@@ -136,6 +113,7 @@ export const listLogic = (function () {
 
         let after = Object.keys(allProjects).length;
 
+        // check if property was removed by checking if the number of allProjects properties was reduced
         if(after < before){
             console.log(projectDes + " was removed");
         }
@@ -143,7 +121,7 @@ export const listLogic = (function () {
             console.log(projectDes + " was not removed");
         }
 
-        saveToStorage();
+        saveProjects();
 
     }
 
@@ -152,12 +130,7 @@ export const listLogic = (function () {
     //                                 - called when add button under a project is clicked
     function addToDo(projectName, toDoName) {
 
-        // console.log("called addToDo function");
-
         let projectDes = projectName;
-
-        // Project should be passed into function as variable - 'projectName'
-        // var selectedProject = projectName;
 
         // based on the project selected, take in new variables for object
         let itemTitle = toDoName;
@@ -172,7 +145,7 @@ export const listLogic = (function () {
         // push that new object to the allProjects array
         allProjects[projectDes].push(listItem);
 
-        saveToStorage();
+        saveProjects();
 
         return {
             array: allProjects[projectName],
@@ -183,8 +156,7 @@ export const listLogic = (function () {
 
     };
 
-    function removeToDo(project, index, length) { // project 1, pos 1, length is 3
-        // console.log("called removeToDo function");
+    function removeToDo(project, index, length) {
 
         // based on the project selected, take in new variables for object
         let itemTitle = '';
@@ -196,10 +168,7 @@ export const listLogic = (function () {
         // with the new variables, instantiate the new toDo list object
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
     
-
         index = parseInt(index, 10);
-
-        // console.log("index: " + index);
 
         // if the length of the project array is 1 and the index is 0,
         // instead of removing the array logic/DOM entirely just reset it
@@ -212,29 +181,25 @@ export const listLogic = (function () {
             // pop() item from project array
             allProjects[project].pop(index);
 
-            // console.log(allProjects[project]); //  check array
-
             // push that new object to the allProjects array
             allProjects[project].push(listItem);    
 
-            console.log(allProjects[project]); //  check array
+            console.log(allProjects[project]);
 
         }
 
         else{
             
             removeElementAtIndex(allProjects[project], index);
-            // console.log((allProjects[project]));
 
         }
 
-        saveToStorage();
+        saveProjects();
 
     };
 
     // FUNCTION (EDIT TODO LIST ITEMS): - responsible for editing specified project array items
     //                                  - called when gui item section is clicked on
-    //                                  - **** WILL NOT WORK AFTER SECOND EDIT ****
     function editProject(currentProperty, newProperty) {
 
         // set projectName as a new property of the allProjects object
@@ -243,7 +208,7 @@ export const listLogic = (function () {
 
         allProjectsTotal = Object.keys(allProjects).length;
 
-        saveToStorage();
+        saveProjects();
 
         return {
             array: allProjects[newProperty],
@@ -256,7 +221,6 @@ export const listLogic = (function () {
 
         let projectName = project;
         let projectArray = allProjects[projectName];
-
 
         return projectArray;
 
@@ -290,34 +254,12 @@ export const listLogic = (function () {
         removeToDo, 
         editProject,
         listItems, 
-        projectLength 
+        projectLength,
+        saveProjects
         
     };
 
 
-    // **************** TESTING INPUTS/FUNCTIONS **************** //
-
-
-    // addProject(); // - asks for project name, Adds new project
-    
-    // removeProject(allProjectsTotal); // -  Removes designated Project, determines if project was exists/was removed
-
-    // addToDo(); // - asks for project, Adds empty toDo item to designated projects
-
-    // editToDo(); // - asks for which project, prompts for details - function that edits toDo listItems
-
-    // listProjects();
-
-    // ********************* TESTING PRINTS ********************* //
-
-    
-    
-
-    
-    // *********************************************************** // 
-
-
-    // window.addProject = addProject; // makes addProject() function available to user globally
 })();// Ends CurrentSession
 
 
