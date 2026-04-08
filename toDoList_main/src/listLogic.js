@@ -170,6 +170,10 @@ export const listLogic = (function () {
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
 
         // push that new object to the allProjects array
+        if (!allProjects[projectDes]) {
+            console.error("addToDo: project not found —", projectDes);
+            return { array: [], string: projectName, lengths: 0 };
+        }
         allProjects[projectDes].push(listItem);
 
         saveToStorage();
@@ -263,6 +267,8 @@ export const listLogic = (function () {
     };
 
     function projectLength(project){
+
+        if (!project || !allProjects[project]) return 0;
 
         let projectLength = (allProjects[project]).length;
 

@@ -203,6 +203,9 @@ function addAllToDo_DOM(items, name){
                 updateItemButton_restore(toDoName);
                 
                 clickSwitch = 1;
+
+                // spawn next blank row automatically
+                appendNewToDoRow(toDoName);
             }
 
             
@@ -580,6 +583,9 @@ function addAllToDo_DOM(items, name){
 
                 closeButtonToDo.dataset.info = index;
                 clickSwitch = 1;
+
+                // spawn next blank row automatically
+                appendNewToDoRow(toDoName);
 
             }
 
@@ -1022,7 +1028,7 @@ function component() {
             if ((enteredText.length > 0) && (exists === 0)){
 
                 // projChild.style.backgroundColor = "none";
-                titleInput.style.color = 'black';
+                titleInput.style.color = '';
 
                 trimmedText = enteredText.trim();
                 
@@ -1269,8 +1275,12 @@ function component() {
         itemButton.style.pointerEvents = "none";
 
         // get currentProject based on the 'selectedElement'
-
-        const currentProject = document.querySelector('.selectedProject').textContent; //  latest selection
+        const selectedEl = document.querySelector('.selectedProject');
+        const currentProject = selectedEl
+            ? (selectedEl.querySelector('#projInput')
+                ? selectedEl.querySelector('#projInput').value
+                : selectedEl.dataset.project)
+            : "";
 
         console.log(currentProject);
         // const currentProject = (mainList.childNodes[1]).getAttribute('data-value');
@@ -1473,9 +1483,11 @@ function component() {
 
                 closeButtonToDo.dataset.info = (toDoLength - 1);
 
-
                 projectItems = listLogic.listItems(currentProject);  
                 updateItemButton(currentProject);
+
+                // spawn next blank row automatically
+                appendNewToDoRow(currentProject);
 
                 // *************************** WORK IN PROGRESS *************************** // 
 
@@ -1725,6 +1737,202 @@ function component() {
 };
 
 export { component, restoreFromStorage };
+
+// appendNewToDoRow — adds a blank todo item to logic and renders it in the DOM.
+// Called after any successful todo Enter submission so the user can keep typing.
+function appendNewToDoRow(toDoName) {
+
+    const mainListDiv = document.getElementById("mainList");
+
+    // guard against invalid or missing project name
+    if (!toDoName || !listLogic.listItems(toDoName)) {
+        console.error("appendNewToDoRow: invalid project —", toDoName);
+        return;
+    }
+
+    // add blank placeholder to logic
+    const newItems  = listLogic.addToDo(toDoName, "");
+    const toDoArray = newItems.array;
+    const newIndex  = newItems.lengths - 1;
+    const item      = toDoArray[newIndex];
+
+    // build DOM elements
+    const toDoChild       = document.createElement("div");
+    const toDoInput       = document.createElement("input");
+    const dueInput        = document.createElement("div");
+    const dateText        = document.createElement("div");
+    const month           = document.createElement("input");
+    const dash            = document.createElement("div");
+    const day             = document.createElement("input");
+    const dash2           = document.createElement("div");
+    const year            = document.createElement("input");
+    const closeButtonToDo = document.createElement("div");
+    const spacer          = document.createElement("div");
+    const descSibling     = document.createElement("div");
+    const descSpacer1     = document.createElement("div");
+    const descInput       = document.createElement("input");
+    const descSpacer2     = document.createElement("div");
+
+    toDoChild.id           = "toDoChild";
+    toDoChild.style.border = "0.5px solid black";
+    toDoChild.setAttribute("data-value", toDoName);
+
+    dateText.id          = "dateText";
+    dateText.textContent = "Due:";
+    dueInput.id          = "dueInput";
+    dueInput.style.fontSize = "10px";
+
+    month.id = "month"; month.placeholder = 1;
+    day.id   = "day";   day.placeholder   = 1;
+    year.id  = "year";  year.placeholder  = 2023;
+    dash.id  = "dash";  dash.textContent  = "/";
+    dash2.id = "dash";  dash2.textContent = "/";
+    spacer.id = "spacer";
+
+    toDoInput.type        = "text";
+    toDoInput.id          = "toDoInput";
+    toDoInput.placeholder = "New Item";
+    toDoInput.style.fontSize = "14px";
+    toDoInput.value       = "";
+    toDoInput.style.border = "none";
+
+    closeButtonToDo.id = "closeButtonToDo";
+    closeButtonToDo.dataset.info = newIndex;
+
+    descSibling.id = "descSibling";
+    descSpacer1.id = "descSpacer1";
+    descInput.id   = "descInput";
+    descSpacer2.id = "descSpacer2";
+    descInput.type = "text";
+    descInput.placeholder = "Type description here...";
+    descInput.style.fontSize = "12px";
+    descInput.value = "";
+    descInput.style.border = "none";
+
+    mainListDiv.appendChild(toDoChild);
+    toDoChild.appendChild(toDoInput);
+    toDoChild.appendChild(dateText);
+    toDoChild.appendChild(dueInput);
+    dueInput.appendChild(month);
+    dueInput.appendChild(dash);
+    dueInput.appendChild(day);
+    dueInput.appendChild(dash2);
+    dueInput.appendChild(year);
+    toDoChild.appendChild(spacer);
+    toDoChild.appendChild(closeButtonToDo);
+
+    // focus the new row so user can type immediately
+    toDoInput.focus();
+
+    let switcher   = 0;
+    let clickSwitch = 0;
+
+    // submit title on Enter
+    toDoInput.addEventListener("keydown", function(event) {
+
+        if (event.key !== "Enter") return;
+
+        const val = toDoInput.value.trim();
+        if (val.length === 0) return;
+
+        toDoInput.value = val;
+        item["tit"] = val;
+
+        const mv = month.value;
+        const dv = day.value;
+        const yv = year.value;
+        item["due"] = mv + "-" + dv + "-" + yv;
+        item["pri"] = 2;
+
+        listLogic.saveToStorage();
+        updateItemButton_restore(toDoName);
+
+        clickSwitch = 1;
+        toDoInput.blur();
+
+        // chain: spawn the next blank row
+        appendNewToDoRow(toDoName);
+
+    });
+
+    // expand/collapse description
+    toDoChild.addEventListener("click", function(event) {
+
+        if (clickSwitch === 0) return;
+
+        const clicked = event.target;
+        if (clicked.id === "closeButtonToDo") { event.stopPropagation(); return; }
+        if (clicked.tagName === "INPUT")       { event.stopPropagation(); return; }
+
+        if (switcher === 0) {
+            mainListDiv.insertBefore(descSibling, toDoChild.nextSibling);
+            descSibling.appendChild(descSpacer1);
+            descSibling.appendChild(descInput);
+            descSibling.appendChild(descSpacer2);
+            descInput.value = item["desc"] || "";
+            switcher = 1;
+        } else {
+            if (toDoChild.nextSibling && toDoChild.nextSibling.id === "descSibling") {
+                mainListDiv.removeChild(toDoChild.nextSibling);
+            }
+            switcher = 0;
+        }
+
+    });
+
+    // save description on Enter
+    descInput.addEventListener("keydown", function(event) {
+        if (event.key !== "Enter") return;
+        const val = descInput.value.trim();
+        if (val.length > 0) {
+            descInput.value = val;
+            item["desc"] = val;
+            listLogic.saveToStorage();
+            descInput.style.border = "none";
+        } else {
+            descInput.style.border = "1px solid red";
+        }
+        descInput.blur();
+    });
+
+    // delete this row
+    closeButtonToDo.addEventListener("click", function() {
+
+        const pos           = parseInt(closeButtonToDo.dataset.info, 10);
+        const currentLength = listLogic.projectLength(toDoName);
+
+        if (toDoChild.nextSibling && toDoChild.nextSibling.id === "descSibling") {
+            mainListDiv.removeChild(toDoChild.nextSibling);
+        }
+
+        if (currentLength === 1) {
+            toDoInput.value = "";
+            listLogic.removeToDo(toDoName, 0, currentLength);
+        } else {
+            const allClose = document.querySelectorAll("#closeButtonToDo");
+            mainListDiv.removeChild(toDoChild);
+            listLogic.removeToDo(toDoName, pos, currentLength);
+            let adj = pos;
+            while (allClose[adj + 1] != null) {
+                allClose[adj + 1].dataset.info = adj;
+                adj++;
+            }
+        }
+
+        updateItemButton_restore(toDoName);
+
+    });
+
+    closeButtonToDo.addEventListener("mouseenter", function() {
+        this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+        this.style.border = "0.05px solid black";
+    });
+    closeButtonToDo.addEventListener("mouseleave", function() {
+        this.style.boxShadow = "none";
+        this.style.border = "none";
+    });
+
+}
 
 // restoreFromStorage — call this AFTER component() is appended to document.body
 // so that getElementById calls resolve against the live DOM.
@@ -2047,6 +2255,10 @@ function addToDos_restore(toDoArray, toDoName) {
                 if (val.length > 0) {
                     toDoInput.value = val;
                     item.tit = val;
+                    listLogic.saveToStorage();
+
+                    // spawn next blank row automatically
+                    appendNewToDoRow(toDoName);
                 }
                 toDoInput.blur();
             }
