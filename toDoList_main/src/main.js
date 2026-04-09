@@ -192,9 +192,9 @@ function addAllToDo_DOM(items, name){
                 toDoInput.style.fontSize = "14px"; // - NEW
                 
 
-                let monthValue = month.value;
-                let dayValue = day.value;
-                let yearValue = year.value;
+                let monthValue = month.value || month.placeholder || 1;
+                let dayValue = day.value || day.placeholder || 1;
+                let yearValue = year.value || year.placeholder || 2023;
 
                 let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
 
@@ -448,34 +448,17 @@ function addAllToDo_DOM(items, name){
         toDoInput.style.fontSize = "16px"; 
 
 
-        let dateSet = item["due"];
-        let dateSplit = item["due"].split('-');
-
-        let monthSet = "";
-        let daySet = "";
-        let yearSet = "";
+        let dateSet = item["due"] || "";
         
-        if((dateSet === "--") || (dateSet === "X-X-XXXX")){
-            
-            console.log("Date has not been set by user.");
-            
-        }
+        const dateSplit = dateSet.split('-');
+        const monthSet = parseInt(dateSplit[0], 10);
+        const daySet   = parseInt(dateSplit[1], 10);
+        const yearSet  = parseInt(dateSplit[2], 10);
 
-        else{
-
-            monthSet = parseInt(dateSplit[0], 10); // Convert to an integer (base 10)
-            daySet = parseInt(dateSplit[1], 10);
-            yearSet = parseInt(dateSplit[2], 10);
-            
-            month.textContent = monthSet;
+        if (!isNaN(monthSet) && !isNaN(daySet) && !isNaN(yearSet)) {
             month.value = monthSet;
-
-            day.textContent = daySet;
-            day.value = daySet;
-
-            year.textContent = yearSet;
-            year.value = yearSet;            
-        
+            day.value   = daySet;
+            year.value  = yearSet;
         }
 
 
@@ -516,9 +499,9 @@ function addAllToDo_DOM(items, name){
                 toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 toDoInput.style.fontSize = "14px"; // - NEW
 
-                let monthValue = month.value;
-                let dayValue = day.value;
-                let yearValue = year.value;
+                let monthValue = month.value || month.placeholder || 1;
+                let dayValue = day.value || day.placeholder || 1;
+                let yearValue = year.value || year.placeholder || 2023;
 
                 let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
 
@@ -850,12 +833,13 @@ function component() {
         // First Project Input
         titleInput.type = "text";
         titleInput.autocomplete = "off";
-        
         titleInput.id = "projInput";
         titleInput.placeholder = "New Project";
-        
         titleInput.value = "";
         titleInput.style.border = "none";
+        // new rows start unlocked — user needs to type a name immediately
+        titleInput.style.pointerEvents = "auto";
+        titleInput.style.cursor = "text";
 
         closeButton.id = "closeButton";
         // closeButton.style.border = "0.5px solid black";
@@ -948,9 +932,11 @@ function component() {
 
                 trimmedText = enteredText.trim();
                 
-                titleInput.textContent = trimmedText; // - NEW
-                titleInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
-                titleInput.style.fontSize = "14px"; // - NEW
+                titleInput.textContent = trimmedText;
+                titleInput.value = trimmedText;
+                titleInput.style.fontSize = "14px";
+                titleInput.style.pointerEvents = "none";
+                titleInput.style.cursor = "default";
                 
                 
 
@@ -1012,51 +998,50 @@ function component() {
                 // *** LISTENERS ***
 
                 // when element is clicked change selection to that element
-                projChild.addEventListener("click", function(){
+                projChild.addEventListener("click", function(event){
 
+                    console.log("called project selection");
 
+                    // close button handles its own logic
+                    if (event.target === closeButton || closeButton.contains(event.target)) return;
 
-                    console.log("called project selection")
+                    const alreadySelected = projChild.classList.contains('selectedProject');
 
-                    // check if latest DOM element's title is '' 'blank',
-                    // if it is blank 'turn on' the toDo item button to allow clicking
-                    const toDoContainer = document.getElementById('mainList');
+                    if (!alreadySelected) {
+                        // deselect whatever is currently selected
+                        const current = document.querySelector('.selectedProject');
+                        if (current) {
+                            const prevInput = current.querySelector('#projInput');
+                            if (prevInput) {
+                                prevInput.style.pointerEvents = "none";
+                                prevInput.style.cursor = "default";
+                                prevInput.blur();
+                            }
+                            current.classList.remove("selectedProject");
+                            current.classList.add("unselectedProject");
+                        }
 
-                    var containerLength = toDoContainer.childNodes.length;
-                    
-                    var lastChildRef = containerLength - 1;
-                    
-                    let fresh = 0;
+                        projChild.classList.remove("unselectedProject");
+                        projChild.classList.add("selectedProject");
 
-                    if(fresh === 0){
-                        projOnChild = document.querySelector('.selectedProject');
-                        fresh = 1;
-                    }
-
-                    selectProject(); // 1 - Changes selected element
-
-                    projOnChild = document.querySelector('.selectedProject');
-
-                    if(projOnChild != null){
-
-                        var innerValue = projOnChild.querySelector('#projInput')
-                                         ? projOnChild.querySelector('#projInput').value
-                                         : projOnChild.dataset.project;
+                        var innerValue = titleInput.value;
                         var arrayValues = listLogic.listItems(innerValue);
 
-                        clearToDos(); // 2 - Clears previous childNode under toDo List
+                        clearToDos();
 
                         if(arrayValues){
-                            addAllToDo_DOM(arrayValues, innerValue); // 3 - Adds the appropriate elements back into toDo List
+                            addAllToDo_DOM(arrayValues, innerValue);
                         }
 
                         updateItemButton(innerValue);
+                        return;
                     }
 
-                    
+                    // already selected — unlock the input for editing
+                    titleInput.style.pointerEvents = "auto";
+                    titleInput.style.cursor = "text";
+                    titleInput.focus();
 
-                    
-                
                 });
 
 
@@ -1105,53 +1090,44 @@ function component() {
             console.log("Called projButton > closeButton");
 
             const mainList = document.getElementById("mainList");
-            let mainChild = document.getElementById("toDoChild");
-
-            let property = titleInput.value;
-            // let projectLength = listLogic.projectLength(property);
-            // let i = 0;
+            const property = titleInput.value;
+            const wasSelected = projChild.classList.contains('selectedProject');
 
             // DOM - Removes project DOM element
             projChild.parentNode.removeChild(projChild);
 
-            // DOM - Removes item DOM elements associated with project
-            while(mainList.contains(mainChild)){
-
-                console.log(mainChild);
-
-                if((mainChild.nextSibling != null) && (mainChild.nextSibling.id === 'descSibling')){ // ***** TESTING *****
-                    
-                    mainList.removeChild(mainChild.nextSibling);
-                
-                }                
-
-
-                mainList.removeChild(mainChild);
-
-                mainChild = document.getElementById("toDoChild"); // should re-assign mainChild to next DOM element
-                
-
+            // Only clear the todo DOM if this project was the selected one
+            if (wasSelected) {
+                while (mainList.firstChild) { mainList.removeChild(mainList.firstChild); }
             }
-            
-            listLogic.listItems(property);
 
-            // LOGIC - Need to call logic function that removes property from allProjects[] array
             listLogic.removeProject(property);
-
-            listLogic.listItems(property);
-            
-            // LOGIC - Lists all existing projects in logic
             listLogic.listProjects();
+            projButton.style.pointerEvents = "auto";
 
-            // On Click - should bring back ability to use add projects button 
-            projButton.style.pointerEvents = "auto"; 
-
+            // if deleted project was selected, auto-select the next available project
+            if (wasSelected) {
+                const nextRow = document.querySelector('#projChild');
+                if (nextRow) {
+                    nextRow.classList.remove("unselectedProject");
+                    nextRow.classList.add("selectedProject");
+                    const nextInput = nextRow.querySelector('#projInput');
+                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
+                    const nextItems = listLogic.listItems(nextName);
+                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
+                    updateItemButton_restore(nextName);
+                }
+            }
 
         }); // Ends "closeButton" click function
         
 
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
+            if (titleInput.style.pointerEvents === "none") {
+                titleInput.blur();
+                return;
+            }
             this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
             projChild.style.background = "#1C1C1C";
@@ -1390,9 +1366,9 @@ function component() {
                 toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 toDoInput.style.fontSize = "14px"; // - NEW
                 
-                let monthValue = month.value;
-                let dayValue = day.value;
-                let yearValue = year.value;
+                let monthValue = month.value || month.placeholder || 1;
+                let dayValue = day.value || day.placeholder || 1;
+                let yearValue = year.value || year.placeholder || 2023;
 
                 let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
 
@@ -1764,9 +1740,9 @@ function appendNewToDoRow(toDoName) {
         toDoInput.value = val;
         item["tit"] = val;
 
-        const mv = month.value;
-        const dv = day.value;
-        const yv = year.value;
+        const mv = month.value || month.placeholder || 1;
+        const dv = day.value   || day.placeholder   || 1;
+        const yv = year.value  || year.placeholder  || 2023;
         item["due"] = mv + "-" + dv + "-" + yv;
         item["pri"] = 2;
 
@@ -1882,7 +1858,7 @@ function restoreFromStorage() {
         titleInput.value       = projectName;
         titleInput.style.border = "none";
         titleInput.style.fontSize = "14px";
-        titleInput.readOnly    = false;
+        titleInput.style.pointerEvents = "none";
         titleInput.style.cursor = "default";
 
         closeButton.id      = "closeButton";
@@ -1916,11 +1892,17 @@ function restoreFromStorage() {
             listLogic.editProject(currentProperty, newName);
             currentProperty = newName;
             titleInput.value = newName;
+            titleInput.style.pointerEvents = "none";
+            titleInput.style.cursor = "default";
             titleInput.blur();
 
         });
 
         titleInput.addEventListener("focus", function() {
+            if (titleInput.style.pointerEvents === "none") {
+                titleInput.blur();
+                return;
+            }
             titleInput.style.cursor = "text";
         });
 
@@ -1931,54 +1913,80 @@ function restoreFromStorage() {
         // select this project and show its todos
         projChild.addEventListener("click", function(event) {
 
-            // don't switch selection if user is clicking into the input to rename
-            if (event.target === titleInput) return;
+            // close button handles its own logic — don't interfere
+            if (event.target === closeButton || closeButton.contains(event.target)) return;
 
-            const current = document.querySelector('.selectedProject');
-            if (current) {
-                current.classList.remove("selectedProject");
-                current.classList.add("unselectedProject");
+            const alreadySelected = projChild.classList.contains('selectedProject');
+
+            // first click — select the project
+            if (!alreadySelected) {
+                const current = document.querySelector('.selectedProject');
+                if (current) {
+                    // lock the previously selected project's input
+                    const prevInput = current.querySelector('#projInput');
+                    if (prevInput) {
+                        prevInput.style.pointerEvents = "none";
+                        prevInput.style.cursor = "default";
+                        prevInput.blur();
+                    }
+                    current.classList.remove("selectedProject");
+                    current.classList.add("unselectedProject");
+                }
+                projChild.classList.remove("unselectedProject");
+                projChild.classList.add("selectedProject");
+
+                const name  = titleInput.value;
+                const items = listLogic.listItems(name);
+                clearToDos_restore();
+
+                const hasRealItems = items && items.some(function(i){ return i.tit !== ""; });
+                if (hasRealItems) {
+                    addToDos_restore(items, name);
+                } else if (items) {
+                    addAllToDo_DOM(items, name);
+                }
+
+                updateItemButton_restore(name);
+                return;
             }
-            projChild.classList.remove("unselectedProject");
-            projChild.classList.add("selectedProject");
 
-            const name  = titleInput.value;
-            const items = listLogic.listItems(name);
-            clearToDos_restore();
-
-            // if all items are blank placeholders, use addAllToDo_DOM so the
-            // empty input row is rendered and the user can start adding todos
-            const hasRealItems = items && items.some(function(i){ return i.tit !== ""; });
-            if (hasRealItems) {
-                addToDos_restore(items, name);
-            } else if (items) {
-                addAllToDo_DOM(items, name);
-            }
-
-            updateItemButton_restore(name);
-
+            // already selected — any click not on close button unlocks the input for editing
+            titleInput.style.pointerEvents = "auto";
+            titleInput.style.cursor = "text";
+            titleInput.focus();
         });
 
         // delete this project
         closeButton.addEventListener("click", function() {
 
             const mainListEl = document.getElementById("mainList");
-            let   mainChild  = document.getElementById("toDoChild");
             const property   = titleInput.value;
+            const wasSelected = projChild.classList.contains('selectedProject');
 
             projChild.parentNode.removeChild(projChild);
 
-            while (mainListEl.contains(mainChild)) {
-                if (mainChild.nextSibling && mainChild.nextSibling.id === 'descSibling') {
-                    mainListEl.removeChild(mainChild.nextSibling);
-                }
-                mainListEl.removeChild(mainChild);
-                mainChild = document.getElementById("toDoChild");
+            // Only clear the todo DOM if this project was the selected one
+            if (wasSelected) {
+                while (mainListEl.firstChild) { mainListEl.removeChild(mainListEl.firstChild); }
             }
 
             listLogic.removeProject(property);
             listLogic.listProjects();
             if (projButton) projButton.style.pointerEvents = "auto";
+
+            // if deleted project was selected, auto-select the next available project
+            if (wasSelected) {
+                const nextRow = document.querySelector('#projChild');
+                if (nextRow) {
+                    nextRow.classList.remove("unselectedProject");
+                    nextRow.classList.add("selectedProject");
+                    const nextInput = nextRow.querySelector('#projInput');
+                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
+                    const nextItems = listLogic.listItems(nextName);
+                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
+                    updateItemButton_restore(nextName);
+                }
+            }
 
         });
 
@@ -2119,11 +2127,14 @@ function addToDos_restore(toDoArray, toDoName) {
         toDoChild.appendChild(closeButtonToDo);
 
         // populate date fields
-        if (item.due && item.due !== "--" && item.due !== "X-X-XXXX") {
+        if (item.due && item.due !== "--" && item.due !== "X-X-XXXX" && item.due !== "") {
             const parts = item.due.split('-');
-            month.value = parseInt(parts[0], 10) || "";
-            day.value   = parseInt(parts[1], 10) || "";
-            year.value  = parseInt(parts[2], 10) || "";
+            const m = parseInt(parts[0], 10);
+            const d = parseInt(parts[1], 10);
+            const y = parseInt(parts[2], 10);
+            if (!isNaN(m)) month.value = m;
+            if (!isNaN(d)) day.value   = d;
+            if (!isNaN(y)) year.value  = y;
         }
 
         let switcher = 0;

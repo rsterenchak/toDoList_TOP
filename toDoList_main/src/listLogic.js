@@ -51,6 +51,21 @@ export const listLogic = (function () {
 
     }
 
+    // Sanitize loaded data — fix any bad date values (NaN, empty, malformed)
+    Object.keys(allProjects).forEach(function(key) {
+        allProjects[key].forEach(function(item) {
+            if (!item.due || item.due === "" || item.due === "--" || item.due === "X-X-XXXX") return;
+            const parts = item.due.split('-');
+            const m = parseInt(parts[0], 10);
+            const d = parseInt(parts[1], 10);
+            const y = parseInt(parts[2], 10);
+            // if any part is NaN, clear the due date
+            if (isNaN(m) || isNaN(d) || isNaN(y)) {
+                item.due = "";
+            }
+        });
+    });
+
     // ************************************************************* //
 
 
