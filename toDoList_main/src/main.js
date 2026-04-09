@@ -1668,8 +1668,7 @@ function component() {
 
 export { component, restoreFromStorage };
 
-// appendNewToDoRow — adds a blank todo item to logic and renders it in the DOM.
-// Called after any successful todo Enter submission so the user can keep typing.
+// appendNewToDoRow — focuses the existing blank row if one exists, or creates a new one.
 function appendNewToDoRow(toDoName) {
 
     const mainListDiv = document.getElementById("mainList");
@@ -1680,7 +1679,16 @@ function appendNewToDoRow(toDoName) {
         return;
     }
 
-    // add blank placeholder to logic
+    // if a blank input row already exists in the DOM, just focus it — don't add another
+    const existingInputs = mainListDiv.querySelectorAll('#toDoInput');
+    for (let i = 0; i < existingInputs.length; i++) {
+        if (existingInputs[i].value === "") {
+            existingInputs[i].focus();
+            return;
+        }
+    }
+
+    // no blank row exists — add one to logic and render it
     const newItems  = listLogic.addToDo(toDoName, "");
     const toDoArray = newItems.array;
     const newIndex  = newItems.lengths - 1;
