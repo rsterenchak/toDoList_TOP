@@ -3,6 +3,33 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// ── HELPER: wire Enter-to-save on month/day/year inputs for a given todo item ──
+// Call after building each todo row so date changes persist even when the
+// user presses Enter while focused on a date field rather than the title.
+function wireDateInputs(month, day, year, item, toDoName) {
+
+    function saveDate() {
+        const m = month.value || month.placeholder || 1;
+        const d = day.value   || day.placeholder   || 1;
+        const y = year.value  || year.placeholder  || 2023;
+        item["due"] = m + "-" + d + "-" + y;
+        listLogic.saveToStorage();
+    }
+
+    [month, day, year].forEach(function(input) {
+        input.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                saveDate();
+                input.blur();
+            }
+        });
+        // also save on blur so tabbing away or tapping elsewhere persists the value
+        input.addEventListener("blur", function() {
+            saveDate();
+        });
+    });
+}
+
 
 // ********************** GLOBAL DOM FUNCTIONS ********************** //
 
@@ -145,6 +172,7 @@ function addAllToDo_DOM(items, name){
         dueInput.appendChild(day);
         dueInput.appendChild(dash2);
         dueInput.appendChild(year);
+        wireDateInputs(month, day, year, item, toDoName);
 
 
         toDoChild.appendChild(spacer);
@@ -435,6 +463,7 @@ function addAllToDo_DOM(items, name){
         dueInput.appendChild(day);
         dueInput.appendChild(dash2);
         dueInput.appendChild(year);
+        wireDateInputs(month, day, year, item, toDoName);
 
 
         toDoChild.appendChild(spacer);
@@ -1358,7 +1387,10 @@ function component() {
 
 
 
-                arraySlot = toDoArray[toDoLength - 1]; //  >>> 2 - 1
+                arraySlot = toDoArray[toDoLength - 1];
+
+                // now that arraySlot is known, wire date inputs to save on Enter/blur
+                wireDateInputs(month, day, year, arraySlot, currentProject);
 
                 trimmedText = enteredText.trim();
                     
@@ -1720,6 +1752,7 @@ function appendNewToDoRow(toDoName) {
     dueInput.appendChild(day);
     dueInput.appendChild(dash2);
     dueInput.appendChild(year);
+    wireDateInputs(month, day, year, item, toDoName);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(closeButtonToDo);
 
@@ -2123,6 +2156,7 @@ function addToDos_restore(toDoArray, toDoName) {
         dueInput.appendChild(day);
         dueInput.appendChild(dash2);
         dueInput.appendChild(year);
+        wireDateInputs(month, day, year, item, toDoName);
         toDoChild.appendChild(spacer);
         toDoChild.appendChild(closeButtonToDo);
 
