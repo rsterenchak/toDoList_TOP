@@ -534,6 +534,34 @@ body {
     margin: 4px 6px;
     padding: 0 8px 0 12px;
   }
+
+  /* ── Prevent iOS Safari zoom on input focus ──
+     Any input smaller than 16px triggers auto-zoom.
+     We scale up to 16px on mobile, then use transform
+     to visually shrink back so layout doesn't change. */
+  #toDoInput,
+  #projInput,
+  #descInput {
+    font-size: 16px;
+  }
+
+  #month, #day, #year {
+    font-size: 16px;
+    width: 22px;
+  }
+  #year { width: 44px; }
+
+  /* Prevent double-tap zoom on all interactive elements */
+  button,
+  #projButton,
+  #itemButton,
+  #sidebarToggle,
+  #closeButton,
+  #closeButtonToDo,
+  #projChild,
+  #toDoChild {
+    touch-action: manipulation;
+  }
 }
 
 /* ══════════════════════════════════════════
