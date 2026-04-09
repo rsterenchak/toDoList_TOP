@@ -295,6 +295,7 @@ body {
   min-width: 0;
 }
 
+/* ── MAIN TITLE BAR ── */
 #mainTitle {
   display: flex;
   align-items: center;
@@ -313,6 +314,23 @@ body {
   text-transform: uppercase;
 }
 
+/* ADD ITEM — hidden, Enter key handles new todo creation */
+#addItem {
+  display: none;
+}
+
+#itemButton {
+  border: none;
+  width: var(--touch);
+  height: var(--touch);
+  background: transparent url('./addProj_button.svg') center/22px 22px no-repeat;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+#itemButton:hover { opacity: 1; }
+
+/* TODO LIST */
 #mainList {
   display: grid;
   grid-template-rows: repeat(auto-fit, minmax(54px, 54px));
@@ -353,7 +371,7 @@ body {
   letter-spacing: 0.02em;
   caret-color: #9D8FFF;
   min-width: 0;
-  flex: 1 1 0;  /* takes all remaining space, can shrink */
+  flex: 1 1 0;
   align-self: center;
 }
 #toDoInput:-webkit-autofill,
@@ -407,7 +425,7 @@ body {
 #month:focus::placeholder, #day:focus::placeholder, #year:focus::placeholder { color: transparent; }
 
 #dash { font-size: 11px; color: #555; flex-shrink: 0; }
-#spacer { display: none; } /* spacer not needed in flex layout */
+#spacer { display: none; }
 
 /* CLOSE BUTTON (todo) */
 #closeButtonToDo {
@@ -474,12 +492,9 @@ body {
 
 /* ══════════════════════════════════════════
    DESKTOP > 700px
-   Hamburger collapses sidebar IN the grid.
-   No overlay. Sidebar never slides over content.
 ══════════════════════════════════════════ */
 @media (min-width: 701px) {
 
-  /* collapsed: grid shrinks sidebar column to 0 */
   #mainSec.sidebar-collapsed {
     grid-template-columns: 0px 1fr;
   }
@@ -488,7 +503,6 @@ body {
     border-right-color: transparent;
   }
 
-  /* overlay never needed on desktop */
   #sidebarOverlay { display: none !important; }
 }
 
@@ -533,8 +547,7 @@ body {
 }
 
 /* ══════════════════════════════════════════
-   PHONE  ≤ 420px — hide date only where
-   there is genuinely no room for it
+   PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {
   #dateText, #dueInput { display: none; }
