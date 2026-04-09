@@ -17,11 +17,7 @@ export const listLogic = (function () {
     let itemPri = 1;
 
     // INITIAL: define allProjects object that dynamically stores arrays as new properties 
-    const allProjects = {
-    
-        // new array properties would be stored here
-
-    }; 
+    const allProjects = {};
 
 
     // ********************* STORAGE HANDLING ********************* //
@@ -58,78 +54,39 @@ export const listLogic = (function () {
     // ************************************************************* //
 
 
-/*     // INITIAL: Sets the initial Project name and is used later to store new project names within addProject
-    var projectName = 'Default';  
-
-    // INITIAL: Initial Empty Item
-    let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
-
-    // INITIAL: Sets Default project
-    allProjects[projectName] = [];
-
-    // INITIAL: Adds 'empty' list item to project array
-    allProjects[projectName].push(listItem); */
-    
-
-
     let allProjectsTotal = Object.keys(allProjects).length; 
 
-    // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
-    //                              - 
     function listProjects(){
-
         console.log(Object.keys(allProjects));
-
     }
 
-    // FUNCTION (CURRENT PROJECTS): - responsible for placing newly named projects into allProjects array
-    //                              - 
     function listProjectsArray(){
-
         let projectsArray = Object.keys(allProjects);
-
         return projectsArray;
-
     }
 
-    // FUNCTION (NEW PROJECTS): - responsible for placing newly named projects into allProjects array
-    //           - activates when onClick for new project takes place.
-    //           - takes in user input for project name and stores it in the allProjects array
     function addProject(projectName){
 
-        // console.log("Enter addProject function");
-        // Sets variable for 'empty' list item
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
-
 
         projectName = projectName.trim();
 
-        // set projectName as a new property of the allProjects object
         allProjects[projectName] = [];
-
-        // empty array (empty item) NEEDS to also be pushed for allProjects to 'recognize' as an array
         allProjects[projectName].push(listItem);
 
         allProjectsTotal = Object.keys(allProjects).length;
 
         saveToStorage();
-        console.log(localStorage);
-
         
         return {
             array: allProjects[projectName],
             string: projectName
-        };// return project array
-
+        };
     }
 
-    // **************** WORKING ON ****************
-    // FUNCTION (REMOVE PROJECTS): - responsible for removing named projects inside allProjects array
-    //                             - projectName property needs to be passed to function to identify 
     function removeProject(projectName){
 
-        let before =  Object.keys(allProjects).length;
-
+        let before = Object.keys(allProjects).length;
         let projectDes = projectName;
 
         delete allProjects[projectDes]; 
@@ -138,42 +95,43 @@ export const listLogic = (function () {
 
         if(after < before){
             console.log(projectDes + " was removed");
-        }
-        else{
+        } else {
             console.log(projectDes + " was not removed");
         }
 
         saveToStorage();
-
     }
 
 
-    // FUNCTION (ADD TODO LIST ITEMS): - responsible for adding new items to a designated project
-    //                                 - called when add button under a project is clicked
+    // FUNCTION (ADD TODO LIST ITEMS)
+    // Guards against adding a duplicate blank placeholder at the end.
     function addToDo(projectName, toDoName) {
 
-        // console.log("called addToDo function");
-
         let projectDes = projectName;
+        let itemTitle  = toDoName;
+        let itemDesc   = '';
+        let itemDue    = '';
+        let itemPri    = 1;
+        let itemPos    = 0;
 
-        // Project should be passed into function as variable - 'projectName'
-        // var selectedProject = projectName;
-
-        // based on the project selected, take in new variables for object
-        let itemTitle = toDoName;
-        let itemDesc = '';
-        let itemDue = '';
-        let itemPri = 1;
-        let itemPos = 0;
-
-        // with the new variables, instantiate the new toDo list object
-        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);    
-
-        // push that new object to the allProjects array
         if (!allProjects[projectDes]) {
             console.error("addToDo: project not found —", projectDes);
             return { array: [], string: projectName, lengths: 0 };
         }
+
+        // If trying to add a blank placeholder, skip if one already exists at the end
+        if (itemTitle === '') {
+            const arr = allProjects[projectDes];
+            if (arr.length > 0 && arr[arr.length - 1].tit === '') {
+                return {
+                    array: allProjects[projectName],
+                    string: projectName,
+                    lengths: allProjects[projectName].length
+                };
+            }
+        }
+
+        let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);
         allProjects[projectDes].push(listItem);
 
         saveToStorage();
@@ -181,42 +139,37 @@ export const listLogic = (function () {
         return {
             array: allProjects[projectName],
             string: projectName, 
-            lengths: (allProjects[projectName]).length
-        };// return project array        
-
-
+            lengths: allProjects[projectName].length
+        };
     };
 
+
+    // FUNCTION (REMOVE TODO LIST ITEMS)
+    // Always leaves exactly one blank placeholder when no real items remain.
     function removeToDo(project, index, length) {
 
         if (!allProjects[project]) return;
 
         index = parseInt(index, 10);
 
-        const actualLength = allProjects[project].length;
+        // Splice out the target item
+        if (index >= 0 && index < allProjects[project].length) {
+            allProjects[project].splice(index, 1);
+        }
 
-        // if this is the only real item, reset to a single blank placeholder
-        if (actualLength <= 1) {
+        // Strip ALL blank placeholders from the array
+        allProjects[project] = allProjects[project].filter(function(i) {
+            return i.tit !== '';
+        });
 
-            const listItem = toDo('', '', '', 1, 0);
-            allProjects[project] = [listItem];
-
-        } else {
-
-            removeElementAtIndex(allProjects[project], index);
-
-            // if after removal no real items remain (only blanks), ensure exactly one blank
-            const hasReal = allProjects[project].some(function(i){ return i.tit !== ""; });
-            if (!hasReal) {
-                const listItem = toDo('', '', '', 1, 0);
-                allProjects[project] = [listItem];
-            }
-
+        // If no real items remain, add exactly one blank placeholder
+        if (allProjects[project].length === 0) {
+            allProjects[project].push(toDo('', '', '', 1, 0));
         }
 
         saveToStorage();
-
     };
+
 
     // Remove a todo item by its title — avoids index/DOM sync issues
     function removeToDoByTitle(project, title) {
@@ -233,22 +186,21 @@ export const listLogic = (function () {
 
         arr.splice(idx, 1);
 
-        // if no real items remain, reset to a single blank placeholder
-        const hasReal = arr.some(function(i){ return i.tit !== ""; });
-        if (!hasReal) {
-            allProjects[project] = [toDo('', '', '', 1, 0)];
+        // Strip blanks then ensure one placeholder remains if no real items left
+        allProjects[project] = allProjects[project].filter(function(i) {
+            return i.tit !== '';
+        });
+
+        if (allProjects[project].length === 0) {
+            allProjects[project].push(toDo('', '', '', 1, 0));
         }
 
         saveToStorage();
-
     };
 
-    // FUNCTION (EDIT TODO LIST ITEMS): - responsible for editing specified project array items
-    //                                  - called when gui item section is clicked on
-    //                                  - **** WILL NOT WORK AFTER SECOND EDIT ****
+
     function editProject(currentProperty, newProperty) {
 
-        // set projectName as a new property of the allProjects object
         allProjects[newProperty] = allProjects[currentProperty];
         delete allProjects[currentProperty];
 
@@ -259,37 +211,26 @@ export const listLogic = (function () {
         return {
             array: allProjects[newProperty],
             string: newProperty
-        }; // return project array
-
+        };
     };
 
     function listItems(project){
-
-        let projectName = project;
-        let projectArray = allProjects[projectName];
-
-
-        return projectArray;
-
+        return allProjects[project];
     };
 
     function projectLength(project){
-
         if (!project || !allProjects[project]) return 0;
-
-        let projectLength = (allProjects[project]).length;
-
-        return projectLength;
+        return allProjects[project].length;
     };
 
     function removeElementAtIndex(arr, index) {
         if (index >= 0 && index < arr.length) {
-          arr.splice(index, 1);
-          return arr;
+            arr.splice(index, 1);
+            return arr;
         } else {
-          console.log("else error: " + index);  
-          console.error("Index out of bounds");
-          return arr; // Return the original array if the index is out of bounds
+            console.log("else error: " + index);  
+            console.error("Index out of bounds");
+            return arr;
         }
     }
   
@@ -306,36 +247,6 @@ export const listLogic = (function () {
         listItems, 
         projectLength,
         saveToStorage
-        
     };
 
-
-    // **************** TESTING INPUTS/FUNCTIONS **************** //
-
-
-    // addProject(); // - asks for project name, Adds new project
-    
-    // removeProject(allProjectsTotal); // -  Removes designated Project, determines if project was exists/was removed
-
-    // addToDo(); // - asks for project, Adds empty toDo item to designated projects
-
-    // editToDo(); // - asks for which project, prompts for details - function that edits toDo listItems
-
-    // listProjects();
-
-    // ********************* TESTING PRINTS ********************* //
-
-    
-    
-
-    
-    // *********************************************************** // 
-
-
-    // window.addProject = addProject; // makes addProject() function available to user globally
-})();// Ends CurrentSession
-
-
-
-// **** IMPORTANT IDEA ****: To get around the issue of not being able to export nested functions
-//            Attach each function to the listLogic() object prototype
+})();

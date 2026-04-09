@@ -72,8 +72,8 @@ body {
   border-bottom: 0.5px solid var(--border-dim);
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 10px;
+  padding: 0 12px;
+  gap: 8px;
   position: relative;
   z-index: 10;
 }
@@ -85,30 +85,20 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 16px;
+  color: var(--accent-text);
+  font-size: 20px;
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color 0.15s ease, background 0.15s ease;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   padding: 0;
 }
 
 #sidebarToggle:hover {
-  color: var(--accent-text);
+  color: #fff;
   background: var(--bg-hover);
-}
-
-#navBar::before {
-  content: '';
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
 }
 
 #navBar::after {

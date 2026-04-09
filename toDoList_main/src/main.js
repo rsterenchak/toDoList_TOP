@@ -58,12 +58,15 @@ function addAllToDo_DOM(items, name){
     
     month.id = "month";
     month.placeholder = 1;
+        month.autocomplete = "off";
 
     day.id = "day";
     day.placeholder = 1;
+        day.autocomplete = "off";
 
     year.id = "year";
     year.placeholder = 2023;
+        year.autocomplete = "off";
 
     dash.id = "dash";
     dash.textContent = "/";
@@ -75,6 +78,8 @@ function addAllToDo_DOM(items, name){
 
     // First Project Input
     toDoInput.type = "text";
+    toDoInput.autocomplete = "off";
+        
     toDoInput.id = "toDoInput";
     toDoInput.placeholder = "New Item";
     toDoInput.style.fontSize = "14px"; // - NEW
@@ -91,6 +96,7 @@ function addAllToDo_DOM(items, name){
     descSpacer2.id = "descSpacer2";
 
     descInput.type ="text";
+    descInput.autocomplete = "off";
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px"; // - NEW
 
@@ -296,45 +302,24 @@ function addAllToDo_DOM(items, name){
 
         closeButtonToDo.addEventListener("click", function(){
 
-            let pos = closeButtonToDo.dataset.info;
             let project = toDoName;
-            let currentLength = listLogic.projectLength(project);
+            let title   = toDoInput.value;
 
-            if(currentLength === 1){
-
-                if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                    toDoChild.parentElement.removeChild(toDoChild.nextSibling);
-                }
-
-                toDoInput.value = "";
-                listLogic.removeToDo(project, pos, currentLength);
-                updateItemButton_restore(project);
+            // remove descSibling if open
+            if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
+                toDoChild.parentElement.removeChild(toDoChild.nextSibling);
             }
 
-            else{
+            // remove by title — immune to index drift caused by appendNewToDoRow
+            listLogic.removeToDoByTitle(project, title);
 
-                if(toDoChild.nextSibling != null && toDoChild.nextSibling.id === 'descSibling'){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
+            // wipe ALL DOM rows and re-render cleanly from logic — prevents ghost rows
+            const mainDiv = document.getElementById('mainList');
+            while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
-                // snapshot before removal so indices are correct
-                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(project, pos, currentLength);
-                listLogic.listItems(project);
-
-                let pos_int = parseInt(pos, 10);
-                let adjustedValue = pos_int;
-                while(closeButtonElements[adjustedValue + 1] != null){
-                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                    adjustedValue++;
-                }
-
-                updateItemButton_restore(project);
-            }
-
-            clickSwitch = 0;
+            const remaining = listLogic.listItems(project);
+            addAllToDo_DOM(remaining, project);
+            updateItemButton_restore(project);
 
         });
 
@@ -394,12 +379,15 @@ function addAllToDo_DOM(items, name){
         
         month.id = "month";
         month.placeholder = 1;
+        month.autocomplete = "off";
 
         day.id = "day";
         day.placeholder = 1;
+        day.autocomplete = "off";
 
         year.id = "year";
         year.placeholder = 2023;
+        year.autocomplete = "off";
 
         dash.id = "dash";
         dash.textContent = "/";
@@ -411,6 +399,8 @@ function addAllToDo_DOM(items, name){
 
         // First Project Input
         toDoInput.type = "text";
+        toDoInput.autocomplete = "off";
+        
         toDoInput.id = "toDoInput";
         toDoInput.placeholder = "New Item";
         toDoInput.style.fontSize = "14px"; // - NEW
@@ -427,6 +417,7 @@ function addAllToDo_DOM(items, name){
         descSpacer2.id = "descSpacer2";
 
         descInput.type ="text";
+        descInput.autocomplete = "off";
         descInput.placeholder = "Type description here...";
         descInput.style.fontSize = "12px"; // - NEW
 
@@ -633,49 +624,24 @@ function addAllToDo_DOM(items, name){
 
             console.log("Entered regenToDo closeButton function");
 
-            // store index of toDo item in variable
-            let pos = closeButtonToDo.dataset.info;
             let project = toDoName;
-            
-            let currentLength = listLogic.projectLength(project);
+            let title   = toDoInput.value;
 
-
-            // if currentLength is 1, clear div information
-            if(currentLength === 1){
-
-                if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
-
-                toDoInput.value = "";
-                listLogic.removeToDo(project, pos, currentLength);
-                clickSwitch = 0;
-                updateItemButton_restore(project);
+            // remove descSibling if open
+            if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
+                mainListDiv.removeChild(toDoChild.nextSibling);
             }
 
-            else{
+            // remove by title — immune to index drift caused by appendNewToDoRow
+            listLogic.removeToDoByTitle(project, title);
 
-                if((toDoChild.nextSibling != null) && (toDoChild.nextSibling.id === 'descSibling')){
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
+            // wipe ALL DOM rows and re-render cleanly from logic — prevents ghost rows
+            const mainDiv = document.getElementById('mainList');
+            while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
-                // snapshot before removal so indices are correct
-                const closeButtonElements = document.querySelectorAll('#closeButtonToDo');
-
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(project, pos, currentLength);
-                listLogic.listItems(project);
-
-                let pos_int = parseInt(pos, 10);
-                let adjustedValue = pos_int;
-                while(closeButtonElements[adjustedValue + 1] != null){
-                    closeButtonElements[adjustedValue + 1].dataset.info = adjustedValue;
-                    adjustedValue++;
-                }
-
-                clickSwitch = 0;
-                updateItemButton_restore(project);
-            }
+            const remaining = listLogic.listItems(project);
+            addAllToDo_DOM(remaining, project);
+            updateItemButton_restore(project);
 
         });
 
@@ -718,7 +684,6 @@ function component() {
     const addProj = document.createElement('div');
     const projButton = document.createElement('div');
 
-
     const mainTitle = document.createElement('div');
     const mainList = document.createElement('div');
 
@@ -727,7 +692,8 @@ function component() {
     const addItem = document.createElement('div');
     const itemButton = document.createElement('div');
 
-    
+    const sidebarToggle  = document.createElement('button');
+    const sidebarOverlay = document.createElement('div');
 
     base.id ='outerContainer';
     nav.id = 'navBar';
@@ -753,14 +719,22 @@ function component() {
     addItem.id = 'addItem';
     itemButton.id = 'itemButton';
 
+    sidebarToggle.id        = 'sidebarToggle';
+    sidebarToggle.innerHTML = '☰';
+    sidebarToggle.setAttribute('aria-label', 'Toggle projects sidebar');
+
+    sidebarOverlay.id = 'sidebarOverlay';
+
+    // sidebarToggle is first child of nav so nothing can overlap it
+    nav.appendChild(sidebarToggle);
 
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);
+    base.appendChild(sidebarOverlay);
 
     main.appendChild(main1);
     main.appendChild(main2);
-
 
     main1.appendChild(sideTitle);
     main1.appendChild(sideMain);
@@ -770,7 +744,6 @@ function component() {
     sideMain.appendChild(addProj);
     addProj.appendChild(projButton);
 
-
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
@@ -778,15 +751,51 @@ function component() {
     mainTitle.appendChild(addItem);
     addItem.appendChild(itemButton);
 
-
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
-
-    // var mainChild = mainList.childNodes[1];
-
-    // on click should temporarily disable ability to continue clicking
     itemButton.style.pointerEvents = "none";
+
+    // ── sidebar toggle logic ──
+    function isMobile() { return window.innerWidth <= 700; }
+
+    function openSidebar() {
+        if (isMobile()) {
+            main1.classList.add('sidebar-open');
+            sidebarOverlay.classList.add('visible');
+        } else {
+            main.classList.remove('sidebar-collapsed');
+        }
+    }
+
+    function closeSidebar() {
+        if (isMobile()) {
+            main1.classList.remove('sidebar-open');
+            sidebarOverlay.classList.remove('visible');
+        } else {
+            main.classList.add('sidebar-collapsed');
+        }
+    }
+
+    function sidebarIsOpen() {
+        return isMobile()
+            ? main1.classList.contains('sidebar-open')
+            : !main.classList.contains('sidebar-collapsed');
+    }
+
+    sidebarToggle.addEventListener('click', function() {
+        sidebarIsOpen() ? closeSidebar() : openSidebar();
+    });
+
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    if (window.matchMedia('(pointer: coarse)').matches) {
+        main1.addEventListener('click', function(e) {
+            const onProjChild = e.target.closest('#projChild');
+            const onInput     = e.target.tagName === 'INPUT';
+            if (onProjChild && !onInput) { closeSidebar(); }
+        });
+    }
 
     // *** HELPER: clears all toDo DOM elements from mainList (index 1 onward) ***
     function clearToDos_global() {
@@ -840,6 +849,8 @@ function component() {
 
         // First Project Input
         titleInput.type = "text";
+        titleInput.autocomplete = "off";
+        
         titleInput.id = "projInput";
         titleInput.placeholder = "New Project";
         
@@ -1230,12 +1241,15 @@ function component() {
         
         month.id = "month";
         month.placeholder = 1;
+        month.autocomplete = "off";
 
         day.id = "day";
         day.placeholder = 1;
+        day.autocomplete = "off";
 
         year.id = "year";
         year.placeholder = 2023;
+        year.autocomplete = "off";
 
         dash.id = "dash";
         dash.textContent = "/";
@@ -1247,6 +1261,8 @@ function component() {
 
         // First Project Input
         toDoInput.type = "text";
+        toDoInput.autocomplete = "off";
+        
         toDoInput.id = "toDoInput";
         toDoInput.placeholder = "New Item";
         toDoInput.style.fontSize = "14px"; // - NEW
@@ -1263,6 +1279,7 @@ function component() {
         descSpacer2.id = "descSpacer2";
 
         descInput.type ="text";
+        descInput.autocomplete = "off";
         descInput.placeholder = "Type description here...";
         descInput.style.fontSize = "12px"; // - NEW
 
@@ -1688,6 +1705,7 @@ function appendNewToDoRow(toDoName) {
     dueInput.style.fontSize = "10px";
 
     month.id = "month"; month.placeholder = 1;
+        month.autocomplete = "off";
     day.id   = "day";   day.placeholder   = 1;
     year.id  = "year";  year.placeholder  = 2023;
     dash.id  = "dash";  dash.textContent  = "/";
@@ -1695,6 +1713,7 @@ function appendNewToDoRow(toDoName) {
     spacer.id = "spacer";
 
     toDoInput.type        = "text";
+    toDoInput.autocomplete = "off";
     toDoInput.id          = "toDoInput";
     toDoInput.placeholder = "New Item";
     toDoInput.style.fontSize = "14px";
@@ -1709,6 +1728,8 @@ function appendNewToDoRow(toDoName) {
     descInput.id   = "descInput";
     descSpacer2.id = "descSpacer2";
     descInput.type = "text";
+    descInput.autocomplete = "off";
+        
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
     descInput.value = "";
@@ -1803,27 +1824,21 @@ function appendNewToDoRow(toDoName) {
     // delete this row
     closeButtonToDo.addEventListener("click", function() {
 
-        const pos           = parseInt(closeButtonToDo.dataset.info, 10);
-        const currentLength = listLogic.projectLength(toDoName);
+        const title = toDoInput.value;
 
         if (toDoChild.nextSibling && toDoChild.nextSibling.id === "descSibling") {
             mainListDiv.removeChild(toDoChild.nextSibling);
         }
 
-        if (currentLength === 1) {
-            toDoInput.value = "";
-            listLogic.removeToDo(toDoName, 0, currentLength);
-        } else {
-            const allClose = document.querySelectorAll("#closeButtonToDo");
-            mainListDiv.removeChild(toDoChild);
-            listLogic.removeToDo(toDoName, pos, currentLength);
-            let adj = pos;
-            while (allClose[adj + 1] != null) {
-                allClose[adj + 1].dataset.info = adj;
-                adj++;
-            }
-        }
+        // remove by title — immune to index drift
+        listLogic.removeToDoByTitle(toDoName, title);
 
+        // wipe and re-render cleanly
+        const mainDiv = document.getElementById('mainList');
+        while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
+
+        const remaining = listLogic.listItems(toDoName);
+        addAllToDo_DOM(remaining, toDoName);
         updateItemButton_restore(toDoName);
 
     });
@@ -1862,6 +1877,7 @@ function restoreFromStorage() {
         projChild.id = "projChild";
 
         titleInput.type        = "text";
+        titleInput.autocomplete = "off";
         titleInput.id          = "projInput";
         titleInput.value       = projectName;
         titleInput.style.border = "none";
@@ -2061,6 +2077,7 @@ function addToDos_restore(toDoArray, toDoName) {
         dueInput.style.fontSize = "10px";
 
         month.id          = "month";  month.placeholder = 1;
+        month.autocomplete = "off";
         day.id            = "day";    day.placeholder   = 1;
         year.id           = "year";   year.placeholder  = 2023;
         dash.id           = "dash";   dash.textContent  = "/";
@@ -2068,6 +2085,7 @@ function addToDos_restore(toDoArray, toDoName) {
         spacer.id         = "spacer";
 
         toDoInput.type        = "text";
+        toDoInput.autocomplete = "off";
         toDoInput.id          = "toDoInput";
         toDoInput.placeholder = "New Item";
         toDoInput.style.fontSize = "14px";
@@ -2082,6 +2100,7 @@ function addToDos_restore(toDoArray, toDoName) {
         descInput.id    = "descInput";
         descSpacer2.id  = "descSpacer2";
         descInput.type  = "text";
+        descInput.autocomplete = "off";
         descInput.placeholder = "Type description here...";
         descInput.style.fontSize = "12px";
         descInput.value = item.desc || "";
@@ -2171,27 +2190,21 @@ function addToDos_restore(toDoArray, toDoName) {
         // delete todo item
         closeButtonToDo.addEventListener("click", function() {
 
-            const pos           = parseInt(closeButtonToDo.dataset.info, 10);
-            const currentLength = listLogic.projectLength(toDoName);
+            const title = toDoInput.value;
 
             if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
                 mainListDiv.removeChild(toDoChild.nextSibling);
             }
 
-            if (currentLength === 1) {
-                toDoInput.value = "";
-                listLogic.removeToDo(toDoName, 0, currentLength);
-            } else {
-                const allClose = document.querySelectorAll('#closeButtonToDo');
-                mainListDiv.removeChild(toDoChild);
-                listLogic.removeToDo(toDoName, pos, currentLength);
-                let adj = pos;
-                while (allClose[adj + 1] != null) {
-                    allClose[adj + 1].dataset.info = adj;
-                    adj++;
-                }
-            }
+            // remove by title — immune to index drift
+            listLogic.removeToDoByTitle(toDoName, title);
 
+            // wipe and re-render cleanly
+            const mainDiv = document.getElementById('mainList');
+            while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
+
+            const remaining = listLogic.listItems(toDoName);
+            addAllToDo_DOM(remaining, toDoName);
             updateItemButton_restore(toDoName);
 
         });
