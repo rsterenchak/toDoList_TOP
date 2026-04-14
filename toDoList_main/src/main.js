@@ -304,7 +304,7 @@ function addAllToDo_DOM(items, name){
             }
         });
 
-        // descInput keydown registered ONCE here, not inside the click handler
+        // descInput keydown — handles Enter key UX (blur + border feedback)
         descInput.addEventListener("keydown", function(event) {
 
             if (event.key !== "Enter") return;
@@ -325,6 +325,15 @@ function addAllToDo_DOM(items, name){
                 descInput.style.border = "none";
             } else {
                 descInput.style.border = "1px solid red";
+            }
+        });
+
+        // descInput keyup — saves on every keystroke so value is never lost
+        descInput.addEventListener("keyup", function() {
+            const val = descInput.value.trim();
+            if (val.length > 0) {
+                item["desc"] = val;
+                listLogic.saveToStorage();
             }
         });
 
@@ -608,7 +617,7 @@ function addAllToDo_DOM(items, name){
             }
         });
 
-        // descInput keydown registered ONCE here, not inside the click handler
+        // descInput keydown — handles Enter key UX (blur + border feedback)
         descInput.addEventListener("keydown", function(event) {
 
             if (event.key !== "Enter") return;
@@ -629,6 +638,15 @@ function addAllToDo_DOM(items, name){
                 descInput.style.border = "none";
             } else {
                 descInput.style.border = "1px solid red";
+            }
+        });
+
+        // descInput keyup — saves on every keystroke so value is never lost
+        descInput.addEventListener("keyup", function() {
+            const val = descInput.value.trim();
+            if (val.length > 0) {
+                item["desc"] = val;
+                listLogic.saveToStorage();
             }
         });
 
@@ -1668,7 +1686,7 @@ function component() {
 
 export { component, restoreFromStorage };
 
-// appendNewToDoRow — focuses the existing blank row if one exists, or creates a new one.
+// appendNewToDoRow — focuses the existing blank row if one exists, or creates a new one. //
 function appendNewToDoRow(toDoName) {
 
     const mainListDiv = document.getElementById("mainList");
@@ -1823,7 +1841,7 @@ function appendNewToDoRow(toDoName) {
 
     });
 
-    // save description on Enter
+    // descInput keydown — handles Enter key UX (blur + border feedback)
     descInput.addEventListener("keydown", function(event) {
         if (event.key !== "Enter") return;
         const val = descInput.value.trim();
@@ -1836,6 +1854,15 @@ function appendNewToDoRow(toDoName) {
             descInput.style.border = "1px solid red";
         }
         descInput.blur();
+    });
+
+    // descInput keyup — saves on every keystroke so value is never lost
+    descInput.addEventListener("keyup", function() {
+        const val = descInput.value.trim();
+        if (val.length > 0) {
+            item["desc"] = val;
+            listLogic.saveToStorage();
+        }
     });
 
     // delete this row
@@ -2209,18 +2236,28 @@ function addToDos_restore(toDoArray, toDoName) {
 
         });
 
-        // save description edits
+        // descInput keydown — handles Enter key UX (blur + border feedback)
         descInput.addEventListener("keydown", function(event) {
             if (event.key === "Enter") {
                 const val = descInput.value.trim();
                 if (val.length > 0) {
                     descInput.value = val;
                     item.desc = val;
+                    listLogic.saveToStorage();
                     descInput.style.border = "none";
                 } else {
                     descInput.style.border = "1px solid red";
                 }
                 descInput.blur();
+            }
+        });
+
+        // descInput keyup — saves on every keystroke so value is never lost
+        descInput.addEventListener("keyup", function() {
+            const val = descInput.value.trim();
+            if (val.length > 0) {
+                item.desc = val;
+                listLogic.saveToStorage();
             }
         });
 
