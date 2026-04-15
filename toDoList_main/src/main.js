@@ -23,6 +23,10 @@ function wireDateInputs(month, day, year, item, toDoName) {
                 input.blur();
             }
         });
+        // save on every keystroke so partial values are never lost
+        input.addEventListener("keyup", function() {
+            saveDate();
+        });
         // also save on blur so tabbing away or tapping elsewhere persists the value
         input.addEventListener("blur", function() {
             saveDate();
