@@ -563,6 +563,28 @@ function addAllToDo_DOM(items, name){
             
         }); // Ends "Enter" keydown function
 
+        // save title on every keystroke — no Enter required
+        toDoInput.addEventListener("keyup", function() {
+            const val = toDoInput.value.trim();
+            if (val.length > 0) {
+                item["tit"] = val;
+                listLogic.saveToStorage();
+            }
+        });
+
+        // snap-back: capture title on focus, restore it on blur if field is left empty
+        let savedTitle = item["tit"] || "";
+        toDoInput.addEventListener("focus", function() {
+            savedTitle = item["tit"] || toDoInput.value.trim();
+        });
+        toDoInput.addEventListener("blur", function() {
+            if (toDoInput.value.trim().length === 0 && savedTitle.length > 0) {
+                toDoInput.value = savedTitle;
+                item["tit"] = savedTitle;
+                listLogic.saveToStorage();
+            }
+        });
+
         // Set to generate array ['desc'] up on clicking
         toDoChild.addEventListener("click", function(event){
 
@@ -1820,6 +1842,15 @@ function appendNewToDoRow(toDoName) {
 
     });
 
+    // save title on every keystroke — no Enter required
+    toDoInput.addEventListener("keyup", function() {
+        const val = toDoInput.value.trim();
+        if (val.length > 0) {
+            item["tit"] = val;
+            listLogic.saveToStorage();
+        }
+    });
+
     // expand/collapse description
     toDoChild.addEventListener("click", function(event) {
 
@@ -1943,6 +1974,7 @@ function restoreFromStorage() {
 
         // track current name for rename
         let currentProperty = projectName;
+        let renameHandledByEnter = false;
 
         // rename on Enter — mirrors the editProject flow for new projects
         titleInput.addEventListener("keydown", function(event) {
@@ -1951,6 +1983,16 @@ function restoreFromStorage() {
 
             const newName = titleInput.value.trim();
             if (newName.length === 0) return;
+
+            // no-op if name hasn't changed
+            if (newName === currentProperty) {
+                titleInput.style.color = "";
+                titleInput.style.pointerEvents = "none";
+                titleInput.style.cursor = "default";
+                renameHandledByEnter = true;
+                titleInput.blur();
+                return;
+            }
 
             // check for duplicate names (excluding self)
             const existing = listLogic.listProjectsArray();
@@ -1966,7 +2008,24 @@ function restoreFromStorage() {
             titleInput.value = newName;
             titleInput.style.pointerEvents = "none";
             titleInput.style.cursor = "default";
+            renameHandledByEnter = true;
             titleInput.blur();
+
+            // if this project is selected, re-render its todos under the new name
+            if (projChild.classList.contains('selectedProject')) {
+                const mainDiv = document.getElementById('mainList');
+                while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
+                const items = listLogic.listItems(newName);
+                if (items) {
+                    const hasReal = items.some(function(i) { return i.tit !== ""; });
+                    if (hasReal) {
+                        addToDos_restore(items, newName);
+                    } else {
+                        addAllToDo_DOM(items, newName);
+                    }
+                }
+                updateItemButton_restore(newName);
+            }
 
         });
 
@@ -1980,6 +2039,46 @@ function restoreFromStorage() {
 
         titleInput.addEventListener("blur", function() {
             titleInput.style.cursor = "default";
+
+            // Enter already handled this rename — don't double-process
+            if (renameHandledByEnter) {
+                renameHandledByEnter = false;
+                return;
+            }
+
+            // commit rename on blur (e.g. user clicks away without pressing Enter)
+            const newName = titleInput.value.trim();
+            if (newName.length === 0 || newName === currentProperty) return;
+
+            // check for duplicate names (excluding self)
+            const existing = listLogic.listProjectsArray();
+            const duplicate = existing.some(function(n) { return n === newName && n !== currentProperty; });
+            if (duplicate) {
+                // revert to the last committed name
+                titleInput.value = currentProperty;
+                titleInput.style.color = "";
+                return;
+            }
+
+            titleInput.style.color = "";
+            listLogic.editProject(currentProperty, newName);
+            currentProperty = newName;
+
+            // re-render todos if this project is selected
+            if (projChild.classList.contains('selectedProject')) {
+                const mainDiv = document.getElementById('mainList');
+                while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
+                const items = listLogic.listItems(newName);
+                if (items) {
+                    const hasReal = items.some(function(i) { return i.tit !== ""; });
+                    if (hasReal) {
+                        addToDos_restore(items, newName);
+                    } else {
+                        addAllToDo_DOM(items, newName);
+                    }
+                }
+                updateItemButton_restore(newName);
+            }
         });
 
         // select this project and show its todos
@@ -2278,6 +2377,28 @@ function addToDos_restore(toDoArray, toDoName) {
                     appendNewToDoRow(toDoName);
                 }
                 toDoInput.blur();
+            }
+        });
+
+        // save title on every keystroke — no Enter required
+        toDoInput.addEventListener("keyup", function() {
+            const val = toDoInput.value.trim();
+            if (val.length > 0) {
+                item.tit = val;
+                listLogic.saveToStorage();
+            }
+        });
+
+        // snap-back: capture title on focus, restore it on blur if field is left empty
+        let savedTitle = item.tit || "";
+        toDoInput.addEventListener("focus", function() {
+            savedTitle = item.tit || toDoInput.value.trim();
+        });
+        toDoInput.addEventListener("blur", function() {
+            if (toDoInput.value.trim().length === 0 && savedTitle.length > 0) {
+                toDoInput.value = savedTitle;
+                item.tit = savedTitle;
+                listLogic.saveToStorage();
             }
         });
 
