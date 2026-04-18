@@ -1,6 +1,8 @@
 name: Claude Automated Task Runner
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # runs nightly at 2am UTC
 jobs:
   run-task:
     runs-on: ubuntu-latest
@@ -17,8 +19,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          mode: agent
-          direct_prompt: |
+          prompt: |
             Read TODO.md and find the first uncompleted task marked [ ].
             Prioritize HIGH over MEDIUM over LOW, bugs before features.
             If no open tasks exist, output "All tasks complete." and stop.
