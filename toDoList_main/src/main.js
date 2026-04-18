@@ -3,6 +3,37 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
+// Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
+
+    let switcher = 0;
+
+    descToggle.addEventListener("click", function(event) {
+        event.stopPropagation();
+
+        const mainList = toDoChild.parentElement;
+        if (!mainList) return;
+
+        if (switcher === 0) {
+            mainList.insertBefore(descSibling, toDoChild.nextSibling);
+            descSibling.appendChild(descSpacer1);
+            descSibling.appendChild(descInput);
+            descSibling.appendChild(descSpacer2);
+            descInput.value = item["desc"] || "";
+            descToggle.classList.add("open");
+            switcher = 1;
+        } else {
+            if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
+                mainList.removeChild(toDoChild.nextSibling);
+            }
+            descToggle.classList.remove("open");
+            switcher = 0;
+        }
+    });
+}
+
+
 // ── HELPER: wire Enter-to-save on month/day/year inputs for a given todo item ──
 // Call after building each todo row so date changes persist even when the
 // user presses Enter while focused on a date field rather than the title.
@@ -69,6 +100,7 @@ function addAllToDo_DOM(items, name){
     const year = document.createElement("input");
 
     const closeButtonToDo = document.createElement("div");
+    const descToggle = document.createElement("div");
     const spacer = document.createElement("div");
 
     // ** DESCRIPTION ** - creates and reference description div element //
@@ -78,7 +110,7 @@ function addAllToDo_DOM(items, name){
     const descInput = document.createElement('input');
     const descSpacer2 = document.createElement('div');
 
-    toDoChild.style.border = "0.5px solid black"; 
+    toDoChild.style.border = "0.5px solid black";
     toDoChild.id = "toDoChild";
 
     dateText.id = "dateText";
@@ -118,7 +150,11 @@ function addAllToDo_DOM(items, name){
     toDoInput.value = "";
     toDoInput.style.border = "none";
 
-    closeButtonToDo.id = "closeButtonToDo";       
+    closeButtonToDo.id = "closeButtonToDo";
+
+    descToggle.id = "descToggle";
+    // hide toggle until the row has a committed title — blank rows have nothing to describe
+    descToggle.style.display = "none";
 
     descSibling.id ="descSibling";
 
@@ -170,7 +206,7 @@ function addAllToDo_DOM(items, name){
         toDoChild.appendChild(toDoInput);
         toDoChild.appendChild(dateText);
         toDoChild.appendChild(dueInput);
-        
+
         dueInput.appendChild(month);
         dueInput.appendChild(dash);
         dueInput.appendChild(day);
@@ -180,13 +216,12 @@ function addAllToDo_DOM(items, name){
 
 
         toDoChild.appendChild(spacer);
-        toDoChild.appendChild(closeButtonToDo);  
-        
+        toDoChild.appendChild(descToggle);
+        toDoChild.appendChild(closeButtonToDo);
+
+        wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+
         toDoChild.setAttribute('data-value', toDoName); // sets the first toDo data-value
-
-        let switcher = 0;
-
-        let clickSwitch = 0;
 
         // EDITS TITLE & DATE OF ITEM ELEMENT
         toDoInput.addEventListener("keydown", function(event) {
@@ -236,77 +271,19 @@ function addAllToDo_DOM(items, name){
 
                 listLogic.saveToStorage();
 
-                projectItems = listLogic.listItems(toDoName);  
+                projectItems = listLogic.listItems(toDoName);
 
                 updateItemButton_restore(toDoName);
-                
-                clickSwitch = 1;
+
+                // row has a title now — reveal the description dropdown toggle
+                descToggle.style.display = "flex";
 
                 // spawn next blank row automatically
                 appendNewToDoRow(toDoName);
             }
 
-            
+
         }); // Ends "Enter" keydown function
-
-        // Set to generate array ['desc'] up on clicking
-        toDoChild.addEventListener("click", function(event){
-
-            console.log("clickSwitch: " + clickSwitch);
-
-            if(clickSwitch === 1){
-                console.log("initialToDo > toDoChild click listener - BEFORE");
-                
-                console.log(switcher);
-
-                const clickedElement = event.target;
-
-                // re-generate what already exists as a part of the item array
-                const mainList = toDoChild.parentElement;
-
-                // Covers the clicking of CloseButtonToDo
-                if(clickedElement.id === 'closeButtonToDo'){
-                    console.log("Called stop propagation of DIV");
-                    event.stopPropagation();
-                    return;
-                }
-
-                // Covers the clicking of toDoInput
-                if(clickedElement.tagName === 'INPUT'){
-                    console.log("Called stop propagation of INPUT");
-                    event.stopPropagation();
-                    return;
-                }
-
-                // Switches description node on/off depending on click value - switcher
-                if(switcher === 0){
-
-                    mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                    descSibling.appendChild(descSpacer1);
-                    descSibling.appendChild(descInput);
-                    descSibling.appendChild(descSpacer2);
-
-                    descInput.textContent = item["desc"];
-                    descInput.value = item["desc"];
-
-                    if(item["desc"].length > 0){
-                        console.log("Previously inputted value is valid");
-                        descInput.textContent = item["desc"];
-                        descInput.value = item["desc"];
-                    }
-
-                    switcher = 1;
-                }
-
-                else{
-                    if(toDoChild.nextSibling != null){
-                        mainList.removeChild(toDoChild.nextSibling);
-                    }
-                    switcher = 0;
-                }
-            }
-        });
 
         // descInput keydown — handles Enter key UX (blur + border feedback)
         descInput.addEventListener("keydown", function(event) {
@@ -399,6 +376,7 @@ function addAllToDo_DOM(items, name){
         const year = document.createElement("input");
 
         const closeButtonToDo = document.createElement("div");
+        const descToggle = document.createElement("div");
         const spacer = document.createElement("div");
 
         // ** DESCRIPTION ** - creates and reference description div element //
@@ -409,7 +387,7 @@ function addAllToDo_DOM(items, name){
         const descSpacer2 = document.createElement('div');
 
 
-        toDoChild.style.border = "0.5px solid black"; 
+        toDoChild.style.border = "0.5px solid black";
         toDoChild.id = "toDoChild";
 
         dateText.id = "dateText";
@@ -417,7 +395,7 @@ function addAllToDo_DOM(items, name){
 
         dueInput.id = "dueInput";
         dueInput.style.fontSize = "10px"; // - NEW
-        
+
         month.id = "month";
         month.placeholder = 1;
         month.autocomplete = "off";
@@ -441,15 +419,17 @@ function addAllToDo_DOM(items, name){
         // First Project Input
         toDoInput.type = "text";
         toDoInput.autocomplete = "off";
-        
+
         toDoInput.id = "toDoInput";
         toDoInput.placeholder = "New Item";
         toDoInput.style.fontSize = "14px"; // - NEW
-        
+
         toDoInput.value = "";
         toDoInput.style.border = "none";
 
-        closeButtonToDo.id = "closeButtonToDo";  
+        closeButtonToDo.id = "closeButtonToDo";
+
+        descToggle.id = "descToggle";
 
         descSibling.id ="descSibling";
 
@@ -463,14 +443,14 @@ function addAllToDo_DOM(items, name){
         descInput.style.fontSize = "12px"; // - NEW
 
         descInput.value = "";
-        descInput.style.border = "none";            
+        descInput.style.border = "none";
 
 
         mainListDiv.appendChild(toDoChild);
         toDoChild.appendChild(toDoInput);
         toDoChild.appendChild(dateText);
         toDoChild.appendChild(dueInput);
-        
+
         dueInput.appendChild(month);
         dueInput.appendChild(dash);
         dueInput.appendChild(day);
@@ -480,8 +460,11 @@ function addAllToDo_DOM(items, name){
 
 
         toDoChild.appendChild(spacer);
-        toDoChild.appendChild(closeButtonToDo);  
-        
+        toDoChild.appendChild(descToggle);
+        toDoChild.appendChild(closeButtonToDo);
+
+        wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+
         toDoChild.setAttribute('data-value', toDoName);
 
 
@@ -509,10 +492,6 @@ function addAllToDo_DOM(items, name){
 
         closeButtonToDo.dataset.info = index;
 
-        let switcher = 0;
-
-        let clickSwitch = 1;
-
         // EDITS TITLE OF ITEM ELEMENT
         toDoInput.addEventListener("keydown", function(event) {
 
@@ -520,7 +499,7 @@ function addAllToDo_DOM(items, name){
 
             // need to re-reference item being the first item of a project
             item = toDoArray[0];
-            
+
             let enteredText = "";
             let trimmedText = "";
 
@@ -536,7 +515,7 @@ function addAllToDo_DOM(items, name){
             if (enteredText.length > 0){
 
                 trimmedText = enteredText.trim();
-                
+
                 toDoInput.textContent = trimmedText; // - NEW
                 toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 toDoInput.style.fontSize = "14px"; // - NEW
@@ -553,14 +532,13 @@ function addAllToDo_DOM(items, name){
                 listLogic.saveToStorage();
 
                 closeButtonToDo.dataset.info = index;
-                clickSwitch = 1;
 
                 // spawn next blank row automatically
                 appendNewToDoRow(toDoName);
 
             }
 
-            
+
         }); // Ends "Enter" keydown function
 
         // save title on every keystroke — no Enter required
@@ -582,64 +560,6 @@ function addAllToDo_DOM(items, name){
                 toDoInput.value = savedTitle;
                 item["tit"] = savedTitle;
                 listLogic.saveToStorage();
-            }
-        });
-
-        // Set to generate array ['desc'] up on clicking
-        toDoChild.addEventListener("click", function(event){
-
-            console.log("clickSwitch: " + clickSwitch);
-
-            if(clickSwitch === 1){
-
-                console.log("regenToDos > toDoChild click listener");
-
-                const clickedElement = event.target;
-
-                // re-generate what already exists as a part of the item array
-                const mainList = toDoChild.parentElement;
-
-                // Covers the clicking of CloseButtonToDo
-                if(clickedElement.id === 'closeButtonToDo'){
-                    console.log("Called stop propagation of DIV");
-                    event.stopPropagation();
-                    return;
-                }
-
-                // Covers the clicking of toDoInput
-                if(clickedElement.tagName === 'INPUT'){
-                    console.log("Called stop propagation of INPUT");
-                    event.stopPropagation();
-                    return;
-                }
-
-                // Switches description node on/off depending on click value - switcher
-                if(switcher === 0){
-
-                    mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                    descSibling.appendChild(descSpacer1);
-                    descSibling.appendChild(descInput);
-                    descSibling.appendChild(descSpacer2);
-
-                    descInput.textContent = item["desc"];
-                    descInput.value = item["desc"];
-
-                    if(item["desc"].length > 0){
-                        console.log("Previously inputted value is valid");
-                        descInput.textContent = item["desc"];
-                        descInput.value = item["desc"];
-                    }
-
-                    switcher = 1;
-                }
-
-                else{
-                    if(toDoChild.nextSibling != null){
-                        mainList.removeChild(toDoChild.nextSibling);
-                    }
-                    switcher = 0;
-                }
             }
         });
 
@@ -1266,9 +1186,10 @@ function component() {
         const year = document.createElement("input");
 
         const closeButtonToDo = document.createElement("div");
+        const descToggle = document.createElement("div");
         const spacer = document.createElement("div");
 
-        
+
 
         // ** DESCRIPTION ** - creates and reference description div element //
         const descSibling = document.createElement('div');
@@ -1279,7 +1200,7 @@ function component() {
 
 
 
-        toDoChild.style.border = "0.5px solid black"; 
+        toDoChild.style.border = "0.5px solid black";
         toDoChild.id = "toDoChild";
 
         dateText.id = "dateText";
@@ -1321,6 +1242,10 @@ function component() {
 
         closeButtonToDo.id = "closeButtonToDo";
 
+        descToggle.id = "descToggle";
+        // hide toggle until the row has a committed title — blank rows have nothing to describe
+        descToggle.style.display = "none";
+
         descSibling.id ="descSibling";
 
         descSpacer1.id = "descSpacer1";
@@ -1340,7 +1265,7 @@ function component() {
         toDoChild.appendChild(toDoInput);
         toDoChild.appendChild(dateText);
         toDoChild.appendChild(dueInput);
-            
+
         dueInput.appendChild(month);
         dueInput.appendChild(dash);
         dueInput.appendChild(day);
@@ -1348,16 +1273,14 @@ function component() {
         dueInput.appendChild(year);
 
         toDoChild.appendChild(spacer);
-        toDoChild.appendChild(closeButtonToDo);  
-            
+        toDoChild.appendChild(descToggle);
+        toDoChild.appendChild(closeButtonToDo);
+
         toDoChild.setAttribute('data-value', currentProject);
 
 
 
         let counter = 1;
-
-
-        let clickSwitch = 0;
 
         // Need logic to edit current DOM info
         toDoInput.addEventListener("keydown", function(event) {
@@ -1407,14 +1330,11 @@ function component() {
 
                 if(toDoArray[0]["tit"].length > 0){ //  --> this should mean it's assigned a title already
 
-                    toDoItems = listLogic.addToDo(currentProject, enteredText); 
+                    toDoItems = listLogic.addToDo(currentProject, enteredText);
 
                     toDoArray = toDoItems.array; // project array
                     toDoName = toDoItems.string; // projectName
                     toDoLength = toDoItems.lengths; // >>> 2
-
-                    clickSwitch = 1;
-                    // updateItemButton(currentProject);
                 }
                 
                 else{ 
@@ -1437,179 +1357,60 @@ function component() {
                 wireDateInputs(month, day, year, arraySlot, currentProject);
 
                 trimmedText = enteredText.trim();
-                    
+
                 toDoInput.textContent = trimmedText; // - NEW
                 toDoInput.value = trimmedText; // - NEW - ensures text is moved to the middle of div
                 toDoInput.style.fontSize = "14px"; // - NEW
-                
+
                 let monthValue = month.value || month.placeholder || 1;
                 let dayValue = day.value || day.placeholder || 1;
                 let yearValue = year.value || year.placeholder || 2023;
 
                 let dateSet = (monthValue + '-' + dayValue + '-' + yearValue);
 
-                let switcher = 0; // used for turning on/off description node
-
-                arraySlot["due"] = dateSet;    
+                arraySlot["due"] = dateSet;
                 arraySlot["tit"] = trimmedText;
 
                 listLogic.saveToStorage();
 
                 closeButtonToDo.dataset.info = (toDoLength - 1);
 
-                projectItems = listLogic.listItems(currentProject);  
+                projectItems = listLogic.listItems(currentProject);
                 updateItemButton(currentProject);
+
+                // wire the dropdown toggle now that arraySlot is known, then reveal it
+                wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, arraySlot);
+                descToggle.style.display = "flex";
+
+                // wire description edits once — old code re-wired on every open, leaking listeners
+                descInput.addEventListener("keydown", function(event) {
+                    if (event.key !== "Enter") return;
+                    const val = descInput.value.trim();
+                    if (val.length > 0) {
+                        descInput.value = val;
+                        arraySlot["desc"] = val;
+                        listLogic.saveToStorage();
+                        descInput.style.border = "none";
+                    } else {
+                        descInput.style.border = "1px solid red";
+                    }
+                    descInput.blur();
+                });
+
+                descInput.addEventListener("keyup", function() {
+                    const val = descInput.value.trim();
+                    if (val.length > 0) {
+                        arraySlot["desc"] = val;
+                        listLogic.saveToStorage();
+                    }
+                });
 
                 // spawn next blank row automatically
                 appendNewToDoRow(currentProject);
 
-                // *************************** WORK IN PROGRESS *************************** // 
-
-                toDoChild.addEventListener("click", function(event){
-
-                    console.log("clickSwitch: " + clickSwitch);
-
-                    if(clickSwitch === 1){
-
-                        console.log("Calling itemButton > toDoChild click");
+            }
 
 
-                        const clickedElement = event.target;
-
-
-                        const mainList = toDoChild.parentElement;
-
-                        let descText = "";
-                        let descTrimmed = "";
-
-                        // Covers the clicking of CloseButtonToDo
-                        if(clickedElement.id === 'closeButtonToDo'){
-                            
-                            console.log("Called stop propagation of DIV");
-                            event.stopPropagation(); // Prevent the parent's click event
-                            
-                        }
-
-                        // Covers the clicking of toDoInput
-                        if(clickedElement.tagName === 'INPUT'){
-
-                            console.log(clickedElement);
-                            
-                            console.log("Called stop propagation of INPUT");
-                            event.stopPropagation(); // Prevent the parent's click event
-
-                            
-                        }                    
-                    
-
-                        if((clickedElement.tagName != 'INPUT') && (clickedElement.id != 'closeButtonToDo')){
-
-                            console.log("Called descSibling append if statement");
-
-                            // Switches description node on/off depending on click value - switcher
-                            if(switcher === 0){
-
-                                mainList.insertBefore(descSibling, toDoChild.nextSibling);
-
-                                descSibling.appendChild(descSpacer1);
-                                descSibling.appendChild(descInput);
-                                descSibling.appendChild(descSpacer2);
-
-                                descInput.textContent = arraySlot["desc"];
-                                descInput.value = arraySlot["desc"];
-
-                                // if descInput value is greater than 0 set it as the textContent
-                                if(arraySlot["desc"].length > 0){
-
-                                    console.log("Previously inputted value is valid");
-                                    descInput.textContent = arraySlot["desc"];
-                                    descInput.value = arraySlot["desc"];
-
-                                }
-
-
-                                switcher = 1;
-                            }
-
-                            else{
-
-                        
-                                if(toDoChild.nextSibling != null){
-
-                                    mainList.removeChild(toDoChild.nextSibling)
-                                
-                                }
-                                
-
-                                switcher = 0;
-                            }
-
-
-                       
-
-                            // ***** CLICK LISTENERS *****
-                            
-                            // Need listener to be able to set DOM descInput value
-                            descInput.addEventListener("keydown", function(event) {
-        
-                                descText = "";
-
-                                if (event.key === "Enter") {
-                                    descText = descInput.value;
-                    
-                                    console.log("Entered descInput keydown function: " + descText);
-                    
-                                    descInput.blur();
-                    
-                                }
-                    
-                    
-                                // if description entered has a length > 0 characters
-                                if (descText.length > 0){
-                                    
-                                    // DOM - set the text within the element
-                                    descTrimmed = descText.trim();
-                            
-                                    descInput.textContent = descTrimmed; // - NEW
-                                    descInput.value = descTrimmed; // - NEW - ensures text is moved to the middle of div
-                                    descInput.style.fontSize = "12px"; // - NEW
-
-
-
-                                    // LOGIC - set the array parameter array project[0]['desc']
-                                    arraySlot["desc"] = descTrimmed;
-
-                                    listLogic.saveToStorage();
-
-                                    toDoArray = listLogic.listItems(currentProject); // project array
-                                    console.log(toDoArray);
-
-                                    descInput.style.border = "none";
-
-                                }
-                                else{
-
-                                    descInput.style.border = "1px solid red";
-                                    // console.log("Your description is not long enough.");
-
-
-                                }
-
-
-                            }); 
-                        }
-                    }
-                    
-                });
-
-
-                // *********************************************************************** //
-
-
-
-            }            
-            
-                
         }); // Ends "Enter" keydown function
 
         closeButtonToDo.addEventListener("click", function(){
@@ -1749,6 +1550,7 @@ function appendNewToDoRow(toDoName) {
     const dash2           = document.createElement("div");
     const year            = document.createElement("input");
     const closeButtonToDo = document.createElement("div");
+    const descToggle      = document.createElement("div");
     const spacer          = document.createElement("div");
     const descSibling     = document.createElement("div");
     const descSpacer1     = document.createElement("div");
@@ -1783,13 +1585,17 @@ function appendNewToDoRow(toDoName) {
     closeButtonToDo.id = "closeButtonToDo";
     closeButtonToDo.dataset.info = newIndex;
 
+    descToggle.id = "descToggle";
+    // hide toggle until the row has a committed title — blank rows have nothing to describe
+    descToggle.style.display = "none";
+
     descSibling.id = "descSibling";
     descSpacer1.id = "descSpacer1";
     descInput.id   = "descInput";
     descSpacer2.id = "descSpacer2";
     descInput.type = "text";
     descInput.autocomplete = "off";
-        
+
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
     descInput.value = "";
@@ -1806,13 +1612,13 @@ function appendNewToDoRow(toDoName) {
     dueInput.appendChild(year);
     wireDateInputs(month, day, year, item, toDoName);
     toDoChild.appendChild(spacer);
+    toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
+
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
 
     // focus the new row so user can type immediately
     toDoInput.focus();
-
-    let switcher   = 0;
-    let clickSwitch = 0;
 
     // submit title on Enter
     toDoInput.addEventListener("keydown", function(event) {
@@ -1834,7 +1640,9 @@ function appendNewToDoRow(toDoName) {
         listLogic.saveToStorage();
         updateItemButton_restore(toDoName);
 
-        clickSwitch = 1;
+        // row has a title now — reveal the description dropdown toggle
+        descToggle.style.display = "flex";
+
         toDoInput.blur();
 
         // chain: spawn the next blank row
@@ -1849,31 +1657,6 @@ function appendNewToDoRow(toDoName) {
             item["tit"] = val;
             listLogic.saveToStorage();
         }
-    });
-
-    // expand/collapse description
-    toDoChild.addEventListener("click", function(event) {
-
-        if (clickSwitch === 0) return;
-
-        const clicked = event.target;
-        if (clicked.id === "closeButtonToDo") { event.stopPropagation(); return; }
-        if (clicked.tagName === "INPUT")       { event.stopPropagation(); return; }
-
-        if (switcher === 0) {
-            mainListDiv.insertBefore(descSibling, toDoChild.nextSibling);
-            descSibling.appendChild(descSpacer1);
-            descSibling.appendChild(descInput);
-            descSibling.appendChild(descSpacer2);
-            descInput.value = item["desc"] || "";
-            switcher = 1;
-        } else {
-            if (toDoChild.nextSibling && toDoChild.nextSibling.id === "descSibling") {
-                mainListDiv.removeChild(toDoChild.nextSibling);
-            }
-            switcher = 0;
-        }
-
     });
 
     // descInput keydown — handles Enter key UX (blur + border feedback)
@@ -2240,6 +2023,7 @@ function addToDos_restore(toDoArray, toDoName) {
         const dash2           = document.createElement("div");
         const year            = document.createElement("input");
         const closeButtonToDo = document.createElement("div");
+        const descToggle      = document.createElement("div");
         const spacer          = document.createElement("div");
         const descSibling     = document.createElement("div");
         const descSpacer1     = document.createElement("div");
@@ -2274,6 +2058,8 @@ function addToDos_restore(toDoArray, toDoName) {
         closeButtonToDo.id = "closeButtonToDo";
         closeButtonToDo.dataset.info = index;
 
+        descToggle.id = "descToggle";
+
         descSibling.id  = "descSibling";
         descSpacer1.id  = "descSpacer1";
         descInput.id    = "descInput";
@@ -2296,7 +2082,10 @@ function addToDos_restore(toDoArray, toDoName) {
         dueInput.appendChild(year);
         wireDateInputs(month, day, year, item, toDoName);
         toDoChild.appendChild(spacer);
+        toDoChild.appendChild(descToggle);
         toDoChild.appendChild(closeButtonToDo);
+
+        wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
 
         // populate date fields
         if (item.due && item.due !== "--" && item.due !== "X-X-XXXX" && item.due !== "") {
@@ -2308,36 +2097,6 @@ function addToDos_restore(toDoArray, toDoName) {
             if (!isNaN(d)) day.value   = d;
             if (!isNaN(y)) year.value  = y;
         }
-
-        let switcher = 0;
-
-        // expand/collapse description on click
-        toDoChild.addEventListener("click", function(event) {
-
-            const clicked = event.target;
-
-            if (clicked.id === 'closeButtonToDo') { event.stopPropagation(); return; }
-            if (clicked.tagName === 'INPUT')       { event.stopPropagation(); return; }
-
-            if (switcher === 0) {
-
-                mainListDiv.insertBefore(descSibling, toDoChild.nextSibling);
-                descSibling.appendChild(descSpacer1);
-                descSibling.appendChild(descInput);
-                descSibling.appendChild(descSpacer2);
-                descInput.value = item.desc || "";
-                switcher = 1;
-
-            } else {
-
-                if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
-                    mainListDiv.removeChild(toDoChild.nextSibling);
-                }
-                switcher = 0;
-
-            }
-
-        });
 
         // descInput keydown — handles Enter key UX (blur + border feedback)
         descInput.addEventListener("keydown", function(event) {

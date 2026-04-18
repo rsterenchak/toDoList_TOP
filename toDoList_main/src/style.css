@@ -338,7 +338,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  cursor: pointer;
+  cursor: default;
   background: var(--bg-surface);
   height: var(--item-h);
   padding: 0 10px 0 14px;
@@ -416,6 +416,30 @@ body {
 
 #dash { font-size: 11px; color: #555; flex-shrink: 0; }
 #spacer { display: none; }
+
+/* DESCRIPTION TOGGLE (todo) */
+#descToggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 11px;
+  line-height: 1;
+  color: #888;
+  user-select: none;
+}
+#descToggle::after {
+  content: '▾';
+  display: block;
+  transition: transform 0.2s ease;
+}
+#descToggle:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+#descToggle.open::after { transform: rotate(180deg); }
 
 /* CLOSE BUTTON (todo) */
 #closeButtonToDo {
@@ -558,6 +582,7 @@ body {
   #sidebarToggle,
   #closeButton,
   #closeButtonToDo,
+  #descToggle,
   #projChild,
   #toDoChild {
     touch-action: manipulation;
