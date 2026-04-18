@@ -3,56 +3,29 @@ name: Claude Automated Task Runner
 on:
   workflow_dispatch:
 
-  jobs:
-    run-task:
-        runs-on: ubuntu-latest
-            permissions:
-                  contents: write
-                        pull-requests: write
-
-                            steps:
-                                  - name: Checkout repository
-                                          uses: actions/checkout@v4
-                                                  with:
-                                                            fetch-depth: 0
-
-                                                                  - name: Run Claude Task Runner
-                                                                          uses: anthropics/claude-code-action@beta
-                                                                                  with:
-                                                                                            anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-                                                                                                      github_token: ${{ secrets.GITHUB_TOKEN }}
-                                                                                                                direct_prompt: |
-                                                                                                                            You are an automated code development agent. Do the following:
-                                                                                                                            
-                                                                                                                                        1. Read TODO.md from the repository root and find the first uncompleted task (marked [ ]).
-                                                                                                                                                       Prioritize: HIGH > MEDIUM > LOW, bugs before features.
-                                                                                                                                                                      If no open tasks exist, output "All tasks complete." and stop.
-                                                                                                                                                                      
-                                                                                                                                                                                  2. Implement the task:
-                                                                                                                                                                                                 - Read all relevant files
-                                                                                                                                                                                                                - Write clean, production-ready HTML/CSS/JavaScript
-                                                                                                                                                                                                                               - Follow existing code patterns
-                                                                                                                                                                                                                                              - Write clear comments for complex logic
-                                                                                                                                                                                                                                              
-                                                                                                                                                                                                                                                          3. Create a feature branch:
-                                                                                                                                                                                                                                                                         - Format: claude/{type}-{task-name} where type is "fix" or "feature"
-                                                                                                                                                                                                                                                                         
-                                                                                                                                                                                                                                                                                     4. Commit your work:
-                                                                                                                                                                                                                                                                                                    - Format: [Claude] fix/feature: {descriptive message}
-                                                                                                                                                                                                                                                                                                                   - Make logical commits, one per significant change
-                                                                                                                                                                                                                                                                                                                   
-                                                                                                                                                                                                                                                                                                                               5. Push the branch and open a pull request:
-                                                                                                                                                                                                                                                                                                                                              - Title: same as commit message
-                                                                                                                                                                                                                                                                                                                                                             - Description: what changed, why, how to test, files modified
-                                                                                                                                                                                                                                                                                                                                                                            - Mark as Ready for review (not draft)
-                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                        6. Update TODO.md:
-                                                                                                                                                                                                                                                                                                                                                                                                       - Mark the completed task with [x]
-                                                                                                                                                                                                                                                                                                                                                                                                                      - Commit as: [Claude] update: mark task complete in TODO.md
-                                                                                                                                                                                                                                                                                                                                                                                                                                     - Push to the same branch
-                                                                                                                                                                                                                                                                                                                                                                                                                                     
-                                                                                                                                                                                                                                                                                                                                                                                                                                                 Important:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                             - Only work on ONE task per run
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                         - Do NOT merge the PR yourself
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     - Do NOT modify main directly
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 - Always use the feature branch workflow
+jobs:
+  run-task:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Claude Task Runner
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
+            Read TODO.md and find the first uncompleted task marked [ ].
+            Prioritize HIGH over MEDIUM over LOW, bugs before features.
+            If no open tasks exist, output "All tasks complete." and stop.
+            Implement the task following existing code patterns.
+            Create a feature branch named claude/fix-{task} or claude/feature-{task}.
+            Commit with format: [Claude] fix/feature: {message}.
+            Push the branch and open a pull request marked Ready for review.
+            Mark the task complete in TODO.md and commit: [Claude] update: mark task complete in TODO.md.
+            Only work on ONE task. Do NOT merge. Do NOT push to main.
