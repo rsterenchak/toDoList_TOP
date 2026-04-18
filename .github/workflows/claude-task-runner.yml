@@ -2,7 +2,7 @@ name: Claude Automated Task Runner
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *'  # runs nightly at 2am UTC
+    - cron: '0 2 * * *'
 jobs:
   run-task:
     runs-on: ubuntu-latest
@@ -15,10 +15,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run Claude Task Runner
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool"
+          system_prompt: "You are an expert software engineer. Follow existing code patterns and conventions in the repository. Always work on one task at a time. Never push to main. Never merge pull requests."
           prompt: |
             Read TODO.md and find the first uncompleted task marked [ ].
             Prioritize HIGH over MEDIUM over LOW, bugs before features.
