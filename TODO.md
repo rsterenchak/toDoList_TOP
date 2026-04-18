@@ -2,15 +2,12 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix authentication timeout on login page
-  - Description: Users are getting logged out after 5 minutes of inactivity
-  - File: `src/auth/sessionManager.ts`
 
 ## Features
 
-- [ ] **[HIGH]** Add dark mode toggle
-  - Description: Allow users to switch between light and dark themes, persist preference to localStorage
-  - File: `src/theme/`, `src/components/settings/`
+- [ ] **[HIGH]** Add description box toggle
+  - Description: Add a drop down toggle to each toDo list item instead of needing to click directly on the item itself to open the description
+  - File: `src/style.css/`, `src/main.js/`, `src/index.js/`, `src/toDo.js/`
 
 ## In Progress
 
