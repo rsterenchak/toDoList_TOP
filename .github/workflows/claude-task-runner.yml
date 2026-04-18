@@ -1,8 +1,6 @@
 name: Claude Automated Task Runner
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 2 * * *'
 jobs:
   run-task:
     runs-on: ubuntu-latest
@@ -21,14 +19,17 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-6"
-          allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool,Edit,Write"
+          allowed_tools: "Bash(git:*),Bash(gh:*),View,GlobTool,GrepTool,BatchTool,Edit,Write"
           system_prompt: "You are an expert software engineer. Follow existing code patterns and conventions in the repository. Always work on one task at a time. Never push to main. Never merge pull requests."
           prompt: |
             Read TODO.md and find the first uncompleted task marked [ ].
             Prioritize HIGH over MEDIUM over LOW, bugs before features.
             If no open tasks exist, output "All tasks complete." and stop.
+            Before implementing anything, determine the branch name you would create (claude/fix-{task} or claude/feature-{task}).
+            Check if that branch already exists remotely by running: git ls-remote --heads origin claude/
+            If a matching claude/ branch already exists for this task, output "Branch already exists for this task. Ending workflow." and stop immediately. Do NOT implement anything.
             Implement the task following existing code patterns.
-            Create a feature branch named claude/fix-{task} or claude/feature-{task}.
+            Create the feature branch named claude/fix-{task} or claude/feature-{task}.
             Commit with format: [Claude] fix/feature: {message}.
             Push the branch and open a pull request marked Ready for review.
             Mark the task complete in TODO.md and commit: [Claude] update: mark task complete in TODO.md.
