@@ -18,6 +18,7 @@ jobs:
         uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: "claude-sonnet-4-6"
           allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool"
           system_prompt: "You are an expert software engineer. Follow existing code patterns and conventions in the repository. Always work on one task at a time. Never push to main. Never merge pull requests."
           prompt: |
