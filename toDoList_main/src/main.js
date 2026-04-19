@@ -34,6 +34,18 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
 }
 
 
+// ── HELPER: set default due-date placeholders to one week from today ──
+// Replaces the legacy hardcoded 1/1/2023 default so that if a user commits a
+// todo without touching the date fields, the saved due date is today + 7 days.
+function setDueDatePlaceholders(month, day, year) {
+    const future = new Date();
+    future.setDate(future.getDate() + 7);
+    month.placeholder = future.getMonth() + 1;
+    day.placeholder   = future.getDate();
+    year.placeholder  = future.getFullYear();
+}
+
+
 // ── HELPER: wire Enter-to-save on month/day/year inputs for a given todo item ──
 // Call after building each todo row so date changes persist even when the
 // user presses Enter while focused on a date field rather than the title.
@@ -120,16 +132,15 @@ function addAllToDo_DOM(items, name){
     dueInput.style.fontSize = "10px"; // - NEW
     
     month.id = "month";
-    month.placeholder = 1;
         month.autocomplete = "off";
 
     day.id = "day";
-    day.placeholder = 1;
         day.autocomplete = "off";
 
     year.id = "year";
-    year.placeholder = 2023;
         year.autocomplete = "off";
+
+    setDueDatePlaceholders(month, day, year);
 
     dash.id = "dash";
     dash.textContent = "/";
@@ -397,16 +408,15 @@ function addAllToDo_DOM(items, name){
         dueInput.style.fontSize = "10px"; // - NEW
 
         month.id = "month";
-        month.placeholder = 1;
         month.autocomplete = "off";
 
         day.id = "day";
-        day.placeholder = 1;
         day.autocomplete = "off";
 
         year.id = "year";
-        year.placeholder = 2023;
         year.autocomplete = "off";
+
+        setDueDatePlaceholders(month, day, year);
 
         dash.id = "dash";
         dash.textContent = "/";
@@ -1209,16 +1219,15 @@ function component() {
         dueInput.style.fontSize = "10px"; // - NEW
         
         month.id = "month";
-        month.placeholder = 1;
         month.autocomplete = "off";
 
         day.id = "day";
-        day.placeholder = 1;
         day.autocomplete = "off";
 
         year.id = "year";
-        year.placeholder = 2023;
         year.autocomplete = "off";
+
+        setDueDatePlaceholders(month, day, year);
 
         dash.id = "dash";
         dash.textContent = "/";
@@ -1231,7 +1240,7 @@ function component() {
         // First Project Input
         toDoInput.type = "text";
         toDoInput.autocomplete = "off";
-        
+
         toDoInput.id = "toDoInput";
         toDoInput.placeholder = "New Item";
         toDoInput.style.fontSize = "14px"; // - NEW
@@ -1565,10 +1574,11 @@ function appendNewToDoRow(toDoName) {
     dueInput.id          = "dueInput";
     dueInput.style.fontSize = "10px";
 
-    month.id = "month"; month.placeholder = 1;
+    month.id = "month";
         month.autocomplete = "off";
-    day.id   = "day";   day.placeholder   = 1;
-    year.id  = "year";  year.placeholder  = 2023;
+    day.id   = "day";
+    year.id  = "year";
+    setDueDatePlaceholders(month, day, year);
     dash.id  = "dash";  dash.textContent  = "/";
     dash2.id = "dash";  dash2.textContent = "/";
     spacer.id = "spacer";
@@ -2038,10 +2048,11 @@ function addToDos_restore(toDoArray, toDoName) {
         dueInput.id          = "dueInput";
         dueInput.style.fontSize = "10px";
 
-        month.id          = "month";  month.placeholder = 1;
+        month.id          = "month";
         month.autocomplete = "off";
-        day.id            = "day";    day.placeholder   = 1;
-        year.id           = "year";   year.placeholder  = 2023;
+        day.id            = "day";
+        year.id           = "year";
+        setDueDatePlaceholders(month, day, year);
         dash.id           = "dash";   dash.textContent  = "/";
         dash2.id          = "dash";   dash2.textContent = "/";
         spacer.id         = "spacer";
