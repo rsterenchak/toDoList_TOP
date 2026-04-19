@@ -6,6 +6,11 @@
   - Description: When a todo item is deleted, the font size of the remaining items increases. Expected behavior: font size stays constant regardless of how many items are added or removed. Likely cause is a CSS rule using a relative/viewport unit (vh, vw, %) on the list or items that recalculates as the list shrinks, or a JS handler that re-applies sizing on delete. Investigate both the stylesheet and the delete handler.
   - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
   - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[MEDIUM]** Fix default due date showing 1/1/2023 instead of one week from today
+  - Description: The due date field for new todo items defaults to a hardcoded 1/1/2023, which is a leftover placeholder from initial development. Change the default so that when a new todo item is created, the due date field is pre-filled with the date one week from the current date (today + 7 days), computed at the moment the item is created. The hardcoded value likely lives in either the DOM markup (a `value` attribute on the date input) or in `listLogic.js` where new items are instantiated — check both and remove the hardcoded date wherever it appears, replacing it with a dynamic calculation.
+  - File: `src/listLogic.js`, `src/index.js`, `src/toDo.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
      
 - [ ] **[LOW]** Remove unused grey buttons from top-right of header
   - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
