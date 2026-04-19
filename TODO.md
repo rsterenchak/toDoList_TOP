@@ -44,6 +44,11 @@
   - File: `src/index.js`, `src/main.js`, `src/listLogic.js`, `src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[MEDIUM]** Add drag-and-drop reordering for projects in sidebar
+  - Description: Allow users to reorder projects in the Projects sidebar by dragging them into a new position. On drag start, the project being dragged should have a visual indicator (reduced opacity or subtle lift/shadow) to show it's being moved. As the user drags over other projects, show a drop indicator (a horizontal line or highlighted gap) at the target insertion point so it's clear where the project will land on release. On drop, the project list reorders and the new order persists so it survives reloads — save the updated order alongside however projects are currently stored in the data model (likely in `listLogic.js`). Use the native HTML5 drag-and-drop API rather than adding a new library. If the sidebar overflows vertically, auto-scroll the sidebar when the user drags near its top or bottom edge. On mobile/touch devices, native HTML5 drag events don't fire reliably — add touch event handlers (touchstart/touchmove/touchend) so the feature works on touch as well as mouse. Scope to projects only; todo item reordering is out of scope.
+  - File: `src/listLogic.js`, `src/index.js`, `src/main.js`, `src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Implement light mode
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
   - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
