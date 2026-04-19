@@ -4,26 +4,40 @@ Guidance for Claude when writing or reviewing code in this repo. Rules here are 
 
 ## Project overview
 
-A single-page todo list web app. Users create projects in a left sidebar, add todo items to the selected project, and manage them (edit, delete, check off, reorder). Runs in the browser with no backend — all state is client-side.
+A single-page todo list web app. Users create projects in a left sidebar, add todo items to the selected project, and manage them (edit, delete, check off, reorder). Runs in the browser with no backend — all state is client-side, persisted via `localStorage`. Bundled with webpack.
 
 ## Stack and constraints
 
 - Vanilla JavaScript (no framework). Do not introduce React, Vue, Svelte, or any other framework.
 - Plain CSS. Do not introduce Tailwind, CSS-in-JS, or preprocessors.
+- Webpack handles bundling; Babel handles transpilation. Do not change the build toolchain.
 - No new dependencies without an explicit task instruction to add one. This includes drag-and-drop libraries, date libraries, UI component libraries, and icon packages.
 - Use native browser APIs wherever possible (HTML5 drag-and-drop, `localStorage`, `addEventListener`, etc.).
 
-## File organization
+## Repo layout
 
-Source lives in `src/`. Each file has a defined responsibility — stay within it:
+- `toDoList_main/` — project root. Contains `package.json`, `webpack.config.js`, `.babelrc`, and the `src/` and `dist/` folders.
+- `toDoList_main/src/` — all source code, assets, fonts, and icons.
+- `toDoList_main/dist/` — webpack build output. **Never edit files here directly; they are regenerated on build.** Do not commit changes to `dist/` as part of a feature or bug task.
+- `toDoList_main/node_modules/` — dependencies. Never edit.
+- `TODO.md`, `CLAUDE.md`, `claude-config.md`, `README.md` — all at the repo root, one level above `toDoList_main/`.
 
-- `src/index.js` — DOM structure and markup rendering. Owns what the page looks like.
-- `src/main.js` — App bootstrap and event wiring. Owns how user actions connect to logic.
-- `src/toDo.js` — Rendering and interaction for todo items within the selected project.
-- `src/listLogic.js` — Data model for projects and todo items. All mutations to the data model go through here.
-- `src/style.css` — All styling. No inline styles in JS or HTML unless computed dynamically (e.g., drag position).
+## Source file organization
+
+All source lives in `toDoList_main/src/`. Each JS file has a defined responsibility — stay within it:
+
+- `toDoList_main/src/index.js` — DOM structure and markup rendering. Owns what the page looks like.
+- `toDoList_main/src/main.js` — App bootstrap and event wiring. Owns how user actions connect to logic.
+- `toDoList_main/src/toDo.js` — Rendering and interaction for todo items within the selected project.
+- `toDoList_main/src/listLogic.js` — Data model for projects and todo items. All mutations to the data model go through here.
+- `toDoList_main/src/style.css` — All styling. No inline styles in JS or HTML unless computed dynamically (e.g., drag position).
 
 Do not mutate the data model from UI files (`index.js`, `toDo.js`, `main.js`). Go through `listLogic.js`.
+
+## Assets
+
+- Icons are SVG files committed to `toDoList_main/src/` (e.g., `addProj_button.svg`, `close-svgrepo-com.svg`, `empty_state.svg`, `favicon.svg`). When adding a new icon, commit the SVG file to `src/` and reference it — do not introduce icon libraries or icon fonts.
+- Fonts are `.ttf`/`.otf` files committed to `toDoList_main/src/` (e.g., `SpaceMono-Regular.ttf`, `Zector.otf`) and loaded via `@font-face` in `style.css`. Do not introduce Google Fonts, font CDNs, or font loaders.
 
 ## Persistence
 
@@ -50,6 +64,7 @@ The app runs on mobile. When adding interactions:
 - Keep changes scoped to the task described. Do not refactor, reformat, or fix unrelated issues in the same PR — file a new entry in `TODO.md` under the appropriate section instead.
 - Do not delete or rename files unless the task explicitly requires it.
 - Do not add CI workflows, license headers, or new top-level config files unless the task explicitly requires it.
+- Do not modify `webpack.config.js`, `.babelrc`, `package.json`, or `package-lock.json` unless the task explicitly requires a build or dependency change.
 
 ## What not to flag in review
 
@@ -57,3 +72,4 @@ The app runs on mobile. When adding interactions:
 - Missing test coverage unless the task was to add tests.
 - Stylistic preferences not documented in this file.
 - Pre-existing issues on lines the PR did not modify.
+- Files in `dist/` or `node_modules/`.
