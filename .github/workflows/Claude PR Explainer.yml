@@ -1,0 +1,48 @@
+name: Claude PR Explainer
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+    paths:
+      - "src/**/*.js"
+      - "src/**/*.css"
+      - "src/**/*.html"
+jobs:
+  claude-explain:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Claude PR Explainer
+        id: claude-explain
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are reviewing pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+
+            Post a single comment on the PR with two sections:
+
+            ## What this PR does
+            Walk through the change end-to-end, tracing the flow from user action to code behavior. For every new or modified user-facing feature, describe:
+            - What the user sees or does (the trigger — button click, keystroke, page load, etc.)
+            - Which event handler or entry point receives that action
+            - What functions it calls, in order, across which files
+            - What state or data changes as a result
+            - What the user sees after
+
+            Use concrete function names and file paths. If the PR adds a button, say which file the markup is in, which file wires the handler, and which file contains the logic it calls. Aim for a walkthrough a developer unfamiliar with the codebase could follow.
+
+            ## Potential bugs or concerns
+            List any bugs, regressions, or risky changes you notice in the diff. Focus on real issues, not style nitpicks. If you see none, say "No concerns found." Do not flag linter/formatter/type issues — CI handles those separately.
+
+            Keep the tone factual and direct. No praise, no "great work," no summary of the obvious.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
