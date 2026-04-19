@@ -17,10 +17,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
   - Completed: 2026-04-19
 
-- [ ] **[MEDIUM]** Make projects sidebar resizable against todo items panel
+- [x] **[MEDIUM]** Make projects sidebar resizable against todo items panel
   - Description: The Projects sidebar has a fixed width, which causes longer project titles to be truncated with an ellipsis (e.g., "CS204 - Database Progra..."). Users have no way to see the full titles. Add a draggable vertical divider between the Projects sidebar and the Todo Items panel so users can resize the two panels against each other. Cursor should change to a horizontal resize indicator when hovering the divider. Enforce sensible min/max widths on the sidebar (e.g., minimum ~120px so it doesn't collapse entirely, maximum ~50% of the viewport so it can't swallow the todo panel). Persist the user's chosen width in localStorage so it survives reloads. On mobile/narrow viewports where the layout likely stacks or behaves differently, the resize handle should be hidden or disabled — match whatever responsive behavior the app already uses.
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-19
      
 - [ ] **[LOW]** Remove unused grey buttons from top-right of header
   - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
