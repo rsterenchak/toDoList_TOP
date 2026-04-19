@@ -12,10 +12,10 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/src/toDo.js`
   - Completed: 2026-04-19
 
-- [ ] **[MEDIUM]** Fix mobile auto-zoom when focusing todo item title input
+- [x] **[MEDIUM]** Fix mobile auto-zoom when focusing todo item title input
   - Description: On mobile browsers (iOS Safari in particular, and some Android browsers), focusing the text input used to enter a todo item's title causes the page to auto-zoom in. This is the browser's built-in accessibility behavior: mobile Safari automatically zooms any input whose font-size is smaller than 16px to prevent tiny text fields from being unreadable. The fix is to ensure the todo item title input has a `font-size` of at least 16px (via CSS) on mobile viewports. Apply the fix to the input element used for entering/editing todo item titles; do not change the visual font size of the rendered todo items themselves. Verify the same auto-zoom issue doesn't also occur on the project-name input or any other text input in the app — if it does, fix those too as part of this change since they share the same root cause.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-19
 
 - [ ] **[MEDIUM]** Make projects sidebar resizable against todo items panel
   - Description: The Projects sidebar has a fixed width, which causes longer project titles to be truncated with an ellipsis (e.g., "CS204 - Database Progra..."). Users have no way to see the full titles. Add a draggable vertical divider between the Projects sidebar and the Todo Items panel so users can resize the two panels against each other. Cursor should change to a horizontal resize indicator when hovering the divider. Enforce sensible min/max widths on the sidebar (e.g., minimum ~120px so it doesn't collapse entirely, maximum ~50% of the viewport so it can't swallow the todo panel). Persist the user's chosen width in localStorage so it survives reloads. On mobile/narrow viewports where the layout likely stacks or behaves differently, the resize handle should be hidden or disabled — match whatever responsive behavior the app already uses.
