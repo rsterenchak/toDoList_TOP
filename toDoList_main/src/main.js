@@ -679,6 +679,7 @@ function component() {
 
     const sidebarToggle  = document.createElement('button');
     const sidebarOverlay = document.createElement('div');
+    const sidebarResizer = document.createElement('div');
 
     base.id ='outerContainer';
     nav.id = 'navBar';
@@ -710,6 +711,11 @@ function component() {
 
     sidebarOverlay.id = 'sidebarOverlay';
 
+    sidebarResizer.id = 'sidebarResizer';
+    sidebarResizer.setAttribute('role', 'separator');
+    sidebarResizer.setAttribute('aria-orientation', 'vertical');
+    sidebarResizer.setAttribute('aria-label', 'Resize projects sidebar');
+
     // sidebarToggle is first child of nav so nothing can overlap it
     nav.appendChild(sidebarToggle);
 
@@ -719,6 +725,7 @@ function component() {
     base.appendChild(sidebarOverlay);
 
     main.appendChild(main1);
+    main.appendChild(sidebarResizer);
     main.appendChild(main2);
 
     main1.appendChild(sideTitle);
@@ -781,6 +788,93 @@ function component() {
             if (onProjChild && !onInput) { closeSidebar(); }
         });
     }
+
+    // ── sidebar resize logic ──
+    // Allows the user to drag the vertical divider between the Projects sidebar
+    // and the Todo Items panel. Width is persisted via localStorage so it
+    // survives reloads. On mobile viewports the sidebar is a drawer, so the
+    // handle is hidden via CSS and we bail out here too.
+    const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
+    const SIDEBAR_MIN_W     = 120;
+
+    function sidebarMaxWidth() {
+        return Math.floor(window.innerWidth * 0.5);
+    }
+
+    function clampSidebarWidth(w) {
+        return Math.max(SIDEBAR_MIN_W, Math.min(sidebarMaxWidth(), w));
+    }
+
+    function setSidebarWidth(w) {
+        document.documentElement.style.setProperty('--sidebar-w', clampSidebarWidth(w) + 'px');
+    }
+
+    const savedWidth = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
+    if (!isNaN(savedWidth)) setSidebarWidth(savedWidth);
+
+    let resizeStartX = 0;
+    let resizeStartW = 0;
+    let resizing     = false;
+
+    function readSidebarWidth() {
+        const cs = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w');
+        const px = parseInt(cs, 10);
+        return isNaN(px) ? 200 : px;
+    }
+
+    function onResizeMove(e) {
+        if (!resizing) return;
+        const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        setSidebarWidth(resizeStartW + (clientX - resizeStartX));
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function onResizeEnd() {
+        if (!resizing) return;
+        resizing = false;
+        sidebarResizer.classList.remove('resizing');
+        document.body.style.userSelect = '';
+        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(readSidebarWidth()));
+        document.removeEventListener('mousemove', onResizeMove);
+        document.removeEventListener('mouseup', onResizeEnd);
+        document.removeEventListener('touchmove', onResizeMove);
+        document.removeEventListener('touchend', onResizeEnd);
+        document.removeEventListener('touchcancel', onResizeEnd);
+    }
+
+    function onResizeStart(e) {
+        if (isMobile()) return;
+        resizing = true;
+        resizeStartX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        resizeStartW = readSidebarWidth();
+        sidebarResizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onResizeMove);
+        document.addEventListener('mouseup', onResizeEnd);
+        document.addEventListener('touchmove', onResizeMove, { passive: false });
+        document.addEventListener('touchend', onResizeEnd);
+        document.addEventListener('touchcancel', onResizeEnd);
+        if (e.cancelable) e.preventDefault();
+    }
+
+    sidebarResizer.addEventListener('mousedown', onResizeStart);
+    sidebarResizer.addEventListener('touchstart', onResizeStart, { passive: false });
+
+    // re-clamp on viewport resize so the sidebar can't exceed 50% of a newly
+    // narrowed window (e.g. user rotates device or resizes browser).
+    // Only touch the value if it's actually out of bounds so the responsive
+    // default keeps applying when the user hasn't customised the width.
+    window.addEventListener('resize', function() {
+        if (isMobile()) return;
+        const current = readSidebarWidth();
+        const max     = sidebarMaxWidth();
+        if (current > max) {
+            setSidebarWidth(max);
+            if (localStorage.getItem(SIDEBAR_WIDTH_KEY) !== null) {
+                localStorage.setItem(SIDEBAR_WIDTH_KEY, String(readSidebarWidth()));
+            }
+        }
+    });
 
     // *** HELPER: clears all toDo DOM elements from mainList (index 1 onward) ***
     function clearToDos_global() {
