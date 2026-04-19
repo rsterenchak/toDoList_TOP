@@ -28,6 +28,11 @@
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
   - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
   - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[LOW]** Add changelog button to todo list app
+  - Description: Add a changelog button to the header (icon-based, with a "Changelog" tooltip on hover) that opens a modal displaying version history when clicked. Create a new `src/changelog.js` file that exports a hardcoded array of changelog entries; each entry has a version string, a date, and categorized bullet lists (Added / Fixed / Changed, following the Keep a Changelog convention). The modal renders these entries newest-first, with version and date as the heading for each block. Include a close button (X in the corner) and support closing via the Escape key and clicking the backdrop. Style the modal to match the existing dark theme. Seed the file with one placeholder entry so the modal has something to show on first render.
+  - File: `src/changelog.js`, `src/index.js`, `src/main.js`, `src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
