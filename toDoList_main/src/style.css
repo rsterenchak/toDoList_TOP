@@ -101,19 +101,6 @@ body {
   background: var(--bg-hover);
 }
 
-#navBar::after {
-  content: '';
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #444;
-  box-shadow: 18px 0 0 #444;
-  margin-left: auto;
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
 /* FOOTER */
 #footBar {
   background: var(--bg-elevated);
