@@ -34,10 +34,10 @@
   - File: `toDoList_main/src/style.css/`, `toDoList_main/src/main.js/`, `toDoList_main/src/index.js/`, `toDoList_main/src/toDo.js/`
   - Completed: 2026-04-18 (PR #3)
 
-- [ ] **[MEDIUM]** Add check-off feature for todo items
+- [x] **[MEDIUM]** Add check-off feature for todo items
   - Description: Add a checkbox to the left of each todo item. Clicking it marks the item as completed: visually indicate completion with a strikethrough and muted text color, but keep the item in the list rather than removing it. Clicking again un-completes it. Persist the completed state on each item in the data model (likely a `completed: boolean` field on items in `listLogic.js`) so the state survives reloads alongside however items are currently stored.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-19
 
 - [ ] **[MEDIUM]** Replace project delete button with right-click context menu (edit + delete)
   - Description: Remove the existing `×` delete button that appears on each project in the sidebar (both the markup and any associated CSS and event handlers). Replace it with a custom context menu that appears on right-click of a project, positioned at the cursor. The menu contains two options: "Edit" (opens the existing project rename/edit flow) and "Delete" (removes the project, with a confirmation step before deletion; if the project contains todos, the confirmation should mention how many items will be lost). Suppress the browser's default right-click menu on project elements only, not globally. The custom menu should close on: selecting an option, clicking outside the menu, pressing Escape, or right-clicking elsewhere. Style it to match the existing dark theme. Note: right-click is desktop-only — add a long-press handler (roughly 500ms) on touch devices that opens the same menu, so mobile users retain access to edit/delete. Scope this feature to projects only; todo items are out of scope.

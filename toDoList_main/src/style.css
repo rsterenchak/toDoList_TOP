@@ -351,6 +351,45 @@ body {
 }
 #toDoChild:hover { background: var(--bg-hover); }
 
+/* CHECK-OFF CHECKBOX (todo) */
+#checkToDo {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  background: var(--bg-base);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+#checkToDo:hover { border-color: var(--accent-text); }
+#checkToDo:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#checkToDo:checked::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+#toDoChild.completed #toDoInput {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+#toDoChild.completed #dateText,
+#toDoChild.completed #month,
+#toDoChild.completed #day,
+#toDoChild.completed #year { color: var(--text-muted); }
+
 #toDoInput {
   font-size: 13px;
   font-family: 'Trebuchet MS', sans-serif;

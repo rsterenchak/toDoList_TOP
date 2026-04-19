@@ -3,6 +3,41 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// ── HELPER: build and wire the check-off checkbox for a todo row ──
+// Inserts the checkbox as the left-most child of toDoChild, reflects the item's
+// stored completed state, and persists changes. Blank placeholder rows pass the
+// row through untouched — callers reveal the checkbox after a title is committed.
+function wireCheckbox(toDoChild, toDoInput, item) {
+
+    const checkToDo = document.createElement("input");
+    checkToDo.type = "checkbox";
+    checkToDo.id   = "checkToDo";
+    checkToDo.checked = !!item.completed;
+
+    toDoChild.insertBefore(checkToDo, toDoInput);
+
+    if (!item.tit || item.tit === "") {
+        checkToDo.style.display = "none";
+    }
+
+    if (item.completed) {
+        toDoChild.classList.add("completed");
+    }
+
+    checkToDo.addEventListener("change", function() {
+        item.completed = checkToDo.checked;
+        if (checkToDo.checked) {
+            toDoChild.classList.add("completed");
+        } else {
+            toDoChild.classList.remove("completed");
+        }
+        listLogic.saveToStorage();
+    });
+
+    return checkToDo;
+}
+
+
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
 function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
@@ -232,6 +267,8 @@ function addAllToDo_DOM(items, name){
 
         wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
 
+        const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
+
         toDoChild.setAttribute('data-value', toDoName); // sets the first toDo data-value
 
         // EDITS TITLE & DATE OF ITEM ELEMENT
@@ -286,8 +323,9 @@ function addAllToDo_DOM(items, name){
 
                 updateItemButton_restore(toDoName);
 
-                // row has a title now — reveal the description dropdown toggle
+                // row has a title now — reveal the description dropdown toggle and checkbox
                 descToggle.style.display = "flex";
+                checkToDo.style.display = "";
 
                 // spawn next blank row automatically
                 appendNewToDoRow(toDoName);
@@ -474,6 +512,8 @@ function addAllToDo_DOM(items, name){
         toDoChild.appendChild(closeButtonToDo);
 
         wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+
+        wireCheckbox(toDoChild, toDoInput, item);
 
         toDoChild.setAttribute('data-value', toDoName);
 
@@ -1378,6 +1418,13 @@ function component() {
         toDoChild.appendChild(descToggle);
         toDoChild.appendChild(closeButtonToDo);
 
+        // build a hidden checkbox now; wire it once arraySlot (the item) is known below
+        const checkToDo = document.createElement("input");
+        checkToDo.type = "checkbox";
+        checkToDo.id   = "checkToDo";
+        checkToDo.style.display = "none";
+        toDoChild.insertBefore(checkToDo, toDoInput);
+
         toDoChild.setAttribute('data-value', currentProject);
 
 
@@ -1483,6 +1530,17 @@ function component() {
                 // wire the dropdown toggle now that arraySlot is known, then reveal it
                 wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, arraySlot);
                 descToggle.style.display = "flex";
+
+                // wire the checkbox now that arraySlot is known
+                checkToDo.checked = !!arraySlot.completed;
+                if (arraySlot.completed) toDoChild.classList.add("completed");
+                checkToDo.addEventListener("change", function() {
+                    arraySlot.completed = checkToDo.checked;
+                    if (checkToDo.checked) toDoChild.classList.add("completed");
+                    else toDoChild.classList.remove("completed");
+                    listLogic.saveToStorage();
+                });
+                checkToDo.style.display = "";
 
                 // wire description edits once — old code re-wired on every open, leaking listeners
                 descInput.addEventListener("keydown", function(event) {
@@ -1720,6 +1778,8 @@ function appendNewToDoRow(toDoName) {
 
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
 
+    const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
+
     // focus the new row so user can type immediately
     toDoInput.focus();
 
@@ -1743,8 +1803,9 @@ function appendNewToDoRow(toDoName) {
         listLogic.saveToStorage();
         updateItemButton_restore(toDoName);
 
-        // row has a title now — reveal the description dropdown toggle
+        // row has a title now — reveal the description dropdown toggle and checkbox
         descToggle.style.display = "flex";
+        checkToDo.style.display = "";
 
         toDoInput.blur();
 
@@ -2190,6 +2251,8 @@ function addToDos_restore(toDoArray, toDoName) {
         toDoChild.appendChild(closeButtonToDo);
 
         wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+
+        wireCheckbox(toDoChild, toDoInput, item);
 
         // populate date fields
         if (item.due && item.due !== "--" && item.due !== "X-X-XXXX" && item.due !== "") {
