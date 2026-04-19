@@ -469,8 +469,7 @@ function addAllToDo_DOM(items, name){
 
 
         toDoInput.textContent = item.tit;
-        toDoInput.value = item.tit; 
-        toDoInput.style.fontSize = "16px"; 
+        toDoInput.value = item.tit;
 
 
         let dateSet = item["due"] || "";
