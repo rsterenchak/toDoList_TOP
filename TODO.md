@@ -2,6 +2,9 @@
 
 ## Bugs
 
+- [ ] **[HIGH]** Fix font size growing on todo items after deletion
+  - Description: When a todo item is deleted, the font size of the remaining items increases. Expected behavior: font size stays constant regardless of how many items are added or removed. Likely cause is a CSS rule using a relative/viewport unit (vh, vw, %) on the list or items that recalculates as the list shrinks, or a JS handler that re-applies sizing on delete. Investigate both the stylesheet and the delete handler.
+  - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
 
 ## Features
 
