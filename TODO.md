@@ -6,6 +6,11 @@
   - Description: When a todo item is deleted, the font size of the remaining items increases. Expected behavior: font size stays constant regardless of how many items are added or removed. Likely cause is a CSS rule using a relative/viewport unit (vh, vw, %) on the list or items that recalculates as the list shrinks, or a JS handler that re-applies sizing on delete. Investigate both the stylesheet and the delete handler.
   - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
   - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[LOW]** Remove unused grey buttons from top-right of header
+  - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
+  - File: `src/index.js`, `src/style.css`, `src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
