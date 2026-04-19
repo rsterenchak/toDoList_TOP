@@ -29,6 +29,11 @@
   - File: `src/listLogic.js`, `src/toDo.js`, `src/style.css`, `src/index.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[MEDIUM]** Replace project delete button with right-click context menu (edit + delete)
+  - Description: Remove the existing `×` delete button that appears on each project in the sidebar (both the markup and any associated CSS and event handlers). Replace it with a custom context menu that appears on right-click of a project, positioned at the cursor. The menu contains two options: "Edit" (opens the existing project rename/edit flow) and "Delete" (removes the project, with a confirmation step before deletion; if the project contains todos, the confirmation should mention how many items will be lost). Suppress the browser's default right-click menu on project elements only, not globally. The custom menu should close on: selecting an option, clicking outside the menu, pressing Escape, or right-clicking elsewhere. Style it to match the existing dark theme. Note: right-click is desktop-only — add a long-press handler (roughly 500ms) on touch devices that opens the same menu, so mobile users retain access to edit/delete. Scope this feature to projects only; todo items are out of scope.
+  - File: `src/index.js`, `src/main.js`, `src/listLogic.js`, `src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Implement light mode
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
   - File: `src/style.css`, `src/main.js`, `src/index.js`, `src/toDo.js`, `src/listLogic.js`
