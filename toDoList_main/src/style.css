@@ -561,16 +561,17 @@ body {
 
   /* ── Prevent iOS Safari zoom on input focus ──
      Any input smaller than 16px triggers auto-zoom.
-     We scale up to 16px on mobile, then use transform
-     to visually shrink back so layout doesn't change. */
+     !important is required because inline styles set in
+     main.js (e.g. toDoInput.style.fontSize = "14px") would
+     otherwise override these mobile-only rules. */
   #toDoInput,
   #projInput,
   #descInput {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 
   #month, #day, #year {
-    font-size: 16px;
+    font-size: 16px !important;
     width: 22px;
   }
   #year { width: 44px; }
