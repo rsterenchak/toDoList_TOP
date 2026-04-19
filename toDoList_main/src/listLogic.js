@@ -52,8 +52,12 @@ export const listLogic = (function () {
     }
 
     // Sanitize loaded data — fix any bad date values (NaN, empty, malformed)
+    // and backfill `completed` for items saved before the check-off feature existed.
     Object.keys(allProjects).forEach(function(key) {
         allProjects[key].forEach(function(item) {
+            if (typeof item.completed !== 'boolean') {
+                item.completed = false;
+            }
             if (!item.due || item.due === "" || item.due === "--" || item.due === "X-X-XXXX") return;
             const parts = item.due.split('-');
             const m = parseInt(parts[0], 10);
