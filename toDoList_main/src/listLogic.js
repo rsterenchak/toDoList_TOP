@@ -72,7 +72,13 @@ export const listLogic = (function () {
 
     // Group completed items beneath uncompleted ones in every project so
     // restored state mirrors the same order the UI maintains during use.
+    // Strip any legacy trailing blanks first — stored arrays from prior
+    // versions always carried one, but the current rule is blank-only-when
+    // empty-or-all-completed. sortCompletedInPlace re-adds one as needed.
     Object.keys(allProjects).forEach(function(key) {
+        allProjects[key] = allProjects[key].filter(function(i) {
+            return i.tit !== '';
+        });
         sortCompletedInPlace(allProjects[key]);
     });
 
@@ -129,7 +135,9 @@ export const listLogic = (function () {
 
 
     // FUNCTION (ADD TODO LIST ITEMS)
-    // Guards against adding a duplicate blank placeholder at the end.
+    // Guards against adding a duplicate blank placeholder — the sort can place
+    // a blank between uncompleted and completed items, so the existing blank
+    // may live mid-array rather than at the end.
     function addToDo(projectName, toDoName) {
 
         let projectDes = projectName;
@@ -144,10 +152,10 @@ export const listLogic = (function () {
             return { array: [], string: projectName, lengths: 0 };
         }
 
-        // If trying to add a blank placeholder, skip if one already exists at the end
+        // If trying to add a blank placeholder, skip if one already exists anywhere
         if (itemTitle === '') {
             const arr = allProjects[projectDes];
-            if (arr.length > 0 && arr[arr.length - 1].tit === '') {
+            if (arr.some(function(i){ return i.tit === ''; })) {
                 return {
                     array: allProjects[projectName],
                     string: projectName,
@@ -170,27 +178,19 @@ export const listLogic = (function () {
 
 
     // FUNCTION (REMOVE TODO LIST ITEMS)
-    // Always leaves exactly one blank placeholder when no real items remain.
+    // Delegates the placeholder invariant (blank row only when empty or
+    // all-completed) to sortCompletedInPlace.
     function removeToDo(project, index, length) {
 
         if (!allProjects[project]) return;
 
         index = parseInt(index, 10);
 
-        // Splice out the target item
         if (index >= 0 && index < allProjects[project].length) {
             allProjects[project].splice(index, 1);
         }
 
-        // Strip ALL blank placeholders from the array
-        allProjects[project] = allProjects[project].filter(function(i) {
-            return i.tit !== '';
-        });
-
-        // If no real items remain, add exactly one blank placeholder
-        if (allProjects[project].length === 0) {
-            allProjects[project].push(toDo('', '', '', 1, 0));
-        }
+        sortCompletedInPlace(allProjects[project]);
 
         saveToStorage();
     };
@@ -211,12 +211,7 @@ export const listLogic = (function () {
 
         arr.splice(idx, 1);
 
-        // Strip blanks then re-add exactly one so the user always has an
-        // input slot available — placement is handled by sortCompletedInPlace.
-        allProjects[project] = allProjects[project].filter(function(i) {
-            return i.tit !== '';
-        });
-        allProjects[project].push(toDo('', '', '', 1, 0));
+        sortCompletedInPlace(allProjects[project]);
 
         saveToStorage();
     };
@@ -306,25 +301,24 @@ export const listLogic = (function () {
     }
 
 
-    // Stable-partition a project array so uncompleted items lead, the blank
-    // placeholder sits between the two groups, and completed items trail.
-    // The blank belongs with uncompleted items because it represents room for
-    // a new uncompleted entry — putting it above completed ones keeps the
-    // next-input slot reachable without scrolling past done work.
+    // Stable-partition a project array so uncompleted items lead and
+    // completed items trail. The blank placeholder row is conditional: it
+    // only renders when every real item is completed or the project is
+    // empty — otherwise the always-visible "+" add-item button is the user's
+    // way to create new rows. An explicitly-added blank (e.g. from the "+"
+    // button while uncompleted items exist) is preserved at the end of the
+    // uncompleted block so the user can finish typing before the sort
+    // reclassifies it.
     function sortCompletedInPlace(arr) {
-        if (!arr || arr.length === 0) return;
+        if (!arr) return;
 
-        let blank = null;
-        if (arr[arr.length - 1].tit === '') {
-            blank = arr.pop();
-        }
+        const blanks      = arr.filter(function(i) { return i.tit === ''; });
+        const uncompleted = arr.filter(function(i) { return i.tit !== '' && !i.completed; });
+        const completed   = arr.filter(function(i) { return i.tit !== '' &&  i.completed; });
 
-        const uncompleted = arr.filter(function(i) { return !i.completed; });
-        const completed   = arr.filter(function(i) { return !!i.completed; });
-
-        // If every real item is completed, ensure a blank placeholder exists
-        // so the user always has a row available for new input — same
-        // invariant removeToDo/removeToDoByTitle maintain when the list empties.
+        let blank = blanks.length > 0 ? blanks[0] : null;
+        // Auto-create a placeholder only when there's nothing uncompleted to
+        // type next to — matches the invariant new empty projects start with.
         if (!blank && uncompleted.length === 0) {
             blank = toDo('', '', '', 1, 0);
         }

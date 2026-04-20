@@ -900,7 +900,11 @@ function buildToDoRow(item, toDoName) {
         updateItemButton_restore(toDoName);
 
         toDoInput.blur();
-        appendNewToDoRow(toDoName);
+        // A committed row is no longer a blank placeholder: re-sort so the
+        // row lands above any completed items and strip any stale placeholder
+        // the sort rule now forbids (uncompleted items exist → no blank).
+        listLogic.sortCompletedToBottom(toDoName);
+        reorderToDoDOM(toDoName);
     });
 
     // toDoInput keyup — save on every keystroke
@@ -1241,18 +1245,12 @@ function component() {
     }
 
     // *** HELPER: single source of truth for itemButton state ***
+    // Enabled whenever a project exists — appendNewToDoRow focuses an existing
+    // blank row instead of creating a duplicate, so the button is safe to
+    // click repeatedly.
     function updateItemButton(project) {
         const items = listLogic.listItems(project);
-        if(!items || items.length === 0){
-            itemButton.style.pointerEvents = "none";
-            return;
-        }
-        const lastItem = items[items.length - 1];
-        if(lastItem.tit === ""){
-            itemButton.style.pointerEvents = "none";
-        } else {
-            itemButton.style.pointerEvents = "auto";
-        }
+        itemButton.style.pointerEvents = items ? "auto" : "none";
     }
 
 
@@ -1434,10 +1432,15 @@ function component() {
 
 
                 listLogic.listProjects();
-                
 
-                // On Click - should bring back ability to use add projects button 
-                projButton.style.pointerEvents = "auto"; 
+                // Re-enable the add-item button for the freshly-created
+                // (and now selected) project — the button stays clickable
+                // regardless of placeholder state under the new conditional
+                // placeholder rule.
+                updateItemButton(projectName);
+
+                // On Click - should bring back ability to use add projects button
+                projButton.style.pointerEvents = "auto";
                 
                 // NOTE: projChild > titleInput
 
@@ -1555,15 +1558,15 @@ function component() {
 
     });
 
-    // Click Listener: That adds new item element
+    // Click Listener: That adds new item element.
+    // Always-available alternate add affordance — needed because the blank
+    // placeholder row is now hidden whenever uncompleted items exist.
     itemButton.addEventListener("click", function() {
-        itemButton.style.pointerEvents = "none";
         const selectedEl = document.querySelector('.selectedProject');
-        const currentProject = selectedEl
-            ? (selectedEl.querySelector('#projInput')
-                ? selectedEl.querySelector('#projInput').value
-                : selectedEl.dataset.project)
-            : "";
+        if (!selectedEl) return;
+        const currentProject = selectedEl.querySelector('#projInput')
+            ? selectedEl.querySelector('#projInput').value
+            : selectedEl.dataset.project;
         appendNewToDoRow(currentProject);
     });
 
@@ -1873,9 +1876,7 @@ function updateItemButton_restore(project) {
     const itemButton = document.getElementById("itemButton");
     if (!itemButton) return;
     const items = listLogic.listItems(project);
-    if (!items || items.length === 0) { itemButton.style.pointerEvents = "none"; return; }
-    const last = items[items.length - 1];
-    itemButton.style.pointerEvents = (last.tit === "") ? "none" : "auto";
+    itemButton.style.pointerEvents = items ? "auto" : "none";
 }
 
 // Re-render a project's rows from persisted data. Re-sorts first so the

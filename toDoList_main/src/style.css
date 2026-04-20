@@ -301,6 +301,7 @@ body {
   border-bottom: 0.5px solid var(--border-dim);
   background: var(--bg-elevated);
   flex-shrink: 0;
+  position: relative;
 }
 
 #mainHead {
@@ -311,9 +312,17 @@ body {
   text-transform: uppercase;
 }
 
-/* ADD ITEM — hidden, Enter key handles new todo creation */
+/* ADD ITEM — always-available affordance for creating a new todo row.
+   Needed because the blank placeholder row is hidden whenever any
+   uncompleted item exists. Pinned to the right so it doesn't shift the
+   centered title text. */
 #addItem {
-  display: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
 }
 
 #itemButton {
