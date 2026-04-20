@@ -247,24 +247,74 @@ export const listLogic = (function () {
             arr.splice(index, 1);
             return arr;
         } else {
-            console.log("else error: " + index);  
+            console.log("else error: " + index);
             console.error("Index out of bounds");
             return arr;
         }
     }
-  
 
-    return { 
-        addProject, 
-        removeProject, 
+
+    // Move a project from one index to another.
+    // Object keys preserve insertion order in modern JS, so we rebuild
+    // the object in the new order to persist the reorder.
+    function reorderProject(fromIndex, toIndex) {
+
+        const keys = Object.keys(allProjects);
+        fromIndex = parseInt(fromIndex, 10);
+        toIndex   = parseInt(toIndex, 10);
+
+        if (isNaN(fromIndex) || isNaN(toIndex)) return;
+        if (fromIndex < 0 || fromIndex >= keys.length) return;
+        if (toIndex   < 0 || toIndex   >= keys.length) return;
+        if (fromIndex === toIndex) return;
+
+        const moved = keys.splice(fromIndex, 1)[0];
+        keys.splice(toIndex, 0, moved);
+
+        const snapshot = {};
+        keys.forEach(function(k) { snapshot[k] = allProjects[k]; });
+
+        Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
+        keys.forEach(function(k) { allProjects[k] = snapshot[k]; });
+
+        saveToStorage();
+    }
+
+
+    // Move a todo item within its project's array from one index to another.
+    function reorderToDo(project, fromIndex, toIndex) {
+
+        if (!allProjects[project]) return;
+        const arr = allProjects[project];
+
+        fromIndex = parseInt(fromIndex, 10);
+        toIndex   = parseInt(toIndex, 10);
+
+        if (isNaN(fromIndex) || isNaN(toIndex)) return;
+        if (fromIndex < 0 || fromIndex >= arr.length) return;
+        if (toIndex   < 0 || toIndex   >= arr.length) return;
+        if (fromIndex === toIndex) return;
+
+        const moved = arr.splice(fromIndex, 1)[0];
+        arr.splice(toIndex, 0, moved);
+
+        saveToStorage();
+    }
+
+
+    return {
+        addProject,
+        removeProject,
         listProjects,
         listProjectsArray,
-        addToDo, 
-        removeToDo, 
+        addToDo,
+        removeToDo,
         removeToDoByTitle,
         editProject,
-        listItems, 
+        listItems,
         projectLength,
+        reorderProject,
+        reorderToDo,
         saveToStorage
     };
 

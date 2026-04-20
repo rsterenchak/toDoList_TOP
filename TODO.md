@@ -44,10 +44,10 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
-- [ ] **[MEDIUM]** Add drag-and-drop reordering for projects and todo items
+- [x] **[MEDIUM]** Add drag-and-drop reordering for projects and todo items
   - Description: Allow users to reorder both projects in the sidebar and todo items within the currently selected project by dragging them into a new position. Implement both behaviors in a single consistent pattern so they look and feel the same. On drag start, the element being dragged should have a visual indicator (reduced opacity or subtle lift/shadow). As the user drags over other elements, show a drop indicator (a horizontal line or highlighted gap) at the target insertion point. On drop, the list reorders and the new order persists so it survives reloads — save the updated order in the data model (likely in `listLogic.js`) for both projects and per-project todo item arrays. Use the native HTML5 drag-and-drop API rather than adding a new library. If either list overflows vertically, auto-scroll when the user drags near its top or bottom edge. On mobile/touch devices, add touch event handlers (touchstart/touchmove/touchend) so the feature works on touch as well as mouse. Scope: projects can only be reordered among projects, and todo items can only be reordered within their current project — dragging todo items between projects is out of scope. Where possible, share the drag-and-drop logic between the two contexts (e.g., a single reusable handler or helper) rather than duplicating code.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-20
 
 - [ ] **[LOW]** Implement light mode
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
