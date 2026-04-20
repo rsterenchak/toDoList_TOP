@@ -70,6 +70,12 @@ export const listLogic = (function () {
         });
     });
 
+    // Group completed items beneath uncompleted ones in every project so
+    // restored state mirrors the same order the UI maintains during use.
+    Object.keys(allProjects).forEach(function(key) {
+        sortCompletedInPlace(allProjects[key]);
+    });
+
     // ************************************************************* //
 
 
@@ -302,6 +308,37 @@ export const listLogic = (function () {
     }
 
 
+    // Stable-partition a project array so uncompleted items lead, completed
+    // items trail, and the trailing blank placeholder (if any) stays last.
+    // Relative order within each group is preserved. Shared between the
+    // init-time pass and the public sortCompletedToBottom entry point.
+    function sortCompletedInPlace(arr) {
+        if (!arr || arr.length === 0) return;
+
+        let blank = null;
+        if (arr[arr.length - 1].tit === '') {
+            blank = arr.pop();
+        }
+
+        const uncompleted = arr.filter(function(i) { return !i.completed; });
+        const completed   = arr.filter(function(i) { return !!i.completed; });
+
+        arr.length = 0;
+        for (let i = 0; i < uncompleted.length; i++) arr.push(uncompleted[i]);
+        for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
+        if (blank) arr.push(blank);
+    }
+
+
+    // Sort the given project's items so completed entries sit beneath
+    // uncompleted ones. Preserves the trailing blank placeholder row.
+    function sortCompletedToBottom(project) {
+        if (!allProjects[project]) return;
+        sortCompletedInPlace(allProjects[project]);
+        saveToStorage();
+    }
+
+
     return {
         addProject,
         removeProject,
@@ -315,6 +352,7 @@ export const listLogic = (function () {
         projectLength,
         reorderProject,
         reorderToDo,
+        sortCompletedToBottom,
         saveToStorage
     };
 

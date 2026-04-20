@@ -31,10 +31,54 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         } else {
             toDoChild.classList.remove("completed");
         }
-        listLogic.saveToStorage();
+
+        // Partition completed entries to the bottom of this project's list,
+        // then slide the row (plus any open description panel) into its new
+        // slot in-place so listeners stay attached.
+        const projectName = toDoChild.dataset.value;
+        if (projectName) {
+            listLogic.sortCompletedToBottom(projectName);
+            reorderToDoDOM(projectName);
+        } else {
+            listLogic.saveToStorage();
+        }
     });
 
     return checkToDo;
+}
+
+
+// Walk the persisted project order and re-append each `#toDoChild` row in
+// that sequence. Any open `#descSibling` panel directly after a row is moved
+// with it. Uses `appendChild` on existing DOM nodes so event listeners stay
+// attached — mirrors the in-place move pattern in `attachToDoDrag`.
+function reorderToDoDOM(projectName) {
+    const mainDiv = document.getElementById('mainList');
+    if (!mainDiv) return;
+    const items = listLogic.listItems(projectName);
+    if (!items) return;
+
+    const rowsByTitle = {};
+    let blankRow = null;
+    const rows = mainDiv.querySelectorAll('#toDoChild');
+    for (let i = 0; i < rows.length; i++) {
+        const input = rows[i].querySelector('#toDoInput');
+        const title = input ? input.value : '';
+        if (title === '') {
+            blankRow = rows[i];
+        } else {
+            rowsByTitle[title] = rows[i];
+        }
+    }
+
+    items.forEach(function(item) {
+        const row = item.tit === '' ? blankRow : rowsByTitle[item.tit];
+        if (!row) return;
+        const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
+            ? row.nextSibling : null;
+        mainDiv.appendChild(row);
+        if (descSibling) mainDiv.appendChild(descSibling);
+    });
 }
 
 
@@ -821,7 +865,6 @@ function buildToDoRow(item, toDoName) {
         const val = toDoInput.value.trim();
         if (!val) return;
 
-        const wasBlank = !item.tit;
         toDoInput.value = val;
         item.tit = val;
         item.pri = 2;
@@ -831,11 +874,10 @@ function buildToDoRow(item, toDoName) {
 
         listLogic.saveToStorage();
 
-        if (wasBlank) {
-            descToggle.style.display = "flex";
-            checkToDo.style.display  = "";
-            updateItemButton_restore(toDoName);
-        }
+        // Idempotent — no-op when already visible; safely covers first-commit reveal.
+        descToggle.style.display = "flex";
+        checkToDo.style.display  = "";
+        updateItemButton_restore(toDoName);
 
         toDoInput.blur();
         appendNewToDoRow(toDoName);
