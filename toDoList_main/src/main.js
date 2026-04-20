@@ -865,7 +865,6 @@ function buildToDoRow(item, toDoName) {
         const val = toDoInput.value.trim();
         if (!val) return;
 
-        const wasBlank = !item.tit;
         toDoInput.value = val;
         item.tit = val;
         item.pri = 2;
@@ -875,11 +874,10 @@ function buildToDoRow(item, toDoName) {
 
         listLogic.saveToStorage();
 
-        if (wasBlank) {
-            descToggle.style.display = "flex";
-            checkToDo.style.display  = "";
-            updateItemButton_restore(toDoName);
-        }
+        // Idempotent — no-op when already visible; safely covers first-commit reveal.
+        descToggle.style.display = "flex";
+        checkToDo.style.display  = "";
+        updateItemButton_restore(toDoName);
 
         toDoInput.blur();
         appendNewToDoRow(toDoName);
