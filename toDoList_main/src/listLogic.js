@@ -211,14 +211,12 @@ export const listLogic = (function () {
 
         arr.splice(idx, 1);
 
-        // Strip blanks then ensure one placeholder remains if no real items left
+        // Strip blanks then re-add exactly one so the user always has an
+        // input slot available — placement is handled by sortCompletedInPlace.
         allProjects[project] = allProjects[project].filter(function(i) {
             return i.tit !== '';
         });
-
-        if (allProjects[project].length === 0) {
-            allProjects[project].push(toDo('', '', '', 1, 0));
-        }
+        allProjects[project].push(toDo('', '', '', 1, 0));
 
         saveToStorage();
     };
@@ -308,10 +306,11 @@ export const listLogic = (function () {
     }
 
 
-    // Stable-partition a project array so uncompleted items lead, completed
-    // items trail, and the trailing blank placeholder (if any) stays last.
-    // Relative order within each group is preserved. Shared between the
-    // init-time pass and the public sortCompletedToBottom entry point.
+    // Stable-partition a project array so uncompleted items lead, the blank
+    // placeholder sits between the two groups, and completed items trail.
+    // The blank belongs with uncompleted items because it represents room for
+    // a new uncompleted entry — putting it above completed ones keeps the
+    // next-input slot reachable without scrolling past done work.
     function sortCompletedInPlace(arr) {
         if (!arr || arr.length === 0) return;
 
@@ -323,10 +322,17 @@ export const listLogic = (function () {
         const uncompleted = arr.filter(function(i) { return !i.completed; });
         const completed   = arr.filter(function(i) { return !!i.completed; });
 
+        // If every real item is completed, ensure a blank placeholder exists
+        // so the user always has a row available for new input — same
+        // invariant removeToDo/removeToDoByTitle maintain when the list empties.
+        if (!blank && uncompleted.length === 0) {
+            blank = toDo('', '', '', 1, 0);
+        }
+
         arr.length = 0;
         for (let i = 0; i < uncompleted.length; i++) arr.push(uncompleted[i]);
-        for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
         if (blank) arr.push(blank);
+        for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
     }
 
 

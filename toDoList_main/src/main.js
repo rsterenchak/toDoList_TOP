@@ -72,7 +72,16 @@ function reorderToDoDOM(projectName) {
     }
 
     items.forEach(function(item) {
-        const row = item.tit === '' ? blankRow : rowsByTitle[item.tit];
+        let row;
+        if (item.tit === '') {
+            // Build a blank row on demand if the logic just inserted one
+            // (e.g., sortCompletedInPlace adds a placeholder after the last
+            // uncompleted item is checked off) but no blank row exists in the DOM yet.
+            if (!blankRow) blankRow = buildToDoRow(item, projectName);
+            row = blankRow;
+        } else {
+            row = rowsByTitle[item.tit];
+        }
         if (!row) return;
         const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
             ? row.nextSibling : null;
@@ -811,6 +820,9 @@ function buildToDoRow(item, toDoName) {
     toDoInput.style.border = "none";
 
     closeButtonToDo.id = "closeButtonToDo";
+    // Hide delete on blank placeholder rows — deleting the only available
+    // input slot would leave the user with no way to create new items.
+    if (!item.tit) closeButtonToDo.style.display = "none";
 
     descToggle.id            = "descToggle";
     descToggle.style.display = item.tit ? "flex" : "none";
@@ -868,15 +880,23 @@ function buildToDoRow(item, toDoName) {
         toDoInput.value = val;
         item.tit = val;
         item.pri = 2;
-        item.due = (month.value || month.placeholder || 1) + "-" +
-                   (day.value   || day.placeholder   || 1) + "-" +
-                   (year.value  || year.placeholder  || 2023);
+        // Resolve date (falling back to placeholders) AND write the resolved
+        // values back into the inputs so the row paints in normal text color
+        // instead of keeping the grey placeholder styling.
+        const mv = month.value || month.placeholder || 1;
+        const dv = day.value   || day.placeholder   || 1;
+        const yv = year.value  || year.placeholder  || 2023;
+        month.value = mv;
+        day.value   = dv;
+        year.value  = yv;
+        item.due = mv + "-" + dv + "-" + yv;
 
         listLogic.saveToStorage();
 
         // Idempotent — no-op when already visible; safely covers first-commit reveal.
-        descToggle.style.display = "flex";
-        checkToDo.style.display  = "";
+        descToggle.style.display      = "flex";
+        checkToDo.style.display       = "";
+        closeButtonToDo.style.display = "";
         updateItemButton_restore(toDoName);
 
         toDoInput.blur();
@@ -938,6 +958,10 @@ function buildToDoRow(item, toDoName) {
         }
 
         listLogic.removeToDoByTitle(toDoName, title);
+        // removeToDoByTitle strips blanks and only re-adds one if the array
+        // empties out. Re-sort so a placeholder is re-created whenever the
+        // remaining items are all completed.
+        listLogic.sortCompletedToBottom(toDoName);
 
         const mainDiv = document.getElementById('mainList');
         while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
@@ -1605,6 +1629,10 @@ function appendNewToDoRow(toDoName) {
     const item     = newItems.array[newItems.lengths - 1];
     const row      = buildToDoRow(item, toDoName);
     document.getElementById("mainList").appendChild(row);
+    // addToDo pushes to the end; re-sort so the blank lands above any
+    // completed items, then sync the DOM to match.
+    listLogic.sortCompletedToBottom(toDoName);
+    reorderToDoDOM(toDoName);
     row.querySelector('#toDoInput').focus();
 }
 
@@ -1850,12 +1878,16 @@ function updateItemButton_restore(project) {
     itemButton.style.pointerEvents = (last.tit === "") ? "none" : "auto";
 }
 
-// lightweight re-render — skips blank placeholder items
+// Re-render a project's rows from persisted data. Re-sorts first so the
+// blank placeholder sits above any completed items, then renders every
+// item — including the blank — so the user always has a ready-to-type
+// slot when completed work exists.
 function addToDos_restore(toDoArray, toDoName) {
     if (!toDoArray || toDoArray.length === 0) return;
+    listLogic.sortCompletedToBottom(toDoName);
+    const items = listLogic.listItems(toDoName);
     const mainListDiv = document.getElementById("mainList");
-    toDoArray.forEach(function(item) {
-        if (!item || item.tit === "") return;
+    items.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
 }

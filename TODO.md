@@ -22,10 +22,10 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-19
 
-- [ ] **[MEDIUM]** Add blank placeholder row when only remaining todo is checked off
+- [x] **[MEDIUM]** Add blank placeholder row when only remaining todo is checked off
   - Description: When a project contains a single uncompleted todo item and the user checks it off as completed, no blank "new item" placeholder row is rendered afterward, leaving the user with no obvious way to continue adding items. Expected behavior: checking off the last uncompleted item should automatically append a blank placeholder row (matching the pattern already used in `removeToDo`/`removeToDoByTitle`) so a fresh row is always available for new input. Investigate the checkbox change handler in `wireCheckbox` (main.js) and `sortCompletedToBottom` / `sortCompletedInPlace` in listLogic.js — the sort preserves a trailing blank if one exists but never creates one when all real items become completed.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-20
      
 - [x] **[LOW]** Remove unused grey buttons from top-right of header
   - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
