@@ -70,6 +70,13 @@ export const listLogic = (function () {
         });
     });
 
+    // Group completed items below uncompleted ones for every restored project,
+    // so reopening a project renders them already sorted. `sortCompletedToBottom`
+    // is defined later in this IIFE but hoisted, so the call is safe here.
+    Object.keys(allProjects).forEach(function(key) {
+        sortCompletedToBottom(key);
+    });
+
     // ************************************************************* //
 
 
@@ -281,6 +288,32 @@ export const listLogic = (function () {
     }
 
 
+    // Group completed items beneath uncompleted ones while preserving
+    // each group's relative order, and keep the trailing blank placeholder
+    // row (tit === '') as the very last entry — the invariant `addToDo` and
+    // `removeToDo` maintain. Called on every check-off toggle and once per
+    // project at load time so reopening a project renders the grouped order.
+    function sortCompletedToBottom(project) {
+
+        if (!allProjects[project]) return;
+        const arr = allProjects[project];
+
+        const uncompleted = [];
+        const completed   = [];
+        const blanks      = [];
+
+        arr.forEach(function(item) {
+            if (item.tit === '')      blanks.push(item);
+            else if (item.completed)  completed.push(item);
+            else                      uncompleted.push(item);
+        });
+
+        allProjects[project] = uncompleted.concat(completed, blanks);
+
+        saveToStorage();
+    }
+
+
     // Move a todo item within its project's array from one index to another.
     function reorderToDo(project, fromIndex, toIndex) {
 
@@ -315,6 +348,7 @@ export const listLogic = (function () {
         projectLength,
         reorderProject,
         reorderToDo,
+        sortCompletedToBottom,
         saveToStorage
     };
 

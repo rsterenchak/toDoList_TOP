@@ -31,7 +31,38 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         } else {
             toDoChild.classList.remove("completed");
         }
-        listLogic.saveToStorage();
+
+        // Re-sort the model so completed items sit beneath uncompleted ones,
+        // then move this row to its new position in-place so listeners and
+        // any open description panel travel with it (mirrors attachToDoDrag).
+        const mainDiv = document.getElementById('mainList');
+        // Resolve project from the row's data-value so the active project is
+        // read from the DOM rather than a closed-over (possibly stale) value.
+        const activeProject = toDoChild.getAttribute('data-value');
+
+        const siblings = draggableSiblings(mainDiv, '#toDoChild');
+        const fromIdx  = siblings.indexOf(toDoChild);
+
+        listLogic.sortCompletedToBottom(activeProject);
+
+        const items    = listLogic.listItems(activeProject) || [];
+        const nonBlank = items.filter(function(i){ return i.tit !== ''; });
+        const toIdx    = nonBlank.indexOf(item);
+
+        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+
+        const draggedDesc = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling')
+            ? toDoChild.nextSibling : null;
+
+        if (fromIdx < toIdx) {
+            let anchor = siblings[toIdx].nextSibling;
+            if (anchor && anchor.id === 'descSibling') anchor = anchor.nextSibling;
+            mainDiv.insertBefore(toDoChild, anchor || null);
+            if (draggedDesc) mainDiv.insertBefore(draggedDesc, anchor || null);
+        } else {
+            mainDiv.insertBefore(toDoChild, siblings[toIdx]);
+            if (draggedDesc) mainDiv.insertBefore(draggedDesc, siblings[toIdx]);
+        }
     });
 
     return checkToDo;
