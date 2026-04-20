@@ -1,0 +1,700 @@
+@font-face {
+  font-family: 'MyFont';
+  src: url('./Zector.otf');
+}
+
+/* ── VOID THEME ── */
+
+:root {
+  --bg-base:       #0F0F0F;
+  --bg-elevated:   #161616;
+  --bg-surface:    #1C1C1C;
+  --bg-hover:      #1a1828;
+  --bg-active:     #16142a;
+
+  --border-dim:    #242424;
+  --border-mid:    #2E2E2E;
+  --border-bright: #3A3A3A;
+
+  --accent:        #6C5DF5;
+  --accent-dim:    rgba(108, 93, 245, 0.25);
+  --accent-text:   #9D8FFF;
+
+  --text-primary:  #E4E4E4;
+  --text-secondary:#888888;
+  --text-muted:    #484848;
+  --text-danger:   #E05555;
+
+  --radius-sm:     4px;
+  --radius-md:     6px;
+
+  --sidebar-w:     200px;
+  --nav-h:         44px;
+  --foot-h:        36px;
+  --row-h:         48px;
+  --item-h:        44px;
+  --touch:         44px;
+}
+
+/* ── RESET ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  padding: 16px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+  overflow: hidden;
+}
+
+/* OUTER SHELL */
+#outerContainer {
+  display: grid;
+  grid-template-rows: var(--nav-h) 1fr var(--foot-h);
+  height: calc(100dvh - 32px);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+/* NAV BAR */
+#navBar {
+  background: var(--bg-elevated);
+  border-bottom: 0.5px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  position: relative;
+  z-index: 10;
+}
+
+#sidebarToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent-text);
+  font-size: 20px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+#sidebarToggle:hover {
+  color: #fff;
+  background: var(--bg-hover);
+}
+
+/* FOOTER */
+#footBar {
+  background: var(--bg-elevated);
+  border-top: 0.5px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+#footBar::after {
+  content: 'task management v1.1';
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+/* MAIN SECTION */
+#mainSec {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 4px 1fr;
+  overflow: hidden;
+  position: relative;
+  transition: grid-template-columns 0.25s ease;
+}
+
+/* SIDEBAR RESIZE HANDLE — desktop only; mobile hides it in the media query */
+#sidebarResizer {
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  user-select: none;
+  touch-action: none;
+  z-index: 5;
+}
+#sidebarResizer:hover { background: var(--border-bright); }
+#sidebarResizer.resizing { background: var(--accent-dim); }
+
+/* SIDEBAR */
+#sideBar {
+  display: grid;
+  grid-template-rows: var(--row-h) 1fr;
+  border-right: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  transition: border-color 0.25s ease;
+  min-width: 0;
+}
+
+#sideTit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#sideHead {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+
+#sideMa {
+  display: grid;
+  background: var(--bg-elevated);
+  grid-template-rows: repeat(auto-fit, minmax(var(--item-h), var(--item-h)));
+  align-content: start;
+  overflow-y: auto;
+  position: relative;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+/* ADD PROJECT */
+#addProj {
+  display: grid;
+  border-bottom: 0.5px solid var(--border-dim);
+  justify-content: center;
+  align-content: center;
+  background: transparent;
+  height: var(--row-h);
+}
+
+#projButton {
+  border: none;
+  width: var(--touch);
+  height: var(--touch);
+  background: transparent url('./addProj_button.svg') center/22px 22px no-repeat;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+#projButton:hover { opacity: 1; }
+
+/* PROJECT ROWS */
+#projChild {
+  display: grid;
+  align-content: center;
+  grid-template-columns: 1fr 12px;
+  cursor: pointer;
+  background: transparent;
+  height: var(--item-h);
+  padding: 0 12px 0 12px;
+  transition: background 0.12s ease;
+  border-bottom: 0.5px solid var(--border-dim);
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+}
+#projChild:hover { background: var(--bg-hover); }
+
+.unselectedProject {
+  border-left: 3px solid transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+.selectedProject {
+  border-left: 3px solid var(--accent) !important;
+  border-top: none;
+  border-right: none;
+  border-bottom: 0.5px solid var(--border-dim) !important;
+  background: var(--bg-active) !important;
+}
+
+#projInput {
+  font-size: 14px;
+  font-family: 'Trebuchet MS', sans-serif;
+  background: transparent;
+  color: #E8E8E8;
+  border: none;
+  width: 100%;
+  letter-spacing: 0.02em;
+  caret-color: #9D8FFF;
+  padding: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#projInput::placeholder { color: var(--text-muted); font-style: italic; }
+#projInput:focus { outline: none; background: transparent; color: #E8E8E8; }
+#projInput:focus::placeholder { color: transparent; }
+#projInput:-webkit-autofill,
+#projInput:-webkit-autofill:hover,
+#projInput:-webkit-autofill:focus {
+  -webkit-text-fill-color: #E8E8E8;
+  -webkit-box-shadow: 0 0 0px 1000px #1C1C1C inset;
+}
+
+/* PROJECT CONTEXT MENU */
+#projContextMenu {
+  position: fixed;
+  z-index: 20;
+  min-width: 140px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  user-select: none;
+}
+
+.projContextMenuItem {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.projContextMenuItem:hover { background: var(--bg-hover); color: #fff; }
+.projContextMenuItem.danger { color: var(--text-danger); }
+.projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
+
+/* MAIN BAR */
+#mainBar {
+  display: grid;
+  grid-template-rows: var(--row-h) 1fr;
+  background: var(--bg-base);
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── MAIN TITLE BAR ── */
+#mainTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+#mainHead {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+
+/* ADD ITEM — hidden, Enter key handles new todo creation */
+#addItem {
+  display: none;
+}
+
+#itemButton {
+  border: none;
+  width: var(--touch);
+  height: var(--touch);
+  background: transparent url('./addProj_button.svg') center/22px 22px no-repeat;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+#itemButton:hover { opacity: 1; }
+
+/* TODO LIST */
+#mainList {
+  display: grid;
+  grid-template-rows: repeat(auto-fit, minmax(54px, 54px));
+  align-content: start;
+  background: var(--bg-base);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0;
+  position: relative;
+}
+
+/* TODO ROWS */
+#toDoChild {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  cursor: default;
+  background: var(--bg-surface);
+  height: var(--item-h);
+  padding: 0 10px 0 12px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 6px;
+  margin: 5px 8px;
+  transition: background 0.10s ease;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+#toDoChild:hover { background: var(--bg-hover); }
+
+/* Grab cursor on draggable rows; grabbing during active drag */
+#projChild[draggable="true"],
+#toDoChild[draggable="true"] { cursor: grab; }
+body.row-dragging,
+body.row-dragging * { cursor: grabbing !important; }
+
+/* CHECK-OFF CHECKBOX (todo) */
+#checkToDo {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  cursor: pointer;
+  background: var(--bg-base);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+#checkToDo:hover { border-color: var(--accent-text); }
+#checkToDo:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#checkToDo:checked::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+#toDoChild.completed #toDoInput {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+#toDoChild.completed #dateText,
+#toDoChild.completed #month,
+#toDoChild.completed #day,
+#toDoChild.completed #year { color: var(--text-muted); }
+
+#toDoInput {
+  font-size: 13px;
+  font-family: 'Trebuchet MS', sans-serif;
+  background: transparent;
+  color: #E8E8E8;
+  border: none;
+  letter-spacing: 0.02em;
+  caret-color: #9D8FFF;
+  min-width: 0;
+  flex: 1 1 0;
+  align-self: center;
+  pointer-events: none;
+}
+#toDoChild.todo-active #toDoInput { pointer-events: auto; }
+#toDoInput:-webkit-autofill,
+#toDoInput:-webkit-autofill:hover,
+#toDoInput:-webkit-autofill:focus {
+  -webkit-text-fill-color: #E8E8E8;
+  -webkit-box-shadow: 0 0 0px 1000px #141414 inset;
+}
+#toDoInput::placeholder { color: var(--text-muted); font-style: italic; }
+#toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
+#toDoInput:focus::placeholder { color: transparent; }
+
+/* DATE */
+#dateText {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #666;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#dueInput {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  padding: 2px 4px;
+  flex-shrink: 0;
+  gap: 1px;
+  min-width: 0;
+}
+
+#month, #day, #year {
+  font-size: 11px;
+  font-family: 'Trebuchet MS', monospace;
+  border: none;
+  text-align: center;
+  background: transparent;
+  color: #AAAAAA;
+  width: 18px;
+  flex-shrink: 0;
+}
+#year { width: 36px; }
+
+#month:focus, #day:focus, #year:focus { outline: none; color: #E8E8E8; }
+#month::placeholder, #day::placeholder, #year::placeholder { color: #555; }
+#month:focus::placeholder, #day:focus::placeholder, #year:focus::placeholder { color: transparent; }
+
+#dash { font-size: 11px; color: #555; flex-shrink: 0; }
+#spacer { display: none; }
+
+/* DESCRIPTION TOGGLE (todo) */
+#descToggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 11px;
+  line-height: 1;
+  color: #888;
+  user-select: none;
+}
+#descToggle::after {
+  content: '▾';
+  display: block;
+  transition: transform 0.2s ease;
+}
+#descToggle:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+#descToggle.open::after { transform: rotate(180deg); }
+
+/* CLOSE BUTTON (todo) */
+#closeButtonToDo {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 18px;
+  line-height: 1;
+  color: #555;
+}
+#closeButtonToDo::after { content: '×'; display: block; }
+#closeButtonToDo:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+
+/* DESCRIPTION ROW */
+#descSibling {
+  display: grid;
+  grid-template-columns: 14px 1fr 14px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  margin: -9px 8px 5px;
+  min-height: 34px;
+  align-items: center;
+  border-left: 2px solid var(--accent-dim);
+}
+
+#descInput {
+  font-size: 12px;
+  font-family: 'Trebuchet MS', sans-serif;
+  background: transparent;
+  color: #BBBBBB;
+  border: none;
+  width: 100%;
+  padding: 8px 0;
+  letter-spacing: 0.02em;
+}
+#descInput::placeholder { color: var(--text-muted); font-style: italic; }
+#descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
+#descInput:focus::placeholder { color: transparent; }
+
+/* DRAG-AND-DROP REORDERING */
+/* Applied to the row being dragged — subtle lift + fade. */
+.dragging {
+  opacity: 0.5;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Drop indicator — a horizontal accent line overlaid on the scrollable
+   container at the insertion target. Shared between projects and todos.
+   Positioned absolutely so it doesn't consume a grid-row slot. */
+.dropIndicator {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 6px var(--accent-dim);
+  transform: translateY(-1px);
+  z-index: 3;
+}
+
+/* SCROLLBARS */
+#sideMa::-webkit-scrollbar, #mainList::-webkit-scrollbar { width: 3px; }
+#sideMa::-webkit-scrollbar-track, #mainList::-webkit-scrollbar-track { background: transparent; }
+#sideMa::-webkit-scrollbar-thumb, #mainList::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+/* OVERLAY — only used on touch/mobile */
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 8;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+#sidebarOverlay.visible { display: block; }
+
+/* ══════════════════════════════════════════
+   DESKTOP > 700px
+══════════════════════════════════════════ */
+@media (min-width: 701px) {
+
+  #mainSec.sidebar-collapsed {
+    grid-template-columns: 0px 0px 1fr;
+  }
+
+  #mainSec.sidebar-collapsed #sideBar {
+    border-right-color: transparent;
+  }
+
+  #mainSec.sidebar-collapsed #sidebarResizer {
+    pointer-events: none;
+  }
+
+  #sidebarOverlay { display: none !important; }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE ≤ 700px
+══════════════════════════════════════════ */
+@media (max-width: 700px) {
+
+  body { padding: 0; }
+
+  #outerContainer {
+    border-radius: 0;
+    border: none;
+    height: 100dvh;
+  }
+
+  #mainSec {
+    grid-template-columns: 1fr;
+    transition: none;
+  }
+
+  /* Sidebar is a drawer on mobile — resize handle is not relevant */
+  #sidebarResizer { display: none; }
+
+  #sideBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-w);
+    max-width: 85vw;
+    height: 100%;
+    z-index: 9;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    border-right: 0.5px solid var(--border-mid);
+  }
+
+  #sideBar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .dragHandle { opacity: 1; }
+
+  #toDoChild {
+    margin: 4px 6px;
+    padding: 0 8px 0 4px;
+  }
+
+  /* ── Prevent iOS Safari zoom on input focus ──
+     Any input smaller than 16px triggers auto-zoom.
+     !important is required because inline styles set in
+     main.js (e.g. toDoInput.style.fontSize = "14px") would
+     otherwise override these mobile-only rules. */
+  #toDoInput,
+  #projInput,
+  #descInput {
+    font-size: 16px !important;
+  }
+
+  #month, #day, #year {
+    font-size: 16px !important;
+    width: 22px;
+  }
+  #year { width: 44px; }
+
+  /* Prevent double-tap zoom on all interactive elements */
+  button,
+  #projButton,
+  #itemButton,
+  #sidebarToggle,
+  #closeButtonToDo,
+  #descToggle,
+  #projChild,
+  #toDoChild {
+    touch-action: manipulation;
+  }
+}
+
+/* ══════════════════════════════════════════
+   PHONE ≤ 420px
+══════════════════════════════════════════ */
+@media (max-width: 420px) {
+  #dateText, #dueInput { display: none; }
+}
+
+/* ══════════════════════════════════════════
+   LARGE DESKTOP ≥ 1200px
+══════════════════════════════════════════ */
+@media (min-width: 1200px) {
+
+  :root { --sidebar-w: 240px; }
+
+  body { padding: 28px; }
+
+  #outerContainer {
+    height: calc(100dvh - 56px);
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
