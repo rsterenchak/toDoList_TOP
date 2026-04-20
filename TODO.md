@@ -49,28 +49,9 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
-- [ ] **[MEDIUM]** Auto-sort completed items to bottom of list
-  - Description: When a todo item is checked as complete, move it to the bottom of the list. When unchecked, move it back up above the completed items. Order must persist across page reloads.
-  - Behavior:
-    1. Checking an item → it moves to the bottom, below any already-completed items.
-    2. Unchecking an item → it moves to the bottom of the active (unchecked) items, above all completed items.
-    3. Reload → order is preserved.
-  - Acceptance criteria:
-    - At render time, all unchecked items appear above all checked items.
-    - Among checked items, most recently checked appears last.
-    - Order survives a full page reload via the app's existing storage layer — do NOT add a new storage mechanism.
-    - Reorder can be instant (no animation required).
-    - No regression in add, delete, edit, or description-toggle behavior.
-  - Implementation notes:
-    - Add a `completedAt` timestamp to each todo, set when checked and cleared when unchecked.
-    - Sort order at render: unchecked items first (in their existing order), then checked items sorted by `completedAt` ascending.
-    - Persist the new field alongside existing todo data.
-  - Files to inspect:
-    - `toDoList_main/src/toDo.js` — add `completedAt` to the todo shape.
-    - `toDoList_main/src/listLogic.js` — check/uncheck handlers and render sort.
-    - `toDoList_main/src/main.js`, `toDoList_main/src/index.js` — confirm the new field round-trips through the existing persistence layer.
-  - Out of scope: animation, drag-to-reorder, separate "Completed" section, restoring uncheck to original position, bulk actions.
-  - Testing: If a test suite exists, add one test that checks an item and asserts it renders last. If not, note manual verification in the PR including a reload check.
+- [ ] **[MEDIUM]** Auto-sort completed todo items to bottom of list
+  - Description: When a user checks off a todo item, automatically move it beneath all uncompleted items in the same project; unchecking moves it back above the completed block, preserving relative order within each group. Apply the same sort on initial render so reopening a project shows completed items already grouped at the bottom, and keep the trailing blank placeholder row as the very last entry (the invariant `addToDo`/`removeToDo` maintain). Add the reorder helper in `listLogic.js` alongside `reorderToDo` and persist via `saveToStorage`; the DOM update in `wireCheckbox` should move the row in-place (matching the pattern in `attachToDoDrag`) so event listeners and any open `descSibling` panel travel with the row.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [ ] **[LOW]** Implement light mode
