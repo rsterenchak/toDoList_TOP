@@ -27,10 +27,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-20
      
-- [ ] **[MEDIUM]** Pin new-item placeholder to top of todo list and make it non-deletable
+- [x] **[MEDIUM]** Pin new-item placeholder to top of todo list and make it non-deletable
   - Description: Restructure the todo row order so the blank placeholder input always sits at the top of each project's list, followed by active (uncompleted) items, then completed items at the bottom. The placeholder becomes the sole entry point for creating new todos — it is never deletable, never draggable, and always present regardless of list state. Update `sortCompletedInPlace` in `listLogic.js` to place the blank at index 0 instead of between uncompleted and completed groups, and adjust `addToDo` / `removeToDoByTitle` to maintain the top-pinned invariant. In `main.js`, update `reorderToDoDOM`, `appendNewToDoRow`, `attachToDoDrag` (so the blank row never gets `draggable="true"` and drop-index math skips it), and `buildToDoRow` (keep `closeButtonToDo` hidden and ensure the checkbox stays hidden on the placeholder). Remove the `itemButton` / `addItem` logic paths since the placeholder replaces that creation flow. Commit-on-Enter behavior should keep the committed row in place as a new active item and re-render so a fresh blank placeholder is still pinned at the top.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-20
 
 - [x] **[LOW]** Remove unused grey buttons from top-right of header
   - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
