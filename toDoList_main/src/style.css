@@ -176,6 +176,7 @@ body {
   grid-template-rows: repeat(auto-fit, minmax(var(--item-h), var(--item-h)));
   align-content: start;
   overflow-y: auto;
+  position: relative;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   position: relative;
@@ -210,7 +211,7 @@ body {
   cursor: pointer;
   background: transparent;
   height: var(--item-h);
-  padding: 0 12px 0 14px;
+  padding: 0 12px 0 12px;
   transition: background 0.12s ease;
   border-bottom: 0.5px solid var(--border-dim);
   border-left: 3px solid transparent;
@@ -347,7 +348,7 @@ body {
   cursor: default;
   background: var(--bg-surface);
   height: var(--item-h);
-  padding: 0 10px 0 14px;
+  padding: 0 10px 0 12px;
   border: 0.5px solid var(--border-bright);
   border-radius: 6px;
   margin: 5px 8px;
@@ -357,6 +358,12 @@ body {
   overflow: hidden;
 }
 #toDoChild:hover { background: var(--bg-hover); }
+
+/* Grab cursor on draggable rows; grabbing during active drag */
+#projChild[draggable="true"],
+#toDoChild[draggable="true"] { cursor: grab; }
+body.row-dragging,
+body.row-dragging * { cursor: grabbing !important; }
 
 /* CHECK-OFF CHECKBOX (todo) */
 #checkToDo {
@@ -408,7 +415,9 @@ body {
   min-width: 0;
   flex: 1 1 0;
   align-self: center;
+  pointer-events: none;
 }
+#toDoChild.todo-active #toDoInput { pointer-events: auto; }
 #toDoInput:-webkit-autofill,
 #toDoInput:-webkit-autofill:hover,
 #toDoInput:-webkit-autofill:focus {
@@ -630,9 +639,11 @@ body {
     transform: translateX(0);
   }
 
+  .dragHandle { opacity: 1; }
+
   #toDoChild {
     margin: 4px 6px;
-    padding: 0 8px 0 12px;
+    padding: 0 8px 0 4px;
   }
 
   /* ── Prevent iOS Safari zoom on input focus ──
