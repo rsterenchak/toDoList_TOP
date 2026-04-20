@@ -72,7 +72,16 @@ function reorderToDoDOM(projectName) {
     }
 
     items.forEach(function(item) {
-        const row = item.tit === '' ? blankRow : rowsByTitle[item.tit];
+        let row;
+        if (item.tit === '') {
+            // Build a blank row on demand if the logic just inserted one
+            // (e.g., sortCompletedInPlace adds a placeholder after the last
+            // uncompleted item is checked off) but no blank row exists in the DOM yet.
+            if (!blankRow) blankRow = buildToDoRow(item, projectName);
+            row = blankRow;
+        } else {
+            row = rowsByTitle[item.tit];
+        }
         if (!row) return;
         const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
             ? row.nextSibling : null;

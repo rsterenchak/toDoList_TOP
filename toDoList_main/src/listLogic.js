@@ -326,6 +326,14 @@ export const listLogic = (function () {
         arr.length = 0;
         for (let i = 0; i < uncompleted.length; i++) arr.push(uncompleted[i]);
         for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
+
+        // If every real item is completed, ensure a trailing blank placeholder
+        // exists so the user always has a row available for new input — same
+        // invariant removeToDo/removeToDoByTitle maintain when the list empties.
+        if (!blank && uncompleted.length === 0) {
+            blank = toDo('', '', '', 1, 0);
+        }
+
         if (blank) arr.push(blank);
     }
 
