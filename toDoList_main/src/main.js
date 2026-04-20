@@ -52,37 +52,24 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 // that sequence. Any open `#descSibling` panel directly after a row is moved
 // with it. Uses `appendChild` on existing DOM nodes so event listeners stay
 // attached — mirrors the in-place move pattern in `attachToDoDrag`.
+// Keyed by the row's attached data-item reference rather than its title so
+// that a newly committed title colliding with an existing completed item
+// still maps 1:1 to its own DOM row.
 function reorderToDoDOM(projectName) {
     const mainDiv = document.getElementById('mainList');
     if (!mainDiv) return;
     const items = listLogic.listItems(projectName);
     if (!items) return;
 
-    const rowsByTitle = {};
-    let blankRow = null;
+    const rowsByItem = new Map();
     const rows = mainDiv.querySelectorAll('#toDoChild');
     for (let i = 0; i < rows.length; i++) {
-        const input = rows[i].querySelector('#toDoInput');
-        const title = input ? input.value : '';
-        if (title === '') {
-            blankRow = rows[i];
-        } else {
-            rowsByTitle[title] = rows[i];
-        }
+        if (rows[i].__item) rowsByItem.set(rows[i].__item, rows[i]);
     }
 
     items.forEach(function(item) {
-        let row;
-        if (item.tit === '') {
-            // Build a blank row on demand if the logic just inserted one
-            // (e.g., sortCompletedInPlace adds a placeholder after the last
-            // uncompleted item is checked off) but no blank row exists in the DOM yet.
-            if (!blankRow) blankRow = buildToDoRow(item, projectName);
-            row = blankRow;
-        } else {
-            row = rowsByTitle[item.tit];
-        }
-        if (!row) return;
+        let row = rowsByItem.get(item);
+        if (!row) row = buildToDoRow(item, projectName);
         const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
             ? row.nextSibling : null;
         mainDiv.appendChild(row);
@@ -867,6 +854,10 @@ function buildToDoRow(item, toDoName) {
     wireToDoRowClick(toDoChild, toDoInput);
 
     toDoChild.setAttribute("data-value", toDoName);
+    // Anchor the DOM row to its data-model item so reorderToDoDOM can match
+    // rows to items even when titles collide (e.g. a newly committed row
+    // whose title matches an existing completed item).
+    toDoChild.__item = item;
 
     // toDoInput keydown — Enter to commit title
     toDoInput.addEventListener("keydown", function(event) {
