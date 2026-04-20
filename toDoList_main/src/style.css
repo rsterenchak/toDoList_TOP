@@ -178,6 +178,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 /* ADD PROJECT */
@@ -530,6 +531,29 @@ body {
 #descInput::placeholder { color: var(--text-muted); font-style: italic; }
 #descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
 #descInput:focus::placeholder { color: transparent; }
+
+/* DRAG-AND-DROP REORDERING */
+/* Applied to the row being dragged — subtle lift + fade. */
+.dragging {
+  opacity: 0.5;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Drop indicator — a horizontal accent line overlaid on the scrollable
+   container at the insertion target. Shared between projects and todos.
+   Positioned absolutely so it doesn't consume a grid-row slot. */
+.dropIndicator {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+  box-shadow: 0 0 6px var(--accent-dim);
+  transform: translateY(-1px);
+  z-index: 3;
+}
 
 /* SCROLLBARS */
 #sideMa::-webkit-scrollbar, #mainList::-webkit-scrollbar { width: 3px; }
