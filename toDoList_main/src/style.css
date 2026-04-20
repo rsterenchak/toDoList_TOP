@@ -311,22 +311,6 @@ body {
   text-transform: uppercase;
 }
 
-/* ADD ITEM — hidden, Enter key handles new todo creation */
-#addItem {
-  display: none;
-}
-
-#itemButton {
-  border: none;
-  width: var(--touch);
-  height: var(--touch);
-  background: transparent url('./addProj_button.svg') center/22px 22px no-repeat;
-  opacity: 0.7;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-#itemButton:hover { opacity: 1; }
-
 /* TODO LIST */
 #mainList {
   display: grid;
@@ -666,7 +650,6 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Prevent double-tap zoom on all interactive elements */
   button,
   #projButton,
-  #itemButton,
   #sidebarToggle,
   #closeButtonToDo,
   #descToggle,

@@ -543,7 +543,6 @@ function deleteProjectFlow(projChild, projectName) {
             const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
             const nextItems = listLogic.listItems(nextName);
             if (nextItems) addAllToDo_DOM(nextItems, nextName);
-            updateItemButton_restore(nextName);
         }
     }
 }
@@ -585,7 +584,6 @@ function attachToDoDrag(toDoChild, toDoInput, project) {
                 mainDiv.insertBefore(draggedEl, siblings[toIdx]);
                 if (draggedDesc) mainDiv.insertBefore(draggedDesc, siblings[toIdx]);
             }
-            updateItemButton_restore(activeProject);
         }
     });
 
@@ -692,7 +690,6 @@ function attachProjectContextMenu(projChild, titleInput) {
         } else if (items) {
             addAllToDo_DOM(items, name);
         }
-        updateItemButton_restore(name);
     }
 
     function onEdit() {
@@ -897,7 +894,6 @@ function buildToDoRow(item, toDoName) {
         descToggle.style.display      = "flex";
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
-        updateItemButton_restore(toDoName);
 
         toDoInput.blur();
         appendNewToDoRow(toDoName);
@@ -958,16 +954,11 @@ function buildToDoRow(item, toDoName) {
         }
 
         listLogic.removeToDoByTitle(toDoName, title);
-        // removeToDoByTitle strips blanks and only re-adds one if the array
-        // empties out. Re-sort so a placeholder is re-created whenever the
-        // remaining items are all completed.
-        listLogic.sortCompletedToBottom(toDoName);
 
         const mainDiv = document.getElementById('mainList');
         while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
         addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
-        updateItemButton_restore(toDoName);
     });
 
     closeButtonToDo.addEventListener("mouseenter", function() {
@@ -1021,9 +1012,6 @@ function component() {
 
     const mainHead = document.createElement('div');
 
-    const addItem = document.createElement('div');
-    const itemButton = document.createElement('div');
-
     const sidebarToggle  = document.createElement('button');
     const sidebarOverlay = document.createElement('div');
     const sidebarResizer = document.createElement('div');
@@ -1048,9 +1036,6 @@ function component() {
     mainList.id = 'mainList';
 
     mainHead.id = 'mainHead';
-
-    addItem.id = 'addItem';
-    itemButton.id = 'itemButton';
 
     sidebarToggle.id        = 'sidebarToggle';
     sidebarToggle.innerHTML = '☰';
@@ -1087,13 +1072,9 @@ function component() {
     main2.appendChild(mainList);
 
     mainTitle.appendChild(mainHead);
-    mainTitle.appendChild(addItem);
-    addItem.appendChild(itemButton);
 
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
-
-    itemButton.style.pointerEvents = "none";
 
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth <= 700; }
@@ -1240,22 +1221,6 @@ function component() {
         }
     }
 
-    // *** HELPER: single source of truth for itemButton state ***
-    function updateItemButton(project) {
-        const items = listLogic.listItems(project);
-        if(!items || items.length === 0){
-            itemButton.style.pointerEvents = "none";
-            return;
-        }
-        const lastItem = items[items.length - 1];
-        if(lastItem.tit === ""){
-            itemButton.style.pointerEvents = "none";
-        } else {
-            itemButton.style.pointerEvents = "auto";
-        }
-    }
-
-
     // ********************** CLICK LISTENERS ********************** //
 
     // Click Listener: That adds new project element
@@ -1321,9 +1286,6 @@ function component() {
             let exists = 0;
 
             let count = 0;
-
-            // on click should temporarily disable ability to continue clicking
-            itemButton.style.pointerEvents = "none";
 
             const mainDiv = document.querySelector('#mainList');
 
@@ -1477,7 +1439,6 @@ function component() {
                             addAllToDo_DOM(arrayValues, innerValue);
                         }
 
-                        updateItemButton(innerValue);
                         return;
                     }
 
@@ -1555,38 +1516,14 @@ function component() {
 
     });
 
-    // Click Listener: That adds new item element
-    itemButton.addEventListener("click", function() {
-        itemButton.style.pointerEvents = "none";
-        const selectedEl = document.querySelector('.selectedProject');
-        const currentProject = selectedEl
-            ? (selectedEl.querySelector('#projInput')
-                ? selectedEl.querySelector('#projInput').value
-                : selectedEl.dataset.project)
-            : "";
-        appendNewToDoRow(currentProject);
-    });
-
-
-
-
     // ********************** SHADOW LISTENERS ********************** //
 
     // addProj Shadow listener
     projButton.addEventListener("mouseenter", function() {
         this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
       });
-      
-    projButton.addEventListener("mouseleave", function() {
-        this.style.boxShadow = "none";
-    });
 
-    // addItem Shadow listener
-    itemButton.addEventListener("mouseenter", function() {
-        this.style.boxShadow = "0 3px 8px rgba(0, 0, 0, 0.2)";
-      });
-      
-    itemButton.addEventListener("mouseleave", function() {
+    projButton.addEventListener("mouseleave", function() {
         this.style.boxShadow = "none";
     });
 
@@ -1604,36 +1541,27 @@ function component() {
 
 export { component, restoreFromStorage };
 
-// appendNewToDoRow — focuses the existing blank row if one exists, or creates a new one. //
+// appendNewToDoRow — ensure a blank placeholder is pinned at the top of the
+// project's list (creating one if the user just committed the previous blank)
+// and focus it so the next todo can be typed immediately.
 function appendNewToDoRow(toDoName) {
 
-    const mainListDiv = document.getElementById("mainList");
-
-    // guard against invalid or missing project name
     if (!toDoName || !listLogic.listItems(toDoName)) {
         console.error("appendNewToDoRow: invalid project —", toDoName);
         return;
     }
 
-    // if a blank input row already exists in the DOM, just focus it — don't add another
-    const existingInputs = mainListDiv.querySelectorAll('#toDoInput');
-    for (let i = 0; i < existingInputs.length; i++) {
-        if (existingInputs[i].value === "") {
-            existingInputs[i].focus();
-            return;
-        }
-    }
-
-    // no blank row exists — add one to logic and render it
-    const newItems = listLogic.addToDo(toDoName, "");
-    const item     = newItems.array[newItems.lengths - 1];
-    const row      = buildToDoRow(item, toDoName);
-    document.getElementById("mainList").appendChild(row);
-    // addToDo pushes to the end; re-sort so the blank lands above any
-    // completed items, then sync the DOM to match.
+    // sortCompletedToBottom also re-creates the blank placeholder if one is
+    // missing, so this single call both pins the placeholder to index 0 and
+    // guarantees its existence before we sync the DOM.
     listLogic.sortCompletedToBottom(toDoName);
     reorderToDoDOM(toDoName);
-    row.querySelector('#toDoInput').focus();
+
+    const mainListDiv = document.getElementById("mainList");
+    const inputs = mainListDiv.querySelectorAll('#toDoInput');
+    for (let i = 0; i < inputs.length; i++) {
+        if (inputs[i].value === "") { inputs[i].focus(); return; }
+    }
 }
 
 
@@ -1725,7 +1653,6 @@ function restoreFromStorage() {
                         addAllToDo_DOM(items, newName);
                     }
                 }
-                updateItemButton_restore(newName);
             }
 
         });
@@ -1778,7 +1705,6 @@ function restoreFromStorage() {
                         addAllToDo_DOM(items, newName);
                     }
                 }
-                updateItemButton_restore(newName);
             }
         });
 
@@ -1815,7 +1741,6 @@ function restoreFromStorage() {
                     addAllToDo_DOM(items, name);
                 }
 
-                updateItemButton_restore(name);
                 return;
             }
 
@@ -1856,7 +1781,6 @@ function restoreFromStorage() {
     } else if (lastItems) {
         addAllToDo_DOM(lastItems, lastProject);
     }
-    updateItemButton_restore(lastProject);
 
 }
 
@@ -1869,19 +1793,10 @@ function clearToDos_restore() {
     }
 }
 
-function updateItemButton_restore(project) {
-    const itemButton = document.getElementById("itemButton");
-    if (!itemButton) return;
-    const items = listLogic.listItems(project);
-    if (!items || items.length === 0) { itemButton.style.pointerEvents = "none"; return; }
-    const last = items[items.length - 1];
-    itemButton.style.pointerEvents = (last.tit === "") ? "none" : "auto";
-}
-
 // Re-render a project's rows from persisted data. Re-sorts first so the
-// blank placeholder sits above any completed items, then renders every
+// blank placeholder is pinned to the top of the list, then renders every
 // item — including the blank — so the user always has a ready-to-type
-// slot when completed work exists.
+// slot at the top of the list.
 function addToDos_restore(toDoArray, toDoName) {
     if (!toDoArray || toDoArray.length === 0) return;
     listLogic.sortCompletedToBottom(toDoName);

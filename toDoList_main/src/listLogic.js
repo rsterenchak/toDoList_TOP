@@ -129,7 +129,7 @@ export const listLogic = (function () {
 
 
     // FUNCTION (ADD TODO LIST ITEMS)
-    // Guards against adding a duplicate blank placeholder at the end.
+    // Skips if a blank placeholder already exists (invariant: one blank per project).
     function addToDo(projectName, toDoName) {
 
         let projectDes = projectName;
@@ -144,59 +144,53 @@ export const listLogic = (function () {
             return { array: [], string: projectName, lengths: 0 };
         }
 
-        // If trying to add a blank placeholder, skip if one already exists at the end
-        if (itemTitle === '') {
-            const arr = allProjects[projectDes];
-            if (arr.length > 0 && arr[arr.length - 1].tit === '') {
-                return {
-                    array: allProjects[projectName],
-                    string: projectName,
-                    lengths: allProjects[projectName].length
-                };
-            }
+        const arr = allProjects[projectDes];
+
+        // Skip duplicate blank placeholders — exactly one is pinned at the top of each list.
+        if (itemTitle === '' && arr.some(function(i) { return i.tit === ''; })) {
+            return {
+                array: allProjects[projectName],
+                string: projectName,
+                lengths: allProjects[projectName].length
+            };
         }
 
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);
-        allProjects[projectDes].push(listItem);
+        arr.push(listItem);
+
+        // Re-pin the blank placeholder to index 0.
+        sortCompletedInPlace(arr);
 
         saveToStorage();
 
         return {
             array: allProjects[projectName],
-            string: projectName, 
+            string: projectName,
             lengths: allProjects[projectName].length
         };
     };
 
 
     // FUNCTION (REMOVE TODO LIST ITEMS)
-    // Always leaves exactly one blank placeholder when no real items remain.
+    // Maintains the invariant that a blank placeholder is pinned at index 0.
     function removeToDo(project, index, length) {
 
         if (!allProjects[project]) return;
 
         index = parseInt(index, 10);
 
-        // Splice out the target item
         if (index >= 0 && index < allProjects[project].length) {
             allProjects[project].splice(index, 1);
         }
 
-        // Strip ALL blank placeholders from the array
-        allProjects[project] = allProjects[project].filter(function(i) {
-            return i.tit !== '';
-        });
-
-        // If no real items remain, add exactly one blank placeholder
-        if (allProjects[project].length === 0) {
-            allProjects[project].push(toDo('', '', '', 1, 0));
-        }
+        sortCompletedInPlace(allProjects[project]);
 
         saveToStorage();
     };
 
 
-    // Remove a todo item by its title — avoids index/DOM sync issues
+    // Remove a todo item by its title — avoids index/DOM sync issues.
+    // Maintains the invariant that a blank placeholder is pinned at index 0.
     function removeToDoByTitle(project, title) {
 
         if (!allProjects[project]) return;
@@ -211,12 +205,7 @@ export const listLogic = (function () {
 
         arr.splice(idx, 1);
 
-        // Strip blanks then re-add exactly one so the user always has an
-        // input slot available — placement is handled by sortCompletedInPlace.
-        allProjects[project] = allProjects[project].filter(function(i) {
-            return i.tit !== '';
-        });
-        allProjects[project].push(toDo('', '', '', 1, 0));
+        sortCompletedInPlace(arr);
 
         saveToStorage();
     };
@@ -306,32 +295,27 @@ export const listLogic = (function () {
     }
 
 
-    // Stable-partition a project array so uncompleted items lead, the blank
-    // placeholder sits between the two groups, and completed items trail.
-    // The blank belongs with uncompleted items because it represents room for
-    // a new uncompleted entry — putting it above completed ones keeps the
-    // next-input slot reachable without scrolling past done work.
+    // Pin the blank placeholder to index 0, followed by uncompleted items,
+    // then completed items at the bottom. The placeholder is the sole entry
+    // point for new todos, so it must always be present and always reachable
+    // without scrolling past completed work.
     function sortCompletedInPlace(arr) {
-        if (!arr || arr.length === 0) return;
+        if (!arr) return;
 
+        // Preserve the existing blank object when possible so any in-flight
+        // state (e.g. date placeholders) survives the sort.
         let blank = null;
-        if (arr[arr.length - 1].tit === '') {
-            blank = arr.pop();
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i].tit === '') { blank = arr[i]; break; }
         }
+        if (!blank) blank = toDo('', '', '', 1, 0);
 
-        const uncompleted = arr.filter(function(i) { return !i.completed; });
-        const completed   = arr.filter(function(i) { return !!i.completed; });
-
-        // If every real item is completed, ensure a blank placeholder exists
-        // so the user always has a row available for new input — same
-        // invariant removeToDo/removeToDoByTitle maintain when the list empties.
-        if (!blank && uncompleted.length === 0) {
-            blank = toDo('', '', '', 1, 0);
-        }
+        const uncompleted = arr.filter(function(i) { return i.tit !== '' && !i.completed; });
+        const completed   = arr.filter(function(i) { return i.tit !== '' && !!i.completed; });
 
         arr.length = 0;
+        arr.push(blank);
         for (let i = 0; i < uncompleted.length; i++) arr.push(uncompleted[i]);
-        if (blank) arr.push(blank);
         for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
     }
 
