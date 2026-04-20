@@ -27,9 +27,9 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-20
      
-- [ ] **[MEDIUM]** Make new item placeholder conditional on all items being checked
-  - Description: The "New Item" placeholder row currently renders at all times, even when an unchecked todo item is already present in the list, making it redundant. Change the logic so the placeholder appears only when every item is checked or when the list is empty — if any unchecked item exists, hide it. Since the placeholder is currently the primary way to create new items, introduce an always-available alternate add affordance (e.g., a dedicated "Add item" button or keyboard shortcut) so the user can still create a new item while unchecked items remain. The conditional render check likely belongs in `listLogic.js` where item state lives, with the placeholder DOM handled in `index.js`.
-  - File: `toDoList_main/src/index.js`, `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
+- [ ] **[MEDIUM]** Pin new-item placeholder to top of todo list and make it non-deletable
+  - Description: Restructure the todo row order so the blank placeholder input always sits at the top of each project's list, followed by active (uncompleted) items, then completed items at the bottom. The placeholder becomes the sole entry point for creating new todos — it is never deletable, never draggable, and always present regardless of list state. Update `sortCompletedInPlace` in `listLogic.js` to place the blank at index 0 instead of between uncompleted and completed groups, and adjust `addToDo` / `removeToDoByTitle` to maintain the top-pinned invariant. In `main.js`, update `reorderToDoDOM`, `appendNewToDoRow`, `attachToDoDrag` (so the blank row never gets `draggable="true"` and drop-index math skips it), and `buildToDoRow` (keep `closeButtonToDo` hidden and ensure the checkbox stays hidden on the placeholder). Remove the `itemButton` / `addItem` logic paths since the placeholder replaces that creation flow. Commit-on-Enter behavior should keep the committed row in place as a new active item and re-render so a fresh blank placeholder is still pinned at the top.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [x] **[LOW]** Remove unused grey buttons from top-right of header
