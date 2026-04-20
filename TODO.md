@@ -49,10 +49,10 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
-- [ ] **[MEDIUM]** Auto-sort completed todo items to bottom of list
+- [x] **[MEDIUM]** Auto-sort completed todo items to bottom of list
   - Description: When a user checks off a todo item, automatically move it beneath all uncompleted items in the same project; unchecking moves it back above the completed block, preserving relative order within each group. Apply the same sort on initial render so reopening a project shows completed items already grouped at the bottom, and keep the trailing blank placeholder row as the very last entry (the invariant `addToDo`/`removeToDo` maintain). Add the reorder helper in `listLogic.js` alongside `reorderToDo` and persist via `saveToStorage`; the DOM update in `wireCheckbox` should move the row in-place (matching the pattern in `attachToDoDrag`) so event listeners and any open `descSibling` panel travel with the row.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-20
 
 - [ ] **[LOW]** Implement light mode
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
