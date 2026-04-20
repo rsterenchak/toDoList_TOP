@@ -49,6 +49,36 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
+- [ ] **[MEDIUM]** Auto-sort completed items to bottom of list
+  - Description: Currently, checking a todo item's checkbox marks it complete in place, leaving it wherever it was in the list. Update the behavior so that checking an item moves it to the bottom of the list (below any already-completed items), and unchecking it returns it to its original position among the active items. The reorder should be visually smooth rather than an instant jump, and the resulting order must survive a page reload.
+  - User-visible behavior:
+    1. User checks an unchecked item → item animates to the bottom of the list, landing below all other completed items in the order they were completed (most recently checked goes last).
+    2. User unchecks a completed item → item animates back to the position it held before it was checked, slotted among the currently active items.
+    3. Reloading the page preserves the current order exactly, including relative positions of completed and active items.
+  - Acceptance criteria:
+    - Checking an item places it at the absolute bottom of the rendered list, after any existing completed items.
+    - Unchecking an item restores it to its pre-completion index relative to the other active items. If items were added or deleted while it was checked, it should land in the closest valid position that preserves its original relative ordering (i.e., still before the items that were below it, still after the items that were above it, ignoring items that no longer exist).
+    - The transition between positions is animated smoothly (slide or fade-and-slide). Animation duration should feel snappy — roughly 200–300ms — and must not block further user interaction.
+    - Order persists across full page reloads via whatever storage mechanism the app already uses for todo data. Do NOT introduce a new storage layer.
+    - No regression in existing behavior: adding, deleting, editing, and the description-box toggle all continue to work identically.
+  - Implementation notes:
+    - The "original position" on uncheck needs to be remembered per item. Store it alongside the item's other state (e.g., as an `originalIndex` or `preCompletionIndex` field on the todo object) so it persists with the rest of the data. Set it when the item is checked; clear it when the item is unchecked or deleted.
+    - Sort order at render time should be: active items in their stored order, then completed items in the order they were checked (a `completedAt` timestamp is the simplest way to get this, and is useful data to have regardless).
+    - For the animation, prefer a CSS-based approach (e.g., FLIP technique: measure → reorder in DOM → animate from old position to new via `transform`) over a JS animation library. Do not add a new dependency for this.
+    - Be careful with the delete handler — whatever fix lands for the font-size-growth bug may touch the same render path. If that bug is still open when this task is picked up, flag the overlap in the PR.
+  - Files to inspect:
+    - `toDoList_main/src/toDo.js` — todo object shape; add the position-tracking fields here.
+    - `toDoList_main/src/listLogic.js` — check/uncheck handlers and list rendering; primary site of the reorder logic.
+    - `toDoList_main/src/style.css` — add transition rules for the item-move animation.
+    - `toDoList_main/src/main.js`, `toDoList_main/src/index.js` — locate the existing persistence layer (localStorage, IndexedDB, or wherever todos are saved) and ensure the new fields are included in what gets written and read.
+  - Out of scope (do NOT do in this task):
+    - Manual drag-to-reorder.
+    - A separate "Completed" section header or visual divider.
+    - Bulk actions (clear all completed, etc.).
+    - Any change to how descriptions, priorities, or due dates work.
+  - Testing notes: If a test suite exists, add tests covering (a) check moves to bottom, (b) uncheck restores to original index, (c) order survives a serialize-then-deserialize round trip through the persistence layer. If no suite exists, document manual verification steps in the PR, including a reload test.
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Implement light mode
   - Description: Add a theme toggle in the top-right of the header using a sun/moon icon button (the dominant pattern in modern web apps). Clicking swaps between dark and light themes. Default to dark mode on first load, and persist the user's choice in localStorage so it survives reloads and return visits. The light theme should be a soft, dimmed off-white — closer to a low-brightness night-reading palette than a bright paper-white — to reduce contrast with the existing dark theme's aesthetic.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/listLogic.js`
