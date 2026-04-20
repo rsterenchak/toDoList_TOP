@@ -205,7 +205,7 @@ body {
 #projChild {
   display: grid;
   align-content: center;
-  grid-template-columns: 1fr 22px 12px;
+  grid-template-columns: 1fr 12px;
   cursor: pointer;
   background: transparent;
   height: var(--item-h);
@@ -257,23 +257,29 @@ body {
   -webkit-box-shadow: 0 0 0px 1000px #1C1C1C inset;
 }
 
-#closeButton {
-  width: 28px;
-  height: 28px;
-  align-self: center;
-  justify-self: center;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  transition: background 0.12s ease, color 0.12s ease;
-  font-size: 18px;
-  line-height: 1;
-  color: #777;
+/* PROJECT CONTEXT MENU */
+#projContextMenu {
+  position: fixed;
+  z-index: 20;
+  min-width: 140px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  user-select: none;
 }
-#closeButton::after { content: '×'; display: block; }
-#closeButton:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+
+.projContextMenuItem {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.projContextMenuItem:hover { background: var(--bg-hover); color: #fff; }
+.projContextMenuItem.danger { color: var(--text-danger); }
+.projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
 
 /* MAIN BAR */
 #mainBar {
@@ -627,7 +633,6 @@ body {
   #projButton,
   #itemButton,
   #sidebarToggle,
-  #closeButton,
   #closeButtonToDo,
   #descToggle,
   #projChild,

@@ -113,6 +113,229 @@ function wireDateInputs(month, day, year, item, toDoName) {
 }
 
 
+// ── PROJECT CONTEXT MENU ──
+// Right-click (or long-press on touch) a project row to open a custom menu
+// with Edit and Delete options. Replaces the removed `×` delete button.
+
+function hideProjectContextMenu() {
+    const existing = document.getElementById('projContextMenu');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    document.removeEventListener('click', onProjContextOutsideClick, true);
+    document.removeEventListener('contextmenu', onProjContextOutsideCtx, true);
+    document.removeEventListener('keydown', onProjContextKeydown, true);
+    window.removeEventListener('resize', hideProjectContextMenu);
+    window.removeEventListener('scroll', hideProjectContextMenu, true);
+}
+
+function onProjContextOutsideClick(event) {
+    const menu = document.getElementById('projContextMenu');
+    if (menu && !menu.contains(event.target)) hideProjectContextMenu();
+}
+
+function onProjContextOutsideCtx(event) {
+    const menu = document.getElementById('projContextMenu');
+    if (menu && !menu.contains(event.target)) hideProjectContextMenu();
+}
+
+function onProjContextKeydown(event) {
+    if (event.key === 'Escape') hideProjectContextMenu();
+}
+
+function showProjectContextMenu(x, y, onEdit, onDelete) {
+
+    hideProjectContextMenu();
+
+    const menu = document.createElement('div');
+    menu.id = 'projContextMenu';
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+
+    const editOpt = document.createElement('div');
+    editOpt.className = 'projContextMenuItem';
+    editOpt.textContent = 'Edit';
+    editOpt.addEventListener('click', function() {
+        hideProjectContextMenu();
+        onEdit();
+    });
+
+    const delOpt = document.createElement('div');
+    delOpt.className = 'projContextMenuItem danger';
+    delOpt.textContent = 'Delete';
+    delOpt.addEventListener('click', function() {
+        hideProjectContextMenu();
+        onDelete();
+    });
+
+    menu.appendChild(editOpt);
+    menu.appendChild(delOpt);
+    document.body.appendChild(menu);
+
+    // clamp to viewport so the menu is fully visible
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth)  menu.style.left = Math.max(0, window.innerWidth  - rect.width  - 4) + 'px';
+    if (rect.bottom > window.innerHeight) menu.style.top  = Math.max(0, window.innerHeight - rect.height - 4) + 'px';
+
+    // capture-phase listeners so outside interactions always close the menu
+    document.addEventListener('click',      onProjContextOutsideClick, true);
+    document.addEventListener('contextmenu', onProjContextOutsideCtx,  true);
+    document.addEventListener('keydown',    onProjContextKeydown,      true);
+    window.addEventListener('resize', hideProjectContextMenu);
+    window.addEventListener('scroll', hideProjectContextMenu, true);
+}
+
+function countRealToDos(projectName) {
+    const items = listLogic.listItems(projectName);
+    if (!items) return 0;
+    return items.filter(function(i){ return i.tit !== ''; }).length;
+}
+
+function deleteProjectFlow(projChild, projectName) {
+
+    // New rows that haven't been named yet aren't in the data model —
+    // just drop the placeholder row and re-enable the add-project button.
+    if (!projectName) {
+        if (projChild.parentNode) projChild.parentNode.removeChild(projChild);
+        const btn = document.getElementById('projButton');
+        if (btn) btn.style.pointerEvents = 'auto';
+        return;
+    }
+
+    const count = countRealToDos(projectName);
+    const message = count > 0
+        ? 'Delete project "' + projectName + '" and its ' + count + ' todo item' + (count === 1 ? '' : 's') + '? This cannot be undone.'
+        : 'Delete project "' + projectName + '"? This cannot be undone.';
+
+    if (!window.confirm(message)) return;
+
+    const mainListEl = document.getElementById('mainList');
+    const projButton = document.getElementById('projButton');
+    const wasSelected = projChild.classList.contains('selectedProject');
+
+    if (projChild.parentNode) projChild.parentNode.removeChild(projChild);
+
+    if (wasSelected && mainListEl) {
+        while (mainListEl.firstChild) mainListEl.removeChild(mainListEl.firstChild);
+    }
+
+    listLogic.removeProject(projectName);
+    listLogic.listProjects();
+    if (projButton) projButton.style.pointerEvents = 'auto';
+
+    if (wasSelected) {
+        const nextRow = document.querySelector('#projChild');
+        if (nextRow) {
+            nextRow.classList.remove('unselectedProject');
+            nextRow.classList.add('selectedProject');
+            const nextInput = nextRow.querySelector('#projInput');
+            const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
+            const nextItems = listLogic.listItems(nextName);
+            if (nextItems) addAllToDo_DOM(nextItems, nextName);
+            updateItemButton_restore(nextName);
+        }
+    }
+}
+
+function attachProjectContextMenu(projChild, titleInput) {
+
+    function selectIfNeeded() {
+        if (projChild.classList.contains('selectedProject')) return;
+
+        const current = document.querySelector('.selectedProject');
+        if (current) {
+            const prevInput = current.querySelector('#projInput');
+            if (prevInput) {
+                prevInput.style.pointerEvents = 'none';
+                prevInput.style.cursor = 'default';
+                prevInput.blur();
+            }
+            current.classList.remove('selectedProject');
+            current.classList.add('unselectedProject');
+        }
+
+        projChild.classList.remove('unselectedProject');
+        projChild.classList.add('selectedProject');
+
+        const name  = titleInput.value;
+        const items = listLogic.listItems(name);
+        const mainDiv = document.getElementById('mainList');
+        if (mainDiv) {
+            while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
+        }
+        const hasReal = items && items.some(function(i){ return i.tit !== ''; });
+        if (hasReal) {
+            addToDos_restore(items, name);
+        } else if (items) {
+            addAllToDo_DOM(items, name);
+        }
+        updateItemButton_restore(name);
+    }
+
+    function onEdit() {
+        selectIfNeeded();
+        titleInput.style.pointerEvents = 'auto';
+        titleInput.style.cursor = 'text';
+        titleInput.focus();
+        if (typeof titleInput.select === 'function') titleInput.select();
+    }
+
+    function onDelete() {
+        deleteProjectFlow(projChild, titleInput.value);
+    }
+
+    // desktop right-click
+    projChild.addEventListener('contextmenu', function(event) {
+        event.preventDefault();
+        showProjectContextMenu(event.clientX, event.clientY, onEdit, onDelete);
+    });
+
+    // touch long-press (~500ms)
+    let lpTimer  = null;
+    let lpStartX = 0;
+    let lpStartY = 0;
+    let lpFired  = false;
+
+    projChild.addEventListener('touchstart', function(event) {
+        if (event.touches.length !== 1) return;
+        const t = event.touches[0];
+        lpStartX = t.clientX;
+        lpStartY = t.clientY;
+        lpFired  = false;
+        lpTimer  = setTimeout(function() {
+            lpFired = true;
+            showProjectContextMenu(lpStartX, lpStartY, onEdit, onDelete);
+        }, 500);
+    }, { passive: true });
+
+    projChild.addEventListener('touchmove', function(event) {
+        if (!lpTimer) return;
+        const t = event.touches[0];
+        if (Math.abs(t.clientX - lpStartX) > 10 || Math.abs(t.clientY - lpStartY) > 10) {
+            clearTimeout(lpTimer);
+            lpTimer = null;
+        }
+    }, { passive: true });
+
+    projChild.addEventListener('touchend', function(event) {
+        if (lpTimer) {
+            clearTimeout(lpTimer);
+            lpTimer = null;
+        }
+        if (lpFired) {
+            // long-press already opened the menu — suppress the tap that would follow
+            event.preventDefault();
+            lpFired = false;
+        }
+    });
+
+    projChild.addEventListener('touchcancel', function() {
+        if (lpTimer) {
+            clearTimeout(lpTimer);
+            lpTimer = null;
+        }
+    });
+}
+
+
 // ********************** GLOBAL DOM FUNCTIONS ********************** //
 
 // AddToDo Item function
@@ -959,11 +1182,10 @@ function component() {
         const projChild = document.createElement("div");
 
         const titleInput = document.createElement("input");
-        const closeButton = document.createElement("div");
         const spacer = document.createElement("div");
 
 
-        projChild.classList.add("unselectedProject"); 
+        projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
 
         // First Project Input
@@ -977,14 +1199,10 @@ function component() {
         titleInput.style.pointerEvents = "auto";
         titleInput.style.cursor = "text";
 
-        closeButton.id = "closeButton";
-        // closeButton.style.border = "0.5px solid black";
-
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(closeButton);
         projChild.appendChild(spacer);
    
         // spacer.style.border = "1px solid red";
@@ -1138,9 +1356,6 @@ function component() {
 
                     console.log("called project selection");
 
-                    // close button handles its own logic
-                    if (event.target === closeButton || closeButton.contains(event.target)) return;
-
                     const alreadySelected = projChild.classList.contains('selectedProject');
 
                     if (!alreadySelected) {
@@ -1220,43 +1435,6 @@ function component() {
             
         }); // Ends "Enter" keydown function
 
-        // Removes selected project elements from DOM/Logic
-        closeButton.addEventListener("click", function() {
-
-            console.log("Called projButton > closeButton");
-
-            const mainList = document.getElementById("mainList");
-            const property = titleInput.value;
-            const wasSelected = projChild.classList.contains('selectedProject');
-
-            // DOM - Removes project DOM element
-            projChild.parentNode.removeChild(projChild);
-
-            // Only clear the todo DOM if this project was the selected one
-            if (wasSelected) {
-                while (mainList.firstChild) { mainList.removeChild(mainList.firstChild); }
-            }
-
-            listLogic.removeProject(property);
-            listLogic.listProjects();
-            projButton.style.pointerEvents = "auto";
-
-            // if deleted project was selected, auto-select the next available project
-            if (wasSelected) {
-                const nextRow = document.querySelector('#projChild');
-                if (nextRow) {
-                    nextRow.classList.remove("unselectedProject");
-                    nextRow.classList.add("selectedProject");
-                    const nextInput = nextRow.querySelector('#projInput');
-                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
-                    const nextItems = listLogic.listItems(nextName);
-                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
-                    updateItemButton_restore(nextName);
-                }
-            }
-
-        }); // Ends "closeButton" click function
-        
 
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
@@ -1271,28 +1449,17 @@ function component() {
 
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "#222222"; 
+            this.style.background = "#222222";
         });
 
         projChild.addEventListener("mouseleave", function() {
             this.style.boxShadow = "none";
-            this.style.background = "transparent"; 
+            this.style.background = "transparent";
         });
 
-        closeButton.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.border = "0.05px solid black";
-            // this.style.background = "lightgrey";  
-        });
-        
-        closeButton.addEventListener("mouseleave", function() {
-            // this.style.border = "none";
-            this.style.boxShadow = "none";
-            this.style.border = "none";
-            // this.style.background = "white";         
-        });
+        attachProjectContextMenu(projChild, titleInput);
 
-    }); 
+    });
 
     // Click Listener: That adds new item element
     itemButton.addEventListener("click", function() { 
@@ -1896,7 +2063,6 @@ function restoreFromStorage() {
 
         const projChild   = document.createElement("div");
         const titleInput  = document.createElement("input");
-        const closeButton = document.createElement("div");
         const spacer      = document.createElement("div");
 
         projChild.classList.add("unselectedProject");
@@ -1911,12 +2077,10 @@ function restoreFromStorage() {
         titleInput.style.pointerEvents = "none";
         titleInput.style.cursor = "default";
 
-        closeButton.id      = "closeButton";
         spacer.style.width  = "12px";
 
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(closeButton);
         projChild.appendChild(spacer);
 
         // track current name for rename
@@ -2031,9 +2195,6 @@ function restoreFromStorage() {
         // select this project and show its todos
         projChild.addEventListener("click", function(event) {
 
-            // close button handles its own logic — don't interfere
-            if (event.target === closeButton || closeButton.contains(event.target)) return;
-
             const alreadySelected = projChild.classList.contains('selectedProject');
 
             // first click — select the project
@@ -2068,44 +2229,10 @@ function restoreFromStorage() {
                 return;
             }
 
-            // already selected — any click not on close button unlocks the input for editing
+            // already selected — any click unlocks the input for editing
             titleInput.style.pointerEvents = "auto";
             titleInput.style.cursor = "text";
             titleInput.focus();
-        });
-
-        // delete this project
-        closeButton.addEventListener("click", function() {
-
-            const mainListEl = document.getElementById("mainList");
-            const property   = titleInput.value;
-            const wasSelected = projChild.classList.contains('selectedProject');
-
-            projChild.parentNode.removeChild(projChild);
-
-            // Only clear the todo DOM if this project was the selected one
-            if (wasSelected) {
-                while (mainListEl.firstChild) { mainListEl.removeChild(mainListEl.firstChild); }
-            }
-
-            listLogic.removeProject(property);
-            listLogic.listProjects();
-            if (projButton) projButton.style.pointerEvents = "auto";
-
-            // if deleted project was selected, auto-select the next available project
-            if (wasSelected) {
-                const nextRow = document.querySelector('#projChild');
-                if (nextRow) {
-                    nextRow.classList.remove("unselectedProject");
-                    nextRow.classList.add("selectedProject");
-                    const nextInput = nextRow.querySelector('#projInput');
-                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
-                    const nextItems = listLogic.listItems(nextName);
-                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
-                    updateItemButton_restore(nextName);
-                }
-            }
-
         });
 
         projChild.addEventListener("mouseenter", function() {
@@ -2116,14 +2243,8 @@ function restoreFromStorage() {
             this.style.boxShadow = "none";
             this.style.background = "transparent";
         });
-        closeButton.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.border = "0.05px solid black";
-        });
-        closeButton.addEventListener("mouseleave", function() {
-            this.style.boxShadow = "none";
-            this.style.border = "none";
-        });
+
+        attachProjectContextMenu(projChild, titleInput);
 
     });
 
