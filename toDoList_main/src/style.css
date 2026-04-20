@@ -205,7 +205,7 @@ body {
 #projChild {
   display: grid;
   align-content: center;
-  grid-template-columns: 1fr 22px 12px;
+  grid-template-columns: 1fr 12px;
   cursor: pointer;
   background: transparent;
   height: var(--item-h);
@@ -257,23 +257,113 @@ body {
   -webkit-box-shadow: 0 0 0px 1000px #1C1C1C inset;
 }
 
-#closeButton {
-  width: 28px;
-  height: 28px;
-  align-self: center;
-  justify-self: center;
+/* PROJECT CONTEXT MENU */
+#projContextMenu {
+  position: fixed;
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.projContextItem {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
   cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.projContextItem:hover { background: var(--bg-hover); }
+.projContextDanger { color: var(--text-danger); }
+.projContextDanger:hover { background: rgba(224, 85, 85, 0.12); color: #F08080; }
+
+/* CONFIRM DIALOG */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
-  transition: background 0.12s ease, color 0.12s ease;
+  padding: 16px;
+}
+
+.confirmBox {
+  position: relative;
+  max-width: 360px;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  padding: 20px 20px 16px 20px;
+  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+  color: var(--text-primary);
+}
+
+.confirmClose {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: #777;
   font-size: 18px;
   line-height: 1;
-  color: #777;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease, color 0.12s ease;
 }
-#closeButton::after { content: '×'; display: block; }
-#closeButton:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+.confirmClose:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+
+.confirmMessage {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 18px 0;
+  padding-right: 18px;
+  letter-spacing: 0.02em;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirmBtn {
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.confirmBtn:hover { background: var(--bg-hover); }
+.confirmBtn:focus { outline: none; border-color: var(--accent); }
+
+.confirmDelete {
+  color: #fff;
+  background: var(--text-danger);
+  border-color: var(--text-danger);
+}
+.confirmDelete:hover { background: #F08080; border-color: #F08080; }
+.confirmDelete:focus { border-color: #F08080; }
 
 /* MAIN BAR */
 #mainBar {
@@ -627,13 +717,19 @@ body {
   #projButton,
   #itemButton,
   #sidebarToggle,
-  #closeButton,
   #closeButtonToDo,
   #descToggle,
   #projChild,
-  #toDoChild {
+  #toDoChild,
+  .projContextItem,
+  .confirmBtn,
+  .confirmClose {
     touch-action: manipulation;
   }
+
+  #projContextMenu { font-size: 15px; }
+  .projContextItem { padding: 12px 14px; }
+  .confirmBtn      { font-size: 14px; padding: 10px 16px; }
 }
 
 /* ══════════════════════════════════════════

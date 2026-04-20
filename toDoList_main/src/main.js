@@ -3,6 +3,293 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// ── PROJECT CONTEXT MENU + DELETE CONFIRMATION ──
+// One shared menu element lives in document.body. Project rows register their
+// own contextmenu + long-press handlers via `attachProjectContextMenu` so the
+// menu positions at the cursor and targets that specific row.
+
+let activeContextProject = null;
+let projectContextInitialized = false;
+
+function getProjectContextMenu() {
+    let menu = document.getElementById('projContextMenu');
+    if (menu) return menu;
+
+    menu = document.createElement('div');
+    menu.id = 'projContextMenu';
+    menu.style.display = 'none';
+
+    const editItem = document.createElement('div');
+    editItem.className = 'projContextItem';
+    editItem.dataset.action = 'edit';
+    editItem.textContent = 'Edit';
+
+    const deleteItem = document.createElement('div');
+    deleteItem.className = 'projContextItem projContextDanger';
+    deleteItem.dataset.action = 'delete';
+    deleteItem.textContent = 'Delete';
+
+    menu.appendChild(editItem);
+    menu.appendChild(deleteItem);
+    document.body.appendChild(menu);
+
+    editItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const proj = activeContextProject;
+        hideProjectContextMenu();
+        if (proj) editProjectAction(proj);
+    });
+    deleteItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const proj = activeContextProject;
+        hideProjectContextMenu();
+        if (proj) deleteProjectAction(proj);
+    });
+
+    return menu;
+}
+
+function hideProjectContextMenu() {
+    const menu = document.getElementById('projContextMenu');
+    if (menu) menu.style.display = 'none';
+    activeContextProject = null;
+}
+
+function showProjectContextMenu(x, y, projChild) {
+    const menu = getProjectContextMenu();
+    activeContextProject = projChild;
+
+    // render off-screen to measure, then clamp into viewport
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block';
+    menu.style.left = '0px';
+    menu.style.top  = '0px';
+    const rect = menu.getBoundingClientRect();
+    const pad  = 4;
+    const maxX = window.innerWidth  - rect.width  - pad;
+    const maxY = window.innerHeight - rect.height - pad;
+    menu.style.left = Math.max(pad, Math.min(x, maxX)) + 'px';
+    menu.style.top  = Math.max(pad, Math.min(y, maxY)) + 'px';
+    menu.style.visibility = '';
+}
+
+function initProjectContextMenuGlobals() {
+    if (projectContextInitialized) return;
+    projectContextInitialized = true;
+
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('projContextMenu');
+        if (!menu || menu.style.display === 'none') return;
+        if (!menu.contains(e.target)) hideProjectContextMenu();
+    });
+
+    document.addEventListener('contextmenu', function(e) {
+        const menu = document.getElementById('projContextMenu');
+        if (!menu || menu.style.display === 'none') return;
+        if (!menu.contains(e.target)) hideProjectContextMenu();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        const menu = document.getElementById('projContextMenu');
+        if (menu && menu.style.display !== 'none') hideProjectContextMenu();
+    });
+
+    window.addEventListener('resize', hideProjectContextMenu);
+    window.addEventListener('scroll', hideProjectContextMenu, true);
+}
+
+// Swallow the synthetic click iOS/Android dispatch after a long-press so the
+// projChild's regular click handler (select / unlock-for-rename) doesn't fire.
+function suppressNextClick() {
+    const handler = function(e) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        window.removeEventListener('click', handler, true);
+    };
+    window.addEventListener('click', handler, true);
+    setTimeout(function() {
+        window.removeEventListener('click', handler, true);
+    }, 600);
+}
+
+function attachProjectContextMenu(projChild) {
+    initProjectContextMenuGlobals();
+
+    projChild.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        showProjectContextMenu(e.clientX, e.clientY, projChild);
+    });
+
+    let pressTimer = null;
+    let pressStartX = 0;
+    let pressStartY = 0;
+    let pressMoved  = false;
+    let longPressFired = false;
+
+    projChild.addEventListener('touchstart', function(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        pressStartX = t.clientX;
+        pressStartY = t.clientY;
+        pressMoved  = false;
+        longPressFired = false;
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(function() {
+            if (pressMoved) return;
+            longPressFired = true;
+            showProjectContextMenu(pressStartX, pressStartY, projChild);
+            suppressNextClick();
+        }, 500);
+    }, { passive: true });
+
+    projChild.addEventListener('touchmove', function(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (Math.abs(t.clientX - pressStartX) > 10 ||
+            Math.abs(t.clientY - pressStartY) > 10) {
+            pressMoved = true;
+            clearTimeout(pressTimer);
+        }
+    }, { passive: true });
+
+    projChild.addEventListener('touchend', function() {
+        clearTimeout(pressTimer);
+    }, { passive: true });
+
+    projChild.addEventListener('touchcancel', function() {
+        clearTimeout(pressTimer);
+        longPressFired = false;
+    }, { passive: true });
+}
+
+function editProjectAction(projChild) {
+    const titleInput = projChild.querySelector('#projInput');
+    if (!titleInput) return;
+    titleInput.style.pointerEvents = 'auto';
+    titleInput.style.cursor = 'text';
+    titleInput.focus();
+    if (typeof titleInput.select === 'function') titleInput.select();
+}
+
+function deleteProjectAction(projChild) {
+    const titleInput = projChild.querySelector('#projInput');
+    if (!titleInput) return;
+    const name = titleInput.value;
+    const items = listLogic.listItems(name) || [];
+    const realCount = items.filter(function(i) {
+        return i && typeof i.tit === 'string' && i.tit !== '';
+    }).length;
+
+    const msg = realCount > 0
+        ? 'Delete project "' + name + '"? This will also remove '
+            + realCount + ' todo item' + (realCount === 1 ? '' : 's') + '.'
+        : 'Delete project "' + name + '"?';
+
+    showConfirmDialog(msg, function() {
+        performDeleteProject(projChild);
+    });
+}
+
+function performDeleteProject(projChild) {
+    const mainListEl = document.getElementById('mainList');
+    const projButton = document.getElementById('projButton');
+    const titleInput = projChild.querySelector('#projInput');
+    const property   = titleInput ? titleInput.value : '';
+    const wasSelected = projChild.classList.contains('selectedProject');
+
+    if (projChild.parentNode) projChild.parentNode.removeChild(projChild);
+
+    if (wasSelected && mainListEl) {
+        while (mainListEl.firstChild) mainListEl.removeChild(mainListEl.firstChild);
+    }
+
+    listLogic.removeProject(property);
+    listLogic.listProjects();
+    if (projButton) projButton.style.pointerEvents = 'auto';
+
+    if (wasSelected) {
+        const nextRow = document.querySelector('#projChild');
+        if (nextRow) {
+            nextRow.classList.remove('unselectedProject');
+            nextRow.classList.add('selectedProject');
+            const nextInput = nextRow.querySelector('#projInput');
+            const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
+            const nextItems = listLogic.listItems(nextName);
+            if (nextItems) addAllToDo_DOM(nextItems, nextName);
+            updateItemButton_restore(nextName);
+        }
+    }
+}
+
+function showConfirmDialog(message, onConfirm) {
+    const prev = document.getElementById('confirmOverlay');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'confirmOverlay';
+    overlay.className = 'confirmOverlay';
+
+    const box = document.createElement('div');
+    box.className = 'confirmBox';
+
+    const closeX = document.createElement('button');
+    closeX.type = 'button';
+    closeX.className = 'confirmClose';
+    closeX.setAttribute('aria-label', 'Close');
+    closeX.textContent = '\u00D7';
+
+    const msg = document.createElement('div');
+    msg.className = 'confirmMessage';
+    msg.textContent = message;
+
+    const actions = document.createElement('div');
+    actions.className = 'confirmActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'confirmBtn confirmCancel';
+    cancelBtn.textContent = 'Cancel';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'confirmBtn confirmDelete';
+    confirmBtn.textContent = 'Delete';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    box.appendChild(closeX);
+    box.appendChild(msg);
+    box.appendChild(actions);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    function close() {
+        document.removeEventListener('keydown', onKey, true);
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    function onKey(e) {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            close();
+        }
+    }
+
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) close();
+    });
+    closeX.addEventListener('click', close);
+    cancelBtn.addEventListener('click', close);
+    confirmBtn.addEventListener('click', function() {
+        close();
+        onConfirm();
+    });
+    document.addEventListener('keydown', onKey, true);
+    confirmBtn.focus();
+}
+
+
 // ── HELPER: build and wire the check-off checkbox for a todo row ──
 // Inserts the checkbox as the left-most child of toDoChild, reflects the item's
 // stored completed state, and persists changes. Blank placeholder rows pass the
@@ -959,11 +1246,10 @@ function component() {
         const projChild = document.createElement("div");
 
         const titleInput = document.createElement("input");
-        const closeButton = document.createElement("div");
         const spacer = document.createElement("div");
 
 
-        projChild.classList.add("unselectedProject"); 
+        projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
 
         // First Project Input
@@ -977,18 +1263,15 @@ function component() {
         titleInput.style.pointerEvents = "auto";
         titleInput.style.cursor = "text";
 
-        closeButton.id = "closeButton";
-        // closeButton.style.border = "0.5px solid black";
-
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(closeButton);
         projChild.appendChild(spacer);
-   
-        // spacer.style.border = "1px solid red";
+
         spacer.style.width = "12px";
+
+        attachProjectContextMenu(projChild);
 
         let currentProperty = "";
         let newProperty = "";
@@ -1138,8 +1421,12 @@ function component() {
 
                     console.log("called project selection");
 
-                    // close button handles its own logic
-                    if (event.target === closeButton || closeButton.contains(event.target)) return;
+                    // if the context menu is open, close it and swallow this click
+                    const ctxMenu = document.getElementById('projContextMenu');
+                    if (ctxMenu && ctxMenu.style.display !== 'none' && !ctxMenu.contains(event.target)) {
+                        hideProjectContextMenu();
+                        return;
+                    }
 
                     const alreadySelected = projChild.classList.contains('selectedProject');
 
@@ -1220,44 +1507,6 @@ function component() {
             
         }); // Ends "Enter" keydown function
 
-        // Removes selected project elements from DOM/Logic
-        closeButton.addEventListener("click", function() {
-
-            console.log("Called projButton > closeButton");
-
-            const mainList = document.getElementById("mainList");
-            const property = titleInput.value;
-            const wasSelected = projChild.classList.contains('selectedProject');
-
-            // DOM - Removes project DOM element
-            projChild.parentNode.removeChild(projChild);
-
-            // Only clear the todo DOM if this project was the selected one
-            if (wasSelected) {
-                while (mainList.firstChild) { mainList.removeChild(mainList.firstChild); }
-            }
-
-            listLogic.removeProject(property);
-            listLogic.listProjects();
-            projButton.style.pointerEvents = "auto";
-
-            // if deleted project was selected, auto-select the next available project
-            if (wasSelected) {
-                const nextRow = document.querySelector('#projChild');
-                if (nextRow) {
-                    nextRow.classList.remove("unselectedProject");
-                    nextRow.classList.add("selectedProject");
-                    const nextInput = nextRow.querySelector('#projInput');
-                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
-                    const nextItems = listLogic.listItems(nextName);
-                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
-                    updateItemButton_restore(nextName);
-                }
-            }
-
-        }); // Ends "closeButton" click function
-        
-
         // ****** Focus/Shadow LISTENERS ******
         titleInput.addEventListener("focus", function() {
             if (titleInput.style.pointerEvents === "none") {
@@ -1271,28 +1520,15 @@ function component() {
 
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "#222222"; 
+            this.style.background = "#222222";
         });
 
         projChild.addEventListener("mouseleave", function() {
             this.style.boxShadow = "none";
-            this.style.background = "transparent"; 
+            this.style.background = "transparent";
         });
 
-        closeButton.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.border = "0.05px solid black";
-            // this.style.background = "lightgrey";  
-        });
-        
-        closeButton.addEventListener("mouseleave", function() {
-            // this.style.border = "none";
-            this.style.boxShadow = "none";
-            this.style.border = "none";
-            // this.style.background = "white";         
-        });
-
-    }); 
+    });
 
     // Click Listener: That adds new item element
     itemButton.addEventListener("click", function() { 
@@ -1896,7 +2132,6 @@ function restoreFromStorage() {
 
         const projChild   = document.createElement("div");
         const titleInput  = document.createElement("input");
-        const closeButton = document.createElement("div");
         const spacer      = document.createElement("div");
 
         projChild.classList.add("unselectedProject");
@@ -1911,13 +2146,13 @@ function restoreFromStorage() {
         titleInput.style.pointerEvents = "none";
         titleInput.style.cursor = "default";
 
-        closeButton.id      = "closeButton";
         spacer.style.width  = "12px";
 
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(closeButton);
         projChild.appendChild(spacer);
+
+        attachProjectContextMenu(projChild);
 
         // track current name for rename
         let currentProperty = projectName;
@@ -2031,8 +2266,12 @@ function restoreFromStorage() {
         // select this project and show its todos
         projChild.addEventListener("click", function(event) {
 
-            // close button handles its own logic — don't interfere
-            if (event.target === closeButton || closeButton.contains(event.target)) return;
+            // if the context menu is open, close it and swallow this click
+            const ctxMenu = document.getElementById('projContextMenu');
+            if (ctxMenu && ctxMenu.style.display !== 'none' && !ctxMenu.contains(event.target)) {
+                hideProjectContextMenu();
+                return;
+            }
 
             const alreadySelected = projChild.classList.contains('selectedProject');
 
@@ -2074,40 +2313,6 @@ function restoreFromStorage() {
             titleInput.focus();
         });
 
-        // delete this project
-        closeButton.addEventListener("click", function() {
-
-            const mainListEl = document.getElementById("mainList");
-            const property   = titleInput.value;
-            const wasSelected = projChild.classList.contains('selectedProject');
-
-            projChild.parentNode.removeChild(projChild);
-
-            // Only clear the todo DOM if this project was the selected one
-            if (wasSelected) {
-                while (mainListEl.firstChild) { mainListEl.removeChild(mainListEl.firstChild); }
-            }
-
-            listLogic.removeProject(property);
-            listLogic.listProjects();
-            if (projButton) projButton.style.pointerEvents = "auto";
-
-            // if deleted project was selected, auto-select the next available project
-            if (wasSelected) {
-                const nextRow = document.querySelector('#projChild');
-                if (nextRow) {
-                    nextRow.classList.remove("unselectedProject");
-                    nextRow.classList.add("selectedProject");
-                    const nextInput = nextRow.querySelector('#projInput');
-                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
-                    const nextItems = listLogic.listItems(nextName);
-                    if (nextItems) { addAllToDo_DOM(nextItems, nextName); }
-                    updateItemButton_restore(nextName);
-                }
-            }
-
-        });
-
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
             this.style.background = "#222222";
@@ -2115,14 +2320,6 @@ function restoreFromStorage() {
         projChild.addEventListener("mouseleave", function() {
             this.style.boxShadow = "none";
             this.style.background = "transparent";
-        });
-        closeButton.addEventListener("mouseenter", function() {
-            this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.border = "0.05px solid black";
-        });
-        closeButton.addEventListener("mouseleave", function() {
-            this.style.boxShadow = "none";
-            this.style.border = "none";
         });
 
     });
