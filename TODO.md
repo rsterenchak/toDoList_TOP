@@ -37,6 +37,12 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
   - Completed: 2026-04-19
 
+- [ ] **[LOW]** Restore due date field on mobile UI (currently hidden below 420px)
+  - Description: On narrow viewports the due date field is missing from todo rows entirely, leaving users with no way to view or edit due dates on phones. Root cause is an explicit `display: none` on `#dateText` and `#dueInput` inside the `@media (max-width: 420px)` block in `style.css` — likely added as a quick space-saving measure when the row was too cramped to fit everything. Expected behavior: due date stays visible and editable on mobile, with the row laid out so it still fits comfortably. Fix by removing the `display: none` rule and adjusting the mobile layout so the date inputs fit alongside the title, checkbox, desc toggle, and close button — options include dropping the "Due:" label on small screens (keep just the MM/DD/YYYY inputs), shrinking the date input widths further, allowing the title to truncate with ellipsis so the date column has guaranteed space, or wrapping the date onto a second line within the row. Pick whichever keeps the row height reasonable and the date legible. Verify at 420px, 375px (iPhone SE), and 320px widths.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  
+
 ## Features
 
 - [x] **[HIGH]** Add description box toggle
