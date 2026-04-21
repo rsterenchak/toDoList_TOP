@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-19 (PR #4)
 
-- [ ] **[MEDIUM]** Hide due date field on blank placeholder todo row
+- [x] **[MEDIUM]** Hide due date field on blank placeholder todo row
   - Description: The blank "new item" placeholder row pinned at the top of each project's list shows the "Due: MM/DD/YYYY" field even though no item exists yet, creating unnecessary visual noise next to an empty title input. Hide both `dateText` and `dueInput` when `item.tit` is empty (matching the existing pattern for `checkToDo`, `descToggle`, and `closeButtonToDo`, which already set `style.display = "none"` on blank rows), then reveal them inside the `toDoInput` keydown Enter handler alongside the other controls that get unhidden on first commit. Hiding is preferred over removing so `wireDateInputs` and `setDueDatePlaceholders` can still wire and pre-fill the inputs normally — they just stay invisible until the row is committed.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-21
 
 - [ ] **[MEDIUM]** Fix todo description not saving when cleared via backspace and persisting stale value on reopen
   - Description: When a user backspaces a todo item's description down to empty and clicks away, the empty value is never persisted — reopening the description panel re-displays the previous (deleted) text because `item.desc` still holds the old string. Pressing Enter on an empty description also fails: it just paints the input with a solid red border and refuses to commit. Expected behavior: an empty description should be a valid, saveable state (clearing a description is a legitimate user action), persisting on both blur and Enter, and reopening the panel should reflect the cleared value. Root cause is in `buildToDoRow` in `main.js`: the `descInput` keyup handler only writes to `item.desc` when `val.length > 0`, the keydown Enter handler treats empty as an error (red border, no save) instead of as a clear, and there is no blur handler at all — so click-away never persists. Fix by removing the length guards so empty strings save normally, dropping the red-border rejection on Enter, and adding a blur listener on `descInput` that mirrors the keyup save path. Match the pattern already used by the title input's keyup/blur save flow for consistency.
