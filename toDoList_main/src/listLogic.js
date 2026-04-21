@@ -275,6 +275,11 @@ export const listLogic = (function () {
 
 
     // Move a todo item within its project's array from one index to another.
+    // Callers (drag-drop) pass indexes relative to the *non-blank* slice —
+    // the blank placeholder pinned at index 0 is filtered out of the drag
+    // layer's sibling list, so its indexes never include it. Reorder the
+    // non-blank slice, then rebuild the array with the blank pinned back
+    // at index 0 so the placeholder invariant stays centralised here.
     function reorderToDo(project, fromIndex, toIndex) {
 
         if (!allProjects[project]) return;
@@ -284,12 +289,24 @@ export const listLogic = (function () {
         toIndex   = parseInt(toIndex, 10);
 
         if (isNaN(fromIndex) || isNaN(toIndex)) return;
-        if (fromIndex < 0 || fromIndex >= arr.length) return;
-        if (toIndex   < 0 || toIndex   >= arr.length) return;
         if (fromIndex === toIndex) return;
 
-        const moved = arr.splice(fromIndex, 1)[0];
-        arr.splice(toIndex, 0, moved);
+        let blank = null;
+        const nonBlank = [];
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i].tit === '' && blank === null) blank = arr[i];
+            else nonBlank.push(arr[i]);
+        }
+
+        if (fromIndex < 0 || fromIndex >= nonBlank.length) return;
+        if (toIndex   < 0 || toIndex   >= nonBlank.length) return;
+
+        const moved = nonBlank.splice(fromIndex, 1)[0];
+        nonBlank.splice(toIndex, 0, moved);
+
+        arr.length = 0;
+        if (blank) arr.push(blank);
+        for (let i = 0; i < nonBlank.length; i++) arr.push(nonBlank[i]);
 
         saveToStorage();
     }
