@@ -573,6 +573,57 @@ body.row-dragging * { cursor: grabbing !important; }
 #descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
 #descInput:focus::placeholder { color: transparent; }
 
+/* COMPLETED SECTION HEADER — collapsible divider inserted before the first
+   completed row. Clicking toggles visibility of the completed group; the
+   collapsed state is stored in localStorage and survives reloads. */
+#completedHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 8px 4px;
+  padding: 8px 12px;
+  height: 32px;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-top: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+#completedHeader:hover {
+  color: #FFFFFF;
+  background: var(--bg-hover);
+}
+#completedHeader:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.completedCaret {
+  font-size: 10px;
+  line-height: 1;
+  display: inline-block;
+  width: 10px;
+  text-align: center;
+}
+
+.completedLabel {
+  line-height: 1;
+}
+
+/* When the section is collapsed, hide completed rows and any open description
+   panel that follows one. Uses the adjacent-sibling combinator so a dynamically
+   inserted #descSibling beneath a completed row is hidden alongside its row. */
+#mainList.completedCollapsed #toDoChild.completed,
+#mainList.completedCollapsed #toDoChild.completed + #descSibling {
+  display: none;
+}
+
 /* DRAG-AND-DROP REORDERING */
 /* Applied to the row being dragged — subtle lift + fade. */
 .dragging {
