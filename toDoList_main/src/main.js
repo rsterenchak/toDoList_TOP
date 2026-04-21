@@ -1077,31 +1077,39 @@ function component() {
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
-    // Bulk description controls — Expand All / Collapse All live in the
-    // Todo Items header, right-aligned. Clicks are dispatched to each row's
-    // own #descToggle so the per-row switcher state in wireDescToggle stays
-    // in sync with the DOM.
+    // Bulk description control — single toggle in the Todo Items header,
+    // right-aligned. Clicks are dispatched to each row's own #descToggle so
+    // the per-row switcher state in wireDescToggle stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
 
-    const expandAllBtn = document.createElement('button');
-    expandAllBtn.type = 'button';
-    expandAllBtn.id  = 'expandAllBtn';
-    expandAllBtn.className = 'bulkDescBtn';
-    expandAllBtn.textContent = 'Expand All';
+    const bulkDescToggleBtn = document.createElement('button');
+    bulkDescToggleBtn.type = 'button';
+    bulkDescToggleBtn.id  = 'bulkDescToggle';
+    bulkDescToggleBtn.className = 'bulkDescBtn';
+    const bulkDescLabel = document.createElement('span');
+    bulkDescLabel.className = 'bulkDescLabel';
+    bulkDescLabel.textContent = 'Expand All';
+    const bulkDescCaret = document.createElement('span');
+    bulkDescCaret.className = 'bulkDescCaret';
+    bulkDescCaret.textContent = '▾';
+    bulkDescCaret.setAttribute('aria-hidden', 'true');
+    bulkDescToggleBtn.appendChild(bulkDescLabel);
+    bulkDescToggleBtn.appendChild(bulkDescCaret);
 
-    const collapseAllBtn = document.createElement('button');
-    collapseAllBtn.type = 'button';
-    collapseAllBtn.id  = 'collapseAllBtn';
-    collapseAllBtn.className = 'bulkDescBtn';
-    collapseAllBtn.textContent = 'Collapse All';
-
-    bulkDescActions.appendChild(expandAllBtn);
-    bulkDescActions.appendChild(collapseAllBtn);
+    bulkDescActions.appendChild(bulkDescToggleBtn);
     mainTitle.appendChild(bulkDescActions);
 
-    expandAllBtn.addEventListener('click', expandAllDescriptions);
-    collapseAllBtn.addEventListener('click', collapseAllDescriptions);
+    bulkDescToggleBtn.addEventListener('click', function () {
+        const expanded = bulkDescToggleBtn.classList.toggle('expanded');
+        if (expanded) {
+            expandAllDescriptions();
+            bulkDescLabel.textContent = 'Collapse All';
+        } else {
+            collapseAllDescriptions();
+            bulkDescLabel.textContent = 'Expand All';
+        }
+    });
 
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth <= 700; }
