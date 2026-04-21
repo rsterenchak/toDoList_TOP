@@ -50,10 +50,10 @@
   - File: `toDoList_main/src/style.css/`, `toDoList_main/src/main.js/`, `toDoList_main/src/index.js/`, `toDoList_main/src/toDo.js/`
   - Completed: 2026-04-18 (PR #3)
 
-- [ ] **[MEDIUM]** Add expand all and collapse all buttons for todo descriptions
+- [x] **[MEDIUM]** Add expand all and collapse all buttons for todo descriptions
   - Description: Add "Expand All" and "Collapse All" buttons to the Todo Items header bar (right-aligned, small uppercase labels with chevron icons matching the existing `#mainHead` style). Clicking Expand All should open every committed row's description panel by triggering the same DOM insertion that `wireDescToggle` performs per-row; Collapse All should remove every open `#descSibling` panel and reset each row's `#descToggle` to its closed state. Skip blank placeholder rows, since they have no description. Make sure individual per-row toggles continue to work correctly after a bulk action — the switcher state inside `wireDescToggle` must stay in sync with the actual DOM.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-21
 
 - [ ] **[LOW]** Add custom home screen icon and PWA manifest using favicon.svg as source
   - Description: When users add the app to their home screen on iOS or Android, the icon defaults to a generic browser screenshot instead of a branded app icon. Use `favicon.svg` as the single source asset: reference it directly via `<link rel="icon" type="image/svg+xml">` for modern browsers, and generate PNG variants from it for platforms that don't accept SVG — a 180x180 `apple-touch-icon.png` for iOS, plus 192x192 and 512x512 (including a maskable variant with safe-zone padding) for Android. Add a `manifest.webmanifest` declaring `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color`, `theme_color`, and the icons array. Reference the manifest from `index.html` and add `<meta name="theme-color">` plus the iOS standalone meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-title`). Either commit pre-generated PNGs or wire a webpack plugin like `favicons-webpack-plugin` into `webpack.config.js` so PNGs regenerate from the SVG automatically — prefer the latter to keep the SVG as the single source of truth.
