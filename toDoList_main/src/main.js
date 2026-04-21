@@ -875,6 +875,13 @@ function buildToDoRow(item, toDoName) {
         const val = toDoInput.value.trim();
         if (!val) return;
 
+        // savedTitle is captured on focus — "" means this row was the blank
+        // placeholder when the user started editing, so Enter is a first-commit
+        // and should spawn a fresh blank. A non-empty savedTitle means the row
+        // was already committed, so Enter is a re-commit and should only shift
+        // focus to the existing blank placeholder without rebuilding the list.
+        const isFirstCommit = (savedTitle === "");
+
         toDoInput.value = val;
         item.tit = val;
         item.pri = 2;
@@ -899,7 +906,11 @@ function buildToDoRow(item, toDoName) {
         dueInput.style.display        = "";
 
         toDoInput.blur();
-        appendNewToDoRow(toDoName);
+        if (isFirstCommit) {
+            appendNewToDoRow(toDoName);
+        } else {
+            focusBlankToDoInput();
+        }
     });
 
     // toDoInput keyup — save on every keystroke
@@ -1543,6 +1554,19 @@ function component() {
 
 export { component, restoreFromStorage };
 
+// focusBlankToDoInput — move focus to the existing blank placeholder row's
+// input without touching the data model or DOM structure. Used on re-commit
+// of an already-committed row, where rebuilding the list would be wasteful.
+function focusBlankToDoInput() {
+    const mainListDiv = document.getElementById("mainList");
+    if (!mainListDiv) return;
+    const inputs = mainListDiv.querySelectorAll('#toDoInput');
+    for (let i = 0; i < inputs.length; i++) {
+        if (inputs[i].value === "") { inputs[i].focus(); return; }
+    }
+}
+
+
 // appendNewToDoRow — ensure a blank placeholder is pinned at the top of the
 // project's list (creating one if the user just committed the previous blank)
 // and focus it so the next todo can be typed immediately.
@@ -1559,11 +1583,7 @@ function appendNewToDoRow(toDoName) {
     listLogic.sortCompletedToBottom(toDoName);
     reorderToDoDOM(toDoName);
 
-    const mainListDiv = document.getElementById("mainList");
-    const inputs = mainListDiv.querySelectorAll('#toDoInput');
-    for (let i = 0; i < inputs.length; i++) {
-        if (inputs[i].value === "") { inputs[i].focus(); return; }
-    }
+    focusBlankToDoInput();
 }
 
 
