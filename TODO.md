@@ -55,9 +55,9 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-21
 
-- [ ] **[MEDIUM]** Add collapsible "Completed" section for checked-off todo items
-  - Description: Group completed todos into a collapsible section rendered directly below the uncompleted items, replacing the current flat layout where completed rows simply sit beneath uncompleted ones. Add a toggle row with a right-pointing caret and the label `Completed (N)` where N is the count of completed items in the current project, styled in uppercase with letter-spacing to match the existing `#sideHead`/`#mainHead` typography and colored with `--accent-text` (#9D8FFF). Clicking the toggle expands/collapses the list of completed rows beneath it; the caret rotates 90° on expand using the same transition pattern as `#descToggle`. The section starts collapsed every time a project is rendered (no persistence across reloads), and the toggle row is hidden entirely when the project has zero completed items. Update `reorderToDoDOM`, `addAllToDo_DOM`, and `addToDos_restore` to render uncompleted rows, then the toggle (if any completed exist), then the completed rows inside a wrapper div that controls visibility. The model ordering invariant in `sortCompletedInPlace` (blank → uncompleted → completed) stays as-is — only the DOM rendering changes.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+- [ ] **[MEDIUM]** Add collapsible Completed section for checked-off todo items
+  - Description: In the item list for the current project, split items into two groups at render time — active (unchecked) at the top, completed (checked) below a collapsible header showing a chevron and count, e.g. "▼ Completed (3)". Clicking the header toggles visibility of the completed group. Default to collapsed on first render, persist the open/closed state in localStorage under the key `completedSectionOpen`, and restore on load; hide the header entirely when there are zero completed items. To avoid reading all of `main.js` (it exceeds the 25k-token read limit), use Grep to locate the existing function that renders the current project's item list and add the partition + header there — don't scan the file top-to-bottom.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [ ] **[LOW]** Add custom home screen icon and PWA manifest using favicon.svg as source
