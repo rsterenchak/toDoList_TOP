@@ -75,6 +75,81 @@ function reorderToDoDOM(projectName) {
         mainDiv.appendChild(row);
         if (descSibling) mainDiv.appendChild(descSibling);
     });
+
+    updateCompletedSection(mainDiv);
+}
+
+
+// Persisted UI preference: open/closed state of the Completed section.
+// Default is closed on first load; the value survives reloads and is shared
+// across projects (one global toggle, not per-project).
+const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
+
+function isCompletedSectionOpen() {
+    return localStorage.getItem(COMPLETED_SECTION_KEY) === 'true';
+}
+
+function setCompletedSectionOpen(open) {
+    localStorage.setItem(COMPLETED_SECTION_KEY, open ? 'true' : 'false');
+}
+
+// Insert a collapsible "Completed (N)" header before the first completed row
+// in mainList, or remove it entirely if no completed rows exist. Applies the
+// collapsed class to mainList so CSS can hide the completed rows (and any
+// open description panels directly beneath them) while the section is closed.
+// Safe to call repeatedly — each invocation rebuilds the header from scratch,
+// so it can be called after every render or DOM reorder.
+function updateCompletedSection(mainListDiv) {
+    if (!mainListDiv) mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+
+    const existing = mainListDiv.querySelector('#completedHeader');
+    if (existing) mainListDiv.removeChild(existing);
+
+    const completedRows = mainListDiv.querySelectorAll('#toDoChild.completed');
+    if (completedRows.length === 0) {
+        mainListDiv.classList.remove('completedCollapsed');
+        return;
+    }
+
+    const open = isCompletedSectionOpen();
+    mainListDiv.classList.toggle('completedCollapsed', !open);
+
+    const header = document.createElement('div');
+    header.id = 'completedHeader';
+    header.setAttribute('role', 'button');
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'completedCaret';
+    caret.textContent = open ? '▼' : '▶';
+    caret.setAttribute('aria-hidden', 'true');
+
+    const label = document.createElement('span');
+    label.className = 'completedLabel';
+    label.textContent = 'Completed (' + completedRows.length + ')';
+
+    header.appendChild(caret);
+    header.appendChild(label);
+
+    function toggle() {
+        const nowOpen = !isCompletedSectionOpen();
+        setCompletedSectionOpen(nowOpen);
+        mainListDiv.classList.toggle('completedCollapsed', !nowOpen);
+        caret.textContent = nowOpen ? '▼' : '▶';
+        header.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+    }
+
+    header.addEventListener('click', toggle);
+    header.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+        }
+    });
+
+    mainListDiv.insertBefore(header, completedRows[0]);
 }
 
 
@@ -208,10 +283,15 @@ function removeDropIndicator() {
 }
 
 // Return only the rows that are currently draggable — blank placeholder rows
-// and unnamed project rows set `draggable="false"` so drop-index math ignores them.
+// and unnamed project rows set `draggable="false"` so drop-index math ignores
+// them. Also skip rows hidden via CSS (e.g. completed rows tucked inside a
+// collapsed Completed section): their zeroed bounding rects would otherwise
+// poison computeDropIndex.
 function draggableSiblings(container, itemSelector) {
     return Array.prototype.slice.call(container.querySelectorAll(itemSelector))
-        .filter(function(s) { return s.getAttribute('draggable') === 'true'; });
+        .filter(function(s) {
+            return s.getAttribute('draggable') === 'true' && s.offsetParent !== null;
+        });
 }
 
 // Returns the index a dragged row would land at if dropped at clientY,
@@ -981,6 +1061,7 @@ function addAllToDo_DOM(items, name) {
     items.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, name));
     });
+    updateCompletedSection(mainListDiv);
 }
 
 
@@ -1872,6 +1953,7 @@ function addToDos_restore(toDoArray, toDoName) {
     items.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
+    updateCompletedSection(mainListDiv);
 }
 
 
