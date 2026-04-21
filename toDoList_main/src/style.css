@@ -663,7 +663,15 @@ body.row-dragging * { cursor: grabbing !important; }
    PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {
-  #dateText, #dueInput { display: none; }
+  /* Drop the "Due:" label on narrow screens; keep the MM/DD/YYYY inputs visible. */
+  #dateText { display: none; }
+
+  /* Title truncates with an ellipsis so the date column has guaranteed space. */
+  #toDoInput {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* ══════════════════════════════════════════
