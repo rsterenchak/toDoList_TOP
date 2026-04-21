@@ -51,7 +51,7 @@
   - Completed: 2026-04-18 (PR #3)
 
 - [ ] **[MEDIUM]** Add expand all and collapse all buttons for todo descriptions
-  - Description: Add bulk expand/collapse controls to the `#mainHead` title bar that open or close every todo description panel in the currently selected project at once. Today each row's description is toggled individually via its `descToggle` dropdown, which is tedious when reviewing or tidying a long list. The new controls should iterate every `#toDoChild` in `#mainList`, drive each row's existing toggle path so `descSibling` insertion/removal and the `descToggle.open` class stay in sync, and skip the blank placeholder row whose toggle is hidden. No persistence needed — state resets on project switch, matching current behavior.
+  - Description: Add "Expand All" and "Collapse All" buttons to the Todo Items header bar (right-aligned, small uppercase labels with chevron icons matching the existing `#mainHead` style). Clicking Expand All should open every committed row's description panel by triggering the same DOM insertion that `wireDescToggle` performs per-row; Collapse All should remove every open `#descSibling` panel and reset each row's `#descToggle` to its closed state. Skip blank placeholder rows, since they have no description. Make sure individual per-row toggles continue to work correctly after a bulk action — the switcher state inside `wireDescToggle` must stay in sync with the actual DOM.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
