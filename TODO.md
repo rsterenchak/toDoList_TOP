@@ -55,10 +55,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-21
 
-- [ ] **[MEDIUM]** Add collapsible Completed section for checked-off todo items
+- [x] **[MEDIUM]** Add collapsible Completed section for checked-off todo items
   - Description: In the item list for the current project, split items into two groups at render time — active (unchecked) at the top, completed (checked) below a collapsible header showing a chevron and count, e.g. "▼ Completed (3)". Clicking the header toggles visibility of the completed group. Default to collapsed on first render, persist the open/closed state in localStorage under the key `completedSectionOpen`, and restore on load; hide the header entirely when there are zero completed items. To avoid reading all of `main.js` (it exceeds the 25k-token read limit), use Grep to locate the existing function that renders the current project's item list and add the partition + header there — don't scan the file top-to-bottom.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-21
 
 - [ ] **[LOW]** Add custom home screen icon and PWA manifest using favicon.svg as source
   - Description: When users add the app to their home screen on iOS or Android, the icon defaults to a generic browser screenshot instead of a branded app icon. Use `favicon.svg` as the single source asset: reference it directly via `<link rel="icon" type="image/svg+xml">` for modern browsers, and generate PNG variants from it for platforms that don't accept SVG — a 180x180 `apple-touch-icon.png` for iOS, plus 192x192 and 512x512 (including a maskable variant with safe-zone padding) for Android. Add a `manifest.webmanifest` declaring `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color`, `theme_color`, and the icons array. Reference the manifest from `index.html` and add `<meta name="theme-color">` plus the iOS standalone meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-title`). Either commit pre-generated PNGs or wire a webpack plugin like `favicons-webpack-plugin` into `webpack.config.js` so PNGs regenerate from the SVG automatically — prefer the latter to keep the SVG as the single source of truth.
