@@ -324,9 +324,9 @@ body {
 }
 
 .bulkDescBtn {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
+  background: var(--accent);
+  border: 0.5px solid var(--accent);
+  color: #FFFFFF;
   font-family: inherit;
   font-size: 10px;
   font-weight: 700;
@@ -339,21 +339,25 @@ body {
   align-items: center;
   gap: 4px;
   line-height: 1;
-  transition: color 0.12s ease, background 0.12s ease;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
 
 .bulkDescBtn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  color: #FFFFFF;
+  background: var(--accent-text);
+  border-color: var(--accent-text);
 }
 
-.bulkDescBtn::after {
+.bulkDescCaret {
   font-size: 9px;
   line-height: 1;
+  display: inline-block;
+  transition: transform 0.2s ease;
 }
 
-#expandAllBtn::after   { content: '▾'; }
-#collapseAllBtn::after { content: '▴'; }
+.bulkDescBtn.expanded .bulkDescCaret {
+  transform: rotate(180deg);
+}
 
 /* TODO LIST */
 #mainList {
