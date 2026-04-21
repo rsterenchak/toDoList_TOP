@@ -553,24 +553,12 @@ function attachToDoDrag(toDoChild, toDoInput, project) {
             const anyRow = mainDiv.querySelector('[data-value]');
             const activeProject = anyRow ? anyRow.dataset.value : project;
             listLogic.reorderToDo(activeProject, fromIdx, toIdx);
-            // Move the dragged element in-place instead of clear-and-rerender.
-            // This preserves event listeners and the blank placeholder row.
-            const siblings = draggableSiblings(mainDiv, '#toDoChild');
-            const draggedEl = siblings[fromIdx];
-            if (!draggedEl) return;
-            // Capture open description panel before moving the row so it travels with it.
-            const draggedDesc = (draggedEl.nextSibling && draggedEl.nextSibling.id === 'descSibling')
-                ? draggedEl.nextSibling : null;
-            if (fromIdx < toIdx) {
-                // Skip past the target's open description panel when computing the anchor.
-                let anchor = siblings[toIdx].nextSibling;
-                if (anchor && anchor.id === 'descSibling') anchor = anchor.nextSibling;
-                mainDiv.insertBefore(draggedEl, anchor || null);
-                if (draggedDesc) mainDiv.insertBefore(draggedDesc, anchor || null);
-            } else {
-                mainDiv.insertBefore(draggedEl, siblings[toIdx]);
-                if (draggedDesc) mainDiv.insertBefore(draggedDesc, siblings[toIdx]);
-            }
+            // Re-render from the model. reorderToDo re-partitions completed
+            // items to the bottom, so the user's drop position may be
+            // clamped — the DOM must reflect the model rather than where
+            // the user released. Existing rows are moved (not recreated),
+            // so listeners and any open description panels are preserved.
+            reorderToDoDOM(activeProject);
         }
     });
 
