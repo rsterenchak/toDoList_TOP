@@ -808,6 +808,16 @@ function buildToDoRow(item, toDoName) {
     // input slot would leave the user with no way to create new items.
     if (!item.tit) closeButtonToDo.style.display = "none";
 
+    // Blank placeholder rows hide the due-date field for the same reason the
+    // checkbox / toggle / close button hide above: there's no committed item
+    // yet, so the "Due:" label and MM/DD/YYYY inputs would be visual noise.
+    // Keep them wired (wireDateInputs, setDueDatePlaceholders) so they paint
+    // correctly the moment the row is committed.
+    if (!item.tit) {
+        dateText.style.display = "none";
+        dueInput.style.display = "none";
+    }
+
     descToggle.id            = "descToggle";
     descToggle.style.display = item.tit ? "flex" : "none";
 
@@ -885,6 +895,8 @@ function buildToDoRow(item, toDoName) {
         descToggle.style.display      = "flex";
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
+        dateText.style.display        = "";
+        dueInput.style.display        = "";
 
         toDoInput.blur();
         appendNewToDoRow(toDoName);
