@@ -32,6 +32,11 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
+- [ ] **[MEDIUM]** Fix drag-and-drop reordering breaking completed-items-at-bottom invariant
+  - Description: Drag-and-drop currently lets the user drop an uncompleted todo below a completed one, or drag a completed item up among uncompleted ones, breaking the invariant that completed items always sit at the bottom of the list (an invariant the rest of the system — `sortCompletedInPlace`, `sortCompletedToBottom`, the checkbox handler, restore-from-storage — actively maintains). After drop the new order persists to localStorage and survives reloads. Fix in either `reorderToDo` (re-run `sortCompletedInPlace` after the splice and have the DOM-move logic in `attachToDoDrag.onReorder` re-render from the model instead of moving the dragged node in-place), or by clamping `toIdx` in `setupRowDrag.computeDropIndex` to the uncompleted/completed boundary so completed rows can only reorder among themselves and uncompleted rows can only reorder above the first completed row. The model-side fix is more robust since it also covers any future reorder caller.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [x] **[LOW]** Remove unused grey buttons from top-right of header
   - Description: Two small grey circular buttons sit in the top-right corner of the header (visible alongside the hamburger menu on the left and the "PROJECTS" / "TODO ITEMS" column labels below). They were an early design placeholder that never got wired up to any functionality. Remove the markup for both buttons and any associated CSS rules. Verify no event handlers or references to them exist in the JS files; if any are found, remove those too.
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
