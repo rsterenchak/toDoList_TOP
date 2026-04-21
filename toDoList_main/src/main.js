@@ -924,28 +924,27 @@ function buildToDoRow(item, toDoName) {
         }
     });
 
-    // descInput keydown — Enter to save
+    // descInput keydown — Enter to save (empty is a valid cleared state)
     descInput.addEventListener("keydown", function(event) {
         if (event.key !== "Enter") return;
         const val = descInput.value.trim();
-        if (val.length > 0) {
-            descInput.value = val;
-            item.desc = val;
-            listLogic.saveToStorage();
-            descInput.style.border = "none";
-        } else {
-            descInput.style.border = "1px solid red";
-        }
+        descInput.value = val;
+        item.desc = val;
+        listLogic.saveToStorage();
+        descInput.style.border = "none";
         descInput.blur();
     });
 
-    // descInput keyup — save on every keystroke
+    // descInput keyup — save on every keystroke (empty saves too)
     descInput.addEventListener("keyup", function() {
-        const val = descInput.value.trim();
-        if (val.length > 0) {
-            item.desc = val;
-            listLogic.saveToStorage();
-        }
+        item.desc = descInput.value.trim();
+        listLogic.saveToStorage();
+    });
+
+    // descInput blur — persist on click-away so cleared values aren't lost
+    descInput.addEventListener("blur", function() {
+        item.desc = descInput.value.trim();
+        listLogic.saveToStorage();
     });
 
     // closeButtonToDo click — remove this todo item and re-render
