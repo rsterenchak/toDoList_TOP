@@ -50,6 +50,11 @@
   - File: `toDoList_main/src/style.css/`, `toDoList_main/src/main.js/`, `toDoList_main/src/index.js/`, `toDoList_main/src/toDo.js/`
   - Completed: 2026-04-18 (PR #3)
 
+- [ ] **[MEDIUM]** Add expand all and collapse all buttons for todo descriptions
+  - Description: Add bulk expand/collapse controls to the `#mainHead` title bar that open or close every todo description panel in the currently selected project at once. Today each row's description is toggled individually via its `descToggle` dropdown, which is tedious when reviewing or tidying a long list. The new controls should iterate every `#toDoChild` in `#mainList`, drive each row's existing toggle path so `descSibling` insertion/removal and the `descToggle.open` class stay in sync, and skip the blank placeholder row whose toggle is hidden. No persistence needed — state resets on project switch, matching current behavior.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Add custom home screen icon and PWA manifest using favicon.svg as source
   - Description: When users add the app to their home screen on iOS or Android, the icon defaults to a generic browser screenshot instead of a branded app icon. Use `favicon.svg` as the single source asset: reference it directly via `<link rel="icon" type="image/svg+xml">` for modern browsers, and generate PNG variants from it for platforms that don't accept SVG — a 180x180 `apple-touch-icon.png` for iOS, plus 192x192 and 512x512 (including a maskable variant with safe-zone padding) for Android. Add a `manifest.webmanifest` declaring `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color`, `theme_color`, and the icons array. Reference the manifest from `index.html` and add `<meta name="theme-color">` plus the iOS standalone meta tags (`apple-mobile-web-app-capable`, `apple-mobile-web-app-title`). Either commit pre-generated PNGs or wire a webpack plugin like `favicons-webpack-plugin` into `webpack.config.js` so PNGs regenerate from the SVG automatically — prefer the latter to keep the SVG as the single source of truth.
   - File: `toDoList_main/src/index.html`, `toDoList_main/src/favicon.svg`, `toDoList_main/src/manifest.webmanifest`, `toDoList_main/webpack.config.js`
