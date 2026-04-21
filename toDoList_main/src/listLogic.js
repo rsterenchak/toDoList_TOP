@@ -278,8 +278,11 @@ export const listLogic = (function () {
     // Callers (drag-drop) pass indexes relative to the *non-blank* slice —
     // the blank placeholder pinned at index 0 is filtered out of the drag
     // layer's sibling list, so its indexes never include it. Reorder the
-    // non-blank slice, then rebuild the array with the blank pinned back
-    // at index 0 so the placeholder invariant stays centralised here.
+    // non-blank slice, then run sortCompletedInPlace to re-pin the blank at
+    // index 0 and partition completed entries to the bottom — the drop may
+    // have crossed the uncompleted/completed boundary, and the invariant
+    // (completed items always sit beneath uncompleted ones) is enforced
+    // here so any future reorder caller benefits.
     function reorderToDo(project, fromIndex, toIndex) {
 
         if (!allProjects[project]) return;
@@ -291,12 +294,7 @@ export const listLogic = (function () {
         if (isNaN(fromIndex) || isNaN(toIndex)) return;
         if (fromIndex === toIndex) return;
 
-        let blank = null;
-        const nonBlank = [];
-        for (let i = 0; i < arr.length; i++) {
-            if (arr[i].tit === '' && blank === null) blank = arr[i];
-            else nonBlank.push(arr[i]);
-        }
+        const nonBlank = arr.filter(function(i) { return i.tit !== ''; });
 
         if (fromIndex < 0 || fromIndex >= nonBlank.length) return;
         if (toIndex   < 0 || toIndex   >= nonBlank.length) return;
@@ -304,9 +302,14 @@ export const listLogic = (function () {
         const moved = nonBlank.splice(fromIndex, 1)[0];
         nonBlank.splice(toIndex, 0, moved);
 
+        // Preserve the existing blank placeholder object so any in-flight
+        // state on it (e.g. date placeholders) survives the rebuild.
+        const existingBlank = arr.find(function(i) { return i.tit === ''; });
         arr.length = 0;
-        if (blank) arr.push(blank);
+        if (existingBlank) arr.push(existingBlank);
         for (let i = 0; i < nonBlank.length; i++) arr.push(nonBlank[i]);
+
+        sortCompletedInPlace(arr);
 
         saveToStorage();
     }
