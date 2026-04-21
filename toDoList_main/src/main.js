@@ -563,6 +563,82 @@ function showProjectContextMenu(x, y, onEdit, onDelete) {
     window.addEventListener('scroll', hideProjectContextMenu, true);
 }
 
+// ── CONFIRM MODAL ──
+// Async, themed replacement for window.confirm. Destructive actions (delete
+// project, delete todo) require a confirmation step per CLAUDE.md; the native
+// dialog breaks visual continuity and can't be styled. Closes on Cancel,
+// backdrop click, or Escape — matching the modal conventions in CLAUDE.md.
+function showConfirmModal(options) {
+
+    // Defensive: remove any stray prior modal so we never stack two.
+    const prior = document.getElementById('confirmModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'confirmModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'confirmModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    const msg = document.createElement('div');
+    msg.id = 'confirmModalMessage';
+    msg.textContent = options.message || '';
+
+    const actions = document.createElement('div');
+    actions.id = 'confirmModalActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'confirmModalCancel';
+    cancelBtn.type = 'button';
+    cancelBtn.textContent = 'Cancel';
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.id = 'confirmModalConfirm';
+    confirmBtn.type = 'button';
+    if (options.danger !== false) confirmBtn.classList.add('danger');
+    confirmBtn.textContent = options.confirmLabel || 'Delete';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    dialog.appendChild(msg);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    // Focus the confirm button so keyboard users can Enter-to-confirm
+    // immediately and Escape-to-cancel works without a tab first.
+    confirmBtn.focus();
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    cancelBtn.addEventListener('click', close);
+    confirmBtn.addEventListener('click', function() {
+        close();
+        if (typeof options.onConfirm === 'function') options.onConfirm();
+    });
+    // Only backdrop clicks should dismiss — clicks inside the dialog should not.
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+}
+
+
 function countRealToDos(projectName) {
     const items = listLogic.listItems(projectName);
     if (!items) return 0;
@@ -585,33 +661,36 @@ function deleteProjectFlow(projChild, projectName) {
         ? 'Delete project "' + projectName + '" and its ' + count + ' todo item' + (count === 1 ? '' : 's') + '? This cannot be undone.'
         : 'Delete project "' + projectName + '"? This cannot be undone.';
 
-    if (!window.confirm(message)) return;
+    showConfirmModal({
+        message: message,
+        onConfirm: function() {
+            const mainListEl = document.getElementById('mainList');
+            const projButton = document.getElementById('projButton');
+            const wasSelected = projChild.classList.contains('selectedProject');
 
-    const mainListEl = document.getElementById('mainList');
-    const projButton = document.getElementById('projButton');
-    const wasSelected = projChild.classList.contains('selectedProject');
+            if (projChild.parentNode) projChild.parentNode.removeChild(projChild);
 
-    if (projChild.parentNode) projChild.parentNode.removeChild(projChild);
+            if (wasSelected && mainListEl) {
+                while (mainListEl.firstChild) mainListEl.removeChild(mainListEl.firstChild);
+            }
 
-    if (wasSelected && mainListEl) {
-        while (mainListEl.firstChild) mainListEl.removeChild(mainListEl.firstChild);
-    }
+            listLogic.removeProject(projectName);
+            listLogic.listProjects();
+            if (projButton) projButton.style.pointerEvents = 'auto';
 
-    listLogic.removeProject(projectName);
-    listLogic.listProjects();
-    if (projButton) projButton.style.pointerEvents = 'auto';
-
-    if (wasSelected) {
-        const nextRow = document.querySelector('#projChild');
-        if (nextRow) {
-            nextRow.classList.remove('unselectedProject');
-            nextRow.classList.add('selectedProject');
-            const nextInput = nextRow.querySelector('#projInput');
-            const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
-            const nextItems = listLogic.listItems(nextName);
-            if (nextItems) addAllToDo_DOM(nextItems, nextName);
+            if (wasSelected) {
+                const nextRow = document.querySelector('#projChild');
+                if (nextRow) {
+                    nextRow.classList.remove('unselectedProject');
+                    nextRow.classList.add('selectedProject');
+                    const nextInput = nextRow.querySelector('#projInput');
+                    const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
+                    const nextItems = listLogic.listItems(nextName);
+                    if (nextItems) addAllToDo_DOM(nextItems, nextName);
+                }
+            }
         }
-    }
+    });
 }
 
 // Wire drag reordering on a todo row. Keeps `row.draggable` in sync with
@@ -1026,20 +1105,22 @@ function buildToDoRow(item, toDoName) {
         listLogic.saveToStorage();
     });
 
-    // closeButtonToDo click — remove this todo item and re-render
+    // closeButtonToDo click — confirm, then remove this todo item and re-render.
+    // Deletes by item reference so duplicate titles or a cleared input value
+    // can't misroute the splice onto a different row.
     closeButtonToDo.addEventListener("click", function() {
-        const title = toDoInput.value;
+        const label = (item.tit || "").trim() || "this todo";
+        showConfirmModal({
+            message: 'Delete "' + label + '"? This cannot be undone.',
+            onConfirm: function() {
+                listLogic.removeToDoByItem(toDoName, item);
 
-        if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
-            toDoChild.parentElement.removeChild(toDoChild.nextSibling);
-        }
+                const mainDiv = document.getElementById('mainList');
+                while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
-        listLogic.removeToDoByTitle(toDoName, title);
-
-        const mainDiv = document.getElementById('mainList');
-        while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
-
-        addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
+                addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
+            }
+        });
     });
 
     closeButtonToDo.addEventListener("mouseenter", function() {

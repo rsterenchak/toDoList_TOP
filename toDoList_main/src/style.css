@@ -283,6 +283,101 @@ body {
 .projContextMenuItem.danger { color: var(--text-danger); }
 .projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
 
+/* CONFIRM MODAL */
+#confirmModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#confirmModal {
+  min-width: 280px;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  padding: 18px 20px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+  animation: confirmSlideIn 0.14s ease-out;
+}
+
+#confirmModalMessage {
+  margin-bottom: 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#confirmModalActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#confirmModalCancel,
+#confirmModalConfirm {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#confirmModalCancel:hover { background: var(--bg-hover); }
+#confirmModalCancel:focus { outline: none; border-color: var(--accent-text); }
+
+#confirmModalConfirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+#confirmModalConfirm:hover { background: var(--accent-text); border-color: var(--accent-text); }
+#confirmModalConfirm:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+
+#confirmModalConfirm.danger {
+  background: var(--text-danger);
+  border-color: var(--text-danger);
+  color: #fff;
+}
+#confirmModalConfirm.danger:hover { background: #c74747; border-color: #c74747; }
+#confirmModalConfirm.danger:focus { outline: none; box-shadow: 0 0 0 2px rgba(224, 85, 85, 0.3); }
+
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes confirmSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  #confirmModal {
+    width: 100%;
+    min-width: 0;
+    font-size: 15px;
+  }
+  #confirmModalCancel,
+  #confirmModalConfirm {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
 /* MAIN BAR */
 #mainBar {
   display: grid;

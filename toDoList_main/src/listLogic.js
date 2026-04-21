@@ -189,17 +189,21 @@ export const listLogic = (function () {
     };
 
 
-    // Remove a todo item by its title — avoids index/DOM sync issues.
+    // Remove a todo item by object-reference — title-based lookup is unsafe
+    // because the data model permits duplicate titles (a new row committed
+    // while a completed row with the same title still exists), which would
+    // otherwise delete the wrong row. A stale/empty input value also can't
+    // misfire and accidentally splice the blank placeholder.
     // Maintains the invariant that a blank placeholder is pinned at index 0.
-    function removeToDoByTitle(project, title) {
+    function removeToDoByItem(project, item) {
 
         if (!allProjects[project]) return;
 
         const arr = allProjects[project];
-        const idx = arr.findIndex(function(i){ return i.tit === title; });
+        const idx = arr.indexOf(item);
 
         if (idx === -1) {
-            console.warn("removeToDoByTitle: title not found —", title);
+            console.warn("removeToDoByItem: item not found in project —", project);
             return;
         }
 
@@ -356,7 +360,7 @@ export const listLogic = (function () {
         listProjectsArray,
         addToDo,
         removeToDo,
-        removeToDoByTitle,
+        removeToDoByItem,
         editProject,
         listItems,
         projectLength,
