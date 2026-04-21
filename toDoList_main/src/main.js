@@ -1077,6 +1077,32 @@ function component() {
     mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
+    // Bulk description controls — Expand All / Collapse All live in the
+    // Todo Items header, right-aligned. Clicks are dispatched to each row's
+    // own #descToggle so the per-row switcher state in wireDescToggle stays
+    // in sync with the DOM.
+    const bulkDescActions = document.createElement('div');
+    bulkDescActions.id = 'bulkDescActions';
+
+    const expandAllBtn = document.createElement('button');
+    expandAllBtn.type = 'button';
+    expandAllBtn.id  = 'expandAllBtn';
+    expandAllBtn.className = 'bulkDescBtn';
+    expandAllBtn.textContent = 'Expand All';
+
+    const collapseAllBtn = document.createElement('button');
+    collapseAllBtn.type = 'button';
+    collapseAllBtn.id  = 'collapseAllBtn';
+    collapseAllBtn.className = 'bulkDescBtn';
+    collapseAllBtn.textContent = 'Collapse All';
+
+    bulkDescActions.appendChild(expandAllBtn);
+    bulkDescActions.appendChild(collapseAllBtn);
+    mainTitle.appendChild(bulkDescActions);
+
+    expandAllBtn.addEventListener('click', expandAllDescriptions);
+    collapseAllBtn.addEventListener('click', collapseAllDescriptions);
+
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth <= 700; }
 
@@ -1541,6 +1567,29 @@ function component() {
 };
 
 export { component, restoreFromStorage };
+
+// Bulk open/close every committed row's description panel. Clicks the row's
+// own #descToggle so the closure-scoped `switcher` inside wireDescToggle
+// stays in sync with the DOM — individual per-row toggles keep working
+// after a bulk action. Blank placeholder rows hide their #descToggle
+// (display: none), so filtering on that skips them.
+function expandAllDescriptions() {
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
+        if (toggle.style.display === 'none') return;
+        if (!toggle.classList.contains('open')) toggle.click();
+    });
+}
+
+function collapseAllDescriptions() {
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
+        if (toggle.classList.contains('open')) toggle.click();
+    });
+}
+
 
 // focusBlankToDoInput — move focus to the existing blank placeholder row's
 // input without touching the data model or DOM structure. Used on re-commit
