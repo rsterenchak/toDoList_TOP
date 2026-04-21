@@ -32,6 +32,11 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-20
 
+- [ ] **[MEDIUM]** Hide due date field on blank placeholder todo row
+  - Description: The blank "new item" placeholder row pinned at the top of each project's list shows the "Due: MM/DD/YYYY" field even though no item exists yet, creating unnecessary visual noise next to an empty title input. Hide both `dateText` and `dueInput` when `item.tit` is empty (matching the existing pattern for `checkToDo`, `descToggle`, and `closeButtonToDo`, which already set `style.display = "none"` on blank rows), then reveal them inside the `toDoInput` keydown Enter handler alongside the other controls that get unhidden on first commit. Hiding is preferred over removing so `wireDateInputs` and `setDueDatePlaceholders` can still wire and pre-fill the inputs normally — they just stay invisible until the row is committed.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[MEDIUM]** Fix drag-and-drop reordering breaking completed-items-at-bottom invariant
   - Description: Drag-and-drop currently lets the user drop an uncompleted todo below a completed one, or drag a completed item up among uncompleted ones, breaking the invariant that completed items always sit at the bottom of the list (an invariant the rest of the system — `sortCompletedInPlace`, `sortCompletedToBottom`, the checkbox handler, restore-from-storage — actively maintains). After drop the new order persists to localStorage and survives reloads. Fix in either `reorderToDo` (re-run `sortCompletedInPlace` after the splice and have the DOM-move logic in `attachToDoDrag.onReorder` re-render from the model instead of moving the dragged node in-place), or by clamping `toIdx` in `setupRowDrag.computeDropIndex` to the uncompleted/completed boundary so completed rows can only reorder among themselves and uncompleted rows can only reorder above the first completed row. The model-side fix is more robust since it also covers any future reorder caller.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
