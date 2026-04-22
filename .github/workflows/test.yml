@@ -19,7 +19,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        working-directory: toDoList_main
         run: npm ci
 
       - name: Run tests
+        working-directory: toDoList_main
         run: npm run test:run
