@@ -41,6 +41,36 @@ describe('listLogic — projects', () => {
     it('projectLength returns 0 for a missing project', () => {
         expect(listLogic.projectLength('DoesNotExist')).toBe(0);
     });
+
+    it('projectLength returns 0 for null, undefined, and empty string', () => {
+        expect(listLogic.projectLength(null)).toBe(0);
+        expect(listLogic.projectLength(undefined)).toBe(0);
+        expect(listLogic.projectLength('')).toBe(0);
+    });
+
+    it('projectLength returns 0 for non-string inputs', () => {
+        expect(listLogic.projectLength(42)).toBe(0);
+        expect(listLogic.projectLength(0)).toBe(0);
+        expect(listLogic.projectLength({})).toBe(0);
+        expect(listLogic.projectLength([])).toBe(0);
+        expect(listLogic.projectLength(true)).toBe(0);
+        expect(listLogic.projectLength(false)).toBe(0);
+    });
+
+    it('projectLength returns item count for a valid project name', () => {
+        listLogic.addProject('Groceries');
+        listLogic.addToDo('Groceries', 'Milk');
+        expect(listLogic.projectLength('Groceries')).toBe(
+            listLogic.listItems('Groceries').length
+        );
+    });
+
+    it('projectLength does not coerce numeric input to match a string-keyed project', () => {
+        listLogic.addProject('42');
+        listLogic.addToDo('42', 'Milk');
+        expect(listLogic.projectLength(42)).toBe(0);
+        expect(listLogic.projectLength('42')).toBeGreaterThan(0);
+    });
 });
 
 

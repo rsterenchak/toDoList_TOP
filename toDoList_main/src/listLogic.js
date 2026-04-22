@@ -235,7 +235,7 @@ export const listLogic = (function () {
     };
 
     function projectLength(project){
-        if (!project || !allProjects[project]) return 0;
+        if (typeof project !== 'string' || project === '' || !allProjects[project]) return 0;
         return allProjects[project].length;
     };
 
