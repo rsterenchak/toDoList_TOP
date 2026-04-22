@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+          cache-dependency-path: toDoList_main/package-lock.json
 
       - name: Install dependencies
         working-directory: toDoList_main
