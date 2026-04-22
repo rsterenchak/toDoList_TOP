@@ -1,11 +1,6 @@
 # TODO List
 
 ## Bugs
-  
-- [ ] **[HIGH]** `addProject` silently overwrites existing project with the same name
-  - Description: Calling `addProject('Groceries')` when a project named "Groceries" already exists wipes every todo in the existing project. The current implementation does `allProjects[projectName] = []` unconditionally, with no duplicate check. The UI layer in `main.js` has a duplicate check in the Enter-key handler, but `listLogic` doesn't enforce the invariant itself — so any future caller (a test, a script, a refactor) that bypasses the UI path can silently corrupt user data. Reproducer: in the browser console run `listLogic.addProject('Groceries'); listLogic.addToDo('Groceries', 'Milk'); listLogic.addProject('Groceries'); listLogic.listItems('Groceries')` — you'll see only the empty placeholder, Milk is gone. Fix by either returning early with an error/warning when the project exists, or by making the function idempotent (no-op if name already present). There is a currently-failing regression test in `listLogic.test.js` under the `listLogic — duplicate project protection` describe block that locks this behavior down; it should go green after the fix.
-  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
 
 - [x] **[LOW]** `projectLength` should return 0 for null or undefined project names
   - Description: `projectLength(project)` in `listLogic.js` currently guards against falsy input with `if (!project || !allProjects[project]) return 0;`, which is fine — but the function's behavior when passed a non-string value (e.g., `projectLength(42)` or `projectLength({})`) is undefined. In practice nothing in the app calls it with non-string values today, but the guard is permissive enough to let weird inputs through and return `undefined` or throw depending on what `allProjects[project]` does with them. Tighten the guard so the function returns 0 for any input that isn't a non-empty string. Preserve existing behavior for valid string inputs. Add a regression test covering non-string inputs (number, object, array, boolean) alongside the existing null/undefined cases.
