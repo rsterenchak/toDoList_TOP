@@ -73,3 +73,13 @@ The app runs on mobile. When adding interactions:
 - Stylistic preferences not documented in this file.
 - Pre-existing issues on lines the PR did not modify.
 - Files in `dist/` or `node_modules/`.
+
+## Large files
+
+`toDoList_main/src/main.js` is over 25k tokens and will trip the Read tool's
+default limit. Do not attempt to read it in full.
+
+- Use `grep` (or the Grep tool) to locate the relevant section first.
+- Then read only that range with `offset` and `limit` parameters.
+- If you need more context around a match, widen the range — don't read the
+  whole file.
