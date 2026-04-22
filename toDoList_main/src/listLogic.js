@@ -353,6 +353,13 @@ export const listLogic = (function () {
     }
 
 
+    function _reset() {
+        Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
+        localStorage.clear();
+        allProjectsTotal = 0;
+    }
+
+
     return {
         addProject,
         removeProject,
@@ -367,7 +374,8 @@ export const listLogic = (function () {
         reorderProject,
         reorderToDo,
         sortCompletedToBottom,
-        saveToStorage
+        saveToStorage,
+        _reset
     };
 
 })();
