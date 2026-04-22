@@ -1698,6 +1698,13 @@ function component() {
             projChild.style.background = "#1C1C1C";
         });
 
+        // Re-lock the input when focus leaves so the row's empty space
+        // isn't captured by the stretched input on the next drag attempt.
+        titleInput.addEventListener("blur", function() {
+            titleInput.style.pointerEvents = "none";
+            titleInput.style.cursor = "default";
+        });
+
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
             this.style.background = "#222222";
@@ -1895,6 +1902,9 @@ function restoreFromStorage() {
         });
 
         titleInput.addEventListener("blur", function() {
+            // Re-lock the input so the row's empty space isn't captured by
+            // the stretched input on the next drag attempt.
+            titleInput.style.pointerEvents = "none";
             titleInput.style.cursor = "default";
 
             // Enter already handled this rename — don't double-process
