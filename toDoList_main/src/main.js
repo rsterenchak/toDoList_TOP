@@ -177,6 +177,13 @@ function wireToDoRowClick(toDoChild, toDoInput) {
             if (el !== toDoChild) el.classList.remove('todo-active');
         });
         toDoChild.classList.add('todo-active');
+
+        // one-click editing — focus with caret at end rather than selecting text
+        if (document.activeElement !== toDoInput) {
+            const end = toDoInput.value.length;
+            toDoInput.focus();
+            toDoInput.setSelectionRange(end, end);
+        }
     });
 }
 
@@ -297,6 +304,8 @@ function draggableSiblings(container, itemSelector) {
 // Returns the index a dragged row would land at if dropped at clientY,
 // using splice semantics: the dragged row's current slot is first ignored,
 // then the new index is the count of remaining rows whose midpoint is above clientY.
+// Uncompleted rows are clamped to stay above the completed partition (and vice
+// versa) so a drop never crosses the Completed boundary.
 function computeDropIndex(draggedEl, container, itemSelector, clientY) {
     const siblings = draggableSiblings(container, itemSelector);
     let idx = 0;
@@ -306,6 +315,15 @@ function computeDropIndex(draggedEl, container, itemSelector, clientY) {
         const rect = s.getBoundingClientRect();
         if (clientY > rect.top + rect.height / 2) idx++;
     }
+    const draggedCompleted = draggedEl.classList.contains('completed');
+    const uncompletedCount = siblings.filter(function(s) {
+        return s !== draggedEl && !s.classList.contains('completed');
+    }).length;
+    if (draggedCompleted) {
+        if (idx < uncompletedCount) idx = uncompletedCount;
+    } else {
+        if (idx > uncompletedCount) idx = uncompletedCount;
+    }
     return idx;
 }
 
@@ -314,8 +332,15 @@ function computeDropIndex(draggedEl, container, itemSelector, clientY) {
 // grid template. The container must be position: relative.
 function showDropIndicator(draggedEl, container, itemSelector, clientY) {
     const indicator = getDropIndicator();
+    const draggedCompleted = draggedEl.classList.contains('completed');
+    // Only consider same-section siblings so the indicator never points into
+    // the opposite partition (uncompleted vs. completed). Project rows never
+    // carry `.completed`, so this filter is a no-op for them.
     const siblings  = draggableSiblings(container, itemSelector)
-        .filter(function(s) { return s !== draggedEl; });
+        .filter(function(s) {
+            return s !== draggedEl &&
+                   s.classList.contains('completed') === draggedCompleted;
+        });
 
     const containerRect = container.getBoundingClientRect();
     let top = 0;
@@ -1585,8 +1610,12 @@ function component() {
                     
                 }
 
+                // re-arm drag — the earlier blur() ran before addProject/editProject,
+                // so attachProjectDrag's blur sync saw an uncommitted name
+                projChild.setAttribute('draggable', 'true');
 
-                // Based on the designated allProjects array, take those items and add them to the DOM in 
+
+                // Based on the designated allProjects array, take those items and add them to the DOM in
                 // the form of toDo items
                 addAllToDo_DOM(projectArray, projectName);
                 

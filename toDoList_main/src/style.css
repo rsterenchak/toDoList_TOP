@@ -241,7 +241,10 @@ body {
   background: transparent;
   color: #E8E8E8;
   border: none;
-  width: 100%;
+  field-sizing: content;
+  width: auto;
+  max-width: 100%;
+  justify-self: start;
   letter-spacing: 0.02em;
   caret-color: #9D8FFF;
   padding: 0;
