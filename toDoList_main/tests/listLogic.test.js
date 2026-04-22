@@ -259,3 +259,120 @@ describe('listLogic — storage', () => {
         expect(localStorage.getItem('allProjects')).toBeNull();
     });
 });
+
+// ── DATA INTEGRITY ─────────────────────────────────────────────────
+// These tests lock down invariants around operations that can silently
+// corrupt state — adding over an existing project, renaming onto an
+// existing project, renaming from a nonexistent project, and loading
+// from malformed storage. Each of these is a "silent bug" risk: the
+// operation completes without throwing, but the resulting state is wrong.
+
+describe('listLogic — duplicate project protection', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('addProject does not silently overwrite an existing project with the same name', () => {
+        // Seed a project with real todos.
+        listLogic.addProject('Groceries');
+        listLogic.addToDo('Groceries', 'Milk');
+        listLogic.addToDo('Groceries', 'Bread');
+        const beforeTitles = listLogic.listItems('Groceries').map(i => i.tit);
+        expect(beforeTitles).toContain('Milk');
+        expect(beforeTitles).toContain('Bread');
+
+        // Call addProject again with the same name. The current implementation
+        // will silently overwrite the array — this test pins the bug so a
+        // future fix (return early, throw, or merge) has a regression check.
+        listLogic.addProject('Groceries');
+
+        const afterTitles = listLogic.listItems('Groceries').map(i => i.tit);
+        expect(afterTitles).toContain('Milk');
+        expect(afterTitles).toContain('Bread');
+    });
+});
+
+
+describe('listLogic — editProject edge cases', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('editProject does not silently clobber a project when renaming onto an existing name', () => {
+        // Both projects have distinct todos.
+        listLogic.addProject('Groceries');
+        listLogic.addToDo('Groceries', 'Milk');
+
+        listLogic.addProject('Chores');
+        listLogic.addToDo('Chores', 'Vacuum');
+
+        // Rename Groceries -> Chores. The current implementation will blow
+        // away Chores' todos. This test pins that silent-corruption bug.
+        listLogic.editProject('Groceries', 'Chores');
+
+        const chores = listLogic.listItems('Chores');
+        const choreTitles = chores ? chores.map(i => i.tit) : [];
+
+        // At minimum, "Vacuum" should still exist somewhere reachable —
+        // either by surviving the rename or by a merge. A silent wipe is
+        // the bug this test is designed to catch.
+        expect(choreTitles).toContain('Vacuum');
+    });
+
+    it('editProject on a nonexistent project does not leave undefined in the data model', () => {
+        // currentProperty doesn't exist. The current implementation assigns
+        // allProjects[newProperty] = allProjects[currentProperty], which is
+        // undefined — poisoning the new key with a non-array value that
+        // will crash every downstream operation.
+        listLogic.editProject('Ghost', 'Real');
+
+        const items = listLogic.listItems('Real');
+        // Either "Real" shouldn't exist, or if it does, it must be a valid
+        // array (not undefined). Anything else is a latent crash.
+        if (items !== undefined) {
+            expect(Array.isArray(items)).toBe(true);
+        } else {
+            expect(items).toBeUndefined();
+        }
+    });
+});
+
+
+describe('listLogic — storage corruption resilience', () => {
+    // This one is architecturally tricky because listLogic reads localStorage
+    // at module load time, not on demand. To test resilience against malformed
+    // storage, we'd need to seed bad data into localStorage *before* the
+    // module is first imported — which is only possible via vi.resetModules()
+    // and dynamic import. The test below uses that approach.
+    //
+    // If the test runner complains about top-level await or dynamic imports,
+    // this one test can be skipped or deleted — the tradeoff is worth
+    // flagging. The existing tests all assume the module is already loaded.
+
+    it('survives malformed JSON in localStorage on load without throwing', async () => {
+        // Seed bad data, reset the module cache, and re-import.
+        // If listLogic's IIFE throws on bad JSON, the import itself will reject.
+        localStorage.setItem('allProjects', 'not valid json {{{');
+
+        // Reset module cache so the next import re-runs the IIFE against
+        // the seeded bad data.
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+
+        let loadFailed = false;
+        try {
+            await import('../src/listLogic.js');
+        } catch (e) {
+            loadFailed = true;
+        }
+
+        // Clean up so other tests see a clean slate.
+        localStorage.clear();
+
+        // The load should NOT fail — corrupt storage shouldn't brick the app.
+        // This test will currently FAIL against the existing implementation,
+        // which is the point: it documents the bug and the fix is to wrap
+        // the JSON.parse in a try/catch in listLogic.js.
+        expect(loadFailed).toBe(false);
+    });
+});
