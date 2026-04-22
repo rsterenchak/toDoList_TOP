@@ -168,8 +168,8 @@ body {
 
 /* SIDEBAR */
 #sideBar {
-  display: grid;
-  grid-template-rows: var(--row-h) 1fr;
+  display: flex;
+  flex-direction: column;
   border-right: 0.5px solid var(--border-dim);
   background: var(--bg-elevated);
   overflow: hidden;
@@ -181,12 +181,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
-  border-bottom: 0.5px solid var(--border-dim);
+  padding: 20px 14px 14px;
+  border-bottom: none;
   background: var(--bg-elevated);
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
+  height: auto;
 }
 
 #sideHead {
@@ -200,7 +201,7 @@ body {
 #sideMa {
   display: grid;
   background: var(--bg-elevated);
-  grid-template-rows: repeat(auto-fit, minmax(var(--item-h), var(--item-h)));
+  grid-auto-rows: auto;
   align-content: start;
   overflow-y: auto;
   position: relative;
@@ -211,24 +212,54 @@ body {
 
 /* ADD PROJECT */
 #addProj {
-  display: grid;
-  border-bottom: 0.5px solid var(--border-dim);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-content: center;
   background: transparent;
-  height: var(--row-h);
+  padding: 16px 0 14px;
+  height: auto;
+  border-bottom: none;
 }
 
 #projButton {
-  border: none;
-  width: var(--touch);
-  height: var(--touch);
-  background: transparent url('./addProj_button.svg') center/22px 22px no-repeat;
-  opacity: 0.7;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  position: relative;
+  opacity: 1;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  color: var(--accent);
 }
-#projButton:hover { opacity: 1; }
+
+#projButton::before,
+#projButton::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+#projButton::before {
+  width: 12px;
+  height: 1.5px;
+  transform: translate(-50%, -50%);
+}
+
+#projButton::after {
+  width: 1.5px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+}
+
+#projButton:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
 
 /* PROJECT ROWS */
 #projChild {
@@ -237,25 +268,26 @@ body {
   grid-template-columns: 1fr 12px;
   cursor: pointer;
   background: transparent;
-  height: var(--item-h);
-  padding: 0 12px 0 12px;
+  min-height: 52px;
+  height: auto;
+  padding: 14px 14px 14px 15px;
   transition: background 0.12s ease;
   border-bottom: 0.5px solid var(--border-dim);
-  border-left: 3px solid transparent;
+  border-left: 4px solid transparent;
   white-space: nowrap;
   overflow: hidden;
 }
 #projChild:hover { background: var(--bg-hover); }
 
 .unselectedProject {
-  border-left: 3px solid transparent;
+  border-left: 4px solid transparent;
   border-top: none;
   border-right: none;
   border-bottom: 0.5px solid var(--border-dim);
 }
 
 .selectedProject {
-  border-left: 3px solid var(--accent) !important;
+  border-left: 4px solid var(--accent) !important;
   border-top: none;
   border-right: none;
   border-bottom: 0.5px solid var(--border-dim) !important;
@@ -263,17 +295,18 @@ body {
 }
 
 #projInput {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   font-family: inherit;
   background: transparent;
-  color: #e6e7ee;
+  color: var(--text-primary);
   border: none;
   field-sizing: content;
   width: auto;
   max-width: 100%;
   justify-self: start;
-  letter-spacing: 0.02em;
-  caret-color: #8b7bff;
+  letter-spacing: 0.01em;
+  caret-color: var(--accent);
   padding: 0;
   min-width: 0;
   overflow: hidden;
@@ -865,9 +898,29 @@ body.row-dragging * { cursor: grabbing !important; }
      main.js (e.g. toDoInput.style.fontSize = "14px") would
      otherwise override these mobile-only rules. */
   #toDoInput,
-  #projInput,
   #descInput {
     font-size: 16px !important;
+  }
+
+  #projInput {
+    font-size: 17px !important;
+  }
+
+  #projChild {
+    min-height: 56px;
+    padding: 16px 14px 16px 16px;
+  }
+
+  #projButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  #projButton::before { width: 14px; }
+  #projButton::after  { height: 14px; }
+
+  #addProj {
+    padding: 20px 0 16px;
   }
 
   #month, #day, #year {
