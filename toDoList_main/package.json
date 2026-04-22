@@ -8,8 +8,8 @@
     "watch": "webpack --watch",
     "build": "webpack",
     "start": "webpack serve",
-    "test:suite init": "vitest",
-    "test:suite": "vitest run",
+    "test:suite": "vitest",
+    "test:run": "vitest run",
     "test:ui": "vitest --ui"
   },
   "keywords": [],
