@@ -42,6 +42,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-04-21
   
+- [ ] **[LOW]** `projectLength` should return 0 for null or undefined project names
+  - Description: `projectLength(project)` in `listLogic.js` currently guards against falsy input with `if (!project || !allProjects[project]) return 0;`, which is fine — but the function's behavior when passed a non-string value (e.g., `projectLength(42)` or `projectLength({})`) is undefined. In practice nothing in the app calls it with non-string values today, but the guard is permissive enough to let weird inputs through and return `undefined` or throw depending on what `allProjects[project]` does with them. Tighten the guard so the function returns 0 for any input that isn't a non-empty string. Preserve existing behavior for valid string inputs. Add a regression test covering non-string inputs (number, object, array, boolean) alongside the existing null/undefined cases.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
