@@ -3,27 +3,37 @@
   src: url('./Zector.otf');
 }
 
+@font-face {
+  font-family: 'SpaceMono';
+  src: url('./SpaceMono-Regular.ttf');
+}
+
 /* ── VOID THEME ── */
 
 :root {
-  --bg-base:       #0F0F0F;
-  --bg-elevated:   #161616;
-  --bg-surface:    #1C1C1C;
-  --bg-hover:      #1a1828;
-  --bg-active:     #16142a;
+  --bg-base:       #0e0f14;
+  --bg-elevated:   #14151b;
+  --bg-surface:    #191a22;
+  --bg-row:        #1b1c25;
+  --bg-hover:      #1f2130;
+  --bg-active:     #1a1c29;
 
-  --border-dim:    #242424;
-  --border-mid:    #2E2E2E;
-  --border-bright: #3A3A3A;
+  --border-dim:    #1d1e26;
+  --border-mid:    #23242e;
+  --border-bright: #2d2f3d;
 
-  --accent:        #6C5DF5;
-  --accent-dim:    rgba(108, 93, 245, 0.25);
-  --accent-text:   #9D8FFF;
+  --accent:        #8b7bff;
+  --accent-dim:    rgba(139, 123, 255, 0.12);
+  --accent-text:   #8b7bff;
 
-  --text-primary:  #E4E4E4;
-  --text-secondary:#888888;
-  --text-muted:    #484848;
-  --text-danger:   #E05555;
+  --text-primary:  #e6e7ee;
+  --text-secondary:#8a8d9c;
+  --text-muted:    #5a5d6b;
+  --text-danger:   #e06a7a;
+
+  --type-feature:  #9ad0a8;
+  --type-bug:      #e48a96;
+  --type-modify:   #d9b88a;
 
   --radius-sm:     4px;
   --radius-md:     6px;
@@ -51,7 +61,7 @@ body {
   padding: 16px;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
 }
 
@@ -110,12 +120,29 @@ body {
   padding: 0 16px;
 }
 
-#footBar::after {
-  content: 'task management v1.1';
+#footVersion {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: #555;
+  color: var(--text-muted);
   text-transform: uppercase;
+}
+
+#footCounts {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+#footOpen,
+#footDone {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 /* MAIN SECTION */
@@ -237,29 +264,29 @@ body {
 
 #projInput {
   font-size: 14px;
-  font-family: 'Trebuchet MS', sans-serif;
+  font-family: inherit;
   background: transparent;
-  color: #E8E8E8;
+  color: #e6e7ee;
   border: none;
   field-sizing: content;
   width: auto;
   max-width: 100%;
   justify-self: start;
   letter-spacing: 0.02em;
-  caret-color: #9D8FFF;
+  caret-color: #8b7bff;
   padding: 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 #projInput::placeholder { color: var(--text-muted); font-style: italic; }
-#projInput:focus { outline: none; background: transparent; color: #E8E8E8; }
+#projInput:focus { outline: none; background: transparent; color: #e6e7ee; }
 #projInput:focus::placeholder { color: transparent; }
 #projInput:-webkit-autofill,
 #projInput:-webkit-autofill:hover,
 #projInput:-webkit-autofill:focus {
-  -webkit-text-fill-color: #E8E8E8;
-  -webkit-box-shadow: 0 0 0px 1000px #1C1C1C inset;
+  -webkit-text-fill-color: #e6e7ee;
+  -webkit-box-shadow: 0 0 0px 1000px #191a22 inset;
 }
 
 /* PROJECT CONTEXT MENU */
@@ -422,9 +449,9 @@ body {
 }
 
 .bulkDescBtn {
-  background: var(--accent);
-  border: 0.5px solid var(--accent);
-  color: #FFFFFF;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 10px;
   font-weight: 700;
@@ -441,8 +468,8 @@ body {
 }
 
 .bulkDescBtn:hover {
-  color: #FFFFFF;
-  background: var(--accent-text);
+  color: var(--text-primary);
+  background: var(--bg-hover);
   border-color: var(--accent-text);
 }
 
@@ -476,18 +503,22 @@ body {
   flex-direction: row;
   align-items: center;
   cursor: default;
-  background: var(--bg-surface);
+  background: var(--bg-row);
   height: var(--item-h);
   padding: 0 10px 0 12px;
   border: 0.5px solid var(--border-bright);
   border-radius: 6px;
   margin: 5px 8px;
-  transition: background 0.10s ease;
+  transition: background 0.10s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   gap: 8px;
   min-width: 0;
   overflow: hidden;
 }
 #toDoChild:hover { background: var(--bg-hover); }
+#toDoChild:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.5px var(--accent);
+}
 
 /* Grab cursor on draggable rows; grabbing during active drag */
 #projChild[draggable="true"],
@@ -536,12 +567,12 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #toDoInput {
   font-size: 13px;
-  font-family: 'Trebuchet MS', sans-serif;
+  font-family: inherit;
   background: transparent;
-  color: #E8E8E8;
+  color: #e6e7ee;
   border: none;
   letter-spacing: 0.02em;
-  caret-color: #9D8FFF;
+  caret-color: #8b7bff;
   min-width: 0;
   flex: 1 1 0;
   align-self: center;
@@ -551,8 +582,8 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:-webkit-autofill,
 #toDoInput:-webkit-autofill:hover,
 #toDoInput:-webkit-autofill:focus {
-  -webkit-text-fill-color: #E8E8E8;
-  -webkit-box-shadow: 0 0 0px 1000px #141414 inset;
+  -webkit-text-fill-color: #e6e7ee;
+  -webkit-box-shadow: 0 0 0px 1000px #0e0f14 inset;
 }
 #toDoInput::placeholder { color: var(--text-muted); font-style: italic; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
@@ -560,10 +591,11 @@ body.row-dragging * { cursor: grabbing !important; }
 
 /* DATE */
 #dateText {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #666;
+  color: var(--text-muted);
   text-align: right;
   white-space: nowrap;
   flex-shrink: 0;
@@ -584,21 +616,21 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #month, #day, #year {
   font-size: 11px;
-  font-family: 'Trebuchet MS', monospace;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   border: none;
   text-align: center;
   background: transparent;
-  color: #AAAAAA;
+  color: var(--text-secondary);
   width: 18px;
   flex-shrink: 0;
 }
 #year { width: 36px; }
 
-#month:focus, #day:focus, #year:focus { outline: none; color: #E8E8E8; }
-#month::placeholder, #day::placeholder, #year::placeholder { color: #555; }
+#month:focus, #day:focus, #year:focus { outline: none; color: #e6e7ee; }
+#month::placeholder, #day::placeholder, #year::placeholder { color: var(--text-muted); }
 #month:focus::placeholder, #day:focus::placeholder, #year:focus::placeholder { color: transparent; }
 
-#dash { font-size: 11px; color: #555; flex-shrink: 0; }
+#dash { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 #spacer { display: none; }
 
 /* DESCRIPTION TOGGLE (todo) */
@@ -614,7 +646,7 @@ body.row-dragging * { cursor: grabbing !important; }
   transition: background 0.12s ease, color 0.12s ease;
   font-size: 11px;
   line-height: 1;
-  color: #888;
+  color: var(--text-secondary);
   user-select: none;
 }
 #descToggle::after {
@@ -622,7 +654,7 @@ body.row-dragging * { cursor: grabbing !important; }
   display: block;
   transition: transform 0.2s ease;
 }
-#descToggle:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+#descToggle:hover { color: #e6e7ee; background: rgba(255,255,255,0.08); }
 #descToggle.open::after { transform: rotate(180deg); }
 
 /* CLOSE BUTTON (todo) */
@@ -638,10 +670,10 @@ body.row-dragging * { cursor: grabbing !important; }
   transition: background 0.12s ease, color 0.12s ease;
   font-size: 18px;
   line-height: 1;
-  color: #555;
+  color: var(--text-muted);
 }
 #closeButtonToDo::after { content: '×'; display: block; }
-#closeButtonToDo:hover { color: #E8E8E8; background: rgba(255,255,255,0.08); }
+#closeButtonToDo:hover { color: #e6e7ee; background: rgba(255,255,255,0.08); }
 
 /* DESCRIPTION ROW */
 #descSibling {
@@ -659,9 +691,9 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #descInput {
   font-size: 12px;
-  font-family: 'Trebuchet MS', sans-serif;
+  font-family: inherit;
   background: transparent;
-  color: #BBBBBB;
+  color: var(--text-secondary);
   border: none;
   width: 100%;
   padding: 8px 0;

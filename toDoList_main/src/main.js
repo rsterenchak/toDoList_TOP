@@ -1244,6 +1244,29 @@ function component() {
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
 
+    // Footer — version label on the left, open/done counts for the selected
+    // project on the right. Counts are recomputed by a MutationObserver that
+    // watches #mainList (todo add/remove, .completed toggle) and #sideMa
+    // (project selection class change), so they stay in sync without needing
+    // hand-wired calls at every mutation site.
+    const footVersion = document.createElement('span');
+    const footCounts  = document.createElement('div');
+    const footOpen    = document.createElement('span');
+    const footDone    = document.createElement('span');
+
+    footVersion.id = 'footVersion';
+    footVersion.textContent = 'task management v1.1';
+    footCounts.id = 'footCounts';
+    footOpen.id = 'footOpen';
+    footDone.id = 'footDone';
+    footOpen.textContent = '0 OPEN';
+    footDone.textContent = '0 DONE';
+
+    foot.appendChild(footVersion);
+    footCounts.appendChild(footOpen);
+    footCounts.appendChild(footDone);
+    foot.appendChild(footCounts);
+
     main.appendChild(main1);
     main.appendChild(sidebarResizer);
     main.appendChild(main2);
@@ -1761,7 +1784,38 @@ function component() {
 
 
 
-    return base; 
+    function updateFooterCounts() {
+        const selected = sideMain.querySelector('.selectedProject');
+        let open = 0, done = 0;
+        if (selected) {
+            const input = selected.querySelector('#projInput');
+            const name = input ? input.value.trim() : '';
+            const items = listLogic.listItems(name) || [];
+            items.forEach(function(i) {
+                if (!i.tit) return;
+                if (i.completed) done++; else open++;
+            });
+        }
+        footOpen.textContent = open + ' OPEN';
+        footDone.textContent = done + ' DONE';
+    }
+
+    const footObserver = new MutationObserver(updateFooterCounts);
+    footObserver.observe(mainList, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class']
+    });
+    footObserver.observe(sideMain, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'value']
+    });
+
+    setTimeout(updateFooterCounts, 0);
+
+    return base;
 
 };
 
