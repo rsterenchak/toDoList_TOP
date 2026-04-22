@@ -1,5 +1,7 @@
 # Project and Task Manager Application
 
+![Tests](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/test.yml/badge.svg)
+
 ## Overview
 
 This project is a simple front-end task management application built as part of CS307 (Software Engineering). The main goal of the application is to allow users to create projects and manage tasks within those projects.
