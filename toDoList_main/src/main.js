@@ -3,6 +3,58 @@ import { listLogic } from './listLogic.js';
 import button from './addProj_button.svg';
 
 
+// Returns whole days from today until dueStr. Negative = overdue.
+// Returns null for missing/invalid/blank dates. Storage format is "M-D-YYYY".
+function daysUntilDue(dueStr) {
+    if (!dueStr || dueStr === '--' || dueStr === 'X-X-XXXX') return null;
+    const parts = dueStr.split('-');
+    const m = parseInt(parts[0], 10);
+    const d = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (isNaN(m) || isNaN(d) || isNaN(y)) return null;
+    const due = new Date(y, m - 1, d);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((due - today) / 86400000);
+}
+
+// Applies/removes .due-soon and .due-overdue on a row based on its item's
+// due date. Completed rows and blank placeholders never get urgency classes.
+function applyDueUrgency(toDoChild, item) {
+    toDoChild.classList.remove('due-soon', 'due-overdue');
+    if (!item || !item.tit || item.completed) return;
+    const days = daysUntilDue(item.due);
+    if (days === null) return;
+    if (days < 0) {
+        toDoChild.classList.add('due-overdue');
+    } else if (days <= 3) {
+        toDoChild.classList.add('due-soon');
+    }
+}
+
+// Set a row's due date to today + offsetDays, update the M/D/Y inputs,
+// persist, and refresh the due-urgency styling so the chip recolors
+// immediately. Mirrors the save path wireDateInputs takes so no listener
+// needs to fire. Works on blank placeholder rows too — the input values
+// populate and are picked up when the user commits the title.
+function setRowDateOffset(month, day, year, item, toDoChild, offsetDays) {
+    const target = new Date();
+    target.setDate(target.getDate() + offsetDays);
+    const m = target.getMonth() + 1;
+    const d = target.getDate();
+    const y = target.getFullYear();
+
+    month.value = m;
+    day.value   = d;
+    year.value  = y;
+
+    item.due = m + '-' + d + '-' + y;
+    listLogic.saveToStorage();
+
+    if (typeof applyDueUrgency === 'function') applyDueUrgency(toDoChild, item);
+}
+
+
 // ── HELPER: build and wire the check-off checkbox for a todo row ──
 // Inserts the checkbox as the left-most child of toDoChild, reflects the item's
 // stored completed state, and persists changes. Blank placeholder rows pass the
@@ -31,6 +83,8 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         } else {
             toDoChild.classList.remove("completed");
         }
+
+        applyDueUrgency(toDoChild, item);
 
         // Partition completed entries to the bottom of this project's list,
         // then slide the row (plus any open description panel) into its new
@@ -109,6 +163,7 @@ function updateCompletedSection(mainListDiv) {
     const completedRows = mainListDiv.querySelectorAll('#toDoChild.completed');
     if (completedRows.length === 0) {
         mainListDiv.classList.remove('completedCollapsed');
+        updateEmptyState(mainListDiv);
         return;
     }
 
@@ -150,6 +205,146 @@ function updateCompletedSection(mainListDiv) {
     });
 
     mainListDiv.insertBefore(header, completedRows[0]);
+    updateEmptyState(mainListDiv);
+}
+
+
+// Insert a friendly empty-state block when the selected project has no
+// open (uncompleted, committed) todos. Two variants:
+//  • done > 0  → "All caught up" celebratory message
+//  • done === 0 → "No todos yet" welcome hint
+// The block contains a centered input — typing there and pressing Enter
+// creates a new todo via the same path as the normal placeholder row.
+// Idempotent; safe to call from every render path.
+function updateEmptyState(mainListDiv) {
+    if (!mainListDiv) mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+
+    // Preserve focus state across idempotent re-renders so the user can keep
+    // typing if updateEmptyState fires mid-keystroke (e.g. via the MutationObserver).
+    const prior = mainListDiv.querySelector('#emptyState');
+    const priorInput = prior ? prior.querySelector('#emptyStateInput') : null;
+    const wasFocused = priorInput && document.activeElement === priorInput;
+    const priorValue = priorInput ? priorInput.value : '';
+    const priorSelStart = priorInput ? priorInput.selectionStart : null;
+    const priorSelEnd   = priorInput ? priorInput.selectionEnd   : null;
+
+    if (prior) prior.remove();
+
+    const rows = mainListDiv.querySelectorAll('#toDoChild');
+
+    // Case A — no todo rows at all means no project is selected/exists. The
+    // only path to a todo is via a project, so this variant has no input; it
+    // simply points the user at the + button in the Projects sidebar.
+    if (rows.length === 0) {
+        mainListDiv.classList.add('emptyStatePresent');
+
+        const block = document.createElement('div');
+        block.id = 'emptyState';
+        block.classList.add('emptyStateNoProjects');
+
+        const icon = document.createElement('div');
+        icon.className = 'emptyStateIcon';
+        icon.textContent = '✦';
+
+        const title = document.createElement('div');
+        title.className = 'emptyStateTitle';
+        title.textContent = 'No projects yet';
+
+        const sub = document.createElement('div');
+        sub.className = 'emptyStateSub';
+        sub.textContent = 'Create one to get started.';
+
+        block.appendChild(icon);
+        block.appendChild(title);
+        block.appendChild(sub);
+        mainListDiv.appendChild(block);
+        return;
+    }
+
+    // Case B/C — project has rows; decide between "no todos yet" and "all caught up".
+    let open = 0, done = 0;
+    rows.forEach(function(row) {
+        const input = row.querySelector('#toDoInput');
+        const val = input ? input.value.trim() : '';
+        if (!val) return;
+        if (row.classList.contains('completed')) done++; else open++;
+    });
+
+    if (open > 0) {
+        mainListDiv.classList.remove('emptyStatePresent');
+        return;
+    }
+
+    mainListDiv.classList.add('emptyStatePresent');
+
+    const block = document.createElement('div');
+    block.id = 'emptyState';
+
+    const icon = document.createElement('div');
+    icon.className = 'emptyStateIcon';
+
+    const title = document.createElement('div');
+    title.className = 'emptyStateTitle';
+
+    const sub = document.createElement('div');
+    sub.className = 'emptyStateSub';
+
+    if (done === 0) {
+        icon.textContent  = '✦';
+        title.textContent = 'No todos yet';
+        sub.textContent   = 'Type below to add your first one.';
+    } else {
+        icon.textContent  = '✓';
+        title.textContent = 'All caught up';
+        sub.textContent   = done === 1
+            ? '1 todo completed in this project.'
+            : done + ' todos completed in this project.';
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'emptyStateInput';
+    input.autocomplete = 'off';
+    input.placeholder = 'New item';
+    input.value = priorValue;
+
+    // Commit-on-Enter — delegate to the hidden placeholder row's input so the
+    // real commit path (date defaults, blank-row rebuild, reveal controls,
+    // re-render) runs unchanged.
+    input.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') return;
+        const val = input.value.trim();
+        if (!val) return;
+        // Find the placeholder row among all #toDoChild nodes — it's the one whose
+        // own #toDoInput is currently blank. Use that specific input to commit.
+        const allRows = mainListDiv.querySelectorAll('#toDoChild');
+        let target = null;
+        for (let i = 0; i < allRows.length; i++) {
+            const pi = allRows[i].querySelector('#toDoInput');
+            if (pi && pi.value.trim() === '') { target = pi; break; }
+        }
+        if (!target) return;
+        target.value = val;
+        target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+
+    block.appendChild(icon);
+    block.appendChild(title);
+    block.appendChild(sub);
+    block.appendChild(input);
+
+    // Insert at the top of mainList. The placeholder row is hidden via CSS
+    // (#mainList.emptyStatePresent #toDoChild:first-of-type) so the block
+    // visually occupies the slot where the placeholder would be.
+    mainListDiv.insertBefore(block, mainListDiv.firstChild);
+
+    if (wasFocused) {
+        input.focus();
+        if (priorSelStart !== null && priorSelEnd !== null) {
+            try { input.setSelectionRange(priorSelStart, priorSelEnd); } catch (e) { /* ignore */ }
+        }
+    }
 }
 
 
@@ -164,6 +359,7 @@ function wireToDoRowClick(toDoChild, toDoInput) {
             e.target.id === 'closeButtonToDo' ||
             e.target.id === 'descToggle'      ||
             e.target.closest('#dueInput')     ||
+            e.target.closest('#quickDates')   ||
             e.target.closest('#descSibling')) return;
 
         // Blank rows: focus immediately (user intends to type a new item)
@@ -234,7 +430,7 @@ function setDueDatePlaceholders(month, day, year) {
 // ── HELPER: wire Enter-to-save on month/day/year inputs for a given todo item ──
 // Call after building each todo row so date changes persist even when the
 // user presses Enter while focused on a date field rather than the title.
-function wireDateInputs(month, day, year, item, toDoName) {
+function wireDateInputs(month, day, year, item, toDoName, toDoChild) {
 
     function saveDate() {
         const m = month.value || month.placeholder || 1;
@@ -242,6 +438,7 @@ function wireDateInputs(month, day, year, item, toDoName) {
         const y = year.value  || year.placeholder  || 2023;
         item["due"] = m + "-" + d + "-" + y;
         listLogic.saveToStorage();
+        if (toDoChild) applyDueUrgency(toDoChild, item);
     }
 
     [month, day, year].forEach(function(input) {
@@ -712,6 +909,9 @@ function deleteProjectFlow(projChild, projectName) {
                     const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
                     const nextItems = listLogic.listItems(nextName);
                     if (nextItems) addAllToDo_DOM(nextItems, nextName);
+                    focusBlankToDoInputIfDesktop();
+                } else {
+                    updateEmptyState(mainListEl);
                 }
             }
         }
@@ -849,6 +1049,7 @@ function attachProjectContextMenu(projChild, titleInput) {
         } else if (items) {
             addAllToDo_DOM(items, name);
         }
+        focusBlankToDoInputIfDesktop();
     }
 
     function onEdit() {
@@ -1013,6 +1214,36 @@ function buildToDoRow(item, toDoName) {
     dueInput.appendChild(day);
     dueInput.appendChild(dash2);
     dueInput.appendChild(year);
+
+    // Quick-date shortcuts — Today / Tomorrow / +1 week
+    const quickDates = document.createElement('div');
+    quickDates.id = 'quickDates';
+
+    const quickDefs = [
+        { label: 'Today',    offset: 0 },
+        { label: 'Tomorrow', offset: 1 },
+        { label: '+1w',      offset: 7 }
+    ];
+
+    quickDefs.forEach(function(def) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quickDateBtn';
+        btn.textContent = def.label;
+        btn.setAttribute('data-offset', String(def.offset));
+        btn.setAttribute('aria-label', 'Set due date: ' + def.label);
+        btn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            setRowDateOffset(month, day, year, item, toDoChild, def.offset);
+        });
+        quickDates.appendChild(btn);
+    });
+
+    // Hide on blank placeholder rows — revealed on first commit alongside the
+    // other controls (checkbox, close button, date inputs).
+    if (!item.tit) quickDates.style.display = 'none';
+
+    toDoChild.appendChild(quickDates);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
@@ -1028,8 +1259,10 @@ function buildToDoRow(item, toDoName) {
         if (!isNaN(y)) year.value  = y;
     }
 
+    applyDueUrgency(toDoChild, item);
+
     // wire helpers
-    wireDateInputs(month, day, year, item, toDoName);
+    wireDateInputs(month, day, year, item, toDoName, toDoChild);
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName);
@@ -1069,6 +1302,7 @@ function buildToDoRow(item, toDoName) {
         item.due = mv + "-" + dv + "-" + yv;
 
         listLogic.saveToStorage();
+        applyDueUrgency(toDoChild, item);
 
         // Idempotent — no-op when already visible; safely covers first-commit reveal.
         descToggle.style.display      = "flex";
@@ -1076,6 +1310,7 @@ function buildToDoRow(item, toDoName) {
         closeButtonToDo.style.display = "";
         dateText.style.display        = "";
         dueInput.style.display        = "";
+        quickDates.style.display      = "flex";
 
         toDoInput.blur();
         if (isFirstCommit) {
@@ -1641,7 +1876,8 @@ function component() {
                 // Based on the designated allProjects array, take those items and add them to the DOM in
                 // the form of toDo items
                 addAllToDo_DOM(projectArray, projectName);
-                
+                focusBlankToDoInputIfDesktop();
+
 
 
                 listLogic.listProjects();
@@ -1687,6 +1923,7 @@ function component() {
                         if(arrayValues){
                             addAllToDo_DOM(arrayValues, innerValue);
                         }
+                        focusBlankToDoInputIfDesktop();
 
                         return;
                     }
@@ -1850,10 +2087,25 @@ function collapseAllDescriptions() {
 function focusBlankToDoInput() {
     const mainListDiv = document.getElementById("mainList");
     if (!mainListDiv) return;
+    const esInput = mainListDiv.querySelector('#emptyStateInput');
+    if (esInput) { esInput.focus(); return; }
     const inputs = mainListDiv.querySelectorAll('#toDoInput');
     for (let i = 0; i < inputs.length; i++) {
         if (inputs[i].value === "") { inputs[i].focus(); return; }
     }
+}
+
+// Auto-focus the empty input when a project is entered. On touch/mobile
+// skips the focus call so the soft keyboard doesn't open uninvited — users
+// on those devices tap the input directly when they're ready to type.
+// Deferred to the next microtask so the call lands after any in-progress
+// `.blur()` (from the project-row click handler) has fully settled.
+function focusBlankToDoInputIfDesktop() {
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+    // Wait for the current event loop to flush pending blur/focus churn
+    // before we place our focus. Rendering a list synchronously can cause
+    // race conditions where an immediately-following blur wins.
+    setTimeout(focusBlankToDoInput, 0);
 }
 
 
@@ -1883,7 +2135,10 @@ function restoreFromStorage() {
 
     const savedProjects = listLogic.listProjectsArray();
 
-    if (savedProjects.length === 0) return;
+    if (savedProjects.length === 0) {
+        updateEmptyState(document.getElementById('mainList'));
+        return;
+    }
 
     savedProjects.forEach(function(projectName) {
 
@@ -1965,6 +2220,7 @@ function restoreFromStorage() {
                         addAllToDo_DOM(items, newName);
                     }
                 }
+                focusBlankToDoInputIfDesktop();
             }
 
         });
@@ -2017,6 +2273,7 @@ function restoreFromStorage() {
                         addAllToDo_DOM(items, newName);
                     }
                 }
+                focusBlankToDoInputIfDesktop();
             }
         });
 
@@ -2052,6 +2309,7 @@ function restoreFromStorage() {
                 } else if (items) {
                     addAllToDo_DOM(items, name);
                 }
+                focusBlankToDoInputIfDesktop();
 
                 return;
             }
@@ -2093,6 +2351,7 @@ function restoreFromStorage() {
     } else if (lastItems) {
         addAllToDo_DOM(lastItems, lastProject);
     }
+    focusBlankToDoInputIfDesktop();
 
 }
 

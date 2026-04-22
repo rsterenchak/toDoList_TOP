@@ -30,6 +30,8 @@
   --text-secondary:#8a8d9c;
   --text-muted:    #5a5d6b;
   --text-danger:   #e06a7a;
+  --text-warning:  #d9b86a;
+  --text-urgent:   #e06a7a;
 
   --type-feature:  #9ad0a8;
   --type-bug:      #e48a96;
@@ -268,9 +270,9 @@ body {
   grid-template-columns: 1fr 12px;
   cursor: pointer;
   background: transparent;
-  min-height: 52px;
+  min-height: 44px;
   height: auto;
-  padding: 14px 14px 14px 15px;
+  padding: 10px 14px 10px 15px;
   transition: background 0.12s ease;
   border-bottom: 0.5px solid var(--border-dim);
   border-left: 4px solid transparent;
@@ -553,6 +555,101 @@ body {
   box-shadow: 0 0 0 0.5px var(--accent);
 }
 
+/* EMPTY STATE — shown inside #mainList when the selected project has zero
+   open (uncompleted, committed) todos. Absorbs the New Item input so the
+   user has exactly one visible affordance. The blank placeholder row that
+   normally sits at the top of every project is hidden in this state. */
+#emptyState {
+  grid-column: 1 / -1;
+  grid-row: span 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 56px 16px 48px;
+  text-align: center;
+}
+
+.emptyStateIcon {
+  font-size: 32px;
+  line-height: 1;
+  color: var(--accent-text);
+}
+
+.emptyStateTitle {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  line-height: 1;
+}
+
+.emptyStateSub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+#emptyStateInput {
+  margin-top: 22px;
+  width: 300px;
+  max-width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: 0.02em;
+  caret-color: var(--accent);
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+#emptyStateInput::placeholder { color: var(--text-muted); font-style: italic; }
+#emptyStateInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+#emptyStateInput:focus::placeholder { color: transparent; }
+
+/* When the empty-state block is present, switch #mainList from its
+   fixed-row grid to a flex column so the block can center vertically
+   in the available space. Completed rows (and the Completed header)
+   follow the block in the column, giving the intended hierarchy:
+   current state on top, archive below. */
+#mainList.emptyStatePresent {
+  display: flex;
+  flex-direction: column;
+}
+
+#mainList.emptyStatePresent #emptyState {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+/* Completed section, when present alongside the empty-state, shouldn't
+   stretch — it should hug its own content at the bottom of the column. */
+#mainList.emptyStatePresent #completedHeader,
+#mainList.emptyStatePresent #toDoChild.completed,
+#mainList.emptyStatePresent #descSibling {
+  flex: 0 0 auto;
+}
+
+/* While the empty-state block is shown, the placeholder row and any
+   uncompleted todo rows are redundant. Completed rows (tucked inside the
+   Completed section) stay visible so the user can still expand and see
+   their history. */
+#mainList.emptyStatePresent #toDoChild:not(.completed) {
+  display: none;
+}
+
 /* Grab cursor on draggable rows; grabbing during active drag */
 #projChild[draggable="true"],
 #toDoChild[draggable="true"] { cursor: grab; }
@@ -645,6 +742,71 @@ body.row-dragging * { cursor: grabbing !important; }
   flex-shrink: 0;
   gap: 1px;
   min-width: 0;
+}
+
+/* DUE-DATE URGENCY — colored chip border + text when a todo is due soon
+   or already overdue. Applied to #toDoChild by applyDueUrgency in main.js;
+   completed rows never receive these classes so they stay muted. */
+
+#toDoChild.due-soon #dueInput {
+  border-color: var(--text-warning);
+}
+#toDoChild.due-soon #dateText,
+#toDoChild.due-soon #month,
+#toDoChild.due-soon #day,
+#toDoChild.due-soon #year,
+#toDoChild.due-soon #dash {
+  color: var(--text-warning);
+}
+
+#toDoChild.due-overdue #dueInput {
+  border-color: var(--text-urgent);
+  background: rgba(224, 106, 122, 0.08);
+}
+#toDoChild.due-overdue #dateText,
+#toDoChild.due-overdue #month,
+#toDoChild.due-overdue #day,
+#toDoChild.due-overdue #year,
+#toDoChild.due-overdue #dash {
+  color: var(--text-urgent);
+}
+
+/* QUICK-DATE SHORTCUTS — three small buttons inline with the due-date chip.
+   Hidden on blank placeholder rows (revealed on first commit alongside the
+   other row controls). */
+#quickDates {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.quickDateBtn {
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.quickDateBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--accent-text);
+}
+
+.quickDateBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 #month, #day, #year {
@@ -907,8 +1069,19 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #projChild {
-    min-height: 56px;
-    padding: 16px 14px 16px 16px;
+    min-height: 48px;
+    padding: 12px 14px 12px 16px;
+  }
+
+  .quickDateBtn {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  #emptyStateInput {
+    font-size: 16px !important;
+    width: 100%;
+    max-width: 320px;
   }
 
   #projButton {
@@ -959,6 +1132,14 @@ body.row-dragging * { cursor: grabbing !important; }
      the centered "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
+
+  /* Narrow phones — hide the two longer labels, keep only "+1W" as an icon.
+     The full triple-input date chip remains tappable for specific dates. */
+  #quickDates .quickDateBtn[data-offset="0"],
+  #quickDates .quickDateBtn[data-offset="1"] { display: none; }
+
+  #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
+  .emptyStateIcon { font-size: 26px; }
 }
 
 /* ══════════════════════════════════════════
@@ -975,4 +1156,16 @@ body.row-dragging * { cursor: grabbing !important; }
     max-width: 1400px;
     margin: 0 auto;
   }
+}
+
+/* When the project list is empty, gently pulse the + button to guide the
+   user toward the single possible next action. The pulse stops the moment
+   a #projChild exists (even before it's committed). */
+@keyframes projButtonAttention {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
+#sideMa:not(:has(#projChild)) #projButton {
+  animation: projButtonAttention 2.4s ease-in-out infinite;
 }
