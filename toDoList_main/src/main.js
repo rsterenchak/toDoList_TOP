@@ -4,6 +4,45 @@ import { changelog, getNewestChangelogDate } from './changelog.js';
 import button from './addProj_button.svg';
 
 
+// ── THEME (light / dark) ──
+// Dark is the default; light is a user-toggleable alternative. The chosen
+// theme is expressed as a `data-theme` attribute on <html>, which CSS
+// variable overrides in style.css key off. Applied at module load (before
+// component() builds the DOM) so the first paint already matches the saved
+// preference — no dark-to-light flash on reload.
+const THEME_KEY = 'todoapp_theme';
+
+function readStoredTheme() {
+    try {
+        const saved = localStorage.getItem(THEME_KEY);
+        return saved === 'light' || saved === 'dark' ? saved : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function resolveInitialTheme() {
+    const saved = readStoredTheme();
+    if (saved) return saved;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+    }
+    return 'dark';
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+}
+
+function getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+}
+
+// Runs during import, before component() — sets data-theme on <html> before
+// any rendering happens.
+applyTheme(resolveInitialTheme());
+
+
 // Returns whole days from today until dueStr. Negative = overdue.
 // Returns null for missing/invalid/blank dates. Storage format is "M-D-YYYY".
 function daysUntilDue(dueStr) {
@@ -1655,6 +1694,38 @@ function component() {
 
     // sidebarToggle is first child of nav so nothing can overlap it
     nav.appendChild(sidebarToggle);
+
+    // ── theme toggle (far right of nav, mirrors the ☰ on the left) ──
+    // Pill-switch: track fills with accent and thumb slides right when
+    // light theme is active. Click toggles data-theme on <html> — every
+    // component recolors for free via the CSS variable ramp in style.css.
+    const themeToggle      = document.createElement('button');
+    const themeToggleThumb = document.createElement('span');
+
+    themeToggle.id   = 'themeToggle';
+    themeToggle.type = 'button';
+    themeToggle.setAttribute('role', 'switch');
+    themeToggle.setAttribute('aria-label', 'Toggle light theme');
+    themeToggleThumb.className = 'themeToggleThumb';
+    themeToggle.appendChild(themeToggleThumb);
+
+    function syncThemeToggle() {
+        themeToggle.setAttribute('aria-checked', getCurrentTheme() === 'light' ? 'true' : 'false');
+    }
+    syncThemeToggle();
+
+    themeToggle.addEventListener('click', function () {
+        const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+        document.documentElement.classList.add('theme-transitioning');
+        applyTheme(next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore quota/private-mode */ }
+        syncThemeToggle();
+        setTimeout(function () {
+            document.documentElement.classList.remove('theme-transitioning');
+        }, 220);
+    });
+
+    nav.appendChild(themeToggle);
 
     base.appendChild(nav);
     base.appendChild(main);

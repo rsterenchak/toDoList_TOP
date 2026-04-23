@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-04-23',
         added: [
             'Collapsible "Completed" section for checked-off todos.',
+            'Light theme toggle in the nav bar, honoring system preference on first load and remembering your choice after.',
         ],
         fixed: [
             'Due date field restored on mobile layouts below 420px.',

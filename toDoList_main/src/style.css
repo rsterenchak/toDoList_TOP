@@ -8,7 +8,7 @@
   src: url('./SpaceMono-Regular.ttf');
 }
 
-/* ── VOID THEME ── */
+/* ── VOID THEME (dark — default) ── */
 
 :root {
   --bg-base:       #0e0f14;
@@ -46,6 +46,50 @@
   --row-h:         48px;
   --item-h:        44px;
   --touch:         44px;
+}
+
+/* ── LIGHT THEME ──
+   Cool-neutral inverse of the void palette — slate-tinted off-white base,
+   darker purple accent tuned for contrast on light fills. Every existing
+   component recolors for free via the same bg/border/text/accent/type
+   token ramp; no per-element overrides live in this file. */
+:root[data-theme="light"] {
+  --bg-base:       #e8eaef;
+  --bg-elevated:   #f0f2f7;
+  --bg-surface:    #f8f9fc;
+  --bg-row:        #ffffff;
+  --bg-hover:      #dde0ea;
+  --bg-active:     #e5e7f0;
+
+  --border-dim:    #d0d3dd;
+  --border-mid:    #b8bcc8;
+  --border-bright: #969aaa;
+
+  --accent:        #5d4eca;
+  --accent-dim:    rgba(93, 78, 202, 0.18);
+  --accent-text:   #4a3bb8;
+
+  --text-primary:  #1d1f28;
+  --text-secondary:#50535f;
+  --text-muted:    #787b87;
+  --text-danger:   #b43446;
+  --text-warning:  #9a7b2a;
+  --text-urgent:   #b43446;
+
+  --type-feature:  #317a4c;
+  --type-bug:      #b13a4a;
+  --type-modify:   #8a6119;
+}
+
+/* While a theme swap is in progress, animate bg/border/color across the tree
+   so the palette eases between states rather than snapping. Class is added
+   and removed around the toggle click in main.js so this cost is only paid
+   during the actual swap — hover/drag transitions keep their existing timing. */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
 }
 
 /* ── RESET ── */
@@ -109,8 +153,54 @@ body {
 }
 
 #sidebarToggle:hover {
-  color: #fff;
+  color: var(--text-primary);
   background: var(--bg-hover);
+}
+
+/* THEME TOGGLE — pill-switch on the right edge of the nav bar.
+   Track fills with accent when light theme is active; thumb slides to the
+   right. Mirrors the sidebar ☰ toggle's 36px tap area via the padded track.
+   `margin-left: auto` pushes it past #sidebarToggle to the far right. */
+#themeToggle {
+  margin-left: auto;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+#themeToggle:hover {
+  border-color: var(--accent);
+}
+#themeToggle:focus { outline: none; }
+#themeToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.themeToggleThumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: left 0.18s ease, background 0.18s ease;
+  pointer-events: none;
+}
+#themeToggle[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#themeToggle[aria-checked="true"] .themeToggleThumb {
+  left: calc(100% - 19px);
+  background: #fff;
 }
 
 /* FOOTER */
@@ -343,13 +433,13 @@ body {
   text-overflow: ellipsis;
 }
 #projInput::placeholder { color: var(--text-muted); font-style: italic; }
-#projInput:focus { outline: none; background: transparent; color: #e6e7ee; }
+#projInput:focus { outline: none; background: transparent; color: var(--text-primary); }
 #projInput:focus::placeholder { color: transparent; }
 #projInput:-webkit-autofill,
 #projInput:-webkit-autofill:hover,
 #projInput:-webkit-autofill:focus {
-  -webkit-text-fill-color: #e6e7ee;
-  -webkit-box-shadow: 0 0 0px 1000px #191a22 inset;
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
 }
 
 /* PROJECT CONTEXT MENU */
@@ -372,7 +462,7 @@ body {
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
-.projContextMenuItem:hover { background: var(--bg-hover); color: #fff; }
+.projContextMenuItem:hover { background: var(--bg-hover); color: var(--text-primary); }
 .projContextMenuItem.danger { color: var(--text-danger); }
 .projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
 
@@ -793,7 +883,7 @@ body {
 #emptyStateCreateBtn {
   margin-top: 18px;
   padding: 12px 20px;
-  background: #7567e6;
+  background: var(--accent);
   border: none;
   border-radius: var(--radius-md);
   color: #fff;
@@ -808,8 +898,7 @@ body {
 #emptyStateCreateBtn:hover { filter: brightness(1.1); }
 #emptyStateCreateBtn:active {
   transform: scale(0.97);
-  background: #5e52c2;
-  filter: none;
+  filter: brightness(0.9);
 }
 #emptyStateCreateBtn:focus {
   outline: none;
@@ -921,10 +1010,10 @@ body.row-dragging * { cursor: grabbing !important; }
   font-size: 13px;
   font-family: inherit;
   background: transparent;
-  color: #e6e7ee;
+  color: var(--text-primary);
   border: none;
   letter-spacing: 0.02em;
-  caret-color: #8b7bff;
+  caret-color: var(--accent);
   min-width: 0;
   flex: 1 1 0;
   align-self: center;
@@ -934,8 +1023,8 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:-webkit-autofill,
 #toDoInput:-webkit-autofill:hover,
 #toDoInput:-webkit-autofill:focus {
-  -webkit-text-fill-color: #e6e7ee;
-  -webkit-box-shadow: 0 0 0px 1000px #0e0f14 inset;
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-base) inset;
 }
 #toDoInput::placeholder { color: var(--text-muted); font-style: italic; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
@@ -1071,7 +1160,7 @@ body.row-dragging * { cursor: grabbing !important; }
   display: block;
   transition: transform 0.2s ease;
 }
-#descToggle:hover { color: #e6e7ee; background: rgba(255,255,255,0.08); }
+#descToggle:hover { color: var(--text-primary); background: var(--bg-hover); }
 #descToggle.open::after { transform: rotate(180deg); }
 
 /* CLOSE BUTTON (todo) */
@@ -1090,7 +1179,7 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-muted);
 }
 #closeButtonToDo::after { content: '×'; display: block; }
-#closeButtonToDo:hover { color: #e6e7ee; background: rgba(255,255,255,0.08); }
+#closeButtonToDo:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 /* DESCRIPTION ROW */
 #descSibling {
@@ -1143,7 +1232,7 @@ body.row-dragging * { cursor: grabbing !important; }
   transition: color 0.12s ease, background 0.12s ease;
 }
 #completedHeader:hover {
-  color: #FFFFFF;
+  color: var(--text-primary);
   background: var(--bg-hover);
 }
 #completedHeader:focus-visible {
