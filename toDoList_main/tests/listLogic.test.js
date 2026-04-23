@@ -154,6 +154,30 @@ describe('listLogic — completed sorting', () => {
 
         expect(listLogic.listItems('Work')[0].tit).toBe('');
     });
+
+    it('sortCompletedToBottom re-creates a blank placeholder when none exists', () => {
+        // Regression guard for the blur-and-return placeholder bug: the UI
+        // layer's keyup handler mutates the blank row's item.tit as the user
+        // types, leaving the project with no item whose title is "". The
+        // Enter handler's first-commit path relies on sortCompletedToBottom
+        // (via appendNewToDoRow) to reintroduce the blank so the user has a
+        // typeable row after committing. If this invariant ever breaks, the
+        // fix in main.js's buildToDoRow silently regresses.
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+
+        const items = listLogic.listItems('Work');
+        const formerBlank = items.find(i => i.tit === '');
+        expect(formerBlank).toBeDefined();
+        formerBlank.tit = 'Foo';   // simulate keyup mutation — blank is consumed
+
+        listLogic.sortCompletedToBottom('Work');
+
+        const titles = listLogic.listItems('Work').map(i => i.tit);
+        expect(titles[0]).toBe('');        // a fresh blank exists at the top
+        expect(titles).toContain('Foo');   // the mutated value survives
+        expect(titles.filter(t => t === '')).toHaveLength(1);
+    });
 });
 
 

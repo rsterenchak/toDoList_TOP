@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix blank placeholder row disappearing when a new todo is committed after a blur-and-return
+- [x] **[MEDIUM]** Fix blank placeholder row disappearing when a new todo is committed after a blur-and-return
   - Description: When the user clicks into the blank placeholder row's `#toDoInput`, types a title, clicks away (blur), then clicks back into the same row and presses Enter, the typed title takes over the placeholder's DOM slot and no fresh "New Item" row is spawned above it — the project is left with no row to type into until the user switches projects and back, which routes through `addToDos_restore` → `listLogic.sortCompletedToBottom` and re-creates the blank. Expected behavior is identical to a normal first-commit: Enter commits the title and a fresh blank row appears at the top, ready for the next item. Root cause lives in `buildToDoRow` in `toDoList_main/src/main.js`: the `keyup` handler on `#toDoInput` writes every keystroke into `item.tit` on the live data-model row, and the `focus` handler captures `savedTitle = item.tit || ...` on every focus — so on the second focus after a blur, `savedTitle` sees the already-typed text, and the Enter handler's `isFirstCommit = (savedTitle === "")` check evaluates false. That skips `appendNewToDoRow(toDoName)` (which would have re-created the blank via `sortCompletedToBottom`) and falls to `focusBlankToDoInput`, which has no blank to focus because none exists. Fix direction: base the first-commit decision on whether a blank placeholder actually exists in `listLogic.listItems(toDoName)` (checking other items, not this row's own `item`) rather than on `savedTitle`, and call `appendNewToDoRow` when none is present. Alternatively, capture `savedTitle` once at row-creation time rather than on every focus — though this leaves the keyup-to-`item.tit` mutation as a ticking hazard for any future code that inspects `item.tit` during editing.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-23 (PR #<number>)
 
 ## Features
 
