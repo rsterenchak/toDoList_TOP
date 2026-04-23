@@ -793,7 +793,7 @@ body {
 #emptyStateCreateBtn {
   margin-top: 18px;
   padding: 12px 20px;
-  background: var(--accent);
+  background: #7567e6;
   border: none;
   border-radius: var(--radius-md);
   color: #fff;
@@ -803,9 +803,14 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: filter 0.12s ease, box-shadow 0.12s ease;
+  transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease, background 0.12s ease;
 }
 #emptyStateCreateBtn:hover { filter: brightness(1.1); }
+#emptyStateCreateBtn:active {
+  transform: scale(0.97);
+  background: #5e52c2;
+  filter: none;
+}
 #emptyStateCreateBtn:focus {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);

@@ -263,6 +263,13 @@ function updateEmptyState(mainListDiv) {
         createBtn.addEventListener('click', function() {
             const projBtn = document.getElementById('projButton');
             if (projBtn) projBtn.click();
+            // focus the newly-appended project input so the user can type immediately
+            const sideMaDiv = document.getElementById('sideMa');
+            if (sideMaDiv) {
+                const inputs = sideMaDiv.querySelectorAll('#projInput');
+                const last = inputs[inputs.length - 1];
+                if (last) last.focus();
+            }
         });
 
         block.appendChild(icon);
