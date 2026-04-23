@@ -1593,9 +1593,11 @@ function deleteProjectFlow(projChild, projectName) {
                     const nextInput = nextRow.querySelector('#projInput');
                     const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
                     const nextItems = listLogic.listItems(nextName);
+                    applyProjectAccent(mainListEl, listLogic.getProjectColor(nextName));
                     if (nextItems) addAllToDo_DOM(nextItems, nextName);
                     focusBlankToDoInputIfDesktop();
                 } else {
+                    applyProjectAccent(mainListEl, null);
                     updateEmptyState(mainListEl);
                 }
             }
