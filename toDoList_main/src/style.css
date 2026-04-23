@@ -815,6 +815,7 @@ body {
   gap: 8px;
   min-width: 0;
   overflow: hidden;
+  position: relative;
 }
 #toDoChild:hover { background: var(--bg-hover); }
 #toDoChild:focus-within {
@@ -966,6 +967,79 @@ body {
 #toDoChild[draggable="true"] { cursor: grab; }
 body.row-dragging,
 body.row-dragging * { cursor: grabbing !important; }
+
+/* ── SWIPE GESTURES (touch) ──
+   Horizontal swipe-to-complete / swipe-to-delete reveals a colored action
+   pane behind the row that grows with the swipe distance. Widths, opacity,
+   and the row-content translation are driven off --swipe-dx / --swipe-width /
+   --swipe-progress set by the gesture handler in main.js. */
+.swipeActionPane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+  z-index: 0;
+}
+
+.swipeActionLeft {
+  left: 0;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  justify-content: flex-end;
+  padding-right: 14px;
+}
+
+.swipeActionRight {
+  right: 0;
+  background: rgba(224, 106, 122, 0.18);
+  color: var(--text-danger);
+  justify-content: flex-start;
+  padding-left: 14px;
+}
+
+:root[data-theme="light"] .swipeActionRight {
+  background: rgba(180, 52, 70, 0.18);
+}
+
+.swipeActionGlyph {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+#toDoChild.swipe-right .swipeActionLeft,
+#toDoChild.swipe-left  .swipeActionRight {
+  width: var(--swipe-width, 0px);
+  opacity: var(--swipe-progress, 0);
+}
+
+#toDoChild.swiping > *:not(.swipeActionPane),
+#toDoChild.swipe-releasing > *:not(.swipeActionPane) {
+  transform: translate3d(var(--swipe-dx, 0px), 0, 0);
+  will-change: transform;
+}
+
+#toDoChild.swipe-releasing > *:not(.swipeActionPane) {
+  transition: transform 0.26s ease;
+}
+#toDoChild.swipe-releasing .swipeActionLeft,
+#toDoChild.swipe-releasing .swipeActionRight {
+  transition: width 0.26s ease, opacity 0.26s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toDoChild.swipe-releasing > *:not(.swipeActionPane),
+  #toDoChild.swipe-releasing .swipeActionLeft,
+  #toDoChild.swipe-releasing .swipeActionRight {
+    transition: none;
+  }
+}
 
 /* CHECK-OFF CHECKBOX (todo) */
 #checkToDo {

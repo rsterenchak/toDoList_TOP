@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-23',
         added: [
-            'Light theme toggle in the nav bar, honoring system preference on first load and remembering your choice after.',
+            'Todo rows now support swipe-to-complete (right) and swipe-to-delete (left) on touch devices.',
         ],
         fixed: [
             'Due date field restored on mobile layouts below 420px.',

@@ -558,6 +558,23 @@ const TOUCH_ARM_MS         = 180;   // hold before a touch-drag arms
 const TOUCH_ARM_MOVE_PX    = 8;     // pre-arm move that cancels the arm (treat as scroll)
 const AUTOSCROLL_EDGE_PX   = 40;    // distance from edge that triggers auto-scroll
 const AUTOSCROLL_STEP_PX   = 8;     // pixels scrolled per tick while in the edge zone
+const SWIPE_THRESHOLD_PX   = 80;    // horizontal distance that commits a swipe action
+const SWIPE_SNAPBACK_MS    = 260;   // release-below-threshold snap-back duration
+
+function isCoarsePointer() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+}
+
+function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function resetSwipeRow(row) {
+    row.classList.remove('swiping', 'swipe-releasing', 'swipe-right', 'swipe-left');
+    row.style.removeProperty('--swipe-dx');
+    row.style.removeProperty('--swipe-width');
+    row.style.removeProperty('--swipe-progress');
+}
 
 function getDropIndicator() {
     if (!dropIndicator) {
@@ -672,6 +689,8 @@ function autoScrollIfNeeded(scrollEl, clientY) {
 //                     (blank placeholder or not-yet-committed rows return false)
 //   onReorder       — (fromIdx, toIdx) => void, commits the reorder to the model
 //                     and/or re-renders the DOM
+//   swipe           — optional { onRight, onLeft } — enables horizontal swipe
+//                     gestures on touch devices. Same isDraggable gate applies.
 function setupRowDrag(row, cfg) {
 
     // Caller sets/unsets row.draggable based on row state — blank placeholder
@@ -725,12 +744,22 @@ function setupRowDrag(row, cfg) {
         });
     }
 
-    // ── Touch drag (mobile) ──
-    // Holds for TOUCH_ARM_MS to arm; movement before arming cancels (native scroll stays).
-    // Once armed, subsequent moves drive the indicator and preventDefault to stop scroll.
+    // ── Touch drag + swipe (mobile) ──
+    // Holds for TOUCH_ARM_MS to arm a vertical reorder drag; movement before arming
+    // is normally treated as native scroll. On swipe-enabled rows, horizontal-dominant
+    // pre-arm motion promotes the gesture into swipe mode instead. Once either mode
+    // commits, the other is locked out for that gesture.
     row.addEventListener('touchstart', function(event) {
         if (event.touches.length !== 1) return;
         if (!cfg.isDraggable()) return;
+
+        // A new gesture cancels any pending swipe snap-back on this row so
+        // the starting transform snaps to the user's finger cleanly.
+        if (row._swipeReleaseTimer) {
+            clearTimeout(row._swipeReleaseTimer);
+            row._swipeReleaseTimer = null;
+            resetSwipeRow(row);
+        }
 
         const t = event.touches[0];
         const startX = t.clientX;
@@ -744,6 +773,9 @@ function setupRowDrag(row, cfg) {
             lastY:  startY,
             armed: false,
             moved: false,  // first-move flag — visual state applied only then
+            mode: null,    // null | 'swipe'; drag mode uses `armed + moved` flags
+            swipeDx: 0,
+            swipeCfg: (cfg.swipe && isCoarsePointer()) ? cfg.swipe : null,
             armTimer: setTimeout(function() { state.armed = true; }, TOUCH_ARM_MS)
         };
 
@@ -756,17 +788,46 @@ function setupRowDrag(row, cfg) {
 
         const t = event.touches[0];
 
-        if (!state.armed) {
-            // Pre-arm: movement beyond threshold cancels — user is scrolling, not dragging.
-            if (Math.abs(t.clientX - state.startX) > TOUCH_ARM_MOVE_PX ||
-                Math.abs(t.clientY - state.startY) > TOUCH_ARM_MOVE_PX) {
-                clearTimeout(state.armTimer);
+        if (state.mode !== 'swipe' && !state.armed) {
+            const dx = t.clientX - state.startX;
+            const dy = t.clientY - state.startY;
+            const adx = Math.abs(dx);
+            const ady = Math.abs(dy);
+
+            if (adx <= TOUCH_ARM_MOVE_PX && ady <= TOUCH_ARM_MOVE_PX) return;
+
+            clearTimeout(state.armTimer);
+
+            // Horizontal-dominant intent on a swipe-enabled row takes over.
+            // Vertical-dominant motion surrenders to native scroll, and once
+            // that happens swipe can't reclaim the gesture either.
+            if (state.swipeCfg && adx > ady) {
+                state.mode = 'swipe';
+                row.classList.add('swiping');
+                row.classList.toggle('swipe-right', dx > 0);
+                row.classList.toggle('swipe-left',  dx < 0);
+            } else {
                 touchDragState = null;
+                return;
             }
+        }
+
+        if (state.mode === 'swipe') {
+            if (event.cancelable) event.preventDefault();
+            const dx = t.clientX - state.startX;
+            state.swipeDx = dx;
+            // Switch direction classes if the user reverses mid-gesture so
+            // only the correct action pane is ever visible.
+            row.classList.toggle('swipe-right', dx > 0);
+            row.classList.toggle('swipe-left',  dx < 0);
+            row.style.setProperty('--swipe-dx', dx + 'px');
+            row.style.setProperty('--swipe-width', Math.abs(dx) + 'px');
+            const progress = Math.min(Math.abs(dx) / SWIPE_THRESHOLD_PX, 1);
+            row.style.setProperty('--swipe-progress', progress.toFixed(3));
             return;
         }
 
-        // Armed — suppress native scroll and drive the indicator.
+        // Armed drag — suppress native scroll and drive the indicator.
         if (event.cancelable) event.preventDefault();
         state.lastY = t.clientY;
         if (!state.moved) {
@@ -784,6 +845,37 @@ function setupRowDrag(row, cfg) {
         const state = touchDragState;
         if (!state || state.row !== row) return;
         clearTimeout(state.armTimer);
+
+        if (state.mode === 'swipe') {
+            const dx = state.swipeDx || 0;
+            const past = Math.abs(dx) >= SWIPE_THRESHOLD_PX;
+
+            if (past) {
+                // Reset visual state first so the row doesn't linger translated
+                // while a follow-up modal (delete confirm) or sort (complete)
+                // animates in. Actions reuse the existing change/click paths.
+                resetSwipeRow(row);
+                if (dx > 0 && state.swipeCfg.onRight) state.swipeCfg.onRight();
+                else if (dx < 0 && state.swipeCfg.onLeft) state.swipeCfg.onLeft();
+            } else if (prefersReducedMotion()) {
+                resetSwipeRow(row);
+            } else {
+                row.classList.remove('swiping');
+                row.classList.add('swipe-releasing');
+                row.style.setProperty('--swipe-dx', '0px');
+                row.style.setProperty('--swipe-width', '0px');
+                row.style.setProperty('--swipe-progress', '0');
+                row._swipeReleaseTimer = setTimeout(function() {
+                    row._swipeReleaseTimer = null;
+                    if (row.classList.contains('swipe-releasing')) {
+                        resetSwipeRow(row);
+                    }
+                }, SWIPE_SNAPBACK_MS);
+            }
+
+            touchDragState = null;
+            return;
+        }
 
         if (state.armed && state.moved) {
             const siblings = draggableSiblings(cfg.container, cfg.itemSelector);
@@ -1448,7 +1540,24 @@ function deleteProjectFlow(projChild, projectName) {
 // the title state so blank placeholder rows never participate in reorder
 // math, and text selection inside the title input isn't hijacked by the
 // browser's drag handler during editing.
-function attachToDoDrag(toDoChild, toDoInput, project) {
+// `swipeTargets` (optional) wires horizontal swipe-to-complete / swipe-to-delete
+// on touch devices. Reuses the existing checkbox change and close-button click
+// paths so persistence and delete confirmation stay identical.
+function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
+
+    const swipeCfg = swipeTargets ? {
+        onRight: function() {
+            const cb = swipeTargets.checkToDo;
+            if (!cb || cb.style.display === 'none') return;
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change'));
+        },
+        onLeft: function() {
+            const btn = swipeTargets.closeButtonToDo;
+            if (!btn || btn.style.display === 'none') return;
+            btn.click();
+        }
+    } : null;
 
     setupRowDrag(toDoChild, {
         container: document.getElementById('mainList'),
@@ -1469,7 +1578,8 @@ function attachToDoDrag(toDoChild, toDoInput, project) {
             // the user released. Existing rows are moved (not recreated),
             // so listeners and any open description panels are preserved.
             reorderToDoDOM(activeProject);
-        }
+        },
+        swipe: swipeCfg
     });
 
     function syncDraggable() {
@@ -1707,7 +1817,30 @@ function buildToDoRow(item, toDoName) {
     descInput.value = "";
     descInput.style.border = "none";
 
+    // Swipe action panes — absolute-positioned fills revealed behind the row
+    // on touch horizontal swipe. Kept as the first children so a default
+    // stacking context places them below the row content. Styling lives in
+    // style.css; visibility is driven by `--swipe-dx` / `--swipe-progress`
+    // CSS variables set on the row while a swipe gesture is active.
+    const swipePaneLeft  = document.createElement('div');
+    swipePaneLeft.className = 'swipeActionPane swipeActionLeft';
+    swipePaneLeft.setAttribute('aria-hidden', 'true');
+    const swipeGlyphLeft = document.createElement('span');
+    swipeGlyphLeft.className = 'swipeActionGlyph';
+    swipeGlyphLeft.textContent = '✓';
+    swipePaneLeft.appendChild(swipeGlyphLeft);
+
+    const swipePaneRight = document.createElement('div');
+    swipePaneRight.className = 'swipeActionPane swipeActionRight';
+    swipePaneRight.setAttribute('aria-hidden', 'true');
+    const swipeGlyphRight = document.createElement('span');
+    swipeGlyphRight.className = 'swipeActionGlyph';
+    swipeGlyphRight.textContent = '✕';
+    swipePaneRight.appendChild(swipeGlyphRight);
+
     // assemble DOM tree
+    toDoChild.appendChild(swipePaneLeft);
+    toDoChild.appendChild(swipePaneRight);
     toDoChild.appendChild(toDoInput);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
@@ -1729,7 +1862,7 @@ function buildToDoRow(item, toDoName) {
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
-    attachToDoDrag(toDoChild, toDoInput, toDoName);
+    attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
     wireToDoRowClick(toDoChild, toDoInput);
 
     toDoChild.setAttribute("data-value", toDoName);
