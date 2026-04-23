@@ -7,13 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-23',
         added: [
-            'Prominent "Create your first project" button on the first-run empty state.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-23',
-        added: [
             'Collapsible "Completed" section for checked-off todos.',
         ],
         fixed: [
