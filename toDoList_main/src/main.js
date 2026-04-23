@@ -1877,12 +1877,15 @@ function buildToDoRow(item, toDoName) {
         const val = toDoInput.value.trim();
         if (!val) return;
 
-        // savedTitle is captured on focus — "" means this row was the blank
-        // placeholder when the user started editing, so Enter is a first-commit
-        // and should spawn a fresh blank. A non-empty savedTitle means the row
-        // was already committed, so Enter is a re-commit and should only shift
-        // focus to the existing blank placeholder without rebuilding the list.
-        const isFirstCommit = (savedTitle === "");
+        // First-commit means the project has no blank placeholder above this
+        // row — so Enter must spawn one. Check the data model directly rather
+        // than savedTitle: the keyup handler mutates this row's item.tit as
+        // the user types, so after a blur-and-return, savedTitle is captured
+        // non-empty on the second focus and the old savedTitle === "" gate
+        // would miss the missing-blank case.
+        const siblingItems = (listLogic.listItems(toDoName) || []).filter(function(i) { return i !== item; });
+        const hasBlankPlaceholder = siblingItems.some(function(i) { return !i.tit; });
+        const isFirstCommit = !hasBlankPlaceholder;
 
         toDoInput.value = val;
         item.tit = val;

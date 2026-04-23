@@ -6,12 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-23',
-        added: [
-            'Todo rows now support swipe-to-complete (right) and swipe-to-delete (left) on touch devices.',
-        ],
         fixed: [
             'Due date field restored on mobile layouts below 420px.',
             'Drag-and-drop reordering now keeps completed items at the bottom.',
+            'Blank todo input now reliably reappears after committing a title, even when the user clicked away and returned before pressing Enter.',
         ],
         changed: [
             'Project row drag handle now covers the full row, including empty space after short titles.',
