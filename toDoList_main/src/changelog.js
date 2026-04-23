@@ -6,13 +6,15 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-23',
+        added: [
+            'Per-project accent colors — pick a swatch from a project\'s right-click menu to recolor its sidebar highlight and due-date pill borders.',
+        ],
         fixed: [
             'Due date field restored on mobile layouts below 420px.',
             'Drag-and-drop reordering now keeps completed items at the bottom.',
             'Blank todo input now reliably reappears after committing a title, even when the user clicked away and returned before pressing Enter.',
         ],
         changed: [
-            'Project row drag handle now covers the full row, including empty space after short titles.',
             'Due date picker now opens a month-view calendar from the row\'s date pill, with quick shortcuts and a Clear option.',
         ],
     },

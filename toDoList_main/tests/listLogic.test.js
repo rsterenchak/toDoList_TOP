@@ -270,9 +270,12 @@ describe('listLogic — storage', () => {
         const raw = localStorage.getItem('allProjects');
         expect(raw).not.toBeNull();
 
+        // Shape per project is now { items: [...], color: null|string } so
+        // each entry can persist its own accent color alongside its todos.
         const parsed = JSON.parse(raw);
         expect(Object.keys(parsed)).toContain('Groceries');
-        expect(parsed.Groceries.map(i => i.tit)).toContain('Milk');
+        expect(parsed.Groceries.items.map(i => i.tit)).toContain('Milk');
+        expect(parsed.Groceries.color).toBeNull();
     });
 
     it('_reset clears both in-memory state and localStorage', () => {
@@ -281,6 +284,45 @@ describe('listLogic — storage', () => {
 
         expect(listLogic.listProjectsArray()).toEqual([]);
         expect(localStorage.getItem('allProjects')).toBeNull();
+    });
+});
+
+
+// ── PER-PROJECT COLOR ─────────────────────────────────────────────
+describe('listLogic — per-project color', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Groceries');
+    });
+
+    it('new projects default to null color (theme accent)', () => {
+        expect(listLogic.getProjectColor('Groceries')).toBeNull();
+    });
+
+    it('setProjectColor stores a valid color key', () => {
+        listLogic.setProjectColor('Groceries', 'blue');
+        expect(listLogic.getProjectColor('Groceries')).toBe('blue');
+    });
+
+    it('setProjectColor with null resets back to the theme accent', () => {
+        listLogic.setProjectColor('Groceries', 'red');
+        listLogic.setProjectColor('Groceries', null);
+        expect(listLogic.getProjectColor('Groceries')).toBeNull();
+    });
+
+    it('setProjectColor ignores unknown color keys', () => {
+        listLogic.setProjectColor('Groceries', 'not-a-real-color');
+        expect(listLogic.getProjectColor('Groceries')).toBeNull();
+    });
+
+    it('color survives save to localStorage', () => {
+        listLogic.setProjectColor('Groceries', 'green');
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        expect(parsed.Groceries.color).toBe('green');
+    });
+
+    it('getProjectColor returns null for a missing project', () => {
+        expect(listLogic.getProjectColor('DoesNotExist')).toBeNull();
     });
 });
 
