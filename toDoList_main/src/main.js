@@ -1,5 +1,6 @@
 import './style.css';
 import { listLogic } from './listLogic.js';
+import { changelog, getNewestChangelogDate } from './changelog.js';
 import button from './addProj_button.svg';
 
 
@@ -860,6 +861,170 @@ function showConfirmModal(options) {
     document.addEventListener('keydown', onKeydown, true);
 }
 
+// ── CHANGELOG MODAL ──
+// Footer version label opens this: a dismissible dialog listing version
+// history from changelog.js. Mirrors showConfirmModal's backdrop + Escape +
+// backdrop-click dismissal, but swaps the confirm/cancel footer for a single
+// Close button and adds an explicit corner X.
+const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
+
+function readChangelogLastSeen() {
+    try {
+        return localStorage.getItem(CHANGELOG_LAST_SEEN_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeChangelogLastSeen(dateStr) {
+    try {
+        localStorage.setItem(CHANGELOG_LAST_SEEN_KEY, dateStr);
+    } catch (e) {
+        // localStorage can throw in private-browsing or quota-exceeded states;
+        // the dot re-appears next load, which is acceptable.
+    }
+}
+
+// ISO YYYY-MM-DD strings sort lexicographically, so string compare suffices.
+function hasUnseenChangelog() {
+    const newest = getNewestChangelogDate();
+    if (!newest) return false;
+    const lastSeen = readChangelogLastSeen();
+    if (!lastSeen) return true;
+    return newest > lastSeen;
+}
+
+function updateChangelogDot() {
+    const dot = document.getElementById('changelogDot');
+    if (!dot) return;
+    dot.style.display = hasUnseenChangelog() ? 'inline-block' : 'none';
+}
+
+function showChangelogModal() {
+    const prior = document.getElementById('changelogModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'changelogModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'changelogModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'changelogModalTitle');
+
+    const header = document.createElement('div');
+    header.id = 'changelogModalHeader';
+
+    const title = document.createElement('div');
+    title.id = 'changelogModalTitle';
+    title.textContent = 'Changelog';
+
+    const closeX = document.createElement('button');
+    closeX.id = 'changelogModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close changelog');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'changelogModalBody';
+
+    changelog.forEach(function(entry) {
+        const block = document.createElement('section');
+        block.className = 'changelogEntry';
+
+        const heading = document.createElement('div');
+        heading.className = 'changelogEntryHeading';
+
+        const ver = document.createElement('span');
+        ver.className = 'changelogEntryVersion';
+        ver.textContent = 'v' + entry.version;
+
+        const date = document.createElement('span');
+        date.className = 'changelogEntryDate';
+        date.textContent = entry.date;
+
+        heading.appendChild(ver);
+        heading.appendChild(date);
+        block.appendChild(heading);
+
+        [
+            ['Added',   entry.added],
+            ['Changed', entry.changed],
+            ['Fixed',   entry.fixed]
+        ].forEach(function(pair) {
+            const label = pair[0];
+            const bullets = pair[1];
+            if (!bullets || !bullets.length) return;
+
+            const groupLabel = document.createElement('div');
+            groupLabel.className = 'changelogGroupLabel';
+            groupLabel.textContent = label;
+
+            const list = document.createElement('ul');
+            list.className = 'changelogBullets';
+            bullets.forEach(function(text) {
+                const li = document.createElement('li');
+                li.textContent = text;
+                list.appendChild(li);
+            });
+
+            block.appendChild(groupLabel);
+            block.appendChild(list);
+        });
+
+        body.appendChild(block);
+    });
+
+    const actions = document.createElement('div');
+    actions.id = 'changelogModalActions';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'changelogModalCloseBtn';
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Close';
+
+    actions.appendChild(closeBtn);
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    closeBtn.focus();
+
+    // Mark the newest entry as seen the moment the modal opens. Drop the dot
+    // immediately so returning from the modal shows its new baseline state.
+    const newest = getNewestChangelogDate();
+    if (newest) writeChangelogLastSeen(newest);
+    updateChangelogDot();
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    closeX.addEventListener('click', close);
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+}
+
 
 function countRealToDos(projectName) {
     const items = listLogic.listItems(projectName);
@@ -1490,7 +1655,30 @@ function component() {
     const footDone    = document.createElement('span');
 
     footVersion.id = 'footVersion';
-    footVersion.textContent = 'task management v1.1';
+    footVersion.setAttribute('role', 'button');
+    footVersion.setAttribute('tabindex', '0');
+    footVersion.setAttribute('aria-haspopup', 'dialog');
+    footVersion.setAttribute('aria-label', 'Open changelog');
+
+    const footVersionLabel = document.createElement('span');
+    footVersionLabel.id = 'footVersionLabel';
+    footVersionLabel.textContent = 'task management v1.1';
+
+    const changelogDot = document.createElement('span');
+    changelogDot.id = 'changelogDot';
+    changelogDot.setAttribute('aria-hidden', 'true');
+
+    footVersion.appendChild(footVersionLabel);
+    footVersion.appendChild(changelogDot);
+
+    footVersion.addEventListener('click', showChangelogModal);
+    footVersion.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            showChangelogModal();
+        }
+    });
+
     footCounts.id = 'footCounts';
     footOpen.id = 'footOpen';
     footDone.id = 'footDone';
@@ -1501,6 +1689,9 @@ function component() {
     footCounts.appendChild(footOpen);
     footCounts.appendChild(footDone);
     foot.appendChild(footCounts);
+
+    // Initial unseen-indicator paint — deferred so the dot element is in the DOM.
+    setTimeout(updateChangelogDot, 0);
 
     main.appendChild(main1);
     main.appendChild(sidebarResizer);
