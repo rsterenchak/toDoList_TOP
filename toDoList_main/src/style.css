@@ -1001,10 +1001,6 @@ body.row-dragging * { cursor: grabbing !important; }
   text-decoration: line-through;
   color: var(--text-muted);
 }
-#toDoChild.completed #dateText,
-#toDoChild.completed #month,
-#toDoChild.completed #day,
-#toDoChild.completed #year { color: var(--text-muted); }
 
 #toDoInput {
   font-size: 13px;
@@ -1030,68 +1026,48 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
 #toDoInput:focus::placeholder { color: transparent; }
 
-/* DATE */
-#dateText {
+/* DUE DATE PILL — minimal trigger that opens the calendar popover. No
+   background fill, no border in its empty or normal state; just text styled
+   like the old "DUE:" label. Color comes from the .due-soon / .due-overdue
+   classes applied to #toDoChild when urgency fires. */
+#duePill {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
-  text-align: right;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-#dueInput {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+  color: var(--text-secondary);
+  line-height: 1;
   border-radius: var(--radius-sm);
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-mid);
-  padding: 2px 4px;
-  flex-shrink: 0;
-  gap: 1px;
-  min-width: 0;
+  transition: color 0.12s ease, background 0.12s ease;
+  max-width: 160px;
+  white-space: nowrap;
 }
 
-/* DUE-DATE URGENCY — colored chip border + text when a todo is due soon
-   or already overdue. Applied to #toDoChild by applyDueUrgency in main.js;
-   completed rows never receive these classes so they stay muted. */
+#duePill:hover { background: var(--bg-hover); color: var(--text-primary); }
+#duePill:focus { outline: none; background: var(--bg-hover); color: var(--text-primary); }
+#duePill[data-empty="true"] { color: var(--text-muted); }
 
-#toDoChild.due-soon #dueInput {
-  border-color: var(--text-warning);
-}
-#toDoChild.due-soon #dateText,
-#toDoChild.due-soon #month,
-#toDoChild.due-soon #day,
-#toDoChild.due-soon #year,
-#toDoChild.due-soon #dash {
-  color: var(--text-warning);
-}
+#duePill .duePillIcon { font-size: 11px; line-height: 1; }
+#duePill .duePillLabel { line-height: 1; }
 
-#toDoChild.due-overdue #dueInput {
-  border-color: var(--text-urgent);
-  background: rgba(224, 106, 122, 0.08);
-}
-#toDoChild.due-overdue #dateText,
-#toDoChild.due-overdue #month,
-#toDoChild.due-overdue #day,
-#toDoChild.due-overdue #year,
-#toDoChild.due-overdue #dash {
-  color: var(--text-urgent);
-}
+/* Urgency recolors the pill text — completed rows never get these classes. */
+#toDoChild.due-soon    #duePill { color: var(--text-warning); }
+#toDoChild.due-overdue #duePill { color: var(--text-urgent); }
+#toDoChild.completed   #duePill { color: var(--text-muted); }
 
-/* QUICK-DATE SHORTCUTS — three small buttons inline with the due-date chip.
-   Hidden on blank placeholder rows (revealed on first commit alongside the
-   other row controls). */
-#quickDates {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
+/* Shared quick-date buttons. Used inside #dueDatePopover's .dueQuickDates
+   strip — kept as a standalone class so any future inline reuse stays
+   consistent without restyling. */
 .quickDateBtn {
   background: transparent;
   border: 0.5px solid var(--border-mid);
@@ -1120,24 +1096,145 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-primary);
 }
 
-#month, #day, #year {
-  font-size: 11px;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  border: none;
-  text-align: center;
-  background: transparent;
-  color: var(--text-secondary);
-  width: 18px;
-  flex-shrink: 0;
-}
-#year { width: 36px; }
-
-#month:focus, #day:focus, #year:focus { outline: none; color: #e6e7ee; }
-#month::placeholder, #day::placeholder, #year::placeholder { color: var(--text-muted); }
-#month:focus::placeholder, #day:focus::placeholder, #year:focus::placeholder { color: transparent; }
-
-#dash { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
 #spacer { display: none; }
+
+/* DUE DATE POPOVER — anchored month-view calendar. Matches the visual weight
+   of #projContextMenu: same shadow, same surface, same radius. Every numeral
+   stays SpaceMono so the system font never leaks in. */
+#dueDatePopover {
+  position: fixed;
+  z-index: 60;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--text-primary);
+}
+#dueDatePopover:focus { outline: none; }
+
+.dueHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dueNav {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.dueNav:hover { color: var(--text-primary); background: var(--bg-hover); }
+.dueNav:focus { outline: none; color: var(--text-primary); background: var(--bg-hover); }
+.dueNav .completedCaret { font-size: 14px; line-height: 1; }
+
+.dueMonthTitle {
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.dueQuickDates {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.dueWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dueWeekday {
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 0;
+  line-height: 1;
+}
+
+.dueGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dueDay {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+.dueDay:hover { background: var(--bg-hover); }
+.dueDay-neighbor { color: var(--text-muted); }
+.dueDay-today    { box-shadow: 0 0 0 1px var(--accent); }
+.dueDay-selected {
+  background: var(--accent);
+  color: #fff;
+}
+.dueDay-selected:hover { background: var(--accent); filter: brightness(1.05); }
+.dueDay-focused {
+  outline: 1px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.dueClearBtn {
+  align-self: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: color 0.12s ease;
+}
+.dueClearBtn:hover,
+.dueClearBtn:focus-visible {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--accent-text);
+  text-underline-offset: 3px;
+  outline: none;
+}
 
 /* DESCRIPTION TOGGLE (todo) */
 #descToggle {
@@ -1415,12 +1512,6 @@ body.row-dragging * { cursor: grabbing !important; }
     padding: 20px 0 16px;
   }
 
-  #month, #day, #year {
-    font-size: 16px !important;
-    width: 22px;
-  }
-  #year { width: 44px; }
-
   /* Prevent double-tap zoom on all interactive elements */
   button,
   #projButton,
@@ -1437,9 +1528,6 @@ body.row-dragging * { cursor: grabbing !important; }
    PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {
-  /* Drop the "Due:" label on narrow screens; keep the MM/DD/YYYY inputs visible. */
-  #dateText { display: none; }
-
   /* Title truncates with an ellipsis so the date column has guaranteed space. */
   #toDoInput {
     overflow: hidden;
@@ -1451,11 +1539,6 @@ body.row-dragging * { cursor: grabbing !important; }
      the centered "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
-
-  /* Narrow phones — hide the two longer labels, keep only "+1W" as an icon.
-     The full triple-input date chip remains tappable for specific dates. */
-  #quickDates .quickDateBtn[data-offset="0"],
-  #quickDates .quickDateBtn[data-offset="1"] { display: none; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }
