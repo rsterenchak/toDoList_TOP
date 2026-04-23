@@ -2263,12 +2263,12 @@ function component() {
             }
             this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
-            projChild.style.background = "#1C1C1C";
+            projChild.style.background = "var(--bg-active)";
         });
 
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "#222222";
+            this.style.background = "var(--bg-hover)";
         });
 
         projChild.addEventListener("mouseleave", function() {
@@ -2601,7 +2601,7 @@ function restoreFromStorage() {
 
         projChild.addEventListener("mouseenter", function() {
             this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-            this.style.background = "#222222";
+            this.style.background = "var(--bg-hover)";
         });
         projChild.addEventListener("mouseleave", function() {
             this.style.boxShadow = "none";
