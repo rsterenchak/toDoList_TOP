@@ -181,11 +181,27 @@ function wireCheckbox(toDoChild, toDoInput, item) {
     }
 
     checkToDo.addEventListener("change", function() {
+        const wasCompleted = !!item.completed;
         item.completed = checkToDo.checked;
         if (checkToDo.checked) {
             toDoChild.classList.add("completed");
         } else {
             toDoChild.classList.remove("completed");
+        }
+
+        // Celebratory micro-interaction — only on the unchecked → checked
+        // edge, and only on committed rows (blank placeholders hide the
+        // checkbox via CSS but guard here too for robustness).
+        if (checkToDo.checked && !wasCompleted && item.tit) {
+            if (isCoarsePointer() && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                try { navigator.vibrate(10); } catch (_) { /* noop */ }
+            }
+            if (!prefersReducedMotion()) {
+                toDoChild.classList.add('just-completed');
+                setTimeout(function() {
+                    toDoChild.classList.remove('just-completed');
+                }, 300);
+            }
         }
 
         applyDueUrgency(toDoChild, item);

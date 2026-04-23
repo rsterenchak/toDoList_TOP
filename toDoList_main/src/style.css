@@ -1113,6 +1113,40 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-muted);
 }
 
+/* Completion micro-interaction — transient `just-completed` class added on
+   the unchecked → checked edge (main.js) and removed ~300ms later. While
+   active, the checkmark draws in with a brief scale pulse and a 1px line
+   sweeps left-to-right across the title before the static line-through
+   on `.completed` takes over. prefers-reduced-motion is honored by main.js
+   (the class is simply never added). */
+#toDoChild.just-completed.completed #toDoInput {
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 0% 1px;
+  animation: todoStrikeSweep 200ms ease-out forwards;
+}
+#toDoChild.just-completed #checkToDo {
+  animation: todoCheckPulse 150ms ease-out;
+}
+#toDoChild.just-completed #checkToDo:checked::after {
+  animation: todoCheckDraw 150ms ease-out;
+}
+@keyframes todoCheckPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@keyframes todoCheckDraw {
+  0%   { opacity: 0; transform: rotate(45deg) translate(-1px, -1px) scale(0.1); }
+  100% { opacity: 1; transform: rotate(45deg) translate(-1px, -1px) scale(1); }
+}
+@keyframes todoStrikeSweep {
+  from { background-size: 0% 1px; }
+  to   { background-size: 100% 1px; }
+}
+
 #toDoInput {
   font-size: 13px;
   font-family: inherit;

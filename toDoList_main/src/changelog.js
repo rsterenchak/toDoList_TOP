@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-23',
         added: [
-            'Per-project accent colors — pick a swatch from a project\'s right-click menu to recolor its sidebar highlight and due-date pill borders.',
+            'Checking off a todo now plays a brief celebratory pulse on the checkbox and sweeps a line across the title, with a short haptic tap on touch devices.',
         ],
         fixed: [
             'Due date field restored on mobile layouts below 420px.',
