@@ -72,26 +72,90 @@ function applyDueUrgency(toDoChild, item) {
     }
 }
 
-// Set a row's due date to today + offsetDays, update the M/D/Y inputs,
-// persist, and refresh the due-urgency styling so the chip recolors
-// immediately. Mirrors the save path wireDateInputs takes so no listener
-// needs to fire. Works on blank placeholder rows too — the input values
-// populate and are picked up when the user commits the title.
-function setRowDateOffset(month, day, year, item, toDoChild, offsetDays) {
+// Write a due date into the data model, persist, and refresh the
+// due-urgency styling + pill label so the row recolors immediately.
+// Pass m/d/y as numbers or null-ish to clear the date.
+function setItemDue(item, toDoChild, m, d, y) {
+    if (m == null || d == null || y == null) {
+        item.due = '';
+    } else {
+        item.due = m + '-' + d + '-' + y;
+    }
+    listLogic.saveToStorage();
+    if (typeof applyDueUrgency === 'function') applyDueUrgency(toDoChild, item);
+    const pill = toDoChild.querySelector('#duePill');
+    if (pill) updateDuePillLabel(pill, item);
+}
+
+// Set a row's due date to today + offsetDays. Shim retained as the canonical
+// "write-through" entry point referenced throughout main.js.
+function setRowDateOffset(item, toDoChild, offsetDays) {
     const target = new Date();
     target.setDate(target.getDate() + offsetDays);
-    const m = target.getMonth() + 1;
-    const d = target.getDate();
-    const y = target.getFullYear();
+    setItemDue(item, toDoChild, target.getMonth() + 1, target.getDate(), target.getFullYear());
+}
 
-    month.value = m;
-    day.value   = d;
-    year.value  = y;
+// Parse the stored M-D-YYYY string into {m, d, y} numbers, or null when
+// no valid date is set. Matches daysUntilDue's guard for consistency.
+function parseItemDue(item) {
+    if (!item || !item.due || item.due === '--' || item.due === 'X-X-XXXX') return null;
+    const parts = String(item.due).split('-');
+    const m = parseInt(parts[0], 10);
+    const d = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (isNaN(m) || isNaN(d) || isNaN(y)) return null;
+    return { m: m, d: d, y: y };
+}
 
-    item.due = m + '-' + d + '-' + y;
-    listLogic.saveToStorage();
+// Render a date as "Apr 30" — used for the pill label when no urgency class
+// is firing. Matches the SpaceMono uppercase treatment via CSS.
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatPillAbsolute(m, d) {
+    return MONTH_SHORT[m - 1] + ' ' + d;
+}
 
-    if (typeof applyDueUrgency === 'function') applyDueUrgency(toDoChild, item);
+// Inline SVGs use currentColor so they inherit the pill's text color —
+// that keeps urgency recolors (due-soon/overdue/completed) and theme swaps
+// cascading to the icons with no extra rules.
+const CALENDAR_SVG = '<svg class="duePillIcon" viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3" width="11" height="9.5" rx="1.5"/><path d="M4.5 1.5V4"/><path d="M9.5 1.5V4"/><path d="M1.5 6h11"/></svg>';
+const CHEVRON_SVG = '<svg class="duePillChevron" viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4L5 6.5L7.5 4"/></svg>';
+
+// Pill label reflects the item's due state:
+//   empty → calendar icon + "Set date"
+//   set, no urgency → absolute "Apr 30"
+//   set, due-soon → "Due in Nd" (or "Due today" on the same day)
+//   set, overdue → "Nd overdue"
+// Urgency classes on #toDoChild color the text via CSS — this function only
+// chooses the string. Calendar icon (left) and chevron (right) are always
+// rendered so the pill reads as a button regardless of state.
+function updateDuePillLabel(pill, item) {
+    const parsed = parseItemDue(item);
+    let labelText;
+    if (!parsed) {
+        pill.setAttribute('data-empty', 'true');
+        labelText = 'Set date';
+    } else {
+        pill.removeAttribute('data-empty');
+        const days = daysUntilDue(item.due);
+        if (item.completed || days === null) {
+            labelText = formatPillAbsolute(parsed.m, parsed.d);
+        } else if (days < 0) {
+            labelText = Math.abs(days) + 'd overdue';
+        } else if (days === 0) {
+            labelText = 'Due today';
+        } else if (days <= 3) {
+            labelText = 'Due in ' + days + 'd';
+        } else {
+            labelText = formatPillAbsolute(parsed.m, parsed.d);
+        }
+    }
+    pill.innerHTML = '';
+    pill.insertAdjacentHTML('beforeend', CALENDAR_SVG);
+    const label = document.createElement('span');
+    label.className = 'duePillLabel';
+    label.textContent = labelText;
+    pill.appendChild(label);
+    pill.insertAdjacentHTML('beforeend', CHEVRON_SVG);
 }
 
 
@@ -415,8 +479,8 @@ function wireToDoRowClick(toDoChild, toDoInput) {
         if (e.target.id === 'checkToDo'      ||
             e.target.id === 'closeButtonToDo' ||
             e.target.id === 'descToggle'      ||
-            e.target.closest('#dueInput')     ||
-            e.target.closest('#quickDates')   ||
+            e.target.closest('#duePill')      ||
+            e.target.closest('#dueDatePopover') ||
             e.target.closest('#descSibling')) return;
 
         // Blank rows: focus immediately (user intends to type a new item)
@@ -472,48 +536,14 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
 }
 
 
-// ── HELPER: set default due-date placeholders to one week from today ──
-// Replaces the legacy hardcoded 1/1/2023 default so that if a user commits a
-// todo without touching the date fields, the saved due date is today + 7 days.
-function setDueDatePlaceholders(month, day, year) {
+// Default due-date offset used when a row is committed without a user-chosen
+// date. Matches the legacy placeholder behavior (today + 7 days).
+const DEFAULT_DUE_OFFSET_DAYS = 7;
+
+function defaultDueParts() {
     const future = new Date();
-    future.setDate(future.getDate() + 7);
-    month.placeholder = future.getMonth() + 1;
-    day.placeholder   = future.getDate();
-    year.placeholder  = future.getFullYear();
-}
-
-
-// ── HELPER: wire Enter-to-save on month/day/year inputs for a given todo item ──
-// Call after building each todo row so date changes persist even when the
-// user presses Enter while focused on a date field rather than the title.
-function wireDateInputs(month, day, year, item, toDoName, toDoChild) {
-
-    function saveDate() {
-        const m = month.value || month.placeholder || 1;
-        const d = day.value   || day.placeholder   || 1;
-        const y = year.value  || year.placeholder  || 2023;
-        item["due"] = m + "-" + d + "-" + y;
-        listLogic.saveToStorage();
-        if (toDoChild) applyDueUrgency(toDoChild, item);
-    }
-
-    [month, day, year].forEach(function(input) {
-        input.addEventListener("keydown", function(event) {
-            if (event.key === "Enter") {
-                saveDate();
-                input.blur();
-            }
-        });
-        // save on every keystroke so partial values are never lost
-        input.addEventListener("keyup", function() {
-            saveDate();
-        });
-        // also save on blur so tabbing away or tapping elsewhere persists the value
-        input.addEventListener("blur", function() {
-            saveDate();
-        });
-    });
+    future.setDate(future.getDate() + DEFAULT_DUE_OFFSET_DAYS);
+    return { m: future.getMonth() + 1, d: future.getDate(), y: future.getFullYear() };
 }
 
 
@@ -841,6 +871,281 @@ function showProjectContextMenu(x, y, onEdit, onDelete) {
     window.addEventListener('resize', hideProjectContextMenu);
     window.addEventListener('scroll', hideProjectContextMenu, true);
 }
+
+
+// ── DUE DATE POPOVER ──
+// A single pill button per row opens an anchored month-view calendar.
+// Selection writes through setItemDue so item.due, applyDueUrgency,
+// persistence, and the footer counter all update on the existing path.
+// Dismiss on: selection, Escape, outside click. Mirrors showProjectContextMenu.
+
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTH_FULL = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+];
+
+function hideDueDatePopover() {
+    const existing = document.getElementById('dueDatePopover');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    document.removeEventListener('click',      onDuePopoverOutsideClick, true);
+    document.removeEventListener('contextmenu', onDuePopoverOutsideClick, true);
+    document.removeEventListener('keydown',    onDuePopoverKeydown,      true);
+    window.removeEventListener('resize', hideDueDatePopover);
+    window.removeEventListener('scroll', hideDueDatePopover, true);
+    const openPill = document.querySelector('#duePill[aria-expanded="true"]');
+    if (openPill) openPill.setAttribute('aria-expanded', 'false');
+}
+
+function onDuePopoverOutsideClick(event) {
+    const popover = document.getElementById('dueDatePopover');
+    if (!popover) return;
+    if (popover.contains(event.target)) return;
+    // Clicking the pill that opened it is handled by the pill's own toggle.
+    if (event.target.closest && event.target.closest('#duePill')) return;
+    hideDueDatePopover();
+}
+
+function onDuePopoverKeydown(event) {
+    const popover = document.getElementById('dueDatePopover');
+    if (!popover) return;
+    if (event.key === 'Escape') {
+        event.stopPropagation();
+        hideDueDatePopover();
+        return;
+    }
+    const isNav = event.key === 'ArrowLeft' || event.key === 'ArrowRight' ||
+                  event.key === 'ArrowUp'   || event.key === 'ArrowDown' ||
+                  event.key === 'Enter';
+    if (!isNav) return;
+    if (!popover.contains(document.activeElement) &&
+        document.activeElement !== document.body) return;
+    event.preventDefault();
+    if (event.key === 'Enter') {
+        const focused = popover.querySelector('.dueDay.dueDay-focused');
+        if (focused) focused.click();
+        return;
+    }
+    const delta = event.key === 'ArrowLeft' ? -1 :
+                  event.key === 'ArrowRight' ?  1 :
+                  event.key === 'ArrowUp'   ? -7 : 7;
+    shiftDueFocus(popover, delta);
+}
+
+function shiftDueFocus(popover, deltaDays) {
+    const state = popover.__state;
+    if (!state) return;
+    const current = state.focusDate ? new Date(state.focusDate) : new Date();
+    current.setDate(current.getDate() + deltaDays);
+    const newMonth = current.getMonth();
+    const newYear  = current.getFullYear();
+    state.focusDate = current;
+    if (newMonth !== state.viewMonth || newYear !== state.viewYear) {
+        state.viewMonth = newMonth;
+        state.viewYear  = newYear;
+    }
+    renderDuePopoverBody(popover);
+}
+
+function renderDuePopoverBody(popover) {
+    const state = popover.__state;
+    const body  = popover.querySelector('.dueGrid');
+    const title = popover.querySelector('.dueMonthTitle');
+    if (!body || !title || !state) return;
+
+    title.textContent = MONTH_FULL[state.viewMonth] + ' ' + state.viewYear;
+    while (body.firstChild) body.removeChild(body.firstChild);
+
+    const firstOfMonth = new Date(state.viewYear, state.viewMonth, 1);
+    const startWeekday = firstOfMonth.getDay(); // 0=Sun
+    const gridStart    = new Date(state.viewYear, state.viewMonth, 1 - startWeekday);
+    const today        = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 42; i++) {
+        const cellDate = new Date(gridStart);
+        cellDate.setDate(gridStart.getDate() + i);
+        cellDate.setHours(0, 0, 0, 0);
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'dueDay';
+        cell.tabIndex = -1;
+        cell.textContent = cellDate.getDate();
+
+        const inMonth = cellDate.getMonth() === state.viewMonth;
+        if (!inMonth) cell.classList.add('dueDay-neighbor');
+        if (cellDate.getTime() === today.getTime()) cell.classList.add('dueDay-today');
+        if (state.selected &&
+            cellDate.getFullYear() === state.selected.y &&
+            cellDate.getMonth() === state.selected.m - 1 &&
+            cellDate.getDate() === state.selected.d) {
+            cell.classList.add('dueDay-selected');
+        }
+        if (state.focusDate &&
+            cellDate.getFullYear() === state.focusDate.getFullYear() &&
+            cellDate.getMonth() === state.focusDate.getMonth() &&
+            cellDate.getDate() === state.focusDate.getDate()) {
+            cell.classList.add('dueDay-focused');
+        }
+
+        cell.addEventListener('click', function(event) {
+            event.stopPropagation();
+            setItemDue(state.item, state.toDoChild,
+                cellDate.getMonth() + 1, cellDate.getDate(), cellDate.getFullYear());
+            hideDueDatePopover();
+        });
+        body.appendChild(cell);
+    }
+}
+
+function showDueDatePopover(anchor, item, toDoChild) {
+    hideDueDatePopover();
+    anchor.setAttribute('aria-expanded', 'true');
+
+    const popover = document.createElement('div');
+    popover.id = 'dueDatePopover';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'Pick due date');
+    popover.tabIndex = -1;
+
+    // Header: prev | Month YYYY | next
+    const header = document.createElement('div');
+    header.className = 'dueHeader';
+    const prev  = document.createElement('button');
+    const next  = document.createElement('button');
+    const title = document.createElement('div');
+    prev.type = 'button';
+    next.type = 'button';
+    prev.className = 'dueNav';
+    next.className = 'dueNav';
+    prev.setAttribute('aria-label', 'Previous month');
+    next.setAttribute('aria-label', 'Next month');
+    prev.innerHTML = '<span class="completedCaret">‹</span>';
+    next.innerHTML = '<span class="completedCaret">›</span>';
+    title.className = 'dueMonthTitle';
+    header.appendChild(prev);
+    header.appendChild(title);
+    header.appendChild(next);
+
+    // Quick-date strip above the grid — reuses .quickDateBtn
+    const quickRow = document.createElement('div');
+    quickRow.className = 'dueQuickDates';
+    [
+        { label: 'Today',    offset: 0 },
+        { label: 'Tomorrow', offset: 1 },
+        { label: '+1w',      offset: 7 }
+    ].forEach(function(def) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'quickDateBtn';
+        btn.textContent = def.label;
+        btn.setAttribute('data-offset', String(def.offset));
+        btn.setAttribute('aria-label', 'Set due date: ' + def.label);
+        btn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            setRowDateOffset(item, toDoChild, def.offset);
+            hideDueDatePopover();
+        });
+        quickRow.appendChild(btn);
+    });
+
+    // Weekday row
+    const weekdays = document.createElement('div');
+    weekdays.className = 'dueWeekdays';
+    WEEKDAY_LABELS.forEach(function(w) {
+        const cell = document.createElement('div');
+        cell.className = 'dueWeekday';
+        cell.textContent = w;
+        weekdays.appendChild(cell);
+    });
+
+    // Day grid
+    const grid = document.createElement('div');
+    grid.className = 'dueGrid';
+
+    // Clear button
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'dueClearBtn';
+    clear.textContent = 'Clear';
+    clear.addEventListener('click', function(event) {
+        event.stopPropagation();
+        setItemDue(item, toDoChild, null, null, null);
+        hideDueDatePopover();
+    });
+
+    popover.appendChild(header);
+    popover.appendChild(quickRow);
+    popover.appendChild(weekdays);
+    popover.appendChild(grid);
+    popover.appendChild(clear);
+
+    // State init — seed view from the selected date if present, else today.
+    const parsed = parseItemDue(item);
+    const seed = parsed
+        ? new Date(parsed.y, parsed.m - 1, parsed.d)
+        : new Date();
+    popover.__state = {
+        item: item,
+        toDoChild: toDoChild,
+        viewMonth: seed.getMonth(),
+        viewYear:  seed.getFullYear(),
+        selected:  parsed ? { m: parsed.m, d: parsed.d, y: parsed.y } : null,
+        focusDate: new Date(seed.getFullYear(), seed.getMonth(), seed.getDate())
+    };
+
+    prev.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const s = popover.__state;
+        let nm = s.viewMonth - 1, ny = s.viewYear;
+        if (nm < 0) { nm = 11; ny--; }
+        s.viewMonth = nm; s.viewYear = ny;
+        renderDuePopoverBody(popover);
+    });
+    next.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const s = popover.__state;
+        let nm = s.viewMonth + 1, ny = s.viewYear;
+        if (nm > 11) { nm = 0; ny++; }
+        s.viewMonth = nm; s.viewYear = ny;
+        renderDuePopoverBody(popover);
+    });
+
+    document.body.appendChild(popover);
+    renderDuePopoverBody(popover);
+
+    // Anchor below the pill, right-aligned so long labels don't push offscreen.
+    const pillRect  = anchor.getBoundingClientRect();
+    const popWidth  = popover.offsetWidth;
+    const popHeight = popover.offsetHeight;
+    let left = pillRect.right - popWidth;
+    let top  = pillRect.bottom + 6;
+    // If it would overflow below, flip above the pill.
+    if (top + popHeight > window.innerHeight - 4) {
+        top = pillRect.top - popHeight - 6;
+    }
+    // Clamp within viewport.
+    if (left < 4) left = 4;
+    if (left + popWidth > window.innerWidth - 4) {
+        left = Math.max(4, window.innerWidth - popWidth - 4);
+    }
+    if (top < 4) top = 4;
+    popover.style.left = left + 'px';
+    popover.style.top  = top  + 'px';
+
+    document.addEventListener('click',       onDuePopoverOutsideClick, true);
+    document.addEventListener('contextmenu', onDuePopoverOutsideClick, true);
+    document.addEventListener('keydown',     onDuePopoverKeydown,      true);
+    window.addEventListener('resize', hideDueDatePopover);
+    window.addEventListener('scroll', hideDueDatePopover, true);
+
+    // Focus the popover so arrow-key nav is captured without leaking to the
+    // page. Without this, focus stays on the pill button and Enter/Escape
+    // still work but arrow keys wouldn't reach the grid.
+    try { popover.focus({ preventScroll: true }); } catch (e) { popover.focus(); }
+}
+
 
 // ── CONFIRM MODAL ──
 // Async, themed replacement for window.confirm. Destructive actions (delete
@@ -1348,13 +1653,7 @@ function buildToDoRow(item, toDoName) {
     // create elements
     const toDoChild       = document.createElement("div");
     const toDoInput       = document.createElement("input");
-    const dueInput        = document.createElement("div");
-    const dateText        = document.createElement("div");
-    const month           = document.createElement("input");
-    const dash            = document.createElement("div");
-    const day             = document.createElement("input");
-    const dash2           = document.createElement("div");
-    const year            = document.createElement("input");
+    const duePill         = document.createElement("button");
     const closeButtonToDo = document.createElement("div");
     const descToggle      = document.createElement("div");
     const spacer          = document.createElement("div");
@@ -1367,25 +1666,10 @@ function buildToDoRow(item, toDoName) {
     toDoChild.id           = "toDoChild";
     toDoChild.style.border = "0.5px solid black";
 
-    dateText.id          = "dateText";
-    dateText.textContent = "Due:";
-
-    dueInput.id             = "dueInput";
-    dueInput.style.fontSize = "10px";
-
-    month.id          = "month";
-    month.autocomplete = "off";
-    day.id            = "day";
-    day.autocomplete  = "off";
-    year.id           = "year";
-    year.autocomplete = "off";
-
-    setDueDatePlaceholders(month, day, year);
-
-    dash.id          = "dash";
-    dash.textContent = "/";
-    dash2.id          = "dash";
-    dash2.textContent = "/";
+    duePill.id       = "duePill";
+    duePill.type     = "button";
+    duePill.setAttribute('aria-haspopup', 'dialog');
+    duePill.setAttribute('aria-expanded', 'false');
 
     spacer.id = "spacer";
 
@@ -1402,14 +1686,11 @@ function buildToDoRow(item, toDoName) {
     // input slot would leave the user with no way to create new items.
     if (!item.tit) closeButtonToDo.style.display = "none";
 
-    // Blank placeholder rows hide the due-date field for the same reason the
+    // Blank placeholder rows hide the due-date pill for the same reason the
     // checkbox / toggle / close button hide above: there's no committed item
-    // yet, so the "Due:" label and MM/DD/YYYY inputs would be visual noise.
-    // Keep them wired (wireDateInputs, setDueDatePlaceholders) so they paint
-    // correctly the moment the row is committed.
+    // yet, so the "Set date" trigger would be visual noise. Revealed on commit.
     if (!item.tit) {
-        dateText.style.display = "none";
-        dueInput.style.display = "none";
+        duePill.style.display = "none";
     }
 
     descToggle.id            = "descToggle";
@@ -1428,62 +1709,24 @@ function buildToDoRow(item, toDoName) {
 
     // assemble DOM tree
     toDoChild.appendChild(toDoInput);
-    toDoChild.appendChild(dateText);
-    toDoChild.appendChild(dueInput);
-    dueInput.appendChild(month);
-    dueInput.appendChild(dash);
-    dueInput.appendChild(day);
-    dueInput.appendChild(dash2);
-    dueInput.appendChild(year);
-
-    // Quick-date shortcuts — Today / Tomorrow / +1 week
-    const quickDates = document.createElement('div');
-    quickDates.id = 'quickDates';
-
-    const quickDefs = [
-        { label: 'Today',    offset: 0 },
-        { label: 'Tomorrow', offset: 1 },
-        { label: '+1w',      offset: 7 }
-    ];
-
-    quickDefs.forEach(function(def) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'quickDateBtn';
-        btn.textContent = def.label;
-        btn.setAttribute('data-offset', String(def.offset));
-        btn.setAttribute('aria-label', 'Set due date: ' + def.label);
-        btn.addEventListener('click', function(event) {
-            event.stopPropagation();
-            setRowDateOffset(month, day, year, item, toDoChild, def.offset);
-        });
-        quickDates.appendChild(btn);
-    });
-
-    // Hide on blank placeholder rows — revealed on first commit alongside the
-    // other controls (checkbox, close button, date inputs).
-    if (!item.tit) quickDates.style.display = 'none';
-
-    toDoChild.appendChild(quickDates);
+    toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
 
-    // populate date fields if item has a valid due date
-    if (item.due && item.due !== "--" && item.due !== "X-X-XXXX" && item.due !== "") {
-        const parts = item.due.split('-');
-        const m = parseInt(parts[0], 10);
-        const d = parseInt(parts[1], 10);
-        const y = parseInt(parts[2], 10);
-        if (!isNaN(m)) month.value = m;
-        if (!isNaN(d)) day.value   = d;
-        if (!isNaN(y)) year.value  = y;
-    }
-
+    updateDuePillLabel(duePill, item);
     applyDueUrgency(toDoChild, item);
 
+    duePill.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (document.getElementById('dueDatePopover')) {
+            hideDueDatePopover();
+        } else {
+            showDueDatePopover(duePill, item, toDoChild);
+        }
+    });
+
     // wire helpers
-    wireDateInputs(month, day, year, item, toDoName, toDoChild);
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName);
@@ -1511,27 +1754,22 @@ function buildToDoRow(item, toDoName) {
         toDoInput.value = val;
         item.tit = val;
         item.pri = 2;
-        // Resolve date (falling back to placeholders) AND write the resolved
-        // values back into the inputs so the row paints in normal text color
-        // instead of keeping the grey placeholder styling.
-        const mv = month.value || month.placeholder || 1;
-        const dv = day.value   || day.placeholder   || 1;
-        const yv = year.value  || year.placeholder  || 2023;
-        month.value = mv;
-        day.value   = dv;
-        year.value  = yv;
-        item.due = mv + "-" + dv + "-" + yv;
+        // If no due date is set yet, default to today + 7 days so the urgency
+        // classes and footer counter have something meaningful to key off.
+        if (!parseItemDue(item)) {
+            const fallback = defaultDueParts();
+            item.due = fallback.m + "-" + fallback.d + "-" + fallback.y;
+        }
 
         listLogic.saveToStorage();
         applyDueUrgency(toDoChild, item);
+        updateDuePillLabel(duePill, item);
 
         // Idempotent — no-op when already visible; safely covers first-commit reveal.
         descToggle.style.display      = "flex";
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
-        dateText.style.display        = "";
-        dueInput.style.display        = "";
-        quickDates.style.display      = "flex";
+        duePill.style.display         = "";
 
         toDoInput.blur();
         if (isFirstCommit) {

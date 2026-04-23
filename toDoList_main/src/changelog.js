@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-23',
         added: [
-            'Collapsible "Completed" section for checked-off todos.',
             'Light theme toggle in the nav bar, honoring system preference on first load and remembering your choice after.',
         ],
         fixed: [
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         changed: [
             'Project row drag handle now covers the full row, including empty space after short titles.',
+            'Due date picker now opens a month-view calendar from the row\'s date pill, with quick shortcuts and a Clear option.',
         ],
     },
 ];
