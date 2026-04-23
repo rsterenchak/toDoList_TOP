@@ -1026,20 +1026,20 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
 #toDoInput:focus::placeholder { color: transparent; }
 
-/* DUE DATE PILL — minimal trigger that opens the calendar popover. No
-   background fill, no border in its empty or normal state; just text styled
-   like the old "DUE:" label. Color comes from the .due-soon / .due-overdue
-   classes applied to #toDoChild when urgency fires. */
+/* DUE DATE PILL — bordered trigger that opens the calendar popover. The
+   border + calendar icon + chevron together telegraph "click to open a
+   menu"; urgency color comes from the .due-soon / .due-overdue classes
+   applied to #toDoChild, and the SVG icons inherit it via currentColor. */
 #duePill {
   background: transparent;
-  border: none;
-  padding: 2px 4px;
+  border: 0.5px solid var(--border-bright);
+  padding: 3px 6px 3px 5px;
   margin: 0;
   cursor: pointer;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   font-weight: 600;
@@ -1048,17 +1048,24 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-secondary);
   line-height: 1;
   border-radius: var(--radius-sm);
-  transition: color 0.12s ease, background 0.12s ease;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
   max-width: 160px;
   white-space: nowrap;
 }
 
-#duePill:hover { background: var(--bg-hover); color: var(--text-primary); }
-#duePill:focus { outline: none; background: var(--bg-hover); color: var(--text-primary); }
+#duePill:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+#duePill:focus { outline: none; background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
 #duePill[data-empty="true"] { color: var(--text-muted); }
 
-#duePill .duePillIcon { font-size: 11px; line-height: 1; }
+#duePill .duePillIcon { flex-shrink: 0; }
 #duePill .duePillLabel { line-height: 1; }
+#duePill .duePillChevron {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform 0.2s ease, opacity 0.12s ease;
+}
+#duePill:hover .duePillChevron { opacity: 1; }
+#duePill[aria-expanded="true"] .duePillChevron { transform: rotate(180deg); }
 
 /* Urgency recolors the pill text — completed rows never get these classes. */
 #toDoChild.due-soon    #duePill { color: var(--text-warning); }

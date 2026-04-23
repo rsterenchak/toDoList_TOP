@@ -114,47 +114,48 @@ function formatPillAbsolute(m, d) {
     return MONTH_SHORT[m - 1] + ' ' + d;
 }
 
+// Inline SVGs use currentColor so they inherit the pill's text color —
+// that keeps urgency recolors (due-soon/overdue/completed) and theme swaps
+// cascading to the icons with no extra rules.
+const CALENDAR_SVG = '<svg class="duePillIcon" viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3" width="11" height="9.5" rx="1.5"/><path d="M4.5 1.5V4"/><path d="M9.5 1.5V4"/><path d="M1.5 6h11"/></svg>';
+const CHEVRON_SVG = '<svg class="duePillChevron" viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4L5 6.5L7.5 4"/></svg>';
+
 // Pill label reflects the item's due state:
-//   empty → calendar glyph + "Set date"
+//   empty → calendar icon + "Set date"
 //   set, no urgency → absolute "Apr 30"
 //   set, due-soon → "Due in Nd" (or "Due today" on the same day)
 //   set, overdue → "Nd overdue"
 // Urgency classes on #toDoChild color the text via CSS — this function only
-// chooses the string.
+// chooses the string. Calendar icon (left) and chevron (right) are always
+// rendered so the pill reads as a button regardless of state.
 function updateDuePillLabel(pill, item) {
     const parsed = parseItemDue(item);
+    let labelText;
     if (!parsed) {
         pill.setAttribute('data-empty', 'true');
-        pill.innerHTML = '';
-        const glyph = document.createElement('span');
-        glyph.className = 'duePillIcon';
-        glyph.setAttribute('aria-hidden', 'true');
-        glyph.textContent = '📅';
-        const label = document.createElement('span');
-        label.className = 'duePillLabel';
-        label.textContent = 'Set date';
-        pill.appendChild(glyph);
-        pill.appendChild(label);
-        return;
+        labelText = 'Set date';
+    } else {
+        pill.removeAttribute('data-empty');
+        const days = daysUntilDue(item.due);
+        if (item.completed || days === null) {
+            labelText = formatPillAbsolute(parsed.m, parsed.d);
+        } else if (days < 0) {
+            labelText = Math.abs(days) + 'd overdue';
+        } else if (days === 0) {
+            labelText = 'Due today';
+        } else if (days <= 3) {
+            labelText = 'Due in ' + days + 'd';
+        } else {
+            labelText = formatPillAbsolute(parsed.m, parsed.d);
+        }
     }
-    pill.removeAttribute('data-empty');
     pill.innerHTML = '';
+    pill.insertAdjacentHTML('beforeend', CALENDAR_SVG);
     const label = document.createElement('span');
     label.className = 'duePillLabel';
-    const days = daysUntilDue(item.due);
-    if (item.completed || days === null) {
-        label.textContent = formatPillAbsolute(parsed.m, parsed.d);
-    } else if (days < 0) {
-        const n = Math.abs(days);
-        label.textContent = n + 'd overdue';
-    } else if (days === 0) {
-        label.textContent = 'Due today';
-    } else if (days <= 3) {
-        label.textContent = 'Due in ' + days + 'd';
-    } else {
-        label.textContent = formatPillAbsolute(parsed.m, parsed.d);
-    }
+    label.textContent = labelText;
     pill.appendChild(label);
+    pill.insertAdjacentHTML('beforeend', CHEVRON_SVG);
 }
 
 
