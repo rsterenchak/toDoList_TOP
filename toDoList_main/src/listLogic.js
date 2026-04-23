@@ -16,8 +16,16 @@ export const listLogic = (function () {
     let itemDue = '';
     let itemPri = 1;
 
-    // INITIAL: define allProjects object that dynamically stores arrays as new properties 
+    // INITIAL: define allProjects object that dynamically stores per-project
+    // entries as `{ items: [todos], color: null|string }` under each project
+    // name. The `items` array is the todo list for the project; `color` is
+    // the optional per-project accent key (one of six curated slots) or null
+    // when the project uses the theme accent.
     const allProjects = {};
+
+    // Keys for the 6 curated per-project accent swatches. `null` is the reset
+    // slot and maps back to var(--accent) at render time.
+    const PROJECT_COLOR_KEYS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
 
 
     // ********************* STORAGE HANDLING ********************* //
@@ -51,10 +59,29 @@ export const listLogic = (function () {
 
     }
 
-    // Sanitize loaded data — fix any bad date values (NaN, empty, malformed)
-    // and backfill `completed` for items saved before the check-off feature existed.
+    // Migrate + sanitize loaded data:
+    // - Legacy shape was `allProjects[name] = [todos]`; new shape is
+    //   `allProjects[name] = { items: [todos], color: null|string }`. Wrap
+    //   arrays in place so the rest of the module can assume the new shape.
+    // - Fix any bad date values (NaN, empty, malformed) and backfill
+    //   `completed` for items saved before the check-off feature existed.
+    // - Backfill `color` with null on any project missing it; clamp unknown
+    //   color keys to null so a corrupt or renamed palette can't leak
+    //   undefined CSS values into the renderer.
     Object.keys(allProjects).forEach(function(key) {
-        allProjects[key].forEach(function(item) {
+        const entry = allProjects[key];
+        if (Array.isArray(entry)) {
+            allProjects[key] = { items: entry, color: null };
+        } else if (!entry || typeof entry !== 'object') {
+            allProjects[key] = { items: [], color: null };
+        } else {
+            if (!Array.isArray(entry.items)) entry.items = [];
+            if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
+            if (typeof entry.color === 'string' && PROJECT_COLOR_KEYS.indexOf(entry.color) === -1) {
+                entry.color = null;
+            }
+        }
+        allProjects[key].items.forEach(function(item) {
             if (typeof item.completed !== 'boolean') {
                 item.completed = false;
             }
@@ -73,7 +100,7 @@ export const listLogic = (function () {
     // Group completed items beneath uncompleted ones in every project so
     // restored state mirrors the same order the UI maintains during use.
     Object.keys(allProjects).forEach(function(key) {
-        sortCompletedInPlace(allProjects[key]);
+        sortCompletedInPlace(allProjects[key].items);
     });
 
     // ************************************************************* //
@@ -96,15 +123,14 @@ export const listLogic = (function () {
 
         projectName = projectName.trim();
 
-        allProjects[projectName] = [];
-        allProjects[projectName].push(listItem);
+        allProjects[projectName] = { items: [listItem], color: null };
 
         allProjectsTotal = Object.keys(allProjects).length;
 
         saveToStorage();
-        
+
         return {
-            array: allProjects[projectName],
+            array: allProjects[projectName].items,
             string: projectName
         };
     }
@@ -144,14 +170,14 @@ export const listLogic = (function () {
             return { array: [], string: projectName, lengths: 0 };
         }
 
-        const arr = allProjects[projectDes];
+        const arr = allProjects[projectDes].items;
 
         // Skip duplicate blank placeholders — exactly one is pinned at the top of each list.
         if (itemTitle === '' && arr.some(function(i) { return i.tit === ''; })) {
             return {
-                array: allProjects[projectName],
+                array: arr,
                 string: projectName,
-                lengths: allProjects[projectName].length
+                lengths: arr.length
             };
         }
 
@@ -164,9 +190,9 @@ export const listLogic = (function () {
         saveToStorage();
 
         return {
-            array: allProjects[projectName],
+            array: arr,
             string: projectName,
-            lengths: allProjects[projectName].length
+            lengths: arr.length
         };
     };
 
@@ -177,13 +203,14 @@ export const listLogic = (function () {
 
         if (!allProjects[project]) return;
 
+        const arr = allProjects[project].items;
         index = parseInt(index, 10);
 
-        if (index >= 0 && index < allProjects[project].length) {
-            allProjects[project].splice(index, 1);
+        if (index >= 0 && index < arr.length) {
+            arr.splice(index, 1);
         }
 
-        sortCompletedInPlace(allProjects[project]);
+        sortCompletedInPlace(arr);
 
         saveToStorage();
     };
@@ -199,7 +226,7 @@ export const listLogic = (function () {
 
         if (!allProjects[project]) return;
 
-        const arr = allProjects[project];
+        const arr = allProjects[project].items;
         const idx = arr.indexOf(item);
 
         if (idx === -1) {
@@ -225,18 +252,19 @@ export const listLogic = (function () {
         saveToStorage();
 
         return {
-            array: allProjects[newProperty],
+            array: allProjects[newProperty] ? allProjects[newProperty].items : undefined,
             string: newProperty
         };
     };
 
     function listItems(project){
-        return allProjects[project];
+        const entry = allProjects[project];
+        return entry ? entry.items : undefined;
     };
 
     function projectLength(project){
         if (!project || !allProjects[project]) return 0;
-        return allProjects[project].length;
+        return allProjects[project].items.length;
     };
 
     function removeElementAtIndex(arr, index) {
@@ -290,7 +318,7 @@ export const listLogic = (function () {
     function reorderToDo(project, fromIndex, toIndex) {
 
         if (!allProjects[project]) return;
-        const arr = allProjects[project];
+        const arr = allProjects[project].items;
 
         fromIndex = parseInt(fromIndex, 10);
         toIndex   = parseInt(toIndex, 10);
@@ -348,7 +376,31 @@ export const listLogic = (function () {
     // uncompleted ones. Preserves the trailing blank placeholder row.
     function sortCompletedToBottom(project) {
         if (!allProjects[project]) return;
-        sortCompletedInPlace(allProjects[project]);
+        sortCompletedInPlace(allProjects[project].items);
+        saveToStorage();
+    }
+
+
+    // Read the persisted per-project color key, or null when the project is
+    // using the theme accent (or doesn't exist). Callers map the key to a
+    // concrete color via the PROJECT_COLOR_HEX table in main.js.
+    function getProjectColor(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return null;
+        return entry.color || null;
+    }
+
+
+    // Write a per-project color key. Pass null (or any non-valid key) to
+    // reset back to the theme accent.
+    function setProjectColor(projectName, colorKey) {
+        const entry = allProjects[projectName];
+        if (!entry) return;
+        if (colorKey && PROJECT_COLOR_KEYS.indexOf(colorKey) !== -1) {
+            entry.color = colorKey;
+        } else {
+            entry.color = null;
+        }
         saveToStorage();
     }
 
@@ -374,6 +426,9 @@ export const listLogic = (function () {
         reorderProject,
         reorderToDo,
         sortCompletedToBottom,
+        getProjectColor,
+        setProjectColor,
+        PROJECT_COLOR_KEYS,
         saveToStorage,
         _reset
     };

@@ -407,7 +407,7 @@ body {
 }
 
 .selectedProject {
-  border-left: 4px solid var(--accent) !important;
+  border-left: 4px solid var(--proj-accent, var(--accent)) !important;
   border-top: none;
   border-right: none;
   border-bottom: 0.5px solid var(--border-dim) !important;
@@ -465,6 +465,43 @@ body {
 .projContextMenuItem:hover { background: var(--bg-hover); color: var(--text-primary); }
 .projContextMenuItem.danger { color: var(--text-danger); }
 .projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
+
+/* PROJECT COLOR PICKER — inline swatch strip sitting inside the context
+   menu between Edit and Delete. Six filled circular swatches plus a
+   ring-only reset slot. The active swatch gets a --text-primary ring to
+   match the rest of the menu's visual weight. */
+.projContextColorPicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-top: 0.5px solid var(--border-dim);
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+.projContextColorSwatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-bright);
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: var(--swatch-color, transparent);
+  box-shadow: none;
+  transition: transform 0.1s ease, box-shadow 0.12s ease;
+  flex-shrink: 0;
+}
+.projContextColorSwatch:hover { transform: scale(1.1); }
+.projContextColorSwatch:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+.projContextColorSwatch.active { box-shadow: 0 0 0 2px var(--text-primary); }
+
+/* Reset swatch — ring only, no fill, marks "use theme accent". */
+.projContextColorSwatch.reset {
+  background: transparent;
+  border: 1px dashed var(--border-bright);
+}
+.projContextColorSwatch.reset.active { border-color: var(--text-primary); box-shadow: none; }
 
 /* CONFIRM MODAL */
 #confirmModalBackdrop {
@@ -1106,7 +1143,7 @@ body.row-dragging * { cursor: grabbing !important; }
    applied to #toDoChild, and the SVG icons inherit it via currentColor. */
 #duePill {
   background: transparent;
-  border: 0.5px solid var(--border-bright);
+  border: 0.5px solid var(--proj-accent, var(--border-bright));
   padding: 3px 6px 3px 5px;
   margin: 0;
   cursor: pointer;

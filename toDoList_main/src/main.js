@@ -894,9 +894,36 @@ function setupRowDrag(row, cfg) {
 }
 
 
+// ── PROJECT ACCENT COLORS ──
+// Concrete hex values for each per-project color key in listLogic's palette.
+// Both light and dark themes share the same swatches — values are picked to
+// read cleanly on either surface. A null key means "use the theme accent",
+// which the CSS `var(--proj-accent, var(--accent))` fallback resolves.
+const PROJECT_COLOR_HEX = {
+    red:    '#e06a7a',
+    orange: '#e29050',
+    yellow: '#d9b86a',
+    green:  '#7ac481',
+    blue:   '#6ab5e0',
+    purple: '#b779e0'
+};
+
+// Apply a project's accent color to an element via CSS custom property.
+// Passing null removes the property so the theme accent takes over.
+function applyProjectAccent(el, colorKey) {
+    if (!el) return;
+    if (colorKey && PROJECT_COLOR_HEX[colorKey]) {
+        el.style.setProperty('--proj-accent', PROJECT_COLOR_HEX[colorKey]);
+    } else {
+        el.style.removeProperty('--proj-accent');
+    }
+}
+
+
 // ── PROJECT CONTEXT MENU ──
 // Right-click (or long-press on touch) a project row to open a custom menu
-// with Edit and Delete options. Replaces the removed `×` delete button.
+// with Edit, a color picker, and Delete options. Replaces the removed `×`
+// delete button.
 
 function hideProjectContextMenu() {
     const existing = document.getElementById('projContextMenu');
@@ -922,7 +949,44 @@ function onProjContextKeydown(event) {
     if (event.key === 'Escape') hideProjectContextMenu();
 }
 
-function showProjectContextMenu(x, y, onEdit, onDelete) {
+// Build the inline color-picker strip that sits between Edit and Delete in
+// the project context menu. Single click on any swatch assigns the color
+// and closes the menu — matching how Edit and Delete already behave.
+function buildColorPicker(currentColorKey, onSelect) {
+    const picker = document.createElement('div');
+    picker.className = 'projContextColorPicker';
+
+    // Reset (theme accent) slot first so it's the leftmost option.
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'projContextColorSwatch reset';
+    resetBtn.setAttribute('aria-label', 'Reset to theme accent');
+    if (!currentColorKey) resetBtn.classList.add('active');
+    resetBtn.addEventListener('click', function() {
+        hideProjectContextMenu();
+        onSelect(null);
+    });
+    picker.appendChild(resetBtn);
+
+    listLogic.PROJECT_COLOR_KEYS.forEach(function(key) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'projContextColorSwatch';
+        btn.style.setProperty('--swatch-color', PROJECT_COLOR_HEX[key]);
+        btn.setAttribute('aria-label', 'Set project color: ' + key);
+        if (currentColorKey === key) btn.classList.add('active');
+        btn.addEventListener('click', function() {
+            hideProjectContextMenu();
+            onSelect(key);
+        });
+        picker.appendChild(btn);
+    });
+
+    return picker;
+}
+
+
+function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
 
     hideProjectContextMenu();
 
@@ -948,6 +1012,9 @@ function showProjectContextMenu(x, y, onEdit, onDelete) {
     });
 
     menu.appendChild(editOpt);
+    if (colorContext && typeof colorContext.onSelect === 'function') {
+        menu.appendChild(buildColorPicker(colorContext.currentColor || null, colorContext.onSelect));
+    }
     menu.appendChild(delOpt);
     document.body.appendChild(menu);
 
@@ -1679,6 +1746,7 @@ function attachProjectContextMenu(projChild, titleInput) {
         if (mainDiv) {
             while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
         }
+        applyProjectAccent(mainDiv, listLogic.getProjectColor(name));
         const hasReal = items && items.some(function(i){ return i.tit !== ''; });
         if (hasReal) {
             addToDos_restore(items, name);
@@ -1700,10 +1768,28 @@ function attachProjectContextMenu(projChild, titleInput) {
         deleteProjectFlow(projChild, titleInput.value);
     }
 
+    function onColorSelect(colorKey) {
+        const name = titleInput.value;
+        if (!name || !listLogic.listProjectsArray().includes(name)) return;
+        listLogic.setProjectColor(name, colorKey);
+        applyProjectAccent(projChild, colorKey);
+        // If this project is selected, propagate to the main list so its
+        // duePills pick up the new accent via CSS variable inheritance.
+        if (projChild.classList.contains('selectedProject')) {
+            applyProjectAccent(document.getElementById('mainList'), colorKey);
+        }
+    }
+
+    function buildColorContext() {
+        const name = titleInput.value;
+        if (!name || !listLogic.listProjectsArray().includes(name)) return null;
+        return { currentColor: listLogic.getProjectColor(name), onSelect: onColorSelect };
+    }
+
     // desktop right-click
     projChild.addEventListener('contextmenu', function(event) {
         event.preventDefault();
-        showProjectContextMenu(event.clientX, event.clientY, onEdit, onDelete);
+        showProjectContextMenu(event.clientX, event.clientY, onEdit, onDelete, buildColorContext());
     });
 
     // touch long-press (~500ms)
@@ -1720,7 +1806,7 @@ function attachProjectContextMenu(projChild, titleInput) {
         lpFired  = false;
         lpTimer  = setTimeout(function() {
             lpFired = true;
-            showProjectContextMenu(lpStartX, lpStartY, onEdit, onDelete);
+            showProjectContextMenu(lpStartX, lpStartY, onEdit, onDelete, buildColorContext());
         }, 500);
     }, { passive: true });
 
@@ -2572,6 +2658,7 @@ function component() {
                         var arrayValues = listLogic.listItems(innerValue);
 
                         clearToDos();
+                        applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(innerValue));
 
                         if(arrayValues){
                             addAllToDo_DOM(arrayValues, innerValue);
@@ -2595,25 +2682,27 @@ function component() {
                 function selectProject(){
 
                     if(projOnChild != null){
-            
+
                         // console.log("selectedProject exists");
 
                         projOnChild.classList.remove("selectedProject");
                         projOnChild.classList.add("unselectedProject");
-                    
+
                     }
                     // changing ONLY the selected project
                     if(projChild.classList.contains("unselectedProject")){
-        
+
                         projChild.classList.remove("unselectedProject");
                         projChild.classList.add("selectedProject");
-        
-        
+
+
                         // console.log("Class changed to selectedProject");
-                        
+
                     }
 
-
+                    // Newly-committed projects default to null color; also
+                    // covers editProject renames by re-reading current color.
+                    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(titleInput.value));
 
                 }
 
@@ -2805,6 +2894,7 @@ function restoreFromStorage() {
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
+        applyProjectAccent(projChild, listLogic.getProjectColor(projectName));
 
         titleInput.type        = "text";
         titleInput.autocomplete = "off";
@@ -2955,6 +3045,7 @@ function restoreFromStorage() {
                 const name  = titleInput.value;
                 const items = listLogic.listItems(name);
                 clearToDos_restore();
+                applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(name));
 
                 const hasRealItems = items && items.some(function(i){ return i.tit !== ""; });
                 if (hasRealItems) {
@@ -2996,6 +3087,7 @@ function restoreFromStorage() {
         lastChild.classList.remove("unselectedProject");
         lastChild.classList.add("selectedProject");
     }
+    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(lastProject));
 
     const lastItems       = listLogic.listItems(lastProject);
     const lastHasReal     = lastItems && lastItems.some(function(i){ return i.tit !== ""; });
