@@ -7,8 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-23',
         added: [
-            'Changelog modal accessible from the footer version label.',
-            'Expand all / collapse all buttons for todo item descriptions.',
+            'Prominent "Create your first project" button on the first-run empty state.',
+        ],
+    },
+    {
+        version: '1.1',
+        date: '2026-04-23',
+        added: [
             'Collapsible "Completed" section for checked-off todos.',
         ],
         fixed: [
