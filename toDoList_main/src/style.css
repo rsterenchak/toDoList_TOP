@@ -771,6 +771,46 @@ body {
   max-width: 320px;
 }
 
+/* NO-PROJECTS VARIANT — scaled up so the first-run main panel anchors the
+   page visually, with a primary CTA that fires the sidebar + button. Only
+   the no-projects state gets this treatment; per-project empty states
+   keep their smaller proportions. */
+#emptyState.emptyStateNoProjects {
+  padding: 72px 16px 64px;
+}
+#emptyState.emptyStateNoProjects .emptyStateIcon {
+  font-size: 56px;
+}
+#emptyState.emptyStateNoProjects .emptyStateTitle {
+  font-size: 16px;
+  letter-spacing: 0.22em;
+}
+#emptyState.emptyStateNoProjects .emptyStateSub {
+  font-size: 14px;
+  max-width: 380px;
+}
+
+#emptyStateCreateBtn {
+  margin-top: 18px;
+  padding: 12px 20px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.12s ease, box-shadow 0.12s ease;
+}
+#emptyStateCreateBtn:hover { filter: brightness(1.1); }
+#emptyStateCreateBtn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 #emptyStateInput {
   margin-top: 22px;
   width: 300px;
@@ -1261,6 +1301,14 @@ body.row-dragging * { cursor: grabbing !important; }
     max-width: 320px;
   }
 
+  #emptyState.emptyStateNoProjects {
+    padding: 48px 16px 40px;
+  }
+  #emptyStateCreateBtn {
+    width: 100%;
+    max-width: 320px;
+  }
+
   #projButton {
     width: 40px;
     height: 40px;
@@ -1317,6 +1365,9 @@ body.row-dragging * { cursor: grabbing !important; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }
+
+  #emptyState.emptyStateNoProjects .emptyStateIcon { font-size: 44px; }
+  #emptyState.emptyStateNoProjects .emptyStateTitle { font-size: 14px; }
 }
 
 /* ══════════════════════════════════════════

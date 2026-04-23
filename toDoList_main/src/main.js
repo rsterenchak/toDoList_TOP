@@ -254,11 +254,21 @@ function updateEmptyState(mainListDiv) {
 
         const sub = document.createElement('div');
         sub.className = 'emptyStateSub';
-        sub.textContent = 'Create one to get started.';
+        sub.textContent = 'Create your first project to start tracking todos.';
+
+        const createBtn = document.createElement('button');
+        createBtn.id = 'emptyStateCreateBtn';
+        createBtn.type = 'button';
+        createBtn.textContent = 'CREATE YOUR FIRST PROJECT';
+        createBtn.addEventListener('click', function() {
+            const projBtn = document.getElementById('projButton');
+            if (projBtn) projBtn.click();
+        });
 
         block.appendChild(icon);
         block.appendChild(title);
         block.appendChild(sub);
+        block.appendChild(createBtn);
         mainListDiv.appendChild(block);
         return;
     }
