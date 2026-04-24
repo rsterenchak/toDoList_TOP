@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-24',
         fixed: [
-            'Installing the app to the home screen now launches the live app with the correct icon, even when the site is hosted from a GitHub Pages subpath.',
             'Footer version and open/done counts no longer get clipped at the bottom of the viewport on iOS mobile when the todo list is long.',
             'Tapping "Create your first project" on mobile now slides the projects sidebar open and focuses the name input so the soft keyboard appears immediately.',
             'Due-date pill on each todo row now renders a fully enclosed border instead of having its bottom edge cropped flush against the row.',
             'Due-date pill border is now a full pixel wide so the bottom edge no longer drops out on standard-resolution desktop displays.',
+            'Tapping the add-project button in the sidebar on mobile now focuses the new project name input immediately so the soft keyboard appears without a second tap.',
         ],
     },
 ];
