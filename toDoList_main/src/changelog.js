@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-04-23',
+        date: '2026-04-24',
         added: [
-            'Checking off a todo now plays a brief celebratory pulse on the checkbox and sweeps a line across the title, with a short haptic tap on touch devices.',
+            'Task Management can now be installed to the home screen and keeps working offline, with a quiet reload cue in the footer whenever a new version is ready.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-04-23',
         fixed: [
             'Due date field restored on mobile layouts below 420px.',
             'Drag-and-drop reordering now keeps completed items at the bottom.',
