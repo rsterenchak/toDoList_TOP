@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-24',
+        added: [
+            'A pixel ghost now drifts along the bottom of the screen on desktop and cheers whenever you check off a todo, with a bigger celebration when a project is fully cleared; toggle it off next to the theme switch in the nav bar.',
+        ],
         fixed: [
-            'Tapping "Create your first project" on mobile now slides the projects sidebar open and focuses the name input so the soft keyboard appears immediately.',
             'Due-date pill on each todo row now renders a fully enclosed border instead of having its bottom edge cropped flush against the row.',
             'Due-date pill border is now a full pixel wide so the bottom edge no longer drops out on standard-resolution desktop displays.',
             'Tapping the add-project button in the sidebar on mobile now focuses the new project name input immediately so the soft keyboard appears without a second tap.',

@@ -1,7 +1,21 @@
 import './style.css';
 import { listLogic } from './listLogic.js';
 import { changelog, getNewestChangelogDate } from './changelog.js';
+import { createCompanion, isCompanionEnabled, setCompanionEnabled, supportsDesktopCompanion } from './companion.js';
 import button from './addProj_button.svg';
+
+// Single shared companion instance. Lazily constructed by `ensureCompanion()`
+// from inside the first mountable context (component() has built the DOM by
+// the time anything triggers a cheer). Stays null when disabled or when the
+// viewport doesn't qualify — callers must null-guard before invoking.
+let companion = null;
+function ensureCompanion() {
+    if (companion) return companion;
+    if (!isCompanionEnabled()) return null;
+    if (!supportsDesktopCompanion()) return null;
+    companion = createCompanion(document);
+    return companion;
+}
 
 
 // ── THEME (light / dark) ──
@@ -201,6 +215,18 @@ function wireCheckbox(toDoChild, toDoInput, item) {
                 setTimeout(function() {
                     toDoChild.classList.remove('just-completed');
                 }, 300);
+            }
+            // Desktop ghost companion — cheer on every item completion. The
+            // "big" variant fires when this toggle leaves zero open items in
+            // the project, i.e. the project just became fully done.
+            const companionInstance = ensureCompanion();
+            if (companionInstance) {
+                const projectForCount = toDoChild.dataset.value;
+                const items = projectForCount ? (listLogic.listItems(projectForCount) || []) : [];
+                const remainingOpen = items.filter(function(i) {
+                    return i && i.tit && !i.completed;
+                }).length;
+                companionInstance.cheer(remainingOpen === 0);
             }
         }
 
@@ -2252,6 +2278,40 @@ function component() {
 
     nav.appendChild(themeToggle);
 
+    // ── companion toggle (desktop only) ──
+    // Mirror the theme-toggle pill switch. Hidden on mobile via CSS so the
+    // control only appears on viewports where the companion actually runs.
+    // Clicking it flips the persisted pref in localStorage and mounts or
+    // destroys the companion DOM element accordingly.
+    const companionToggle      = document.createElement('button');
+    const companionToggleThumb = document.createElement('span');
+
+    companionToggle.id   = 'companionToggle';
+    companionToggle.type = 'button';
+    companionToggle.setAttribute('role', 'switch');
+    companionToggle.setAttribute('aria-label', 'Toggle desktop companion');
+    companionToggleThumb.className = 'companionToggleThumb';
+    companionToggle.appendChild(companionToggleThumb);
+
+    function syncCompanionToggle() {
+        companionToggle.setAttribute('aria-checked', isCompanionEnabled() ? 'true' : 'false');
+    }
+    syncCompanionToggle();
+
+    companionToggle.addEventListener('click', function () {
+        const next = !isCompanionEnabled();
+        setCompanionEnabled(next);
+        if (next) {
+            ensureCompanion();
+        } else if (companion) {
+            companion.destroy();
+            companion = null;
+        }
+        syncCompanionToggle();
+    });
+
+    nav.appendChild(companionToggle);
+
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);
@@ -2868,6 +2928,11 @@ function component() {
     });
 
     setTimeout(updateFooterCounts, 0);
+
+    // Mount the desktop companion on first boot when the pref allows and
+    // the viewport qualifies. Deferred by a tick so document.body exists
+    // (index.js appends the component right after component() returns).
+    setTimeout(ensureCompanion, 0);
 
     return base;
 
