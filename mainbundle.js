@@ -16,7 +16,7 @@
   \**************************/
 (__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
-eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   changelog: () => (/* binding */ changelog),\n/* harmony export */   getNewestChangelogDate: () => (/* binding */ getNewestChangelogDate)\n/* harmony export */ });\n// Hardcoded changelog entries for the footer version modal. Newest-first.\n// Each entry: { version, date (ISO YYYY-MM-DD), added?, fixed?, changed? }.\n// Add new releases to the top of the array; the modal renders order as-is\n// and the footer unseen-dot compares `date` against todoapp_changelogLastSeen.\nvar changelog = [{\n  version: '1.1',\n  date: '2026-04-24',\n  added: ['Task Management can now be installed to the home screen and keeps working offline, with a quiet reload cue in the footer whenever a new version is ready.']\n}, {\n  version: '1.1',\n  date: '2026-04-23',\n  fixed: ['Due date field restored on mobile layouts below 420px.', 'Drag-and-drop reordering now keeps completed items at the bottom.', 'Blank todo input now reliably reappears after committing a title, even when the user clicked away and returned before pressing Enter.'],\n  changed: ['Due date picker now opens a month-view calendar from the row\\'s date pill, with quick shortcuts and a Clear option.']\n}];\n\n// Convenience for the footer unseen-dot logic. Returns the ISO date string\n// of the newest entry, or null when the array is empty.\nfunction getNewestChangelogDate() {\n  if (!changelog.length) return null;\n  return changelog[0].date;\n}\n\n//# sourceURL=webpack://todolist_main/./src/changelog.js?\n}");
+eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   changelog: () => (/* binding */ changelog),\n/* harmony export */   getNewestChangelogDate: () => (/* binding */ getNewestChangelogDate)\n/* harmony export */ });\n// Hardcoded changelog entries for the footer version modal. Newest-first.\n// Each entry: { version, date (ISO YYYY-MM-DD), added?, fixed?, changed? }.\n// Add new releases to the top of the array; the modal renders order as-is\n// and the footer unseen-dot compares `date` against todoapp_changelogLastSeen.\nvar changelog = [{\n  version: '1.1',\n  date: '2026-04-24',\n  added: ['Task Management can now be installed to the home screen and keeps working offline, with a quiet reload cue in the footer whenever a new version is ready.'],\n  fixed: ['Installing the app to the home screen now launches the live app with the correct icon, even when the site is hosted from a GitHub Pages subpath.']\n}, {\n  version: '1.1',\n  date: '2026-04-23',\n  fixed: ['Due date field restored on mobile layouts below 420px.', 'Drag-and-drop reordering now keeps completed items at the bottom.', 'Blank todo input now reliably reappears after committing a title, even when the user clicked away and returned before pressing Enter.']\n}];\n\n// Convenience for the footer unseen-dot logic. Returns the ISO date string\n// of the newest entry, or null when the array is empty.\nfunction getNewestChangelogDate() {\n  if (!changelog.length) return null;\n  return changelog[0].date;\n}\n\n//# sourceURL=webpack://todolist_main/./src/changelog.js?\n}");
 
 /***/ },
 
@@ -250,6 +250,18 @@ eval("{module.exports = __webpack_require__.p + \"7bfd4a4cf945aaf710dd.svg\";\n\
 /******/ 		};
 /******/ 	})();
 /******/ 	
+/******/ 	/* webpack/runtime/global */
+/******/ 	(() => {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
 /******/ 	(() => {
 /******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
@@ -268,7 +280,25 @@ eval("{module.exports = __webpack_require__.p + \"7bfd4a4cf945aaf710dd.svg\";\n\
 /******/ 	
 /******/ 	/* webpack/runtime/publicPath */
 /******/ 	(() => {
-/******/ 		__webpack_require__.p = "";
+/******/ 		var scriptUrl;
+/******/ 		if (__webpack_require__.g.importScripts) scriptUrl = __webpack_require__.g.location + "";
+/******/ 		var document = __webpack_require__.g.document;
+/******/ 		if (!scriptUrl && document) {
+/******/ 			if (document.currentScript && document.currentScript.tagName.toUpperCase() === 'SCRIPT')
+/******/ 				scriptUrl = document.currentScript.src;
+/******/ 			if (!scriptUrl) {
+/******/ 				var scripts = document.getElementsByTagName("script");
+/******/ 				if(scripts.length) {
+/******/ 					var i = scripts.length - 1;
+/******/ 					while (i > -1 && (!scriptUrl || !/^http(s?):/.test(scriptUrl))) scriptUrl = scripts[i--].src;
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 		// When supporting browsers where an automatic publicPath is not supported you must specify an output.publicPath manually via configuration
+/******/ 		// or pass an empty string ("") and set the __webpack_public_path__ variable from your code to use your own logic.
+/******/ 		if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
+/******/ 		scriptUrl = scriptUrl.replace(/^blob:/, "").replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
+/******/ 		__webpack_require__.p = scriptUrl;
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/jsonp chunk loading */
