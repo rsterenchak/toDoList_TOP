@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix "Create your first project" button not opening sidebar or focusing input on mobile
+- [x] **[HIGH]** Fix "Create your first project" button not opening sidebar or focusing input on mobile
   - Description: On mobile in the empty state (no projects yet), tapping the "Create your first project" button does nothing visible — the sidebar doesn't slide open and focus doesn't move to the new-project input, so the user is stranded on the main page with no way to see what they're typing. Expected behavior is that the tap opens the projects sidebar (same as tapping the hamburger), then immediately focuses the new-project input so the soft keyboard appears and typing flows into the visible field. Likely cause is the empty-state button's handler only calling the focus/add-project routine without first invoking the sidebar-open routine on mobile breakpoints — or the focus call firing before the sidebar's open transition completes, causing iOS Safari to silently drop the focus (focus must be set inside the same user-gesture tick on iOS, so deferring with `setTimeout` after the transition won't reopen the keyboard). Fix by opening the sidebar synchronously in the click handler, then calling `.focus()` on the input in the same tick — if a CSS transition hides the input until the slide completes, switch to focusing first and letting the slide animate around the already-focused element.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-24 (PR #<number>)
   
 - [x] **[MEDIUM]** Fix footer being cut off at bottom of viewport on mobile
   - Description: On mobile (iOS Safari, screenshot from iPhone), the footer row containing "TASK MANAGEMENT V1.1" and the "X OPEN / Y DONE" counts is clipped at the bottom of the viewport — only the top portion of the text is visible. Expected behavior is that the full footer sits above the home indicator / safe area without any clipping. Likely cause is the footer's positioning (fixed/absolute at `bottom: 0`) not accounting for the iOS safe-area inset — needs `padding-bottom: env(safe-area-inset-bottom)` (or `bottom: env(safe-area-inset-bottom)` if positioned). Also confirm the `<meta name="viewport">` tag in `template.html` includes `viewport-fit=cover` so the env() value resolves to a non-zero number on notched devices.
