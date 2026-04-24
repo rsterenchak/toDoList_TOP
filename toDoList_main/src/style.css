@@ -1595,7 +1595,20 @@ body.row-dragging * { cursor: grabbing !important; }
 ══════════════════════════════════════════ */
 @media (max-width: 700px) {
 
-  body { padding: 0; }
+  /* The global html/body height:100% rule resolves against the initial
+     containing block, which on iOS Safari can settle at 100svh (URL bar
+     visible) while #outerContainer is 100dvh. When the dynamic viewport
+     later reports a larger value, the document stays short and
+     overflow:hidden clips the bottom of the outer grid — cropping the
+     footer row and leaving the page bg showing through beneath it. Pin the
+     page to at least 100dvh so it tracks the dynamic viewport, and paint
+     it with the footer's bg so any residual gap blends into the footer
+     instead of revealing --bg-base. */
+  body {
+    padding: 0;
+    min-height: 100dvh;
+    background: var(--bg-elevated);
+  }
 
   #outerContainer {
     border-radius: 0;

@@ -52,4 +52,22 @@ describe('mobile footer safe-area layout', () => {
         // And the footer track still grows by the bottom safe-area inset.
         expect(rule).toMatch(/calc\(\s*var\(--foot-h\)\s*\+\s*env\(safe-area-inset-bottom\)\s*\)/);
     });
+
+    // Follow-up fix: the footer was still clipping on iOS Safari because
+    // `html, body { height: 100% }` can resolve to 100svh while
+    // `#outerContainer` is `height: 100dvh`. When the dynamic viewport
+    // reports a larger value than body, `body { overflow: hidden }` crops
+    // the outer grid's bottom and the footer row with it. Pinning body to
+    // `min-height: 100dvh` keeps it tall enough to hold the full outer
+    // container, and matching body's bg to the footer color hides any
+    // residual gap below the grid instead of revealing `--bg-base`.
+    it('mobile body is pinned to at least the dynamic viewport height', () => {
+        const rule = extractRule('body', '(max-width: 700px)');
+        expect(rule).toMatch(/min-height:\s*100dvh/);
+    });
+
+    it('mobile body background matches the footer surface so any gap blends in', () => {
+        const rule = extractRule('body', '(max-width: 700px)');
+        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
+    });
 });

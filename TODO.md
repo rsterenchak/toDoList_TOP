@@ -17,10 +17,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-04-24 (PR #<number>)
      
-- [ ] **[MEDIUM]** Fix footer still clipped at viewport bottom on mobile (background not reaching screen edge)
+- [x] **[MEDIUM]** Fix footer still clipped at viewport bottom on mobile (background not reaching screen edge)
   - Description: Follow-up to the earlier safe-area fix — footer text ("TASK MANAGEMENT V1.1" / "X OPEN / Y DONE") is still being clipped at the bottom edge on iOS Safari. Working theory based on visual inspection: the footer container itself isn't extending all the way down to the screen edge, so its background ends short of the bottom and the content inside is positioned against wherever that short edge lands — instead of being lifted up by the safe-area inset. Expected behavior is that the footer's background fills to the absolute bottom of the viewport (under the home indicator) while the footer's *content* sits above the safe-area inset and is fully readable. Fix pattern: ensure the page layout (body or main app container) is `min-height: 100dvh` so the footer can reach the true bottom, then on the footer use `padding-bottom: env(safe-area-inset-bottom)` (not `bottom`/`margin-bottom`) so the background paints into the inset zone while content is pushed up. Verify `viewport-fit=cover` is on the viewport meta tag — without it, `env(safe-area-inset-bottom)` resolves to 0 and the padding does nothing. Also worth checking whether a parent container has a fixed `height: 100vh` (which on iOS excludes the dynamic toolbar area) — switch to `100dvh` if so.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/template.html`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-24 (PR #<number>)
 
 ## Features
 
