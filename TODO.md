@@ -2,10 +2,10 @@
 
 ## Bugs
      
-- [ ] **[MEDIUM]** Fix due-date pill bottom border being clipped inside todo row
+- [x] **[MEDIUM]** Fix due-date pill bottom border being clipped inside todo row
   - Description: The due-date pill (calendar icon + "MAY 1" + chevron) inside each todo row is missing its bottom border — the top, left, and right borders render but the bottom edge is cut off flush with the row. Expected behavior is a fully enclosed rounded rectangle around the pill matching its top border. Likely cause is the pill's effective height (border + padding + line-height) being slightly taller than the todo row's content box, combined with `overflow: hidden` (or a too-tight `height`/`max-height`) on the row container clipping the bottom edge. Investigate the todo row's height and overflow rules and the pill's vertical padding/line-height in `style.css` — either give the row enough room or remove the overflow clip on that axis.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-24 (PR #<number>)
 
 - [ ] **[MEDIUM]** Fix add-project button not auto-focusing the new project input on mobile
   - Description: On mobile, tapping the add-project button in the sidebar inserts a new project row but doesn't move focus into its input field — the user has to make a second tap on the input before the soft keyboard appears and they can type, which is significant friction on touch. Expected behavior is that the new project's input is focused immediately after creation so the keyboard pops up and typing flows in without an extra tap. Likely cause is the button's click handler creating and rendering the new row but never calling `.focus()` on the input — or calling it outside the original tap's user-gesture tick (e.g., after a `setTimeout` or after an `await`), which iOS Safari treats as a non-gesture focus and silently refuses to summon the keyboard for. Fix by appending the row first, then calling `.focus()` on the input synchronously in the same handler tick. If a render path defers DOM insertion, restructure so the input exists before the focus call rather than deferring the focus.

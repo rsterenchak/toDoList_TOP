@@ -862,7 +862,12 @@ body {
   transition: background 0.10s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   gap: 8px;
   min-width: 0;
-  overflow: hidden;
+  /* `clip` + a 1px paint margin still hides horizontal swipe-pane overflow
+     (panes self-clip via their own overflow: hidden), but lets the due-date
+     pill's 0.5px bottom border paint past sub-pixel-rounded centering rather
+     than getting cropped flush against the row's bottom edge. */
+  overflow: clip;
+  overflow-clip-margin: 1px;
   position: relative;
 }
 #toDoChild:hover { background: var(--bg-hover); }
