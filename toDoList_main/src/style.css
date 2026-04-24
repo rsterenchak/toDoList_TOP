@@ -1594,10 +1594,14 @@ body.row-dragging * { cursor: grabbing !important; }
     /* Grow the nav and footer rows by the safe-area insets so their padded
        content (see #navBar / #footBar below) stays inside the visible grid
        track — without this, #outerContainer's overflow:hidden clips the
-       status-bar and home-indicator reservations on notched iOS devices. */
+       status-bar and home-indicator reservations on notched iOS devices.
+       minmax(0, 1fr) on the middle track prevents the todo list's
+       intrinsic max-content height from inflating that track past its fair
+       share, which would otherwise push the footer row below the viewport
+       and produce the "only top of the text is visible" clipping on iOS. */
     grid-template-rows:
       calc(var(--nav-h) + env(safe-area-inset-top))
-      1fr
+      minmax(0, 1fr)
       calc(var(--foot-h) + env(safe-area-inset-bottom));
   }
 

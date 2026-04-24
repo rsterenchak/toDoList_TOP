@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix footer being cut off at bottom of viewport on mobile
+- [x] **[MEDIUM]** Fix footer being cut off at bottom of viewport on mobile
   - Description: On mobile (iOS Safari, screenshot from iPhone), the footer row containing "TASK MANAGEMENT V1.1" and the "X OPEN / Y DONE" counts is clipped at the bottom of the viewport — only the top portion of the text is visible. Expected behavior is that the full footer sits above the home indicator / safe area without any clipping. Likely cause is the footer's positioning (fixed/absolute at `bottom: 0`) not accounting for the iOS safe-area inset — needs `padding-bottom: env(safe-area-inset-bottom)` (or `bottom: env(safe-area-inset-bottom)` if positioned). Also confirm the `<meta name="viewport">` tag in `template.html` includes `viewport-fit=cover` so the env() value resolves to a non-zero number on notched devices.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/template.html`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-24 (PR #<number>)
      
 - [ ] **[MEDIUM]** Fix due-date pill bottom border being clipped inside todo row
   - Description: The due-date pill (calendar icon + "MAY 1" + chevron) inside each todo row is missing its bottom border — the top, left, and right borders render but the bottom edge is cut off flush with the row. Expected behavior is a fully enclosed rounded rectangle around the pill matching its top border. Likely cause is the pill's effective height (border + padding + line-height) being slightly taller than the todo row's content box, combined with `overflow: hidden` (or a too-tight `height`/`max-height`) on the row container clipping the bottom edge. Investigate the todo row's height and overflow rules and the pill's vertical padding/line-height in `style.css` — either give the row enough room or remove the overflow clip on that axis.
