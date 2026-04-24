@@ -29,7 +29,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-23 (PR #<number>)
 
-- [ ] **[LOW]** Add desktop-only ghost companion that roams the bottom of the screen and cheers on completion
+- [x] **[LOW]** Add desktop-only ghost companion that roams the bottom of the screen and cheers on completion
   - Description: Add a small animated pixel ghost character that lives in the bottom strip of the viewport on desktop, occasionally wandering around and celebrating whenever a todo item or project is completed. Purely decorative — no functional effect on the todo list itself, just a bit of personality.
     - Character & rendering:
       1. Ghost sprite, ~48–64px tall, pixel-art style, tinted to match the app's purple accent against the dark theme. Hard pixel edges so it reads cleanly at 1x/2x DPR.
@@ -55,7 +55,7 @@
     - Out of scope for v1: click-to-pet interactions, thought bubbles with phrases, sleep state after inactivity, multiple character skins or a character picker, mobile support, dragging the ghost to reposition. Any of these can be follow-up entries once the base companion is shipped.
     - Asset note: the sprite sheet PNG itself needs to be created or sourced. Add to `toDoList_main/src/assets/` (create the folder if it doesn't exist) and reference from `style.css` via `url()` — Webpack will handle it. If no assets path is currently configured in webpack, confirm with a quick grep of `webpack.config.js` before writing the entry's CSS (per CLAUDE.md, don't modify webpack config unless required; the default file-loader setup usually already handles images).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-24 (PR #<number>)
 
 ## In Progress
 
