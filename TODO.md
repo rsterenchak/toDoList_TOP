@@ -29,10 +29,33 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-04-23 (PR #<number>)
 
-- [x] **[LOW]** Add PWA manifest and service worker for install and offline support
-  - Description: Turn the app into an installable, offline-capable PWA. Add a `manifest.webmanifest` declaring `name: "Task Management"`, `short_name: "Tasks"`, `start_url: "/"`, `scope: "/"`, `display: "standalone"`, `background_color: "#0e0f14"`, `theme_color: "#0e0f14"` (matching `--bg-base`), plus an icons array generated from the existing `favicon.svg` via `favicons-webpack-plugin` — 180×180 for iOS, 192×192 and 512×512 for Android, and a separate 512×512 `purpose: "maskable"` variant with ~10% safe-zone padding. Reference the manifest and icons from the HTML template with the corresponding `<link>` tags, add `<meta name="theme-color" content="#0e0f14">` for status-bar tinting, and add the iOS standalone metas (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent`, `apple-mobile-web-app-title: Tasks`). Update the viewport meta to `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">` — the `viewport-fit=cover` flag is what unlocks `env(safe-area-inset-*)` values on notched iOS devices. In the mobile media query (`@media (max-width: 700px)`), add `padding-top: env(safe-area-inset-top)` on `#navBar` and `padding-bottom: env(safe-area-inset-bottom)` on `#footBar` so the Dynamic Island and home indicator don't clip the app chrome when launched from the home screen. For offline support, wire `workbox-webpack-plugin` (`InjectManifest` or `GenerateSW`) to emit `sw.js` precaching the content-hashed JS/CSS/font/icon output so cache-busting follows build output without manual version bumps; register it from `index.js` gated on `'serviceWorker' in navigator`. All app data lives in `localStorage`, so cache-first for the shell is sufficient — no runtime fetch strategy needed. When a new service worker reaches `waiting` after a future deploy, surface a subtle "Update available   - reload to apply" cue in the footer next to the version label (reuse the `#changelogDot` visual vocabulary) and make the version label clickable to trigger `skipWaiting` + reload. This overlaps the existing "Add home screen icon and PWA manifest" feature entry — land together or dedupe before starting. Adding `favicons-webpack-plugin` and `workbox-webpack-plugin` is an explicit, task-instructed dependency addition per CLAUDE.md.
-  - File: `toDoList_main/src/favicon.svg`, `toDoList_main/src/manifest.webmanifest`, `toDoList_main/src/template.html`, `toDoList_main/src/sw.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/webpack.config.js`, `toDoList_main/package.json`
-  - Completed: 2026-04-24 (PR #<number>)
+- [ ] **[LOW]** Add desktop-only ghost companion that roams the bottom of the screen and cheers on completion
+  - Description: Add a small animated pixel ghost character that lives in the bottom strip of the viewport on desktop, occasionally wandering around and celebrating whenever a todo item or project is completed. Purely decorative — no functional effect on the todo list itself, just a bit of personality.
+    - Character & rendering:
+      1. Ghost sprite, ~48–64px tall, pixel-art style, tinted to match the app's purple accent against the dark theme. Hard pixel edges so it reads cleanly at 1x/2x DPR.
+      2. Single PNG sprite sheet with three animation states stacked vertically: idle (slow bob/blink, ~4 frames), walk (~4 frames, drawn facing right — flip horizontally via CSS `transform: scaleX(-1)` when moving left), cheer (~6 frames, arms/tail raised with a small vertical hop). Suggested sheet layout: 48x48 per frame, 6 cols × 3 rows = 288x144 total. Final dimensions up to the implementer.
+      3. Animate via CSS `@keyframes` with `steps(N)` on `background-position-x` — no JS per-frame redraws needed. One keyframe rule per state, swap the element's class to change state.
+    - Behavior / state machine (managed in `main.js`):
+      1. States: IDLE, WALKING, CHEERING. On a 20–120s random timer, transition IDLE↔WALKING (weighted ~70% idle so it doesn't pace constantly).
+      2. WALKING: pick a random target X inside the allowed strip (bottom ~160px of the viewport, 24px margins on each edge), lerp `left`/`top` toward the target at a slow walk pace, flip sprite on direction, return to IDLE on arrival. Also pick a random Y offset within the strip so it drifts up and down slightly, not just left/right.
+      3. CHEERING: triggered externally (see below), interrupts any state, plays the cheer animation once, returns to IDLE. A bigger cheer (longer animation or a simple CSS confetti/sparkle burst from the ghost's position) fires when the last open item in a project gets checked off.
+    - Cheer trigger wiring:
+      1. Hook into the existing item-completion handler in `main.js` (wherever the `completed` flag is toggled and the row re-renders) — call `companion.cheer()` there. Fire the "project complete" variant when the toggle results in zero remaining open items in the active project.
+    - Settings & persistence:
+      1. Add an on/off toggle somewhere unobtrusive (sidebar footer or next to the theme toggle). Default on.
+      2. Persist the preference to `localStorage` under the existing `todoapp_` prefix (e.g. `todoapp_companion_enabled`). When disabled, remove the companion element entirely — don't just hide it — so it consumes no timers or paint work.
+    - Desktop-only gate:
+      1. Mount the companion only when `(min-width: 1024px) and (pointer: fine)` matches. On mobile it would overlap tap targets and the bottom safe-area is already tight (see the footer clipping entries).
+    - Accessibility:
+      1. `aria-hidden="true"` on the companion element — it's decorative; screen readers shouldn't announce it.
+      2. Respect `prefers-reduced-motion: reduce` — when set, skip all movement and cheering animations entirely (either hide the companion or render it static in one spot).
+    - CLAUDE.md constraints:
+      1. No new dependencies — sprite animation via CSS keyframes + background-position is pure native CSS, no library needed.
+      2. `main.js` is large (25k+ tokens) — when locating the completion toggle handler for the cheer hook, use grep (`toggleCompleted`, `completed = `, or the checkbox event wiring) + offset/limit rather than reading the full file.
+    - Out of scope for v1: click-to-pet interactions, thought bubbles with phrases, sleep state after inactivity, multiple character skins or a character picker, mobile support, dragging the ghost to reposition. Any of these can be follow-up entries once the base companion is shipped.
+    - Asset note: the sprite sheet PNG itself needs to be created or sourced. Add to `toDoList_main/src/assets/` (create the folder if it doesn't exist) and reference from `style.css` via `url()` — Webpack will handle it. If no assets path is currently configured in webpack, confirm with a quick grep of `webpack.config.js` before writing the entry's CSS (per CLAUDE.md, don't modify webpack config unless required; the default file-loader setup usually already handles images).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
