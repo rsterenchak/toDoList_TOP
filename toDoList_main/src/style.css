@@ -248,6 +248,17 @@ body {
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
+/* Service-worker pending-update cue — reuses the dot visual; the version
+   label's click handler switches to skipWaiting + reload while .hasUpdate
+   is set. */
+#footVersion.hasUpdate #footVersionLabel {
+  color: var(--accent-text);
+}
+#footVersion.hasUpdate #changelogDot {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 #footCounts {
   margin-left: auto;
   display: flex;
@@ -1580,6 +1591,23 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 0;
     border: none;
     height: 100dvh;
+  }
+
+  /* Safe-area insets — with viewport-fit=cover in the document meta,
+     env(safe-area-inset-*) reports non-zero on notched iOS devices
+     and when the app is launched from the home screen in standalone
+     mode. Padding the nav and footer keeps the Dynamic Island and
+     home indicator clear of the app chrome. */
+  #navBar {
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  #footBar {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
 
   #mainSec {

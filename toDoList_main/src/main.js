@@ -1433,7 +1433,41 @@ function hasUnseenChangelog() {
 function updateChangelogDot() {
     const dot = document.getElementById('changelogDot');
     if (!dot) return;
-    dot.style.display = hasUnseenChangelog() ? 'inline-block' : 'none';
+    // When a pending service-worker update exists, the dot is forced on to
+    // surface the reload cue regardless of changelog-seen state.
+    const show = hasUnseenChangelog() || pendingUpdateRegistration !== null;
+    dot.style.display = show ? 'inline-block' : 'none';
+}
+
+// ── SERVICE WORKER UPDATE CUE ──
+// index.js registers the service worker and calls notifyUpdateAvailable()
+// once a new worker reaches the `waiting` state. The footer version label
+// reuses the #changelogDot visual vocabulary to signal the update, and its
+// click handler switches from "open changelog" to "skipWaiting + reload".
+let pendingUpdateRegistration = null;
+
+function notifyUpdateAvailable(registration) {
+    pendingUpdateRegistration = registration || null;
+    const footVersion = document.getElementById('footVersion');
+    if (footVersion) {
+        footVersion.classList.add('hasUpdate');
+        footVersion.setAttribute('title', 'Update available — reload to apply');
+        footVersion.setAttribute('aria-label', 'Update available — reload to apply');
+    }
+    updateChangelogDot();
+}
+
+function applyPendingUpdate() {
+    const registration = pendingUpdateRegistration;
+    if (!registration) return false;
+    const worker = registration.waiting || registration.installing;
+    if (worker && typeof worker.postMessage === 'function') {
+        worker.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+        // Fallback — nothing to message, just reload so the user sees the cue clear.
+        window.location.reload();
+    }
+    return true;
 }
 
 function showChangelogModal() {
@@ -2237,10 +2271,14 @@ function component() {
     footVersion.appendChild(footVersionLabel);
     footVersion.appendChild(changelogDot);
 
-    footVersion.addEventListener('click', showChangelogModal);
+    footVersion.addEventListener('click', function () {
+        if (applyPendingUpdate()) return;
+        showChangelogModal();
+    });
     footVersion.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
+            if (applyPendingUpdate()) return;
             showChangelogModal();
         }
     });
@@ -2816,7 +2854,7 @@ function component() {
 
 };
 
-export { component, restoreFromStorage };
+export { component, restoreFromStorage, notifyUpdateAvailable };
 
 // Bulk open/close every committed row's description panel. Clicks the row's
 // own #descToggle so the closure-scoped `switcher` inside wireDescToggle
