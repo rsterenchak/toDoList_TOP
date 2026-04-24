@@ -1789,3 +1789,128 @@ body.row-dragging * { cursor: grabbing !important; }
 #sideMa:not(:has(#projChild)) #projButton {
   animation: projButtonAttention 2.4s ease-in-out infinite;
 }
+
+
+/* COMPANION TOGGLE — pill switch to the right of #themeToggle. Matches the
+   theme toggle's dimensions and palette for a consistent pair at the end of
+   the nav bar. Hidden on viewports where the companion itself never runs. */
+#companionToggle {
+  margin-left: 8px;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+#companionToggle:hover {
+  border-color: var(--accent);
+}
+#companionToggle:focus { outline: none; }
+#companionToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.companionToggleThumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: left 0.18s ease, background 0.18s ease;
+  pointer-events: none;
+}
+#companionToggle[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#companionToggle[aria-checked="true"] .companionToggleThumb {
+  left: calc(100% - 19px);
+  background: #fff;
+}
+/* Only show the toggle on viewports that actually run the companion. */
+@media not all and (min-width: 1024px), (pointer: coarse) {
+  #companionToggle { display: none; }
+}
+
+
+/* COMPANION GHOST — desktop-only decorative pixel sprite. Absolute-positioned
+   from JS (left/top set inline in px). The background image is injected
+   inline so the companion module stays self-contained and theme-responsive
+   styling can layer on from here.
+
+   State classes on the element:
+     .idle      — gentle vertical bob, no drift (JS timer paused)
+     .walking   — JS lerps left/top each frame; no CSS animation so position
+                  transitions stay unjanked by combined keyframe transforms
+     .cheering  — one-shot vertical hop + scale pulse; .big-cheer stretches
+                  the duration and amplitude for the project-complete variant */
+.companion {
+  position: fixed;
+  width: 48px;
+  height: 56px;
+  background-image: url('./assets/companion-ghost.svg');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 2;
+  transform-origin: center bottom;
+  will-change: transform;
+}
+
+.companion.idle {
+  animation: companionIdle 2.2s ease-in-out infinite;
+}
+
+.companion.cheering {
+  animation: companionCheer 0.7s ease-out 1;
+}
+
+.companion.cheering.big-cheer {
+  animation: companionBigCheer 1.4s ease-out 1;
+}
+
+@keyframes companionIdle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+@keyframes companionCheer {
+  0%   { transform: translateY(0)    scale(1); }
+  30%  { transform: translateY(-14px) scale(1.12); }
+  60%  { transform: translateY(-2px)  scale(0.98); }
+  100% { transform: translateY(0)     scale(1); }
+}
+
+@keyframes companionBigCheer {
+  0%   { transform: translateY(0)    scale(1); }
+  20%  { transform: translateY(-22px) scale(1.2); }
+  45%  { transform: translateY(-4px)  scale(0.96); }
+  65%  { transform: translateY(-18px) scale(1.12); }
+  85%  { transform: translateY(-2px)  scale(0.99); }
+  100% { transform: translateY(0)     scale(1); }
+}
+
+/* Hide entirely on viewports that don't qualify for the companion. The JS
+   gate prevents mounting on these viewports already; this is belt-and-braces
+   for flicker during resize across the breakpoint. */
+@media not all and (min-width: 1024px), (pointer: coarse) {
+  .companion { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion,
+  .companion.idle,
+  .companion.cheering,
+  .companion.cheering.big-cheer {
+    animation: none;
+  }
+}
