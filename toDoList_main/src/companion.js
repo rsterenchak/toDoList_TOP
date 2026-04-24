@@ -55,6 +55,10 @@ export function createCompanion(doc) {
     let curY      = 0;
     let tgtX      = 0;
     let tgtY      = 0;
+    // Per-walk pace, re-rolled each time pickTarget runs. Varying the speed
+    // between walks is the cheapest source of unpredictable rhythm — a fixed
+    // step rate reads as a constant treadmill.
+    let stepSpeed = 0.5;
 
     function mount() {
         if (el) return;
@@ -101,21 +105,30 @@ export function createCompanion(doc) {
         const MARGIN_X = 40;
         const STRIP_TOP = Math.max(0, vh - 160);
         const STRIP_BOT = Math.max(STRIP_TOP + 32, vh - 48);
-        tgtX = MARGIN_X + Math.random() * Math.max(1, vw - MARGIN_X * 2);
+        // Short hops from the current X — up to ~30% of the viewport width
+        // in either direction — so the ghost meanders back and forth rather
+        // than crossing the screen in one straight shot. Clamped to the
+        // safe margin either way.
+        const range    = vw * 0.3;
+        const proposed = curX + (Math.random() * 2 - 1) * range;
+        tgtX = Math.max(MARGIN_X, Math.min(vw - MARGIN_X, proposed));
         tgtY = STRIP_TOP + Math.random() * (STRIP_BOT - STRIP_TOP);
+        // Re-roll pace per walk: 0.35–0.75 px/frame at 60fps keeps it within
+        // the "slow drift" perceptual band while varying the rhythm.
+        stepSpeed = 0.35 + Math.random() * 0.4;
     }
 
-    // 20–120s cadence between wander decisions, weighted ~70% idle so the
-    // ghost mostly stands still rather than pacing constantly.
+    // Short 2–6s pauses between hops. The ghost almost always walks when the
+    // timer fires (vs the old 70/30 idle bias) — roaming is the default mode,
+    // the pause just adds a natural breath between direction changes.
     function scheduleWanderTick() {
         if (!el) return;
-        const delay = 20000 + Math.random() * 100000;
+        const delay = 2000 + Math.random() * 4000;
         timerId = setTimeout(function() {
             timerId = null;
             if (!el) return;
             if (state === 'CHEERING') { scheduleWanderTick(); return; }
-            if (Math.random() < 0.3) startWalking();
-            else scheduleWanderTick();
+            startWalking();
         }, delay);
     }
 
