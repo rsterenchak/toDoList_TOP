@@ -2811,6 +2811,12 @@ function component() {
         attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
 
+        // Focus the new input synchronously inside this same user-gesture
+        // tick. iOS Safari only summons the soft keyboard when .focus() is
+        // called during the tap's gesture; deferring it (setTimeout, await,
+        // requestAnimationFrame) drops the keyboard silently.
+        titleInput.focus();
+
     });
 
     // ********************** SHADOW LISTENERS ********************** //
