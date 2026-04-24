@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             'Task Management can now be installed to the home screen and keeps working offline, with a quiet reload cue in the footer whenever a new version is ready.',
         ],
+        fixed: [
+            'Installing the app to the home screen now launches the live app with the correct icon, even when the site is hosted from a GitHub Pages subpath.',
+        ],
     },
     {
         version: '1.1',
@@ -17,9 +20,6 @@ export const changelog = [
             'Due date field restored on mobile layouts below 420px.',
             'Drag-and-drop reordering now keeps completed items at the bottom.',
             'Blank todo input now reliably reappears after committing a title, even when the user clicked away and returned before pressing Enter.',
-        ],
-        changed: [
-            'Due date picker now opens a month-view calendar from the row\'s date pill, with quick shortcuts and a Clear option.',
         ],
     },
 ];
