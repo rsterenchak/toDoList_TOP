@@ -1591,6 +1591,14 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 0;
     border: none;
     height: 100dvh;
+    /* Grow the nav and footer rows by the safe-area insets so their padded
+       content (see #navBar / #footBar below) stays inside the visible grid
+       track — without this, #outerContainer's overflow:hidden clips the
+       status-bar and home-indicator reservations on notched iOS devices. */
+    grid-template-rows:
+      calc(var(--nav-h) + env(safe-area-inset-top))
+      1fr
+      calc(var(--foot-h) + env(safe-area-inset-bottom));
   }
 
   /* Safe-area insets — with viewport-fit=cover in the document meta,

@@ -19,7 +19,7 @@ module.exports = {
     new FaviconsWebpackPlugin({
       logo: './src/favicon.svg',
       mode: 'webapp',
-      devMode: 'light',
+      devMode: 'webapp',
       inject: false,
       prefix: 'assets/',
       favicons: {
