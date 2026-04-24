@@ -1193,7 +1193,12 @@ body.row-dragging * { cursor: grabbing !important; }
    applied to #toDoChild, and the SVG icons inherit it via currentColor. */
 #duePill {
   background: transparent;
-  border: 0.5px solid var(--proj-accent, var(--border-bright));
+  /* 1px (not 0.5px like sibling chrome) — the pill is centered inside a row
+     whose intrinsic sub-pixel Y offset turns a 0.5px border-bottom into a
+     fractional-device-pixel hairline that disappears on DPR=1 displays. A
+     full pixel renders deterministically on every DPR so the pill keeps a
+     fully enclosed rounded-rect outline. */
+  border: 1px solid var(--proj-accent, var(--border-bright));
   padding: 3px 6px 3px 5px;
   margin: 0;
   cursor: pointer;

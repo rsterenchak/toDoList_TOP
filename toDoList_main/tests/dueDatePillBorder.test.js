@@ -40,6 +40,7 @@ describe('todo row clip rule preserves the due-date pill bottom border', () => {
     }
 
     const rowRule = extractTopLevelRule('#toDoChild');
+    const pillRule = extractTopLevelRule('#duePill');
 
     it('uses overflow: clip rather than overflow: hidden on #toDoChild', () => {
         expect(rowRule).toMatch(/overflow:\s*clip\s*;/);
@@ -48,6 +49,19 @@ describe('todo row clip rule preserves the due-date pill bottom border', () => {
 
     it('declares overflow-clip-margin of at least 1px so the pill border can paint', () => {
         const match = rowRule.match(/overflow-clip-margin:\s*(\d+(?:\.\d+)?)px\s*;/);
+        expect(match).not.toBeNull();
+        expect(parseFloat(match[1])).toBeGreaterThanOrEqual(1);
+    });
+
+    // The pill is centered inside a 44px row by `align-items: center`, which
+    // puts its top/bottom edges on a half-pixel Y offset. A 0.5px border at
+    // that sub-pixel position rounds to zero device pixels on DPR=1 displays
+    // and the bottom edge disappears. A 1px border always rasterizes to at
+    // least one physical pixel on every DPR, so the pill keeps a fully
+    // enclosed outline. Lock the width in here so a future "harmonize with
+    // other hairlines" refactor cannot silently regress the bug.
+    it('uses a 1px (or thicker) border on #duePill to avoid DPR=1 hairline dropout', () => {
+        const match = pillRule.match(/border:\s*(\d+(?:\.\d+)?)px\s+solid/);
         expect(match).not.toBeNull();
         expect(parseFloat(match[1])).toBeGreaterThanOrEqual(1);
     });
