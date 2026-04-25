@@ -2286,8 +2286,27 @@ function component() {
     // light). Both glyphs are inline SVG layered on top of each other; CSS
     // cross-fades and rotates them on theme change. Click toggles data-theme
     // on <html> — every component recolors via the variable ramp in style.css.
-    const MOON_SVG = '<svg class="themeIcon themeIconMoon" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A6.5 6.5 0 0 1 7.8 3.5a6.5 6.5 0 1 0 8.7 8.7z"/></svg>';
-    const SUN_SVG  = '<svg class="themeIcon themeIconSun" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5V3.5"/><path d="M10 16.5V18.5"/><path d="M1.5 10H3.5"/><path d="M16.5 10H18.5"/><path d="M4.1 4.1L5.5 5.5"/><path d="M14.5 14.5L15.9 15.9"/><path d="M4.1 15.9L5.5 14.5"/><path d="M14.5 5.5L15.9 4.1"/></svg>';
+    // Pixel-art sun + moon — 7×7 grids of 1-unit rects, rendered with
+    // shape-rendering="crispEdges" so the squares stay aliased even at small
+    // sizes. Matches the chunky 1px-grid feel of the companion ghost.
+    const MOON_SVG = '<svg class="themeIcon themeIconMoon" viewBox="0 0 7 7" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<rect x="2" y="0" width="2" height="1"/>' +
+        '<rect x="1" y="1" width="2" height="1"/>' +
+        '<rect x="0" y="2" width="2" height="3"/>' +
+        '<rect x="1" y="5" width="2" height="1"/>' +
+        '<rect x="2" y="6" width="2" height="1"/>' +
+        '</svg>';
+    const SUN_SVG  = '<svg class="themeIcon themeIconSun" viewBox="0 0 7 7" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<rect x="3" y="0" width="1" height="1"/>' +
+        '<rect x="1" y="1" width="1" height="1"/>' +
+        '<rect x="5" y="1" width="1" height="1"/>' +
+        '<rect x="2" y="2" width="3" height="3"/>' +
+        '<rect x="0" y="3" width="1" height="1"/>' +
+        '<rect x="6" y="3" width="1" height="1"/>' +
+        '<rect x="1" y="5" width="1" height="1"/>' +
+        '<rect x="5" y="5" width="1" height="1"/>' +
+        '<rect x="3" y="6" width="1" height="1"/>' +
+        '</svg>';
 
     const themeToggle = document.createElement('button');
     themeToggle.id   = 'themeToggle';
