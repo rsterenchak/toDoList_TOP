@@ -2246,43 +2246,11 @@ function component() {
     // sidebarToggle is first child of nav so nothing can overlap it
     nav.appendChild(sidebarToggle);
 
-    // ── theme toggle (far right of nav, mirrors the ☰ on the left) ──
-    // Pill-switch: track fills with accent and thumb slides right when
-    // light theme is active. Click toggles data-theme on <html> — every
-    // component recolors for free via the CSS variable ramp in style.css.
-    const themeToggle      = document.createElement('button');
-    const themeToggleThumb = document.createElement('span');
-
-    themeToggle.id   = 'themeToggle';
-    themeToggle.type = 'button';
-    themeToggle.setAttribute('role', 'switch');
-    themeToggle.setAttribute('aria-label', 'Toggle light theme');
-    themeToggleThumb.className = 'themeToggleThumb';
-    themeToggle.appendChild(themeToggleThumb);
-
-    function syncThemeToggle() {
-        themeToggle.setAttribute('aria-checked', getCurrentTheme() === 'light' ? 'true' : 'false');
-    }
-    syncThemeToggle();
-
-    themeToggle.addEventListener('click', function () {
-        const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-        document.documentElement.classList.add('theme-transitioning');
-        applyTheme(next);
-        try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore quota/private-mode */ }
-        syncThemeToggle();
-        setTimeout(function () {
-            document.documentElement.classList.remove('theme-transitioning');
-        }, 220);
-    });
-
-    nav.appendChild(themeToggle);
-
     // ── companion toggle (desktop only) ──
-    // Mirror the theme-toggle pill switch. Hidden on mobile via CSS so the
-    // control only appears on viewports where the companion actually runs.
-    // Clicking it flips the persisted pref in localStorage and mounts or
-    // destroys the companion DOM element accordingly.
+    // Pill-switch hidden on mobile via CSS so the control only appears on
+    // viewports where the companion actually runs. Clicking it flips the
+    // persisted pref in localStorage and mounts or destroys the companion
+    // DOM element accordingly.
     const companionToggle      = document.createElement('button');
     const companionToggleThumb = document.createElement('span');
 
@@ -2311,6 +2279,58 @@ function component() {
     });
 
     nav.appendChild(companionToggle);
+
+    // ── theme toggle (far right of nav, sits to the right of the ghost) ──
+    // Icon button that shows the *target* mode: a moon when light is active
+    // (tap to switch to dark) and a sun when dark is active (tap to switch to
+    // light). Both glyphs are inline SVG layered on top of each other; CSS
+    // cross-fades and rotates them on theme change. Click toggles data-theme
+    // on <html> — every component recolors via the variable ramp in style.css.
+    // Pixel-art sun + moon — 7×7 grids of 1-unit rects, rendered with
+    // shape-rendering="crispEdges" so the squares stay aliased even at small
+    // sizes. Matches the chunky 1px-grid feel of the companion ghost.
+    const MOON_SVG = '<svg class="themeIcon themeIconMoon" viewBox="0 0 7 7" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<rect x="2" y="0" width="2" height="1"/>' +
+        '<rect x="1" y="1" width="2" height="1"/>' +
+        '<rect x="0" y="2" width="2" height="3"/>' +
+        '<rect x="1" y="5" width="2" height="1"/>' +
+        '<rect x="2" y="6" width="2" height="1"/>' +
+        '</svg>';
+    const SUN_SVG  = '<svg class="themeIcon themeIconSun" viewBox="0 0 7 7" width="16" height="16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<rect x="3" y="0" width="1" height="1"/>' +
+        '<rect x="1" y="1" width="1" height="1"/>' +
+        '<rect x="5" y="1" width="1" height="1"/>' +
+        '<rect x="2" y="2" width="3" height="3"/>' +
+        '<rect x="0" y="3" width="1" height="1"/>' +
+        '<rect x="6" y="3" width="1" height="1"/>' +
+        '<rect x="1" y="5" width="1" height="1"/>' +
+        '<rect x="5" y="5" width="1" height="1"/>' +
+        '<rect x="3" y="6" width="1" height="1"/>' +
+        '</svg>';
+
+    const themeToggle = document.createElement('button');
+    themeToggle.id   = 'themeToggle';
+    themeToggle.type = 'button';
+    themeToggle.setAttribute('aria-label', 'Toggle light theme');
+    themeToggle.innerHTML = MOON_SVG + SUN_SVG;
+
+    function syncThemeToggle() {
+        themeToggle.setAttribute('aria-pressed', getCurrentTheme() === 'light' ? 'true' : 'false');
+    }
+    syncThemeToggle();
+
+    themeToggle.addEventListener('click', function () {
+        const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+        document.documentElement.classList.add('theme-transitioning');
+        applyTheme(next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore quota/private-mode */ }
+        syncThemeToggle();
+        setTimeout(function () {
+            document.documentElement.classList.remove('theme-transitioning');
+        }, 220);
+    });
+
+    nav.appendChild(themeToggle);
 
     base.appendChild(nav);
     base.appendChild(main);
