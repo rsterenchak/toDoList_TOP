@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-04-24',
-        added: [
-            'A pixel ghost now drifts along the bottom of the screen on desktop and cheers whenever you check off a todo, with a bigger celebration when a project is fully cleared; toggle it off next to the theme switch in the nav bar.',
+        date: '2026-04-25',
+        changed: [
+            'Theme switch in the nav bar is now a sun/moon icon button that fades and rotates as you flip between light and dark.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-04-24',
         fixed: [
             'Due-date pill on each todo row now renders a fully enclosed border instead of having its bottom edge cropped flush against the row.',
             'Due-date pill border is now a full pixel wide so the bottom edge no longer drops out on standard-resolution desktop displays.',

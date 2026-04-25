@@ -2246,43 +2246,11 @@ function component() {
     // sidebarToggle is first child of nav so nothing can overlap it
     nav.appendChild(sidebarToggle);
 
-    // ── theme toggle (far right of nav, mirrors the ☰ on the left) ──
-    // Pill-switch: track fills with accent and thumb slides right when
-    // light theme is active. Click toggles data-theme on <html> — every
-    // component recolors for free via the CSS variable ramp in style.css.
-    const themeToggle      = document.createElement('button');
-    const themeToggleThumb = document.createElement('span');
-
-    themeToggle.id   = 'themeToggle';
-    themeToggle.type = 'button';
-    themeToggle.setAttribute('role', 'switch');
-    themeToggle.setAttribute('aria-label', 'Toggle light theme');
-    themeToggleThumb.className = 'themeToggleThumb';
-    themeToggle.appendChild(themeToggleThumb);
-
-    function syncThemeToggle() {
-        themeToggle.setAttribute('aria-checked', getCurrentTheme() === 'light' ? 'true' : 'false');
-    }
-    syncThemeToggle();
-
-    themeToggle.addEventListener('click', function () {
-        const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-        document.documentElement.classList.add('theme-transitioning');
-        applyTheme(next);
-        try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore quota/private-mode */ }
-        syncThemeToggle();
-        setTimeout(function () {
-            document.documentElement.classList.remove('theme-transitioning');
-        }, 220);
-    });
-
-    nav.appendChild(themeToggle);
-
     // ── companion toggle (desktop only) ──
-    // Mirror the theme-toggle pill switch. Hidden on mobile via CSS so the
-    // control only appears on viewports where the companion actually runs.
-    // Clicking it flips the persisted pref in localStorage and mounts or
-    // destroys the companion DOM element accordingly.
+    // Pill-switch hidden on mobile via CSS so the control only appears on
+    // viewports where the companion actually runs. Clicking it flips the
+    // persisted pref in localStorage and mounts or destroys the companion
+    // DOM element accordingly.
     const companionToggle      = document.createElement('button');
     const companionToggleThumb = document.createElement('span');
 
@@ -2311,6 +2279,39 @@ function component() {
     });
 
     nav.appendChild(companionToggle);
+
+    // ── theme toggle (far right of nav, sits to the right of the ghost) ──
+    // Icon button that shows the *target* mode: a moon when light is active
+    // (tap to switch to dark) and a sun when dark is active (tap to switch to
+    // light). Both glyphs are inline SVG layered on top of each other; CSS
+    // cross-fades and rotates them on theme change. Click toggles data-theme
+    // on <html> — every component recolors via the variable ramp in style.css.
+    const MOON_SVG = '<svg class="themeIcon themeIconMoon" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A6.5 6.5 0 0 1 7.8 3.5a6.5 6.5 0 1 0 8.7 8.7z"/></svg>';
+    const SUN_SVG  = '<svg class="themeIcon themeIconSun" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5V3.5"/><path d="M10 16.5V18.5"/><path d="M1.5 10H3.5"/><path d="M16.5 10H18.5"/><path d="M4.1 4.1L5.5 5.5"/><path d="M14.5 14.5L15.9 15.9"/><path d="M4.1 15.9L5.5 14.5"/><path d="M14.5 5.5L15.9 4.1"/></svg>';
+
+    const themeToggle = document.createElement('button');
+    themeToggle.id   = 'themeToggle';
+    themeToggle.type = 'button';
+    themeToggle.setAttribute('aria-label', 'Toggle light theme');
+    themeToggle.innerHTML = MOON_SVG + SUN_SVG;
+
+    function syncThemeToggle() {
+        themeToggle.setAttribute('aria-pressed', getCurrentTheme() === 'light' ? 'true' : 'false');
+    }
+    syncThemeToggle();
+
+    themeToggle.addEventListener('click', function () {
+        const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+        document.documentElement.classList.add('theme-transitioning');
+        applyTheme(next);
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore quota/private-mode */ }
+        syncThemeToggle();
+        setTimeout(function () {
+            document.documentElement.classList.remove('theme-transitioning');
+        }, 220);
+    });
+
+    nav.appendChild(themeToggle);
 
     base.appendChild(nav);
     base.appendChild(main);

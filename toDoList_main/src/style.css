@@ -157,50 +157,66 @@ body {
   background: var(--bg-hover);
 }
 
-/* THEME TOGGLE — pill-switch on the right edge of the nav bar.
-   Track fills with accent when light theme is active; thumb slides to the
-   right. Mirrors the sidebar ☰ toggle's 36px tap area via the padded track.
-   `margin-left: auto` pushes it past #sidebarToggle to the far right. */
+/* THEME TOGGLE — 36×36 icon button on the right edge of the nav bar.
+   Shows a moon glyph in light mode and a sun glyph in dark mode (icon =
+   target mode). Both SVGs are absolutely positioned and cross-faded with a
+   short rotate, matching the ~150ms transitions used elsewhere in the app.
+   On desktop the ghost toggle's `margin-left: auto` already pushes the pair
+   to the right edge; on mobile the ghost is hidden and the override at the
+   bottom of this rule takes over so this button still sits flush right. */
 #themeToggle {
-  margin-left: auto;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--bg-surface);
+  margin-left: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
   border: 0.5px solid var(--border-bright);
   cursor: pointer;
   position: relative;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.18s ease, border-color 0.18s ease;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 #themeToggle:hover {
   border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 #themeToggle:focus { outline: none; }
 #themeToggle:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
-.themeToggleThumb {
+.themeIcon {
   position: absolute;
   top: 50%;
-  left: 3px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition: left 0.18s ease, background 0.18s ease;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
   pointer-events: none;
 }
-#themeToggle[aria-checked="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
+/* Dark theme is the default → show the sun (target = light). */
+#themeToggle .themeIconSun {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(0deg);
 }
-#themeToggle[aria-checked="true"] .themeToggleThumb {
-  left: calc(100% - 19px);
-  background: #fff;
+#themeToggle .themeIconMoon {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+/* Light theme active → show the moon (target = dark). */
+#themeToggle[aria-pressed="true"] .themeIconSun {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+#themeToggle[aria-pressed="true"] .themeIconMoon {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(0deg);
 }
 
 /* FOOTER */
@@ -1791,11 +1807,13 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 
-/* COMPANION TOGGLE — pill switch to the right of #themeToggle. Matches the
-   theme toggle's dimensions and palette for a consistent pair at the end of
-   the nav bar. Hidden on viewports where the companion itself never runs. */
+/* COMPANION TOGGLE — pill switch sitting to the LEFT of #themeToggle on
+   desktop. Its `margin-left: auto` pushes the ghost+theme pair to the right
+   edge of the nav bar. Hidden on viewports where the companion itself never
+   runs; on those viewports #themeToggle gets its own `margin-left: auto`
+   (see the media query at the bottom of this block). */
 #companionToggle {
-  margin-left: 8px;
+  margin-left: auto;
   width: 40px;
   height: 22px;
   border-radius: 11px;
@@ -1835,9 +1853,12 @@ body.row-dragging * { cursor: grabbing !important; }
   left: calc(100% - 19px);
   background: #fff;
 }
-/* Only show the toggle on viewports that actually run the companion. */
+/* Only show the toggle on viewports that actually run the companion. When
+   it's hidden, #themeToggle takes over the auto-margin so the icon button
+   still sits flush against the right edge of the nav. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
   #companionToggle { display: none; }
+  #themeToggle { margin-left: auto; }
 }
 
 
