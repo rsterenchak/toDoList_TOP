@@ -69,11 +69,10 @@ export function createCompanion(doc) {
         el.setAttribute('aria-hidden', 'true');
         doc.body.appendChild(el);
         placeInitial();
-        // Reduced motion: render static, no wander, no cheer animations.
-        // The cheer() call is still safe to invoke — it no-ops out visually.
-        if (!prefersReducedMotion()) {
-            scheduleWanderTick();
-        }
+        // Wander runs regardless of reduced-motion — the slow drift is mild
+        // enough to read as ambient. Only the attention-grabby cheer pop is
+        // gated by `prefersReducedMotion()` inside `cheer()`.
+        scheduleWanderTick();
     }
 
     function destroy() {
@@ -113,17 +112,17 @@ export function createCompanion(doc) {
         const proposed = curX + (Math.random() * 2 - 1) * range;
         tgtX = Math.max(MARGIN_X, Math.min(vw - MARGIN_X, proposed));
         tgtY = STRIP_TOP + Math.random() * (STRIP_BOT - STRIP_TOP);
-        // Re-roll pace per walk: 0.35–0.75 px/frame at 60fps keeps it within
-        // the "slow drift" perceptual band while varying the rhythm.
-        stepSpeed = 0.35 + Math.random() * 0.4;
+        // Re-roll pace per walk: 1.5–3 px/frame at 60fps gives a brisk-but-
+        // not-frantic stroll, with enough variation to read as natural rhythm.
+        stepSpeed = 1.5 + Math.random() * 1.5;
     }
 
-    // Short 2–6s pauses between hops. The ghost almost always walks when the
+    // Short 0.5–2s pauses between hops. The ghost almost always walks when the
     // timer fires (vs the old 70/30 idle bias) — roaming is the default mode,
     // the pause just adds a natural breath between direction changes.
     function scheduleWanderTick() {
         if (!el) return;
-        const delay = 2000 + Math.random() * 4000;
+        const delay = 500 + Math.random() * 1500;
         timerId = setTimeout(function() {
             timerId = null;
             if (!el) return;
@@ -148,7 +147,7 @@ export function createCompanion(doc) {
             scheduleWanderTick();
             return;
         }
-        const speed = 0.6; // px per frame — slow, ambient pace
+        const speed = stepSpeed; // per-walk pace from pickTarget — varies each hop
         curX += (dx / dist) * speed;
         curY += (dy / dist) * speed;
         applyTransform();
@@ -160,6 +159,9 @@ export function createCompanion(doc) {
     // gets checked off.
     function cheer(big) {
         if (!el) return;
+        // Reduced motion: skip the cheer pop/scale entirely. Wander keeps
+        // running — its slow drift respects the preference's intent.
+        if (prefersReducedMotion()) return;
         if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
         if (timerId) { clearTimeout(timerId); timerId = null; }
         if (cheerId) { clearTimeout(cheerId); cheerId = null; }
@@ -172,7 +174,7 @@ export function createCompanion(doc) {
             if (!el) return;
             el.classList.remove('big-cheer');
             setState('IDLE');
-            if (!prefersReducedMotion()) scheduleWanderTick();
+            scheduleWanderTick();
         }, dur);
     }
 
