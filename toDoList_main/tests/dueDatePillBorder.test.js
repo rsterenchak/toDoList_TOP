@@ -24,17 +24,27 @@ describe('todo row clip rule preserves the due-date pill bottom border', () => {
     function extractTopLevelRule(selector) {
         // Walk the file ignoring nested @media blocks so we only return the
         // top-level (desktop default) declaration block for `selector`.
+        // Match only when `selector` STARTS a top-level rule — preceded by
+        // start-of-file, `}`, or `,` (after whitespace) — so substrings inside
+        // compound selectors like `html[...] #toDoChild #duePill` don't match.
         let depth = 0;
         for (let i = 0; i < css.length; i++) {
             const c = css[i];
             if (c === '{') { depth++; continue; }
             if (c === '}') { depth--; continue; }
             if (depth !== 0) continue;
-            if (css.startsWith(selector, i) && /[\s{]/.test(css[i + selector.length] || '')) {
-                const blockStart = css.indexOf('{', i);
-                const blockEnd = css.indexOf('}', blockStart);
-                return css.slice(blockStart + 1, blockEnd);
-            }
+            if (!css.startsWith(selector, i)) continue;
+            const after = css[i + selector.length] || '';
+            if (after !== '{' && after !== ',' && !/\s/.test(after)) continue;
+            let j = i - 1;
+            while (j >= 0 && /\s/.test(css[j])) j--;
+            const prev = j < 0 ? '' : css[j];
+            // `/` covers the case where the preceding non-whitespace is the
+            // closing `*/` of a CSS comment immediately before the rule.
+            if (prev !== '' && prev !== '}' && prev !== ',' && prev !== '/') continue;
+            const blockStart = css.indexOf('{', i);
+            const blockEnd = css.indexOf('}', blockStart);
+            return css.slice(blockStart + 1, blockEnd);
         }
         throw new Error(`Top-level rule for "${selector}" not found`);
     }

@@ -293,6 +293,34 @@ function setCompletedSectionOpen(open) {
     localStorage.setItem(COMPLETED_SECTION_KEY, open ? 'true' : 'false');
 }
 
+// Persisted UI preference: compact-titles mode. When on, long todo titles are
+// visually truncated with a trailing ellipsis instead of overflowing or
+// wrapping. The underlying data is unchanged; CSS keys off
+// `data-compact-titles="on"` on <html> to apply text-overflow.
+const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
+
+function isCompactTitlesOn() {
+    try {
+        return localStorage.getItem(COMPACT_TITLES_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+function setCompactTitlesOn(on) {
+    try {
+        localStorage.setItem(COMPACT_TITLES_KEY, on ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+function applyCompactTitles(on) {
+    document.documentElement.setAttribute('data-compact-titles', on ? 'on' : 'off');
+}
+
+// Apply the saved preference before component() builds the DOM so the very
+// first paint already matches the saved state — same pattern as applyTheme.
+applyCompactTitles(isCompactTitlesOn());
+
 // Insert a collapsible "Completed (N)" header before the first completed row
 // in mainList, or remove it entirely if no completed rows exist. Applies the
 // collapsed class to mainList so CSS can hide the completed rows (and any
@@ -1967,6 +1995,9 @@ function buildToDoRow(item, toDoName) {
     toDoInput.style.fontSize = "14px";
     toDoInput.value       = item.tit || "";
     toDoInput.style.border = "none";
+    // Mirror the full title onto the native browser tooltip so compact-titles
+    // mode can rely on hover to reveal text that the ellipsis would clip.
+    toDoInput.title       = item.tit || "";
 
     closeButtonToDo.id = "closeButtonToDo";
     // Hide delete on blank placeholder rows — deleting the only available
@@ -2065,6 +2096,7 @@ function buildToDoRow(item, toDoName) {
         const isFirstCommit = !hasBlankPlaceholder;
 
         toDoInput.value = val;
+        toDoInput.title = val;
         item.tit = val;
         item.pri = 2;
         // If no due date is set yet, default to today + 7 days so the urgency
@@ -2097,6 +2129,7 @@ function buildToDoRow(item, toDoName) {
         const val = toDoInput.value.trim();
         if (val.length > 0) {
             item.tit = val;
+            toDoInput.title = val;
             listLogic.saveToStorage();
         }
     });
@@ -2112,6 +2145,7 @@ function buildToDoRow(item, toDoName) {
             item.tit = savedTitle;
             listLogic.saveToStorage();
         }
+        toDoInput.title = item.tit || "";
     });
 
     // descInput keydown — Enter to save (empty is a valid cleared state)
@@ -2415,6 +2449,40 @@ function component() {
     // the per-row switcher state in wireDescToggle stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
+
+    // Compact-titles toggle — pixel-art stacked-lines glyph (three horizontal
+    // bars, each shorter than the last). Sits immediately to the LEFT of the
+    // Expand All control so the two display-only viewport controls live
+    // together. Outline (off) / filled accent (on) is driven by aria-pressed
+    // in style.css; persisted state is reapplied in applyCompactTitles().
+    const COMPACT_TITLES_SVG =
+        '<svg class="compactTitlesIcon" viewBox="0 0 7 7" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<rect x="0" y="1" width="7" height="1"/>' +
+        '<rect x="0" y="3" width="5" height="1"/>' +
+        '<rect x="0" y="5" width="3" height="1"/>' +
+        '</svg>';
+
+    const compactTitlesBtn = document.createElement('button');
+    compactTitlesBtn.type = 'button';
+    compactTitlesBtn.id   = 'compactTitlesToggle';
+    compactTitlesBtn.className = 'compactTitlesBtn';
+    compactTitlesBtn.title = 'Compact titles';
+    compactTitlesBtn.setAttribute('aria-label', 'Compact titles');
+    compactTitlesBtn.innerHTML = COMPACT_TITLES_SVG;
+
+    function syncCompactTitlesBtn() {
+        compactTitlesBtn.setAttribute('aria-pressed', isCompactTitlesOn() ? 'true' : 'false');
+    }
+    syncCompactTitlesBtn();
+
+    compactTitlesBtn.addEventListener('click', function () {
+        const next = !isCompactTitlesOn();
+        setCompactTitlesOn(next);
+        applyCompactTitles(next);
+        syncCompactTitlesBtn();
+    });
+
+    bulkDescActions.appendChild(compactTitlesBtn);
 
     const bulkDescToggleBtn = document.createElement('button');
     bulkDescToggleBtn.type = 'button';

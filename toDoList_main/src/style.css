@@ -814,6 +814,72 @@ body {
   gap: 4px;
 }
 
+/* COMPACT TITLES TOGGLE — square icon button sitting to the LEFT of the
+   Expand All control. Outline frame in the off state; filled accent
+   background when on (driven by aria-pressed="true"). The stacked-lines
+   glyph is inline pixel-art SVG matching the chunky 1px-grid feel of the
+   theme toggle's sun/moon. */
+.compactTitlesBtn {
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.compactTitlesBtn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-text);
+}
+.compactTitlesBtn:focus { outline: none; }
+.compactTitlesBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.compactTitlesBtn[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+}
+.compactTitlesBtn[aria-pressed="true"]:hover {
+  background: var(--accent);
+  border-color: var(--accent-text);
+}
+.compactTitlesIcon {
+  display: block;
+  pointer-events: none;
+}
+
+/* Visual title truncation — single-line ellipsis when the global toggle is
+   on. Stored data is unchanged; the input still scrolls and edits normally
+   when focused, and the native `title` attribute mirrors the full value so
+   hover reveals anything the ellipsis clips. */
+html[data-compact-titles="on"] #toDoInput {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 75ch;
+}
+/* While the input is focused (user is editing) drop the cap and ellipsis so
+   the full title is visible. Blurring restores the truncated state. */
+html[data-compact-titles="on"] #toDoInput:focus {
+  max-width: none;
+  text-overflow: clip;
+}
+/* Once the input caps at 60ch, the leftover flex space lands at the end of
+   the row by default — push the meta column (date pill onward) to the right
+   edge so it stays visually aligned with the row's right side. */
+html[data-compact-titles="on"] #toDoChild #duePill {
+  margin-left: auto;
+}
+
 .bulkDescBtn {
   background: var(--bg-surface);
   border: 0.5px solid var(--border-bright);

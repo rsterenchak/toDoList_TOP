@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-26',
+        added: [
+            'Compact Titles toggle in the Todo Items header trims long titles to a single line with an ellipsis; hover the row to reveal the full text.',
+        ],
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
             'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
@@ -22,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-24',
         fixed: [
-            'Tapping the add-project button in the sidebar on mobile now focuses the new project name input immediately so the soft keyboard appears without a second tap.',
             'Footer background now reaches the bottom edge of the viewport on iOS Safari so the version label and open/done counts stay fully visible.',
         ],
     },
