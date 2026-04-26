@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-04-26',
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
+            'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
         ],
     },
     {
@@ -21,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-24',
         fixed: [
-            'Due-date pill border is now a full pixel wide so the bottom edge no longer drops out on standard-resolution desktop displays.',
             'Tapping the add-project button in the sidebar on mobile now focuses the new project name input immediately so the soft keyboard appears without a second tap.',
             'Footer background now reaches the bottom edge of the viewport on iOS Safari so the version label and open/done counts stay fully visible.',
         ],
