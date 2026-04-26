@@ -189,11 +189,11 @@ export function createCompanion(doc) {
         if (!el) return;
         el.classList.remove('idle', 'walking', 'cheering');
         el.classList.add(next.toLowerCase());
-        // Blinks only fire while idle — clipping a half-blink across a walk
-        // or cheer reads as a glitch. Cancel on any non-idle transition; the
-        // return-to-idle path reschedules a fresh blink countdown.
-        if (next === 'IDLE') scheduleBlink();
-        else                 cancelBlink();
+        // Blinks run through IDLE and WALKING (the 120ms transform squish
+        // doesn't conflict with the position lerp). Only CHEERING blocks
+        // them — its scale/translate keyframes would fight the blink frame.
+        if (next === 'CHEERING') cancelBlink();
+        else                     scheduleBlink();
     }
 
     // Random ~3–6s gap between blinks with a brief ~120ms closed-eye frame.
@@ -205,9 +205,9 @@ export function createCompanion(doc) {
         blinkId = setTimeout(function blinkOpen() {
             blinkId = null;
             if (!el) return;
-            // Re-check state at fire time — another transition may have raced
-            // ahead of cancelBlink (e.g. a cheer landing on the same tick).
-            if (state !== 'IDLE') return;
+            // Re-check at fire time — a cheer may have raced ahead of
+            // cancelBlink. IDLE/WALKING are both fine to blink in.
+            if (state === 'CHEERING') return;
             el.classList.add('blinking');
             blinkId = setTimeout(function blinkClose() {
                 blinkId = null;

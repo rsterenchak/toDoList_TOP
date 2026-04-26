@@ -154,14 +154,27 @@ describe('ghost companion — periodic blink', () => {
     const js  = read('companion.js');
     const css = read('style.css');
 
-    it('defines a .companion.blinking rule with a finite-iteration animation', () => {
-        // Finite iteration (matches the existing cheer pattern) — the blink
-        // is one short pulse, not a continuous loop.
-        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*animation:[^}]*\b1\b[^}]*\}/);
+    it('swaps to a closed-eyes sprite while .blinking is applied — true eye-only blink, not a body transform', () => {
+        // The blink is a sprite-swap, not an animation. The .blinking rule
+        // overrides background-image to a separate "closed eyes" SVG so only
+        // the eye region changes during the 120ms the class is on.
+        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*background-image:\s*url\([^)]*companion-ghost-blink\.svg[^)]*\)[^}]*\}/);
     });
 
-    it('disables the blink animation under prefers-reduced-motion alongside the other states', () => {
-        expect(css).toMatch(/@media\s+\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.companion\.blinking[\s\S]*?animation:\s*none/);
+    it('keeps the blink running under prefers-reduced-motion — same policy as the JS wander loop', () => {
+        // The 120ms blink is mild ambient motion (matches the wander, which
+        // also stays on under reduced-motion). The cheer keyframes and idle
+        // bob are still silenced — they're the attention-grabby ones.
+        // Find the companion-specific reduced-motion block (style.css has
+        // multiple `prefers-reduced-motion: reduce` blocks; we want the one
+        // that gates `.companion.cheering`).
+        const blocks = css.match(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/g) || [];
+        const companionBlock = blocks.find(function (b) { return /\.companion\.cheering/.test(b); });
+        expect(companionBlock).toBeTruthy();
+        expect(companionBlock).not.toMatch(/\.companion\.blinking/);
+        // Sanity: cheer + idle are still gated in this same block.
+        expect(companionBlock).toMatch(/\.companion\.cheering/);
+        expect(companionBlock).toMatch(/\.companion\.idle/);
     });
 
     it('toggles a "blinking" class on the sprite via add/remove pair', () => {
@@ -179,12 +192,14 @@ describe('ghost companion — periodic blink', () => {
         expect(js).toMatch(/setTimeout\s*\(/);
     });
 
-    it('only schedules blinks while idle so they do not clip mid-walk or mid-cheer', () => {
-        // Either the scheduled callback bails when state is not IDLE, or the
-        // entry into non-idle states cancels the pending blink.
-        const idleGuard = /state\s*!==?\s*['"]IDLE['"]/.test(js)
-                       || /state\s*===\s*['"]IDLE['"]/.test(js);
-        expect(idleGuard).toBe(true);
+    it('blocks blinks only during cheering — walking and idle both blink so they read as alive while wandering', () => {
+        // The blink fire-callback bails when state is CHEERING, and setState
+        // calls cancelBlink on entry into CHEERING. WALKING and IDLE both
+        // permit blinks because the brief 120ms transform squish doesn't
+        // conflict with the position lerp, only with the cheer keyframes.
+        const cheerGuard = /state\s*===\s*['"]CHEERING['"]/.test(js)
+                        || /state\s*!==?\s*['"]CHEERING['"]/.test(js);
+        expect(cheerGuard).toBe(true);
         expect(js).toMatch(/function\s+cancelBlink\s*\(/);
     });
 
