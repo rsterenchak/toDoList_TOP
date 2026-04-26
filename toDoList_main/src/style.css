@@ -865,7 +865,7 @@ html[data-compact-titles="on"] #toDoInput {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
-  max-width: 75ch;
+  max-width: 60ch;
 }
 /* While the input is focused (user is editing) drop the cap and ellipsis so
    the full title is visible. Blurring restores the truncated state. */

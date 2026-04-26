@@ -117,12 +117,12 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
         expect(truncRule).toMatch(/overflow:\s*hidden\s*;/);
     });
 
-    // The 75ch cap is what makes the ellipsis actually engage on wide rows —
+    // The 60ch cap is what makes the ellipsis actually engage on wide rows —
     // without it, text-overflow only kicks in once the title hits the row's
     // far-right edge, which on desktop almost never happens.
-    it('caps the truncated title at 75ch so the ellipsis engages well before the row edge', () => {
+    it('caps the truncated title at 60ch so the ellipsis engages well before the row edge', () => {
         const truncRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoInput');
-        expect(truncRule).toMatch(/max-width:\s*75ch\s*;/);
+        expect(truncRule).toMatch(/max-width:\s*60ch\s*;/);
     });
 
     // While the input is focused, the truncation lifts so the user can see
