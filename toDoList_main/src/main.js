@@ -2641,7 +2641,11 @@ function component() {
         let projectArray = [];
         let projectName = "";
 
-        // ****** INPUT LISTENER ****** 
+        // Set when Enter triggers the explicit blur on line ~2679 so the
+        // blur handler below doesn't re-enter the commit path.
+        let committingViaEnter = false;
+
+        // ****** INPUT LISTENER ******
         // Press enter after Project title input to set element information
         titleInput.addEventListener("keydown", function(event) {
 
@@ -2676,6 +2680,7 @@ function component() {
                 newProperty = titleInput.value;
 
                 // console.log("You entered: " + enteredText);
+                committingViaEnter = true;
                 titleInput.blur();
 
 
@@ -2876,6 +2881,34 @@ function component() {
             this.style.background = "rgba(0, 0, 0, 0)";
             projChild.style.boxShadow = "none";
             projChild.style.background = "var(--bg-active)";
+        });
+
+        // Click-away while the input is still in its initial unsubmitted
+        // state: a non-empty value commits the project (same effect as
+        // pressing Enter); an empty value silently discards the half-built
+        // row so the user isn't left with a stranded, unselectable project.
+        titleInput.addEventListener("blur", function() {
+            if (committingViaEnter) {
+                committingViaEnter = false;
+                return;
+            }
+            // Only handle the initial-creation blur. Once firstTime flips,
+            // the row is committed and rename-on-blur is a separate concern.
+            if (firstTime !== 0) return;
+
+            const trimmed = titleInput.value.trim();
+            if (trimmed.length === 0) {
+                if (projChild.parentNode) {
+                    projChild.parentNode.removeChild(projChild);
+                }
+                projButton.style.pointerEvents = "auto";
+                return;
+            }
+
+            // Re-dispatch as Enter so the existing commit path (duplicate
+            // check, addProject, selectProject, DOM wiring) runs once and
+            // stays in one place.
+            titleInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         });
 
         projChild.addEventListener("mouseenter", function() {
