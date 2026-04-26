@@ -102,12 +102,15 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
         throw new Error(`Top-level rule for "${selector}" not found`);
     }
 
-    it('styles the button as a small icon-frame in the off state and filled-accent in the on state', () => {
+    it('styles the button as a small icon-frame in the off state and a subtle accent tint in the on state', () => {
         const baseRule = extractTopLevelRule('.compactTitlesBtn');
         expect(baseRule).toMatch(/background:\s*transparent\s*;/);
         expect(baseRule).toMatch(/border:\s*0?\.?5?p?x? ?[a-z]*\s*var\(--border-bright\)/);
+        // Active state uses the accent at lower opacity (--accent-dim) so the
+        // button reads as "on" without breaking the segmented-group look it
+        // shares with the adjacent Expand All control.
         const pressedRule = extractTopLevelRule('.compactTitlesBtn[aria-pressed="true"]');
-        expect(pressedRule).toMatch(/background:\s*var\(--accent\)\s*;/);
+        expect(pressedRule).toMatch(/background:\s*var\(--accent-dim\)\s*;/);
     });
 
     it('truncates #toDoInput to a single line with ellipsis only when compact-titles is on', () => {
@@ -139,5 +142,26 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
     it('keeps the meta column right-aligned by giving #duePill margin-left: auto in compact mode', () => {
         const metaRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoChild #duePill');
         expect(metaRule).toMatch(/margin-left:\s*auto\s*;/);
+    });
+
+    // The Compact Titles + Expand All buttons render as a single segmented
+    // toolbar group: zero gap between them, the first child gets the left
+    // side of the outer 6px radius, the last child gets the right side, and
+    // the second child uses a -0.5px left margin so the shared border seam
+    // doesn't double up.
+    it('renders the two header buttons as a segmented group with shared borders and no gap', () => {
+        const groupRule = extractTopLevelRule('#bulkDescActions');
+        expect(groupRule).toMatch(/gap:\s*0\s*;/);
+
+        const firstRule = extractTopLevelRule('#bulkDescActions > button:first-child');
+        expect(firstRule).toMatch(/border-top-left-radius:\s*var\(--radius-md\)\s*;/);
+        expect(firstRule).toMatch(/border-bottom-left-radius:\s*var\(--radius-md\)\s*;/);
+
+        const lastRule = extractTopLevelRule('#bulkDescActions > button:last-child');
+        expect(lastRule).toMatch(/border-top-right-radius:\s*var\(--radius-md\)\s*;/);
+        expect(lastRule).toMatch(/border-bottom-right-radius:\s*var\(--radius-md\)\s*;/);
+
+        const seamRule = extractTopLevelRule('#bulkDescActions > button + button');
+        expect(seamRule).toMatch(/margin-left:\s*-0?\.5px\s*;/);
     });
 });

@@ -803,22 +803,48 @@ body {
   text-transform: uppercase;
 }
 
-/* BULK DESCRIPTION CONTROLS — right-aligned Expand All / Collapse All */
+/* BULK DESCRIPTION CONTROLS — segmented toolbar group: Compact Titles
+   icon (left) + Expand All label (right). Children sit flush together
+   with shared 0.5px borders; only the outer corners get the 6px radius,
+   so the seam between the two reads as a single control group. */
 #bulkDescActions {
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-items: stretch;
+  gap: 0;
 }
 
-/* COMPACT TITLES TOGGLE — square icon button sitting to the LEFT of the
-   Expand All control. Outline frame in the off state; filled accent
-   background when on (driven by aria-pressed="true"). The stacked-lines
-   glyph is inline pixel-art SVG matching the chunky 1px-grid feel of the
-   theme toggle's sun/moon. */
+/* Normalize each segment to the same height with square corners by
+   default. The first/last children below restore the outer radius. */
+#bulkDescActions > button {
+  height: 26px;
+  box-sizing: border-box;
+  border-radius: 0;
+}
+#bulkDescActions > button:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+#bulkDescActions > button:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+/* Collapse the seam: the second segment's left border overlaps the
+   first segment's right border so there's no double 1px line. */
+#bulkDescActions > button + button {
+  margin-left: -0.5px;
+}
+
+/* COMPACT TITLES TOGGLE — square icon segment sitting to the LEFT of the
+   Expand All control. Shares the outline aesthetic of its sibling: the
+   off state is fully transparent, and the on state (aria-pressed="true")
+   is communicated by a subtle accent-tinted fill plus accent-colored
+   icon — distinct enough to read as "on" without breaking the segmented
+   look. The stacked-lines glyph is inline pixel-art SVG matching the
+   chunky 1px-grid feel of the theme toggle's sun/moon. */
 .compactTitlesBtn {
   background: transparent;
   border: 0.5px solid var(--border-bright);
@@ -844,12 +870,11 @@ body {
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 .compactTitlesBtn[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--bg-base);
+  background: var(--accent-dim);
+  color: var(--accent-text);
 }
 .compactTitlesBtn[aria-pressed="true"]:hover {
-  background: var(--accent);
+  background: var(--accent-dim);
   border-color: var(--accent-text);
 }
 .compactTitlesIcon {
