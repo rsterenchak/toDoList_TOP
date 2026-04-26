@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-26 (PR #<number>)
      
-- [x] **[LOW]** Restyle "Compact titles" toggle to match "Expand all" as a segmented group
-  - Description: The current "Compact titles" icon button uses a filled accent-color background while the adjacent "Expand all" button uses a transparent outline, so the pair looks visually mismatched and out of place. Restyle the two controls as a single segmented toolbar group: shared 0.5px border, 6px outer radius (square inner edges where they meet), no gap between them, matching height. The icon button keeps the stacked-lines glyph and "Compact titles" tooltip but adopts the outline aesthetic by default. Active (compact-on) state should be communicated via a subtle filled background using the existing accent color at lower opacity — distinct enough to read as "on" but not so loud that it breaks the segmented-group look. Hover states should also stay consistent across both buttons.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: 2026-04-26 (PR #<number>)
+- [ ] **[LOW]** Add light-mode variant for PWA iOS home-screen icon
+  - Description: Add a light-purple variant of `apple-touch-icon.png` so iOS users on light-mode home screens see a tonal match instead of the current dark-tuned purple. Keep the existing PNG as the default (and dark-mode) icon — it already matches the favicon's standard purple. Export a lighter-purple companion (lifted from the `#8b7bff` accent toward something like `#b8a8ff`; pin the exact shade during export) and save as `assets/apple-touch-icon-light.png`, then add a second `<link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">` after the existing one in `template.html`. iOS 18+ honors the media query to swap icons on theme toggle; older iOS falls back to the unconditional default. No `webpack.config.js` change needed — the existing asset pipeline picks up the new PNG via the same path.
+  - File: `toDoList_main/src/template.html`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
