@@ -116,4 +116,28 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
         expect(truncRule).toMatch(/white-space:\s*nowrap\s*;/);
         expect(truncRule).toMatch(/overflow:\s*hidden\s*;/);
     });
+
+    // The 75ch cap is what makes the ellipsis actually engage on wide rows —
+    // without it, text-overflow only kicks in once the title hits the row's
+    // far-right edge, which on desktop almost never happens.
+    it('caps the truncated title at 75ch so the ellipsis engages well before the row edge', () => {
+        const truncRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoInput');
+        expect(truncRule).toMatch(/max-width:\s*75ch\s*;/);
+    });
+
+    // While the input is focused, the truncation lifts so the user can see
+    // and edit the full title. Blurring restores the cap automatically.
+    it('drops the cap and ellipsis on :focus so the editing input shows the full title', () => {
+        const focusRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoInput:focus');
+        expect(focusRule).toMatch(/max-width:\s*none\s*;/);
+        expect(focusRule).toMatch(/text-overflow:\s*clip\s*;/);
+    });
+
+    // Once the input is capped, the leftover flex space lands at the row's
+    // far end by default. `margin-left: auto` on the date pill absorbs that
+    // gap so the meta column (date / drag / ×) stays pinned to the right edge.
+    it('keeps the meta column right-aligned by giving #duePill margin-left: auto in compact mode', () => {
+        const metaRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoChild #duePill');
+        expect(metaRule).toMatch(/margin-left:\s*auto\s*;/);
+    });
 });
