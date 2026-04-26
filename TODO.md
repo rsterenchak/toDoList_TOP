@@ -2,15 +2,10 @@
 
 ## Bugs
      
-- [x] **[MEDIUM]** Fix due-date pill bottom border being clipped inside todo row
-  - Description: The due-date pill (calendar icon + "MAY 1" + chevron) inside each todo row is missing its bottom border — the top, left, and right borders render but the bottom edge is cut off flush with the row. Expected behavior is a fully enclosed rounded rectangle around the pill matching its top border. Likely cause is the pill's effective height (border + padding + line-height) being slightly taller than the todo row's content box, combined with `overflow: hidden` (or a too-tight `height`/`max-height`) on the row container clipping the bottom edge. Investigate the todo row's height and overflow rules and the pill's vertical padding/line-height in `style.css` — either give the row enough room or remove the overflow clip on that axis.
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-04-24 (PR #<number>)
-
-- [x] **[MEDIUM]** Commit new project on blur when title field has content
-  - Description: When a user starts creating a new project (the editable `projChild` input in the sidebar) and clicks away without pressing Enter, the project is left in a half-created state — it stays visible but isn't fully wired up, so clicking it back doesn't open it for adding todos and the user can't recover without refreshing or starting over. Change the blur handler so that any non-empty title is treated the same as pressing Enter (full commit, project becomes selectable and editable like any other). If the field is empty on blur, silently discard the in-progress project with no confirmation. Verify Escape-to-cancel still works alongside this and doesn't accidentally trigger the new commit path on the way out.
-  - File: `toDoList_main/src/main.js`
-  - Completed: 2026-04-26 (PR #<number>)
+- [ ] **[HIGH]** Empty project name corrupts todo rendering and hides input field
+  - Description: Reproduction: create a new project, add at least one todo, edit the project title to an empty string and confirm, click into a different project, then click back into the now-unnamed project. The todo items don't render, and after renaming the project to something non-empty the items still don't populate and the "New item" input/placeholder is gone too — the project looks empty and uneditable even though the data presumably still exists in storage. Likely root cause is that the empty title is being used as a lookup key (or persisted as the project's identifier) and either collides with another empty-key entry, fails an equality check on re-selection, or causes the todo-render path to short-circuit. Two things to fix: (1) prevent empty project names from being committed in the first place — on blur/Enter with empty input, either revert to the previous title or fall back to a default like "Untitled" (matches the new commit-on-blur behavior added for the projChild creation flow), and (2) make sure project lookup/rendering keys off a stable id rather than the display name so renaming never breaks the linkage. Verify storage isn't leaking orphaned entries after this sequence.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
