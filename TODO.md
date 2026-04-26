@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-04-24 (PR #<number>)
 
-- [ ] **[MEDIUM]** Commit new project on blur when title field has content
+- [x] **[MEDIUM]** Commit new project on blur when title field has content
   - Description: When a user starts creating a new project (the editable `projChild` input in the sidebar) and clicks away without pressing Enter, the project is left in a half-created state — it stays visible but isn't fully wired up, so clicking it back doesn't open it for adding todos and the user can't recover without refreshing or starting over. Change the blur handler so that any non-empty title is treated the same as pressing Enter (full commit, project becomes selectable and editable like any other). If the field is empty on blur, silently discard the in-progress project with no confirmation. Verify Escape-to-cancel still works alongside this and doesn't accidentally trigger the new commit path on the way out.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-26 (PR #<number>)
 
 ## Features
 
