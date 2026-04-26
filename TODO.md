@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-26 (PR #<number>)
      
-- [ ] **[LOW]** Restyle "Compact titles" toggle to match "Expand all" as a segmented group
+- [x] **[LOW]** Restyle "Compact titles" toggle to match "Expand all" as a segmented group
   - Description: The current "Compact titles" icon button uses a filled accent-color background while the adjacent "Expand all" button uses a transparent outline, so the pair looks visually mismatched and out of place. Restyle the two controls as a single segmented toolbar group: shared 0.5px border, 6px outer radius (square inner edges where they meet), no gap between them, matching height. The icon button keeps the stacked-lines glyph and "Compact titles" tooltip but adopts the outline aesthetic by default. Active (compact-on) state should be communicated via a subtle filled background using the existing accent color at lower opacity — distinct enough to read as "on" but not so loud that it breaks the segmented-group look. Hover states should also stay consistent across both buttons.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-26 (PR #<number>)
 
 ## Features
 
