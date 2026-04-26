@@ -2681,6 +2681,21 @@ function component() {
 
                 // console.log("You entered: " + enteredText);
                 committingViaEnter = true;
+
+                // Empty rename on an already-committed project: refuse to
+                // commit and revert the input to its last good name. Without
+                // this, the input keeps the empty value visually while the
+                // data still lives under currentProperty — re-selecting the
+                // project then reads "" and fails to render any todos.
+                if (firstTime !== 0 && enteredText.trim().length === 0) {
+                    titleInput.value = currentProperty;
+                    titleInput.style.color = "";
+                    titleInput.style.pointerEvents = "none";
+                    titleInput.style.cursor = "default";
+                    titleInput.blur();
+                    return;
+                }
+
                 titleInput.blur();
 
 
@@ -2892,9 +2907,16 @@ function component() {
                 committingViaEnter = false;
                 return;
             }
-            // Only handle the initial-creation blur. Once firstTime flips,
-            // the row is committed and rename-on-blur is a separate concern.
-            if (firstTime !== 0) return;
+            // Once the row is committed, the only blur concern here is
+            // catching a cleared-input strand: revert to the last good
+            // name so the input stays in sync with the project's data key.
+            if (firstTime !== 0) {
+                if (titleInput.value.trim().length === 0) {
+                    titleInput.value = currentProperty;
+                    titleInput.style.color = "";
+                }
+                return;
+            }
 
             const trimmed = titleInput.value.trim();
             if (trimmed.length === 0) {
@@ -3114,7 +3136,19 @@ function restoreFromStorage() {
             if (event.key !== "Enter") return;
 
             const newName = titleInput.value.trim();
-            if (newName.length === 0) return;
+            // Empty rename: refuse to commit and snap the input back to the
+            // last good name. Letting an empty value linger in titleInput
+            // detaches the row from the project's data key, which downstream
+            // click/render paths read directly off titleInput.value.
+            if (newName.length === 0) {
+                titleInput.value = currentProperty;
+                titleInput.style.color = "";
+                titleInput.style.pointerEvents = "none";
+                titleInput.style.cursor = "default";
+                renameHandledByEnter = true;
+                titleInput.blur();
+                return;
+            }
 
             // no-op if name hasn't changed
             if (newName === currentProperty) {
@@ -3180,7 +3214,16 @@ function restoreFromStorage() {
 
             // commit rename on blur (e.g. user clicks away without pressing Enter)
             const newName = titleInput.value.trim();
-            if (newName.length === 0 || newName === currentProperty) return;
+            // Empty value on blur: revert the input to the last good name so
+            // the row stays in sync with its data key. Without this, clicking
+            // away from a cleared input strands the project — the title shows
+            // nothing, and the next click reads "" as the lookup key.
+            if (newName.length === 0) {
+                titleInput.value = currentProperty;
+                titleInput.style.color = "";
+                return;
+            }
+            if (newName === currentProperty) return;
 
             // check for duplicate names (excluding self)
             const existing = listLogic.listProjectsArray();

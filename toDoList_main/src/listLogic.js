@@ -68,6 +68,16 @@ export const listLogic = (function () {
     // - Backfill `color` with null on any project missing it; clamp unknown
     //   color keys to null so a corrupt or renamed palette can't leak
     //   undefined CSS values into the renderer.
+    // Drop any orphaned empty-key project entries from storage. These can
+    // exist on installs that hit the pre-fix empty-rename bug, where an
+    // empty title was briefly committed as a real key and stranded the
+    // project's todos there.
+    Object.keys(allProjects).forEach(function(key) {
+        if (typeof key !== 'string' || key.trim().length === 0) {
+            delete allProjects[key];
+        }
+    });
+
     Object.keys(allProjects).forEach(function(key) {
         const entry = allProjects[key];
         if (Array.isArray(entry)) {
@@ -121,7 +131,13 @@ export const listLogic = (function () {
 
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
 
-        projectName = projectName.trim();
+        projectName = (projectName || '').trim();
+
+        // Empty names break lookup-by-name everywhere downstream; reject
+        // here so no UI path can corrupt storage with a '' key.
+        if (projectName.length === 0) {
+            return { array: [], string: '' };
+        }
 
         allProjects[projectName] = { items: [listItem], color: null };
 
@@ -244,16 +260,27 @@ export const listLogic = (function () {
 
     function editProject(currentProperty, newProperty) {
 
-        allProjects[newProperty] = allProjects[currentProperty];
-        delete allProjects[currentProperty];
+        // Reject empty/whitespace renames — a '' key collides with the
+        // blank-placeholder semantics in todos and breaks every name-keyed
+        // lookup in the UI (selection, render, color, length).
+        const trimmed = (newProperty || '').trim();
+        if (trimmed.length === 0) {
+            return {
+                array: allProjects[currentProperty] ? allProjects[currentProperty].items : undefined,
+                string: currentProperty
+            };
+        }
+
+        allProjects[trimmed] = allProjects[currentProperty];
+        if (trimmed !== currentProperty) delete allProjects[currentProperty];
 
         allProjectsTotal = Object.keys(allProjects).length;
 
         saveToStorage();
 
         return {
-            array: allProjects[newProperty] ? allProjects[newProperty].items : undefined,
-            string: newProperty
+            array: allProjects[trimmed] ? allProjects[trimmed].items : undefined,
+            string: trimmed
         };
     };
 
