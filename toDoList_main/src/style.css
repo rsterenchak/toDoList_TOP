@@ -865,6 +865,19 @@ html[data-compact-titles="on"] #toDoInput {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  max-width: 75ch;
+}
+/* While the input is focused (user is editing) drop the cap and ellipsis so
+   the full title is visible. Blurring restores the truncated state. */
+html[data-compact-titles="on"] #toDoInput:focus {
+  max-width: none;
+  text-overflow: clip;
+}
+/* Once the input caps at 60ch, the leftover flex space lands at the end of
+   the row by default — push the meta column (date pill onward) to the right
+   edge so it stays visually aligned with the row's right side. */
+html[data-compact-titles="on"] #toDoChild #duePill {
+  margin-left: auto;
 }
 
 .bulkDescBtn {
