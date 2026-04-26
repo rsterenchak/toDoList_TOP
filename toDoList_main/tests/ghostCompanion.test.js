@@ -149,3 +149,61 @@ describe('ghost companion — CSS gates', () => {
         expect(css).toMatch(/@media\s+not\s+all\s+and\s+\(min-width:\s*1024px\)[^{]*\(pointer:\s*coarse\)\s*\{[^}]*#companionToggle\s*\{[^}]*display:\s*none/);
     });
 });
+
+describe('ghost companion — periodic blink', () => {
+    const js  = read('companion.js');
+    const css = read('style.css');
+
+    it('defines a .companion.blinking rule with a finite-iteration animation', () => {
+        // Finite iteration (matches the existing cheer pattern) — the blink
+        // is one short pulse, not a continuous loop.
+        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*animation:[^}]*\b1\b[^}]*\}/);
+    });
+
+    it('disables the blink animation under prefers-reduced-motion alongside the other states', () => {
+        expect(css).toMatch(/@media\s+\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.companion\.blinking[\s\S]*?animation:\s*none/);
+    });
+
+    it('toggles a "blinking" class on the sprite via add/remove pair', () => {
+        // Pair of class manipulations is the contract — one to start the
+        // closed-eye frame, one to end it. Both must exist or the blink is
+        // either stuck on or never visible.
+        expect(js).toMatch(/classList\.add\s*\(\s*['"]blinking['"]\s*\)/);
+        expect(js).toMatch(/classList\.remove\s*\(\s*['"]blinking['"]\s*\)/);
+    });
+
+    it('drives the blink from a setTimeout-based scheduler, not a new animation system', () => {
+        // Reuses the existing timer pattern (setTimeout + setState) rather
+        // than introducing rAF loops or a frame counter for blinks.
+        expect(js).toMatch(/function\s+scheduleBlink\s*\(/);
+        expect(js).toMatch(/setTimeout\s*\(/);
+    });
+
+    it('only schedules blinks while idle so they do not clip mid-walk or mid-cheer', () => {
+        // Either the scheduled callback bails when state is not IDLE, or the
+        // entry into non-idle states cancels the pending blink.
+        const idleGuard = /state\s*!==?\s*['"]IDLE['"]/.test(js)
+                       || /state\s*===\s*['"]IDLE['"]/.test(js);
+        expect(idleGuard).toBe(true);
+        expect(js).toMatch(/function\s+cancelBlink\s*\(/);
+    });
+
+    it('clears the blink timer on destroy so it cannot fire after teardown', () => {
+        const destroyStart = js.indexOf('function destroy(');
+        expect(destroyStart).toBeGreaterThan(-1);
+        // Walk to the matching brace so we only inspect destroy's body.
+        let depth = 0;
+        let end = -1;
+        for (let i = js.indexOf('{', destroyStart); i < js.length; i++) {
+            const c = js[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(destroyStart);
+        const body = js.slice(destroyStart, end);
+        expect(body).toMatch(/clearTimeout\s*\(\s*blinkId\s*\)/);
+    });
+});

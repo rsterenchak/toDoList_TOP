@@ -50,6 +50,10 @@ export function createCompanion(doc) {
     let rafId     = null;
     let timerId   = null;
     let cheerId   = null;
+    // Independent timer driving the periodic eye-blink. Lives alongside the
+    // wander timer so a blink can fire (or be cancelled) without disturbing
+    // the wander cadence.
+    let blinkId   = null;
     let state     = 'IDLE';
     let curX      = 0;
     let curY      = 0;
@@ -73,12 +77,14 @@ export function createCompanion(doc) {
         // enough to read as ambient. Only the attention-grabby cheer pop is
         // gated by `prefersReducedMotion()` inside `cheer()`.
         scheduleWanderTick();
+        scheduleBlink();
     }
 
     function destroy() {
         if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
         if (timerId) { clearTimeout(timerId); timerId = null; }
         if (cheerId) { clearTimeout(cheerId); cheerId = null; }
+        if (blinkId) { clearTimeout(blinkId); blinkId = null; }
         if (el && el.parentNode) el.parentNode.removeChild(el);
         el = null;
         state = 'IDLE';
@@ -183,6 +189,38 @@ export function createCompanion(doc) {
         if (!el) return;
         el.classList.remove('idle', 'walking', 'cheering');
         el.classList.add(next.toLowerCase());
+        // Blinks only fire while idle — clipping a half-blink across a walk
+        // or cheer reads as a glitch. Cancel on any non-idle transition; the
+        // return-to-idle path reschedules a fresh blink countdown.
+        if (next === 'IDLE') scheduleBlink();
+        else                 cancelBlink();
+    }
+
+    // Random ~3–6s gap between blinks with a brief ~120ms closed-eye frame.
+    // The 120ms is short enough to read as a natural blink instead of a wink.
+    function scheduleBlink() {
+        if (!el) return;
+        if (blinkId) return;
+        const delay = 3000 + Math.random() * 3000;
+        blinkId = setTimeout(function blinkOpen() {
+            blinkId = null;
+            if (!el) return;
+            // Re-check state at fire time — another transition may have raced
+            // ahead of cancelBlink (e.g. a cheer landing on the same tick).
+            if (state !== 'IDLE') return;
+            el.classList.add('blinking');
+            blinkId = setTimeout(function blinkClose() {
+                blinkId = null;
+                if (!el) return;
+                el.classList.remove('blinking');
+                scheduleBlink();
+            }, 120);
+        }, delay);
+    }
+
+    function cancelBlink() {
+        if (blinkId) { clearTimeout(blinkId); blinkId = null; }
+        if (el) el.classList.remove('blinking');
     }
 
     function setEnabled(v) {
