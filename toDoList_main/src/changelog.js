@@ -13,13 +13,7 @@ export const changelog = [
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
             'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-25',
-        changed: [
-            'Theme switch in the nav bar is now a sun/moon icon button that fades and rotates as you flip between light and dark.',
+            'Compact Titles and Expand All buttons in the Todo Items header now read as one segmented control, with matching borders and a softer accent tint when Compact Titles is active.',
         ],
     },
 ];
