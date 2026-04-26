@@ -1965,6 +1965,16 @@ body.row-dragging * { cursor: grabbing !important; }
   animation: companionBigCheer 1.4s ease-out 1;
 }
 
+/* Periodic blink — short scaleY squish reads as the eyes closing for one frame.
+   Layered over .idle by source order so the bob pauses for the 120ms blink
+   and resumes when the class is removed. */
+/* Sprite swap — swap to a closed-eyes variant for the 120ms the .blinking
+   class is applied. Keeps the body identical and only the eyes change, so
+   the result reads as a real blink rather than a body squish. */
+.companion.blinking {
+  background-image: url('./assets/companion-ghost-blink.svg');
+}
+
 @keyframes companionIdle {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-3px); }
@@ -1993,6 +2003,11 @@ body.row-dragging * { cursor: grabbing !important; }
   .companion { display: none; }
 }
 
+/* Reduced-motion: silence the attention-grabby cheer keyframes and the idle
+   bob, but keep the brief 120ms blink — same logic as the JS-driven wander
+   loop, which also stays on under reduced-motion (see companion.js mount).
+   Blink is short and mild enough to read as ambient "alive" rather than
+   distracting motion. */
 @media (prefers-reduced-motion: reduce) {
   .companion,
   .companion.idle,

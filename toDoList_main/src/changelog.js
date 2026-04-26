@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-04-26',
         added: [
             'Compact Titles toggle in the Todo Items header trims long titles to a single line with an ellipsis; hover the row to reveal the full text.',
+            'Ghost companion now blinks on its own at irregular intervals while idle.',
         ],
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
@@ -19,13 +20,6 @@ export const changelog = [
         date: '2026-04-25',
         changed: [
             'Theme switch in the nav bar is now a sun/moon icon button that fades and rotates as you flip between light and dark.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-24',
-        fixed: [
-            'Footer background now reaches the bottom edge of the viewport on iOS Safari so the version label and open/done counts stay fully visible.',
         ],
     },
 ];

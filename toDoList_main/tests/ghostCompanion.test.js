@@ -149,3 +149,76 @@ describe('ghost companion — CSS gates', () => {
         expect(css).toMatch(/@media\s+not\s+all\s+and\s+\(min-width:\s*1024px\)[^{]*\(pointer:\s*coarse\)\s*\{[^}]*#companionToggle\s*\{[^}]*display:\s*none/);
     });
 });
+
+describe('ghost companion — periodic blink', () => {
+    const js  = read('companion.js');
+    const css = read('style.css');
+
+    it('swaps to a closed-eyes sprite while .blinking is applied — true eye-only blink, not a body transform', () => {
+        // The blink is a sprite-swap, not an animation. The .blinking rule
+        // overrides background-image to a separate "closed eyes" SVG so only
+        // the eye region changes during the 120ms the class is on.
+        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*background-image:\s*url\([^)]*companion-ghost-blink\.svg[^)]*\)[^}]*\}/);
+    });
+
+    it('keeps the blink running under prefers-reduced-motion — same policy as the JS wander loop', () => {
+        // The 120ms blink is mild ambient motion (matches the wander, which
+        // also stays on under reduced-motion). The cheer keyframes and idle
+        // bob are still silenced — they're the attention-grabby ones.
+        // Find the companion-specific reduced-motion block (style.css has
+        // multiple `prefers-reduced-motion: reduce` blocks; we want the one
+        // that gates `.companion.cheering`).
+        const blocks = css.match(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/g) || [];
+        const companionBlock = blocks.find(function (b) { return /\.companion\.cheering/.test(b); });
+        expect(companionBlock).toBeTruthy();
+        expect(companionBlock).not.toMatch(/\.companion\.blinking/);
+        // Sanity: cheer + idle are still gated in this same block.
+        expect(companionBlock).toMatch(/\.companion\.cheering/);
+        expect(companionBlock).toMatch(/\.companion\.idle/);
+    });
+
+    it('toggles a "blinking" class on the sprite via add/remove pair', () => {
+        // Pair of class manipulations is the contract — one to start the
+        // closed-eye frame, one to end it. Both must exist or the blink is
+        // either stuck on or never visible.
+        expect(js).toMatch(/classList\.add\s*\(\s*['"]blinking['"]\s*\)/);
+        expect(js).toMatch(/classList\.remove\s*\(\s*['"]blinking['"]\s*\)/);
+    });
+
+    it('drives the blink from a setTimeout-based scheduler, not a new animation system', () => {
+        // Reuses the existing timer pattern (setTimeout + setState) rather
+        // than introducing rAF loops or a frame counter for blinks.
+        expect(js).toMatch(/function\s+scheduleBlink\s*\(/);
+        expect(js).toMatch(/setTimeout\s*\(/);
+    });
+
+    it('blocks blinks only during cheering — walking and idle both blink so they read as alive while wandering', () => {
+        // The blink fire-callback bails when state is CHEERING, and setState
+        // calls cancelBlink on entry into CHEERING. WALKING and IDLE both
+        // permit blinks because the brief 120ms transform squish doesn't
+        // conflict with the position lerp, only with the cheer keyframes.
+        const cheerGuard = /state\s*===\s*['"]CHEERING['"]/.test(js)
+                        || /state\s*!==?\s*['"]CHEERING['"]/.test(js);
+        expect(cheerGuard).toBe(true);
+        expect(js).toMatch(/function\s+cancelBlink\s*\(/);
+    });
+
+    it('clears the blink timer on destroy so it cannot fire after teardown', () => {
+        const destroyStart = js.indexOf('function destroy(');
+        expect(destroyStart).toBeGreaterThan(-1);
+        // Walk to the matching brace so we only inspect destroy's body.
+        let depth = 0;
+        let end = -1;
+        for (let i = js.indexOf('{', destroyStart); i < js.length; i++) {
+            const c = js[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(destroyStart);
+        const body = js.slice(destroyStart, end);
+        expect(body).toMatch(/clearTimeout\s*\(\s*blinkId\s*\)/);
+    });
+});
