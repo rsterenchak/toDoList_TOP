@@ -14,6 +14,11 @@
 
 ## Features
 
+- [ ] **[MEDIUM]** Add toggle for visual truncation of long todo titles
+  - Description: Long todo titles currently overflow or wrap awkwardly inside their row. Add a display-only truncation that trims the rendered title to a single line with a trailing ellipsis (CSS `text-overflow: ellipsis` with `white-space: nowrap` and `overflow: hidden` on the title container is the cleanest path); the full title is preserved in the underlying data and revealed on hover (native `title` attribute tooltip) and inside the edit modal. Add a small icon button in the TODO ITEMS header row, immediately to the left of the existing "Expand all" control, using a stacked-lines glyph (three horizontal lines, each shorter than the last) and a "Compact titles" tooltip on hover. Toggle has two visual states: outline (off) and filled background using the existing accent color (on). Persist the on/off state in `localStorage` alongside the existing theme preference so it survives reloads — the preference is global, not per-project. No changes to stored todo data, no new dependencies.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Add periodic blinking animation to ghost companion sprite
   - Description: Extend the ghost companion in `companion.js` so it blinks on its own at irregular intervals while idle (in addition to whatever animations it already does). Pick a randomized cadence — roughly every 3–6 seconds with a short ~120ms closed-eye frame — so the blink reads as natural rather than metronomic. Reuse whatever frame-swap or sprite-state mechanism the existing animations use; don't introduce a new animation system. Make sure the blink timer pauses or resets when the ghost is in another animated state (e.g. reacting, moving) so blinks don't visibly clip mid-action.
   - File: `toDoList_main/src/companion.js`
