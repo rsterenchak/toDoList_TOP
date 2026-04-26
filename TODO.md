@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   - Completed: 2026-04-26 (PR #<number>)
      
-- [ ] **[LOW]** Add light-mode variant for PWA iOS home-screen icon
+- [x] **[LOW]** Add light-mode variant for PWA iOS home-screen icon
   - Description: Add a light-purple variant of `apple-touch-icon.png` so iOS users on light-mode home screens see a tonal match instead of the current dark-tuned purple. Keep the existing PNG as the default (and dark-mode) icon — it already matches the favicon's standard purple. Export a lighter-purple companion (lifted from the `#8b7bff` accent toward something like `#b8a8ff`; pin the exact shade during export) and save as `assets/apple-touch-icon-light.png`, then add a second `<link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">` after the existing one in `template.html`. iOS 18+ honors the media query to swap icons on theme toggle; older iOS falls back to the unconditional default. No `webpack.config.js` change needed — the existing asset pipeline picks up the new PNG via the same path.
   - File: `toDoList_main/src/template.html`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-26 (PR #<number>)
 
 ## Features
 
