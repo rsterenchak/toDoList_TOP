@@ -20,6 +20,16 @@
     - All existing tests pass; any test under `toDoList_main/tests/` that reads `main.js` as a string and greps for function names gets repointed at the appropriate new module.
     - No new dependencies — pure module split.
   - Implementation notes: extract one module at a time, each as its own PR, so any regression bisects cleanly. Order suggestion (smallest/most isolated first): `prefs.js` → `theme.js` → `modals.js` → `emptyState.js` → `projectMenu.js` → `dragDrop.js` → `dueDate.js` → `projectRow.js` → `toDoRow.js`. When investigating `main.js` to plan each carve-out, use grep + `offset`/`limit` rather than a full read.
+  - Progress (one PR per module — pick the next unchecked one):
+    - [x] `prefs.js`
+    - [ ] `theme.js`
+    - [ ] `modals.js`
+    - [ ] `emptyState.js`
+    - [ ] `projectMenu.js`
+    - [ ] `dragDrop.js`
+    - [ ] `dueDate.js`
+    - [ ] `projectRow.js`
+    - [ ] `toDoRow.js`
   - Out of scope: any behavior changes, new features, or fixes; reorganizing `listLogic.js`; renaming public APIs; converting any of the new modules to classes or factories.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/theme.js`, `toDoList_main/src/dueDate.js`, `toDoList_main/src/dragDrop.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)

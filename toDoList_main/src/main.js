@@ -2,6 +2,17 @@ import './style.css';
 import { listLogic } from './listLogic.js';
 import { changelog, getNewestChangelogDate } from './changelog.js';
 import { createCompanion, isCompanionEnabled, setCompanionEnabled, supportsDesktopCompanion } from './companion.js';
+import {
+    isCompactTitlesOn,
+    setCompactTitlesOn,
+    isCompletedSectionOpen,
+    setCompletedSectionOpen,
+    readSidebarWidthPref,
+    writeSidebarWidthPref,
+    hasSidebarWidthPref,
+    readChangelogLastSeen,
+    writeChangelogLastSeen,
+} from './prefs.js';
 import button from './addProj_button.svg';
 
 // Single shared companion instance. Lazily constructed by `ensureCompanion()`
@@ -280,38 +291,14 @@ function reorderToDoDOM(projectName) {
 }
 
 
-// Persisted UI preference: open/closed state of the Completed section.
-// Default is closed on first load; the value survives reloads and is shared
-// across projects (one global toggle, not per-project).
-const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
-
-function isCompletedSectionOpen() {
-    return localStorage.getItem(COMPLETED_SECTION_KEY) === 'true';
-}
-
-function setCompletedSectionOpen(open) {
-    localStorage.setItem(COMPLETED_SECTION_KEY, open ? 'true' : 'false');
-}
-
 // Persisted UI preference: compact-titles mode. When on, long todo titles are
 // visually truncated with a trailing ellipsis instead of overflowing or
 // wrapping. The underlying data is unchanged; CSS keys off
 // `data-compact-titles="on"` on <html> to apply text-overflow.
-const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
-
-function isCompactTitlesOn() {
-    try {
-        return localStorage.getItem(COMPACT_TITLES_KEY) === 'true';
-    } catch (e) {
-        return false;
-    }
-}
-
-function setCompactTitlesOn(on) {
-    try {
-        localStorage.setItem(COMPACT_TITLES_KEY, on ? 'true' : 'false');
-    } catch (e) { /* ignore quota/private-mode */ }
-}
+//
+// The completed-section open/closed flag, compact-titles flag, sidebar width,
+// and changelog last-seen marker are all persisted via prefs.js — keys and
+// getters/setters are imported at the top of this file.
 
 function applyCompactTitles(on) {
     document.documentElement.setAttribute('data-compact-titles', on ? 'on' : 'off');
@@ -1469,24 +1456,8 @@ function showConfirmModal(options) {
 // history from changelog.js. Mirrors showConfirmModal's backdrop + Escape +
 // backdrop-click dismissal, but swaps the confirm/cancel footer for a single
 // Close button and adds an explicit corner X.
-const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
-
-function readChangelogLastSeen() {
-    try {
-        return localStorage.getItem(CHANGELOG_LAST_SEEN_KEY);
-    } catch (e) {
-        return null;
-    }
-}
-
-function writeChangelogLastSeen(dateStr) {
-    try {
-        localStorage.setItem(CHANGELOG_LAST_SEEN_KEY, dateStr);
-    } catch (e) {
-        // localStorage can throw in private-browsing or quota-exceeded states;
-        // the dot re-appears next load, which is acceptable.
-    }
-}
+//
+// The last-seen marker key/getters/setters live in prefs.js.
 
 // ISO YYYY-MM-DD strings sort lexicographically, so string compare suffices.
 function hasUnseenChangelog() {
@@ -2564,10 +2535,10 @@ function component() {
 
     // ── sidebar resize logic ──
     // Allows the user to drag the vertical divider between the Projects sidebar
-    // and the Todo Items panel. Width is persisted via localStorage so it
-    // survives reloads. On mobile viewports the sidebar is a drawer, so the
-    // handle is hidden via CSS and we bail out here too.
-    const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
+    // and the Todo Items panel. Width is persisted via localStorage (see
+    // prefs.js for the read/write helpers) so it survives reloads. On mobile
+    // viewports the sidebar is a drawer, so the handle is hidden via CSS and
+    // we bail out here too.
     const SIDEBAR_MIN_W     = 120;
 
     function sidebarMaxWidth() {
@@ -2582,7 +2553,7 @@ function component() {
         document.documentElement.style.setProperty('--sidebar-w', clampSidebarWidth(w) + 'px');
     }
 
-    const savedWidth = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
+    const savedWidth = readSidebarWidthPref();
     if (!isNaN(savedWidth)) setSidebarWidth(savedWidth);
 
     let resizeStartX = 0;
@@ -2607,7 +2578,7 @@ function component() {
         resizing = false;
         sidebarResizer.classList.remove('resizing');
         document.body.style.userSelect = '';
-        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(readSidebarWidth()));
+        writeSidebarWidthPref(readSidebarWidth());
         document.removeEventListener('mousemove', onResizeMove);
         document.removeEventListener('mouseup', onResizeEnd);
         document.removeEventListener('touchmove', onResizeMove);
@@ -2643,8 +2614,8 @@ function component() {
         const max     = sidebarMaxWidth();
         if (current > max) {
             setSidebarWidth(max);
-            if (localStorage.getItem(SIDEBAR_WIDTH_KEY) !== null) {
-                localStorage.setItem(SIDEBAR_WIDTH_KEY, String(readSidebarWidth()));
+            if (hasSidebarWidthPref()) {
+                writeSidebarWidthPref(readSidebarWidth());
             }
         }
     });
