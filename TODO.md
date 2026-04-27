@@ -26,7 +26,7 @@
     - [x] `modals.js`
     - [x] `emptyState.js`
     - [x] `projectMenu.js`
-    - [ ] `dragDrop.js`
+    - [x] `dragDrop.js`
     - [ ] `dueDate.js`
     - [ ] `projectRow.js`
     - [ ] `toDoRow.js`
