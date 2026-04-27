@@ -24,7 +24,7 @@
     - [x] `prefs.js`
     - [x] `theme.js`
     - [x] `modals.js`
-    - [ ] `emptyState.js`
+    - [x] `emptyState.js`
     - [ ] `projectMenu.js`
     - [ ] `dragDrop.js`
     - [ ] `dueDate.js`
