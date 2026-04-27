@@ -9,29 +9,16 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/`
   - Completed: 2026-04-27 (PR #<number>)
 
-- [ ] **[MEDIUM]** Move toDo DOM-lifecycle functions from main.js into toDoRow.js
-  - Description: Second of two PRs completing the `toDoRow.js` carve-out. After the row-construction extraction lands, move the remaining toDo-row functions out of `main.js` and into the existing `toDoRow.js`: `attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, and the `focusBlankToDoInput*` helpers. With this merged, `main.js` is reduced to its final shell — `component()`, `restoreFromStorage()`, the bulk-description toolbar wiring, and imports — completing the module-split refactor end-to-end.
-  - Implementation notes: depends on the previous entry being merged first. `main.js` is over 25k tokens — investigate with grep + `offset`/`limit`. If the move is still close to the stream-timeout threshold, do it as a stub-then-`str_replace` flow (create the export skeleton first, then move functions in 2 batches) rather than one giant `create_file`.
-  - Acceptance criteria: drag-and-drop (mouse and touch), reorder persistence through `listLogic`, append-on-add behavior, and blank-input focus all work identically; existing tests pass; `main.js` line count drops to roughly the projected ~400 lines; any tests grepping `main.js` for the moved function names get repointed at `toDoRow.js`. No new dependencies.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
-
 ## Features
 
-- [x] **[MEDIUM]** Add toggle for visual truncation of long todo titles
-  - Description: Long todo titles currently overflow or wrap awkwardly inside their row. Add a display-only truncation that trims the rendered title to a single line with a trailing ellipsis (CSS `text-overflow: ellipsis` with `white-space: nowrap` and `overflow: hidden` on the title container is the cleanest path); the full title is preserved in the underlying data and revealed on hover (native `title` attribute tooltip) and inside the edit modal. Add a small icon button in the TODO ITEMS header row, immediately to the left of the existing "Expand all" control, using a stacked-lines glyph (three horizontal lines, each shorter than the last) and a "Compact titles" tooltip on hover. Toggle has two visual states: outline (off) and filled background using the existing accent color (on). Persist the on/off state in `localStorage` alongside the existing theme preference so it survives reloads — the preference is global, not per-project. No changes to stored todo data, no new dependencies.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/listLogic.js`
-  - Completed: 2026-04-26 (PR #<number>)
-
-- [x] **[LOW]** Add periodic blinking animation to ghost companion sprite
-  - Description: Extend the ghost companion in `companion.js` so it blinks on its own at irregular intervals while idle (in addition to whatever animations it already does). Pick a randomized cadence — roughly every 3–6 seconds with a short ~120ms closed-eye frame — so the blink reads as natural rather than metronomic. Reuse whatever frame-swap or sprite-state mechanism the existing animations use; don't introduce a new animation system. Make sure the blink timer pauses or resets when the ghost is in another animated state (e.g. reacting, moving) so blinks don't visibly clip mid-action.
-  - File: `toDoList_main/src/companion.js`
-  - Completed: 2026-04-26 (PR #<number>)
-
-- [x] **[LOW]** Replace dark-mode toggle with sun/moon icon button
-  - Description: Swap the current dark-mode toggle for a 36×36 icon button placed immediately to the right of the ghost toggle. The button shows a moon glyph in light mode and a sun glyph in dark mode (icon represents the target mode, per convention), with a short fade/rotate (~150ms) on the swap to match existing app transitions. Use inline SVG for both glyphs — no new icon-library dependency — and update `style.css` for the button frame (transparent fill, subtle border, hover state). Existing theme-toggle wiring lives in `main.js`; grep with `offset`/`limit` rather than loading the whole file since it's over 25k tokens.
+- [ ] **[MEDIUM]** Add tonal depth between sidebar, main area, and todo cards
+  - Description: Right now the sidebar, the main todo-list area, and the todo card backgrounds all sit at roughly the same near-black value, so the layout reads flat — items dissolve into the background instead of feeling like they're floating on it. Introduce ~5-10 brightness points of separation between the three surfaces: sidebar at the darkest tone, main content area one step lighter, and todo card surfaces another notch lighter (or with a subtle 1px inner border around `#1F1F2E`). Add the new surface tones as design tokens in the dark theme variable block alongside the existing palette so the light theme can mirror the layering with its own values.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+- [ ] **[MEDIUM]** Improve add-task input field affordance with placeholder, icon, and submit hint
+  - Description: The empty add-task input at the top of the todo list has no placeholder, no icon, and no visible affordance — it reads as a thin div more than an input. Set a muted-gray placeholder ("Add a task…"), add a faint left-side `+` glyph inside the input (Unicode character or inline SVG — no icon-font dependency), and surface a subtle right-side `↵` hint on focus to communicate that Enter submits. Set the placeholder attribute where the input is built in `main.js`, and add the icon, hint, and focus-state styling in CSS. Keep the input's `font-size` at 16px+ to avoid iOS Safari auto-zoom.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-04-25 (PR #<number>)
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
