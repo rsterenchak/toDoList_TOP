@@ -18,6 +18,13 @@
   --bg-hover:      #1f2130;
   --bg-active:     #1a1c29;
 
+  /* Layered surface tones — sidebar (darkest) → main content area → todo
+     cards (lightest), spaced ~6–7 brightness points apart so the three
+     stacked surfaces read as distinct planes instead of one flat black. */
+  --surface-sidebar: #0e0f14;
+  --surface-main:    #14151b;
+  --surface-card:    #1b1c25;
+
   --border-dim:    #1d1e26;
   --border-mid:    #23242e;
   --border-bright: #2d2f3d;
@@ -60,6 +67,12 @@
   --bg-row:        #ffffff;
   --bg-hover:      #dde0ea;
   --bg-active:     #e5e7f0;
+
+  /* Light theme mirrors the dark layering: sidebar at the darkest tint,
+     main content area one step lighter, todo cards lightest. */
+  --surface-sidebar: #e8eaef;
+  --surface-main:    #f0f2f7;
+  --surface-card:    #ffffff;
 
   --border-dim:    #d0d3dd;
   --border-mid:    #b8bcc8;
@@ -318,7 +331,7 @@ body {
   display: flex;
   flex-direction: column;
   border-right: 0.5px solid var(--border-dim);
-  background: var(--bg-elevated);
+  background: var(--surface-sidebar);
   overflow: hidden;
   transition: border-color 0.25s ease;
   min-width: 0;
@@ -330,7 +343,7 @@ body {
   justify-content: center;
   padding: 20px 14px 14px;
   border-bottom: none;
-  background: var(--bg-elevated);
+  background: var(--surface-sidebar);
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -347,7 +360,7 @@ body {
 
 #sideMa {
   display: grid;
-  background: var(--bg-elevated);
+  background: var(--surface-sidebar);
   grid-auto-rows: auto;
   align-content: start;
   overflow-y: auto;
@@ -946,7 +959,7 @@ html[data-compact-titles="on"] #toDoChild #duePill {
   display: grid;
   grid-template-rows: repeat(auto-fit, minmax(54px, 54px));
   align-content: start;
-  background: var(--bg-base);
+  background: var(--surface-main);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -960,7 +973,7 @@ html[data-compact-titles="on"] #toDoChild #duePill {
   flex-direction: row;
   align-items: center;
   cursor: default;
-  background: var(--bg-row);
+  background: var(--surface-card);
   height: var(--item-h);
   padding: 0 10px 0 12px;
   border: 0.5px solid var(--border-bright);

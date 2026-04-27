@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-04-26',
-        added: [
-            'Ghost companion now blinks on its own at irregular intervals while idle.',
+        date: '2026-04-27',
+        changed: [
+            'Sidebar, todo list area, and todo card surfaces now sit at distinct tonal layers so the layout reads with more depth.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-04-26',
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
             'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
