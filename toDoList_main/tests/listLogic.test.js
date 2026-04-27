@@ -162,7 +162,7 @@ describe('listLogic — completed sorting', () => {
         // Enter handler's first-commit path relies on sortCompletedToBottom
         // (via appendNewToDoRow) to reintroduce the blank so the user has a
         // typeable row after committing. If this invariant ever breaks, the
-        // fix in main.js's buildToDoRow silently regresses.
+        // fix in toDoRow.js's buildToDoRow silently regresses.
         listLogic.addToDo('Work', 'A');
         listLogic.addToDo('Work', 'B');
 

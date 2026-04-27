@@ -2,12 +2,12 @@
 
 ## Bugs
      
-- [ ] **[MEDIUM]** Extract row construction helpers from main.js into new toDoRow.js
+- [x] **[MEDIUM]** Extract row construction helpers from main.js into new toDoRow.js
   - Description: First of two PRs splitting the `toDoRow.js` carve-out (the last sub-task in the main.js module-split refactor). Create `toDoList_main/src/toDoRow.js` and move the row-construction layer out of `main.js`: `buildToDoRow` plus the per-row wiring helpers `wireCheckbox`, `wireDescToggle`, and `wireToDoRowClick`. Thread shared dependencies (`ensureCompanion`, `listLogic`, anything from `dueDate.js` / `dragDrop.js`) via plain ES imports, matching the precedent set by `projectRow.js`. Leave the DOM-lifecycle functions (`attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, `focusBlankToDoInput*`) in `main.js` for the follow-up entry.
   - Implementation notes: an earlier attempt to extract `toDoRow.js` in one shot hit an API stream-idle timeout mid-`create_file` (~400-line file, long agentic session). Splitting the carve-out in half keeps each tool call short enough to land cleanly. `main.js` is over 25k tokens — investigate with grep + `offset`/`limit`, never read it in full.
   - Acceptance criteria: all behavior preserved (checkbox toggle, description expand/collapse, row click, due-date pill, etc.); existing tests pass; any test under `toDoList_main/tests/` that reads `main.js` as a string and greps for one of the moved function names gets repointed at `toDoRow.js`. No new dependencies.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-27 (PR #<number>)
 
 - [ ] **[MEDIUM]** Move toDo DOM-lifecycle functions from main.js into toDoRow.js
   - Description: Second of two PRs completing the `toDoRow.js` carve-out. After the row-construction extraction lands, move the remaining toDo-row functions out of `main.js` and into the existing `toDoRow.js`: `attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, and the `focusBlankToDoInput*` helpers. With this merged, `main.js` is reduced to its final shell — `component()`, `restoreFromStorage()`, the bulk-description toolbar wiring, and imports — completing the module-split refactor end-to-end.
