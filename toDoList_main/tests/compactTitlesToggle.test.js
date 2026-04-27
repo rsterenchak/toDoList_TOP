@@ -16,12 +16,15 @@ function read(relative) {
 // apply the single-line ellipsis treatment to #toDoInput.
 describe('compact-titles toggle — visual truncation of long todo titles', () => {
     const main = read('main.js');
+    const prefs = read('prefs.js');
     const css = read('style.css');
 
     it('persists the on/off state under the todoapp_ prefix', () => {
-        expect(main).toMatch(/COMPACT_TITLES_KEY\s*=\s*['"]todoapp_compactTitles['"]/);
-        expect(main).toMatch(/localStorage\.getItem\(\s*COMPACT_TITLES_KEY\s*\)/);
-        expect(main).toMatch(/localStorage\.setItem\(\s*COMPACT_TITLES_KEY\s*,/);
+        // Compact-titles localStorage helpers live in prefs.js; main.js
+        // imports the named getters/setters and never touches the key directly.
+        expect(prefs).toMatch(/COMPACT_TITLES_KEY\s*=\s*['"]todoapp_compactTitles['"]/);
+        expect(prefs).toMatch(/localStorage\.getItem\(\s*COMPACT_TITLES_KEY\s*\)/);
+        expect(prefs).toMatch(/localStorage\.setItem\(\s*COMPACT_TITLES_KEY\s*,/);
     });
 
     it('reflects the saved preference onto <html> via data-compact-titles', () => {

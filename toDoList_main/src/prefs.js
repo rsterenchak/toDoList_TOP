@@ -1,0 +1,88 @@
+// Centralised localStorage accessors for user preferences.
+//
+// All keys live behind the `todoapp_` prefix (see CLAUDE.md "Persistence")
+// and every getter/setter wraps the raw localStorage call in try/catch so
+// private-browsing or quota-exceeded states don't take down the rest of the
+// app — failures degrade silently to the documented default.
+//
+// Theme persistence stays alongside the theme module; everything else
+// (compact titles, completed section, sidebar width, changelog last-seen)
+// is consolidated here so the persisted surface is auditable in one place.
+
+export const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
+export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
+export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
+export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
+
+// ── compact titles ──
+export function isCompactTitlesOn() {
+    try {
+        return localStorage.getItem(COMPACT_TITLES_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setCompactTitlesOn(on) {
+    try {
+        localStorage.setItem(COMPACT_TITLES_KEY, on ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── completed section open/closed ──
+export function isCompletedSectionOpen() {
+    try {
+        return localStorage.getItem(COMPLETED_SECTION_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setCompletedSectionOpen(open) {
+    try {
+        localStorage.setItem(COMPLETED_SECTION_KEY, open ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── sidebar width ──
+// Returns NaN when nothing is stored or the value can't be parsed; callers
+// fall back to the responsive CSS default in that case.
+export function readSidebarWidthPref() {
+    try {
+        return parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
+    } catch (e) {
+        return NaN;
+    }
+}
+
+export function writeSidebarWidthPref(width) {
+    try {
+        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+export function hasSidebarWidthPref() {
+    try {
+        return localStorage.getItem(SIDEBAR_WIDTH_KEY) !== null;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ── changelog last-seen marker ──
+export function readChangelogLastSeen() {
+    try {
+        return localStorage.getItem(CHANGELOG_LAST_SEEN_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function writeChangelogLastSeen(dateStr) {
+    try {
+        localStorage.setItem(CHANGELOG_LAST_SEEN_KEY, dateStr);
+    } catch (e) {
+        // localStorage can throw in private-browsing or quota-exceeded states;
+        // the dot re-appears next load, which is acceptable.
+    }
+}
