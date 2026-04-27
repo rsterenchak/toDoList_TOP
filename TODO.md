@@ -28,7 +28,7 @@
     - [x] `projectMenu.js`
     - [x] `dragDrop.js`
     - [x] `dueDate.js`
-    - [ ] `projectRow.js`
+    - [x] `projectRow.js` — Completed: 2026-04-27 (PR #<number>)
     - [ ] `toDoRow.js`
   - Out of scope: any behavior changes, new features, or fixes; reorganizing `listLogic.js`; renaming public APIs; converting any of the new modules to classes or factories.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/theme.js`, `toDoList_main/src/dueDate.js`, `toDoList_main/src/dragDrop.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/tests/`
