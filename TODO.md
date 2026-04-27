@@ -2,36 +2,18 @@
 
 ## Bugs
      
-- [ ] **[MEDIUM]** Split main.js into focused sibling modules
-  - Description: Refactor `main.js` (currently over 25k tokens, by far the largest source file — can't be read in full without grep + offset/limit) into ~9 focused sibling modules under `toDoList_main/src/`, leaving `main.js` as a thin shell containing only `component()`, `restoreFromStorage()`, the bulk-description toolbar wiring, and imports. No behavior changes — pure reorganization. Shared dependencies (`ensureCompanion` accessor, `listLogic`) thread through via plain ES imports.
-  - Proposed split:
-    1. `theme.js` — `THEME_KEY`, `applyTheme`, `resolveInitialTheme`, `getCurrentTheme`, toggle SVGs, click handler factory (~50 lines)
-    2. `dueDate.js` — `daysUntilDue`, `applyDueUrgency`, `setItemDue`, `setRowDateOffset`, `parseItemDue`, `formatPillAbsolute`, `updateDuePillLabel`, calendar SVGs, `showDueDatePopover` / `hideDueDatePopover` / `renderDuePopoverBody` / `shiftDueFocus` / `onDuePopoverOutsideClick` / `onDuePopoverKeydown` (~250 lines)
-    3. `dragDrop.js` — `setupRowDrag`, `getDropIndicator`, `removeDropIndicator`, `draggableSiblings`, `computeDropIndex`, `showDropIndicator`, `autoScrollIfNeeded`, swipe constants, `resetSwipeRow` (~200 lines)
-    4. `modals.js` — `showConfirmModal`, `showChangelogModal`, changelog-seen helpers, `notifyUpdateAvailable`, `applyPendingUpdate`, `updateChangelogDot` (~150 lines)
-    5. `projectMenu.js` — `showProjectContextMenu`, `hideProjectContextMenu`, `buildColorPicker`, outside-click/keydown listeners, `PROJECT_COLOR_HEX`, `applyProjectAccent` (~120 lines)
-    6. `emptyState.js` — `updateEmptyState`, `updateCompletedSection`, completed-section persistence helpers (~150 lines)
-    7. `prefs.js` — centralized `localStorage` getters/setters: compact titles, completed section, sidebar width, changelog last-seen. Consolidating storage keys here makes the persisted surface auditable in one place (~50 lines)
-    8. `toDoRow.js` — `buildToDoRow`, `wireCheckbox`, `wireDescToggle`, `wireToDoRowClick`, `attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, `focusBlankToDoInput*` (~400 lines)
-    9. `projectRow.js` — `attachProjectContextMenu`, `attachProjectDrag`, `reorderProjectDOM`, `deleteProjectFlow`, `countRealToDos` (~250 lines)
-  - Acceptance criteria:
-    - All current behavior preserved — checkboxes, drag/drop (mouse and touch), swipe-to-delete, due-date popover, theme toggle, project context menu, modals, completed section, update notification, etc.
-    - `main.js` shrinks to roughly 400 lines.
-    - All existing tests pass; any test under `toDoList_main/tests/` that reads `main.js` as a string and greps for function names gets repointed at the appropriate new module.
-    - No new dependencies — pure module split.
-  - Implementation notes: extract one module at a time, each as its own PR, so any regression bisects cleanly. Order suggestion (smallest/most isolated first): `prefs.js` → `theme.js` → `modals.js` → `emptyState.js` → `projectMenu.js` → `dragDrop.js` → `dueDate.js` → `projectRow.js` → `toDoRow.js`. When investigating `main.js` to plan each carve-out, use grep + `offset`/`limit` rather than a full read.
-  - Progress (one PR per module — pick the next unchecked one):
-    - [x] `prefs.js`
-    - [x] `theme.js`
-    - [x] `modals.js`
-    - [x] `emptyState.js`
-    - [x] `projectMenu.js`
-    - [x] `dragDrop.js`
-    - [x] `dueDate.js`
-    - [x] `projectRow.js` — Completed: 2026-04-27 (PR #64)
-    - [ ] `toDoRow.js`
-  - Out of scope: any behavior changes, new features, or fixes; reorganizing `listLogic.js`; renaming public APIs; converting any of the new modules to classes or factories.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/theme.js`, `toDoList_main/src/dueDate.js`, `toDoList_main/src/dragDrop.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/tests/`
+- [ ] **[MEDIUM]** Extract row construction helpers from main.js into new toDoRow.js
+  - Description: First of two PRs splitting the `toDoRow.js` carve-out (the last sub-task in the main.js module-split refactor). Create `toDoList_main/src/toDoRow.js` and move the row-construction layer out of `main.js`: `buildToDoRow` plus the per-row wiring helpers `wireCheckbox`, `wireDescToggle`, and `wireToDoRowClick`. Thread shared dependencies (`ensureCompanion`, `listLogic`, anything from `dueDate.js` / `dragDrop.js`) via plain ES imports, matching the precedent set by `projectRow.js`. Leave the DOM-lifecycle functions (`attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, `focusBlankToDoInput*`) in `main.js` for the follow-up entry.
+  - Implementation notes: an earlier attempt to extract `toDoRow.js` in one shot hit an API stream-idle timeout mid-`create_file` (~400-line file, long agentic session). Splitting the carve-out in half keeps each tool call short enough to land cleanly. `main.js` is over 25k tokens — investigate with grep + `offset`/`limit`, never read it in full.
+  - Acceptance criteria: all behavior preserved (checkbox toggle, description expand/collapse, row click, due-date pill, etc.); existing tests pass; any test under `toDoList_main/tests/` that reads `main.js` as a string and greps for one of the moved function names gets repointed at `toDoRow.js`. No new dependencies.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[MEDIUM]** Move toDo DOM-lifecycle functions from main.js into toDoRow.js
+  - Description: Second of two PRs completing the `toDoRow.js` carve-out. After the row-construction extraction lands, move the remaining toDo-row functions out of `main.js` and into the existing `toDoRow.js`: `attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, and the `focusBlankToDoInput*` helpers. With this merged, `main.js` is reduced to its final shell — `component()`, `restoreFromStorage()`, the bulk-description toolbar wiring, and imports — completing the module-split refactor end-to-end.
+  - Implementation notes: depends on the previous entry being merged first. `main.js` is over 25k tokens — investigate with grep + `offset`/`limit`. If the move is still close to the stream-timeout threshold, do it as a stub-then-`str_replace` flow (create the export skeleton first, then move functions in 2 batches) rather than one giant `create_file`.
+  - Acceptance criteria: drag-and-drop (mouse and touch), reorder persistence through `listLogic`, append-on-add behavior, and blank-input focus all work identically; existing tests pass; `main.js` line count drops to roughly the projected ~400 lines; any tests grepping `main.js` for the moved function names get repointed at `toDoRow.js`. No new dependencies.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
