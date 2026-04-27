@@ -27,7 +27,7 @@
     - [x] `emptyState.js`
     - [x] `projectMenu.js`
     - [x] `dragDrop.js`
-    - [ ] `dueDate.js`
+    - [x] `dueDate.js`
     - [ ] `projectRow.js`
     - [ ] `toDoRow.js`
   - Out of scope: any behavior changes, new features, or fixes; reorganizing `listLogic.js`; renaming public APIs; converting any of the new modules to classes or factories.
