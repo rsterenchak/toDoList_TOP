@@ -17,16 +17,17 @@ function read(relative) {
 // transition matches the rest of the app's ~150ms easing.
 describe('theme toggle — sun/moon icon button', () => {
     const main = read('main.js');
+    const theme = read('theme.js');
     const css = read('style.css');
 
     it('renders both moon and sun glyphs as inline SVG inside #themeToggle', () => {
-        expect(main).toMatch(/themeIconMoon/);
-        expect(main).toMatch(/themeIconSun/);
-        expect(main).toMatch(/themeToggle\.innerHTML\s*=\s*MOON_SVG\s*\+\s*SUN_SVG/);
+        expect(theme).toMatch(/themeIconMoon/);
+        expect(theme).toMatch(/themeIconSun/);
+        expect(theme).toMatch(/themeToggle\.innerHTML\s*=\s*MOON_SVG\s*\+\s*SUN_SVG/);
     });
 
     it('toggles aria-pressed instead of aria-checked so the button is not a switch', () => {
-        const themeBlock = main.slice(main.indexOf("themeToggle.id   = 'themeToggle'"));
+        const themeBlock = theme.slice(theme.indexOf("themeToggle.id   = 'themeToggle'"));
         expect(themeBlock).toMatch(/aria-pressed/);
         expect(themeBlock.slice(0, 2000)).not.toMatch(/setAttribute\(\s*'role'\s*,\s*'switch'\s*\)/);
     });
