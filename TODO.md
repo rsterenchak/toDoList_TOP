@@ -25,7 +25,7 @@
     - [x] `theme.js`
     - [x] `modals.js`
     - [x] `emptyState.js`
-    - [ ] `projectMenu.js`
+    - [x] `projectMenu.js`
     - [ ] `dragDrop.js`
     - [ ] `dueDate.js`
     - [ ] `projectRow.js`

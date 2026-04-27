@@ -410,7 +410,7 @@ export const listLogic = (function () {
 
     // Read the persisted per-project color key, or null when the project is
     // using the theme accent (or doesn't exist). Callers map the key to a
-    // concrete color via the PROJECT_COLOR_HEX table in main.js.
+    // concrete color via the PROJECT_COLOR_HEX table in projectMenu.js.
     function getProjectColor(projectName) {
         const entry = allProjects[projectName];
         if (!entry) return null;
