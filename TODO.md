@@ -2,15 +2,27 @@
 
 ## Bugs
      
-- [x] **[HIGH]** Empty project name corrupts todo rendering and hides input field
-  - Description: Reproduction: create a new project, add at least one todo, edit the project title to an empty string and confirm, click into a different project, then click back into the now-unnamed project. The todo items don't render, and after renaming the project to something non-empty the items still don't populate and the "New item" input/placeholder is gone too — the project looks empty and uneditable even though the data presumably still exists in storage. Likely root cause is that the empty title is being used as a lookup key (or persisted as the project's identifier) and either collides with another empty-key entry, fails an equality check on re-selection, or causes the todo-render path to short-circuit. Two things to fix: (1) prevent empty project names from being committed in the first place — on blur/Enter with empty input, either revert to the previous title or fall back to a default like "Untitled" (matches the new commit-on-blur behavior added for the projChild creation flow), and (2) make sure project lookup/rendering keys off a stable id rather than the display name so renaming never breaks the linkage. Verify storage isn't leaking orphaned entries after this sequence.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
-  - Completed: 2026-04-26 (PR #<number>)
-     
-- [x] **[LOW]** Add light-mode variant for PWA iOS home-screen icon
-  - Description: Add a light-purple variant of `apple-touch-icon.png` so iOS users on light-mode home screens see a tonal match instead of the current dark-tuned purple. Keep the existing PNG as the default (and dark-mode) icon — it already matches the favicon's standard purple. Export a lighter-purple companion (lifted from the `#8b7bff` accent toward something like `#b8a8ff`; pin the exact shade during export) and save as `assets/apple-touch-icon-light.png`, then add a second `<link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">` after the existing one in `template.html`. iOS 18+ honors the media query to swap icons on theme toggle; older iOS falls back to the unconditional default. No `webpack.config.js` change needed — the existing asset pipeline picks up the new PNG via the same path.
-  - File: `toDoList_main/src/template.html`
-  - Completed: 2026-04-26 (PR #<number>)
+- [ ] **[MEDIUM]** Split main.js into focused sibling modules
+  - Description: Refactor `main.js` (currently over 25k tokens, by far the largest source file — can't be read in full without grep + offset/limit) into ~9 focused sibling modules under `toDoList_main/src/`, leaving `main.js` as a thin shell containing only `component()`, `restoreFromStorage()`, the bulk-description toolbar wiring, and imports. No behavior changes — pure reorganization. Shared dependencies (`ensureCompanion` accessor, `listLogic`) thread through via plain ES imports.
+  - Proposed split:
+    1. `theme.js` — `THEME_KEY`, `applyTheme`, `resolveInitialTheme`, `getCurrentTheme`, toggle SVGs, click handler factory (~50 lines)
+    2. `dueDate.js` — `daysUntilDue`, `applyDueUrgency`, `setItemDue`, `setRowDateOffset`, `parseItemDue`, `formatPillAbsolute`, `updateDuePillLabel`, calendar SVGs, `showDueDatePopover` / `hideDueDatePopover` / `renderDuePopoverBody` / `shiftDueFocus` / `onDuePopoverOutsideClick` / `onDuePopoverKeydown` (~250 lines)
+    3. `dragDrop.js` — `setupRowDrag`, `getDropIndicator`, `removeDropIndicator`, `draggableSiblings`, `computeDropIndex`, `showDropIndicator`, `autoScrollIfNeeded`, swipe constants, `resetSwipeRow` (~200 lines)
+    4. `modals.js` — `showConfirmModal`, `showChangelogModal`, changelog-seen helpers, `notifyUpdateAvailable`, `applyPendingUpdate`, `updateChangelogDot` (~150 lines)
+    5. `projectMenu.js` — `showProjectContextMenu`, `hideProjectContextMenu`, `buildColorPicker`, outside-click/keydown listeners, `PROJECT_COLOR_HEX`, `applyProjectAccent` (~120 lines)
+    6. `emptyState.js` — `updateEmptyState`, `updateCompletedSection`, completed-section persistence helpers (~150 lines)
+    7. `prefs.js` — centralized `localStorage` getters/setters: compact titles, completed section, sidebar width, changelog last-seen. Consolidating storage keys here makes the persisted surface auditable in one place (~50 lines)
+    8. `toDoRow.js` — `buildToDoRow`, `wireCheckbox`, `wireDescToggle`, `wireToDoRowClick`, `attachToDoDrag`, `reorderToDoDOM`, `addAllToDo_DOM`, `appendNewToDoRow`, `focusBlankToDoInput*` (~400 lines)
+    9. `projectRow.js` — `attachProjectContextMenu`, `attachProjectDrag`, `reorderProjectDOM`, `deleteProjectFlow`, `countRealToDos` (~250 lines)
+  - Acceptance criteria:
+    - All current behavior preserved — checkboxes, drag/drop (mouse and touch), swipe-to-delete, due-date popover, theme toggle, project context menu, modals, completed section, update notification, etc.
+    - `main.js` shrinks to roughly 400 lines.
+    - All existing tests pass; any test under `toDoList_main/tests/` that reads `main.js` as a string and greps for function names gets repointed at the appropriate new module.
+    - No new dependencies — pure module split.
+  - Implementation notes: extract one module at a time, each as its own PR, so any regression bisects cleanly. Order suggestion (smallest/most isolated first): `prefs.js` → `theme.js` → `modals.js` → `emptyState.js` → `projectMenu.js` → `dragDrop.js` → `dueDate.js` → `projectRow.js` → `toDoRow.js`. When investigating `main.js` to plan each carve-out, use grep + `offset`/`limit` rather than a full read.
+  - Out of scope: any behavior changes, new features, or fixes; reorganizing `listLogic.js`; renaming public APIs; converting any of the new modules to classes or factories.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/theme.js`, `toDoList_main/src/dueDate.js`, `toDoList_main/src/dragDrop.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
