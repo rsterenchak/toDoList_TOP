@@ -1,6 +1,11 @@
 import './style.css';
 import { listLogic } from './listLogic.js';
-import { createCompanion, isCompanionEnabled, setCompanionEnabled, supportsDesktopCompanion } from './companion.js';
+import {
+    isCompanionEnabled,
+    setCompanionEnabled,
+    ensureCompanion,
+    destroyCompanion,
+} from './companion.js';
 import {
     isCompactTitlesOn,
     setCompactTitlesOn,
@@ -14,52 +19,23 @@ import {
     createThemeToggleButton,
 } from './theme.js';
 import {
-    showConfirmModal,
     showChangelogModal,
     updateChangelogDot,
     notifyUpdateAvailable,
     applyPendingUpdate,
 } from './modals.js';
-import {
-    updateCompletedSection,
-    updateEmptyState,
-} from './emptyState.js';
-import {
-    applyProjectAccent,
-    showProjectContextMenu,
-    hideProjectContextMenu,
-} from './projectMenu.js';
-import {
-    isCoarsePointer,
-    prefersReducedMotion,
-    setupRowDrag,
-} from './dragDrop.js';
-import {
-    applyDueUrgency,
-    parseItemDue,
-    updateDuePillLabel,
-    showDueDatePopover,
-    hideDueDatePopover,
-} from './dueDate.js';
+import { updateEmptyState } from './emptyState.js';
+import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
     attachProjectDrag,
 } from './projectRow.js';
-import { buildToDoRow } from './toDoRow.js';
+import {
+    addAllToDo_DOM,
+    addToDos_restore,
+    focusBlankToDoInputIfDesktop,
+} from './toDoRow.js';
 import button from './addProj_button.svg';
-
-// Single shared companion instance. Lazily constructed by `ensureCompanion()`
-// from inside the first mountable context (component() has built the DOM by
-// the time anything triggers a cheer). Stays null when disabled or when the
-// viewport doesn't qualify — callers must null-guard before invoking.
-let companion = null;
-function ensureCompanion() {
-    if (companion) return companion;
-    if (!isCompanionEnabled()) return null;
-    if (!supportsDesktopCompanion()) return null;
-    companion = createCompanion(document);
-    return companion;
-}
 
 
 // Apply the saved theme during import, before component() — sets data-theme
@@ -68,62 +44,14 @@ function ensureCompanion() {
 applyTheme(resolveInitialTheme());
 
 
-// ── DUE DATE HELPERS + PILL ──
-// Extracted to dueDate.js. Imported helpers: applyDueUrgency, parseItemDue,
-// updateDuePillLabel, showDueDatePopover, hideDueDatePopover.
-
-
-// ── ROW CONSTRUCTION ──
-// Extracted to toDoRow.js. `buildToDoRow` plus the per-row wiring helpers
-// (`wireCheckbox`, `wireDescToggle`, `wireToDoRowClick`) live there. Imported
-// at the top of this file. The lifecycle helpers it depends on (`ensureCompanion`,
-// `reorderToDoDOM`, `attachToDoDrag`, `addAllToDo_DOM`, `appendNewToDoRow`,
-// `focusBlankToDoInput`) are still defined in main.js and threaded through
-// the `toDoRowDeps` bag below until the follow-up carve-out lands.
-
-
-// Walk the persisted project order and re-append each `#toDoChild` row in
-// that sequence. Any open `#descSibling` panel directly after a row is moved
-// with it. Uses `appendChild` on existing DOM nodes so event listeners stay
-// attached — mirrors the in-place move pattern in `attachToDoDrag`.
-// Keyed by the row's attached data-item reference rather than its title so
-// that a newly committed title colliding with an existing completed item
-// still maps 1:1 to its own DOM row.
-function reorderToDoDOM(projectName) {
-    const mainDiv = document.getElementById('mainList');
-    if (!mainDiv) return;
-    const items = listLogic.listItems(projectName);
-    if (!items) return;
-
-    const rowsByItem = new Map();
-    const rows = mainDiv.querySelectorAll('#toDoChild');
-    for (let i = 0; i < rows.length; i++) {
-        if (rows[i].__item) rowsByItem.set(rows[i].__item, rows[i]);
-    }
-
-    items.forEach(function(item) {
-        let row = rowsByItem.get(item);
-        if (!row) row = buildToDoRow(item, projectName, toDoRowDeps);
-        const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
-            ? row.nextSibling : null;
-        mainDiv.appendChild(row);
-        if (descSibling) mainDiv.appendChild(descSibling);
-    });
-
-    updateCompletedSection(mainDiv);
-}
-
-
 // Persisted UI preference: compact-titles mode. When on, long todo titles are
 // visually truncated with a trailing ellipsis instead of overflowing or
 // wrapping. The underlying data is unchanged; CSS keys off
 // `data-compact-titles="on"` on <html> to apply text-overflow.
 //
-// The completed-section open/closed flag, compact-titles flag, sidebar width,
-// and changelog last-seen marker are all persisted via prefs.js — keys and
-// getters/setters consolidated there. The completed-section flag is consumed
-// by emptyState.js; the rest are imported at the top of this file.
-
+// All persisted UI prefs (compact-titles, completed-section open/closed flag,
+// sidebar width, changelog last-seen marker) live in prefs.js; the
+// completed-section flag is consumed by emptyState.js.
 function applyCompactTitles(on) {
     document.documentElement.setAttribute('data-compact-titles', on ? 'on' : 'off');
 }
@@ -133,127 +61,12 @@ function applyCompactTitles(on) {
 applyCompactTitles(isCompactTitlesOn());
 
 
-// ── DRAG-AND-DROP REORDERING ──
-// Extracted to dragDrop.js. Imported helpers: setupRowDrag, resetSwipeRow,
-// isCoarsePointer, prefersReducedMotion.
-
-
-// ── DUE DATE POPOVER ──
-// Extracted to dueDate.js. Imported helpers: showDueDatePopover,
-// hideDueDatePopover.
-
-
-// ── PROJECT ROW WIRING ──
-// Extracted to projectRow.js. Imported helpers: attachProjectContextMenu,
-// attachProjectDrag. The deps bag below threads the todo-row helpers that
-// still live in main.js into the project-row module; once those move out,
-// projectRow.js can import them directly and this object goes away.
-// Function declarations are hoisted, so this initializer works regardless
-// of where it sits relative to the function bodies.
-const projectRowDeps = {
-    addAllToDo_DOM,
-    addToDos_restore,
-    focusBlankToDoInputIfDesktop,
-};
-
-
-// ── TODO ROW WIRING ──
-// `buildToDoRow` is imported from toDoRow.js (top of file). The deps bag
-// below threads the lifecycle helpers it still needs from main.js. The
-// follow-up carve-out moves these into toDoRow.js, at which point this
-// object goes away.
-const toDoRowDeps = {
-    ensureCompanion,
-    reorderToDoDOM,
-    attachToDoDrag,
-    addAllToDo_DOM,
-    appendNewToDoRow,
-    focusBlankToDoInput,
-};
-
-
-// Wire drag reordering on a todo row. Keeps `row.draggable` in sync with
-// the title state so blank placeholder rows never participate in reorder
-// math, and text selection inside the title input isn't hijacked by the
-// browser's drag handler during editing.
-// `swipeTargets` (optional) wires horizontal swipe-to-complete / swipe-to-delete
-// on touch devices. Reuses the existing checkbox change and close-button click
-// paths so persistence and delete confirmation stay identical.
-function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
-
-    const swipeCfg = swipeTargets ? {
-        onRight: function() {
-            const cb = swipeTargets.checkToDo;
-            if (!cb || cb.style.display === 'none') return;
-            cb.checked = !cb.checked;
-            cb.dispatchEvent(new Event('change'));
-        },
-        onLeft: function() {
-            const btn = swipeTargets.closeButtonToDo;
-            if (!btn || btn.style.display === 'none') return;
-            btn.click();
-        }
-    } : null;
-
-    setupRowDrag(toDoChild, {
-        container: document.getElementById('mainList'),
-        itemSelector: '#toDoChild',
-        isDraggable: function() {
-            return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
-        },
-        onReorder: function(fromIdx, toIdx) {
-            const mainDiv = document.getElementById('mainList');
-            // Read current project from DOM — the closed-over `project` may be
-            // stale if the user switched projects after this listener was wired.
-            const anyRow = mainDiv.querySelector('[data-value]');
-            const activeProject = anyRow ? anyRow.dataset.value : project;
-            listLogic.reorderToDo(activeProject, fromIdx, toIdx);
-            // Re-render from the model. reorderToDo re-partitions completed
-            // items to the bottom, so the user's drop position may be
-            // clamped — the DOM must reflect the model rather than where
-            // the user released. Existing rows are moved (not recreated),
-            // so listeners and any open description panels are preserved.
-            reorderToDoDOM(activeProject);
-        },
-        swipe: swipeCfg
-    });
-
-    function syncDraggable() {
-        toDoChild.setAttribute(
-            'draggable',
-            toDoInput.value.trim().length > 0 ? 'true' : 'false'
-        );
-    }
-    syncDraggable();
-    toDoInput.addEventListener('keyup', syncDraggable);
-    toDoInput.addEventListener('blur',  syncDraggable);
-    // disable drag while typing so mouse-drag text selection inside the
-    // input still works; re-enabled on blur
-    toDoInput.addEventListener('focus', function() {
-        toDoChild.setAttribute('draggable', 'false');
-    });
-}
-
-
-// ********************** GLOBAL DOM FUNCTIONS ********************** //
-
-// AddToDo Item function — renders all items into mainList.
-function addAllToDo_DOM(items, name) {
-    if (!items) return;
-    const mainListDiv = document.getElementById("mainList");
-    items.forEach(function(item) {
-        mainListDiv.appendChild(buildToDoRow(item, name, toDoRowDeps));
-    });
-    updateCompletedSection(mainListDiv);
-}
-
-
 function component() {
 
 
     // GLOBAL VARIABLES
 
-    
+
     console.log("Initialized DOM");
 
     const base = document.createElement('div');
@@ -320,7 +133,7 @@ function component() {
     // Pill-switch hidden on mobile via CSS so the control only appears on
     // viewports where the companion actually runs. Clicking it flips the
     // persisted pref in localStorage and mounts or destroys the companion
-    // DOM element accordingly.
+    // DOM element accordingly via the singleton accessors in companion.js.
     const companionToggle      = document.createElement('button');
     const companionToggleThumb = document.createElement('span');
 
@@ -339,12 +152,8 @@ function component() {
     companionToggle.addEventListener('click', function () {
         const next = !isCompanionEnabled();
         setCompanionEnabled(next);
-        if (next) {
-            ensureCompanion();
-        } else if (companion) {
-            companion.destroy();
-            companion = null;
-        }
+        if (next) ensureCompanion();
+        else      destroyCompanion();
         syncCompanionToggle();
     });
 
@@ -656,8 +465,8 @@ function component() {
 
         // on click should temporarily disable ability to continue clicking
         projButton.style.pointerEvents = "none";
-        
-        
+
+
         // click ability returns dependent on if user successfully adds title to project
 
         // selects projects list div by ID
@@ -688,7 +497,7 @@ function component() {
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
         projChild.appendChild(spacer);
-   
+
         // spacer.style.border = "1px solid red";
         spacer.style.width = "12px";
 
@@ -767,7 +576,7 @@ function component() {
 
                         titleInput.textContent = "INVALID";
                         titleInput.style.color = 'red';
-                        
+
                         return;
                     }
 
@@ -786,39 +595,39 @@ function component() {
                 titleInput.style.color = '';
 
                 trimmedText = enteredText.trim();
-                
+
                 titleInput.textContent = trimmedText;
                 titleInput.value = trimmedText;
                 titleInput.style.fontSize = "14px";
                 titleInput.style.pointerEvents = "none";
                 titleInput.style.cursor = "default";
-                
-                
+
+
 
                 if(firstTime === 0){
 
                     // - send title to addProject() in listLogic.js to add property to allProjects array
-                    projectItems = listLogic.addProject(trimmedText); 
-                    
+                    projectItems = listLogic.addProject(trimmedText);
+
                     projectArray = projectItems.array;
                     projectName = projectItems.string;
 
 
                     firstTime = 1;
                     currentProperty = titleInput.textContent;
-                    
+
                     selectProject(); // changes selection to element
                     clearToDos();
 
                     // function returns updated project array for DOM
-                    projectItems = listLogic.listItems(projectName); 
-                    
+                    projectItems = listLogic.listItems(projectName);
+
                 }
 
                 else{
-                    
-                    // - send title to editToDo() in listLogic.js to edit currentProperty to allProjects array 
-                    projectItems = listLogic.editProject(currentProperty, newProperty); 
+
+                    // - send title to editToDo() in listLogic.js to edit currentProperty to allProjects array
+                    projectItems = listLogic.editProject(currentProperty, newProperty);
 
                     projectArray = projectItems.array;
                     projectName = projectItems.string;
@@ -831,7 +640,7 @@ function component() {
 
                     // function returns updated project array for DOM
                     projectItems = listLogic.listItems(projectName);
-                    
+
                 }
 
                 // re-arm drag — the earlier blur() ran before addProject/editProject,
@@ -847,11 +656,11 @@ function component() {
 
 
                 listLogic.listProjects();
-                
 
-                // On Click - should bring back ability to use add projects button 
-                projButton.style.pointerEvents = "auto"; 
-                
+
+                // On Click - should bring back ability to use add projects button
+                projButton.style.pointerEvents = "auto";
+
                 // NOTE: projChild > titleInput
 
 
@@ -941,7 +750,7 @@ function component() {
             }
 
 
-            
+
         }); // Ends "Enter" keydown function
 
 
@@ -1001,7 +810,7 @@ function component() {
             this.style.background = "transparent";
         });
 
-        attachProjectContextMenu(projChild, titleInput, projectRowDeps);
+        attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
 
         // Focus the new input synchronously inside this same user-gesture
@@ -1022,11 +831,6 @@ function component() {
     projButton.addEventListener("mouseleave", function() {
         this.style.boxShadow = "none";
     });
-
-
-
-
-
 
 
 
@@ -1093,54 +897,6 @@ function collapseAllDescriptions() {
     mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
         if (toggle.classList.contains('open')) toggle.click();
     });
-}
-
-
-// focusBlankToDoInput — move focus to the existing blank placeholder row's
-// input without touching the data model or DOM structure. Used on re-commit
-// of an already-committed row, where rebuilding the list would be wasteful.
-function focusBlankToDoInput() {
-    const mainListDiv = document.getElementById("mainList");
-    if (!mainListDiv) return;
-    const esInput = mainListDiv.querySelector('#emptyStateInput');
-    if (esInput) { esInput.focus(); return; }
-    const inputs = mainListDiv.querySelectorAll('#toDoInput');
-    for (let i = 0; i < inputs.length; i++) {
-        if (inputs[i].value === "") { inputs[i].focus(); return; }
-    }
-}
-
-// Auto-focus the empty input when a project is entered. On touch/mobile
-// skips the focus call so the soft keyboard doesn't open uninvited — users
-// on those devices tap the input directly when they're ready to type.
-// Deferred to the next microtask so the call lands after any in-progress
-// `.blur()` (from the project-row click handler) has fully settled.
-function focusBlankToDoInputIfDesktop() {
-    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
-    // Wait for the current event loop to flush pending blur/focus churn
-    // before we place our focus. Rendering a list synchronously can cause
-    // race conditions where an immediately-following blur wins.
-    setTimeout(focusBlankToDoInput, 0);
-}
-
-
-// appendNewToDoRow — ensure a blank placeholder is pinned at the top of the
-// project's list (creating one if the user just committed the previous blank)
-// and focus it so the next todo can be typed immediately.
-function appendNewToDoRow(toDoName) {
-
-    if (!toDoName || !listLogic.listItems(toDoName)) {
-        console.error("appendNewToDoRow: invalid project —", toDoName);
-        return;
-    }
-
-    // sortCompletedToBottom also re-creates the blank placeholder if one is
-    // missing, so this single call both pins the placeholder to index 0 and
-    // guarantees its existence before we sync the DOM.
-    listLogic.sortCompletedToBottom(toDoName);
-    reorderToDoDOM(toDoName);
-
-    focusBlankToDoInput();
 }
 
 
@@ -1367,7 +1123,7 @@ function restoreFromStorage() {
             this.style.background = "transparent";
         });
 
-        attachProjectContextMenu(projChild, titleInput, projectRowDeps);
+        attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
 
     });
@@ -1403,71 +1159,56 @@ function clearToDos_restore() {
     }
 }
 
-// Re-render a project's rows from persisted data. Re-sorts first so the
-// blank placeholder is pinned to the top of the list, then renders every
-// item — including the blank — so the user always has a ready-to-type
-// slot at the top of the list.
-function addToDos_restore(toDoArray, toDoName) {
-    if (!toDoArray || toDoArray.length === 0) return;
-    listLogic.sortCompletedToBottom(toDoName);
-    const items = listLogic.listItems(toDoName);
-    const mainListDiv = document.getElementById("mainList");
-    items.forEach(function(item) {
-        mainListDiv.appendChild(buildToDoRow(item, toDoName, toDoRowDeps));
-    });
-    updateCompletedSection(mainListDiv);
-}
-
 
 
 // ********************************************** BUG BASHING ********************************************** //
-/** 
- * FIXED - 1. When multiple projects are added, then all are removed, 
+/**
+ * FIXED - 1. When multiple projects are added, then all are removed,
  *            it will not remove the last project to exist other than 'Default'.
  *            The existing properties will be { 'Default', 'Project 1' }
- *  
+ *
  * PROBLEM - 2. Having issues with deletion/addition of DOM/Array elements
  *         - issue is still present when deleting first element and adding new element,
- *         - two new DOM elements remain after deletion of each element 
- * 
+ *         - two new DOM elements remain after deletion of each element
+ *
  * FIXED - 3. When clicking on different projects the addToDo button will disable
- *              unnecessarily, leading to not being able to add new toDo items. 
- * 
+ *              unnecessarily, leading to not being able to add new toDo items.
+ *
  * FIXED - 4. When removing projects, the initial project is also removed BUT,
  *         -    all projects after the initial project remain and are unable to be
  *         -    removed.
- * 
+ *
  * PROBLEM - 5. When creating a new project with the same name as another the toDo items
  *              end up being deleted unexpectedly. I think the regen function takes the project name
  *              and regenerating the listed array according to that name.
  *           - use validation to prevent duplicate project names from being created mistakenly
- * 
+ *
  * FIXED - 6. Enable drop down to see toDo item descriptions
- * 
- * FIXED - 7. Pressing close button on initial toDo item causes description to populate 
+ *
+ * FIXED - 7. Pressing close button on initial toDo item causes description to populate
  *              ISSUE: when pressing the closebutton it is also activating the toDoChild click for turning on/off the description leading to an error
- * 
- * FIXED - 8. Continuing toDo elements do not clear the descInput of the description element after removing 
+ *
+ * FIXED - 8. Continuing toDo elements do not clear the descInput of the description element after removing
  *            parent toDoChild node.
- * 
+ *
  * FIXED - 9. Unable to append descSibling elements to mainList after regenToDo is run, so after swapping
- *              between projects. 
- * 
+ *              between projects.
+ *
  * FIXED - 10. When creating three toDo items, the first one with a desc and the third one with a desc, and
  *               clicking the closeButton of the second item, this removes it's 'sibling' being the third
  *               toDoChild. This shouldn't happen.
- * 
+ *
  * FIXED - 11. When clicking the closeButton of the 'initial toDo' it is also removing the next element,
- *               prevent this by manipulating your eventpropagation() commands. The if/else on the second one 
+ *               prevent this by manipulating your eventpropagation() commands. The if/else on the second one
  *               is improper.
- * 
- * FIXED - 12. When clicking CloseButtonToDo on project 2 > item 1, descSibling element is not being removed 
+ *
+ * FIXED - 12. When clicking CloseButtonToDo on project 2 > item 1, descSibling element is not being removed
  *               for some reason.
- * 
- * FIXED - 13. When clicking on CloseButtonToDo for project 2, not properly removing toDoChild.nextSibling 
- * 
- * 
- * 
- * 
+ *
+ * FIXED - 13. When clicking on CloseButtonToDo for project 2, not properly removing toDoChild.nextSibling
+ *
+ *
+ *
+ *
 */
 // ******************************************************************************************************** //

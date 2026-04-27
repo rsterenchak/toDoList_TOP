@@ -238,3 +238,28 @@ export function createCompanion(doc) {
         destroy:    destroy,
     };
 }
+
+
+// ── MODULE-LEVEL SINGLETON ──
+// Centralised access to the desktop companion. Callers (toDoRow.js for cheer
+// on completion, main.js for the nav-bar toggle) used to thread an
+// `ensureCompanion` helper through a deps bag; consolidating it here removes
+// the bag and gives every importer the same lazily-created instance. Stays
+// null when the pref is off or the viewport doesn't qualify, so callers must
+// null-guard before invoking the returned controller.
+let _companionSingleton = null;
+
+export function ensureCompanion() {
+    if (_companionSingleton) return _companionSingleton;
+    if (!isCompanionEnabled()) return null;
+    if (!supportsDesktopCompanion()) return null;
+    _companionSingleton = createCompanion(document);
+    return _companionSingleton;
+}
+
+export function destroyCompanion() {
+    if (_companionSingleton) {
+        _companionSingleton.destroy();
+        _companionSingleton = null;
+    }
+}

@@ -1,22 +1,24 @@
-// Todo-row construction layer. Builds and fully wires a single todo row for
-// the given item and project name.
+// Todo-row construction layer + the row-lifecycle helpers that used to live
+// in main.js. After the carve-out completes, this module owns everything
+// "todo-row-shaped":
 //
-// Public surface:
-//   buildToDoRow(item, toDoName, deps)
+//   buildToDoRow(item, toDoName)         — construct + wire a single row
+//   addAllToDo_DOM(items, name)          — render a project from scratch
+//   addToDos_restore(items, name)        — sort-then-render path used by restoreFromStorage
+//   reorderToDoDOM(projectName)          — re-append rows to match the data-model order
+//   attachToDoDrag(row, input, project,  — wire mouse + touch drag/swipe on a row
+//                  swipeTargets)
+//   appendNewToDoRow(toDoName)           — pin a fresh blank placeholder + focus it
+//   focusBlankToDoInput()                — focus the existing blank placeholder's input
+//   focusBlankToDoInputIfDesktop()       — desktop-only variant; deferred to next tick
 //
-// `deps` carries the lifecycle helpers that still live in main.js:
-//   ensureCompanion      — singleton accessor for the desktop ghost
-//   reorderToDoDOM       — re-render a project's rows after sort changes
-//   attachToDoDrag       — wire mouse + touch reorder on the row
-//   addAllToDo_DOM       — re-render the project after a delete
-//   appendNewToDoRow     — pin a fresh blank placeholder to the top
-//   focusBlankToDoInput  — focus the existing blank placeholder's input
-//
-// The follow-up PR moves those helpers into this module and the deps bag
-// goes away — mirrors the staged precedent set by projectRow.js.
+// Function declarations are hoisted, so the order of definitions inside this
+// file is purely for readability — every helper can call the others without
+// regard to their position. The ghost-companion singleton is reached through
+// `ensureCompanion()` from companion.js (no deps bag involved).
 
 import { listLogic } from './listLogic.js';
-import { isCoarsePointer, prefersReducedMotion } from './dragDrop.js';
+import { setupRowDrag, isCoarsePointer, prefersReducedMotion } from './dragDrop.js';
 import {
     applyDueUrgency,
     parseItemDue,
@@ -25,6 +27,8 @@ import {
     hideDueDatePopover,
 } from './dueDate.js';
 import { showConfirmModal } from './modals.js';
+import { updateCompletedSection } from './emptyState.js';
+import { ensureCompanion } from './companion.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -42,7 +46,7 @@ function defaultDueParts() {
 // Inserts the checkbox as the left-most child of toDoChild, reflects the item's
 // stored completed state, and persists changes. Blank placeholder rows pass the
 // row through untouched — callers reveal the checkbox after a title is committed.
-function wireCheckbox(toDoChild, toDoInput, item, deps) {
+function wireCheckbox(toDoChild, toDoInput, item) {
 
     const checkToDo = document.createElement("input");
     checkToDo.type = "checkbox";
@@ -84,7 +88,7 @@ function wireCheckbox(toDoChild, toDoInput, item, deps) {
             // Desktop ghost companion — cheer on every item completion. The
             // "big" variant fires when this toggle leaves zero open items in
             // the project, i.e. the project just became fully done.
-            const companionInstance = deps.ensureCompanion();
+            const companionInstance = ensureCompanion();
             if (companionInstance) {
                 const projectForCount = toDoChild.dataset.value;
                 const items = projectForCount ? (listLogic.listItems(projectForCount) || []) : [];
@@ -103,7 +107,7 @@ function wireCheckbox(toDoChild, toDoInput, item, deps) {
         const projectName = toDoChild.dataset.value;
         if (projectName) {
             listLogic.sortCompletedToBottom(projectName);
-            deps.reorderToDoDOM(projectName);
+            reorderToDoDOM(projectName);
         } else {
             listLogic.saveToStorage();
         }
@@ -182,7 +186,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
 
 // Factory function — builds and fully wires a single todo row for the given
 // item and project name. Does NOT append to mainList — that's the caller's job.
-export function buildToDoRow(item, toDoName, deps) {
+export function buildToDoRow(item, toDoName) {
 
     // create elements
     const toDoChild       = document.createElement("div");
@@ -288,8 +292,8 @@ export function buildToDoRow(item, toDoName, deps) {
 
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
-    const checkToDo = wireCheckbox(toDoChild, toDoInput, item, deps);
-    deps.attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
+    const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
+    attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
     wireToDoRowClick(toDoChild, toDoInput);
 
     toDoChild.setAttribute("data-value", toDoName);
@@ -337,9 +341,9 @@ export function buildToDoRow(item, toDoName, deps) {
 
         toDoInput.blur();
         if (isFirstCommit) {
-            deps.appendNewToDoRow(toDoName);
+            appendNewToDoRow(toDoName);
         } else {
-            deps.focusBlankToDoInput();
+            focusBlankToDoInput();
         }
     });
 
@@ -403,7 +407,7 @@ export function buildToDoRow(item, toDoName, deps) {
                 const mainDiv = document.getElementById('mainList');
                 while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
-                deps.addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
+                addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
             }
         });
     });
@@ -418,4 +422,187 @@ export function buildToDoRow(item, toDoName, deps) {
     });
 
     return toDoChild;
+}
+
+
+// ── ROW LIFECYCLE HELPERS ──
+// These were threaded through `toDoRowDeps` and `projectRowDeps` while they
+// lived in main.js. With the carve-out complete they import directly from
+// here; the deps bags are gone.
+
+
+// Render every persisted item for `name` into #mainList. Used on the bulk
+// add path (project switch from a fresh project, post-delete re-render).
+// `items` is the array returned by listLogic.listItems(name).
+export function addAllToDo_DOM(items, name) {
+    if (!items) return;
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    items.forEach(function(item) {
+        mainListDiv.appendChild(buildToDoRow(item, name));
+    });
+    updateCompletedSection(mainListDiv);
+}
+
+
+// Re-render a project's rows from persisted data. Re-sorts first so the
+// blank placeholder is pinned to the top of the list, then renders every
+// item — including the blank — so the user always has a ready-to-type
+// slot at the top of the list. Used by the restoreFromStorage path on boot
+// and by selectProject when a previously visited project becomes active.
+export function addToDos_restore(toDoArray, toDoName) {
+    if (!toDoArray || toDoArray.length === 0) return;
+    listLogic.sortCompletedToBottom(toDoName);
+    const items = listLogic.listItems(toDoName);
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    items.forEach(function(item) {
+        mainListDiv.appendChild(buildToDoRow(item, toDoName));
+    });
+    updateCompletedSection(mainListDiv);
+}
+
+
+// Walk the persisted project order and re-append each `#toDoChild` row in
+// that sequence. Any open `#descSibling` panel directly after a row is moved
+// with it. Uses `appendChild` on existing DOM nodes so event listeners stay
+// attached — mirrors the in-place move pattern in `attachToDoDrag`.
+// Keyed by the row's attached data-item reference rather than its title so
+// that a newly committed title colliding with an existing completed item
+// still maps 1:1 to its own DOM row.
+export function reorderToDoDOM(projectName) {
+    const mainDiv = document.getElementById('mainList');
+    if (!mainDiv) return;
+    const items = listLogic.listItems(projectName);
+    if (!items) return;
+
+    const rowsByItem = new Map();
+    const rows = mainDiv.querySelectorAll('#toDoChild');
+    for (let i = 0; i < rows.length; i++) {
+        if (rows[i].__item) rowsByItem.set(rows[i].__item, rows[i]);
+    }
+
+    items.forEach(function(item) {
+        let row = rowsByItem.get(item);
+        if (!row) row = buildToDoRow(item, projectName);
+        const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
+            ? row.nextSibling : null;
+        mainDiv.appendChild(row);
+        if (descSibling) mainDiv.appendChild(descSibling);
+    });
+
+    updateCompletedSection(mainDiv);
+}
+
+
+// Wire drag reordering on a todo row. Keeps `row.draggable` in sync with
+// the title state so blank placeholder rows never participate in reorder
+// math, and text selection inside the title input isn't hijacked by the
+// browser's drag handler during editing.
+// `swipeTargets` (optional) wires horizontal swipe-to-complete / swipe-to-delete
+// on touch devices. Reuses the existing checkbox change and close-button click
+// paths so persistence and delete confirmation stay identical.
+export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
+
+    const swipeCfg = swipeTargets ? {
+        onRight: function() {
+            const cb = swipeTargets.checkToDo;
+            if (!cb || cb.style.display === 'none') return;
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event('change'));
+        },
+        onLeft: function() {
+            const btn = swipeTargets.closeButtonToDo;
+            if (!btn || btn.style.display === 'none') return;
+            btn.click();
+        }
+    } : null;
+
+    setupRowDrag(toDoChild, {
+        container: document.getElementById('mainList'),
+        itemSelector: '#toDoChild',
+        isDraggable: function() {
+            return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
+        },
+        onReorder: function(fromIdx, toIdx) {
+            const mainDiv = document.getElementById('mainList');
+            // Read current project from DOM — the closed-over `project` may be
+            // stale if the user switched projects after this listener was wired.
+            const anyRow = mainDiv.querySelector('[data-value]');
+            const activeProject = anyRow ? anyRow.dataset.value : project;
+            listLogic.reorderToDo(activeProject, fromIdx, toIdx);
+            // Re-render from the model. reorderToDo re-partitions completed
+            // items to the bottom, so the user's drop position may be
+            // clamped — the DOM must reflect the model rather than where
+            // the user released. Existing rows are moved (not recreated),
+            // so listeners and any open description panels are preserved.
+            reorderToDoDOM(activeProject);
+        },
+        swipe: swipeCfg
+    });
+
+    function syncDraggable() {
+        toDoChild.setAttribute(
+            'draggable',
+            toDoInput.value.trim().length > 0 ? 'true' : 'false'
+        );
+    }
+    syncDraggable();
+    toDoInput.addEventListener('keyup', syncDraggable);
+    toDoInput.addEventListener('blur',  syncDraggable);
+    // disable drag while typing so mouse-drag text selection inside the
+    // input still works; re-enabled on blur
+    toDoInput.addEventListener('focus', function() {
+        toDoChild.setAttribute('draggable', 'false');
+    });
+}
+
+
+// appendNewToDoRow — ensure a blank placeholder is pinned at the top of the
+// project's list (creating one if the user just committed the previous blank)
+// and focus it so the next todo can be typed immediately.
+export function appendNewToDoRow(toDoName) {
+    if (!toDoName || !listLogic.listItems(toDoName)) {
+        console.error('appendNewToDoRow: invalid project —', toDoName);
+        return;
+    }
+
+    // sortCompletedToBottom also re-creates the blank placeholder if one is
+    // missing, so this single call both pins the placeholder to index 0 and
+    // guarantees its existence before we sync the DOM.
+    listLogic.sortCompletedToBottom(toDoName);
+    reorderToDoDOM(toDoName);
+
+    focusBlankToDoInput();
+}
+
+
+// focusBlankToDoInput — move focus to the existing blank placeholder row's
+// input without touching the data model or DOM structure. Used on re-commit
+// of an already-committed row, where rebuilding the list would be wasteful.
+// Prefers the empty-state input when present (it absorbs the placeholder's
+// affordance while the project has no open todos).
+export function focusBlankToDoInput() {
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    const esInput = mainListDiv.querySelector('#emptyStateInput');
+    if (esInput) { esInput.focus(); return; }
+    const inputs = mainListDiv.querySelectorAll('#toDoInput');
+    for (let i = 0; i < inputs.length; i++) {
+        if (inputs[i].value === '') { inputs[i].focus(); return; }
+    }
+}
+
+
+// Auto-focus the empty input when a project is entered. On touch/mobile
+// skips the focus call so the soft keyboard doesn't open uninvited — users
+// on those devices tap the input directly when they're ready to type.
+// Deferred to the next microtask so the call lands after any in-progress
+// `.blur()` (from the project-row click handler) has fully settled.
+export function focusBlankToDoInputIfDesktop() {
+    if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+    // Wait for the current event loop to flush pending blur/focus churn
+    // before we place our focus. Rendering a list synchronously can cause
+    // race conditions where an immediately-following blur wins.
+    setTimeout(focusBlankToDoInput, 0);
 }

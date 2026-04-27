@@ -1,22 +1,25 @@
 // Project-row interaction wiring: drag-and-drop reordering, right-click /
 // long-press context menu, and the delete-with-confirmation flow.
 //
-// Public surface mirrors the call sites that lived in main.js — projects are
-// constructed there and wired through these two helpers:
+// Public surface mirrors the call sites in main.js — projects are constructed
+// there and wired through these two helpers:
 //   attachProjectDrag(projChild, titleInput)
-//   attachProjectContextMenu(projChild, titleInput, deps)
+//   attachProjectContextMenu(projChild, titleInput)
 //
-// `deps` carries the todo-row helpers that still live in main.js
-// (`addAllToDo_DOM`, `addToDos_restore`, `focusBlankToDoInputIfDesktop`).
-// Once the planned `toDoRow.js` carve-out lands, those move out of main.js
-// and this module can import them directly instead of receiving them as a
-// parameter.
+// The todo-row helpers used to come in via a `deps` parameter while they
+// still lived in main.js. After the carve-out they're proper exports of
+// toDoRow.js, so this module imports them directly and the deps bag is gone.
 
 import { listLogic } from './listLogic.js';
 import { setupRowDrag } from './dragDrop.js';
 import { showProjectContextMenu, applyProjectAccent } from './projectMenu.js';
 import { showConfirmModal } from './modals.js';
 import { updateEmptyState } from './emptyState.js';
+import {
+    addAllToDo_DOM,
+    addToDos_restore,
+    focusBlankToDoInputIfDesktop,
+} from './toDoRow.js';
 
 
 function countRealToDos(projectName) {
@@ -26,7 +29,7 @@ function countRealToDos(projectName) {
 }
 
 
-function deleteProjectFlow(projChild, projectName, deps) {
+function deleteProjectFlow(projChild, projectName) {
 
     // New rows that haven't been named yet aren't in the data model —
     // just drop the placeholder row and re-enable the add-project button.
@@ -68,8 +71,8 @@ function deleteProjectFlow(projChild, projectName, deps) {
                     const nextName  = nextInput ? nextInput.value : nextRow.dataset.project;
                     const nextItems = listLogic.listItems(nextName);
                     applyProjectAccent(mainListEl, listLogic.getProjectColor(nextName));
-                    if (nextItems) deps.addAllToDo_DOM(nextItems, nextName);
-                    deps.focusBlankToDoInputIfDesktop();
+                    if (nextItems) addAllToDo_DOM(nextItems, nextName);
+                    focusBlankToDoInputIfDesktop();
                 } else {
                     applyProjectAccent(mainListEl, null);
                     updateEmptyState(mainListEl);
@@ -136,7 +139,7 @@ export function attachProjectDrag(projChild, titleInput) {
 }
 
 
-export function attachProjectContextMenu(projChild, titleInput, deps) {
+export function attachProjectContextMenu(projChild, titleInput) {
 
     function selectIfNeeded() {
         if (projChild.classList.contains('selectedProject')) return;
@@ -165,11 +168,11 @@ export function attachProjectContextMenu(projChild, titleInput, deps) {
         applyProjectAccent(mainDiv, listLogic.getProjectColor(name));
         const hasReal = items && items.some(function(i){ return i.tit !== ''; });
         if (hasReal) {
-            deps.addToDos_restore(items, name);
+            addToDos_restore(items, name);
         } else if (items) {
-            deps.addAllToDo_DOM(items, name);
+            addAllToDo_DOM(items, name);
         }
-        deps.focusBlankToDoInputIfDesktop();
+        focusBlankToDoInputIfDesktop();
     }
 
     function onEdit() {
@@ -181,7 +184,7 @@ export function attachProjectContextMenu(projChild, titleInput, deps) {
     }
 
     function onDelete() {
-        deleteProjectFlow(projChild, titleInput.value, deps);
+        deleteProjectFlow(projChild, titleInput.value);
     }
 
     function onColorSelect(colorKey) {
