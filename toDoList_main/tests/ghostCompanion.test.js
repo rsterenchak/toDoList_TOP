@@ -90,14 +90,25 @@ describe('ghost companion — main.js wiring', () => {
     // wireCheckbox now lives in toDoRow.js — the cheer() trigger asserts read
     // there. The companion toggle switch in the nav still lives in main.js.
     const toDoRow = read('toDoRow.js');
+    // The lazy-instantiation singleton was moved out of main.js into
+    // companion.js itself, so callers don't have to thread a deps bag — every
+    // importer gets the same instance via ensureCompanion()/destroyCompanion().
+    const companion = read('companion.js');
 
-    it('imports createCompanion from ./companion.js', () => {
-        expect(js).toMatch(/import\s*\{[^}]*createCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
+    it('imports ensureCompanion and destroyCompanion from ./companion.js', () => {
+        expect(js).toMatch(/import\s*\{[^}]*ensureCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
+        expect(js).toMatch(/import\s*\{[^}]*destroyCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
     });
 
-    it('instantiates the companion lazily via an ensureCompanion helper', () => {
-        expect(js).toMatch(/function\s+ensureCompanion\s*\(/);
-        expect(js).toMatch(/createCompanion\s*\(\s*document\s*\)/);
+    it('instantiates the companion lazily via the exported ensureCompanion singleton in companion.js', () => {
+        // The helper itself now lives in companion.js — main.js just calls it
+        // from the nav toggle handler. The lazy contract is preserved: the
+        // helper memoizes a single createCompanion(document) instance.
+        expect(companion).toMatch(/export\s+function\s+ensureCompanion\s*\(/);
+        expect(companion).toMatch(/createCompanion\s*\(\s*document\s*\)/);
+        // main.js wires the toggle to ensureCompanion / destroyCompanion.
+        expect(js).toMatch(/ensureCompanion\s*\(\s*\)/);
+        expect(js).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 
     it('calls companion.cheer() from inside the checkbox change handler', () => {
