@@ -23,7 +23,7 @@
   - Progress (one PR per module — pick the next unchecked one):
     - [x] `prefs.js`
     - [x] `theme.js`
-    - [ ] `modals.js`
+    - [x] `modals.js`
     - [ ] `emptyState.js`
     - [ ] `projectMenu.js`
     - [ ] `dragDrop.js`
