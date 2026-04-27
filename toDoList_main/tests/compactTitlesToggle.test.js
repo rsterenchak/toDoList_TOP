@@ -16,6 +16,7 @@ function read(relative) {
 // apply the single-line ellipsis treatment to #toDoInput.
 describe('compact-titles toggle — visual truncation of long todo titles', () => {
     const main = read('main.js');
+    const toDoRow = read('toDoRow.js');
     const prefs = read('prefs.js');
     const css = read('style.css');
 
@@ -82,10 +83,11 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
     it('mirrors each todo title onto the input.title attribute so hover tooltips reveal clipped text', () => {
         // Title is set on creation, again after Enter commit, after keyup save,
         // and on blur snap-back so it always matches the visible value.
-        expect(main).toMatch(/toDoInput\.title\s*=\s*item\.tit\s*\|\|\s*""/);
-        const enterHandler = main.slice(main.indexOf('toDoInput keydown — Enter to commit title'));
+        // Row construction lives in toDoRow.js — the title-mirror writes are there.
+        expect(toDoRow).toMatch(/toDoInput\.title\s*=\s*item\.tit\s*\|\|\s*""/);
+        const enterHandler = toDoRow.slice(toDoRow.indexOf('toDoInput keydown — Enter to commit title'));
         expect(enterHandler.slice(0, 1500)).toMatch(/toDoInput\.title\s*=\s*val/);
-        const keyupHandler = main.slice(main.indexOf('toDoInput keyup — save on every keystroke'));
+        const keyupHandler = toDoRow.slice(toDoRow.indexOf('toDoInput keyup — save on every keystroke'));
         expect(keyupHandler.slice(0, 800)).toMatch(/toDoInput\.title\s*=\s*val/);
     });
 

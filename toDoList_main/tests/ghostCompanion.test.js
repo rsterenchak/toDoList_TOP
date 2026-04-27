@@ -87,6 +87,9 @@ describe('ghost companion — sprite asset', () => {
 
 describe('ghost companion — main.js wiring', () => {
     const js = read('main.js');
+    // wireCheckbox now lives in toDoRow.js — the cheer() trigger asserts read
+    // there. The companion toggle switch in the nav still lives in main.js.
+    const toDoRow = read('toDoRow.js');
 
     it('imports createCompanion from ./companion.js', () => {
         expect(js).toMatch(/import\s*\{[^}]*createCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
@@ -100,12 +103,12 @@ describe('ghost companion — main.js wiring', () => {
     it('calls companion.cheer() from inside the checkbox change handler', () => {
         // Isolate wireCheckbox so the assertion can't false-positive off
         // unrelated code that happens to invoke cheer().
-        const start = js.indexOf('function wireCheckbox(');
+        const start = toDoRow.indexOf('function wireCheckbox(');
         expect(start).toBeGreaterThan(-1);
         let depth = 0;
         let end = -1;
-        for (let i = js.indexOf('{', start); i < js.length; i++) {
-            const c = js[i];
+        for (let i = toDoRow.indexOf('{', start); i < toDoRow.length; i++) {
+            const c = toDoRow[i];
             if (c === '{') depth++;
             else if (c === '}') {
                 depth--;
@@ -113,15 +116,15 @@ describe('ghost companion — main.js wiring', () => {
             }
         }
         expect(end).toBeGreaterThan(start);
-        const body = js.slice(start, end);
+        const body = toDoRow.slice(start, end);
         expect(body).toMatch(/\.cheer\s*\(/);
     });
 
     it('passes a truthy "big" flag to cheer() when no open items remain in the project', () => {
         // The project-complete variant triggers a louder animation. Guard
         // against the wiring degrading to always-small cheers.
-        const start = js.indexOf('function wireCheckbox(');
-        const body = js.slice(start, start + 4000);
+        const start = toDoRow.indexOf('function wireCheckbox(');
+        const body = toDoRow.slice(start, start + 4000);
         expect(body).toMatch(/remainingOpen\s*===\s*0/);
     });
 
