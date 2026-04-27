@@ -15,6 +15,7 @@
   - Description: Right now the sidebar, the main todo-list area, and the todo card backgrounds all sit at roughly the same near-black value, so the layout reads flat — items dissolve into the background instead of feeling like they're floating on it. Introduce ~5-10 brightness points of separation between the three surfaces: sidebar at the darkest tone, main content area one step lighter, and todo card surfaces another notch lighter (or with a subtle 1px inner border around `#1F1F2E`). Add the new surface tones as design tokens in the dark theme variable block alongside the existing palette so the light theme can mirror the layering with its own values.
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[MEDIUM]** Improve add-task input field affordance with placeholder, icon, and submit hint
   - Description: The empty add-task input at the top of the todo list has no placeholder, no icon, and no visible affordance — it reads as a thin div more than an input. Set a muted-gray placeholder ("Add a task…"), add a faint left-side `+` glyph inside the input (Unicode character or inline SVG — no icon-font dependency), and surface a subtle right-side `↵` hint on focus to communicate that Enter submits. Set the placeholder attribute where the input is built in `main.js`, and add the icon, hint, and focus-state styling in CSS. Keep the input's `font-size` at 16px+ to avoid iOS Safari auto-zoom.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
