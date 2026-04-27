@@ -22,7 +22,7 @@
   - Implementation notes: extract one module at a time, each as its own PR, so any regression bisects cleanly. Order suggestion (smallest/most isolated first): `prefs.js` → `theme.js` → `modals.js` → `emptyState.js` → `projectMenu.js` → `dragDrop.js` → `dueDate.js` → `projectRow.js` → `toDoRow.js`. When investigating `main.js` to plan each carve-out, use grep + `offset`/`limit` rather than a full read.
   - Progress (one PR per module — pick the next unchecked one):
     - [x] `prefs.js`
-    - [ ] `theme.js`
+    - [x] `theme.js`
     - [ ] `modals.js`
     - [ ] `emptyState.js`
     - [ ] `projectMenu.js`
