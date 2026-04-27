@@ -2041,3 +2041,215 @@ body.row-dragging * { cursor: grabbing !important; }
     animation: none;
   }
 }
+
+
+/* ── DATE GROUP HEADERS ──
+   Section dividers inserted between #toDoChild rows by dueGroups.js.
+   Three groups: today (warm coral), this week (accent purple), later
+   (muted neutral). Headers vanish entirely when their group is empty —
+   the JS only inserts headers for groups that have at least one row. */
+.dueGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 8px 2px;
+  padding: 4px 12px 2px;
+  height: 22px;
+  box-sizing: border-box;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.dueGroupDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.dueGroupLabel {
+  line-height: 1;
+}
+.dueGroupHeader[data-group="today"] .dueGroupDot { background: #e07a6a; }
+.dueGroupHeader[data-group="week"]  .dueGroupDot { background: var(--accent); }
+.dueGroupHeader[data-group="later"] .dueGroupDot { background: var(--text-muted); }
+
+
+/* ── SMART INPUT AFFORDANCES ──
+   Visible only on the blank placeholder row (toDoRow.js hides them via
+   inline display:none on committed rows). Leading "+" reads as create;
+   trailing N kbd badge advertises the global focus shortcut wired in main.js. */
+.smartInputPlus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-muted);
+  user-select: none;
+  pointer-events: none;
+}
+.smartInputKbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: auto;
+  margin-right: 6px;
+  flex-shrink: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 0.5px solid var(--border-bright);
+  border-radius: 3px;
+  user-select: none;
+  pointer-events: none;
+}
+
+
+/* ── SEMANTIC DATE PILL RECOLOR ──
+   Warm coral background + light text whenever the row's due date is today
+   or earlier. Overrides the prior text-only urgency color so today/overdue
+   rows pop against the row chrome. .due-soon (1–3 days out) intentionally
+   stays neutral so the warning treatment doesn't compete with "due today". */
+#toDoChild.due-soon    #duePill { color: var(--text-secondary); }
+#toDoChild.due-today   #duePill,
+#toDoChild.due-overdue #duePill {
+  background: #e07a6a;
+  border-color: #c45e4e;
+  color: #ffffff;
+}
+:root[data-theme="light"] #toDoChild.due-today   #duePill,
+:root[data-theme="light"] #toDoChild.due-overdue #duePill {
+  background: #d35a4a;
+  border-color: #a8443a;
+  color: #ffffff;
+}
+#toDoChild.due-today   #duePill .duePillChevron,
+#toDoChild.due-overdue #duePill .duePillChevron {
+  opacity: 0.85;
+}
+
+
+/* ── SUBTASK CHEVRON + PANEL ──
+   Chevron sits to the right of the date pill on rows that have at least
+   one subtask. Click to toggle the #subtaskSibling panel below the row. */
+#subtaskToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 3px;
+  transition: color 0.12s ease, background 0.12s ease, transform 0.2s ease;
+  user-select: none;
+}
+#subtaskToggle::before {
+  content: '▸';
+  font-size: 10px;
+  line-height: 1;
+}
+#subtaskToggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#subtaskToggle.open {
+  transform: rotate(90deg);
+  color: var(--text-primary);
+}
+
+#subtaskSibling {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 8px 6px 28px;
+  padding: 6px 10px;
+  background: var(--bg-base);
+  border-left: 2px solid var(--border-bright);
+  align-self: stretch;
+  min-height: 0;
+}
+.subtaskChild {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+.subtaskCheckbox {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.subtaskInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 16px;
+  padding: 2px 0;
+}
+.subtaskInput:focus {
+  outline: none;
+  border-bottom: 0.5px solid var(--accent-dim);
+}
+.subtaskInput::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.subtaskChild.completed .subtaskInput {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.subtaskDelete {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+}
+.subtaskDelete:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.addSubtaskBtn {
+  align-self: flex-start;
+  margin: 4px 0 2px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 0.5px dashed var(--border-bright);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.addSubtaskBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}

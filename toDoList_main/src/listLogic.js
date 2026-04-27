@@ -95,6 +95,22 @@ export const listLogic = (function () {
             if (typeof item.completed !== 'boolean') {
                 item.completed = false;
             }
+            // Backfill subtasks (added later) on items saved before the
+            // nested-subtasks feature existed. Sanitize each entry to the
+            // expected `{title, completed}` shape so the renderer never has
+            // to defend against partial/legacy data.
+            if (!Array.isArray(item.subtasks)) {
+                item.subtasks = [];
+            } else {
+                item.subtasks = item.subtasks
+                    .filter(function(s) { return s && typeof s === 'object'; })
+                    .map(function(s) {
+                        return {
+                            title: typeof s.title === 'string' ? s.title : '',
+                            completed: !!s.completed
+                        };
+                    });
+            }
             if (!item.due || item.due === "" || item.due === "--" || item.due === "X-X-XXXX") return;
             const parts = item.due.split('-');
             const m = parseInt(parts[0], 10);
@@ -432,6 +448,47 @@ export const listLogic = (function () {
     }
 
 
+    // ── SUBTASKS ──
+    // Subtasks live on each item as `subtasks: [{title, completed}, ...]`.
+    // All mutations route through these helpers so persistence, validation,
+    // and the per-item-reference contract stay in one place — the rest of
+    // the app never reaches into `item.subtasks` directly to write.
+
+    function addSubtask(item, title) {
+        if (!item) return null;
+        if (!Array.isArray(item.subtasks)) item.subtasks = [];
+        const trimmed = (title || '').trim();
+        const sub = { title: trimmed, completed: false };
+        item.subtasks.push(sub);
+        saveToStorage();
+        return sub;
+    }
+
+    function toggleSubtask(item, index) {
+        if (!item || !Array.isArray(item.subtasks)) return;
+        const i = parseInt(index, 10);
+        if (isNaN(i) || i < 0 || i >= item.subtasks.length) return;
+        item.subtasks[i].completed = !item.subtasks[i].completed;
+        saveToStorage();
+    }
+
+    function removeSubtask(item, index) {
+        if (!item || !Array.isArray(item.subtasks)) return;
+        const i = parseInt(index, 10);
+        if (isNaN(i) || i < 0 || i >= item.subtasks.length) return;
+        item.subtasks.splice(i, 1);
+        saveToStorage();
+    }
+
+    function editSubtaskTitle(item, index, title) {
+        if (!item || !Array.isArray(item.subtasks)) return;
+        const i = parseInt(index, 10);
+        if (isNaN(i) || i < 0 || i >= item.subtasks.length) return;
+        item.subtasks[i].title = (title || '').trim();
+        saveToStorage();
+    }
+
+
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -456,6 +513,10 @@ export const listLogic = (function () {
         getProjectColor,
         setProjectColor,
         PROJECT_COLOR_KEYS,
+        addSubtask,
+        toggleSubtask,
+        removeSubtask,
+        editSubtaskTitle,
         saveToStorage,
         _reset
     };

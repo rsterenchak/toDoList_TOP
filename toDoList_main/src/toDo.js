@@ -11,11 +11,12 @@ const toDo = (title, description, dueDate, priority, position) => {
     let pri = priority;
     let pos = position;
     let completed = false;
+    let subtasks = [];
 
     // console.log("Called toDo Object");
 
 
-    return {tit, desc, due, pri, pos, completed};
+    return {tit, desc, due, pri, pos, completed, subtasks};
   };
   
 

@@ -13,6 +13,7 @@ export const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
+export const SUBTASKS_EXPANDED_KEY = 'todoapp_subtasksExpanded';
 
 // ── compact titles ──
 export function isCompactTitlesOn() {
@@ -68,6 +69,49 @@ export function hasSidebarWidthPref() {
         return false;
     }
 }
+
+// ── subtasks expanded state ──
+// Persists which rows currently have their nested-subtasks panel expanded.
+// Keyed by `${projectName}::${parentTitle}` — title-based rather than
+// index-based so a reorder doesn't reshuffle which rows render expanded.
+// Title collisions are rare in practice and only cause both colliding rows
+// to share an expanded state, which is benign.
+function readSubtasksExpandedSet() {
+    try {
+        const raw = localStorage.getItem(SUBTASKS_EXPANDED_KEY);
+        if (!raw) return new Set();
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return new Set();
+        return new Set(parsed.filter(function(s) { return typeof s === 'string'; }));
+    } catch (e) {
+        return new Set();
+    }
+}
+
+function writeSubtasksExpandedSet(set) {
+    try {
+        const arr = [];
+        set.forEach(function(k) { arr.push(k); });
+        localStorage.setItem(SUBTASKS_EXPANDED_KEY, JSON.stringify(arr));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+function subtasksExpandedKey(projectName, parentTitle) {
+    return String(projectName || '') + '::' + String(parentTitle || '');
+}
+
+export function isSubtasksExpanded(projectName, parentTitle) {
+    return readSubtasksExpandedSet().has(subtasksExpandedKey(projectName, parentTitle));
+}
+
+export function setSubtasksExpanded(projectName, parentTitle, expanded) {
+    const set = readSubtasksExpandedSet();
+    const key = subtasksExpandedKey(projectName, parentTitle);
+    if (expanded) set.add(key);
+    else          set.delete(key);
+    writeSubtasksExpandedSet(set);
+}
+
 
 // ── changelog last-seen marker ──
 export function readChangelogLastSeen() {

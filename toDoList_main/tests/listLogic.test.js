@@ -404,6 +404,105 @@ describe('listLogic — editProject edge cases', () => {
 });
 
 
+// ── SUBTASKS ────────────────────────────────────────────────────────
+// Lock down the subtasks data layer added alongside the panel redesign:
+// fresh items start with an empty subtasks array, helpers route every
+// mutation through listLogic (the rule that UI files don't write to the
+// data model directly), and the array round-trips through localStorage
+// so reload preserves the nested structure.
+describe('listLogic — subtasks', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+        listLogic.addToDo('Work', 'Parent');
+    });
+
+    function parent() {
+        return listLogic.listItems('Work').find(i => i.tit === 'Parent');
+    }
+
+    it('new todos start with an empty subtasks array', () => {
+        expect(Array.isArray(parent().subtasks)).toBe(true);
+        expect(parent().subtasks).toHaveLength(0);
+    });
+
+    it('addSubtask appends a {title, completed} entry', () => {
+        listLogic.addSubtask(parent(), 'Step one');
+
+        const subs = parent().subtasks;
+        expect(subs).toHaveLength(1);
+        expect(subs[0].title).toBe('Step one');
+        expect(subs[0].completed).toBe(false);
+    });
+
+    it('addSubtask trims whitespace on the title', () => {
+        listLogic.addSubtask(parent(), '  spaced  ');
+        expect(parent().subtasks[0].title).toBe('spaced');
+    });
+
+    it('toggleSubtask flips the completed flag', () => {
+        listLogic.addSubtask(parent(), 'Step one');
+
+        listLogic.toggleSubtask(parent(), 0);
+        expect(parent().subtasks[0].completed).toBe(true);
+
+        listLogic.toggleSubtask(parent(), 0);
+        expect(parent().subtasks[0].completed).toBe(false);
+    });
+
+    it('toggleSubtask is a no-op for an out-of-bounds index', () => {
+        listLogic.addSubtask(parent(), 'Step one');
+        listLogic.toggleSubtask(parent(), 99);
+        expect(parent().subtasks[0].completed).toBe(false);
+    });
+
+    it('toggling a subtask never mutates the parent.completed flag', () => {
+        // Per the spec: child completion strikes through that child's title
+        // without altering the parent's checked state.
+        listLogic.addSubtask(parent(), 'Step one');
+        const before = parent().completed;
+
+        listLogic.toggleSubtask(parent(), 0);
+
+        expect(parent().completed).toBe(before);
+    });
+
+    it('removeSubtask drops the entry at the given index', () => {
+        listLogic.addSubtask(parent(), 'A');
+        listLogic.addSubtask(parent(), 'B');
+        listLogic.addSubtask(parent(), 'C');
+
+        listLogic.removeSubtask(parent(), 1);
+
+        const titles = parent().subtasks.map(s => s.title);
+        expect(titles).toEqual(['A', 'C']);
+    });
+
+    it('editSubtaskTitle rewrites the title in place', () => {
+        listLogic.addSubtask(parent(), 'old');
+        listLogic.editSubtaskTitle(parent(), 0, 'new');
+        expect(parent().subtasks[0].title).toBe('new');
+    });
+
+    it('subtasks survive a save / reload round-trip via localStorage', () => {
+        listLogic.addSubtask(parent(), 'Step one');
+        listLogic.toggleSubtask(parent(), 0);
+        listLogic.addSubtask(parent(), 'Step two');
+        listLogic.saveToStorage();
+
+        const raw = localStorage.getItem('allProjects');
+        expect(raw).not.toBeNull();
+
+        const parsed = JSON.parse(raw);
+        const restoredParent = parsed.Work.items.find(i => i.tit === 'Parent');
+        expect(restoredParent).toBeDefined();
+        expect(restoredParent.subtasks).toHaveLength(2);
+        expect(restoredParent.subtasks[0]).toEqual({ title: 'Step one', completed: true });
+        expect(restoredParent.subtasks[1]).toEqual({ title: 'Step two', completed: false });
+    });
+});
+
+
 describe('listLogic — storage corruption resilience', () => {
     // This one is architecturally tricky because listLogic reads localStorage
     // at module load time, not on demand. To test resilience against malformed

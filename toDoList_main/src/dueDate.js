@@ -27,15 +27,20 @@ export function daysUntilDue(dueStr) {
     return Math.round((due - today) / 86400000);
 }
 
-// Applies/removes .due-soon and .due-overdue on a row based on its item's
-// due date. Completed rows and blank placeholders never get urgency classes.
+// Applies/removes .due-today, .due-soon, and .due-overdue on a row based on
+// its item's due date. Completed rows and blank placeholders never get
+// urgency classes. The .due-today class is applied for days === 0 so the
+// pill recolor (warm coral) can fire for today as well as overdue rows
+// without conflating them with .due-soon (1–3 days out, no urgency color).
 export function applyDueUrgency(toDoChild, item) {
-    toDoChild.classList.remove('due-soon', 'due-overdue');
+    toDoChild.classList.remove('due-today', 'due-soon', 'due-overdue');
     if (!item || !item.tit || item.completed) return;
     const days = daysUntilDue(item.due);
     if (days === null) return;
     if (days < 0) {
         toDoChild.classList.add('due-overdue');
+    } else if (days === 0) {
+        toDoChild.classList.add('due-today');
     } else if (days <= 3) {
         toDoChild.classList.add('due-soon');
     }

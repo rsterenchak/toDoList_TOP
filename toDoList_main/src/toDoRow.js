@@ -29,6 +29,8 @@ import {
 import { showConfirmModal } from './modals.js';
 import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
+import { updateDueGroupHeaders } from './dueGroups.js';
+import { isSubtasksExpanded, setSubtasksExpanded } from './prefs.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -155,9 +157,42 @@ function wireToDoRowClick(toDoChild, toDoInput) {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
+// Also exposes an "Add subtask" affordance inside descSibling — opening the
+// description is the discoverable bootstrap path for creating the first
+// subtask, since the row's subtaskToggle chevron only appears once at least
+// one subtask exists.
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item, projectName, subtaskToggle, subtaskSibling) {
 
     let switcher = 0;
+
+    // The "Add subtask" affordance inside descSibling — created lazily so a
+    // user who never opens the description never pays for the DOM nodes.
+    let addSubBtn = null;
+    function ensureAddSubtaskAffordance() {
+        if (addSubBtn) return addSubBtn;
+        addSubBtn = document.createElement('button');
+        addSubBtn.type = 'button';
+        addSubBtn.className = 'addSubtaskBtn';
+        addSubBtn.textContent = '+ Add subtask';
+        addSubBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            listLogic.addSubtask(item, '');
+            // Reveal the chevron on the parent row and force-open the
+            // subtask panel so the user lands directly on the new editable
+            // child without having to expand it manually.
+            subtaskToggle.style.display = 'flex';
+            setSubtasksExpanded(projectName, item.tit, true);
+            renderSubtaskSibling(subtaskSibling, toDoChild, item, projectName, subtaskToggle);
+            mountSubtaskSibling(toDoChild, subtaskSibling);
+            subtaskToggle.setAttribute('aria-expanded', 'true');
+            subtaskToggle.classList.add('open');
+            // Focus the freshly-created blank subtask input so the user can
+            // type immediately.
+            const newInput = subtaskSibling.querySelector('.subtaskInput[data-blank="true"]');
+            if (newInput) newInput.focus();
+        });
+        return addSubBtn;
+    }
 
     descToggle.addEventListener("click", function(event) {
         event.stopPropagation();
@@ -170,6 +205,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descSibling.appendChild(descSpacer1);
             descSibling.appendChild(descInput);
             descSibling.appendChild(descSpacer2);
+            descSibling.appendChild(ensureAddSubtaskAffordance());
             descInput.value = item["desc"] || "";
             descToggle.classList.add("open");
             switcher = 1;
@@ -179,6 +215,121 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             }
             descToggle.classList.remove("open");
             switcher = 0;
+        }
+    });
+}
+
+
+// Insert the subtask panel as the closest sibling beneath toDoChild. If a
+// descSibling is already there, the subtask panel goes after it so both can
+// be open without one displacing the other.
+function mountSubtaskSibling(toDoChild, subtaskSibling) {
+    const mainList = toDoChild.parentElement;
+    if (!mainList) return;
+    const ds = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling')
+        ? toDoChild.nextSibling : null;
+    const anchor = ds ? ds.nextSibling : toDoChild.nextSibling;
+    if (subtaskSibling.parentNode === mainList) return;
+    mainList.insertBefore(subtaskSibling, anchor);
+}
+
+
+// (Re)render the children inside subtaskSibling to match item.subtasks. Each
+// child has a checkbox, an editable title input, and a delete button. Empty
+// titles render with a `[data-blank="true"]` attribute so the caller (the
+// "Add subtask" affordance) can find and focus the freshly-created row.
+//
+// #mainList is a grid with fixed 54px rows, so a multi-child subtaskSibling
+// would clip into the next row's slot. Set grid-row: span N where N grows
+// with the subtask count so every panel reserves enough vertical space.
+function renderSubtaskSibling(subtaskSibling, toDoChild, item, projectName, subtaskToggle) {
+    while (subtaskSibling.firstChild) subtaskSibling.removeChild(subtaskSibling.firstChild);
+    const list = Array.isArray(item.subtasks) ? item.subtasks : [];
+    // Each subtask child measures ~28px including the row's gap, plus ~16px
+    // of vertical padding on the panel. #mainList uses 54px grid tracks, so
+    // a span based on total panel height keeps the panel from clipping into
+    // the next row's slot when it carries multiple subtasks.
+    const span = Math.max(1, Math.ceil((list.length * 28 + 16) / 54));
+    subtaskSibling.style.gridRow = 'span ' + span;
+    list.forEach(function(sub, index) {
+        const child = document.createElement('div');
+        child.className = 'subtaskChild';
+        if (sub.completed) child.classList.add('completed');
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'subtaskCheckbox';
+        cb.checked = !!sub.completed;
+        cb.addEventListener('change', function() {
+            listLogic.toggleSubtask(item, index);
+            child.classList.toggle('completed', cb.checked);
+        });
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'subtaskInput';
+        input.autocomplete = 'off';
+        input.placeholder = 'Subtask';
+        input.value = sub.title || '';
+        if (!sub.title) input.setAttribute('data-blank', 'true');
+        input.addEventListener('input', function() {
+            listLogic.editSubtaskTitle(item, index, input.value);
+            if (input.value) input.removeAttribute('data-blank');
+        });
+        input.addEventListener('keydown', function(event) {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            input.blur();
+        });
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'subtaskDelete';
+        del.setAttribute('aria-label', 'Remove subtask');
+        del.textContent = '×';
+        del.addEventListener('click', function() {
+            listLogic.removeSubtask(item, index);
+            renderSubtaskSibling(subtaskSibling, toDoChild, item, projectName, subtaskToggle);
+            // Hide the chevron + collapse the panel when the last subtask
+            // is removed; the row reverts to its no-subtask state.
+            if (!Array.isArray(item.subtasks) || item.subtasks.length === 0) {
+                subtaskToggle.style.display = 'none';
+                setSubtasksExpanded(projectName, item.tit, false);
+                if (subtaskSibling.parentNode) subtaskSibling.parentNode.removeChild(subtaskSibling);
+                subtaskToggle.setAttribute('aria-expanded', 'false');
+                subtaskToggle.classList.remove('open');
+            }
+        });
+
+        child.appendChild(cb);
+        child.appendChild(input);
+        child.appendChild(del);
+        subtaskSibling.appendChild(child);
+    });
+}
+
+
+// Wire the row's subtask chevron — toggles the subtask panel on/off and
+// persists the open/closed state per row so it survives reloads. Restoration
+// (mounting the panel on first render when persistence says it should be
+// open) is handled in buildToDoRow after this helper attaches its listener.
+function wireSubtaskToggle(subtaskToggle, toDoChild, subtaskSibling, item, projectName) {
+    subtaskToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const isOpen = subtaskToggle.classList.contains('open');
+        if (isOpen) {
+            if (subtaskSibling.parentNode) {
+                subtaskSibling.parentNode.removeChild(subtaskSibling);
+            }
+            subtaskToggle.classList.remove('open');
+            subtaskToggle.setAttribute('aria-expanded', 'false');
+            setSubtasksExpanded(projectName, item.tit, false);
+        } else {
+            renderSubtaskSibling(subtaskSibling, toDoChild, item, projectName, subtaskToggle);
+            mountSubtaskSibling(toDoChild, subtaskSibling);
+            subtaskToggle.classList.add('open');
+            subtaskToggle.setAttribute('aria-expanded', 'true');
+            setSubtasksExpanded(projectName, item.tit, true);
         }
     });
 }
@@ -214,13 +365,35 @@ export function buildToDoRow(item, toDoName) {
     toDoInput.type        = "text";
     toDoInput.autocomplete = "off";
     toDoInput.id          = "toDoInput";
-    toDoInput.placeholder = "New Item";
+    // Smart-input placeholder copy on the blank placeholder row; committed
+    // rows still show the legacy "New Item" hint so an editing user isn't
+    // told to "press Enter" while they're already mid-edit on existing text.
+    toDoInput.placeholder = item.tit ? "New Item" : "Add a task — press Enter";
     toDoInput.style.fontSize = "14px";
     toDoInput.value       = item.tit || "";
     toDoInput.style.border = "none";
     // Mirror the full title onto the native browser tooltip so compact-titles
     // mode can rely on hover to reveal text that the ellipsis would clip.
     toDoInput.title       = item.tit || "";
+
+    // Smart-input affordances on the blank placeholder row only. The leading
+    // `+` glyph reads as "create" and the `N` kbd badge advertises the
+    // global keyboard shortcut wired in main.js. Both are hidden once the
+    // row is committed so they don't clutter committed rows.
+    const smartPlus = document.createElement('span');
+    smartPlus.className = 'smartInputPlus';
+    smartPlus.setAttribute('aria-hidden', 'true');
+    smartPlus.textContent = '+';
+
+    const smartKbd = document.createElement('kbd');
+    smartKbd.className = 'smartInputKbd';
+    smartKbd.setAttribute('aria-hidden', 'true');
+    smartKbd.textContent = 'N';
+
+    if (item.tit) {
+        smartPlus.style.display = 'none';
+        smartKbd.style.display  = 'none';
+    }
 
     closeButtonToDo.id = "closeButtonToDo";
     // Hide delete on blank placeholder rows — deleting the only available
@@ -248,6 +421,19 @@ export function buildToDoRow(item, toDoName) {
     descInput.value = "";
     descInput.style.border = "none";
 
+    // Subtask chevron — only shown on committed rows that already have at
+    // least one subtask, per the spec. The chevron toggles a separate
+    // #subtaskSibling panel below the row; the descSibling and subtaskSibling
+    // panels can both be open simultaneously if the user opens both.
+    const subtaskToggle = document.createElement('div');
+    subtaskToggle.id = 'subtaskToggle';
+    subtaskToggle.setAttribute('role', 'button');
+    subtaskToggle.setAttribute('aria-label', 'Toggle subtasks');
+    subtaskToggle.setAttribute('aria-expanded', 'false');
+    if (!item.tit || !Array.isArray(item.subtasks) || item.subtasks.length === 0) {
+        subtaskToggle.style.display = 'none';
+    }
+
     // Swipe action panes — absolute-positioned fills revealed behind the row
     // on touch horizontal swipe. Kept as the first children so a default
     // stacking context places them below the row content. Styling lives in
@@ -272,8 +458,11 @@ export function buildToDoRow(item, toDoName) {
     // assemble DOM tree
     toDoChild.appendChild(swipePaneLeft);
     toDoChild.appendChild(swipePaneRight);
+    toDoChild.appendChild(smartPlus);
     toDoChild.appendChild(toDoInput);
+    toDoChild.appendChild(smartKbd);
     toDoChild.appendChild(duePill);
+    toDoChild.appendChild(subtaskToggle);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
@@ -290,11 +479,32 @@ export function buildToDoRow(item, toDoName) {
         }
     });
 
+    // Subtask sibling panel — created up-front so the toggle handler doesn't
+    // need to lazily build it. Empty until renderSubtaskSibling is called,
+    // which happens on first chevron click or on restore-from-persistence.
+    const subtaskSibling = document.createElement('div');
+    subtaskSibling.id = 'subtaskSibling';
+
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item, toDoName, subtaskToggle, subtaskSibling);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
     wireToDoRowClick(toDoChild, toDoInput);
+    wireSubtaskToggle(subtaskToggle, toDoChild, subtaskSibling, item, toDoName);
+
+    // Restore persisted open state — only meaningful on rows that already
+    // have subtasks (the chevron is hidden otherwise, and there's nothing
+    // to render). Defer the DOM mount to a microtask so the row has been
+    // appended to mainList by the time we go looking for it.
+    if (item.tit && Array.isArray(item.subtasks) && item.subtasks.length > 0
+        && isSubtasksExpanded(toDoName, item.tit)) {
+        subtaskToggle.classList.add('open');
+        subtaskToggle.setAttribute('aria-expanded', 'true');
+        setTimeout(function() {
+            renderSubtaskSibling(subtaskSibling, toDoChild, item, toDoName, subtaskToggle);
+            mountSubtaskSibling(toDoChild, subtaskSibling);
+        }, 0);
+    }
 
     toDoChild.setAttribute("data-value", toDoName);
     // Anchor the DOM row to its data-model item so reorderToDoDOM can match
@@ -338,6 +548,13 @@ export function buildToDoRow(item, toDoName) {
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
         duePill.style.display         = "";
+        // Hide smart-input affordances now that the row carries a real title;
+        // committed rows shouldn't display the "+" / kbd hint chrome.
+        smartPlus.style.display       = "none";
+        smartKbd.style.display        = "none";
+        // Restore the legacy "New Item" placeholder so any future re-edit of
+        // this row doesn't display the "Add a task — press Enter" copy.
+        toDoInput.placeholder         = "New Item";
 
         toDoInput.blur();
         if (isFirstCommit) {
@@ -441,6 +658,7 @@ export function addAllToDo_DOM(items, name) {
     items.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, name));
     });
+    updateDueGroupHeaders(mainListDiv);
     updateCompletedSection(mainListDiv);
 }
 
@@ -459,6 +677,7 @@ export function addToDos_restore(toDoArray, toDoName) {
     items.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
+    updateDueGroupHeaders(mainListDiv);
     updateCompletedSection(mainListDiv);
 }
 
@@ -485,12 +704,21 @@ export function reorderToDoDOM(projectName) {
     items.forEach(function(item) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
-        const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
-            ? row.nextSibling : null;
+        // Move the row plus any open description / subtask panels that
+        // currently sit directly beneath it. Each panel is its own DOM
+        // sibling, so check both spots and re-append in original order.
+        const trailers = [];
+        let cursor = row.nextSibling;
+        while (cursor && (cursor.id === 'descSibling' || cursor.id === 'subtaskSibling')) {
+            const next = cursor.nextSibling;
+            trailers.push(cursor);
+            cursor = next;
+        }
         mainDiv.appendChild(row);
-        if (descSibling) mainDiv.appendChild(descSibling);
+        trailers.forEach(function(t) { mainDiv.appendChild(t); });
     });
 
+    updateDueGroupHeaders(mainDiv);
     updateCompletedSection(mainDiv);
 }
 

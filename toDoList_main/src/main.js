@@ -33,6 +33,7 @@ import {
 import {
     addAllToDo_DOM,
     addToDos_restore,
+    focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
 import button from './addProj_button.svg';
@@ -359,6 +360,21 @@ function component() {
                 el.classList.remove('todo-active');
             });
         }
+    });
+
+    // Global "N" shortcut — focuses the smart-input on the active project's
+    // blank placeholder row so a new todo can be typed without reaching for
+    // the mouse. The kbd badge on the placeholder row advertises the binding.
+    // Suppressed while focus is inside any editable element so it doesn't
+    // hijack typing, and while a modifier is held so it doesn't collide with
+    // browser shortcuts (Ctrl+N etc.).
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'n' && event.key !== 'N') return;
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const t = event.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        focusBlankToDoInput();
+        event.preventDefault();
     });
 
     // ── sidebar resize logic ──
