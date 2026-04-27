@@ -11,7 +11,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Redesign TODO panel with date grouping, smart input, semantic date pills, and nested subtasks
+- [x] **[MEDIUM]** Redesign TODO panel with date grouping, smart input, semantic date pills, and nested subtasks
   - Description: Overhaul the TODO ITEMS panel to improve scannability and add a subtask layer. Replace the empty input with an affordance-rich variant (leading `+` icon, "Add a task — press Enter" placeholder, `N` kbd badge that focuses the input when pressed outside any editable element); group the active project's todos under date-based section headers (Due today, This week, Later) computed from each todo's `due` field at render time; recolor the date pill semantically (warm coral when due is today or overdue, neutral gray otherwise); and add a nested subtasks layer so a row can be expanded inline to reveal child checkboxes that strikethrough on completion. Project sidebar, footer, top bar, and mascot stay unchanged.
   - Behavior:
     1. Smart input is visual + one wiring change — `+` icon left, placeholder text, small `N` kbd badge right. Pressing `N` while focus is outside any editable element focuses this input. Form submission still goes through the existing form-submit listener with no behavior change.
@@ -25,7 +25,7 @@
     - Add regression tests in `tests/listLogic.test.js` covering subtask create / toggle / delete and `localStorage` round-trip under the existing `todoapp_` prefix.
   - Out of scope: project sidebar (no per-project counts), footer and stats area, mascot positioning, top-bar (hamburger / theme toggle / settings) — all stay as they are today.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-27 (PR #<number>)
 
 ## In Progress
 
