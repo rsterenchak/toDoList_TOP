@@ -16,10 +16,10 @@ function read(relative) {
 // the soft keyboard. Fix opens the sidebar synchronously in the same
 // user-gesture tick as the .focus() call.
 describe('empty-state "Create your first project" button opens sidebar on mobile', () => {
-    const js = read('main.js');
+    const js = read('emptyState.js');
 
     // Isolate the click handler attached to #emptyStateCreateBtn so the
-    // assertions below don't false-positive against unrelated code in main.js.
+    // assertions below don't false-positive against unrelated code in emptyState.js.
     function extractCreateBtnClickHandler() {
         const marker = "createBtn.id = 'emptyStateCreateBtn'";
         const markerIdx = js.indexOf(marker);
