@@ -144,8 +144,11 @@ describe('compact-titles toggle — visual truncation of long todo titles', () =
     // Once the input is capped, the leftover flex space lands at the row's
     // far end by default. `margin-left: auto` on the date pill absorbs that
     // gap so the meta column (date / drag / ×) stays pinned to the right edge.
-    it('keeps the meta column right-aligned by giving #duePill margin-left: auto in compact mode', () => {
-        const metaRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoChild #duePill');
+    // The selector excludes rows that already carry a `.recurringGlyph`, since
+    // the glyph absorbs the leftover space itself — having both rules apply
+    // would split the gap and re-orphan the glyph back into the middle.
+    it('keeps the meta column right-aligned by giving #duePill margin-left: auto in compact mode (when no recurring glyph is present)', () => {
+        const metaRule = extractTopLevelRule('html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill');
         expect(metaRule).toMatch(/margin-left:\s*auto\s*;/);
     });
 

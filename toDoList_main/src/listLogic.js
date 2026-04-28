@@ -2,6 +2,16 @@ import './style.css';
 import { toDo } from './toDo.js';
 
 
+// Recurrence vocabulary used by `sanitizeRecurrence`. Declared above the
+// `listLogic` IIFE because the IIFE's storage-restore pass calls
+// sanitizeRecurrence on every loaded item — Babel transpiles the original
+// `const` to `var`, which hoists the binding but not the value, so leaving
+// these next to nextDueDate() (further down the file) makes them read as
+// `undefined` during the IIFE's evaluation and crashes with
+// "Cannot read properties of undefined (reading 'indexOf')".
+const RECURRENCE_PATTERNS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly', 'custom'];
+const RECURRENCE_UNITS    = ['day', 'week', 'month', 'year'];
+
 
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
@@ -94,6 +104,14 @@ export const listLogic = (function () {
         allProjects[key].items.forEach(function(item) {
             if (typeof item.completed !== 'boolean') {
                 item.completed = false;
+            }
+            // Clean up the recurrence field on load: anything non-object
+            // becomes null (one-off task), and a partial object is forced
+            // through sanitizeRecurrence so downstream code can trust it.
+            if (item.recurrence === undefined) {
+                item.recurrence = null;
+            } else if (item.recurrence !== null) {
+                item.recurrence = sanitizeRecurrence(item.recurrence);
             }
             if (!item.due || item.due === "" || item.due === "--" || item.due === "X-X-XXXX") return;
             const parts = item.due.split('-');
@@ -432,6 +450,50 @@ export const listLogic = (function () {
     }
 
 
+    // ── RECURRENCE ───────────────────────────────────────────────────
+    // Write a recurrence config onto a todo item by reference. Pass null
+    // (or a non-object) to clear recurrence and revert to a one-off task.
+    // Sanitizes the object so a hand-edited or partial config can't poison
+    // downstream date math: missing fields fall back to safe defaults, the
+    // pattern is clamped to a known value, and `interval` is forced to a
+    // positive integer.
+    function setRecurrence(project, item, recurrence) {
+        if (!allProjects[project]) return;
+        if (!item) return;
+        if (!recurrence || typeof recurrence !== 'object') {
+            item.recurrence = null;
+            saveToStorage();
+            return;
+        }
+        item.recurrence = sanitizeRecurrence(recurrence);
+        saveToStorage();
+    }
+
+
+    // Advance a recurring todo's due date to its next occurrence. Used by
+    // the row's checkbox handler in place of the standard mark-complete
+    // path. Returns true if the todo was advanced, false if it should
+    // instead be treated as a normal one-off completion (no recurrence
+    // configured, or the next due exceeds the configured end date).
+    function advanceRecurringTodo(project, item, completionDate) {
+        if (!allProjects[project] || !item || !item.recurrence) return false;
+
+        const next = nextDueDate(item.due, item.recurrence, completionDate || new Date());
+        if (!next) return false;
+
+        const end = item.recurrence.endDate;
+        if (end) {
+            const endDate = parseEndDate(end);
+            if (endDate && next > endDate) return false;
+        }
+
+        item.due = formatDueParts(next);
+        item.completed = false;
+        saveToStorage();
+        return true;
+    }
+
+
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -470,10 +532,16 @@ export const listLogic = (function () {
 
             // Sanitize each item the same way the load-time path does so a
             // hand-edited or older-version export can't pass corrupt fields
-            // (NaN dates, missing completed flag) into the renderer.
+            // (NaN dates, missing completed flag, malformed recurrence) into
+            // the renderer.
             items.forEach(function(item) {
                 if (!item || typeof item !== 'object') return;
                 if (typeof item.completed !== 'boolean') item.completed = false;
+                if (item.recurrence === undefined) {
+                    item.recurrence = null;
+                } else if (item.recurrence !== null) {
+                    item.recurrence = sanitizeRecurrence(item.recurrence);
+                }
                 if (!item.due || item.due === '' || item.due === '--' || item.due === 'X-X-XXXX') return;
                 const parts = String(item.due).split('-');
                 const m = parseInt(parts[0], 10);
@@ -529,7 +597,149 @@ export const listLogic = (function () {
         saveToStorage,
         replaceAllProjects,
         snapshotProjects,
+        setRecurrence,
+        advanceRecurringTodo,
         _reset
     };
 
 })();
+
+
+// ── RECURRENCE PURE HELPERS ─────────────────────────────────────────
+// Module-level exports so these are importable from tests and from any
+// module that needs the date math without reaching through listLogic's
+// closure. Pure functions only — no localStorage, no DOM.
+
+// Pin the day-of-month after a month or year shift so e.g. Jan 31 → Feb 28
+// (or Feb 29 in a leap year), Mar 31 → Apr 30, etc. Without this, the native
+// Date setMonth/setFullYear rolls over into the next month.
+function clampToMonthEnd(year, monthIdx, day) {
+    const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+    return Math.min(day, lastDay);
+}
+
+function addMonths(date, months) {
+    const targetMonth = date.getMonth() + months;
+    const targetYear  = date.getFullYear() + Math.floor(targetMonth / 12);
+    const wrappedMonth = ((targetMonth % 12) + 12) % 12;
+    const day = clampToMonthEnd(targetYear, wrappedMonth, date.getDate());
+    return new Date(targetYear, wrappedMonth, day);
+}
+
+function addYears(date, years) {
+    const targetYear = date.getFullYear() + years;
+    const day = clampToMonthEnd(targetYear, date.getMonth(), date.getDate());
+    return new Date(targetYear, date.getMonth(), day);
+}
+
+function addDays(date, days) {
+    const out = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    out.setDate(out.getDate() + days);
+    return out;
+}
+
+// Parse storage-format "M-D-YYYY" or fall back to a Date instance.
+function parseDueParts(due) {
+    if (due instanceof Date) {
+        return new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    }
+    if (!due || typeof due !== 'string') return null;
+    if (due === '' || due === '--' || due === 'X-X-XXXX') return null;
+    const parts = due.split('-');
+    const m = parseInt(parts[0], 10);
+    const d = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (isNaN(m) || isNaN(d) || isNaN(y)) return null;
+    return new Date(y, m - 1, d);
+}
+
+function formatDueParts(date) {
+    return (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getFullYear();
+}
+
+function parseEndDate(end) {
+    if (!end) return null;
+    if (end instanceof Date) return new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const parsed = new Date(end);
+    if (isNaN(parsed.getTime())) return null;
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+// Force the input recurrence into a known shape so downstream code can read
+// it without defensive checks. Unknown patterns/units fall back to defaults.
+export function sanitizeRecurrence(recurrence) {
+    if (!recurrence || typeof recurrence !== 'object') return null;
+    let pattern = recurrence.pattern;
+    if (RECURRENCE_PATTERNS.indexOf(pattern) === -1) pattern = 'daily';
+
+    let intervalUnit = recurrence.intervalUnit;
+    if (RECURRENCE_UNITS.indexOf(intervalUnit) === -1) intervalUnit = 'day';
+
+    let interval = parseInt(recurrence.interval, 10);
+    if (isNaN(interval) || interval < 1) interval = 1;
+
+    const basis = recurrence.basis === 'completionDate' ? 'completionDate' : 'dueDate';
+
+    let endDate = null;
+    if (typeof recurrence.endDate === 'string' && recurrence.endDate.length > 0) {
+        endDate = recurrence.endDate;
+    }
+
+    return {
+        pattern: pattern,
+        interval: interval,
+        intervalUnit: intervalUnit,
+        basis: basis,
+        endDate: endDate,
+    };
+}
+
+// Compute the next due date for a recurring todo. Returns a Date in local
+// time, or null if the inputs can't yield a meaningful next occurrence.
+//   currentDue      — the todo's `due` field ("M-D-YYYY") or a Date instance
+//   recurrence      — sanitized recurrence object (see sanitizeRecurrence)
+//   completionDate  — when the user checked the box; used when basis === 'completionDate'
+export function nextDueDate(currentDue, recurrence, completionDate) {
+    if (!recurrence || typeof recurrence !== 'object') return null;
+    const sanitized = sanitizeRecurrence(recurrence);
+
+    const basisDate = sanitized.basis === 'completionDate'
+        ? (completionDate instanceof Date ? completionDate : new Date(completionDate || Date.now()))
+        : parseDueParts(currentDue);
+
+    // No basis to advance from — when basis is dueDate but the todo has no
+    // due date, fall back to today so the next occurrence is still meaningful.
+    const seed = basisDate
+        ? new Date(basisDate.getFullYear(), basisDate.getMonth(), basisDate.getDate())
+        : new Date();
+
+    switch (sanitized.pattern) {
+        case 'daily':
+            return addDays(seed, 1);
+        case 'weekdays': {
+            // Skip Sat/Sun — Friday rolls to Monday (+3), Saturday to Monday (+2).
+            const dow = seed.getDay(); // 0 Sun .. 6 Sat
+            let delta = 1;
+            if (dow === 5) delta = 3;       // Fri → Mon
+            else if (dow === 6) delta = 2;  // Sat → Mon
+            else if (dow === 0) delta = 1;  // Sun → Mon
+            return addDays(seed, delta);
+        }
+        case 'weekly':
+            return addDays(seed, 7);
+        case 'monthly':
+            return addMonths(seed, 1);
+        case 'yearly':
+            return addYears(seed, 1);
+        case 'custom':
+            switch (sanitized.intervalUnit) {
+                case 'day':   return addDays(seed, sanitized.interval);
+                case 'week':  return addDays(seed, 7 * sanitized.interval);
+                case 'month': return addMonths(seed, sanitized.interval);
+                case 'year':  return addYears(seed, sanitized.interval);
+                default:      return addDays(seed, sanitized.interval);
+            }
+        default:
+            return null;
+    }
+}

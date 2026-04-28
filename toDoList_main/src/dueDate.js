@@ -7,7 +7,7 @@
 // Storage format for `item.due` is "M-D-YYYY" (single-digit month/day are
 // fine). Empty/blank values are normalized to '' on write.
 
-import { listLogic } from './listLogic.js';
+import { listLogic, sanitizeRecurrence } from './listLogic.js';
 
 
 // ── DATE HELPERS ──
@@ -140,9 +140,261 @@ const MONTH_FULL = [
     'July','August','September','October','November','December'
 ];
 
+// ── REPEAT SECTION ──
+// Inline recurrence config attached to the bottom of the popover. Reads
+// the item's existing recurrence config (if any), exposes a pattern
+// dropdown, custom interval inputs, basis toggle, and an optional end
+// date. The collected config is committed to the data model when the
+// popover is dismissed, mirroring how the popover persists the date.
+
+const REPEAT_PATTERN_OPTIONS = [
+    { value: '',         label: 'Never' },
+    { value: 'daily',    label: 'Daily' },
+    { value: 'weekdays', label: 'Weekdays' },
+    { value: 'weekly',   label: 'Weekly' },
+    { value: 'monthly',  label: 'Monthly' },
+    { value: 'yearly',   label: 'Yearly' },
+    { value: 'custom',   label: 'Custom' },
+];
+
+const CUSTOM_UNIT_OPTIONS = [
+    { value: 'day',   label: 'days' },
+    { value: 'week',  label: 'weeks' },
+    { value: 'month', label: 'months' },
+    { value: 'year',  label: 'years' },
+];
+
+// Build the section DOM and stash a `__repeatState` property on the
+// returned wrapper so commitRecurrenceFromPopover can read the final
+// values when the popover closes.
+function buildRepeatSection(item) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'dueRepeatSection';
+
+    const heading = document.createElement('div');
+    heading.className = 'dueRepeatHeading';
+    heading.textContent = 'Repeat';
+    wrapper.appendChild(heading);
+
+    const initial = item && item.recurrence ? sanitizeRecurrence(item.recurrence) : null;
+
+    // Row 1: pattern dropdown
+    const patternRow = document.createElement('div');
+    patternRow.className = 'dueRepeatRow';
+    const patternSelect = document.createElement('select');
+    patternSelect.className = 'dueRepeatSelect';
+    patternSelect.setAttribute('aria-label', 'Repeat pattern');
+    REPEAT_PATTERN_OPTIONS.forEach(function(opt) {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        patternSelect.appendChild(o);
+    });
+    patternSelect.value = initial ? initial.pattern : '';
+    patternRow.appendChild(patternSelect);
+    wrapper.appendChild(patternRow);
+
+    // Row 2: custom interval (visible only when pattern === 'custom')
+    const customRow = document.createElement('div');
+    customRow.className = 'dueRepeatRow dueRepeatCustom';
+    const everyLabel = document.createElement('span');
+    everyLabel.className = 'dueRepeatLabel';
+    everyLabel.textContent = 'Every';
+    const intervalInput = document.createElement('input');
+    intervalInput.type = 'number';
+    intervalInput.min = '1';
+    intervalInput.className = 'dueRepeatNumber';
+    intervalInput.setAttribute('aria-label', 'Interval');
+    intervalInput.value = String(initial && initial.pattern === 'custom' ? initial.interval : 1);
+    const unitSelect = document.createElement('select');
+    unitSelect.className = 'dueRepeatSelect';
+    unitSelect.setAttribute('aria-label', 'Interval unit');
+    CUSTOM_UNIT_OPTIONS.forEach(function(opt) {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label;
+        unitSelect.appendChild(o);
+    });
+    unitSelect.value = initial && initial.pattern === 'custom' ? initial.intervalUnit : 'day';
+    customRow.appendChild(everyLabel);
+    customRow.appendChild(intervalInput);
+    customRow.appendChild(unitSelect);
+    wrapper.appendChild(customRow);
+
+    // Row 3: basis toggle ("Repeat from completion date")
+    const basisRow = document.createElement('label');
+    basisRow.className = 'dueRepeatRow dueRepeatBasis';
+    const basisCheckbox = document.createElement('input');
+    basisCheckbox.type = 'checkbox';
+    basisCheckbox.className = 'dueRepeatCheckbox';
+    basisCheckbox.checked = !!(initial && initial.basis === 'completionDate');
+    const basisText = document.createElement('span');
+    basisText.textContent = 'Repeat from completion date';
+    basisRow.appendChild(basisCheckbox);
+    basisRow.appendChild(basisText);
+    wrapper.appendChild(basisRow);
+
+    // Row 4: end-date control. Hidden behind an "Add end date" link until
+    // the user clicks it (or until the existing recurrence already had
+    // one). Clicking the link reveals a date input + "Remove" affordance.
+    const endRow = document.createElement('div');
+    endRow.className = 'dueRepeatRow dueRepeatEnd';
+    const addEndLink = document.createElement('button');
+    addEndLink.type = 'button';
+    addEndLink.className = 'dueRepeatEndLink';
+    addEndLink.textContent = 'Add end date';
+    const endInput = document.createElement('input');
+    endInput.type = 'date';
+    endInput.className = 'dueRepeatEndInput';
+    endInput.setAttribute('aria-label', 'End on');
+    const endLabel = document.createElement('span');
+    endLabel.className = 'dueRepeatLabel';
+    endLabel.textContent = 'End on';
+    const removeEndLink = document.createElement('button');
+    removeEndLink.type = 'button';
+    removeEndLink.className = 'dueRepeatEndLink dueRepeatEndRemove';
+    removeEndLink.textContent = 'Remove';
+    endRow.appendChild(addEndLink);
+    endRow.appendChild(endLabel);
+    endRow.appendChild(endInput);
+    endRow.appendChild(removeEndLink);
+    wrapper.appendChild(endRow);
+
+    function applyVisibility() {
+        const pattern = patternSelect.value;
+        if (pattern === '') {
+            customRow.style.display = 'none';
+            basisRow.style.display  = 'none';
+            endRow.style.display    = 'none';
+            return;
+        }
+        customRow.style.display = pattern === 'custom' ? 'flex' : 'none';
+        basisRow.style.display  = 'flex';
+        endRow.style.display    = 'flex';
+        const hasEnd = !!endInput.value;
+        addEndLink.style.display    = hasEnd ? 'none' : 'inline-flex';
+        endLabel.style.display      = hasEnd ? 'inline-flex' : 'none';
+        endInput.style.display      = hasEnd ? 'inline-flex' : 'none';
+        removeEndLink.style.display = hasEnd ? 'inline-flex' : 'none';
+    }
+
+    if (initial && initial.endDate) endInput.value = initial.endDate;
+
+    addEndLink.addEventListener('click', function(event) {
+        event.stopPropagation();
+        // Default the end date to today if none provided yet, so the
+        // input doesn't sit empty after revealing.
+        if (!endInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            endInput.value = yyyy + '-' + mm + '-' + dd;
+        }
+        applyVisibility();
+    });
+    removeEndLink.addEventListener('click', function(event) {
+        event.stopPropagation();
+        endInput.value = '';
+        applyVisibility();
+    });
+    patternSelect.addEventListener('change', applyVisibility);
+
+    applyVisibility();
+
+    wrapper.__repeatState = {
+        item: item,
+        getValue: function() {
+            const pattern = patternSelect.value;
+            if (!pattern) return null;
+            return {
+                pattern: pattern,
+                interval: parseInt(intervalInput.value, 10) || 1,
+                intervalUnit: unitSelect.value,
+                basis: basisCheckbox.checked ? 'completionDate' : 'dueDate',
+                endDate: endInput.value || null,
+            };
+        }
+    };
+
+    return wrapper;
+}
+
+// Read the repeat section's current values out of the open popover and
+// write them through to the data model via listLogic.setRecurrence. Safe
+// to call even when the popover wasn't built with a repeat section
+// (older callers / tests).
+function commitRecurrenceFromPopover(popover) {
+    const wrapper = popover.querySelector('.dueRepeatSection');
+    if (!wrapper || !wrapper.__repeatState) return;
+    const state = wrapper.__repeatState;
+    const item = state.item;
+    if (!item) return;
+
+    const next = state.getValue();
+
+    // Find the project this item belongs to so setRecurrence can persist.
+    // The popover state stores the row element, which carries its project
+    // name in data-value. Fall back to the item's recurrence pass-through
+    // (no persistence) if we somehow can't find the project — better to
+    // mutate the in-memory item than to lose the user's input outright.
+    let project = null;
+    const popoverState = popover.__state;
+    if (popoverState && popoverState.toDoChild) {
+        project = popoverState.toDoChild.dataset.value || null;
+    }
+
+    if (project) {
+        listLogic.setRecurrence(project, item, next);
+    } else {
+        item.recurrence = next ? sanitizeRecurrence(next) : null;
+    }
+
+    // Refresh the row glyph so the ↻ marker appears/disappears immediately.
+    if (popoverState && popoverState.toDoChild) {
+        updateRecurringGlyph(popoverState.toDoChild, item);
+    }
+}
+
+
+// Update the recurring-row glyph next to the title input. Keeps the DOM
+// in sync after the popover commits a recurrence config without needing
+// a full row rebuild. Exported so toDoRow.js can call it on row build.
+export function updateRecurringGlyph(toDoChild, item) {
+    if (!toDoChild) return;
+    const existing = toDoChild.querySelector('#recurringGlyph');
+    if (!item || !item.recurrence) {
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        return;
+    }
+    if (existing) return; // already present
+    const glyph = document.createElement('span');
+    glyph.id = 'recurringGlyph';
+    glyph.className = 'recurringGlyph';
+    glyph.setAttribute('aria-label', 'Recurring task');
+    glyph.title = 'Recurring task';
+    glyph.innerHTML = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4.5A4 4 0 1 0 12 8"/><path d="M11 2v3h-3"/></svg>';
+    // Slot the glyph between the title input and the due pill so it sits
+    // immediately after the title text in reading order.
+    const pill = toDoChild.querySelector('#duePill');
+    if (pill) {
+        toDoChild.insertBefore(glyph, pill);
+    } else {
+        toDoChild.appendChild(glyph);
+    }
+}
+
+
 export function hideDueDatePopover() {
     const existing = document.getElementById('dueDatePopover');
-    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    if (existing) {
+        // Commit the recurrence config to the todo before tearing down the
+        // popover. Closing the calendar — by selection, Escape, outside
+        // click, or scroll — is the persistence boundary, matching the
+        // task's "closing the popover commits the recurrence config" rule.
+        commitRecurrenceFromPopover(existing);
+        if (existing.parentNode) existing.parentNode.removeChild(existing);
+    }
     document.removeEventListener('click',      onDuePopoverOutsideClick, true);
     document.removeEventListener('contextmenu', onDuePopoverOutsideClick, true);
     document.removeEventListener('keydown',    onDuePopoverKeydown,      true);
@@ -330,10 +582,13 @@ export function showDueDatePopover(anchor, item, toDoChild) {
         hideDueDatePopover();
     });
 
+    const repeatSection = buildRepeatSection(item);
+
     popover.appendChild(header);
     popover.appendChild(quickRow);
     popover.appendChild(weekdays);
     popover.appendChild(grid);
+    popover.appendChild(repeatSection);
     popover.appendChild(clear);
 
     // State init — seed view from the selected date if present, else today.

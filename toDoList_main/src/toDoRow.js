@@ -25,6 +25,7 @@ import {
     updateDuePillLabel,
     showDueDatePopover,
     hideDueDatePopover,
+    updateRecurringGlyph,
 } from './dueDate.js';
 import { showConfirmModal } from './modals.js';
 import { updateCompletedSection } from './emptyState.js';
@@ -65,6 +66,36 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 
     checkToDo.addEventListener("change", function() {
         const wasCompleted = !!item.completed;
+        const projectName = toDoChild.dataset.value;
+
+        // Recurring branch: when the user checks a recurring todo, do NOT
+        // mark it complete. Advance its due date to the next occurrence
+        // and flash the checkbox so the user gets feedback that the
+        // action registered. If advanceRecurringTodo returns false (no
+        // recurrence, or the next due exceeds endDate), fall through to
+        // the standard completion path so the task terminates cleanly.
+        if (checkToDo.checked && !wasCompleted && item.tit && item.recurrence && projectName) {
+            const advanced = listLogic.advanceRecurringTodo(projectName, item, new Date());
+            if (advanced) {
+                if (!prefersReducedMotion()) {
+                    toDoChild.classList.add('recurring-flash');
+                    setTimeout(function() {
+                        toDoChild.classList.remove('recurring-flash');
+                        checkToDo.checked = false;
+                    }, 250);
+                } else {
+                    checkToDo.checked = false;
+                }
+                applyDueUrgency(toDoChild, item);
+                const pill = toDoChild.querySelector('#duePill');
+                if (pill) updateDuePillLabel(pill, item);
+                if (isCoarsePointer() && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                    try { navigator.vibrate(10); } catch (_) { /* noop */ }
+                }
+                return;
+            }
+        }
+
         item.completed = checkToDo.checked;
         if (checkToDo.checked) {
             toDoChild.classList.add("completed");
@@ -104,7 +135,6 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         // Partition completed entries to the bottom of this project's list,
         // then slide the row (plus any open description panel) into its new
         // slot in-place so listeners stay attached.
-        const projectName = toDoChild.dataset.value;
         if (projectName) {
             listLogic.sortCompletedToBottom(projectName);
             reorderToDoDOM(projectName);
@@ -280,6 +310,7 @@ export function buildToDoRow(item, toDoName) {
 
     updateDuePillLabel(duePill, item);
     applyDueUrgency(toDoChild, item);
+    updateRecurringGlyph(toDoChild, item);
 
     duePill.addEventListener('click', function(event) {
         event.stopPropagation();

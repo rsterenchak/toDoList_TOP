@@ -900,8 +900,11 @@ html[data-compact-titles="on"] #toDoInput:focus {
 }
 /* Once the input caps at 60ch, the leftover flex space lands at the end of
    the row by default — push the meta column (date pill onward) to the right
-   edge so it stays visually aligned with the row's right side. */
-html[data-compact-titles="on"] #toDoChild #duePill {
+   edge so it stays visually aligned with the row's right side. Skipped when
+   a `.recurringGlyph` is present, since the glyph already absorbs the
+   leftover via its own `margin-left: auto` and adding it here would split
+   the space and re-orphan the glyph in the middle. */
+html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill {
   margin-left: auto;
 }
 
@@ -1514,6 +1517,138 @@ body.row-dragging * { cursor: grabbing !important; }
   text-decoration-color: var(--accent-text);
   text-underline-offset: 3px;
   outline: none;
+}
+
+/* Repeat section appended to the due-date popover. Mirrors the popover's
+   surface treatment but separates itself with a thin top border so the
+   recurrence config reads as a distinct group from the calendar above. */
+.dueRepeatSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--border-mid);
+}
+
+.dueRepeatHeading {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dueRepeatRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dueRepeatLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.dueRepeatSelect {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+.dueRepeatSelect:focus { outline: none; border-color: var(--accent); }
+
+.dueRepeatNumber {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  padding: 3px 6px;
+  width: 56px;
+}
+.dueRepeatNumber:focus { outline: none; border-color: var(--accent); }
+
+.dueRepeatBasis {
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.dueRepeatCheckbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.dueRepeatEndInput {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  padding: 2px 6px;
+}
+.dueRepeatEndInput:focus { outline: none; border-color: var(--accent); }
+
+.dueRepeatEndLink {
+  background: transparent;
+  border: none;
+  color: var(--accent-text);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+}
+.dueRepeatEndLink:hover,
+.dueRepeatEndLink:focus-visible {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+/* Recurring-row glyph — sits between the title input and the date pill.
+   Inherits color from the row's text so it picks up theme + urgency
+   recolors automatically. Slightly muted so it doesn't outweigh the
+   title or the pill. */
+.recurringGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  /* Sit flush with the meta cluster (date pill / drag / ×) on the right.
+     `margin-left: auto` absorbs the leftover flex space so the glyph and
+     everything after it land at the row's right edge. */
+  margin-left: auto;
+  margin-right: 8px;
+  pointer-events: none;
+}
+
+/* Brief feedback flash when the user checks a recurring task — the
+   checkbox stays checked for ~250ms before reverting, and the row
+   pulses lightly so the action reads as "registered, advanced" rather
+   than the standard mark-complete fade. */
+@keyframes recurringFlashPulse {
+  0%   { background-color: transparent; }
+  40%  { background-color: var(--bg-hover); }
+  100% { background-color: transparent; }
+}
+
+#toDoChild.recurring-flash {
+  animation: recurringFlashPulse 250ms ease-out;
 }
 
 /* DESCRIPTION TOGGLE (todo) */

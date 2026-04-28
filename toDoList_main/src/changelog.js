@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-04-28',
         added: [
             'Manual JSON export and import of every project and todo, with drag-and-drop import on desktop and a footer reminder when no backup has happened in over a week.',
+            'Recurring tasks repeat on daily, weekdays, weekly, monthly, yearly, or custom schedules; checking one advances its due date to the next occurrence instead of marking it done.',
         ],
     },
     {
         version: '1.1',
         date: '2026-04-26',
         fixed: [
-            'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
             'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
             'Compact Titles and Expand All buttons in the Todo Items header now read as one segmented control, with matching borders and a softer accent tint when Compact Titles is active.',
             'Adding the app to a light-mode iOS home screen now shows a lighter-purple app icon that matches the system theme instead of the dark-tuned default.',
