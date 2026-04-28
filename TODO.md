@@ -11,7 +11,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add recurring tasks (rolling todo model with daily/weekly/monthly patterns)
+- [x] **[MEDIUM]** Add recurring tasks (rolling todo model with daily/weekly/monthly patterns)
   - Description: Add a recurrence feature so a todo can repeat on a schedule. Use a rolling-todo data model: a recurring task is a single persistent todo with a `recurrence` field; checking it off does not delete the row but instead unchecks it and advances its due date to the next occurrence. Recurrence is configured from a new "Repeat" section appended to the existing due-date popover. Recurring rows are visually marked with a small ↻ glyph after the title so they're scannable in the list.
   - Behavior:
     1. Data model: extend `toDo.js` with a `recurrence` field, either `null` (one-off task, default) or an object shaped `{ pattern: 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly' | 'custom', interval: number, intervalUnit: 'day' | 'week' | 'month' | 'year', basis: 'dueDate' | 'completionDate', endDate: ISOString | null }`. For non-custom patterns, `interval` and `intervalUnit` are ignored. `basis` defaults to `'dueDate'`. `endDate` defaults to `null` (no end).
@@ -38,7 +38,7 @@
     - Round-trip through `localStorage` preserves the entire `recurrence` object including `null` end dates.
   - Out of scope: time-of-day support, "skip this occurrence" action, "edit all future occurrences" UX, weekday-of-month patterns ("last Friday of month", "every other Tuesday"), notification/reminder integration, recurrence history or streak tracking.
   - File: `toDoList_main/src/toDo.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-28 (PR #<number>)
 
 - [ ] **[LOW]** Add affordance cues to new-task input (leading +, placeholder, N keyboard hint)
   - Description: Replace the bare new-task input at the top of the todo panel with a more inviting variant: a small purple `+` glyph on the left, placeholder text "Add a task — press Enter" inside the field, and a subtle keyboard hint badge `N` on the right. Wire a global `keydown` listener so pressing `N` while focus is *not* in another input/textarea/contenteditable element focuses this input and prevents the keystroke from leaking into the field. Form submission, the existing focus/blur styling, and the input's data path stay unchanged — this is purely affordance polish plus one shortcut.
