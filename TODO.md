@@ -11,6 +11,30 @@
 
 ## Features
 
+- [ ] **[MEDIUM]** Add manual export/import of todos as a JSON file
+  - Description: Add two actions to the app — "Export todos" downloads a JSON snapshot of all projects and todos to the user's filesystem, "Import todos" reads a previously exported JSON file and replaces the current `localStorage` state with its contents. The goal is a portable, user-controlled backup mechanism with no backend: the user exports manually, stores the file wherever they want (gitignored repo folder, cloud drive, phone storage), and imports to restore or transfer between devices. `localStorage` remains the live store; the file is purely a snapshot in/out.
+  - Behavior:
+    1. Export: triggers a download of `todos-YYYY-MM-DD.json` (append `-2`, `-3`, etc. if a same-day export already happened this session, tracked in memory). Filename uses local date, not UTC. File contents are a pretty-printed JSON object shaped `{ version: 1, exportedAt: <ISO string>, projects: [...] }` where `projects` mirrors the exact structure already persisted to `localStorage`. After a successful export, write `lastExportedAt` (ISO string) to `localStorage` under the existing `todoapp_` prefix.
+    2. Import: opens a native file picker scoped to `.json`. On selection, parse and validate the file (must be a JSON object with a numeric `version` field and a `projects` array). If validation fails, show an inline error message ("Couldn't read that file — expected a todos export.") and abort. If validation passes, show a confirmation modal: **"Replace all current todos with this file? Your existing N todos across M projects will be permanently overwritten."** with explicit Cancel and Replace buttons. On confirm, overwrite `localStorage` via `listLogic.js` and re-render the full app.
+    3. Drag-and-drop import: dropping a `.json` file anywhere on the app window is equivalent to using the file picker — runs the same validate → confirm → overwrite flow. While a file is being dragged over the window, show a subtle full-window overlay ("Drop to import").
+    4. Stale-export reminder: in the footer, if `lastExportedAt` is missing or older than 7 days *and* the user has at least one todo, show a small muted hint "Last backup: N days ago — export?" that links to the export action. Dismissible for the session via a small × on the hint.
+  - Implementation notes:
+    - No new dependencies — use vanilla `Blob` + object URL + hidden `<a download>` for export, `<input type="file" accept=".json">` for import, and the standard `dragover`/`drop` events for drag-and-drop.
+    - Place the Export and Import controls in the existing top-bar / settings area; match the visual treatment of the theme toggle and hamburger so they don't feel bolted on. Exact placement is a design question — propose a small icon group ("download" + "upload" SVG icons) but flag it for review.
+    - Validation lives next to the import handler, not in `listLogic.js`. Once validated, hand off to a new `replaceAllProjects(projects)` helper added to `listLogic.js` that wipes the current `todoapp_` keys and writes the new state in one pass — no partial-overwrite states.
+    - Confirmation modal must close 3 ways (explicit Cancel/X, backdrop click, Escape) per `CLAUDE.md`. The destructive-action message names exactly what will be lost (todo and project counts) per the same rule.
+    - Schema-version field is forward-looking — for now, accept only `version: 1` and reject everything else with a clear error. Future migrations get added when the data model changes.
+    - `main.js` is over 25k tokens; locate the top-bar render block and the modal helper with grep + offset/limit rather than a full read.
+    - Mobile: drag-and-drop is desktop-only; the file-picker path covers mobile imports. Export on mobile triggers a normal download (browser handles where it lands).
+  - Acceptance criteria:
+    - Round-trip: export from project A, clear `localStorage`, import the file → identical project and todo state restored (including positions, completion status, due dates, and any subtasks if that feature has landed).
+    - Importing a malformed JSON file or one with a missing/wrong `version` field shows an error and leaves existing data untouched.
+    - Cancelling the import confirmation modal leaves existing data untouched.
+    - Stale-export hint disappears within one render cycle of a successful export.
+  - Out of scope: automatic / scheduled exports, cloud sync, multi-device merge, encryption at rest, partial-project export, File System Access API integration (tracked separately if pursued later).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Add affordance cues to new-task input (leading +, placeholder, N keyboard hint)
   - Description: Replace the bare new-task input at the top of the todo panel with a more inviting variant: a small purple `+` glyph on the left, placeholder text "Add a task — press Enter" inside the field, and a subtle keyboard hint badge `N` on the right. Wire a global `keydown` listener so pressing `N` while focus is *not* in another input/textarea/contenteditable element focuses this input and prevents the keystroke from leaking into the field. Form submission, the existing focus/blur styling, and the input's data path stay unchanged — this is purely affordance polish plus one shortcut.
   - Implementation notes:
