@@ -900,8 +900,11 @@ html[data-compact-titles="on"] #toDoInput:focus {
 }
 /* Once the input caps at 60ch, the leftover flex space lands at the end of
    the row by default — push the meta column (date pill onward) to the right
-   edge so it stays visually aligned with the row's right side. */
-html[data-compact-titles="on"] #toDoChild #duePill {
+   edge so it stays visually aligned with the row's right side. Skipped when
+   a `.recurringGlyph` is present, since the glyph already absorbs the
+   leftover via its own `margin-left: auto` and adding it here would split
+   the space and re-orphan the glyph in the middle. */
+html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill {
   margin-left: auto;
 }
 
@@ -1626,7 +1629,11 @@ body.row-dragging * { cursor: grabbing !important; }
   height: 14px;
   flex: 0 0 auto;
   color: var(--text-secondary);
-  margin-right: 4px;
+  /* Sit flush with the meta cluster (date pill / drag / ×) on the right.
+     `margin-left: auto` absorbs the leftover flex space so the glyph and
+     everything after it land at the row's right edge. */
+  margin-left: auto;
+  margin-right: 8px;
   pointer-events: none;
 }
 

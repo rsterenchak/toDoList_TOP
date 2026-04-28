@@ -2,6 +2,16 @@ import './style.css';
 import { toDo } from './toDo.js';
 
 
+// Recurrence vocabulary used by `sanitizeRecurrence`. Declared above the
+// `listLogic` IIFE because the IIFE's storage-restore pass calls
+// sanitizeRecurrence on every loaded item — Babel transpiles the original
+// `const` to `var`, which hoists the binding but not the value, so leaving
+// these next to nextDueDate() (further down the file) makes them read as
+// `undefined` during the IIFE's evaluation and crashes with
+// "Cannot read properties of undefined (reading 'indexOf')".
+const RECURRENCE_PATTERNS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly', 'custom'];
+const RECURRENCE_UNITS    = ['day', 'week', 'month', 'year'];
+
 
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
@@ -599,9 +609,6 @@ export const listLogic = (function () {
 // Module-level exports so these are importable from tests and from any
 // module that needs the date math without reaching through listLogic's
 // closure. Pure functions only — no localStorage, no DOM.
-
-const RECURRENCE_PATTERNS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly', 'custom'];
-const RECURRENCE_UNITS    = ['day', 'week', 'month', 'year'];
 
 // Pin the day-of-month after a month or year shift so e.g. Jan 31 → Feb 28
 // (or Feb 29 in a leap year), Mar 31 → Apr 30, etc. Without this, the native
