@@ -11,11 +11,15 @@ const toDo = (title, description, dueDate, priority, position) => {
     let pri = priority;
     let pos = position;
     let completed = false;
+    // null = one-off task. Otherwise an object shaped
+    // { pattern, interval, intervalUnit, basis, endDate } — see
+    // listLogic.js's nextDueDate for the supported pattern values.
+    let recurrence = null;
 
     // console.log("Called toDo Object");
 
 
-    return {tit, desc, due, pri, pos, completed};
+    return {tit, desc, due, pri, pos, completed, recurrence};
   };
   
 

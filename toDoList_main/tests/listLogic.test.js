@@ -1,4 +1,4 @@
-import { listLogic } from '../src/listLogic.js';
+import { listLogic, nextDueDate, sanitizeRecurrence } from '../src/listLogic.js';
 
 // ── PROJECTS ─────────────────────────────────────────────────────────
 describe('listLogic — projects', () => {
@@ -563,5 +563,212 @@ describe('listLogic — storage corruption resilience', () => {
         // which is the point: it documents the bug and the fix is to wrap
         // the JSON.parse in a try/catch in listLogic.js.
         expect(loadFailed).toBe(false);
+    });
+});
+
+
+// ── RECURRENCE: nextDueDate ─────────────────────────────────────────
+// Pure date-math helper for advancing a recurring task to its next
+// occurrence. These tests pin the pattern arithmetic that the task spec
+// calls out, plus the month/year clamp rule for original day-of-month
+// values that don't exist in the target month (Jan 31 → Feb 28 etc.).
+
+function asMDY(date) {
+    return (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getFullYear();
+}
+
+describe('listLogic — nextDueDate', () => {
+    it('daily pattern adds one day', () => {
+        const next = nextDueDate('1-15-2026', { pattern: 'daily' });
+        expect(asMDY(next)).toBe('1-16-2026');
+    });
+
+    it('weekdays pattern: Friday → Monday', () => {
+        // 2026-04-24 is a Friday.
+        const next = nextDueDate('4-24-2026', { pattern: 'weekdays' });
+        expect(asMDY(next)).toBe('4-27-2026');
+    });
+
+    it('weekdays pattern: Wednesday → Thursday', () => {
+        // 2026-04-22 is a Wednesday.
+        const next = nextDueDate('4-22-2026', { pattern: 'weekdays' });
+        expect(asMDY(next)).toBe('4-23-2026');
+    });
+
+    it('weekly pattern adds seven days', () => {
+        const next = nextDueDate('4-1-2026', { pattern: 'weekly' });
+        expect(asMDY(next)).toBe('4-8-2026');
+    });
+
+    it('monthly pattern clamps Jan 31 to Feb 28 in non-leap years', () => {
+        // 2026 is not a leap year → Feb has 28 days.
+        const next = nextDueDate('1-31-2026', { pattern: 'monthly' });
+        expect(asMDY(next)).toBe('2-28-2026');
+    });
+
+    it('monthly pattern clamps Jan 31 to Feb 29 in leap years', () => {
+        // 2024 is a leap year → Feb has 29 days.
+        const next = nextDueDate('1-31-2024', { pattern: 'monthly' });
+        expect(asMDY(next)).toBe('2-29-2024');
+    });
+
+    it('yearly pattern clamps Feb 29 in leap → Feb 28 next year', () => {
+        const next = nextDueDate('2-29-2024', { pattern: 'yearly' });
+        expect(asMDY(next)).toBe('2-28-2025');
+    });
+
+    it('custom pattern: every 3 weeks adds 21 days', () => {
+        const next = nextDueDate('4-1-2026', {
+            pattern: 'custom',
+            interval: 3,
+            intervalUnit: 'week',
+        });
+        expect(asMDY(next)).toBe('4-22-2026');
+    });
+
+    it('custom pattern: every 2 months also clamps the day', () => {
+        const next = nextDueDate('12-31-2025', {
+            pattern: 'custom',
+            interval: 2,
+            intervalUnit: 'month',
+        });
+        // Feb 2026 has 28 days → 12-31 + 2mo clamps to 2-28-2026.
+        expect(asMDY(next)).toBe('2-28-2026');
+    });
+
+    it('basis: completionDate uses the completion date instead of the due date', () => {
+        // Daily task originally due 4-1-2026, completed 3 days late on 4-4-2026.
+        // Expected: next due = 4-5-2026 (one day after completion).
+        const completion = new Date(2026, 3, 4);
+        const next = nextDueDate('4-1-2026', {
+            pattern: 'daily',
+            basis: 'completionDate',
+        }, completion);
+        expect(asMDY(next)).toBe('4-5-2026');
+    });
+
+    it('returns null when no recurrence is supplied', () => {
+        expect(nextDueDate('4-1-2026', null)).toBeNull();
+    });
+});
+
+
+// ── RECURRENCE: setRecurrence + advanceRecurringTodo ───────────────
+describe('listLogic — recurrence helpers', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('R');
+        listLogic.addToDo('R', 'Brush teeth');
+    });
+
+    it('setRecurrence stores a sanitized recurrence object on the item', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        expect(item.recurrence).not.toBeNull();
+        expect(item.recurrence.pattern).toBe('daily');
+        expect(item.recurrence.interval).toBe(1);
+        expect(item.recurrence.intervalUnit).toBe('day');
+        expect(item.recurrence.basis).toBe('dueDate');
+        expect(item.recurrence.endDate).toBeNull();
+    });
+
+    it('setRecurrence(null) clears recurrence back to a one-off task', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        listLogic.setRecurrence('R', item, { pattern: 'weekly' });
+        listLogic.setRecurrence('R', item, null);
+        expect(item.recurrence).toBeNull();
+    });
+
+    it('advanceRecurringTodo advances the due date and leaves the row uncompleted', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        item.due = '4-1-2026';
+        item.completed = false;
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+
+        const advanced = listLogic.advanceRecurringTodo('R', item);
+        expect(advanced).toBe(true);
+        expect(item.due).toBe('4-2-2026');
+        expect(item.completed).toBe(false);
+    });
+
+    it('advanceRecurringTodo returns false when next due exceeds endDate', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        item.due = '4-30-2026';
+        listLogic.setRecurrence('R', item, {
+            pattern: 'daily',
+            endDate: '2026-04-30',
+        });
+
+        const advanced = listLogic.advanceRecurringTodo('R', item);
+        expect(advanced).toBe(false);
+        // Due unchanged so the caller can fall through to a normal
+        // mark-complete path without losing the original date.
+        expect(item.due).toBe('4-30-2026');
+    });
+
+    it('advanceRecurringTodo returns false when no recurrence is set', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        item.due = '4-1-2026';
+        const advanced = listLogic.advanceRecurringTodo('R', item);
+        expect(advanced).toBe(false);
+    });
+});
+
+
+describe('listLogic — recurrence persistence', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('snapshotProjects round-trips a recurrence object intact', () => {
+        listLogic.addProject('Roundtrip');
+        listLogic.addToDo('Roundtrip', 'Pay rent');
+        const item = listLogic.listItems('Roundtrip').find(i => i.tit === 'Pay rent');
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('Roundtrip', item, {
+            pattern: 'monthly',
+            basis: 'dueDate',
+            endDate: '2027-01-01',
+        });
+
+        const snapshot = listLogic.snapshotProjects();
+        listLogic._reset();
+        listLogic.replaceAllProjects(snapshot);
+
+        const restored = listLogic.listItems('Roundtrip').find(i => i.tit === 'Pay rent');
+        expect(restored.recurrence).not.toBeNull();
+        expect(restored.recurrence.pattern).toBe('monthly');
+        expect(restored.recurrence.basis).toBe('dueDate');
+        expect(restored.recurrence.endDate).toBe('2027-01-01');
+    });
+
+    it('null recurrence round-trips through snapshot+replace', () => {
+        listLogic.addProject('R');
+        listLogic.addToDo('R', 'A');
+        const snapshot = listLogic.snapshotProjects();
+        listLogic._reset();
+        listLogic.replaceAllProjects(snapshot);
+
+        const item = listLogic.listItems('R').find(i => i.tit === 'A');
+        expect(item.recurrence).toBeNull();
+    });
+});
+
+
+describe('listLogic — sanitizeRecurrence', () => {
+    it('clamps an unknown pattern to "daily"', () => {
+        const result = sanitizeRecurrence({ pattern: 'made-up' });
+        expect(result.pattern).toBe('daily');
+    });
+
+    it('forces interval to a positive integer', () => {
+        const result = sanitizeRecurrence({ pattern: 'custom', interval: -3 });
+        expect(result.interval).toBe(1);
+    });
+
+    it('returns null when given non-object input', () => {
+        expect(sanitizeRecurrence(null)).toBeNull();
+        expect(sanitizeRecurrence(undefined)).toBeNull();
+        expect(sanitizeRecurrence('daily')).toBeNull();
     });
 });
