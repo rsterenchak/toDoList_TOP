@@ -13,6 +13,7 @@ export const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
+export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 
 // ── compact titles ──
 export function isCompactTitlesOn() {
@@ -85,4 +86,22 @@ export function writeChangelogLastSeen(dateStr) {
         // localStorage can throw in private-browsing or quota-exceeded states;
         // the dot re-appears next load, which is acceptable.
     }
+}
+
+// ── last-exported-at marker (manual JSON export) ──
+// Drives the stale-export footer hint — when this is null or older than
+// the threshold defined in exportImport.js, the hint surfaces. Updated by
+// exportImport.js after every successful export.
+export function readLastExportedAt() {
+    try {
+        return localStorage.getItem(LAST_EXPORTED_AT_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function writeLastExportedAt(isoString) {
+    try {
+        localStorage.setItem(LAST_EXPORTED_AT_KEY, isoString);
+    } catch (e) { /* ignore quota/private-mode */ }
 }

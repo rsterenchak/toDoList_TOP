@@ -439,6 +439,76 @@ export const listLogic = (function () {
     }
 
 
+    // Wipe all in-memory + persisted project state and replace it with the
+    // given list. Used by the JSON import flow (validation lives next to the
+    // import handler; once the file is accepted the entire project tree is
+    // overwritten in one pass — no partial-overwrite states, per the task
+    // spec). Accepts an array of `{ name, items, color }` entries; falls back
+    // to safe defaults on missing fields so a slightly-off import file can't
+    // brick the app. Returns the count of projects that were written.
+    function replaceAllProjects(projects) {
+
+        if (!Array.isArray(projects)) return 0;
+
+        Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
+
+        projects.forEach(function(entry) {
+            if (!entry || typeof entry !== 'object') return;
+            const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+            if (name.length === 0) return;
+            // Reject duplicate names — last-wins would silently destroy data,
+            // so the import surfaces it as a missing project the user can
+            // re-export and re-import after fixing.
+            if (Object.prototype.hasOwnProperty.call(allProjects, name)) return;
+
+            const items = Array.isArray(entry.items) ? entry.items : [];
+            let color = entry.color;
+            if (typeof color !== 'string' && color !== null) color = null;
+            if (typeof color === 'string' && PROJECT_COLOR_KEYS.indexOf(color) === -1) {
+                color = null;
+            }
+
+            // Sanitize each item the same way the load-time path does so a
+            // hand-edited or older-version export can't pass corrupt fields
+            // (NaN dates, missing completed flag) into the renderer.
+            items.forEach(function(item) {
+                if (!item || typeof item !== 'object') return;
+                if (typeof item.completed !== 'boolean') item.completed = false;
+                if (!item.due || item.due === '' || item.due === '--' || item.due === 'X-X-XXXX') return;
+                const parts = String(item.due).split('-');
+                const m = parseInt(parts[0], 10);
+                const d = parseInt(parts[1], 10);
+                const y = parseInt(parts[2], 10);
+                if (isNaN(m) || isNaN(d) || isNaN(y)) item.due = '';
+            });
+
+            allProjects[name] = { items: items, color: color };
+            sortCompletedInPlace(allProjects[name].items);
+        });
+
+        allProjectsTotal = Object.keys(allProjects).length;
+        saveToStorage();
+
+        return allProjectsTotal;
+    }
+
+
+    // Snapshot the current project tree as a plain array of
+    // `{ name, items, color }` entries — the shape consumed by
+    // replaceAllProjects and the export file. Iteration order matches
+    // Object.keys(allProjects), preserving the user's project order.
+    function snapshotProjects() {
+        return Object.keys(allProjects).map(function(name) {
+            const entry = allProjects[name];
+            return {
+                name: name,
+                items: Array.isArray(entry.items) ? entry.items.slice() : [],
+                color: entry.color || null,
+            };
+        });
+    }
+
+
     return {
         addProject,
         removeProject,
@@ -457,6 +527,8 @@ export const listLogic = (function () {
         setProjectColor,
         PROJECT_COLOR_KEYS,
         saveToStorage,
+        replaceAllProjects,
+        snapshotProjects,
         _reset
     };
 

@@ -2041,3 +2041,181 @@ body.row-dragging * { cursor: grabbing !important; }
     animation: none;
   }
 }
+
+
+/* ── EXPORT / IMPORT NAV CONTROLS ──
+   Small icon pair sitting between the companion toggle and the theme toggle
+   in the nav bar. Visual treatment matches #themeToggle (36×36, transparent
+   background, hover/focus tints from the same accent ramp) so the trio reads
+   as one cluster of secondary controls. */
+#exportImportControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navIconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.navIconBtn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.navIconBtn:focus { outline: none; }
+.navIconBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+
+/* ── IMPORT DROP OVERLAY ──
+   Full-window dim while a file is being dragged over the app. Pointer events
+   are disabled on the inner label so the underlying drag/drop listeners on
+   <window> still fire. */
+#importDropOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#importDropOverlayInner {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 18px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  padding: 18px 28px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+}
+
+
+/* ── IMPORT ERROR TOAST ──
+   Inline error surfaced under the nav bar when a file fails validation.
+   Auto-dismisses after a few seconds; positioned with `position: fixed` so
+   it sits above the rest of the chrome without affecting layout. */
+#importErrorToast {
+  position: fixed;
+  top: calc(var(--nav-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--text-danger);
+  color: var(--text-danger);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  max-width: 90vw;
+}
+
+
+/* ── STALE-EXPORT FOOTER HINT ──
+   Sits in the centre of #footBar between the version label and the open/done
+   counts. Muted by default; the link element underlines on hover to read as
+   actionable. The dismiss × shrinks the affordance for the rest of the
+   session per the task spec. */
+#staleExportHint {
+  margin-left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.staleExportHintLabel {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 3px;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease;
+}
+
+.staleExportHintLabel:hover {
+  color: var(--accent-text);
+  text-decoration-color: var(--accent-text);
+}
+
+.staleExportHintLabel:focus { outline: none; }
+.staleExportHintLabel:focus-visible {
+  outline: none;
+  color: var(--accent-text);
+  text-decoration-color: var(--accent-text);
+}
+
+.staleExportHintDismiss {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.staleExportHintDismiss:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.staleExportHintDismiss:focus { outline: none; }
+.staleExportHintDismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* On narrow viewports the footer is already snug — drop the hint to keep
+   the version label and counts readable. The user can still trigger an
+   export from the nav button. */
+@media (max-width: 480px) {
+  #staleExportHint {
+    display: none !important;
+  }
+}

@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-04-26',
+        date: '2026-04-28',
         added: [
-            'Ghost companion now blinks on its own at irregular intervals while idle.',
+            'Manual JSON export and import of every project and todo, with drag-and-drop import on desktop and a footer reminder when no backup has happened in over a week.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-04-26',
         fixed: [
             'Starting a new project and clicking away with a name typed now commits the project, while clicking away with an empty name silently discards the in-progress row.',
             'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
