@@ -11,7 +11,17 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Redesign TODO panel with date grouping, smart input, semantic date pills, and nested subtasks
+- [ ] **[LOW]** Add affordance cues to new-task input (leading +, placeholder, N keyboard hint)
+  - Description: Replace the bare new-task input at the top of the todo panel with a more inviting variant: a small purple `+` glyph on the left, placeholder text "Add a task — press Enter" inside the field, and a subtle keyboard hint badge `N` on the right. Wire a global `keydown` listener so pressing `N` while focus is *not* in another input/textarea/contenteditable element focuses this input and prevents the keystroke from leaking into the field. Form submission, the existing focus/blur styling, and the input's data path stay unchanged — this is purely affordance polish plus one shortcut.
+  - Implementation notes:
+    - `+` glyph and `N` badge are decorative — keep them inside the input's wrapper, not as separate clickable elements, so click-anywhere-on-the-row still focuses the input.
+    - Mobile: keep `font-size: 16px+` on the input to avoid iOS Safari auto-zoom on focus. The `N` badge can hide below ~480px since touch users won't use it.
+    - The `N` shortcut handler must early-return when `document.activeElement` is an input, textarea, contenteditable, or inside an open modal/popover — otherwise typing "n" anywhere (including in a todo title) will yank focus.
+    - `main.js` is over 25k tokens — locate the new-task input render and form-submit wiring with grep + offset/limit rather than a full read.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [x] **[MEDIUM]** Redesign TODO panel with date grouping, smart input, semantic date pills, and nested subtasks
   - Description: Overhaul the TODO ITEMS panel to improve scannability and add a subtask layer. Replace the empty input with an affordance-rich variant (leading `+` icon, "Add a task — press Enter" placeholder, `N` kbd badge that focuses the input when pressed outside any editable element); group the active project's todos under date-based section headers (Due today, This week, Later) computed from each todo's `due` field at render time; recolor the date pill semantically (warm coral when due is today or overdue, neutral gray otherwise); and add a nested subtasks layer so a row can be expanded inline to reveal child checkboxes that strikethrough on completion. Project sidebar, footer, top bar, and mascot stay unchanged.
   - Behavior:
     1. Smart input is visual + one wiring change — `+` icon left, placeholder text, small `N` kbd badge right. Pressing `N` while focus is outside any editable element focuses this input. Form submission still goes through the existing form-submit listener with no behavior change.
