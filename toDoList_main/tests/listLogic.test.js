@@ -404,6 +404,129 @@ describe('listLogic — editProject edge cases', () => {
 });
 
 
+// ── REPLACE ALL PROJECTS / SNAPSHOT ────────────────────────────────
+// Pinned by the manual JSON export/import flow: replaceAllProjects must
+// wipe the existing tree and write the imported one in a single atomic
+// pass, snapshotProjects must round-trip cleanly, and a few defensive
+// shape-cleanups (skipping unnamed entries, normalising bad colors,
+// scrubbing NaN dates) need to survive a hand-edited export.
+describe('listLogic — replaceAllProjects / snapshotProjects', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('replaceAllProjects overwrites the existing project tree', () => {
+        listLogic.addProject('Old');
+        listLogic.addToDo('Old', 'Stale');
+
+        listLogic.replaceAllProjects([
+            { name: 'Fresh', items: [{ tit: 'Hello', completed: false, due: '' }], color: null },
+        ]);
+
+        expect(listLogic.listProjectsArray()).toEqual(['Fresh']);
+        const titles = listLogic.listItems('Fresh').map(i => i.tit);
+        expect(titles).toContain('Hello');
+        // The blank placeholder invariant still holds after the rewrite.
+        expect(listLogic.listItems('Fresh')[0].tit).toBe('');
+    });
+
+    it('replaceAllProjects with an empty array clears all projects', () => {
+        listLogic.addProject('Doomed');
+        listLogic.replaceAllProjects([]);
+        expect(listLogic.listProjectsArray()).toEqual([]);
+    });
+
+    it('replaceAllProjects ignores non-array input as a no-op', () => {
+        listLogic.addProject('Keep');
+        listLogic.replaceAllProjects(null);
+        listLogic.replaceAllProjects(undefined);
+        listLogic.replaceAllProjects({ not: 'an array' });
+        expect(listLogic.listProjectsArray()).toContain('Keep');
+    });
+
+    it('replaceAllProjects skips entries with empty or missing names', () => {
+        listLogic.replaceAllProjects([
+            { name: '', items: [], color: null },
+            { name: '   ', items: [], color: null },
+            { items: [], color: null },
+            { name: 'Valid', items: [{ tit: 'A', completed: false, due: '' }], color: null },
+        ]);
+        expect(listLogic.listProjectsArray()).toEqual(['Valid']);
+    });
+
+    it('replaceAllProjects ignores duplicate names within the same import', () => {
+        listLogic.replaceAllProjects([
+            { name: 'Dupe', items: [{ tit: 'First', completed: false, due: '' }], color: null },
+            { name: 'Dupe', items: [{ tit: 'Second', completed: false, due: '' }], color: null },
+        ]);
+        const titles = listLogic.listItems('Dupe').map(i => i.tit);
+        expect(titles).toContain('First');
+        expect(titles).not.toContain('Second');
+    });
+
+    it('replaceAllProjects clamps unknown color keys back to null', () => {
+        listLogic.replaceAllProjects([
+            { name: 'A', items: [], color: 'not-a-real-color' },
+            { name: 'B', items: [], color: 'blue' },
+        ]);
+        expect(listLogic.getProjectColor('A')).toBeNull();
+        expect(listLogic.getProjectColor('B')).toBe('blue');
+    });
+
+    it('replaceAllProjects scrubs NaN dates and missing completed flags', () => {
+        listLogic.replaceAllProjects([
+            {
+                name: 'Sanitize',
+                items: [
+                    { tit: 'BadDate', due: 'foo-bar-baz' },
+                    { tit: 'NoFlag',  due: '' },
+                ],
+                color: null,
+            },
+        ]);
+        const items = listLogic.listItems('Sanitize');
+        const bad = items.find(i => i.tit === 'BadDate');
+        const noFlag = items.find(i => i.tit === 'NoFlag');
+        expect(bad.due).toBe('');
+        expect(noFlag.completed).toBe(false);
+    });
+
+    it('replaceAllProjects persists the new state to localStorage in one pass', () => {
+        listLogic.addProject('Old');
+        listLogic.replaceAllProjects([
+            { name: 'New', items: [{ tit: 'Item', completed: false, due: '' }], color: 'red' },
+        ]);
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        expect(Object.keys(parsed)).toEqual(['New']);
+        expect(parsed.New.color).toBe('red');
+    });
+
+    it('snapshotProjects round-trips cleanly through replaceAllProjects', () => {
+        listLogic.addProject('Roundtrip');
+        listLogic.addToDo('Roundtrip', 'Alpha');
+        listLogic.addToDo('Roundtrip', 'Beta');
+        listLogic.setProjectColor('Roundtrip', 'green');
+
+        const snapshot = listLogic.snapshotProjects();
+        listLogic._reset();
+        listLogic.replaceAllProjects(snapshot);
+
+        const titles = listLogic.listItems('Roundtrip').map(i => i.tit);
+        expect(titles).toContain('Alpha');
+        expect(titles).toContain('Beta');
+        expect(listLogic.getProjectColor('Roundtrip')).toBe('green');
+    });
+
+    it('snapshotProjects preserves project order', () => {
+        listLogic.addProject('First');
+        listLogic.addProject('Second');
+        listLogic.addProject('Third');
+        const names = listLogic.snapshotProjects().map(p => p.name);
+        expect(names).toEqual(['First', 'Second', 'Third']);
+    });
+});
+
+
 describe('listLogic — storage corruption resilience', () => {
     // This one is architecturally tricky because listLogic reads localStorage
     // at module load time, not on demand. To test resilience against malformed

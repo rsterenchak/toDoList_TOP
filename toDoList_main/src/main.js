@@ -35,6 +35,12 @@ import {
     addToDos_restore,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
+import {
+    createExportImportControls,
+    createStaleExportHint,
+    refreshStaleHint,
+    attachDragDropImport,
+} from './exportImport.js';
 import button from './addProj_button.svg';
 
 
@@ -159,6 +165,16 @@ function component() {
 
     nav.appendChild(companionToggle);
 
+    // ── export / import (download + upload icon pair) ──
+    // Sits between the companion toggle and the theme toggle. Visual treatment
+    // matches the other nav icon buttons. The drag-and-drop window listeners
+    // are attached after component() returns, so the desktop-only bail-out in
+    // attachDragDropImport runs against the live viewport.
+    const exportImportControls = createExportImportControls({
+        onAfterReplace: function() { rebuildAfterImport(); },
+    });
+    nav.appendChild(exportImportControls);
+
     // ── theme toggle (far right of nav, sits to the right of the ghost) ──
     // Configured button comes from theme.js — owns the inline SVG glyphs,
     // aria state, persistence, and the cross-fade timing.
@@ -216,12 +232,23 @@ function component() {
     footDone.textContent = '0 DONE';
 
     foot.appendChild(footVersion);
+
+    // ── stale-export reminder ──
+    // Sits between the version label on the left and the open/done counts on
+    // the right. exportImport.js owns the visibility logic (driven off
+    // todoapp_lastExportedAt and a "has any todos" check); refreshStaleHint
+    // is called here on first paint and again whenever the import flow
+    // completes or an export finishes.
+    const staleExportHint = createStaleExportHint();
+    foot.appendChild(staleExportHint);
+
     footCounts.appendChild(footOpen);
     footCounts.appendChild(footDone);
     foot.appendChild(footCounts);
 
     // Initial unseen-indicator paint — deferred so the dot element is in the DOM.
     setTimeout(updateChangelogDot, 0);
+    setTimeout(refreshStaleHint, 0);
 
     main.appendChild(main1);
     main.appendChild(sidebarResizer);
@@ -871,9 +898,42 @@ function component() {
     // (index.js appends the component right after component() returns).
     setTimeout(ensureCompanion, 0);
 
+    // Wire the desktop drag-and-drop import path. Mobile (pointer: coarse)
+    // is bailed out inside attachDragDropImport — the file picker covers
+    // mobile. Deferred so window listeners attach against the live DOM.
+    setTimeout(function() {
+        attachDragDropImport(function() { rebuildAfterImport(); });
+    }, 0);
+
     return base;
 
 };
+
+
+// Wipe the live project sidebar + todo list and rebuild from listLogic's
+// current state. Called after a successful import once
+// listLogic.replaceAllProjects has rewritten storage. Mirrors the boot
+// sequence (clear, then restoreFromStorage) so any post-restore selection
+// and accent logic still runs.
+function rebuildAfterImport() {
+
+    const sideMaDiv = document.getElementById('sideMa');
+    const mainListDiv = document.getElementById('mainList');
+
+    if (sideMaDiv) {
+        const existing = sideMaDiv.querySelectorAll('#projChild');
+        existing.forEach(function(node) {
+            if (node.parentNode) node.parentNode.removeChild(node);
+        });
+    }
+    if (mainListDiv) {
+        while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
+    }
+
+    restoreFromStorage();
+    refreshStaleHint();
+}
+
 
 export { component, restoreFromStorage, notifyUpdateAvailable };
 

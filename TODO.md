@@ -11,7 +11,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add manual export/import of todos as a JSON file
+- [x] **[MEDIUM]** Add manual export/import of todos as a JSON file
   - Description: Add two actions to the app — "Export todos" downloads a JSON snapshot of all projects and todos to the user's filesystem, "Import todos" reads a previously exported JSON file and replaces the current `localStorage` state with its contents. The goal is a portable, user-controlled backup mechanism with no backend: the user exports manually, stores the file wherever they want (gitignored repo folder, cloud drive, phone storage), and imports to restore or transfer between devices. `localStorage` remains the live store; the file is purely a snapshot in/out.
   - Behavior:
     1. Export: triggers a download of `todos-YYYY-MM-DD.json` (append `-2`, `-3`, etc. if a same-day export already happened this session, tracked in memory). Filename uses local date, not UTC. File contents are a pretty-printed JSON object shaped `{ version: 1, exportedAt: <ISO string>, projects: [...] }` where `projects` mirrors the exact structure already persisted to `localStorage`. After a successful export, write `lastExportedAt` (ISO string) to `localStorage` under the existing `todoapp_` prefix.
