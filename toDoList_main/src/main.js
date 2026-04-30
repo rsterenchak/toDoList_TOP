@@ -33,6 +33,7 @@ import {
 import {
     addAllToDo_DOM,
     addToDos_restore,
+    focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
 import {
@@ -386,6 +387,24 @@ function component() {
                 el.classList.remove('todo-active');
             });
         }
+    });
+
+    // Global "N" shortcut — jump focus to the blank-placeholder new-task input
+    // from anywhere on the page. The keydown is suppressed (preventDefault)
+    // so the letter doesn't leak into the field as the first keystroke.
+    // Early-return when the user is already typing somewhere (input, textarea,
+    // contenteditable) or when a modal/popover is open — otherwise typing "n"
+    // mid-edit would yank focus.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'n' && e.key !== 'N') return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        if (document.getElementById('confirmModalBackdrop')   ||
+            document.getElementById('changelogModalBackdrop') ||
+            document.getElementById('dueDatePopover')) return;
+        focusBlankToDoInput();
+        e.preventDefault();
     });
 
     // ── sidebar resize logic ──

@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-30',
+        added: [
+            'Press N from anywhere to jump to the new-task input, which now shows a leading plus glyph and inviting placeholder text.',
+        ],
         fixed: [
             'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
         ],
@@ -19,13 +22,6 @@ export const changelog = [
         added: [
             'Manual JSON export and import of every project and todo, with drag-and-drop import on desktop and a footer reminder when no backup has happened in over a week.',
             'Recurring tasks repeat on daily, weekdays, weekly, monthly, yearly, or custom schedules; checking one advances its due date to the next occurrence instead of marking it done.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-26',
-        fixed: [
-            'Adding the app to a light-mode iOS home screen now shows a lighter-purple app icon that matches the system theme instead of the dark-tuned default.',
         ],
     },
 ];

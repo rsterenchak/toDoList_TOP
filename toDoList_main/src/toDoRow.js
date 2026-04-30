@@ -248,13 +248,30 @@ export function buildToDoRow(item, toDoName) {
     toDoInput.type        = "text";
     toDoInput.autocomplete = "off";
     toDoInput.id          = "toDoInput";
-    toDoInput.placeholder = "New Item";
+    toDoInput.placeholder = "Add a task — press Enter";
     toDoInput.style.fontSize = "14px";
     toDoInput.value       = item.tit || "";
     toDoInput.style.border = "none";
     // Mirror the full title onto the native browser tooltip so compact-titles
     // mode can rely on hover to reveal text that the ellipsis would clip.
     toDoInput.title       = item.tit || "";
+
+    // Affordance cues only on the blank placeholder row: a leading purple `+`
+    // glyph and a trailing `N` keyboard-hint badge. Both are decorative
+    // (aria-hidden, pointer-events: none in CSS) so click-anywhere on the row
+    // still falls through to wireToDoRowClick → focus the input.
+    const addGlyph     = !item.tit ? document.createElement("span") : null;
+    const keyHintBadge = !item.tit ? document.createElement("span") : null;
+    if (addGlyph) {
+        addGlyph.id = "addGlyph";
+        addGlyph.setAttribute('aria-hidden', 'true');
+        addGlyph.textContent = "+";
+    }
+    if (keyHintBadge) {
+        keyHintBadge.id = "keyHintBadge";
+        keyHintBadge.setAttribute('aria-hidden', 'true');
+        keyHintBadge.textContent = "N";
+    }
 
     closeButtonToDo.id = "closeButtonToDo";
     // Hide delete on blank placeholder rows — deleting the only available
@@ -306,7 +323,9 @@ export function buildToDoRow(item, toDoName) {
     // assemble DOM tree
     toDoChild.appendChild(swipePaneLeft);
     toDoChild.appendChild(swipePaneRight);
+    if (addGlyph) toDoChild.appendChild(addGlyph);
     toDoChild.appendChild(toDoInput);
+    if (keyHintBadge) toDoChild.appendChild(keyHintBadge);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(descToggle);
@@ -373,6 +392,10 @@ export function buildToDoRow(item, toDoName) {
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
         duePill.style.display         = "";
+        // Strip the blank-row affordance cues — once committed, this row is a
+        // real todo and the leading `+` / `N` badge would be misleading.
+        if (addGlyph     && addGlyph.parentElement)     addGlyph.remove();
+        if (keyHintBadge && keyHintBadge.parentElement) keyHintBadge.remove();
 
         toDoInput.blur();
         if (isFirstCommit) {
