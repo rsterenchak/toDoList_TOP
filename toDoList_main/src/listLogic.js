@@ -475,6 +475,14 @@ export const listLogic = (function () {
     // path. Returns true if the todo was advanced, false if it should
     // instead be treated as a normal one-off completion (no recurrence
     // configured, or the next due exceeds the configured end date).
+    //
+    // Side effect: pushes a frozen completed clone of the original into
+    // the project's items array before mutating the original. The clone
+    // captures the just-completed occurrence as a historical entry — its
+    // `due` is pinned to the date that was just satisfied and recurrence
+    // is cleared so the clone itself doesn't chain. Repeated advances
+    // therefore stack one completed entry per occurrence alongside the
+    // still-recurring original.
     function advanceRecurringTodo(project, item, completionDate) {
         if (!allProjects[project] || !item || !item.recurrence) return false;
 
@@ -487,8 +495,21 @@ export const listLogic = (function () {
             if (endDate && next > endDate) return false;
         }
 
+        const arr = allProjects[project].items;
+        const completedClone = {
+            tit: item.tit,
+            desc: item.desc,
+            due: item.due,
+            pri: item.pri,
+            pos: item.pos,
+            completed: true,
+            recurrence: null,
+        };
+        arr.push(completedClone);
+
         item.due = formatDueParts(next);
         item.completed = false;
+        sortCompletedInPlace(arr);
         saveToStorage();
         return true;
     }
