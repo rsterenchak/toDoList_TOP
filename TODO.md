@@ -2,10 +2,10 @@
 
 ## Bugs
      
-- [ ] **[MEDIUM]** Spawn completed instance when checking off a recurring todo
+- [x] **[MEDIUM]** Spawn completed instance when checking off a recurring todo
   - Description: When a recurring task is checked off, `advanceRecurringTodo` rolls the due date forward and unchecks the box, leaving no historical trace in the Completed section — there's no "I did this last Tuesday and the Tuesday before" trail to glance at for consistency. Push a frozen clone of the item (with `due` set to the just-completed date and `recurrence: null` so the clone doesn't itself chain) into the project's items array as a completed entry alongside the still-recurring original, then run `sortCompletedToBottom` and re-render via `reorderToDoDOM` from the checkbox handler in `toDoRow.js` so the new instance appears at the top of the Completed section instead of waiting for a project-switch refresh. Cover the new behavior in `tests/listLogic.test.js`: a single advance creates one completed clone with no recurrence, and repeated advances stack instances without mutating the original's recurrence config or the next-due math.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-30
 
 ## Features
 

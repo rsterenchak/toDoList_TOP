@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-04-30',
+        fixed: [
+            'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-04-28',
         added: [
             'Manual JSON export and import of every project and todo, with drag-and-drop import on desktop and a footer reminder when no backup has happened in over a week.',
@@ -15,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-26',
         fixed: [
-            'Clearing a project title and pressing Enter or clicking away now reverts to the previous name instead of leaving the project unnamed and its todos unreachable.',
             'Compact Titles and Expand All buttons in the Todo Items header now read as one segmented control, with matching borders and a softer accent tint when Compact Titles is active.',
             'Adding the app to a light-mode iOS home screen now shows a lighter-purple app icon that matches the system theme instead of the dark-tuned default.',
         ],

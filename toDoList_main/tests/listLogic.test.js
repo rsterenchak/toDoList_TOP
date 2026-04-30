@@ -712,6 +712,60 @@ describe('listLogic — recurrence helpers', () => {
         const advanced = listLogic.advanceRecurringTodo('R', item);
         expect(advanced).toBe(false);
     });
+
+    it('advanceRecurringTodo spawns a frozen completed clone of the just-completed occurrence', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        item.due = '4-1-2026';
+        item.desc = 'morning routine';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+
+        const advanced = listLogic.advanceRecurringTodo('R', item);
+        expect(advanced).toBe(true);
+
+        // Original is still recurring, advanced to next due, uncompleted.
+        expect(item.due).toBe('4-2-2026');
+        expect(item.completed).toBe(false);
+        expect(item.recurrence).not.toBeNull();
+        expect(item.recurrence.pattern).toBe('daily');
+
+        // A completed clone for the just-finished occurrence is sitting
+        // in the project alongside the original.
+        const completedClones = listLogic.listItems('R').filter(
+            i => i.tit === 'Brush teeth' && i.completed,
+        );
+        expect(completedClones).toHaveLength(1);
+        expect(completedClones[0].due).toBe('4-1-2026');
+        expect(completedClones[0].desc).toBe('morning routine');
+        expect(completedClones[0].recurrence).toBeNull();
+    });
+
+    it('advanceRecurringTodo stacks completed clones across repeated advances without mutating the recurrence config', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth');
+        item.due = '4-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        const recurrenceBefore = JSON.parse(JSON.stringify(item.recurrence));
+
+        listLogic.advanceRecurringTodo('R', item);
+        listLogic.advanceRecurringTodo('R', item);
+        listLogic.advanceRecurringTodo('R', item);
+
+        // Recurrence config on the original is untouched after every advance.
+        expect(item.recurrence).toEqual(recurrenceBefore);
+
+        // Next-due math walked forward one day per advance.
+        expect(item.due).toBe('4-4-2026');
+        expect(item.completed).toBe(false);
+
+        // One frozen clone per advance, each pinned to the date it satisfied.
+        const completedClones = listLogic.listItems('R')
+            .filter(i => i.tit === 'Brush teeth' && i.completed);
+        expect(completedClones).toHaveLength(3);
+        const clonedDues = completedClones.map(c => c.due).sort();
+        expect(clonedDues).toEqual(['4-1-2026', '4-2-2026', '4-3-2026']);
+        completedClones.forEach(clone => {
+            expect(clone.recurrence).toBeNull();
+        });
+    });
 });
 
 

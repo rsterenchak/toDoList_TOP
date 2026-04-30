@@ -92,6 +92,10 @@ function wireCheckbox(toDoChild, toDoInput, item) {
                 if (isCoarsePointer() && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
                     try { navigator.vibrate(10); } catch (_) { /* noop */ }
                 }
+                // advanceRecurringTodo spawned a completed clone in the model;
+                // re-render so it lands in the Completed section immediately.
+                listLogic.sortCompletedToBottom(projectName);
+                reorderToDoDOM(projectName);
                 return;
             }
         }
