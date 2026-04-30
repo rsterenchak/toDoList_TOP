@@ -100,11 +100,12 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         throw new Error(`Top-level rule for "${selector}" not found`);
     }
 
-    it('styles the `+` glyph in the accent color and disables pointer events', () => {
-        // Purple tint comes from --accent (the same variable the empty-state
-        // CTA and focus ring use) so the glyph stays in-theme across light/dark.
+    it('styles the `+` glyph in a muted grey and disables pointer events', () => {
+        // Muted grey via --text-muted reads as an unobtrusive affordance hint
+        // alongside the input's grey placeholder, instead of competing with
+        // the accent-coloured controls in the row.
         const rule = extractTopLevelRule('#addGlyph');
-        expect(rule).toMatch(/color:\s*var\(--accent\)/);
+        expect(rule).toMatch(/color:\s*var\(--text-muted\)/);
         // Decorative — clicks must fall through to the row click handler.
         expect(rule).toMatch(/pointer-events:\s*none/);
     });
