@@ -9,10 +9,10 @@
 
 ## Features
 
-- [ ] **[LOW]** Replace export/import nav icons with floppy and folder glyphs
+- [x] **[LOW]** Replace export/import nav icons with floppy and folder glyphs
   - Description: Swap the current down-arrow-into-tray (export) and up-arrow-out-of-tray (import) icons in `exportImport.js` for a pixel-art floppy disk (export = save) and folder (import = open). Keep the existing `shape-rendering="crispEdges"`, `fill="currentColor"` treatment so the new glyphs stay in the theme-toggle / compact-titles family. Use a 10×10 viewBox: the floppy needs a body outline, a write-protect tab block in the top right, an interior divider, and a label rectangle at the bottom; the folder needs a small left-aligned tab on top of a hollow rectangle body. The `title` and `aria-label` already say "Export todos" / "Import todos" so the up/down directional cue isn't load-bearing — the save/open metaphor carries the meaning visually.
   - File: `toDoList_main/src/exportImport.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-04-30
 
 - [ ] **[LOW]** Add affordance cues to new-task input (leading +, placeholder, N keyboard hint)
   - Description: Replace the bare new-task input at the top of the todo panel with a more inviting variant: a small purple `+` glyph on the left, placeholder text "Add a task — press Enter" inside the field, and a subtle keyboard hint badge `N` on the right. Wire a global `keydown` listener so pressing `N` while focus is *not* in another input/textarea/contenteditable element focuses this input and prevents the keystroke from leaking into the field. Form submission, the existing focus/blur styling, and the input's data path stay unchanged — this is purely affordance polish plus one shortcut.
