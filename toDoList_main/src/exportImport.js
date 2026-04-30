@@ -228,24 +228,33 @@ export function importFromFile(file, onAfterReplace) {
 // for the nav bar. The reload-after-import callback comes from main.js so
 // this module doesn't have to know about restoreFromStorage / DOM rebuild.
 
+// Floppy disk = export (save). Body outline, write-protect tab in the
+// top-right, an interior divider between the metal-shutter half and the
+// label half, and a hollow label rectangle at the bottom.
 const DOWNLOAD_SVG =
-    '<svg viewBox="0 0 7 7" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
-    '<rect x="3" y="0" width="1" height="4"/>' +
-    '<rect x="2" y="3" width="1" height="1"/>' +
-    '<rect x="4" y="3" width="1" height="1"/>' +
-    '<rect x="1" y="2" width="1" height="2"/>' +
-    '<rect x="5" y="2" width="1" height="2"/>' +
-    '<rect x="0" y="5" width="7" height="1"/>' +
+    '<svg viewBox="0 0 10 10" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+    '<rect x="0" y="0" width="10" height="1"/>' +
+    '<rect x="0" y="9" width="10" height="1"/>' +
+    '<rect x="0" y="1" width="1" height="8"/>' +
+    '<rect x="9" y="1" width="1" height="8"/>' +
+    '<rect x="7" y="2" width="2" height="2"/>' +
+    '<rect x="1" y="4" width="8" height="1"/>' +
+    '<rect x="2" y="6" width="6" height="1"/>' +
+    '<rect x="2" y="8" width="6" height="1"/>' +
+    '<rect x="2" y="7" width="1" height="1"/>' +
+    '<rect x="7" y="7" width="1" height="1"/>' +
     '</svg>';
 
+// Folder = import (open). Small left-aligned tab on top of a hollow body.
 const UPLOAD_SVG =
-    '<svg viewBox="0 0 7 7" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
-    '<rect x="3" y="2" width="1" height="4"/>' +
-    '<rect x="2" y="2" width="1" height="1"/>' +
-    '<rect x="4" y="2" width="1" height="1"/>' +
-    '<rect x="1" y="3" width="1" height="2"/>' +
-    '<rect x="5" y="3" width="1" height="2"/>' +
-    '<rect x="0" y="0" width="7" height="1"/>' +
+    '<svg viewBox="0 0 10 10" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
+    '<rect x="0" y="0" width="5" height="1"/>' +
+    '<rect x="0" y="1" width="1" height="1"/>' +
+    '<rect x="4" y="1" width="1" height="1"/>' +
+    '<rect x="0" y="2" width="10" height="1"/>' +
+    '<rect x="0" y="9" width="10" height="1"/>' +
+    '<rect x="0" y="3" width="1" height="6"/>' +
+    '<rect x="9" y="3" width="1" height="6"/>' +
     '</svg>';
 
 export function createExportImportControls(options) {
