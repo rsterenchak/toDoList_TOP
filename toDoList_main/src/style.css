@@ -1297,6 +1297,47 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
 #toDoInput:focus::placeholder { color: transparent; }
 
+/* NEW-TASK AFFORDANCES — purely decorative cues that sit inside the blank
+   placeholder row alongside #toDoInput. Both use pointer-events: none so
+   click-anywhere-on-the-row still falls through to the row click handler
+   that focuses the input. They're rendered only on the blank row (see
+   buildToDoRow in toDoRow.js); committing the row strips them from the DOM. */
+#addGlyph {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  pointer-events: none;
+  user-select: none;
+}
+
+#keyHintBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* DUE DATE PILL — bordered trigger that opens the calendar popover. The
    border + calendar icon + chevron together telegraph "click to open a
    menu"; urgency color comes from the .due-soon / .due-overdue classes
@@ -2352,5 +2393,9 @@ body.row-dragging * { cursor: grabbing !important; }
 @media (max-width: 480px) {
   #staleExportHint {
     display: none !important;
+  }
+  /* Touch users won't use the keyboard shortcut — drop the hint badge. */
+  #keyHintBadge {
+    display: none;
   }
 }
