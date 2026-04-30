@@ -9,6 +9,9 @@ export const changelog = [
         fixed: [
             'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
         ],
+        changed: [
+            'Export and import nav icons restyled as a floppy disk and folder for a clearer save/open metaphor.',
+        ],
     },
     {
         version: '1.1',
@@ -22,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-26',
         fixed: [
-            'Compact Titles and Expand All buttons in the Todo Items header now read as one segmented control, with matching borders and a softer accent tint when Compact Titles is active.',
             'Adding the app to a light-mode iOS home screen now shows a lighter-purple app icon that matches the system theme instead of the dark-tuned default.',
         ],
     },
