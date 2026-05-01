@@ -9,20 +9,15 @@
 
 ## Features
 
-- [x] **[LOW]** Replace export/import nav icons with floppy and folder glyphs
-  - Description: Swap the current down-arrow-into-tray (export) and up-arrow-out-of-tray (import) icons in `exportImport.js` for a pixel-art floppy disk (export = save) and folder (import = open). Keep the existing `shape-rendering="crispEdges"`, `fill="currentColor"` treatment so the new glyphs stay in the theme-toggle / compact-titles family. Use a 10×10 viewBox: the floppy needs a body outline, a write-protect tab block in the top right, an interior divider, and a label rectangle at the bottom; the folder needs a small left-aligned tab on top of a hollow rectangle body. The `title` and `aria-label` already say "Export todos" / "Import todos" so the up/down directional cue isn't load-bearing — the save/open metaphor carries the meaning visually.
-  - File: `toDoList_main/src/exportImport.js`
-  - Completed: 2026-04-30
-
-- [x] **[LOW]** Add affordance cues to new-task input (leading +, placeholder, N keyboard hint)
-  - Description: Replace the bare new-task input at the top of the todo panel with a more inviting variant: a small purple `+` glyph on the left, placeholder text "Add a task — press Enter" inside the field, and a subtle keyboard hint badge `N` on the right. Wire a global `keydown` listener so pressing `N` while focus is *not* in another input/textarea/contenteditable element focuses this input and prevents the keystroke from leaking into the field. Form submission, the existing focus/blur styling, and the input's data path stay unchanged — this is purely affordance polish plus one shortcut.
-  - Implementation notes:
-    - `+` glyph and `N` badge are decorative — keep them inside the input's wrapper, not as separate clickable elements, so click-anywhere-on-the-row still focuses the input.
-    - Mobile: keep `font-size: 16px+` on the input to avoid iOS Safari auto-zoom on focus. The `N` badge can hide below ~480px since touch users won't use it.
-    - The `N` shortcut handler must early-return when `document.activeElement` is an input, textarea, contenteditable, or inside an open modal/popover — otherwise typing "n" anywhere (including in a todo title) will yank focus.
-    - `main.js` is over 25k tokens — locate the new-task input render and form-submit wiring with grep + offset/limit rather than a full read.
+- [ ] **[MEDIUM]** Add floating help button and keyboard shortcuts modal
+  - Description: Add a circular `?` button pinned to the bottom-right corner of the viewport that opens a modal listing all keyboard shortcuts in the app, grouped by category (Navigation, Editing, Global). Bind `?` as a global keyboard shortcut to open the same modal — guard against the existing global keydown patterns (skip when typing in inputs/textareas, when another modal or popover is open). The new `showShortcutsModal` should mirror `showChangelogModal` for close-on-Escape, close-on-backdrop, and corner X. Hide the FAB on `pointer: coarse` viewports (the shortcuts don't apply on touch) and while any modal/popover is already open so it never sits on top of one. Don't persist a "seen" marker — the FAB itself is the discoverable surface.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+    
+- [ ] **[MEDIUM]** Add arrow-key navigation, Delete, and Enter editing for todo rows
+  - Description: Add keyboard navigation between committed todo rows in the active project — Up/Down arrows move focus to the previous/next row (stop at boundaries rather than wrap, for predictability), Enter on the focused row enters edit mode by focusing the title input with the caret at the end, and Delete fires the same `showConfirmModal` flow as the row's `×` button so destructive deletes still go through a confirmation step. Reuse the existing `.todo-active` class for the focus indicator so styling stays consistent with the click-to-edit pattern, and skip the blank placeholder row at index 0 — it's reachable via `n` and direct click, so arrow nav is for committed rows only. Guard against the same conditions as the existing `n` global shortcut (skip when typing in inputs, when any modal or popover is open). Document the new bindings in the shortcuts modal once both features land.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-04-30
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
