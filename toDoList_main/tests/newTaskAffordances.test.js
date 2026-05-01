@@ -27,7 +27,7 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         expect(toDoRow).not.toMatch(/toDoInput\.placeholder\s*=\s*['"]New Item['"]/);
     });
 
-    it('renders the `+` glyph and `N` badge only on blank placeholder rows', () => {
+    it('renders the `+` glyph and `Ctrl+\\` chord badge only on blank placeholder rows', () => {
         // Both elements are gated on `!item.tit` so committed rows don't carry
         // them, and they're stamped with aria-hidden since they're decorative.
         expect(toDoRow).toMatch(/!item\.tit\s*\?\s*document\.createElement\(\s*["']span["']\s*\)/);
@@ -36,7 +36,13 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         expect(toDoRow).toMatch(/addGlyph\.setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
         expect(toDoRow).toMatch(/keyHintBadge\.setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
         expect(toDoRow).toMatch(/addGlyph\.textContent\s*=\s*["']\+["']/);
-        expect(toDoRow).toMatch(/keyHintBadge\.textContent\s*=\s*["']N["']/);
+        // Badge mirrors the always-to-placeholder chord (Ctrl + \) — two
+        // <kbd> chips separated by a `+` span. Pin the literal labels so
+        // the badge can't silently drift away from the actual keybinding in
+        // main.js (escape twice: once for JS string, once for the regex).
+        expect(toDoRow).toMatch(/textContent\s*=\s*["']Ctrl["']/);
+        expect(toDoRow).toMatch(/textContent\s*=\s*['"]\\\\['"]/);
+        expect(toDoRow).toMatch(/textContent\s*=\s*["']\+["']/);
     });
 
     it('strips the affordance cues from the DOM when the blank row commits', () => {
@@ -50,38 +56,53 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         expect(handler).toMatch(/keyHintBadge\b[\s\S]*?\.remove\(\)/);
     });
 
-    it('wires a global `N` keydown listener that focuses the blank input', () => {
+    it('wires a global `\\` keydown toggle that flips between the sidebar and the new-task input', () => {
         // The shortcut lives in main.js (event-wiring layer) and pulls in
-        // focusBlankToDoInput from toDoRow.js to do the focus.
+        // focusBlankToDoInput from toDoRow.js to do the placeholder focus.
         expect(main).toMatch(/import\s*\{[\s\S]*?focusBlankToDoInput\b[\s\S]*?\}\s*from\s*['"]\.\/toDoRow\.js['"]/);
-        const keydownIdx = main.indexOf("document.addEventListener('keydown'");
-        expect(keydownIdx).toBeGreaterThan(-1);
-        const handler = main.slice(keydownIdx, keydownIdx + 1500);
-        // Match both lower- and upper-case so a stuck shift key still works.
-        expect(handler).toMatch(/e\.key\s*!==\s*['"]n['"]\s*&&\s*e\.key\s*!==\s*['"]N['"]/);
-        // Skip when modifiers are involved — Cmd-N / Ctrl-N must keep their
-        // browser default.
+        // Identify the toggle uniquely — only the toggle has the second
+        // direction (focus a `#projChild`); the companion `Ctrl+\` chord
+        // handler in this file shares everything else but only goes one way.
+        const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
+        const handler = blocks.find(function(b) {
+            return /e\.key\s*!==\s*['"]\\\\['"]/.test(b)
+                && /focusBlankToDoInput/.test(b)
+                && /#projChild/.test(b);
+        });
+        expect(handler).toBeTruthy();
+        // Toggle behaviour requires both directions: focus the placeholder
+        // when in the sidebar, and focus a #projChild when in the placeholder.
+        expect(handler).toMatch(/focusBlankToDoInput\(\s*\)/);
+        expect(handler).toMatch(/#projChild/);
+        // preventDefault so the literal `\` doesn't leak into the page.
+        expect(handler).toMatch(/preventDefault\(\s*\)/);
+        // Modals/popovers absorb the shortcut — the user is in a focused
+        // task and shouldn't be teleported out of it.
+        expect(handler).toMatch(/isAnyModalOrPopoverOpen/);
+    });
+
+    it('also wires a `Ctrl+\\` chord handler as the always-to-placeholder fast path', () => {
+        // Companion to the bare-\ toggle: from a committed todo, the toggle
+        // routes to the sidebar (default direction), so users mid-list need
+        // a one-step "back to the new-task line" shortcut. The chord handler
+        // is identifiable by its `ctrlKey || metaKey` requirement and the
+        // absence of the toggle's `#projChild` second branch.
+        const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
+        const handler = blocks.find(function(b) {
+            return /e\.key\s*!==\s*['"]\\\\['"]/.test(b)
+                && /focusBlankToDoInput/.test(b)
+                && !/#projChild/.test(b);
+        });
+        expect(handler).toBeTruthy();
+        // Require Ctrl OR Cmd (Mac), and exclude Alt/Shift to keep the chord
+        // unambiguous and to leave the bare `\` toggle alone.
         expect(handler).toMatch(/ctrlKey/);
         expect(handler).toMatch(/metaKey/);
         expect(handler).toMatch(/altKey/);
-        // Focus call + preventDefault so the letter doesn't leak into the field.
+        expect(handler).toMatch(/shiftKey/);
         expect(handler).toMatch(/focusBlankToDoInput\(\s*\)/);
         expect(handler).toMatch(/preventDefault\(\s*\)/);
-    });
-
-    it('skips the `N` shortcut when the user is already typing or a modal is open', () => {
-        const keydownIdx = main.indexOf("document.addEventListener('keydown'");
-        const handler = main.slice(keydownIdx, keydownIdx + 1500);
-        // Skip when focus is in any text-entry surface so typing "n" mid-edit
-        // can't yank focus out of the row the user is editing.
-        expect(handler).toMatch(/['"]INPUT['"]/);
-        expect(handler).toMatch(/['"]TEXTAREA['"]/);
-        expect(handler).toMatch(/isContentEditable/);
-        // Modals/popovers absorb the shortcut too — the user is in a focused
-        // task and shouldn't be teleported out of it.
-        expect(handler).toMatch(/confirmModalBackdrop/);
-        expect(handler).toMatch(/changelogModalBackdrop/);
-        expect(handler).toMatch(/dueDatePopover/);
+        expect(handler).toMatch(/isAnyModalOrPopoverOpen/);
     });
 
     function extractTopLevelRule(selector) {
@@ -110,10 +131,15 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         expect(rule).toMatch(/pointer-events:\s*none/);
     });
 
-    it('styles the `N` badge as a subtle bordered chip with no pointer events', () => {
-        const rule = extractTopLevelRule('#keyHintBadge');
-        expect(rule).toMatch(/border:[^;]*var\(--border-bright\)/);
-        expect(rule).toMatch(/pointer-events:\s*none/);
+    it('styles the chord badge as two subtle bordered chips with no pointer events', () => {
+        // Top-level `#keyHintBadge` is a flex container holding two <kbd>
+        // chips and a separator; the chip styling lives on the descendant
+        // selector `#keyHintBadge kbd` so each key reads as its own
+        // bordered key-cap (matching the shortcut modal's two-key layout).
+        const containerRule = extractTopLevelRule('#keyHintBadge');
+        expect(containerRule).toMatch(/pointer-events:\s*none/);
+        const kbdRule = extractTopLevelRule('#keyHintBadge kbd');
+        expect(kbdRule).toMatch(/border:[^;]*var\(--border-bright\)/);
     });
 
     it('hides the `N` badge below 480px so touch users do not see a desktop-only hint', () => {

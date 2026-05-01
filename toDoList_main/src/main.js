@@ -12,6 +12,8 @@ import {
     readSidebarWidthPref,
     writeSidebarWidthPref,
     hasSidebarWidthPref,
+    isCompletedSectionOpen,
+    setCompletedSectionOpen,
 } from './prefs.js';
 import {
     applyTheme,
@@ -27,7 +29,7 @@ import {
     createShortcutsHelpFab,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
-import { updateEmptyState } from './emptyState.js';
+import { updateEmptyState, updateCompletedSection } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
@@ -399,22 +401,61 @@ function component() {
         }
     });
 
-    // Global "N" shortcut — jump focus to the blank-placeholder new-task input
-    // from anywhere on the page. The keydown is suppressed (preventDefault)
-    // so the letter doesn't leak into the field as the first keystroke.
-    // Early-return when the user is already typing somewhere (input, textarea,
-    // contenteditable) or when a modal/popover is open — otherwise typing "n"
-    // mid-edit would yank focus.
+    // Global "Ctrl+\" (or Cmd+\ on macOS) shortcut — always jump straight to
+    // the placeholder new-task input. Companion to the bare-`\` toggle: from
+    // a committed todo the toggle would route to the sidebar (default
+    // direction), so users mid-list need a one-step "back to the new-task
+    // line" shortcut. Chord-style means we don't need a typing-surface guard
+    // — it can't fire mid-typing by accident.
     document.addEventListener('keydown', function(e) {
-        if (e.key !== 'n' && e.key !== 'N') return;
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
-        const ae = document.activeElement;
-        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-        if (document.getElementById('confirmModalBackdrop')   ||
-            document.getElementById('changelogModalBackdrop') ||
-            document.getElementById('shortcutsModalBackdrop') ||
-            document.getElementById('dueDatePopover')) return;
+        if (e.key !== '\\') return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
         focusBlankToDoInput();
+        e.preventDefault();
+    });
+
+    // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — toggle the Completed
+    // section. When CLOSING (was open → now closed), apply the `.todo-active`
+    // marker class to the first committed open todo so the user lands in
+    // keyboard-nav mode on the open list (same idiom as arrow-nav: the row
+    // is highlighted, not its input). When OPENING (was closed → now open),
+    // we leave focus alone — the user expanded the section to look at it,
+    // not to be teleported back to the open list.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const wasOpen = isCompletedSectionOpen();
+        setCompletedSectionOpen(!wasOpen);
+        const mainListDiv = document.getElementById('mainList');
+        if (mainListDiv) updateCompletedSection(mainListDiv);
+        if (wasOpen && mainListDiv) {
+            // Find the first committed open todo row (skip the placeholder,
+            // which has an empty value, and any completed rows).
+            const openRows = mainListDiv.querySelectorAll('#toDoChild:not(.completed)');
+            let target = null;
+            for (let i = 0; i < openRows.length; i++) {
+                const input = openRows[i].querySelector('#toDoInput');
+                if (input && input.value && input.value.trim().length > 0) {
+                    target = openRows[i];
+                    break;
+                }
+            }
+            if (target) {
+                // Single-active-row invariant: clear stale `.todo-active`
+                // markers on any other rows before tagging the new target.
+                mainListDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                    if (el !== target) el.classList.remove('todo-active');
+                });
+                target.classList.add('todo-active');
+                // Focus the row element itself (tabindex="-1"), matching the
+                // arrow-nav pattern — the user is in nav mode, not edit mode.
+                target.focus();
+            }
+        }
         e.preventDefault();
     });
 
@@ -431,6 +472,107 @@ function component() {
         if (isAnyModalOrPopoverOpen()) return;
         showShortcutsModal();
         e.preventDefault();
+    });
+
+    // Global "Ctrl+Delete" (or Cmd+Delete) shortcut — toggle the description
+    // panel of the currently active todo row. Resolves the active row from
+    // focus (preferred) and falls back to the `.todo-active` marker the
+    // arrow-nav handler maintains. Skips the placeholder (its descToggle is
+    // hidden via display:none). Chord-style means we don't need the typing-
+    // surface guard — toggling a description while editing the title is a
+    // feature, not a hazard. The bare `Delete` (no Ctrl) still routes to the
+    // arrow-nav handler's confirm-delete path; that handler bails when any
+    // modifier is held, so the two never collide.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Delete') return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const ae = document.activeElement;
+        let row = (ae && ae.closest) ? ae.closest('#toDoChild') : null;
+        if (!row) {
+            const mainListDiv = document.getElementById('mainList');
+            if (mainListDiv) row = mainListDiv.querySelector('#toDoChild.todo-active');
+        }
+        if (!row) return;
+        const descToggle = row.querySelector('#descToggle');
+        if (!descToggle) return;
+        if (descToggle.style.display === 'none') return; // placeholder row
+        descToggle.click();
+        e.preventDefault();
+    });
+
+    // Global "\" toggle — flip focus between the projects sidebar and the
+    // blank-placeholder new-task input. Three branches:
+    //   1. Focus in the sidebar (`#sideMa` or any descendant) → jump to the
+    //      placeholder input.
+    //   2. Focus in the placeholder input itself (empty `#toDoInput`) → jump
+    //      back to the sidebar (selected project, or first project as
+    //      fallback).
+    //   3. Focus anywhere else → if in any other typing surface (committed
+    //      todo title, description input, etc.) bail so `\` types normally;
+    //      otherwise default to "go to sidebar" so the shortcut still works
+    //      when nothing meaningful has focus yet.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== '\\') return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const ae = document.activeElement;
+        const sideMa = document.getElementById('sideMa');
+        const inSidebar = !!(ae && sideMa && sideMa.contains(ae));
+        const inPlaceholder = !!(ae && ae.id === 'toDoInput' && (ae.value || '') === '');
+
+        if (inSidebar) {
+            focusBlankToDoInput();
+            e.preventDefault();
+            return;
+        }
+        if (inPlaceholder) {
+            const target = document.querySelector('#projChild.selectedProject') ||
+                           document.querySelector('#projChild');
+            if (!target) return;
+            target.focus();
+            e.preventDefault();
+            return;
+        }
+        // Other typing surfaces — let the keystroke through.
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        const target = document.querySelector('#projChild.selectedProject') ||
+                       document.querySelector('#projChild');
+        if (!target) return;
+        target.focus();
+        e.preventDefault();
+    });
+
+    // Delegated keyboard nav on the projects sidebar — only fires while a
+    // project row itself has focus (i.e. the user arrived via `\`). When the
+    // focus is inside the row's `#projInput` (rename mode), we skip so the
+    // existing input keydown logic owns Enter/Arrow behavior.
+    sideMain.addEventListener('keydown', function(e) {
+        const row = e.target.closest('#projChild');
+        if (!row) return;
+        if (e.target !== row) return; // focus is in #projInput, leave alone
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Not yet selected: synthesize a click so the keyboard path goes
+            // through the same selection + items render + focus path the
+            // mouse does. Already selected: just jump focus to the placeholder
+            // — clicking again would unlock the project name for editing,
+            // which is the wrong outcome for "Enter to enter the project".
+            if (!row.classList.contains('selectedProject')) {
+                row.click();
+            } else {
+                focusBlankToDoInputIfDesktop();
+            }
+            return;
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
+            const idx = rows.indexOf(row);
+            const next = e.key === 'ArrowDown' ? rows[idx + 1] : rows[idx - 1];
+            if (next) next.focus();
+        }
     });
 
     // Arrow-key navigation, Enter to enter edit mode, Delete to confirm-delete
@@ -645,6 +787,9 @@ function component() {
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
+        // tabindex makes the row reachable by the global `\` shortcut and by
+        // arrow-key navigation in the sideMa keydown handler.
+        projChild.setAttribute('tabindex', '0');
 
         // First Project Input
         titleInput.type = "text";
@@ -1121,6 +1266,9 @@ function restoreFromStorage() {
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
+        // tabindex makes the row reachable by the global `\` shortcut and by
+        // arrow-key navigation in the sideMa keydown handler.
+        projChild.setAttribute('tabindex', '0');
         applyProjectAccent(projChild, listLogic.getProjectColor(projectName));
 
         titleInput.type        = "text";

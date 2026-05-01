@@ -274,7 +274,20 @@ export function buildToDoRow(item, toDoName) {
     if (keyHintBadge) {
         keyHintBadge.id = "keyHintBadge";
         keyHintBadge.setAttribute('aria-hidden', 'true');
-        keyHintBadge.textContent = "N";
+        // Mirror the shortcut modal's two-key layout: each key in its own
+        // <kbd> chip with a `+` separator between, so the badge reads as a
+        // real keyboard chord (Ctrl + \) — the always-to-placeholder fast
+        // path that works from anywhere, including committed todo rows.
+        const ctrlKbd = document.createElement('kbd');
+        ctrlKbd.textContent = 'Ctrl';
+        const keySep = document.createElement('span');
+        keySep.className = 'keyHintSep';
+        keySep.textContent = '+';
+        const backslashKbd = document.createElement('kbd');
+        backslashKbd.textContent = '\\';
+        keyHintBadge.appendChild(ctrlKbd);
+        keyHintBadge.appendChild(keySep);
+        keyHintBadge.appendChild(backslashKbd);
     }
 
     closeButtonToDo.id = "closeButtonToDo";
