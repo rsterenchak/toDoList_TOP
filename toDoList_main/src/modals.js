@@ -286,13 +286,16 @@ const SHORTCUT_GROUPS = [
     {
         category: 'Navigation',
         items: [
-            { keys: ['N'], description: 'Jump to the new-task input' },
+            { keys: ['N'],      description: 'Jump to the new-task input' },
+            { keys: ['↑'],      description: 'Move focus to the previous todo row' },
+            { keys: ['↓'],      description: 'Move focus to the next todo row' },
         ],
     },
     {
         category: 'Editing',
         items: [
-            { keys: ['Enter'], description: 'Commit the current title or description' },
+            { keys: ['Enter'],  description: 'Commit the current title or description, or edit the focused row' },
+            { keys: ['Delete'], description: 'Delete the focused todo row (with confirmation)' },
         ],
     },
     {

@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-01',
         added: [
             'Floating help button in the bottom-right corner — and the ? key — open a list of every keyboard shortcut, grouped by category.',
+            'Up and Down arrows navigate between todo rows, Enter opens the focused row for editing, and Delete removes it after confirmation.',
         ],
     },
     {
@@ -21,13 +22,6 @@ export const changelog = [
         ],
         changed: [
             'Export and import nav icons restyled as a floppy disk and folder for a clearer save/open metaphor.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-28',
-        added: [
-            'Recurring tasks repeat on daily, weekdays, weekly, monthly, yearly, or custom schedules; checking one advances its due date to the next occurrence instead of marking it done.',
         ],
     },
 ];

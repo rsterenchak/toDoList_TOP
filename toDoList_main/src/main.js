@@ -433,6 +433,99 @@ function component() {
         e.preventDefault();
     });
 
+    // Arrow-key navigation, Enter to enter edit mode, Delete to confirm-delete
+    // for committed todo rows in the active project. Up/Down move focus to the
+    // previous/next committed row (no wrap — boundaries clamp). Enter focuses
+    // the row's title input with the caret at the end. Delete fires the same
+    // showConfirmModal flow as the row's `×` button.
+    //
+    // The blank placeholder row at index 0 is intentionally skipped — it's
+    // already reachable via "n" and a direct click, and arrow nav is for
+    // editing existing items, not creating new ones.
+    //
+    // Guards mirror the "n" / "?" shortcuts: any modal/popover open or the
+    // user typing in a non-todo input absorbs the keystroke. Arrow keys are
+    // additionally allowed when focus is in a #toDoInput inside #mainList so
+    // a user mid-edit can still navigate rows; Enter and Delete defer to the
+    // input's own keydown handlers in that case so character editing wins.
+    document.addEventListener('keydown', function(e) {
+        const isArrowUp   = e.key === 'ArrowUp';
+        const isArrowDown = e.key === 'ArrowDown';
+        const isArrow     = isArrowUp || isArrowDown;
+        const isEnter     = e.key === 'Enter';
+        const isDelete    = e.key === 'Delete';
+        if (!isArrow && !isEnter && !isDelete) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+
+        const mainList = document.getElementById('mainList');
+        if (!mainList) return;
+
+        const ae = document.activeElement;
+        const isToDoInput = !!(ae && ae.id === 'toDoInput' && mainList.contains(ae));
+        const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+
+        if (isArrow) {
+            if (isInputLike && !isToDoInput) return;
+        } else {
+            if (isInputLike) return;
+        }
+
+        // Only committed rows participate — the blank placeholder at index 0
+        // has no title yet and isn't a navigation target.
+        const allRows = Array.from(mainList.querySelectorAll('#toDoChild'));
+        const committed = allRows.filter(function(row) {
+            const input = row.querySelector('#toDoInput');
+            return !!(input && input.value && input.value.trim().length > 0);
+        });
+        if (committed.length === 0) return;
+
+        let currentRow = null;
+        if (ae && ae.closest) currentRow = ae.closest('#toDoChild');
+        if (!currentRow) currentRow = mainList.querySelector('#toDoChild.todo-active');
+        if (currentRow && committed.indexOf(currentRow) === -1) currentRow = null;
+
+        if (isArrow) {
+            const idx = currentRow ? committed.indexOf(currentRow) : -1;
+            let nextIdx;
+            if (isArrowDown) {
+                nextIdx = idx === -1 ? 0 : Math.min(idx + 1, committed.length - 1);
+            } else {
+                nextIdx = idx === -1 ? committed.length - 1 : Math.max(idx - 1, 0);
+            }
+            const target = committed[nextIdx];
+            if (!target) return;
+            mainList.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                if (el !== target) el.classList.remove('todo-active');
+            });
+            target.classList.add('todo-active');
+            // Focus the row element itself (tabindex="-1") rather than its
+            // input — the user is in nav mode, not edit mode. Enter switches
+            // to edit mode by handing focus to the input.
+            target.focus();
+            e.preventDefault();
+            return;
+        }
+
+        if (!currentRow) return;
+
+        if (isEnter) {
+            const input = currentRow.querySelector('#toDoInput');
+            if (!input) return;
+            input.focus();
+            const end = input.value.length;
+            input.setSelectionRange(end, end);
+            e.preventDefault();
+            return;
+        }
+
+        if (isDelete) {
+            const closeBtn = currentRow.querySelector('#closeButtonToDo');
+            if (closeBtn) closeBtn.click();
+            e.preventDefault();
+        }
+    });
+
     // ── sidebar resize logic ──
     // Allows the user to drag the vertical divider between the Projects sidebar
     // and the Todo Items panel. Width is persisted via localStorage (see
