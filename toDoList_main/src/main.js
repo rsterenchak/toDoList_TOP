@@ -571,7 +571,23 @@ function component() {
             const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
             const idx = rows.indexOf(row);
             const next = e.key === 'ArrowDown' ? rows[idx + 1] : rows[idx - 1];
-            if (next) next.focus();
+            if (!next) return;
+            next.focus();
+            // Auto-select the project so its todos populate the main pane as
+            // the user arrow-navigates. Synthesize a click — the click handler
+            // owns the full selection + render dance, including
+            // applyProjectAccent and addToDos_restore. Skip when already
+            // selected (a click on a selected row unlocks its name for
+            // editing, the wrong outcome for arrow nav).
+            if (!next.classList.contains('selectedProject')) {
+                next.click();
+                // The click handler queues focusBlankToDoInputIfDesktop()
+                // via setTimeout(0) which would steal focus to the
+                // placeholder. Enqueue our own setTimeout AFTER it so focus
+                // returns to the project row, letting the user keep
+                // arrow-navigating without interruption.
+                setTimeout(function() { next.focus(); }, 0);
+            }
         }
     });
 
