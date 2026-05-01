@@ -74,12 +74,15 @@ describe('floating help button + keyboard shortcuts modal', () => {
         expect(qBlock).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('makes the existing `n` shortcut also defer to the new shortcuts modal backdrop', () => {
-        // The new modal should join the list of suppression triggers for the
-        // existing `n` shortcut so opening it via `?` doesn't leave `n` armed.
-        const nBlock = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?focusBlankToDoInput[\s\S]*?\}\);/);
-        expect(nBlock).toBeTruthy();
-        expect(nBlock[0]).toMatch(/shortcutsModalBackdrop/);
+    it('makes the focusBlankToDoInput shortcut defer to the shortcuts modal via isAnyModalOrPopoverOpen', () => {
+        // The jump-to-new-task shortcut (now `Ctrl+/`, formerly `N`) should
+        // suppress while a modal/popover is open — including the shortcuts
+        // modal itself. We route the suppression through
+        // `isAnyModalOrPopoverOpen()` (which covers `shortcutsModalBackdrop`,
+        // see the dedicated test for that helper) instead of inlining the IDs.
+        const block = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?focusBlankToDoInput[\s\S]*?\}\);/);
+        expect(block).toBeTruthy();
+        expect(block[0]).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
     });
 
     it('isAnyModalOrPopoverOpen covers every existing modal/popover/context menu', () => {
@@ -110,8 +113,13 @@ describe('floating help button + keyboard shortcuts modal', () => {
         expect(modals).toMatch(/category:\s*['"]Navigation['"]/);
         expect(modals).toMatch(/category:\s*['"]Editing['"]/);
         expect(modals).toMatch(/category:\s*['"]Global['"]/);
-        // The current set of shortcuts (N, Enter, ?, Esc) lives in the catalogue.
-        expect(modals).toMatch(/keys:\s*\[\s*['"]N['"]\s*\]/);
+        // The current set of shortcuts lives in the catalogue. Bare `\` is
+        // the sidebar↔placeholder toggle; `Ctrl+\` is the always-to-placeholder
+        // fast path; `Ctrl+Enter` collapses Completed; the in-row Enter and
+        // the global ? / Esc round it out.
+        expect(modals).toMatch(/keys:\s*\[\s*['"]\\\\['"]\s*\]/);
+        expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]\\\\['"]\s*\]/);
+        expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]Enter['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Enter['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]\?['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Esc['"]\s*\]/);

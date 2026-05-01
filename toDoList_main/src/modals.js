@@ -286,13 +286,19 @@ const SHORTCUT_GROUPS = [
     {
         category: 'Navigation',
         items: [
-            { keys: ['N'], description: 'Jump to the new-task input' },
+            { keys: ['\\'],            description: 'Toggle focus between the projects sidebar and the new-task input' },
+            { keys: ['Ctrl', '\\'],    description: 'Jump straight to the new-task input from anywhere (skips the sidebar leg of the toggle)' },
+            { keys: ['Ctrl', 'Enter'], description: 'Toggle the Completed section (closing highlights the first open todo)' },
+            { keys: ['↑'],             description: 'Move focus to the previous todo row (or project row when in sidebar)' },
+            { keys: ['↓'],             description: 'Move focus to the next todo row (or project row when in sidebar)' },
         ],
     },
     {
         category: 'Editing',
         items: [
-            { keys: ['Enter'], description: 'Commit the current title or description' },
+            { keys: ['Enter'],  description: 'Commit the current title or description, or edit the focused row' },
+            { keys: ['Delete'], description: 'Delete the focused todo row (with confirmation)' },
+            { keys: ['Ctrl', 'Delete'], description: 'Expand or collapse the description panel of the focused todo' },
         ],
     },
     {

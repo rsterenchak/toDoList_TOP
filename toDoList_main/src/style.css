@@ -425,6 +425,15 @@ body {
   overflow: hidden;
 }
 #projChild:hover { background: var(--bg-hover); }
+/* Keyboard focus indicator — used when the user lands on a project via the
+   `\` shortcut or arrow-key navigation, so the focused row is visible
+   without relying on the selection accent (which only marks the active
+   project, not where the keyboard caret is). */
+#projChild:focus { outline: none; }
+#projChild:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 .unselectedProject {
   border-left: 4px solid transparent;
@@ -1535,13 +1544,7 @@ body.row-dragging * { cursor: grabbing !important; }
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border: 0.5px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  gap: 3px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   font-weight: 600;
@@ -1554,6 +1557,25 @@ body.row-dragging * { cursor: grabbing !important; }
   margin-left: auto;
   pointer-events: none;
   user-select: none;
+}
+/* Each key in the chord renders as an individual chip — same border /
+   background / radius as a single-key badge, applied via descendant
+   selector so the container above can stay as a thin flex row. */
+#keyHintBadge kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font: inherit;
+  color: inherit;
+}
+#keyHintBadge .keyHintSep {
+  color: var(--text-muted);
 }
 
 /* DUE DATE PILL — bordered trigger that opens the calendar popover. The
