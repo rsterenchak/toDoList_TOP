@@ -774,6 +774,219 @@ body {
   }
 }
 
+/* SHORTCUTS MODAL — opened by the floating `?` help button or the `?` key.
+   Mirrors the changelog modal's chrome (header / scrollable body / footer
+   action) so the two share visual vocabulary. */
+#shortcutsModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#shortcutsModal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+
+#shortcutsModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+#shortcutsModalTitle {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+#shortcutsModalClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+#shortcutsModalClose:hover { color: var(--text-primary); }
+#shortcutsModalClose:focus { outline: none; color: var(--accent-text); }
+
+#shortcutsModalBody {
+  padding: 8px 16px 4px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.shortcutsGroup {
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+.shortcutsGroup:last-child { border-bottom: none; }
+
+.shortcutsGroupLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.shortcutsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shortcutsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.shortcutsKeys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 84px;
+}
+
+.shortcutsKey {
+  display: inline-block;
+  min-width: 24px;
+  padding: 2px 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+}
+
+.shortcutsKeySep {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.shortcutsDesc {
+  flex: 1 1 auto;
+  color: var(--text-primary);
+}
+
+#shortcutsModalActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+#shortcutsModalCloseBtn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+#shortcutsModalCloseBtn:hover { background: var(--bg-hover); }
+#shortcutsModalCloseBtn:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-dim); }
+
+@media (max-width: 480px) {
+  #shortcutsModal {
+    font-size: 14px;
+    max-height: 86vh;
+  }
+  #shortcutsModalCloseBtn {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
+/* SHORTCUTS HELP FAB — circular `?` button pinned to the bottom-right of
+   the viewport. Hidden on coarse-pointer (touch) devices where the
+   shortcuts don't apply, and hidden whenever any modal, popover, or context
+   menu is in the DOM so it never overlaps one. */
+#shortcutsHelpFab {
+  position: fixed;
+  right: 18px;
+  bottom: 56px;
+  z-index: 90;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-bright);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+#shortcutsHelpFab:hover {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+  transform: translateY(-1px);
+}
+#shortcutsHelpFab:focus {
+  outline: none;
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-dim), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+@media (pointer: coarse) {
+  #shortcutsHelpFab { display: none; }
+}
+
+body:has(#confirmModalBackdrop) #shortcutsHelpFab,
+body:has(#changelogModalBackdrop) #shortcutsHelpFab,
+body:has(#shortcutsModalBackdrop) #shortcutsHelpFab,
+body:has(#dueDatePopover) #shortcutsHelpFab,
+body:has(#projContextMenu) #shortcutsHelpFab {
+  display: none;
+}
+
 /* MAIN BAR */
 #mainBar {
   display: grid;

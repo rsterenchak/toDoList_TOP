@@ -20,9 +20,12 @@ import {
 } from './theme.js';
 import {
     showChangelogModal,
+    showShortcutsModal,
     updateChangelogDot,
     notifyUpdateAvailable,
     applyPendingUpdate,
+    createShortcutsHelpFab,
+    isAnyModalOrPopoverOpen,
 } from './modals.js';
 import { updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
@@ -186,6 +189,13 @@ function component() {
     base.appendChild(main);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
+
+    // Floating help FAB — pinned to the bottom-right of the viewport. Opens
+    // the keyboard shortcuts modal. CSS hides it on coarse-pointer devices
+    // (touch viewports) and while another modal/popover is open via the
+    // body[data-modal-open="true"] attribute toggled in modals.js.
+    const shortcutsHelpFab = createShortcutsHelpFab();
+    base.appendChild(shortcutsHelpFab);
 
     // Footer — version label on the left, open/done counts for the selected
     // project on the right. Counts are recomputed by a MutationObserver that
@@ -402,8 +412,24 @@ function component() {
         if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         if (document.getElementById('confirmModalBackdrop')   ||
             document.getElementById('changelogModalBackdrop') ||
+            document.getElementById('shortcutsModalBackdrop') ||
             document.getElementById('dueDatePopover')) return;
         focusBlankToDoInput();
+        e.preventDefault();
+    });
+
+    // Global "?" shortcut — open the keyboard shortcuts modal. Same guards as
+    // the "n" shortcut: skip while typing in a text-entry surface or while
+    // another modal/popover already has the user's attention. Modifier keys
+    // are ignored so Shift+/ (which produces "?") still triggers, while the
+    // browser's own Cmd-? / Ctrl-? bindings remain untouched.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== '?') return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        showShortcutsModal();
         e.preventDefault();
     });
 

@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-01',
+        added: [
+            'Floating help button in the bottom-right corner — and the ? key — open a list of every keyboard shortcut, grouped by category.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-04-30',
         added: [
             'Press N from anywhere to jump to the new-task input, which now shows a leading plus glyph and inviting placeholder text.',
@@ -20,7 +27,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-04-28',
         added: [
-            'Manual JSON export and import of every project and todo, with drag-and-drop import on desktop and a footer reminder when no backup has happened in over a week.',
             'Recurring tasks repeat on daily, weekdays, weekly, monthly, yearly, or custom schedules; checking one advances its due date to the next occurrence instead of marking it done.',
         ],
     },
