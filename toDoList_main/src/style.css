@@ -327,7 +327,7 @@ body {
 #sideTit {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 20px 14px 14px;
   border-bottom: none;
   background: var(--bg-elevated);
@@ -1010,7 +1010,7 @@ body:has(#settingsMenu) #shortcutsHelpFab {
 #mainTitle {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 0 14px;
   border-bottom: 0.5px solid var(--border-dim);
   background: var(--bg-elevated);
@@ -2275,7 +2275,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Collapse bulk description buttons to chevron-only so they don't overlap
-     the centered "Todo Items" header on narrow phones. */
+     the "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
 

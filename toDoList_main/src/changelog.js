@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-03',
         fixed: [
             'Ghost and theme toggles moved into a single settings dropdown on the top bar, freeing space while keeping save and import as direct one-click icons.',
+            'Projects and Todo Items column headers are now left-aligned so they line up with the project rows and todo rows beneath them.',
         ],
     },
     {
@@ -23,9 +24,6 @@ export const changelog = [
         date: '2026-04-30',
         fixed: [
             'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
-        ],
-        changed: [
-            'Export and import nav icons restyled as a floppy disk and folder for a clearer save/open metaphor.',
         ],
     },
 ];

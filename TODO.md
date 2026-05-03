@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-03
      
-- [ ] **[LOW]** Left-align PROJECTS and TODO ITEMS column headers
+- [x] **[LOW]** Left-align PROJECTS and TODO ITEMS column headers
   - Description: Change the PROJECTS and TODO ITEMS column headers from centered to left-aligned so they line up with the content below them (project names in the sidebar, todo rows in the main column). The current centered alignment creates a visual mismatch where the headers float over left-anchored content. Keep the existing purple color, uppercase styling, and letter-spacing — only `text-align` should change. The EXPAND ALL control on the right side of the TODO ITEMS header row stays anchored to the right.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-03
 
 ## Features
 
