@@ -2,15 +2,10 @@
 
 ## Bugs
      
-- [x] **[MEDIUM]** Move ghost and theme toggles into a settings dropdown menu
-  - Description: Replace the top-bar ghost-visibility pill switch and the standalone theme button with a single settings trigger (gear or kebab icon) that opens a dropdown housing two items: "Show ghost" (with an ON/OFF indicator reflecting current state) and "Theme" (toggles the active theme). Save and import buttons stay as direct icon buttons on the top bar so the most-used data actions remain one-click. The dropdown should close on selection, outside click, or Escape. The existing pill-switch markup can be removed once nothing else references it.
+- [ ] **[MEDIUM]** Pair add-project + button with PROJECTS column header
+  - Description: Move the add-project + button from its dedicated row beneath the PROJECTS header into the header row itself, anchored to the right edge of the sidebar column — mirroring the TODO ITEMS / EXPAND ALL pattern on the right side. This gives both column headers the same "label on left, action on right" structure and reclaims a row of vertical space at the top of the sidebar so projects start higher. Keep the existing button styling, click handler, and add-project flow intact — only the placement changes.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
-     
-- [x] **[LOW]** Left-align PROJECTS and TODO ITEMS column headers
-  - Description: Change the PROJECTS and TODO ITEMS column headers from centered to left-aligned so they line up with the content below them (project names in the sidebar, todo rows in the main column). The current centered alignment creates a visual mismatch where the headers float over left-anchored content. Keep the existing purple color, uppercase styling, and letter-spacing — only `text-align` should change. The EXPAND ALL control on the right side of the TODO ITEMS header row stays anchored to the right.
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
