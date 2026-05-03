@@ -2,10 +2,15 @@
 
 ## Bugs
      
-- [x] **[MEDIUM]** Spawn completed instance when checking off a recurring todo
-  - Description: When a recurring task is checked off, `advanceRecurringTodo` rolls the due date forward and unchecks the box, leaving no historical trace in the Completed section — there's no "I did this last Tuesday and the Tuesday before" trail to glance at for consistency. Push a frozen clone of the item (with `due` set to the just-completed date and `recurrence: null` so the clone doesn't itself chain) into the project's items array as a completed entry alongside the still-recurring original, then run `sortCompletedToBottom` and re-render via `reorderToDoDOM` from the checkbox handler in `toDoRow.js` so the new instance appears at the top of the Completed section instead of waiting for a project-switch refresh. Cover the new behavior in `tests/listLogic.test.js`: a single advance creates one completed clone with no recurrence, and repeated advances stack instances without mutating the original's recurrence config or the next-due math.
-  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: 2026-04-30
+- [ ] **[MEDIUM]** Move ghost and theme toggles into a settings dropdown menu
+  - Description: Replace the top-bar ghost-visibility pill switch and the standalone theme button with a single settings trigger (gear or kebab icon) that opens a dropdown housing two items: "Show ghost" (with an ON/OFF indicator reflecting current state) and "Theme" (toggles the active theme). Save and import buttons stay as direct icon buttons on the top bar so the most-used data actions remain one-click. The dropdown should close on selection, outside click, or Escape. The existing pill-switch markup can be removed once nothing else references it.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[LOW]** Left-align PROJECTS and TODO ITEMS column headers
+  - Description: Change the PROJECTS and TODO ITEMS column headers from centered to left-aligned so they line up with the content below them (project names in the sidebar, todo rows in the main column). The current centered alignment creates a visual mismatch where the headers float over left-anchored content. Keep the existing purple color, uppercase styling, and letter-spacing — only `text-align` should change. The EXPAND ALL control on the right side of the TODO ITEMS header row stays anchored to the right.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
