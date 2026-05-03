@@ -101,8 +101,6 @@ function component() {
     const mainTitle = document.createElement('div');
     const mainList = document.createElement('div');
 
-    const mainHead = document.createElement('div');
-
     const sidebarToggle  = document.createElement('button');
     const sidebarOverlay = document.createElement('div');
     const sidebarResizer = document.createElement('div');
@@ -125,8 +123,6 @@ function component() {
 
     mainTitle.id = 'mainTitle';
     mainList.id = 'mainList';
-
-    mainHead.id = 'mainHead';
 
     sidebarToggle.id        = 'sidebarToggle';
     sidebarToggle.innerHTML = '☰';
@@ -383,9 +379,6 @@ function component() {
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
-    mainTitle.appendChild(mainHead);
-
-    mainHead.textContent = 'toDo Items';
     sideHead.textContent = 'Projects';
 
     // Bulk description control — single toggle in the Todo Items header,

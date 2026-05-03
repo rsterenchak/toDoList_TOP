@@ -359,7 +359,7 @@ body {
 }
 
 /* ADD PROJECT — anchored to the right edge of the PROJECTS header row,
-   mirroring the TODO ITEMS / EXPAND ALL pattern in #mainTitle. */
+   mirroring the EXPAND ALL anchor pattern in #mainTitle. */
 #addProj {
   position: absolute;
   right: 8px;
@@ -1020,14 +1020,6 @@ body:has(#settingsMenu) #shortcutsHelpFab {
   background: var(--bg-elevated);
   flex-shrink: 0;
   position: relative;
-}
-
-#mainHead {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--accent-text);
-  text-transform: uppercase;
 }
 
 /* BULK DESCRIPTION CONTROLS — segmented toolbar group: Compact Titles
