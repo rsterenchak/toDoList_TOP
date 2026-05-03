@@ -9,6 +9,7 @@ export const changelog = [
         fixed: [
             'Ghost and theme toggles moved into a single settings dropdown on the top bar, freeing space while keeping save and import as direct one-click icons.',
             'Projects and Todo Items column headers are now left-aligned so they line up with the project rows and todo rows beneath them.',
+            'Add-project + button moved into the PROJECTS column header so the projects list starts higher in the sidebar.',
         ],
     },
     {
@@ -17,13 +18,6 @@ export const changelog = [
         added: [
             'Floating help button in the bottom-right corner — and the ? key — open a list of every keyboard shortcut, grouped by category.',
             'Up and Down arrows navigate between todo rows, Enter opens the focused row for editing, and Delete removes it after confirmation.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-04-30',
-        fixed: [
-            'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
         ],
     },
 ];

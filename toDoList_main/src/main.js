@@ -377,8 +377,7 @@ function component() {
     main1.appendChild(sideMain);
 
     sideTitle.appendChild(sideHead);
-
-    sideMain.appendChild(addProj);
+    sideTitle.appendChild(addProj);
     addProj.appendChild(projButton);
 
     main2.appendChild(mainTitle);
