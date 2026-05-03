@@ -2,10 +2,10 @@
 
 ## Bugs
      
-- [x] **[MEDIUM]** Pair add-project + button with PROJECTS column header
-  - Description: Move the add-project + button from its dedicated row beneath the PROJECTS header into the header row itself, anchored to the right edge of the sidebar column — mirroring the TODO ITEMS / EXPAND ALL pattern on the right side. This gives both column headers the same "label on left, action on right" structure and reclaims a row of vertical space at the top of the sidebar so projects start higher. Keep the existing button styling, click handler, and add-project flow intact — only the placement changes.
+- [ ] **[LOW]** Remove TODO ITEMS column header label
+  - Description: Delete the "TODO ITEMS" header text from the main column. The header band itself stays so EXPAND ALL keeps its current right-aligned position and stays horizontally aligned with the PROJECTS row in the sidebar — only the label is removed. The "Add a task — press Enter" input directly below already communicates what the column is, making the explicit header redundant. The asymmetry with the sidebar's PROJECTS label is intentional: sidebar labels orient navigation; the main workspace column doesn't need one.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
