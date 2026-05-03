@@ -14,6 +14,8 @@ import {
     hasSidebarWidthPref,
     isCompletedSectionOpen,
     setCompletedSectionOpen,
+    isSidebarRailOn,
+    setSidebarRailOn,
 } from './prefs.js';
 import {
     applyTheme,
@@ -74,6 +76,32 @@ function applyCompactTitles(on) {
 applyCompactTitles(isCompactTitlesOn());
 
 
+// Sidebar rail vs. full mode. Rail (default) is a 54px column of first-letter
+// chips; full expands to the named project list. Driven by `data-sidebar-rail`
+// on <html> so CSS can switch surfaces before the first paint, and toggled at
+// runtime by the hamburger inside the rail (see component()).
+function applySidebarRail(on) {
+    document.documentElement.setAttribute('data-sidebar-rail', on ? 'on' : 'off');
+}
+
+applySidebarRail(isSidebarRailOn());
+
+
+// Sync the rail-mode initial chip and hover tooltip on a project row from
+// its current name. The chip uses the first non-whitespace character
+// uppercased; the title attribute holds the full name and drives the
+// custom 300ms-delay tooltip via CSS. Empty / whitespace names fall back
+// to "?" so the chip never collapses to zero width.
+function applyProjectInitial(projChild, name) {
+    if (!projChild) return;
+    const trimmed = (name || '').trim();
+    const initial = trimmed.length > 0 ? trimmed.charAt(0).toUpperCase() : '?';
+    projChild.setAttribute('data-initial', initial);
+    projChild.setAttribute('data-project-name', trimmed);
+    projChild.setAttribute('title', trimmed);
+}
+
+
 function component() {
 
 
@@ -125,6 +153,7 @@ function component() {
     mainList.id = 'mainList';
 
     sidebarToggle.id        = 'sidebarToggle';
+    sidebarToggle.type      = 'button';
     sidebarToggle.innerHTML = '☰';
     sidebarToggle.setAttribute('aria-label', 'Toggle projects sidebar');
 
@@ -135,8 +164,10 @@ function component() {
     sidebarResizer.setAttribute('aria-orientation', 'vertical');
     sidebarResizer.setAttribute('aria-label', 'Resize projects sidebar');
 
-    // sidebarToggle is first child of nav so nothing can overlap it
-    nav.appendChild(sidebarToggle);
+    // sidebarToggle lives at the top of the rail, not in the nav. The rail
+    // owns its own toggle so the hamburger is visually anchored to the
+    // surface it controls. On mobile viewports the rail is replaced with the
+    // existing overlay drawer, so the toggle still slides the full sidebar.
 
     // ── export / import (download + upload icon pair) ──
     // Save and import stay as direct icon buttons — they're the most-used
@@ -369,17 +400,46 @@ function component() {
     main.appendChild(sidebarResizer);
     main.appendChild(main2);
 
+    // Sidebar layout (flex column):
+    //   sideTitle  — top: hamburger toggle (always) + "PROJECTS" label
+    //                (visible only in full mode; rail mode hides it via CSS)
+    //   sideMain   — middle: scrollable project rows
+    //   addProj    — bottom: "+" add-project button. In rail mode the button
+    //                renders with a dashed border; in full mode it stays a
+    //                solid surface chip.
     main1.appendChild(sideTitle);
     main1.appendChild(sideMain);
+    main1.appendChild(addProj);
 
+    sideTitle.appendChild(sidebarToggle);
     sideTitle.appendChild(sideHead);
-    sideTitle.appendChild(addProj);
     addProj.appendChild(projButton);
 
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
     sideHead.textContent = 'Projects';
+
+    // ── breadcrumb (top-left of main column) ──
+    // Rail mode shows only single-letter chips, so the active project's full
+    // name appears textually only here. "<Project Name> · <N> open" stays
+    // current via the same MutationObserver path that drives the footer
+    // counts. Hidden in full sidebar mode where the project name is already
+    // visible in the rail expansion.
+    const mainCrumb = document.createElement('div');
+    mainCrumb.id = 'mainCrumb';
+    const mainCrumbName = document.createElement('span');
+    mainCrumbName.id = 'mainCrumbName';
+    const mainCrumbSep = document.createElement('span');
+    mainCrumbSep.id = 'mainCrumbSep';
+    mainCrumbSep.textContent = '·';
+    mainCrumbSep.setAttribute('aria-hidden', 'true');
+    const mainCrumbCount = document.createElement('span');
+    mainCrumbCount.id = 'mainCrumbCount';
+    mainCrumb.appendChild(mainCrumbName);
+    mainCrumb.appendChild(mainCrumbSep);
+    mainCrumb.appendChild(mainCrumbCount);
+    mainTitle.appendChild(mainCrumb);
 
     // Bulk description control — single toggle in the Todo Items header,
     // right-aligned. Clicks are dispatched to each row's own #descToggle so
@@ -476,8 +536,30 @@ function component() {
             : !main.classList.contains('sidebar-collapsed');
     }
 
+    // Desktop: hamburger toggles between the 54px icon rail (default) and
+    // the full named-project sidebar. Mobile: the rail isn't shown — the
+    // hamburger continues to slide the existing overlay drawer in/out.
     sidebarToggle.addEventListener('click', function() {
-        sidebarIsOpen() ? closeSidebar() : openSidebar();
+        if (isMobile()) {
+            sidebarIsOpen() ? closeSidebar() : openSidebar();
+            return;
+        }
+        const next = !isSidebarRailOn();
+        setSidebarRailOn(next);
+        applySidebarRail(next);
+    });
+
+    // Auto-expand the rail when a project input takes focus (Edit context
+    // menu, keyboard nav into a row's input, programmatic focus). Without
+    // this, users in rail mode would land on a hidden input with no
+    // visible cursor.
+    sideMain.addEventListener('focusin', function(event) {
+        if (isMobile()) return;
+        if (!isSidebarRailOn()) return;
+        if (event.target && event.target.id === 'projInput') {
+            setSidebarRailOn(false);
+            applySidebarRail(false);
+        }
     });
 
     sidebarOverlay.addEventListener('click', closeSidebar);
@@ -884,6 +966,14 @@ function component() {
 
         console.log("Called projButton");
 
+        // Rail mode hides #projInput, so the user has no visible typing
+        // surface for the new project name. Expand to full sidebar mode for
+        // the entry — the user can re-collapse via the hamburger after.
+        if (!isMobile() && isSidebarRailOn()) {
+            setSidebarRailOn(false);
+            applySidebarRail(false);
+        }
+
         // on click should temporarily disable ability to continue clicking
         projButton.style.pointerEvents = "none";
 
@@ -1070,6 +1160,10 @@ function component() {
                 // re-arm drag — the earlier blur() ran before addProject/editProject,
                 // so attachProjectDrag's blur sync saw an uncommitted name
                 projChild.setAttribute('draggable', 'true');
+
+                // Sync the rail-mode initial chip + tooltip from the
+                // committed name. Covers both first-time create and rename.
+                applyProjectInitial(projChild, trimmedText);
 
 
                 // Based on the designated allProjects array, take those items and add them to the DOM in
@@ -1262,9 +1356,10 @@ function component() {
     function updateFooterCounts() {
         const selected = sideMain.querySelector('.selectedProject');
         let open = 0, done = 0;
+        let name = '';
         if (selected) {
             const input = selected.querySelector('#projInput');
-            const name = input ? input.value.trim() : '';
+            name = input ? input.value.trim() : '';
             const items = listLogic.listItems(name) || [];
             items.forEach(function(i) {
                 if (!i.tit) return;
@@ -1273,6 +1368,20 @@ function component() {
         }
         footOpen.textContent = open + ' OPEN';
         footDone.textContent = done + ' DONE';
+
+        // Breadcrumb in the main column mirrors the active project name and
+        // open count. In rail mode this is the only place the full name
+        // appears textually; in full-sidebar mode CSS hides it to avoid
+        // duplicating what's already in the rail expansion.
+        if (name) {
+            mainCrumbName.textContent = name;
+            mainCrumbCount.textContent = open + ' open';
+            mainCrumb.removeAttribute('data-empty');
+        } else {
+            mainCrumbName.textContent = '';
+            mainCrumbCount.textContent = '';
+            mainCrumb.setAttribute('data-empty', 'true');
+        }
     }
 
     const footObserver = new MutationObserver(updateFooterCounts);
@@ -1384,6 +1493,7 @@ function restoreFromStorage() {
         // arrow-key navigation in the sideMa keydown handler.
         projChild.setAttribute('tabindex', '0');
         applyProjectAccent(projChild, listLogic.getProjectColor(projectName));
+        applyProjectInitial(projChild, projectName);
 
         titleInput.type        = "text";
         titleInput.autocomplete = "off";
@@ -1446,6 +1556,7 @@ function restoreFromStorage() {
             listLogic.editProject(currentProperty, newName);
             currentProperty = newName;
             titleInput.value = newName;
+            applyProjectInitial(projChild, newName);
             titleInput.style.pointerEvents = "none";
             titleInput.style.cursor = "default";
             renameHandledByEnter = true;
@@ -1512,6 +1623,7 @@ function restoreFromStorage() {
             titleInput.style.color = "";
             listLogic.editProject(currentProperty, newName);
             currentProperty = newName;
+            applyProjectInitial(projChild, newName);
 
             // re-render todos if this project is selected
             if (projChild.classList.contains('selectedProject')) {

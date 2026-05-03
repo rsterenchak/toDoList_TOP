@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-03',
         fixed: [
-            'Ghost and theme toggles moved into a single settings dropdown on the top bar, freeing space while keeping save and import as direct one-click icons.',
             'Projects and Todo Items column headers are now left-aligned so they line up with the project rows and todo rows beneath them.',
             'Add-project + button moved into the PROJECTS column header so the projects list starts higher in the sidebar.',
             'Removed the redundant TODO ITEMS column header label — the add-task input directly below already conveys what the column is.',
             'Top-bar hamburger now shares the same neutral color as the save and import icons, with a subtle divider before the settings menu so it reads as a separate group.',
+        ],
+        changed: [
+            'Projects sidebar now collapses to a narrow icon rail of first-letter chips, with the hamburger toggling between the rail and the full named-project view and a breadcrumb in the main column surfacing the active project name and open count.',
         ],
     },
 ];
