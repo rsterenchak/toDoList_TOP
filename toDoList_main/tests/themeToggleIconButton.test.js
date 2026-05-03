@@ -32,12 +32,15 @@ describe('theme toggle — sun/moon icon button', () => {
         expect(themeBlock.slice(0, 2000)).not.toMatch(/setAttribute\(\s*'role'\s*,\s*'switch'\s*\)/);
     });
 
-    it('appends the theme toggle after the companion toggle so it sits to the ghost\'s right', () => {
-        const companionIdx = main.indexOf('nav.appendChild(companionToggle);');
-        const themeIdx = main.indexOf('nav.appendChild(themeToggle);');
-        expect(companionIdx).toBeGreaterThan(-1);
-        expect(themeIdx).toBeGreaterThan(-1);
-        expect(themeIdx).toBeGreaterThan(companionIdx);
+    it('exposes the theme switch as a Theme item inside the settings dropdown', () => {
+        // The standalone theme button has been replaced by an item inside the
+        // new settings dropdown. main.js wires the menu item to the same
+        // applyTheme + THEME_KEY persistence flow theme.js's button used.
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Theme'/);
+        expect(main).toMatch(/applyTheme\s*\(\s*next\s*\)/);
+        expect(main).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
+        // No longer appended directly to the nav as a standalone button.
+        expect(main).not.toMatch(/nav\.appendChild\s*\(\s*themeToggle\s*\)/);
     });
 
     function extractTopLevelRule(selector) {
