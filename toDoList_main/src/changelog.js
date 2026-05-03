@@ -13,7 +13,7 @@ export const changelog = [
             'Top-bar hamburger now shares the same neutral color as the save and import icons, with a subtle divider before the settings menu so it reads as a separate group.',
         ],
         changed: [
-            'Projects sidebar now collapses to a narrow icon rail of first-letter chips, with the hamburger toggling between the rail and the full named-project view and a breadcrumb in the main column surfacing the active project name and open count.',
+            'Save, import, theme, and floating-ghost controls now live in a single ghost-icon menu in the top-right of the nav.',
         ],
     },
 ];

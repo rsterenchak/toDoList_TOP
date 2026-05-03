@@ -139,11 +139,14 @@ describe('ghost companion — main.js wiring', () => {
         expect(body).toMatch(/remainingOpen\s*===\s*0/);
     });
 
-    it('exposes the companion toggle as a Show ghost item inside the settings dropdown', () => {
+    it('exposes the companion toggle as a Toggle floating ghost item inside the ghost menu dropdown', () => {
         // The pill-switch in the nav has been replaced by a dropdown menu
-        // item. The handler still flips isCompanionEnabled and calls
-        // ensureCompanion / destroyCompanion the same way the old switch did.
-        expect(js).toMatch(/buildSettingsMenuItem\(\s*'Show ghost'/);
+        // item — now labelled "Toggle floating ghost" to disambiguate it
+        // from the static ghost-icon menu trigger that lives in the top-
+        // right of the nav. The handler still flips isCompanionEnabled and
+        // calls ensureCompanion / destroyCompanion the same way the old
+        // switch did.
+        expect(js).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'/);
         expect(js).toMatch(/setCompanionEnabled\s*\(\s*next\s*\)/);
         expect(js).toMatch(/ensureCompanion\s*\(\s*\)/);
         expect(js).toMatch(/destroyCompanion\s*\(\s*\)/);

@@ -2311,17 +2311,16 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 
-/* SETTINGS DROPDOWN — single icon button on the far right of the nav. Opens
-   a small menu housing the Show ghost and Theme toggles. The auto left
-   margin on the export-import cluster pushes the trio (export, import,
-   settings) to the right edge of the nav; the settings trigger sits flush
-   against the right edge with a small gap from the export/import pair. */
-#exportImportControls {
-  margin-left: auto;
-}
+/* GHOST MENU TRIGGER — single 36px ghost icon on the far right of the nav.
+   Replaces the previous save / import / kebab cluster: clicking it opens a
+   dropdown housing Export JSON, Import JSON, Theme, and Toggle floating
+   ghost. A subtle scale + opacity pulse animation cycles every 700ms while
+   the menu is closed, hinting first-time users the icon is interactive;
+   the pulse stops on hover, focus-visible, and while the menu is open so
+   intentional interactions don't fight the ambient motion. */
 #settingsToggle {
   position: relative;
-  margin-left: 12px;
+  margin-left: auto;
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -2334,37 +2333,57 @@ body.row-dragging * { cursor: grabbing !important; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transform-origin: center;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-}
-/* Hairline divider sitting in the gap to the left of the kebab, signaling
-   that settings is a different category from the export/import data actions
-   to its left. */
-#settingsToggle::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 18px;
-  background: var(--border-bright);
-  pointer-events: none;
+  animation: ghostMenuPulse 700ms ease-in-out infinite;
 }
 #settingsToggle:hover {
   border-color: var(--accent);
   color: var(--text-primary);
   background: var(--bg-hover);
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
 #settingsToggle:focus { outline: none; }
 #settingsToggle:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
 #settingsToggle[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--text-primary);
   background: var(--bg-hover);
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
+
+@keyframes ghostMenuPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+
+/* Reduced-motion: skip the pulse entirely. The ghost icon stays at full
+   opacity and rest scale so the trigger is still perfectly visible without
+   any ambient animation. */
+@media (prefers-reduced-motion: reduce) {
+  #settingsToggle {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Ghost glyph — currentColor body with eye holes punched out by painting
+   them in the surrounding nav background colour. Switching themes flips
+   --bg-base, so the eyes stay legible against both palettes without per-
+   theme overrides. */
+.ghostIcon { display: block; }
+.ghostIconEye { fill: var(--bg-base); }
 
 /* Settings menu — visual treatment mirrors #projContextMenu so the dropdown
    reads as the same kind of surface the rest of the app already uses. */
@@ -2416,8 +2435,17 @@ body.row-dragging * { cursor: grabbing !important; }
   border: 0.5px solid var(--border-dim);
   background: var(--bg-elevated);
 }
-/* Hide the Show ghost item on viewports where the companion itself never
-   runs — same gate the companion module uses internally. */
+/* Thin hairline between the data actions (Export / Import) and the toggle
+   group (Theme / floating ghost) inside the menu. Same vocabulary as the
+   project context menu's separator so the two surfaces read as kin. */
+.settingsMenuDivider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-dim);
+  pointer-events: none;
+}
+/* Hide the Toggle floating ghost item on viewports where the companion
+   itself never runs — same gate the companion module uses internally. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
   .settingsMenuItem--ghost { display: none; }
 }
@@ -2510,46 +2538,6 @@ body.row-dragging * { cursor: grabbing !important; }
   .companion.cheering.big-cheer {
     animation: none;
   }
-}
-
-
-/* ── EXPORT / IMPORT NAV CONTROLS ──
-   Small icon pair sitting between the companion toggle and the theme toggle
-   in the nav bar. Visual treatment matches #themeToggle (36×36, transparent
-   background, hover/focus tints from the same accent ramp) so the trio reads
-   as one cluster of secondary controls. */
-#exportImportControls {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.navIconBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: transparent;
-  border: 0.5px solid var(--border-bright);
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-}
-
-.navIconBtn:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-.navIconBtn:focus { outline: none; }
-.navIconBtn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 

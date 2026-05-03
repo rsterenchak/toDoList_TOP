@@ -45,7 +45,8 @@ import {
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
 import {
-    createExportImportControls,
+    exportTodosToFile,
+    importFromFile,
     createStaleExportHint,
     refreshStaleHint,
     attachDragDropImport,
@@ -169,34 +170,54 @@ function component() {
     // surface it controls. On mobile viewports the rail is replaced with the
     // existing overlay drawer, so the toggle still slides the full sidebar.
 
-    // ── export / import (download + upload icon pair) ──
-    // Save and import stay as direct icon buttons — they're the most-used
-    // data actions and stay one-click. The drag-and-drop window listeners are
-    // attached after component() returns, so the desktop-only bail-out in
-    // attachDragDropImport runs against the live viewport.
-    const exportImportControls = createExportImportControls({
-        onAfterReplace: function() { rebuildAfterImport(); },
+    // ── ghost menu trigger (far right of nav) ──
+    // Single 36px ghost icon button replaces the previous save/import/kebab
+    // cluster. Clicking it opens a dropdown with Export JSON, Import JSON,
+    // (divider), Theme, and Toggle floating ghost. The trigger itself stays
+    // anchored to the top-right; the floating-ghost companion (toggled from
+    // inside the menu) is the one that drifts around the viewport. A subtle
+    // hover-pulse animation on the trigger hints first-time users that it's
+    // clickable — see #settingsToggle keyframes in style.css.
+    //
+    // The dropdown closes on selection, outside click, or Escape. Drag-and-
+    // drop import remains wired via attachDragDropImport; the menu's Import
+    // JSON item proxies to a hidden file input that runs the same
+    // importFromFile flow the old icon button used.
+    const importFileInput = document.createElement('input');
+    importFileInput.type = 'file';
+    importFileInput.accept = '.json,application/json';
+    importFileInput.id = 'importTodosInput';
+    importFileInput.style.display = 'none';
+    importFileInput.addEventListener('change', function() {
+        const file = importFileInput.files && importFileInput.files[0];
+        if (!file) return;
+        importFromFile(file, function() { rebuildAfterImport(); });
+        // Reset so re-selecting the same file fires change again.
+        importFileInput.value = '';
     });
-    nav.appendChild(exportImportControls);
 
-    // ── settings dropdown trigger (far right of nav) ──
-    // Single icon button that opens a small dropdown menu housing the Show
-    // ghost and Theme toggles. The dropdown closes on selection, outside
-    // click, or Escape. Mobile viewports hide the Show ghost item via CSS
-    // since the companion itself doesn't run there; the Theme item stays
-    // available on every viewport.
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
     settingsToggle.type = 'button';
     settingsToggle.setAttribute('aria-haspopup', 'menu');
     settingsToggle.setAttribute('aria-expanded', 'false');
-    settingsToggle.setAttribute('aria-label', 'Open settings menu');
-    settingsToggle.title = 'Settings';
+    settingsToggle.setAttribute('aria-label', 'Open menu');
+    settingsToggle.title = 'Menu';
     settingsToggle.innerHTML =
-        '<svg viewBox="0 0 4 16" width="4" height="16" fill="currentColor" aria-hidden="true">' +
-        '<circle cx="2" cy="3" r="1.4"/>' +
-        '<circle cx="2" cy="8" r="1.4"/>' +
-        '<circle cx="2" cy="13" r="1.4"/>' +
+        '<svg class="ghostIcon" viewBox="0 0 12 14" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<g class="ghostIconBody" fill="currentColor">' +
+        '<rect x="3" y="0" width="6" height="1"/>' +
+        '<rect x="2" y="1" width="8" height="1"/>' +
+        '<rect x="0" y="2" width="12" height="10"/>' +
+        '<rect x="0" y="12" width="2" height="2"/>' +
+        '<rect x="3" y="12" width="2" height="2"/>' +
+        '<rect x="6" y="12" width="2" height="2"/>' +
+        '<rect x="9" y="12" width="2" height="2"/>' +
+        '</g>' +
+        '<g class="ghostIconEye">' +
+        '<rect x="4" y="5" width="1" height="2"/>' +
+        '<rect x="7" y="5" width="1" height="2"/>' +
+        '</g>' +
         '</svg>';
 
     function hideSettingsMenu() {
@@ -235,6 +256,7 @@ function component() {
         const state = document.createElement('span');
         state.className = 'settingsMenuItemState';
         state.textContent = stateText;
+        if (!stateText) state.style.display = 'none';
         item.appendChild(label);
         item.appendChild(state);
         item.addEventListener('click', function() {
@@ -244,27 +266,38 @@ function component() {
         return item;
     }
 
+    function buildSettingsMenuDivider() {
+        const divider = document.createElement('div');
+        divider.className = 'settingsMenuDivider';
+        divider.setAttribute('role', 'separator');
+        return divider;
+    }
+
     function showSettingsMenu() {
         const menu = document.createElement('div');
         menu.id = 'settingsMenu';
         menu.setAttribute('role', 'menu');
 
-        // Show ghost — flips the companion-enabled pref and mounts/destroys
-        // the singleton DOM element accordingly. The state pill on the right
-        // reflects current state; tapping the row toggles it. Hidden on
-        // mobile viewports via CSS to match where the companion actually runs.
-        const ghostItem = buildSettingsMenuItem(
-            'Show ghost',
-            isCompanionEnabled() ? 'ON' : 'OFF',
-            function() {
-                const next = !isCompanionEnabled();
-                setCompanionEnabled(next);
-                if (next) ensureCompanion();
-                else      destroyCompanion();
-            },
-            'settingsMenuItem--ghost'
+        // Export JSON — writes the current snapshot to a downloadable file.
+        // No state pill: action is one-shot, not a toggle.
+        const exportItem = buildSettingsMenuItem(
+            'Export JSON',
+            '',
+            function() { exportTodosToFile(); }
         );
-        menu.appendChild(ghostItem);
+        menu.appendChild(exportItem);
+
+        // Import JSON — proxies to the hidden file input the menu trigger
+        // owns. The file's onchange handler runs the validate → confirm →
+        // overwrite flow inside importFromFile.
+        const importItem = buildSettingsMenuItem(
+            'Import JSON',
+            '',
+            function() { importFileInput.click(); }
+        );
+        menu.appendChild(importItem);
+
+        menu.appendChild(buildSettingsMenuDivider());
 
         // Theme — flips light ↔ dark and persists. Mirrors the inline toggle
         // logic that previously lived in theme.js's createThemeToggleButton:
@@ -283,6 +316,25 @@ function component() {
             }
         );
         menu.appendChild(themeItem);
+
+        // Toggle floating ghost — flips the companion-enabled pref and
+        // mounts/destroys the singleton DOM element accordingly. The state
+        // pill on the right reflects current state; tapping the row toggles
+        // it. Hidden on mobile viewports via CSS to match where the floating
+        // companion actually runs (the static ghost-icon trigger above stays
+        // available on every viewport).
+        const ghostItem = buildSettingsMenuItem(
+            'Toggle floating ghost',
+            isCompanionEnabled() ? 'ON' : 'OFF',
+            function() {
+                const next = !isCompanionEnabled();
+                setCompanionEnabled(next);
+                if (next) ensureCompanion();
+                else      destroyCompanion();
+            },
+            'settingsMenuItem--ghost'
+        );
+        menu.appendChild(ghostItem);
 
         document.body.appendChild(menu);
 
@@ -319,6 +371,7 @@ function component() {
     });
 
     nav.appendChild(settingsToggle);
+    nav.appendChild(importFileInput);
 
     base.appendChild(nav);
     base.appendChild(main);
