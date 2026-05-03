@@ -2,22 +2,22 @@
 
 ## Bugs
      
-- [x] **[LOW]** Mute the hamburger icon and add a divider before the kebab menu
-  - Description: Drop the top-left hamburger icon's color from the bright purple accent to the same neutral gray used by the save and import buttons, so the top bar reads as a single unified group rather than one loud purple element competing with the muted icons. Then add a hairline vertical divider (1px wide, ~18px tall, low-opacity white) between the import button and the kebab menu, signaling that the kebab is in a different category (settings/menu) from the data actions to its left. Both changes are purely cosmetic — the divider can be done as a `::before` pseudo-element on the kebab and the hamburger color via a simple stroke/color override.
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
+- [ ] **[LOW]** Align ghost menu trigger with hamburger in the top row
+  - Description: Currently the ghost button sits alone in a top zone above the hamburger and breadcrumb row, leaving a half-empty band of chrome at the top. Move the ghost button up to share the top row with the hamburger so both global controls (hamburger left, ghost right) sit on the same horizontal band. The breadcrumb row below — active project name, count, and EXPAND ALL — then reads as a clean second row of project-scoped chrome. Pure positioning change, no functional impact on the menu, hover-pulse, or any other ghost behavior. Likely a flexbox/grid adjustment in the top chrome container.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
-- [x] **[MEDIUM]** Convert PROJECTS sidebar to a 54px icon rail
-  - Description: Replace the full-width PROJECTS sidebar with a narrow icon rail. Each project becomes a 34px rounded square showing its first letter in neutral gray-on-dark; the active project gets the purple accent (background, border, text). The hamburger relocates from the top bar to the top of the rail and toggles between the rail and the full sidebar (with names + plus button); the "+" add-project button sits at the bottom of the rail with a dashed border. Each project icon shows a tooltip with its full name on hover (~300ms delay). Add a breadcrumb to the top-left of the main column showing "<Project Name> · <N> open" — since the rail only shows initials, this is the only place the active project's full name appears textually. Project initial styling stays neutral gray; no per-project hue generation. Use grep + offset/limit when navigating main.js for sidebar render logic.
+- [ ] **[MEDIUM]** Build help modal triggered by ? key, the help button, and the ghost menu
+  - Description: Create a modal explaining the app's chrome — topic-based sections for Tasks, Projects, the ghost menu, and Keyboard Shortcuts (rendered as a two-column table with monospace key-cap pills). Each section is a key for visible UI elements ("click rail icons to switch projects, hover for full names") rather than abstract documentation. Three triggers: the existing "?" button in the bottom-right, a global ? keypress, and a new "Help" item in the ghost menu. Modal closes three ways per the project standard: explicit close button, backdrop click, and Escape. Style matches the Void aesthetic — dark surface, purple uppercase letter-spaced section labels, the same key-cap pill treatment used elsewhere. Use grep + offset/limit when navigating main.js for existing modal infrastructure to mirror.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
-    
-- [x] **[MEDIUM]** Replace top-bar save/import/kebab cluster with a ghost menu trigger
-  - Description: Remove the existing save, import, divider, and kebab buttons from the top right and replace them with a single 36px ghost button. Clicking it opens a dropdown containing: Export JSON, Import JSON, (divider), Theme, and a "Toggle floating ghost" item with an ON/OFF tag reflecting whether the bottom-of-screen floating ghost is active. The ghost button itself stays static in the top-right and does not float around. It gets a subtle hover-pulse animation (gentle scale/opacity loop, ~700ms cycle) for discoverability — first-time users need a hint that the ghost is clickable. Menu closes on selection, outside click, or Escape. This supersedes the earlier "settings dropdown" entry — save and import now join the menu rather than living separately on the top bar. Use grep + offset/limit when navigating main.js.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
+  - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[LOW]** Add last-exported JSON timestamp to footer
+  - Description: Track the timestamp of the most recent manual JSON export and display it in the footer next to "X OPEN Y DONE" — formatted as relative time ("exported 3 days ago") so the indicator ages into a soft backup-reminder as the gap grows. Persist the timestamp in localStorage under a new key (e.g., `todoapp_lastExport`) and update it whenever the user selects "Export JSON" from the ghost menu. No indicator is needed for the localStorage autosave — that's continuous and would be visibly broken if it failed; the point of this one is specifically to nudge users to back up to a real file. Optionally mirror the same text inline next to the "Export JSON" item in the ghost menu for context at the moment of action.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
