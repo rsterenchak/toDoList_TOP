@@ -141,7 +141,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--accent-text);
+  color: var(--text-secondary);
   font-size: 20px;
   line-height: 1;
   border-radius: var(--radius-sm);
@@ -2316,7 +2316,8 @@ body.row-dragging * { cursor: grabbing !important; }
   margin-left: auto;
 }
 #settingsToggle {
-  margin-left: 8px;
+  position: relative;
+  margin-left: 12px;
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -2330,6 +2331,20 @@ body.row-dragging * { cursor: grabbing !important; }
   align-items: center;
   justify-content: center;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+/* Hairline divider sitting in the gap to the left of the kebab, signaling
+   that settings is a different category from the export/import data actions
+   to its left. */
+#settingsToggle::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 18px;
+  background: var(--border-bright);
+  pointer-events: none;
 }
 #settingsToggle:hover {
   border-color: var(--accent);
