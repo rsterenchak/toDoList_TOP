@@ -9,15 +9,15 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Add floating help button and keyboard shortcuts modal
-  - Description: Add a circular `?` button pinned to the bottom-right corner of the viewport that opens a modal listing all keyboard shortcuts in the app, grouped by category (Navigation, Editing, Global). Bind `?` as a global keyboard shortcut to open the same modal — guard against the existing global keydown patterns (skip when typing in inputs/textareas, when another modal or popover is open). The new `showShortcutsModal` should mirror `showChangelogModal` for close-on-Escape, close-on-backdrop, and corner X. Hide the FAB on `pointer: coarse` viewports (the shortcuts don't apply on touch) and while any modal/popover is already open so it never sits on top of one. Don't persist a "seen" marker — the FAB itself is the discoverable surface.
-  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-01
-    
-- [x] **[MEDIUM]** Add arrow-key navigation, Delete, and Enter editing for todo rows
-  - Description: Add keyboard navigation between committed todo rows in the active project — Up/Down arrows move focus to the previous/next row (stop at boundaries rather than wrap, for predictability), Enter on the focused row enters edit mode by focusing the title input with the caret at the end, and Delete fires the same `showConfirmModal` flow as the row's `×` button so destructive deletes still go through a confirmation step. Reuse the existing `.todo-active` class for the focus indicator so styling stays consistent with the click-to-edit pattern, and skip the blank placeholder row at index 0 — it's reachable via `n` and direct click, so arrow nav is for committed rows only. Guard against the same conditions as the existing `n` global shortcut (skip when typing in inputs, when any modal or popover is open). Document the new bindings in the shortcuts modal once both features land.
+- [ ] **[MEDIUM]** Convert PROJECTS sidebar to a 54px icon rail
+  - Description: Replace the full-width PROJECTS sidebar with a narrow icon rail. Each project becomes a 34px rounded square showing its first letter in neutral gray-on-dark; the active project gets the purple accent (background, border, text). The hamburger relocates from the top bar to the top of the rail and toggles between the rail and the full sidebar (with names + plus button); the "+" add-project button sits at the bottom of the rail with a dashed border. Each project icon shows a tooltip with its full name on hover (~300ms delay). Add a breadcrumb to the top-left of the main column showing "<Project Name> · <N> open" — since the rail only shows initials, this is the only place the active project's full name appears textually. Project initial styling stays neutral gray; no per-project hue generation. Use grep + offset/limit when navigating main.js for sidebar render logic.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-01
+  - Completed: YYYY-MM-DD (PR #<number>)
+    
+- [ ] **[MEDIUM]** Replace top-bar save/import/kebab cluster with a ghost menu trigger
+  - Description: Remove the existing save, import, divider, and kebab buttons from the top right and replace them with a single 36px ghost button. Clicking it opens a dropdown containing: Export JSON, Import JSON, (divider), Theme, and a "Toggle floating ghost" item with an ON/OFF tag reflecting whether the bottom-of-screen floating ghost is active. The ghost button itself stays static in the top-right and does not float around. It gets a subtle hover-pulse animation (gentle scale/opacity loop, ~700ms cycle) for discoverability — first-time users need a hint that the ghost is clickable. Menu closes on selection, outside click, or Escape. This supersedes the earlier "settings dropdown" entry — save and import now join the menu rather than living separately on the top bar. Use grep + offset/limit when navigating main.js.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
