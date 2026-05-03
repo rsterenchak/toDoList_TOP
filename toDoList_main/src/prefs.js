@@ -14,6 +14,7 @@ export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
+export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
 
 // ── compact titles ──
 export function isCompactTitlesOn() {
@@ -68,6 +69,28 @@ export function hasSidebarWidthPref() {
     } catch (e) {
         return false;
     }
+}
+
+// ── sidebar rail vs. full mode ──
+// Rail mode (default) renders the projects sidebar as a narrow 54px icon
+// rail showing first-letter chips; full mode expands to the named-project
+// list. The hamburger inside the rail toggles between the two. Mobile
+// keeps the existing drawer behavior regardless of this pref — the rail is
+// a desktop-and-up affordance.
+export function isSidebarRailOn() {
+    try {
+        const v = localStorage.getItem(SIDEBAR_RAIL_KEY);
+        // Default to rail mode — this is the new baseline UX.
+        return v === null ? true : v === 'true';
+    } catch (e) {
+        return true;
+    }
+}
+
+export function setSidebarRailOn(on) {
+    try {
+        localStorage.setItem(SIDEBAR_RAIL_KEY, on ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
 }
 
 // ── changelog last-seen marker ──

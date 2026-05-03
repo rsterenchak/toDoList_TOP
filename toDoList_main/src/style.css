@@ -41,6 +41,8 @@
   --radius-md:     6px;
 
   --sidebar-w:     200px;
+  --rail-w:        54px;
+  --rail-chip:     34px;
   --nav-h:         44px;
   --foot-h:        36px;
   --row-h:         48px;
@@ -328,7 +330,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 0 14px;
+  padding: 0 12px;
+  gap: 10px;
   height: var(--row-h);
   border-bottom: none;
   background: var(--bg-elevated);
@@ -356,20 +359,21 @@ body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-/* ADD PROJECT — anchored to the right edge of the PROJECTS header row,
-   mirroring the EXPAND ALL anchor pattern in #mainTitle. */
+/* ADD PROJECT — pinned to the bottom of #sideBar by being the last flex
+   child of the sidebar column. Rail mode makes the chip a 34px dashed
+   square; full sidebar mode falls back to the 26px solid button below. */
 #addProj {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border-bottom: none;
+  padding: 10px 0;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  border-top: 0.5px solid var(--border-dim);
 }
 
 #projButton {
@@ -2688,4 +2692,216 @@ body.row-dragging * { cursor: grabbing !important; }
   #keyHintBadge {
     display: none;
   }
+}
+
+
+/* ══════════════════════════════════════════
+   PROJECTS ICON RAIL — desktop only
+   The rail (default state) is a 54px column of first-letter chips. The
+   hamburger inside #sideTit toggles to the full-named sidebar. Mobile
+   keeps the existing overlay drawer regardless of this state — the rail
+   styles below are scoped to viewports above the mobile breakpoint.
+══════════════════════════════════════════ */
+@media (min-width: 701px) {
+  /* Active rail mode shrinks the sidebar grid track and locks the
+     resizer out so the user can't accidentally drag a 54px rail wide. */
+  html[data-sidebar-rail="on"] #mainSec {
+    grid-template-columns: var(--rail-w) 0px 1fr;
+  }
+  html[data-sidebar-rail="on"] #sidebarResizer {
+    pointer-events: none;
+    background: transparent;
+  }
+
+  /* Rail header: keep the hamburger centered, hide the PROJECTS label
+     since it can't fit in 54px and would clip awkwardly. */
+  html[data-sidebar-rail="on"] #sideTit {
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+  html[data-sidebar-rail="on"] #sideHead {
+    display: none;
+  }
+
+  /* Project rows collapse into 34px rounded chips centered in the 54px
+     column. The data-initial attribute is rendered via ::after so the
+     real #projInput stays in the DOM (rename + arrow-key nav still
+     work — focus auto-expands the rail). */
+  html[data-sidebar-rail="on"] #sideMa {
+    padding: 6px 0;
+    grid-row-gap: 4px;
+    justify-items: center;
+  }
+  html[data-sidebar-rail="on"] #projChild {
+    grid-template-columns: none;
+    width: var(--rail-chip);
+    height: var(--rail-chip);
+    min-height: 0;
+    padding: 0;
+    border: 0.5px solid var(--border-bright);
+    border-left: 0.5px solid var(--border-bright);
+    border-radius: 8px;
+    /* !important defeats the inline `background: transparent` that the
+       per-row mouseleave handler in main.js writes — the rail wants the
+       chip to keep its surface fill at rest, not match the rail track. */
+    background: var(--bg-surface) !important;
+    color: var(--text-secondary);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: none !important;
+  }
+  html[data-sidebar-rail="on"] #projChild::after {
+    content: attr(data-initial);
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: inherit;
+    line-height: 1;
+    pointer-events: none;
+  }
+  html[data-sidebar-rail="on"] #projChild #projInput,
+  html[data-sidebar-rail="on"] #projChild > div {
+    display: none;
+  }
+  html[data-sidebar-rail="on"] #projChild:hover {
+    background: var(--bg-hover) !important;
+    border-color: var(--accent-text);
+    color: var(--text-primary);
+  }
+  /* Active project: purple accent fills the chip — background, border,
+     and text together so the chip reads as the selection at a glance. */
+  html[data-sidebar-rail="on"] #projChild.selectedProject {
+    background: var(--proj-accent, var(--accent)) !important;
+    border: 0.5px solid var(--proj-accent, var(--accent)) !important;
+    color: #ffffff !important;
+    border-left: 0.5px solid var(--proj-accent, var(--accent)) !important;
+  }
+  html[data-sidebar-rail="on"] #projChild.selectedProject::after {
+    color: #ffffff;
+  }
+
+  /* Add-project chip mirrors the rail chip footprint and gets a dashed
+     border to read as a "create new" affordance distinct from the
+     committed-project chips above it. */
+  html[data-sidebar-rail="on"] #addProj {
+    padding: 8px 0;
+    border-top: 0.5px solid var(--border-dim);
+    background: var(--bg-elevated);
+  }
+  html[data-sidebar-rail="on"] #projButton {
+    width: var(--rail-chip);
+    height: var(--rail-chip);
+    border: 1px dashed var(--border-bright);
+    background: transparent;
+    border-radius: 8px;
+    color: var(--text-secondary);
+  }
+  html[data-sidebar-rail="on"] #projButton:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    color: var(--accent);
+  }
+  html[data-sidebar-rail="on"] #projButton::before { width: 12px; }
+  html[data-sidebar-rail="on"] #projButton::after  { height: 12px; }
+
+  /* Rail tooltip — uses the title attribute already on each #projChild
+     (set by applyProjectInitial). Shows after a 300ms hover delay via a
+     transition-delay on the visible state. The tooltip is a CSS-only
+     ::before so no extra DOM is needed per row. */
+  html[data-sidebar-rail="on"] #projChild::before {
+    content: attr(data-project-name);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 0.5px solid var(--border-bright);
+    border-radius: var(--radius-md);
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 12;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    transition: opacity 0.12s ease 0s, transform 0.12s ease 0s;
+  }
+  html[data-sidebar-rail="on"] #projChild:hover::before {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+    transition-delay: 300ms;
+  }
+  /* Suppress the native tooltip for committed rows in rail mode so the
+     custom one above isn't shadowed by the OS bubble. (We rely on the
+     attribute remaining in the DOM for the ::before text content; CSS
+     doesn't need to clear it.) */
+
+  /* Default project-row layout (full mode) — unchanged: data-initial
+     attribute is harmless when the ::after rule above isn't active. */
+}
+
+/* When the rail is OFF (full sidebar mode), suppress the inline initial
+   chip and tooltip artifacts so they can't bleed through. */
+html[data-sidebar-rail="off"] #projChild::after,
+html[data-sidebar-rail="off"] #projChild::before {
+  content: none;
+}
+
+/* ── BREADCRUMB (top-left of main column) ──
+   Shows "<Project Name> · <N> open" so the active project's full name is
+   visible textually even in rail mode (where the rail only shows
+   initials). Hidden when no project is selected (data-empty="true") so
+   the empty state doesn't render a stranded separator. */
+#mainCrumb {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-transform: none;
+  min-width: 0;
+  max-width: calc(100% - 100px);
+  overflow: hidden;
+}
+#mainCrumb[data-empty="true"] {
+  visibility: hidden;
+}
+#mainCrumbName {
+  font-weight: 700;
+  color: var(--accent-text);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#mainCrumbSep {
+  color: var(--text-muted);
+}
+#mainCrumbCount {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* On narrow viewports there's no room for the breadcrumb alongside the
+   bulk description controls — drop the open count first and the project
+   name only on the smallest screens. */
+@media (max-width: 540px) {
+  #mainCrumbCount, #mainCrumbSep { display: none; }
+}
+@media (max-width: 380px) {
+  #mainCrumb { display: none; }
 }
