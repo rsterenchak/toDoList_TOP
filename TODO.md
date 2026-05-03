@@ -2,10 +2,10 @@
 
 ## Bugs
      
-- [ ] **[LOW]** Remove TODO ITEMS column header label
+- [x] **[LOW]** Remove TODO ITEMS column header label
   - Description: Delete the "TODO ITEMS" header text from the main column. The header band itself stays so EXPAND ALL keeps its current right-aligned position and stays horizontally aligned with the PROJECTS row in the sidebar — only the label is removed. The "Add a task — press Enter" input directly below already communicates what the column is, making the explicit header redundant. The asymmetry with the sidebar's PROJECTS label is intentional: sidebar labels orient navigation; the main workspace column doesn't need one.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-03
 
 ## Features
 
