@@ -11,9 +11,7 @@ export const changelog = [
             'Add-project + button moved into the PROJECTS column header so the projects list starts higher in the sidebar.',
             'Removed the redundant TODO ITEMS column header label — the add-task input directly below already conveys what the column is.',
             'Top-bar hamburger now shares the same neutral color as the save and import icons, with a subtle divider before the settings menu so it reads as a separate group.',
-        ],
-        changed: [
-            'Save, import, theme, and floating-ghost controls now live in a single ghost-icon menu in the top-right of the nav.',
+            'The `\\` shortcut now toggles focus between the projects rail and the new-task input even when the empty-state placeholder is showing.',
         ],
     },
 ];

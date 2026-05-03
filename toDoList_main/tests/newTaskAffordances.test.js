@@ -81,6 +81,22 @@ describe('new-task input affordances — `+` glyph, placeholder, `N` shortcut', 
         expect(handler).toMatch(/isAnyModalOrPopoverOpen/);
     });
 
+    it('routes the bare `\\` toggle to the rail icon when focus is in the empty-state input', () => {
+        // Regression guard: the toggle's "input side" used to match only the
+        // empty placeholder (`id === 'toDoInput'` with an empty value), so
+        // pressing `\` while focused on `#emptyStateInput` fell through and
+        // typed a literal backslash. The handler must now treat the empty-
+        // state input as a valid input side and intercept the keystroke.
+        const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
+        const handler = blocks.find(function(b) {
+            return /e\.key\s*!==\s*['"]\\\\['"]/.test(b)
+                && /focusBlankToDoInput/.test(b)
+                && /#projChild/.test(b);
+        });
+        expect(handler).toBeTruthy();
+        expect(handler).toMatch(/emptyStateInput/);
+    });
+
     it('also wires a `Ctrl+\\` chord handler as the always-to-placeholder fast path', () => {
         // Companion to the bare-\ toggle: from a committed todo, the toggle
         // routes to the sidebar (default direction), so users mid-list need

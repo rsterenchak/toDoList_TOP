@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Make Ctrl+\ work in the empty state and add \ as a project↔input focus toggle
+- [x] **[MEDIUM]** Make Ctrl+\ work in the empty state and add \ as a project↔input focus toggle
   - Description: Two related shortcut changes. First, the existing Ctrl+\ handler focuses #addTaskInput but does nothing when the empty state is visible — make it context-aware so it focuses whichever task input is currently rendered (#addTaskInput or #emptyStateInput). Second, add a \ (no modifier) shortcut that toggles focus between the active project's rail icon and the visible task input: pressing \ from the rail icon moves focus to the input; pressing \ while in the input intercepts the keydown with preventDefault (so the character isn't typed) and moves focus back to the rail icon. The active rail icon may need tabindex=0 to be focusable. One tradeoff to flag: always intercepting \ in the input means users can't type a literal backslash in task titles — acceptable since backslashes are vanishingly rare in task names, but worth confirming. Use grep + offset/limit when navigating main.js for the existing Ctrl+\ wiring to mirror.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-03
 
 - [ ] **[MEDIUM]** Repurpose Ctrl+Enter to expand all descriptions instead of the completed section
   - Description: Currently Ctrl+Enter expands the "Completed (N)" collapsed section at the bottom of the list. Repurpose it to mirror the EXPAND ALL button instead — toggling expanded descriptions on all open tasks inline, since that's a higher-frequency action than viewing completed items. The Completed section stays accessible via its chevron header and doesn't need a dedicated shortcut. Implementation is a single binding swap: point the Ctrl+Enter listener at the same handler EXPAND ALL invokes. Use grep + offset/limit when navigating main.js to locate both bindings.
