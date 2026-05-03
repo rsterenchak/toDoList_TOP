@@ -328,13 +328,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 20px 14px 14px;
+  padding: 0 14px;
+  height: var(--row-h);
   border-bottom: none;
   background: var(--bg-elevated);
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
-  height: auto;
+  position: relative;
 }
 
 #sideHead {
@@ -357,20 +358,23 @@ body {
   position: relative;
 }
 
-/* ADD PROJECT */
+/* ADD PROJECT — anchored to the right edge of the PROJECTS header row,
+   mirroring the TODO ITEMS / EXPAND ALL pattern in #mainTitle. */
 #addProj {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  padding: 16px 0 14px;
-  height: auto;
   border-bottom: none;
 }
 
 #projButton {
-  width: 36px;
-  height: 36px;
+  width: 26px;
+  height: 26px;
   background: var(--bg-surface);
   border: 0.5px solid var(--border-bright);
   border-radius: var(--radius-sm);
@@ -392,14 +396,14 @@ body {
 }
 
 #projButton::before {
-  width: 12px;
+  width: 10px;
   height: 1.5px;
   transform: translate(-50%, -50%);
 }
 
 #projButton::after {
   width: 1.5px;
-  height: 12px;
+  height: 10px;
   transform: translate(-50%, -50%);
 }
 
@@ -2240,16 +2244,12 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #projButton {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
   }
 
-  #projButton::before { width: 14px; }
-  #projButton::after  { height: 14px; }
-
-  #addProj {
-    padding: 20px 0 16px;
-  }
+  #projButton::before { width: 12px; }
+  #projButton::after  { height: 12px; }
 
   /* Prevent double-tap zoom on all interactive elements */
   button,
@@ -2310,7 +2310,7 @@ body.row-dragging * { cursor: grabbing !important; }
   50%      { box-shadow: 0 0 0 6px transparent; }
 }
 
-#sideMa:not(:has(#projChild)) #projButton {
+#sideBar:not(:has(#projChild)) #projButton {
   animation: projButtonAttention 2.4s ease-in-out infinite;
 }
 
