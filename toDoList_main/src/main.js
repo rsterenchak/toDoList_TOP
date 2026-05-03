@@ -635,11 +635,13 @@ function component() {
     });
 
     // Global "Ctrl+\" (or Cmd+\ on macOS) shortcut — always jump straight to
-    // the placeholder new-task input. Companion to the bare-`\` toggle: from
-    // a committed todo the toggle would route to the sidebar (default
-    // direction), so users mid-list need a one-step "back to the new-task
-    // line" shortcut. Chord-style means we don't need a typing-surface guard
-    // — it can't fire mid-typing by accident.
+    // the visible new-task input. Context-aware via focusBlankToDoInput, which
+    // prefers #emptyStateInput when the project has zero open todos and falls
+    // back to the placeholder #toDoInput otherwise. Companion to the bare-`\`
+    // toggle: from a committed todo the toggle would route to the sidebar
+    // (default direction), so users mid-list need a one-step "back to the
+    // new-task line" shortcut. Chord-style means we don't need a typing-
+    // surface guard — it can't fire mid-typing by accident.
     document.addEventListener('keydown', function(e) {
         if (e.key !== '\\') return;
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -735,13 +737,18 @@ function component() {
         e.preventDefault();
     });
 
-    // Global "\" toggle — flip focus between the projects sidebar and the
-    // blank-placeholder new-task input. Three branches:
-    //   1. Focus in the sidebar (`#sideMa` or any descendant) → jump to the
-    //      placeholder input.
-    //   2. Focus in the placeholder input itself (empty `#toDoInput`) → jump
-    //      back to the sidebar (selected project, or first project as
-    //      fallback).
+    // Global "\" toggle — flip focus between the active project's rail icon
+    // and the visible new-task input. Three branches:
+    //   1. Focus in the sidebar (`#sideMa` or any descendant, including the
+    //      rail icons) → jump to the visible new-task input (empty-state
+    //      input when the project is empty, otherwise the placeholder
+    //      `#toDoInput`).
+    //   2. Focus in the visible new-task input — either `#emptyStateInput`
+    //      or the empty placeholder `#toDoInput` — → jump back to the
+    //      selected project's rail icon (first project as fallback). The
+    //      preventDefault below stops the literal `\` from being typed.
+    //      Tradeoff: a literal backslash can't be typed in those two inputs,
+    //      acceptable since `\` is vanishingly rare in task names.
     //   3. Focus anywhere else → if in any other typing surface (committed
     //      todo title, description input, etc.) bail so `\` types normally;
     //      otherwise default to "go to sidebar" so the shortcut still works
@@ -753,14 +760,17 @@ function component() {
         const ae = document.activeElement;
         const sideMa = document.getElementById('sideMa');
         const inSidebar = !!(ae && sideMa && sideMa.contains(ae));
-        const inPlaceholder = !!(ae && ae.id === 'toDoInput' && (ae.value || '') === '');
+        const inTaskInput = !!(ae && (
+            ae.id === 'emptyStateInput' ||
+            (ae.id === 'toDoInput' && (ae.value || '') === '')
+        ));
 
         if (inSidebar) {
             focusBlankToDoInput();
             e.preventDefault();
             return;
         }
-        if (inPlaceholder) {
+        if (inTaskInput) {
             const target = document.querySelector('#projChild.selectedProject') ||
                            document.querySelector('#projChild');
             if (!target) return;
