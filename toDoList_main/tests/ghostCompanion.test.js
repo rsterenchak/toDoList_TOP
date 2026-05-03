@@ -139,10 +139,14 @@ describe('ghost companion — main.js wiring', () => {
         expect(body).toMatch(/remainingOpen\s*===\s*0/);
     });
 
-    it('exposes a companion toggle switch in the nav', () => {
-        expect(js).toMatch(/companionToggle\.id\s*=\s*['"]companionToggle['"]/);
-        expect(js).toMatch(/companionToggle\.setAttribute\s*\(\s*['"]role['"]\s*,\s*['"]switch['"]/);
-        expect(js).toMatch(/nav\.appendChild\s*\(\s*companionToggle\s*\)/);
+    it('exposes the companion toggle as a Show ghost item inside the settings dropdown', () => {
+        // The pill-switch in the nav has been replaced by a dropdown menu
+        // item. The handler still flips isCompanionEnabled and calls
+        // ensureCompanion / destroyCompanion the same way the old switch did.
+        expect(js).toMatch(/buildSettingsMenuItem\(\s*'Show ghost'/);
+        expect(js).toMatch(/setCompanionEnabled\s*\(\s*next\s*\)/);
+        expect(js).toMatch(/ensureCompanion\s*\(\s*\)/);
+        expect(js).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 });
 
@@ -159,8 +163,10 @@ describe('ghost companion — CSS gates', () => {
         expect(css).toMatch(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*\.companion[^}]*animation:\s*none/);
     });
 
-    it('hides the companion toggle switch on mobile', () => {
-        expect(css).toMatch(/@media\s+not\s+all\s+and\s+\(min-width:\s*1024px\)[^{]*\(pointer:\s*coarse\)\s*\{[^}]*#companionToggle\s*\{[^}]*display:\s*none/);
+    it('hides the Show ghost settings item on mobile', () => {
+        // Same gate the companion module itself uses — only show the toggle
+        // on viewports where the companion actually runs.
+        expect(css).toMatch(/@media\s+not\s+all\s+and\s+\(min-width:\s*1024px\)[^{]*\(pointer:\s*coarse\)\s*\{[^}]*\.settingsMenuItem--ghost\s*\{[^}]*display:\s*none/);
     });
 });
 

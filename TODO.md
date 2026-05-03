@@ -2,10 +2,10 @@
 
 ## Bugs
      
-- [ ] **[MEDIUM]** Move ghost and theme toggles into a settings dropdown menu
+- [x] **[MEDIUM]** Move ghost and theme toggles into a settings dropdown menu
   - Description: Replace the top-bar ghost-visibility pill switch and the standalone theme button with a single settings trigger (gear or kebab icon) that opens a dropdown housing two items: "Show ghost" (with an ON/OFF indicator reflecting current state) and "Theme" (toggles the active theme). Save and import buttons stay as direct icon buttons on the top bar so the most-used data actions remain one-click. The dropdown should close on selection, outside click, or Escape. The existing pill-switch markup can be removed once nothing else references it.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-03
      
 - [ ] **[LOW]** Left-align PROJECTS and TODO ITEMS column headers
   - Description: Change the PROJECTS and TODO ITEMS column headers from centered to left-aligned so they line up with the content below them (project names in the sidebar, todo rows in the main column). The current centered alignment creates a visual mismatch where the headers float over left-anchored content. Keep the existing purple color, uppercase styling, and letter-spacing — only `text-align` should change. The EXPAND ALL control on the right side of the TODO ITEMS header row stays anchored to the right.

@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-03',
+        fixed: [
+            'Ghost and theme toggles moved into a single settings dropdown on the top bar, freeing space while keeping save and import as direct one-click icons.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-01',
         added: [
             'Floating help button in the bottom-right corner — and the ? key — open a list of every keyboard shortcut, grouped by category.',
@@ -14,9 +21,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-04-30',
-        added: [
-            'Press N from anywhere to jump to the new-task input, which now shows a leading plus glyph and inviting placeholder text.',
-        ],
         fixed: [
             'Checking off a recurring task now leaves a completed entry in the Completed section so each finished occurrence stays visible as a history alongside the still-recurring original.',
         ],

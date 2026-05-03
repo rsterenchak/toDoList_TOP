@@ -992,7 +992,8 @@ body:has(#confirmModalBackdrop) #shortcutsHelpFab,
 body:has(#changelogModalBackdrop) #shortcutsHelpFab,
 body:has(#shortcutsModalBackdrop) #shortcutsHelpFab,
 body:has(#dueDatePopover) #shortcutsHelpFab,
-body:has(#projContextMenu) #shortcutsHelpFab {
+body:has(#projContextMenu) #shortcutsHelpFab,
+body:has(#settingsMenu) #shortcutsHelpFab {
   display: none;
 }
 
@@ -2314,58 +2315,100 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 
-/* COMPANION TOGGLE — pill switch sitting to the LEFT of #themeToggle on
-   desktop. Its `margin-left: auto` pushes the ghost+theme pair to the right
-   edge of the nav bar. Hidden on viewports where the companion itself never
-   runs; on those viewports #themeToggle gets its own `margin-left: auto`
-   (see the media query at the bottom of this block). */
-#companionToggle {
+/* SETTINGS DROPDOWN — single icon button on the far right of the nav. Opens
+   a small menu housing the Show ghost and Theme toggles. The auto left
+   margin on the export-import cluster pushes the trio (export, import,
+   settings) to the right edge of the nav; the settings trigger sits flush
+   against the right edge with a small gap from the export/import pair. */
+#exportImportControls {
   margin-left: auto;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--bg-surface);
+}
+#settingsToggle {
+  margin-left: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
   border: 0.5px solid var(--border-bright);
   cursor: pointer;
-  position: relative;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.18s ease, border-color 0.18s ease;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-#companionToggle:hover {
+#settingsToggle:hover {
   border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
-#companionToggle:focus { outline: none; }
-#companionToggle:focus-visible {
+#settingsToggle:focus { outline: none; }
+#settingsToggle:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
-.companionToggleThumb {
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--text-secondary);
-  transition: left 0.18s ease, background 0.18s ease;
-  pointer-events: none;
-}
-#companionToggle[aria-checked="true"] {
-  background: var(--accent);
+#settingsToggle[aria-expanded="true"] {
   border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
-#companionToggle[aria-checked="true"] .companionToggleThumb {
-  left: calc(100% - 19px);
-  background: #fff;
+
+/* Settings menu — visual treatment mirrors #projContextMenu so the dropdown
+   reads as the same kind of surface the rest of the app already uses. */
+#settingsMenu {
+  position: fixed;
+  z-index: 30;
+  min-width: 180px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
 }
-/* Only show the toggle on viewports that actually run the companion. When
-   it's hidden, #themeToggle takes over the auto-margin so the icon button
-   still sits flush against the right edge of the nav. */
+.settingsMenuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.settingsMenuItem:hover { background: var(--bg-hover); }
+.settingsMenuItem:focus { outline: none; }
+.settingsMenuItem:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent-dim);
+}
+.settingsMenuItemLabel {
+  flex: 1 1 auto;
+}
+.settingsMenuItemState {
+  flex: 0 0 auto;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
+}
+/* Hide the Show ghost item on viewports where the companion itself never
+   runs — same gate the companion module uses internally. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
-  #companionToggle { display: none; }
-  #themeToggle { margin-left: auto; }
+  .settingsMenuItem--ghost { display: none; }
 }
 
 

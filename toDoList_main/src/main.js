@@ -18,7 +18,8 @@ import {
 import {
     applyTheme,
     resolveInitialTheme,
-    createThemeToggleButton,
+    getCurrentTheme,
+    THEME_KEY,
 } from './theme.js';
 import {
     showChangelogModal,
@@ -141,51 +142,156 @@ function component() {
     // sidebarToggle is first child of nav so nothing can overlap it
     nav.appendChild(sidebarToggle);
 
-    // ── companion toggle (desktop only) ──
-    // Pill-switch hidden on mobile via CSS so the control only appears on
-    // viewports where the companion actually runs. Clicking it flips the
-    // persisted pref in localStorage and mounts or destroys the companion
-    // DOM element accordingly via the singleton accessors in companion.js.
-    const companionToggle      = document.createElement('button');
-    const companionToggleThumb = document.createElement('span');
-
-    companionToggle.id   = 'companionToggle';
-    companionToggle.type = 'button';
-    companionToggle.setAttribute('role', 'switch');
-    companionToggle.setAttribute('aria-label', 'Toggle desktop companion');
-    companionToggleThumb.className = 'companionToggleThumb';
-    companionToggle.appendChild(companionToggleThumb);
-
-    function syncCompanionToggle() {
-        companionToggle.setAttribute('aria-checked', isCompanionEnabled() ? 'true' : 'false');
-    }
-    syncCompanionToggle();
-
-    companionToggle.addEventListener('click', function () {
-        const next = !isCompanionEnabled();
-        setCompanionEnabled(next);
-        if (next) ensureCompanion();
-        else      destroyCompanion();
-        syncCompanionToggle();
-    });
-
-    nav.appendChild(companionToggle);
-
     // ── export / import (download + upload icon pair) ──
-    // Sits between the companion toggle and the theme toggle. Visual treatment
-    // matches the other nav icon buttons. The drag-and-drop window listeners
-    // are attached after component() returns, so the desktop-only bail-out in
+    // Save and import stay as direct icon buttons — they're the most-used
+    // data actions and stay one-click. The drag-and-drop window listeners are
+    // attached after component() returns, so the desktop-only bail-out in
     // attachDragDropImport runs against the live viewport.
     const exportImportControls = createExportImportControls({
         onAfterReplace: function() { rebuildAfterImport(); },
     });
     nav.appendChild(exportImportControls);
 
-    // ── theme toggle (far right of nav, sits to the right of the ghost) ──
-    // Configured button comes from theme.js — owns the inline SVG glyphs,
-    // aria state, persistence, and the cross-fade timing.
-    const themeToggle = createThemeToggleButton();
-    nav.appendChild(themeToggle);
+    // ── settings dropdown trigger (far right of nav) ──
+    // Single icon button that opens a small dropdown menu housing the Show
+    // ghost and Theme toggles. The dropdown closes on selection, outside
+    // click, or Escape. Mobile viewports hide the Show ghost item via CSS
+    // since the companion itself doesn't run there; the Theme item stays
+    // available on every viewport.
+    const settingsToggle = document.createElement('button');
+    settingsToggle.id = 'settingsToggle';
+    settingsToggle.type = 'button';
+    settingsToggle.setAttribute('aria-haspopup', 'menu');
+    settingsToggle.setAttribute('aria-expanded', 'false');
+    settingsToggle.setAttribute('aria-label', 'Open settings menu');
+    settingsToggle.title = 'Settings';
+    settingsToggle.innerHTML =
+        '<svg viewBox="0 0 4 16" width="4" height="16" fill="currentColor" aria-hidden="true">' +
+        '<circle cx="2" cy="3" r="1.4"/>' +
+        '<circle cx="2" cy="8" r="1.4"/>' +
+        '<circle cx="2" cy="13" r="1.4"/>' +
+        '</svg>';
+
+    function hideSettingsMenu() {
+        const existing = document.getElementById('settingsMenu');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        settingsToggle.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onSettingsOutsideClick, true);
+        document.removeEventListener('keydown', onSettingsKeydown, true);
+        window.removeEventListener('resize', hideSettingsMenu);
+        window.removeEventListener('scroll', hideSettingsMenu, true);
+    }
+
+    function onSettingsOutsideClick(event) {
+        const menu = document.getElementById('settingsMenu');
+        if (!menu) return;
+        if (menu.contains(event.target) || settingsToggle.contains(event.target)) return;
+        hideSettingsMenu();
+    }
+
+    function onSettingsKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            hideSettingsMenu();
+            settingsToggle.focus();
+        }
+    }
+
+    function buildSettingsMenuItem(labelText, stateText, onActivate, extraClass) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'settingsMenuItem' + (extraClass ? ' ' + extraClass : '');
+        item.setAttribute('role', 'menuitem');
+        const label = document.createElement('span');
+        label.className = 'settingsMenuItemLabel';
+        label.textContent = labelText;
+        const state = document.createElement('span');
+        state.className = 'settingsMenuItemState';
+        state.textContent = stateText;
+        item.appendChild(label);
+        item.appendChild(state);
+        item.addEventListener('click', function() {
+            hideSettingsMenu();
+            onActivate();
+        });
+        return item;
+    }
+
+    function showSettingsMenu() {
+        const menu = document.createElement('div');
+        menu.id = 'settingsMenu';
+        menu.setAttribute('role', 'menu');
+
+        // Show ghost — flips the companion-enabled pref and mounts/destroys
+        // the singleton DOM element accordingly. The state pill on the right
+        // reflects current state; tapping the row toggles it. Hidden on
+        // mobile viewports via CSS to match where the companion actually runs.
+        const ghostItem = buildSettingsMenuItem(
+            'Show ghost',
+            isCompanionEnabled() ? 'ON' : 'OFF',
+            function() {
+                const next = !isCompanionEnabled();
+                setCompanionEnabled(next);
+                if (next) ensureCompanion();
+                else      destroyCompanion();
+            },
+            'settingsMenuItem--ghost'
+        );
+        menu.appendChild(ghostItem);
+
+        // Theme — flips light ↔ dark and persists. Mirrors the inline toggle
+        // logic that previously lived in theme.js's createThemeToggleButton:
+        // brief `theme-transitioning` class drives the cross-fade timing.
+        const themeItem = buildSettingsMenuItem(
+            'Theme',
+            getCurrentTheme() === 'light' ? 'Light' : 'Dark',
+            function() {
+                const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+                document.documentElement.classList.add('theme-transitioning');
+                applyTheme(next);
+                try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
+                setTimeout(function() {
+                    document.documentElement.classList.remove('theme-transitioning');
+                }, 220);
+            }
+        );
+        menu.appendChild(themeItem);
+
+        document.body.appendChild(menu);
+
+        // Anchor the menu beneath the trigger, right-aligned with it. Clamp
+        // to the viewport so the menu always renders fully on-screen.
+        const rect = settingsToggle.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        let top = rect.bottom + 4;
+        let left = rect.right - menuRect.width;
+        if (left < 4) left = 4;
+        if (top + menuRect.height > window.innerHeight) {
+            top = Math.max(4, window.innerHeight - menuRect.height - 4);
+        }
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+
+        settingsToggle.setAttribute('aria-expanded', 'true');
+
+        // Capture-phase listeners so outside interactions always close the
+        // menu, mirroring the project context menu and due-date popover.
+        document.addEventListener('click', onSettingsOutsideClick, true);
+        document.addEventListener('keydown', onSettingsKeydown, true);
+        window.addEventListener('resize', hideSettingsMenu);
+        window.addEventListener('scroll', hideSettingsMenu, true);
+    }
+
+    settingsToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (document.getElementById('settingsMenu')) {
+            hideSettingsMenu();
+        } else {
+            showSettingsMenu();
+        }
+    });
+
+    nav.appendChild(settingsToggle);
 
     base.appendChild(nav);
     base.appendChild(main);

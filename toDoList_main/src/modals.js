@@ -444,7 +444,8 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('changelogModalBackdrop') ||
         document.getElementById('shortcutsModalBackdrop') ||
         document.getElementById('dueDatePopover')         ||
-        document.getElementById('projContextMenu')
+        document.getElementById('projContextMenu')        ||
+        document.getElementById('settingsMenu')
     );
 }
 
