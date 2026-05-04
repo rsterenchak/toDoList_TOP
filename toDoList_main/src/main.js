@@ -674,6 +674,26 @@ function component() {
         e.preventDefault();
     });
 
+    // Global "Ctrl+Backspace" (or Cmd+Backspace) shortcut — toggle the
+    // sidebar exactly the way the hamburger does, so the whole chrome stays
+    // reachable from the keyboard. Routed through `sidebarToggle.click()`
+    // so the desktop rail/full and mobile drawer branches stay in lockstep
+    // with the on-screen control. Skipped while focus is inside an editable
+    // surface so Ctrl+Backspace still deletes the previous word while
+    // typing in task titles or descriptions. The preventDefault below stops
+    // the browser's default "go back" gesture from firing when we consume
+    // the chord.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Backspace') return;
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        sidebarToggle.click();
+        e.preventDefault();
+    });
+
     // Global "?" shortcut — open the help modal. Same guards as the "n"
     // shortcut: skip while typing in a text-entry surface or while another
     // modal/popover already has the user's attention. Modifier keys are
