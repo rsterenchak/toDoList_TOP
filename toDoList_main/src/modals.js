@@ -317,8 +317,8 @@ const SHORTCUT_GROUPS = [
     {
         category: 'Navigation',
         items: [
-            { keys: ['\\'],            description: 'Toggle focus between the projects sidebar and the new-task input' },
-            { keys: ['Ctrl', '\\'],    description: 'Jump straight to the new-task input from anywhere (skips the sidebar leg of the toggle)' },
+            { keys: ['←'],             description: 'Jump focus to the active project icon in the sidebar' },
+            { keys: ['→'],             description: 'Jump focus to the new-task input in the active project' },
             { keys: ['Ctrl', 'Backspace'], description: 'Collapse or expand the projects sidebar (same toggle as the hamburger button)' },
             { keys: ['Ctrl', 'Enter'], description: 'Expand or collapse the description panel on every open task at once' },
             { keys: ['↑'],             description: 'Move focus to the previous todo row (or project row when in sidebar)' },

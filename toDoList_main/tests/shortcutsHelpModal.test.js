@@ -86,11 +86,11 @@ describe('floating help button + help modal', () => {
     });
 
     it('makes the focusBlankToDoInput shortcut defer to the help modal via isAnyModalOrPopoverOpen', () => {
-        // The jump-to-new-task shortcut should suppress while a modal /
-        // popover is open — including the help modal itself. We route the
-        // suppression through `isAnyModalOrPopoverOpen()` (which covers
-        // `helpModalBackdrop`, see the dedicated test for that helper)
-        // instead of inlining the IDs.
+        // The ArrowRight jump-to-new-task shortcut should suppress while a
+        // modal / popover is open — including the help modal itself. We
+        // route the suppression through `isAnyModalOrPopoverOpen()` (which
+        // covers `helpModalBackdrop`, see the dedicated test for that
+        // helper) instead of inlining the IDs.
         const block = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?focusBlankToDoInput[\s\S]*?\}\);/);
         expect(block).toBeTruthy();
         expect(block[0]).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
@@ -141,13 +141,18 @@ describe('floating help button + help modal', () => {
         expect(modals).toMatch(/['"]shortcutsRow['"]/);
         expect(modals).toMatch(/['"]shortcutsKeys['"]/);
         expect(modals).toMatch(/['"]shortcutsKey['"]/);
-        // The current set of shortcuts lives in the catalogue.
-        expect(modals).toMatch(/keys:\s*\[\s*['"]\\\\['"]\s*\]/);
-        expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]\\\\['"]\s*\]/);
+        // The current set of shortcuts lives in the catalogue. ArrowLeft and
+        // ArrowRight replace the retired `\` toggle and `Ctrl+\` chord as
+        // the cross-pane focus shortcuts.
+        expect(modals).toMatch(/keys:\s*\[\s*['"]←['"]\s*\]/);
+        expect(modals).toMatch(/keys:\s*\[\s*['"]→['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]Enter['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Enter['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]\?['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Esc['"]\s*\]/);
+        // The retired backslash bindings must not reappear in the catalogue.
+        expect(modals).not.toMatch(/keys:\s*\[\s*['"]\\\\['"]\s*\]/);
+        expect(modals).not.toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]\\\\['"]\s*\]/);
     });
 
     it('closes on the corner X, the footer Close button, the backdrop, and Escape', () => {

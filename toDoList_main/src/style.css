@@ -1591,44 +1591,6 @@ body.row-dragging * { cursor: grabbing !important; }
   user-select: none;
 }
 
-#keyHintBadge {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  /* Absorb the leftover row space so the badge pins to the right edge of
-     the placeholder row, instead of orphaning in the middle when compact
-     mode caps the input at 60ch. duePill / closeButton are display:none on
-     the placeholder so they don't participate in this flex-line either. */
-  margin-left: auto;
-  pointer-events: none;
-  user-select: none;
-}
-/* Each key in the chord renders as an individual chip — same border /
-   background / radius as a single-key badge, applied via descendant
-   selector so the container above can stay as a thin flex row. */
-#keyHintBadge kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border: 0.5px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  font: inherit;
-  color: inherit;
-}
-#keyHintBadge .keyHintSep {
-  color: var(--text-muted);
-}
-
 /* DUE DATE PILL — bordered trigger that opens the calendar popover. The
    border + calendar icon + chevron together telegraph "click to open a
    menu"; urgency color comes from the .due-soon / .due-overdue classes
@@ -2725,10 +2687,6 @@ body.row-dragging * { cursor: grabbing !important; }
 @media (max-width: 480px) {
   #staleExportHint {
     display: none !important;
-  }
-  /* Touch users won't use the keyboard shortcut — drop the hint badge. */
-  #keyHintBadge {
-    display: none;
   }
 }
 
