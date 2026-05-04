@@ -48,7 +48,10 @@ import {
     createStaleExportHint,
     refreshStaleHint,
     attachDragDropImport,
+    formatRelativeExportedAt,
+    refreshFooterExportLabel,
 } from './exportImport.js';
+import { readLastExportedAt } from './prefs.js';
 import button from './addProj_button.svg';
 
 
@@ -278,10 +281,12 @@ function component() {
         menu.setAttribute('role', 'menu');
 
         // Export JSON — writes the current snapshot to a downloadable file.
-        // No state pill: action is one-shot, not a toggle.
+        // The state pill mirrors the footer's last-exported relative label so
+        // the user sees how stale their last manual backup is at the moment
+        // they're about to take a new one.
         const exportItem = buildSettingsMenuItem(
             'Export JSON',
-            '',
+            formatRelativeExportedAt(readLastExportedAt()),
             function() { exportTodosToFile(); }
         );
         menu.appendChild(exportItem);
@@ -402,6 +407,7 @@ function component() {
     // hand-wired calls at every mutation site.
     const footVersion = document.createElement('span');
     const footCounts  = document.createElement('div');
+    const footExport  = document.createElement('span');
     const footOpen    = document.createElement('span');
     const footDone    = document.createElement('span');
 
@@ -435,8 +441,12 @@ function component() {
     });
 
     footCounts.id = 'footCounts';
+    footExport.id = 'footExport';
     footOpen.id = 'footOpen';
     footDone.id = 'footDone';
+    // Initial copy is the never-exported state; refreshFooterExportLabel
+    // overwrites it on first paint with the current relative timestamp.
+    footExport.textContent = formatRelativeExportedAt(readLastExportedAt());
     footOpen.textContent = '0 OPEN';
     footDone.textContent = '0 DONE';
 
@@ -451,6 +461,7 @@ function component() {
     const staleExportHint = createStaleExportHint();
     foot.appendChild(staleExportHint);
 
+    footCounts.appendChild(footExport);
     footCounts.appendChild(footOpen);
     footCounts.appendChild(footDone);
     foot.appendChild(footCounts);
@@ -458,6 +469,7 @@ function component() {
     // Initial unseen-indicator paint — deferred so the dot element is in the DOM.
     setTimeout(updateChangelogDot, 0);
     setTimeout(refreshStaleHint, 0);
+    setTimeout(refreshFooterExportLabel, 0);
 
     main.appendChild(main1);
     main.appendChild(sidebarResizer);

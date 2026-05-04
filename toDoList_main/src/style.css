@@ -294,6 +294,26 @@ body {
   font-weight: 600;
 }
 
+/* Last-exported relative timestamp. Sits to the left of the OPEN/DONE
+   counts and softens visually so it reads as a backup-age indicator rather
+   than competing with the per-project counts. The same label is mirrored
+   into the ghost menu's Export JSON state pill. */
+#footExport {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* On narrow viewports the footer is already snug; the menu pill still
+   surfaces the same label, so we drop the footer copy below 480px. */
+@media (max-width: 480px) {
+  #footExport {
+    display: none;
+  }
+}
+
 /* MAIN SECTION */
 #mainSec {
   display: grid;
