@@ -275,13 +275,44 @@ export function showChangelogModal() {
 }
 
 
-// ── SHORTCUTS MODAL ──
-// Opens from the floating `?` help button (bottom-right of the viewport) and
-// from the global `?` keydown. Mirrors showChangelogModal for close-on-X,
-// close-on-backdrop, and close-on-Escape. The shortcut catalogue is grouped
-// by category (Navigation, Editing, Global) — when a future task adds new
-// bindings, append entries here so the modal stays the single source of truth
-// for what the keyboard does.
+// ── HELP MODAL ──
+// Opens from the floating `?` help button (bottom-right of the viewport),
+// from the global `?` keydown, and from the "Help" item in the ghost menu.
+// Mirrors showChangelogModal for close-on-X, close-on-backdrop, and
+// close-on-Escape. The body is a stack of topic-based sections explaining
+// the app's chrome — Tasks, Projects, Ghost Menu — followed by a Keyboard
+// Shortcuts table. When new UI or bindings are added, append entries here
+// so the modal stays the single source of truth for "what the chrome does".
+const HELP_TOPICS = [
+    {
+        category: 'Tasks',
+        items: [
+            'Type in the new-task input and press Enter to add a task to the selected project.',
+            'Click a task title (or press Enter on a focused row) to edit it inline; click again to commit.',
+            'Click the chevron beside a task to expand its description panel; the EXPAND ALL button toggles every open task at once.',
+            'Drag the dotted handle at the right of a row to reorder; check the box to mark a task done; right-click (long-press on touch) for the context menu.',
+            'Tasks support a due date — open the date popover from the row to set or clear it.',
+        ],
+    },
+    {
+        category: 'Projects',
+        items: [
+            'Click a rail icon in the left sidebar to switch projects; hover a rail icon for the full project name.',
+            'Use the + button at the top of the sidebar (or the empty-state Create button) to add a new project.',
+            'Right-click (long-press on touch) a project row to rename, recolor, or delete it.',
+            'Drag a project up or down in the sidebar to reorder; the active project keeps its accent color in the breadcrumb row.',
+        ],
+    },
+    {
+        category: 'Ghost Menu',
+        items: [
+            'Click the small ghost icon at the top-right of the nav to open the global menu.',
+            'The menu hosts Export JSON, Import JSON, Theme (light/dark), Toggle floating ghost, and Help.',
+            'Click outside the menu, press Escape, or click the ghost again to close it.',
+        ],
+    },
+];
+
 const SHORTCUT_GROUPS = [
     {
         category: 'Navigation',
@@ -304,52 +335,85 @@ const SHORTCUT_GROUPS = [
     {
         category: 'Global',
         items: [
-            { keys: ['?'],      description: 'Open this keyboard shortcuts list' },
+            { keys: ['?'],      description: 'Open this help modal' },
             { keys: ['Esc'],    description: 'Close the open modal, popover, or context menu' },
         ],
     },
 ];
 
-export function showShortcutsModal() {
-    const prior = document.getElementById('shortcutsModalBackdrop');
+export function showHelpModal() {
+    const prior = document.getElementById('helpModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
     const backdrop = document.createElement('div');
-    backdrop.id = 'shortcutsModalBackdrop';
+    backdrop.id = 'helpModalBackdrop';
 
     const dialog = document.createElement('div');
-    dialog.id = 'shortcutsModal';
+    dialog.id = 'helpModal';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'shortcutsModalTitle');
+    dialog.setAttribute('aria-labelledby', 'helpModalTitle');
 
     const header = document.createElement('div');
-    header.id = 'shortcutsModalHeader';
+    header.id = 'helpModalHeader';
 
     const title = document.createElement('div');
-    title.id = 'shortcutsModalTitle';
-    title.textContent = 'Keyboard Shortcuts';
+    title.id = 'helpModalTitle';
+    title.textContent = 'Help';
 
     const closeX = document.createElement('button');
-    closeX.id = 'shortcutsModalClose';
+    closeX.id = 'helpModalClose';
     closeX.type = 'button';
-    closeX.setAttribute('aria-label', 'Close keyboard shortcuts');
+    closeX.setAttribute('aria-label', 'Close help');
     closeX.textContent = '×';
 
     header.appendChild(title);
     header.appendChild(closeX);
 
     const body = document.createElement('div');
-    body.id = 'shortcutsModalBody';
+    body.id = 'helpModalBody';
+
+    // Topic sections (Tasks / Projects / Ghost Menu) — plain bullet lists
+    // explaining the visible chrome.
+    HELP_TOPICS.forEach(function(topic) {
+        const block = document.createElement('section');
+        block.className = 'helpTopic';
+
+        const topicLabel = document.createElement('div');
+        topicLabel.className = 'helpTopicLabel';
+        topicLabel.textContent = topic.category;
+        block.appendChild(topicLabel);
+
+        const list = document.createElement('ul');
+        list.className = 'helpTopicList';
+        topic.items.forEach(function(text) {
+            const li = document.createElement('li');
+            li.textContent = text;
+            list.appendChild(li);
+        });
+        block.appendChild(list);
+        body.appendChild(block);
+    });
+
+    // Keyboard Shortcuts section — two-column table with monospace key-cap
+    // pills. Subgroups (Navigation / Editing / Global) sit beneath the
+    // top-level "Keyboard Shortcuts" label so the table stays scannable.
+    const shortcutsBlock = document.createElement('section');
+    shortcutsBlock.className = 'helpTopic helpShortcuts';
+
+    const shortcutsLabel = document.createElement('div');
+    shortcutsLabel.className = 'helpTopicLabel';
+    shortcutsLabel.textContent = 'Keyboard Shortcuts';
+    shortcutsBlock.appendChild(shortcutsLabel);
 
     SHORTCUT_GROUPS.forEach(function(group) {
-        const block = document.createElement('section');
-        block.className = 'shortcutsGroup';
+        const sub = document.createElement('div');
+        sub.className = 'shortcutsGroup';
 
         const groupLabel = document.createElement('div');
         groupLabel.className = 'shortcutsGroupLabel';
         groupLabel.textContent = group.category;
-        block.appendChild(groupLabel);
+        sub.appendChild(groupLabel);
 
         const list = document.createElement('ul');
         list.className = 'shortcutsList';
@@ -382,15 +446,17 @@ export function showShortcutsModal() {
             list.appendChild(row);
         });
 
-        block.appendChild(list);
-        body.appendChild(block);
+        sub.appendChild(list);
+        shortcutsBlock.appendChild(sub);
     });
 
+    body.appendChild(shortcutsBlock);
+
     const actions = document.createElement('div');
-    actions.id = 'shortcutsModalActions';
+    actions.id = 'helpModalActions';
 
     const closeBtn = document.createElement('button');
-    closeBtn.id = 'shortcutsModalCloseBtn';
+    closeBtn.id = 'helpModalCloseBtn';
     closeBtn.type = 'button';
     closeBtn.textContent = 'Close';
 
@@ -427,7 +493,7 @@ export function showShortcutsModal() {
 }
 
 
-// ── SHORTCUTS HELP FAB ──
+// ── HELP FAB ──
 // The floating circular `?` button sits at the bottom-right of the viewport
 // on desktop and pointer-fine devices. CSS handles both visibility rules:
 // the `pointer: coarse` media query hides it on touch viewports (where the
@@ -442,23 +508,23 @@ export function isAnyModalOrPopoverOpen() {
     return !!(
         document.getElementById('confirmModalBackdrop')   ||
         document.getElementById('changelogModalBackdrop') ||
-        document.getElementById('shortcutsModalBackdrop') ||
+        document.getElementById('helpModalBackdrop')      ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')
     );
 }
 
-export function createShortcutsHelpFab() {
+export function createHelpFab() {
     const fab = document.createElement('button');
-    fab.id = 'shortcutsHelpFab';
+    fab.id = 'helpFab';
     fab.type = 'button';
-    fab.setAttribute('aria-label', 'Open keyboard shortcuts');
+    fab.setAttribute('aria-label', 'Open help');
     fab.setAttribute('aria-haspopup', 'dialog');
-    fab.title = 'Keyboard shortcuts (?)';
+    fab.title = 'Help (?)';
     fab.textContent = '?';
     fab.addEventListener('click', function() {
-        showShortcutsModal();
+        showHelpModal();
     });
     return fab;
 }

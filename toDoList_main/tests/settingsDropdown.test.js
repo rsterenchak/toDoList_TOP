@@ -162,7 +162,7 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
     });
 
     it('hides the FAB while the settings menu is open', () => {
-        expect(css).toMatch(/body:has\(#settingsMenu\)\s+#shortcutsHelpFab/);
+        expect(css).toMatch(/body:has\(#settingsMenu\)\s+#helpFab/);
     });
 
     it('styles #settingsToggle as a 36×36 transparent icon button pushed flush right of the nav', () => {

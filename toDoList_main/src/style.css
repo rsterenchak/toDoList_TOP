@@ -791,10 +791,12 @@ body {
   }
 }
 
-/* SHORTCUTS MODAL — opened by the floating `?` help button or the `?` key.
-   Mirrors the changelog modal's chrome (header / scrollable body / footer
-   action) so the two share visual vocabulary. */
-#shortcutsModalBackdrop {
+/* HELP MODAL — opened by the floating `?` help button, the `?` key, and the
+   "Help" item in the ghost menu. Mirrors the changelog modal's chrome
+   (header / scrollable body / footer action) so the two share visual
+   vocabulary. The body stacks topic sections (Tasks / Projects / Ghost
+   Menu) above the Keyboard Shortcuts table. */
+#helpModalBackdrop {
   position: fixed;
   inset: 0;
   z-index: 100;
@@ -808,7 +810,7 @@ body {
   animation: confirmFadeIn 0.12s ease-out;
 }
 
-#shortcutsModal {
+#helpModal {
   width: 100%;
   max-width: 460px;
   max-height: 80vh;
@@ -825,7 +827,7 @@ body {
   overflow: hidden;
 }
 
-#shortcutsModalHeader {
+#helpModalHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -833,7 +835,7 @@ body {
   border-bottom: 0.5px solid var(--border-dim);
 }
 
-#shortcutsModalTitle {
+#helpModalTitle {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0.18em;
@@ -842,7 +844,7 @@ body {
   font-weight: 600;
 }
 
-#shortcutsModalClose {
+#helpModalClose {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -852,20 +854,48 @@ body {
   cursor: pointer;
   transition: color 0.12s ease;
 }
-#shortcutsModalClose:hover { color: var(--text-primary); }
-#shortcutsModalClose:focus { outline: none; color: var(--accent-text); }
+#helpModalClose:hover { color: var(--text-primary); }
+#helpModalClose:focus { outline: none; color: var(--accent-text); }
 
-#shortcutsModalBody {
+#helpModalBody {
   padding: 8px 16px 4px;
   overflow-y: auto;
   flex: 1 1 auto;
 }
 
-.shortcutsGroup {
+.helpTopic {
   padding: 12px 0;
   border-bottom: 0.5px solid var(--border-dim);
 }
-.shortcutsGroup:last-child { border-bottom: none; }
+.helpTopic:last-child { border-bottom: none; }
+
+.helpTopicLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  margin: 0 0 8px;
+}
+
+.helpTopicList {
+  list-style: disc;
+  margin: 0 0 4px;
+  padding-left: 18px;
+}
+.helpTopicList li {
+  padding: 3px 0;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.helpShortcuts .shortcutsGroup {
+  padding: 8px 0 0;
+}
+
+.shortcutsGroup {
+  padding: 6px 0;
+}
 
 .shortcutsGroupLabel {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -920,7 +950,7 @@ body {
   color: var(--text-primary);
 }
 
-#shortcutsModalActions {
+#helpModalActions {
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -928,7 +958,7 @@ body {
   border-top: 0.5px solid var(--border-dim);
 }
 
-#shortcutsModalCloseBtn {
+#helpModalCloseBtn {
   font-family: inherit;
   font-size: 13px;
   padding: 7px 14px;
@@ -939,25 +969,25 @@ body {
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
-#shortcutsModalCloseBtn:hover { background: var(--bg-hover); }
-#shortcutsModalCloseBtn:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-dim); }
+#helpModalCloseBtn:hover { background: var(--bg-hover); }
+#helpModalCloseBtn:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-dim); }
 
 @media (max-width: 480px) {
-  #shortcutsModal {
+  #helpModal {
     font-size: 14px;
     max-height: 86vh;
   }
-  #shortcutsModalCloseBtn {
+  #helpModalCloseBtn {
     font-size: 14px;
     padding: 10px 16px;
   }
 }
 
-/* SHORTCUTS HELP FAB — circular `?` button pinned to the bottom-right of
-   the viewport. Hidden on coarse-pointer (touch) devices where the
-   shortcuts don't apply, and hidden whenever any modal, popover, or context
-   menu is in the DOM so it never overlaps one. */
-#shortcutsHelpFab {
+/* HELP FAB — circular `?` button pinned to the bottom-right of the
+   viewport. Hidden on coarse-pointer (touch) devices, and hidden whenever
+   any modal, popover, or context menu is in the DOM so it never overlaps
+   one. */
+#helpFab {
   position: fixed;
   right: 18px;
   bottom: 56px;
@@ -979,13 +1009,13 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
-#shortcutsHelpFab:hover {
+#helpFab:hover {
   background: var(--bg-hover);
   color: var(--accent-text);
   border-color: var(--accent-text);
   transform: translateY(-1px);
 }
-#shortcutsHelpFab:focus {
+#helpFab:focus {
   outline: none;
   color: var(--accent-text);
   border-color: var(--accent-text);
@@ -993,15 +1023,15 @@ body {
 }
 
 @media (pointer: coarse) {
-  #shortcutsHelpFab { display: none; }
+  #helpFab { display: none; }
 }
 
-body:has(#confirmModalBackdrop) #shortcutsHelpFab,
-body:has(#changelogModalBackdrop) #shortcutsHelpFab,
-body:has(#shortcutsModalBackdrop) #shortcutsHelpFab,
-body:has(#dueDatePopover) #shortcutsHelpFab,
-body:has(#projContextMenu) #shortcutsHelpFab,
-body:has(#settingsMenu) #shortcutsHelpFab {
+body:has(#confirmModalBackdrop) #helpFab,
+body:has(#changelogModalBackdrop) #helpFab,
+body:has(#helpModalBackdrop) #helpFab,
+body:has(#dueDatePopover) #helpFab,
+body:has(#projContextMenu) #helpFab,
+body:has(#settingsMenu) #helpFab {
   display: none;
 }
 
