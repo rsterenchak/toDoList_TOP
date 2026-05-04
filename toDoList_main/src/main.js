@@ -740,12 +740,32 @@ function component() {
     // the caret while the user is typing — the shortcut only fires when
     // focus is on the body, on a project rail icon, or on any non-editable
     // element (e.g. a committed todo row in nav mode).
+    //
+    // Exception: ArrowLeft also fires when focus is in a placeholder new-task
+    // input (the blank `#toDoInput` row or `#emptyStateInput`) AND the caret
+    // is at position 0 with no selection. Lets the user "back out" of an
+    // empty/just-started new-task field into the projects column without
+    // first having to tab or click away.
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
         const ae = document.activeElement;
-        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+
+        let allowFromPlaceholder = false;
+        if (isInputLike && e.key === 'ArrowLeft' && ae.tagName === 'INPUT') {
+            const atStart = ae.selectionStart === 0 && ae.selectionEnd === 0;
+            if (atStart) {
+                if (ae.id === 'emptyStateInput') {
+                    allowFromPlaceholder = true;
+                } else if (ae.id === 'toDoInput') {
+                    const row = ae.closest && ae.closest('#toDoChild');
+                    if (row && row.querySelector('#addGlyph')) allowFromPlaceholder = true;
+                }
+            }
+        }
+        if (isInputLike && !allowFromPlaceholder) return;
 
         if (e.key === 'ArrowLeft') {
             const target = document.querySelector('#projChild.selectedProject') ||
@@ -861,6 +881,22 @@ function component() {
 
         if (isArrow) {
             const idx = currentRow ? committed.indexOf(currentRow) : -1;
+            // ArrowUp off the top of the committed list lands in the blank
+            // placeholder input above it — lets the user back into the new-
+            // task field without grabbing the mouse.
+            if (!isArrowDown && idx === 0) {
+                const placeholderRow = allRows.find(function(row) {
+                    return !!row.querySelector('#addGlyph');
+                });
+                const placeholderInput = placeholderRow ? placeholderRow.querySelector('#toDoInput') : null;
+                if (placeholderInput) {
+                    if (currentRow) currentRow.classList.remove('todo-active');
+                    placeholderInput.focus();
+                    placeholderInput.setSelectionRange(0, 0);
+                    e.preventDefault();
+                    return;
+                }
+            }
             let nextIdx;
             if (isArrowDown) {
                 nextIdx = idx === -1 ? 0 : Math.min(idx + 1, committed.length - 1);
