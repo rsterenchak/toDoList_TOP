@@ -288,7 +288,7 @@ const SHORTCUT_GROUPS = [
         items: [
             { keys: ['\\'],            description: 'Toggle focus between the projects sidebar and the new-task input' },
             { keys: ['Ctrl', '\\'],    description: 'Jump straight to the new-task input from anywhere (skips the sidebar leg of the toggle)' },
-            { keys: ['Ctrl', 'Enter'], description: 'Toggle the Completed section (closing highlights the first open todo)' },
+            { keys: ['Ctrl', 'Enter'], description: 'Expand or collapse the description panel on every open task at once' },
             { keys: ['↑'],             description: 'Move focus to the previous todo row (or project row when in sidebar)' },
             { keys: ['↓'],             description: 'Move focus to the next todo row (or project row when in sidebar)' },
         ],
