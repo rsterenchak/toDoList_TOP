@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             'Ctrl+Enter now mirrors the Expand All button, expanding or collapsing every open task description at once.',
             'Hamburger toggle moved up to the top nav next to the ghost menu so both global controls share one row, leaving the project name, count, and Expand All as a clean second band.',
+            'Ctrl+Backspace now toggles the projects sidebar — same collapse/expand as the hamburger button, with the browser’s go-back gesture suppressed.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-03',
         fixed: [
-            'Top-bar hamburger now shares the same neutral color as the save and import icons, with a subtle divider before the settings menu so it reads as a separate group.',
             'The `\\` shortcut now toggles focus between the projects rail and the new-task input even when the empty-state placeholder is showing.',
         ],
     },

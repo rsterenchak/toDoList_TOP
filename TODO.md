@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add Ctrl+Backspace shortcut to toggle the sidebar
+- [x] **[MEDIUM]** Add Ctrl+Backspace shortcut to toggle the sidebar
   - Description: Bind Ctrl+Backspace globally as a toggle for the sidebar's collapsed (icon rail) and expanded (full sidebar with project names + add button) states — the same toggle the hamburger button performs. Shortcut should preventDefault so the browser's "go back" behavior doesn't fire, and should ignore the keydown when focus is inside an editable input/textarea so Ctrl+Backspace can still delete the previous word in task titles. Pairs with the existing keyboard-driven workflow (Ctrl+\ for the task input, \ for project↔input toggle) and lets users navigate the entire chrome without reaching for the mouse. Use grep + offset/limit when navigating main.js to locate the hamburger toggle handler.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-04
 
 ## Features
 
