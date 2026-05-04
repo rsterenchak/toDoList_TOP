@@ -655,23 +655,6 @@ function component() {
         }
     });
 
-    // Global "Ctrl+\" (or Cmd+\ on macOS) shortcut — always jump straight to
-    // the visible new-task input. Context-aware via focusBlankToDoInput, which
-    // prefers #emptyStateInput when the project has zero open todos and falls
-    // back to the placeholder #toDoInput otherwise. Companion to the bare-`\`
-    // toggle: from a committed todo the toggle would route to the sidebar
-    // (default direction), so users mid-list need a one-step "back to the
-    // new-task line" shortcut. Chord-style means we don't need a typing-
-    // surface guard — it can't fire mid-typing by accident.
-    document.addEventListener('keydown', function(e) {
-        if (e.key !== '\\') return;
-        if (!(e.ctrlKey || e.metaKey)) return;
-        if (e.altKey || e.shiftKey) return;
-        if (isAnyModalOrPopoverOpen()) return;
-        focusBlankToDoInput();
-        e.preventDefault();
-    });
-
     // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — mirror the EXPAND ALL
     // button so the chord toggles inline descriptions on every open task at
     // once. Routed through the button's own click so the label and the
@@ -749,40 +732,22 @@ function component() {
         e.preventDefault();
     });
 
-    // Global "\" toggle — flip focus between the active project's rail icon
-    // and the visible new-task input. Three branches:
-    //   1. Focus in the sidebar (`#sideMa` or any descendant, including the
-    //      rail icons) → jump to the visible new-task input (empty-state
-    //      input when the project is empty, otherwise the placeholder
-    //      `#toDoInput`).
-    //   2. Focus in the visible new-task input — either `#emptyStateInput`
-    //      or the empty placeholder `#toDoInput` — → jump back to the
-    //      selected project's rail icon (first project as fallback). The
-    //      preventDefault below stops the literal `\` from being typed.
-    //      Tradeoff: a literal backslash can't be typed in those two inputs,
-    //      acceptable since `\` is vanishingly rare in task names.
-    //   3. Focus anywhere else → if in any other typing surface (committed
-    //      todo title, description input, etc.) bail so `\` types normally;
-    //      otherwise default to "go to sidebar" so the shortcut still works
-    //      when nothing meaningful has focus yet.
+    // ArrowLeft / ArrowRight cross-pane focus shortcuts. Left jumps focus to
+    // the active project's rail icon; right jumps focus to the visible new-
+    // task input (empty-state input when the project is empty, otherwise the
+    // blank placeholder `#toDoInput`). Bails when focus is already inside an
+    // editable input/textarea/contentEditable so the arrow keys still move
+    // the caret while the user is typing — the shortcut only fires when
+    // focus is on the body, on a project rail icon, or on any non-editable
+    // element (e.g. a committed todo row in nav mode).
     document.addEventListener('keydown', function(e) {
-        if (e.key !== '\\') return;
-        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
         const ae = document.activeElement;
-        const sideMa = document.getElementById('sideMa');
-        const inSidebar = !!(ae && sideMa && sideMa.contains(ae));
-        const inTaskInput = !!(ae && (
-            ae.id === 'emptyStateInput' ||
-            (ae.id === 'toDoInput' && (ae.value || '') === '')
-        ));
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
 
-        if (inSidebar) {
-            focusBlankToDoInput();
-            e.preventDefault();
-            return;
-        }
-        if (inTaskInput) {
+        if (e.key === 'ArrowLeft') {
             const target = document.querySelector('#projChild.selectedProject') ||
                            document.querySelector('#projChild');
             if (!target) return;
@@ -790,19 +755,15 @@ function component() {
             e.preventDefault();
             return;
         }
-        // Other typing surfaces — let the keystroke through.
-        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-        const target = document.querySelector('#projChild.selectedProject') ||
-                       document.querySelector('#projChild');
-        if (!target) return;
-        target.focus();
+        focusBlankToDoInput();
         e.preventDefault();
     });
 
     // Delegated keyboard nav on the projects sidebar — only fires while a
-    // project row itself has focus (i.e. the user arrived via `\`). When the
-    // focus is inside the row's `#projInput` (rename mode), we skip so the
-    // existing input keydown logic owns Enter/Arrow behavior.
+    // project row itself has focus (i.e. the user arrived via ArrowLeft or
+    // by clicking a rail icon). When focus is inside the row's `#projInput`
+    // (rename mode), we skip so the existing input keydown logic owns
+    // Enter/Arrow behavior.
     sideMain.addEventListener('keydown', function(e) {
         const row = e.target.closest('#projChild');
         if (!row) return;
@@ -1066,8 +1027,8 @@ function component() {
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
-        // tabindex makes the row reachable by the global `\` shortcut and by
-        // arrow-key navigation in the sideMa keydown handler.
+        // tabindex makes the row reachable by the global ArrowLeft shortcut
+        // and by arrow-key navigation in the sideMa keydown handler.
         projChild.setAttribute('tabindex', '0');
 
         // First Project Input
@@ -1564,8 +1525,8 @@ function restoreFromStorage() {
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
-        // tabindex makes the row reachable by the global `\` shortcut and by
-        // arrow-key navigation in the sideMa keydown handler.
+        // tabindex makes the row reachable by the global ArrowLeft shortcut
+        // and by arrow-key navigation in the sideMa keydown handler.
         projChild.setAttribute('tabindex', '0');
         applyProjectAccent(projChild, listLogic.getProjectColor(projectName));
         applyProjectInitial(projChild, projectName);

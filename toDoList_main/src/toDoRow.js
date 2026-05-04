@@ -260,34 +260,15 @@ export function buildToDoRow(item, toDoName) {
     // mode can rely on hover to reveal text that the ellipsis would clip.
     toDoInput.title       = item.tit || "";
 
-    // Affordance cues only on the blank placeholder row: a leading purple `+`
-    // glyph and a trailing `N` keyboard-hint badge. Both are decorative
-    // (aria-hidden, pointer-events: none in CSS) so click-anywhere on the row
-    // still falls through to wireToDoRowClick → focus the input.
-    const addGlyph     = !item.tit ? document.createElement("span") : null;
-    const keyHintBadge = !item.tit ? document.createElement("span") : null;
+    // Affordance cue only on the blank placeholder row: a leading purple `+`
+    // glyph. Decorative (aria-hidden, pointer-events: none in CSS) so click-
+    // anywhere on the row still falls through to wireToDoRowClick → focus the
+    // input.
+    const addGlyph = !item.tit ? document.createElement("span") : null;
     if (addGlyph) {
         addGlyph.id = "addGlyph";
         addGlyph.setAttribute('aria-hidden', 'true');
         addGlyph.textContent = "+";
-    }
-    if (keyHintBadge) {
-        keyHintBadge.id = "keyHintBadge";
-        keyHintBadge.setAttribute('aria-hidden', 'true');
-        // Mirror the shortcut modal's two-key layout: each key in its own
-        // <kbd> chip with a `+` separator between, so the badge reads as a
-        // real keyboard chord (Ctrl + \) — the always-to-placeholder fast
-        // path that works from anywhere, including committed todo rows.
-        const ctrlKbd = document.createElement('kbd');
-        ctrlKbd.textContent = 'Ctrl';
-        const keySep = document.createElement('span');
-        keySep.className = 'keyHintSep';
-        keySep.textContent = '+';
-        const backslashKbd = document.createElement('kbd');
-        backslashKbd.textContent = '\\';
-        keyHintBadge.appendChild(ctrlKbd);
-        keyHintBadge.appendChild(keySep);
-        keyHintBadge.appendChild(backslashKbd);
     }
 
     closeButtonToDo.id = "closeButtonToDo";
@@ -342,7 +323,6 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(swipePaneRight);
     if (addGlyph) toDoChild.appendChild(addGlyph);
     toDoChild.appendChild(toDoInput);
-    if (keyHintBadge) toDoChild.appendChild(keyHintBadge);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(descToggle);
@@ -409,10 +389,9 @@ export function buildToDoRow(item, toDoName) {
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
         duePill.style.display         = "";
-        // Strip the blank-row affordance cues — once committed, this row is a
-        // real todo and the leading `+` / `N` badge would be misleading.
-        if (addGlyph     && addGlyph.parentElement)     addGlyph.remove();
-        if (keyHintBadge && keyHintBadge.parentElement) keyHintBadge.remove();
+        // Strip the blank-row affordance cue — once committed, this row is a
+        // real todo and the leading `+` glyph would be misleading.
+        if (addGlyph && addGlyph.parentElement) addGlyph.remove();
 
         toDoInput.blur();
         if (isFirstCommit) {
