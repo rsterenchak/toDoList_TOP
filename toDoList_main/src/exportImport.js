@@ -82,7 +82,49 @@ export function exportTodosToFile() {
 
     writeLastExportedAt(now.toISOString());
     refreshStaleHint();
+    refreshFooterExportLabel();
     return filename;
+}
+
+
+// ── LAST-EXPORTED RELATIVE LABEL ──
+//
+// Surfaces the timestamp written by writeLastExportedAt as a soft
+// backup-reminder. Rendered in the footer next to the OPEN/DONE counts and
+// mirrored into the ghost menu's Export JSON state pill, so the gap is
+// visible both at rest and at the moment of action.
+
+const MS_PER_MINUTE = 60 * 1000;
+const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+const MS_PER_MONTH = 30 * MS_PER_DAY;
+const MS_PER_YEAR = 365 * MS_PER_DAY;
+
+export function formatRelativeExportedAt(iso, now) {
+    if (!iso) return 'Never exported';
+    const t = Date.parse(iso);
+    if (isNaN(t)) return 'Never exported';
+
+    const ref = (now ? now.getTime() : Date.now());
+    const diff = ref - t;
+
+    // Clock skew or a future-stamped file — treat as fresh.
+    if (diff < MS_PER_MINUTE) return 'Exported just now';
+
+    function plural(n, unit) {
+        return 'Exported ' + n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
+    }
+
+    if (diff < MS_PER_HOUR) return plural(Math.floor(diff / MS_PER_MINUTE), 'minute');
+    if (diff < MS_PER_DAY)  return plural(Math.floor(diff / MS_PER_HOUR), 'hour');
+    if (diff < MS_PER_MONTH) return plural(Math.floor(diff / MS_PER_DAY), 'day');
+    if (diff < MS_PER_YEAR)  return plural(Math.floor(diff / MS_PER_MONTH), 'month');
+    return plural(Math.floor(diff / MS_PER_YEAR), 'year');
+}
+
+export function refreshFooterExportLabel() {
+    const el = document.getElementById('footExport');
+    if (!el) return;
+    el.textContent = formatRelativeExportedAt(readLastExportedAt());
 }
 
 
