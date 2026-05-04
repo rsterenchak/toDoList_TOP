@@ -2,20 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Make Ctrl+\ work in the empty state and add \ as a project↔input focus toggle
-  - Description: Two related shortcut changes. First, the existing Ctrl+\ handler focuses #addTaskInput but does nothing when the empty state is visible — make it context-aware so it focuses whichever task input is currently rendered (#addTaskInput or #emptyStateInput). Second, add a \ (no modifier) shortcut that toggles focus between the active project's rail icon and the visible task input: pressing \ from the rail icon moves focus to the input; pressing \ while in the input intercepts the keydown with preventDefault (so the character isn't typed) and moves focus back to the rail icon. The active rail icon may need tabindex=0 to be focusable. One tradeoff to flag: always intercepting \ in the input means users can't type a literal backslash in task titles — acceptable since backslashes are vanishingly rare in task names, but worth confirming. Use grep + offset/limit when navigating main.js for the existing Ctrl+\ wiring to mirror.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-03
-
-- [x] **[MEDIUM]** Repurpose Ctrl+Enter to expand all descriptions instead of the completed section
-  - Description: Currently Ctrl+Enter expands the "Completed (N)" collapsed section at the bottom of the list. Repurpose it to mirror the EXPAND ALL button instead — toggling expanded descriptions on all open tasks inline, since that's a higher-frequency action than viewing completed items. The Completed section stays accessible via its chevron header and doesn't need a dedicated shortcut. Implementation is a single binding swap: point the Ctrl+Enter listener at the same handler EXPAND ALL invokes. Use grep + offset/limit when navigating main.js to locate both bindings.
+- [ ] **[MEDIUM]** Add Ctrl+Backspace shortcut to toggle the sidebar
+  - Description: Bind Ctrl+Backspace globally as a toggle for the sidebar's collapsed (icon rail) and expanded (full sidebar with project names + add button) states — the same toggle the hamburger button performs. Shortcut should preventDefault so the browser's "go back" behavior doesn't fire, and should ignore the keydown when focus is inside an editable input/textarea so Ctrl+Backspace can still delete the previous word in task titles. Pairs with the existing keyboard-driven workflow (Ctrl+\ for the task input, \ for project↔input toggle) and lets users navigate the entire chrome without reaching for the mouse. Use grep + offset/limit when navigating main.js to locate the hamburger toggle handler.
   - File: `toDoList_main/src/main.js`
-  - Completed: 2026-05-04
-
-- [x] **[LOW]** Align ghost menu trigger with hamburger in the top row
-  - Description: Currently the ghost button sits alone in a top zone above the hamburger and breadcrumb row, leaving a half-empty band of chrome at the top. Move the ghost button up to share the top row with the hamburger so both global controls (hamburger left, ghost right) sit on the same horizontal band. The breadcrumb row below — active project name, count, and EXPAND ALL — then reads as a clean second row of project-scoped chrome. Pure positioning change, no functional impact on the menu, hover-pulse, or any other ghost behavior. Likely a flexbox/grid adjustment in the top chrome container.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-04
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
