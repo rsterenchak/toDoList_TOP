@@ -163,10 +163,11 @@ function component() {
     sidebarResizer.setAttribute('aria-orientation', 'vertical');
     sidebarResizer.setAttribute('aria-label', 'Resize projects sidebar');
 
-    // sidebarToggle lives at the top of the rail, not in the nav. The rail
-    // owns its own toggle so the hamburger is visually anchored to the
-    // surface it controls. On mobile viewports the rail is replaced with the
-    // existing overlay drawer, so the toggle still slides the full sidebar.
+    // sidebarToggle lives in the nav so the global controls (hamburger left,
+    // ghost right) share one horizontal band. The breadcrumb row below then
+    // reads as a clean second row of project-scoped chrome. On mobile
+    // viewports the rail is replaced with the existing overlay drawer, so
+    // the nav-anchored toggle still slides the full sidebar in/out.
 
     // ── ghost menu trigger (far right of nav) ──
     // Single 36px ghost icon button replaces the previous save/import/kebab
@@ -368,6 +369,7 @@ function component() {
         }
     });
 
+    nav.appendChild(sidebarToggle);
     nav.appendChild(settingsToggle);
     nav.appendChild(importFileInput);
 
@@ -452,8 +454,8 @@ function component() {
     main.appendChild(main2);
 
     // Sidebar layout (flex column):
-    //   sideTitle  — top: hamburger toggle (always) + "PROJECTS" label
-    //                (visible only in full mode; rail mode hides it via CSS)
+    //   sideTitle  — top: "PROJECTS" label (visible only in full mode;
+    //                hidden via CSS in rail mode since it's empty there)
     //   sideMain   — middle: scrollable project rows
     //   addProj    — bottom: "+" add-project button. In rail mode the button
     //                renders with a dashed border; in full mode it stays a
@@ -462,7 +464,6 @@ function component() {
     main1.appendChild(sideMain);
     main1.appendChild(addProj);
 
-    sideTitle.appendChild(sidebarToggle);
     sideTitle.appendChild(sideHead);
     addProj.appendChild(projButton);
 

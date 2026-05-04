@@ -12,7 +12,7 @@ function read(relative) {
 // Pins the contract for the projects sidebar icon rail. The full-width
 // PROJECTS sidebar is replaced by a 54px icon rail whose chips show each
 // project's first letter; the active chip wears the purple accent. The
-// hamburger toggle moves out of the top nav and into the rail itself,
+// hamburger toggle lives in the top nav next to the ghost menu trigger,
 // where it switches between the rail and the full-named sidebar. A new
 // breadcrumb in the main column surfaces the active project name + open
 // count textually, since the rail itself only shows initials.
@@ -44,10 +44,12 @@ describe('projects sidebar — 54px icon rail', () => {
         expect(main).toMatch(/applySidebarRail\(\s*isSidebarRailOn\(\)\s*\)/);
     });
 
-    it('moves the hamburger out of the nav bar and into the sidebar header', () => {
-        // The hamburger now anchors to the rail it controls.
-        expect(main).not.toMatch(/nav\.appendChild\(\s*sidebarToggle\s*\)/);
-        expect(main).toMatch(/sideTitle\.appendChild\(\s*sidebarToggle\s*\)/);
+    it('anchors the hamburger in the top nav alongside the ghost menu trigger', () => {
+        // Hamburger left, ghost right — both global controls share the top
+        // horizontal band so the breadcrumb row below reads as a clean second
+        // row of project-scoped chrome.
+        expect(main).toMatch(/nav\.appendChild\(\s*sidebarToggle\s*\)/);
+        expect(main).not.toMatch(/sideTitle\.appendChild\(\s*sidebarToggle\s*\)/);
     });
 
     it('places the add-project button at the bottom of the sidebar column', () => {
