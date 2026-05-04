@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-03
 
-- [ ] **[MEDIUM]** Repurpose Ctrl+Enter to expand all descriptions instead of the completed section
+- [x] **[MEDIUM]** Repurpose Ctrl+Enter to expand all descriptions instead of the completed section
   - Description: Currently Ctrl+Enter expands the "Completed (N)" collapsed section at the bottom of the list. Repurpose it to mirror the EXPAND ALL button instead — toggling expanded descriptions on all open tasks inline, since that's a higher-frequency action than viewing completed items. The Completed section stays accessible via its chevron header and doesn't need a dedicated shortcut. Implementation is a single binding swap: point the Ctrl+Enter listener at the same handler EXPAND ALL invokes. Use grep + offset/limit when navigating main.js to locate both bindings.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-04
 
 - [ ] **[LOW]** Align ghost menu trigger with hamburger in the top row
   - Description: Currently the ghost button sits alone in a top zone above the hamburger and breadcrumb row, leaving a half-empty band of chrome at the top. Move the ghost button up to share the top row with the hamburger so both global controls (hamburger left, ghost right) sit on the same horizontal band. The breadcrumb row below — active project name, count, and EXPAND ALL — then reads as a clean second row of project-scoped chrome. Pure positioning change, no functional impact on the menu, hover-pulse, or any other ghost behavior. Likely a flexbox/grid adjustment in the top chrome container.
