@@ -12,8 +12,6 @@ import {
     readSidebarWidthPref,
     writeSidebarWidthPref,
     hasSidebarWidthPref,
-    isCompletedSectionOpen,
-    setCompletedSectionOpen,
     isSidebarRailOn,
     setSidebarRailOn,
 } from './prefs.js';
@@ -32,7 +30,7 @@ import {
     createShortcutsHelpFab,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
-import { updateEmptyState, updateCompletedSection } from './emptyState.js';
+import { updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
@@ -651,46 +649,17 @@ function component() {
         e.preventDefault();
     });
 
-    // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — toggle the Completed
-    // section. When CLOSING (was open → now closed), apply the `.todo-active`
-    // marker class to the first committed open todo so the user lands in
-    // keyboard-nav mode on the open list (same idiom as arrow-nav: the row
-    // is highlighted, not its input). When OPENING (was closed → now open),
-    // we leave focus alone — the user expanded the section to look at it,
-    // not to be teleported back to the open list.
+    // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — mirror the EXPAND ALL
+    // button so the chord toggles inline descriptions on every open task at
+    // once. Routed through the button's own click so the label and the
+    // `.expanded` class flip in lockstep with the bulk action, which keeps
+    // the visible state of the control honest after a keyboard invocation.
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter') return;
         if (!(e.ctrlKey || e.metaKey)) return;
         if (e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const wasOpen = isCompletedSectionOpen();
-        setCompletedSectionOpen(!wasOpen);
-        const mainListDiv = document.getElementById('mainList');
-        if (mainListDiv) updateCompletedSection(mainListDiv);
-        if (wasOpen && mainListDiv) {
-            // Find the first committed open todo row (skip the placeholder,
-            // which has an empty value, and any completed rows).
-            const openRows = mainListDiv.querySelectorAll('#toDoChild:not(.completed)');
-            let target = null;
-            for (let i = 0; i < openRows.length; i++) {
-                const input = openRows[i].querySelector('#toDoInput');
-                if (input && input.value && input.value.trim().length > 0) {
-                    target = openRows[i];
-                    break;
-                }
-            }
-            if (target) {
-                // Single-active-row invariant: clear stale `.todo-active`
-                // markers on any other rows before tagging the new target.
-                mainListDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
-                    if (el !== target) el.classList.remove('todo-active');
-                });
-                target.classList.add('todo-active');
-                // Focus the row element itself (tabindex="-1"), matching the
-                // arrow-nav pattern — the user is in nav mode, not edit mode.
-                target.focus();
-            }
-        }
+        bulkDescToggleBtn.click();
         e.preventDefault();
     });
 
