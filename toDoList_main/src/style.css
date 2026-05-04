@@ -2701,14 +2701,11 @@ body.row-dragging * { cursor: grabbing !important; }
     background: transparent;
   }
 
-  /* Rail header: keep the hamburger centered, hide the PROJECTS label
-     since it can't fit in 54px and would clip awkwardly. */
+  /* Rail header: hidden entirely. The hamburger now lives in the top nav
+     and the PROJECTS label can't fit in 54px, so the row has nothing to
+     render — collapsing it lets the project chips start at the rail's top
+     edge instead of below an empty 48px band. */
   html[data-sidebar-rail="on"] #sideTit {
-    padding: 0;
-    justify-content: center;
-    gap: 0;
-  }
-  html[data-sidebar-rail="on"] #sideHead {
     display: none;
   }
 

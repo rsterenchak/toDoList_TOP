@@ -12,10 +12,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-04
 
-- [ ] **[LOW]** Align ghost menu trigger with hamburger in the top row
+- [x] **[LOW]** Align ghost menu trigger with hamburger in the top row
   - Description: Currently the ghost button sits alone in a top zone above the hamburger and breadcrumb row, leaving a half-empty band of chrome at the top. Move the ghost button up to share the top row with the hamburger so both global controls (hamburger left, ghost right) sit on the same horizontal band. The breadcrumb row below — active project name, count, and EXPAND ALL — then reads as a clean second row of project-scoped chrome. Pure positioning change, no functional impact on the menu, hover-pulse, or any other ghost behavior. Likely a flexbox/grid adjustment in the top chrome container.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-04
 
 ## Features
 
