@@ -9,12 +9,13 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract for the floating `?` help button and the keyboard
-// shortcuts modal it opens. The FAB is a discoverable surface for the
-// shortcut catalogue, the `?` keystroke duplicates that path for keyboard
-// users, and both must be suppressed when another modal/popover is already
-// open or when the device is touch-only.
-describe('floating help button + keyboard shortcuts modal', () => {
+// Pins the contract for the floating `?` help button and the help modal it
+// opens. The FAB is a discoverable surface for the help catalogue, the `?`
+// keystroke duplicates that path for keyboard users, and the "Help" item
+// inside the ghost menu provides a third (touch-friendly) trigger. All
+// three open the same modal — topic-based sections for Tasks, Projects, the
+// Ghost menu, plus a Keyboard Shortcuts table.
+describe('floating help button + help modal', () => {
     const main = read('main.js');
     const modals = read('modals.js');
     const css = read('style.css');
@@ -35,23 +36,23 @@ describe('floating help button + keyboard shortcuts modal', () => {
         throw new Error(`Top-level rule for "${selector}" not found`);
     }
 
-    it('exports showShortcutsModal, createShortcutsHelpFab, and isAnyModalOrPopoverOpen from modals.js', () => {
-        expect(modals).toMatch(/export\s+function\s+showShortcutsModal\s*\(/);
-        expect(modals).toMatch(/export\s+function\s+createShortcutsHelpFab\s*\(/);
+    it('exports showHelpModal, createHelpFab, and isAnyModalOrPopoverOpen from modals.js', () => {
+        expect(modals).toMatch(/export\s+function\s+showHelpModal\s*\(/);
+        expect(modals).toMatch(/export\s+function\s+createHelpFab\s*\(/);
         expect(modals).toMatch(/export\s+function\s+isAnyModalOrPopoverOpen\s*\(/);
     });
 
-    it('creates the FAB with id="shortcutsHelpFab", a `?` glyph, and aria metadata', () => {
-        expect(modals).toMatch(/fab\.id\s*=\s*['"]shortcutsHelpFab['"]/);
+    it('creates the FAB with id="helpFab", a `?` glyph, and aria metadata', () => {
+        expect(modals).toMatch(/fab\.id\s*=\s*['"]helpFab['"]/);
         expect(modals).toMatch(/fab\.textContent\s*=\s*['"]\?['"]/);
-        expect(modals).toMatch(/fab\.setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Open keyboard shortcuts['"]\s*\)/);
+        expect(modals).toMatch(/fab\.setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Open help['"]\s*\)/);
         expect(modals).toMatch(/fab\.setAttribute\(\s*['"]aria-haspopup['"]\s*,\s*['"]dialog['"]\s*\)/);
     });
 
     it('appends the FAB to the DOM and wires the global `?` keydown in main.js', () => {
         // FAB is created and attached during component()
-        expect(main).toMatch(/createShortcutsHelpFab\b/);
-        expect(main).toMatch(/base\.appendChild\(\s*shortcutsHelpFab\s*\)/);
+        expect(main).toMatch(/createHelpFab\b/);
+        expect(main).toMatch(/base\.appendChild\(\s*helpFab\s*\)/);
 
         // The ? keydown is a separate handler (not coalesced with the n shortcut)
         // so its guards remain easy to reason about.
@@ -70,16 +71,26 @@ describe('floating help button + keyboard shortcuts modal', () => {
         // shortcut share the same suppression rule.
         expect(qBlock).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
         // Open the modal + suppress the literal `?` from leaking into focus.
-        expect(qBlock).toMatch(/showShortcutsModal\(\s*\)/);
+        expect(qBlock).toMatch(/showHelpModal\(\s*\)/);
         expect(qBlock).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('makes the focusBlankToDoInput shortcut defer to the shortcuts modal via isAnyModalOrPopoverOpen', () => {
-        // The jump-to-new-task shortcut (now `Ctrl+/`, formerly `N`) should
-        // suppress while a modal/popover is open — including the shortcuts
-        // modal itself. We route the suppression through
-        // `isAnyModalOrPopoverOpen()` (which covers `shortcutsModalBackdrop`,
-        // see the dedicated test for that helper) instead of inlining the IDs.
+    it('exposes Help as an item in the ghost menu that opens the same modal', () => {
+        // Third trigger — alongside the FAB and the `?` keystroke. Touch
+        // users (where the FAB is hidden) reach the modal through here.
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
+        const idx = main.indexOf("'Help'");
+        expect(idx).toBeGreaterThan(-1);
+        const slice = main.slice(idx, idx + 400);
+        expect(slice).toMatch(/showHelpModal\s*\(\s*\)/);
+    });
+
+    it('makes the focusBlankToDoInput shortcut defer to the help modal via isAnyModalOrPopoverOpen', () => {
+        // The jump-to-new-task shortcut should suppress while a modal /
+        // popover is open — including the help modal itself. We route the
+        // suppression through `isAnyModalOrPopoverOpen()` (which covers
+        // `helpModalBackdrop`, see the dedicated test for that helper)
+        // instead of inlining the IDs.
         const block = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?focusBlankToDoInput[\s\S]*?\}\);/);
         expect(block).toBeTruthy();
         expect(block[0]).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
@@ -91,7 +102,7 @@ describe('floating help button + keyboard shortcuts modal', () => {
         const body = modals.slice(fnIdx, fnIdx + 600);
         ['confirmModalBackdrop',
          'changelogModalBackdrop',
-         'shortcutsModalBackdrop',
+         'helpModalBackdrop',
          'dueDatePopover',
          'projContextMenu'].forEach(function(id) {
             expect(body).toContain(id);
@@ -101,22 +112,36 @@ describe('floating help button + keyboard shortcuts modal', () => {
     it('renders the modal with role=dialog, aria-modal, the documented title, and a close X', () => {
         expect(modals).toMatch(/dialog\.setAttribute\(\s*['"]role['"]\s*,\s*['"]dialog['"]\s*\)/);
         expect(modals).toMatch(/dialog\.setAttribute\(\s*['"]aria-modal['"]\s*,\s*['"]true['"]\s*\)/);
-        expect(modals).toMatch(/dialog\.setAttribute\(\s*['"]aria-labelledby['"]\s*,\s*['"]shortcutsModalTitle['"]\s*\)/);
-        expect(modals).toMatch(/title\.textContent\s*=\s*['"]Keyboard Shortcuts['"]/);
-        expect(modals).toMatch(/closeX\.id\s*=\s*['"]shortcutsModalClose['"]/);
+        expect(modals).toMatch(/dialog\.setAttribute\(\s*['"]aria-labelledby['"]\s*,\s*['"]helpModalTitle['"]\s*\)/);
+        expect(modals).toMatch(/title\.textContent\s*=\s*['"]Help['"]/);
+        expect(modals).toMatch(/closeX\.id\s*=\s*['"]helpModalClose['"]/);
         expect(modals).toMatch(/closeX\.textContent\s*=\s*['"]×['"]/);
     });
 
-    it('groups shortcuts under Navigation, Editing, and Global headings', () => {
-        // The catalogue is hardcoded in the module — three categories so the
-        // modal stays the single source of truth for what the keyboard does.
+    it('renders topic-based sections for Tasks, Projects, and the Ghost menu', () => {
+        // The HELP_TOPICS catalogue lives in modals.js as plain bullet
+        // lists describing the visible chrome.
+        expect(modals).toMatch(/category:\s*['"]Tasks['"]/);
+        expect(modals).toMatch(/category:\s*['"]Projects['"]/);
+        expect(modals).toMatch(/category:\s*['"]Ghost Menu['"]/);
+    });
+
+    it('renders the Keyboard Shortcuts section with two-column key-cap rows', () => {
+        // The Keyboard Shortcuts section is labelled at the top level and
+        // the existing `.shortcutsRow` two-column structure (keys + desc)
+        // is preserved underneath. Subgroups (Navigation / Editing / Global)
+        // remain to keep the table scannable.
+        expect(modals).toMatch(/shortcutsLabel\.textContent\s*=\s*['"]Keyboard Shortcuts['"]/);
         expect(modals).toMatch(/category:\s*['"]Navigation['"]/);
         expect(modals).toMatch(/category:\s*['"]Editing['"]/);
         expect(modals).toMatch(/category:\s*['"]Global['"]/);
-        // The current set of shortcuts lives in the catalogue. Bare `\` is
-        // the sidebar↔placeholder toggle; `Ctrl+\` is the always-to-placeholder
-        // fast path; `Ctrl+Enter` collapses Completed; the in-row Enter and
-        // the global ? / Esc round it out.
+        // Key-cap rows still use the existing class names so CSS doesn't
+        // need a parallel set of selectors.
+        expect(modals).toMatch(/['"]shortcutsList['"]/);
+        expect(modals).toMatch(/['"]shortcutsRow['"]/);
+        expect(modals).toMatch(/['"]shortcutsKeys['"]/);
+        expect(modals).toMatch(/['"]shortcutsKey['"]/);
+        // The current set of shortcuts lives in the catalogue.
         expect(modals).toMatch(/keys:\s*\[\s*['"]\\\\['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]\\\\['"]\s*\]/);
         expect(modals).toMatch(/keys:\s*\[\s*['"]Ctrl['"]\s*,\s*['"]Enter['"]\s*\]/);
@@ -126,7 +151,7 @@ describe('floating help button + keyboard shortcuts modal', () => {
     });
 
     it('closes on the corner X, the footer Close button, the backdrop, and Escape', () => {
-        const fnIdx = modals.indexOf('function showShortcutsModal');
+        const fnIdx = modals.indexOf('function showHelpModal');
         expect(fnIdx).toBeGreaterThan(-1);
         // Pull the function body — bounded by the next top-level `function ` or
         // EOF — so the assertions don't bleed into adjacent helpers.
@@ -140,13 +165,13 @@ describe('floating help button + keyboard shortcuts modal', () => {
         expect(body).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
-    it('removes any prior shortcuts modal backdrop before mounting a new one', () => {
+    it('removes any prior help modal backdrop before mounting a new one', () => {
         // Defensive de-duping — same pattern as showConfirmModal / showChangelogModal.
-        expect(modals).toMatch(/getElementById\(\s*['"]shortcutsModalBackdrop['"]\s*\)/);
+        expect(modals).toMatch(/getElementById\(\s*['"]helpModalBackdrop['"]\s*\)/);
     });
 
     it('styles the FAB as a 36×36 circle pinned to the bottom-right with a border and shadow', () => {
-        const rule = extractTopLevelRule('#shortcutsHelpFab');
+        const rule = extractTopLevelRule('#helpFab');
         expect(rule).toMatch(/position:\s*fixed/);
         expect(rule).toMatch(/right:\s*\d+px/);
         expect(rule).toMatch(/bottom:\s*\d+px/);
@@ -160,7 +185,7 @@ describe('floating help button + keyboard shortcuts modal', () => {
     it('hides the FAB on pointer:coarse viewports', () => {
         const coarseBlocks = css.match(/@media\s*\(\s*pointer:\s*coarse\s*\)\s*\{([\s\S]*?)\n\}/g) || [];
         const hides = coarseBlocks.some(function(block) {
-            return /#shortcutsHelpFab\s*\{[^}]*display:\s*none/.test(block);
+            return /#helpFab\s*\{[^}]*display:\s*none/.test(block);
         });
         expect(hides).toBe(true);
     });
@@ -170,17 +195,25 @@ describe('floating help button + keyboard shortcuts modal', () => {
         // backdrop / popover elements own their own lifecycle.
         ['#confirmModalBackdrop',
          '#changelogModalBackdrop',
-         '#shortcutsModalBackdrop',
+         '#helpModalBackdrop',
          '#dueDatePopover',
          '#projContextMenu'].forEach(function(sel) {
-            const re = new RegExp('body:has\\(\\s*' + sel.replace(/[.#]/g, '\\$&') + '\\s*\\)\\s*#shortcutsHelpFab');
+            const re = new RegExp('body:has\\(\\s*' + sel.replace(/[.#]/g, '\\$&') + '\\s*\\)\\s*#helpFab');
             expect(css).toMatch(re);
         });
     });
 
-    it('does not persist a "seen" marker for the shortcuts modal', () => {
+    it('styles the topic sections with uppercase accent labels and a bullet list', () => {
+        const labelRule = extractTopLevelRule('.helpTopicLabel');
+        expect(labelRule).toMatch(/text-transform:\s*uppercase/);
+        expect(labelRule).toMatch(/color:\s*var\(--accent-text\)/);
+        const listRule = extractTopLevelRule('.helpTopicList');
+        expect(listRule).toMatch(/list-style:\s*disc/);
+    });
+
+    it('does not persist a "seen" marker for the help modal', () => {
         // The FAB itself is the discoverable surface; there is no first-run
         // pulse / dot / localStorage flag to track whether the user opened it.
-        expect(modals).not.toMatch(/shortcutsLastSeen|todoapp_shortcuts/i);
+        expect(modals).not.toMatch(/helpLastSeen|todoapp_help/i);
     });
 });

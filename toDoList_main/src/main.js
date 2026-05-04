@@ -23,11 +23,11 @@ import {
 } from './theme.js';
 import {
     showChangelogModal,
-    showShortcutsModal,
+    showHelpModal,
     updateChangelogDot,
     notifyUpdateAvailable,
     applyPendingUpdate,
-    createShortcutsHelpFab,
+    createHelpFab,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
 import { updateEmptyState } from './emptyState.js';
@@ -335,6 +335,16 @@ function component() {
         );
         menu.appendChild(ghostItem);
 
+        // Help — opens the same help modal as the floating `?` button and
+        // the global `?` keypress. Sits at the bottom of the menu so the
+        // global utilities cluster (Theme, Ghost, Help) reads as one group.
+        const helpItem = buildSettingsMenuItem(
+            'Help',
+            '',
+            function() { showHelpModal(); }
+        );
+        menu.appendChild(helpItem);
+
         document.body.appendChild(menu);
 
         // Anchor the menu beneath the trigger, right-aligned with it. Clamp
@@ -379,11 +389,11 @@ function component() {
     base.appendChild(sidebarOverlay);
 
     // Floating help FAB — pinned to the bottom-right of the viewport. Opens
-    // the keyboard shortcuts modal. CSS hides it on coarse-pointer devices
-    // (touch viewports) and while another modal/popover is open via the
-    // body[data-modal-open="true"] attribute toggled in modals.js.
-    const shortcutsHelpFab = createShortcutsHelpFab();
-    base.appendChild(shortcutsHelpFab);
+    // the help modal (topic sections + keyboard shortcuts). CSS hides it on
+    // coarse-pointer devices (touch viewports) and while another modal /
+    // popover is open via the body:has(...) rules in style.css.
+    const helpFab = createHelpFab();
+    base.appendChild(helpFab);
 
     // Footer — version label on the left, open/done counts for the selected
     // project on the right. Counts are recomputed by a MutationObserver that
@@ -664,10 +674,10 @@ function component() {
         e.preventDefault();
     });
 
-    // Global "?" shortcut — open the keyboard shortcuts modal. Same guards as
-    // the "n" shortcut: skip while typing in a text-entry surface or while
-    // another modal/popover already has the user's attention. Modifier keys
-    // are ignored so Shift+/ (which produces "?") still triggers, while the
+    // Global "?" shortcut — open the help modal. Same guards as the "n"
+    // shortcut: skip while typing in a text-entry surface or while another
+    // modal/popover already has the user's attention. Modifier keys are
+    // ignored so Shift+/ (which produces "?") still triggers, while the
     // browser's own Cmd-? / Ctrl-? bindings remain untouched.
     document.addEventListener('keydown', function(e) {
         if (e.key !== '?') return;
@@ -675,7 +685,7 @@ function component() {
         const ae = document.activeElement;
         if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         if (isAnyModalOrPopoverOpen()) return;
-        showShortcutsModal();
+        showHelpModal();
         e.preventDefault();
     });
 
