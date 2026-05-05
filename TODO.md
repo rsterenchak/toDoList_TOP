@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Auto-focus emptyStateCreateBtn and bind Enter to create first project
+- [x] **[LOW]** Auto-focus emptyStateCreateBtn and bind Enter to create first project
   - Description: When the app loads with no existing projects, the "CREATE YOUR FIRST PROJECT" empty-state button (`emptyStateCreateBtn`) doesn't receive focus, so keyboard users have to tab or click into it to get started. Apply focus to the button on render of the empty state, and ensure pressing Enter while it's focused triggers the same new-project creation flow as a click — which it should already do as a `<button>`, but verify rather than assume. Focus should only auto-apply on the empty state itself, not re-steal focus if the user has already moved to another control (e.g., the hamburger menu) by the time the empty state renders. Implementation lives in `main.js` where the empty state is rendered — grep for `emptyStateCreateBtn` with `offset`/`limit` since `main.js` is over 25k tokens — and call `.focus()` on the button after it's appended to the DOM. Verify the existing `:focus-visible` style in `style.css` reads clearly against the empty-state background; if not, add a focus treatment matching other primary buttons.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-05
 
 ## Features
 
