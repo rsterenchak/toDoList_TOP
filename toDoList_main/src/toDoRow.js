@@ -477,15 +477,34 @@ export function buildToDoRow(item, toDoName) {
                     const newRows = Array.prototype.slice.call(
                         mainDiv.querySelectorAll('#toDoChild')
                     );
+                    // Prefer the row that now occupies the deleted slot
+                    // (a neighbor below). If the deleted row was the last
+                    // one, fall back to the previous row. If the only
+                    // remaining row is the blank placeholder — i.e. the
+                    // user just deleted the last committed todo — let it
+                    // receive `.todo-active` so the list still has a
+                    // visible anchor for arrow-key nav.
                     const target = newRows[deletedIdx] || newRows[newRows.length - 1];
-                    // Skip the blank placeholder (`__item.tit === ''`) so an
-                    // emptied list is left with no active row rather than
-                    // marking the new-task input slot as active.
-                    if (target && target.__item && target.__item.tit) {
-                        mainDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
-                            if (el !== target) el.classList.remove('todo-active');
-                        });
-                        target.classList.add('todo-active');
+                    if (target) {
+                        // Defer to the next task so the modal's confirm-
+                        // click finishes bubbling before we mark the row.
+                        // The document-level listener in main.js strips
+                        // `.todo-active` from every row on any click that
+                        // isn't inside a `#toDoChild` — including the
+                        // modal button — so adding the class synchronously
+                        // here would be wiped out a moment later.
+                        setTimeout(function() {
+                            mainDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                                if (el !== target) el.classList.remove('todo-active');
+                            });
+                            target.classList.add('todo-active');
+                            // Focus the row itself (tabindex="-1") so the
+                            // `:focus-within` highlight kicks in — the
+                            // visible outline that the user expects after
+                            // deletion comes from focus, not the class.
+                            // Mirrors the arrow-nav handler in main.js.
+                            target.focus();
+                        }, 0);
                     }
                 }
             }
