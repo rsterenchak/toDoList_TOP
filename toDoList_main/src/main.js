@@ -35,6 +35,7 @@ import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
     attachProjectDrag,
+    deleteProjectFlow,
 } from './projectRow.js';
 import {
     addAllToDo_DOM,
@@ -865,6 +866,22 @@ function component() {
             if (isInputLike) return;
         }
 
+        // Delete on a focused project row routes to the project-deletion
+        // confirmation flow instead of falling through to the todo path.
+        // Without this gate, pressing Delete after clicking a project would
+        // delete the first todo in the active list (whichever row carried
+        // .todo-active at the time) rather than the project the user was
+        // pointing at.
+        if (isDelete) {
+            const focusedProjRow = ae && ae.closest && ae.closest('#projChild');
+            if (focusedProjRow) {
+                const projInput = focusedProjRow.querySelector('#projInput');
+                deleteProjectFlow(focusedProjRow, projInput ? projInput.value : '');
+                e.preventDefault();
+                return;
+            }
+        }
+
         // Only committed rows participate — the blank placeholder at index 0
         // has no title yet and isn't a navigation target.
         const allRows = Array.from(mainList.querySelectorAll('#toDoChild'));
@@ -930,7 +947,13 @@ function component() {
         }
 
         if (isDelete) {
-            const closeBtn = currentRow.querySelector('#closeButtonToDo');
+            // Require focus to be genuinely on a todo row. The .todo-active
+            // fallback used by Arrow / Enter would otherwise route Delete to
+            // the first active todo even when focus was elsewhere — see the
+            // sibling project-row branch above for context.
+            const focusedTodoRow = ae && ae.closest && ae.closest('#toDoChild');
+            if (!focusedTodoRow || committed.indexOf(focusedTodoRow) === -1) return;
+            const closeBtn = focusedTodoRow.querySelector('#closeButtonToDo');
             if (closeBtn) closeBtn.click();
             e.preventDefault();
         }

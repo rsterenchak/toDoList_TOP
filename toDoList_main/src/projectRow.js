@@ -29,7 +29,7 @@ function countRealToDos(projectName) {
 }
 
 
-function deleteProjectFlow(projChild, projectName) {
+export function deleteProjectFlow(projChild, projectName) {
 
     // New rows that haven't been named yet aren't in the data model —
     // just drop the placeholder row and re-enable the add-project button.
