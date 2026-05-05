@@ -456,12 +456,57 @@ export function buildToDoRow(item, toDoName) {
         showConfirmModal({
             message: 'Delete "' + label + '"? This cannot be undone.',
             onConfirm: function() {
+                // Capture the deleted row's slot among `#toDoChild` siblings
+                // before splicing it out, so after re-render we can shift
+                // `.todo-active` to whatever row now occupies that slot —
+                // keeping a visible anchor for arrow-key nav instead of
+                // leaving the list with no active row.
+                const mainDiv = document.getElementById('mainList');
+                const priorRows = mainDiv
+                    ? Array.prototype.slice.call(mainDiv.querySelectorAll('#toDoChild'))
+                    : [];
+                const deletedIdx = priorRows.indexOf(toDoChild);
+
                 listLogic.removeToDoByItem(toDoName, item);
 
-                const mainDiv = document.getElementById('mainList');
                 while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
                 addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
+
+                if (deletedIdx >= 0) {
+                    const newRows = Array.prototype.slice.call(
+                        mainDiv.querySelectorAll('#toDoChild')
+                    );
+                    // Prefer the row that now occupies the deleted slot
+                    // (a neighbor below). If the deleted row was the last
+                    // one, fall back to the previous row. If the only
+                    // remaining row is the blank placeholder — i.e. the
+                    // user just deleted the last committed todo — let it
+                    // receive `.todo-active` so the list still has a
+                    // visible anchor for arrow-key nav.
+                    const target = newRows[deletedIdx] || newRows[newRows.length - 1];
+                    if (target) {
+                        // Defer to the next task so the modal's confirm-
+                        // click finishes bubbling before we mark the row.
+                        // The document-level listener in main.js strips
+                        // `.todo-active` from every row on any click that
+                        // isn't inside a `#toDoChild` — including the
+                        // modal button — so adding the class synchronously
+                        // here would be wiped out a moment later.
+                        setTimeout(function() {
+                            mainDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                                if (el !== target) el.classList.remove('todo-active');
+                            });
+                            target.classList.add('todo-active');
+                            // Focus the row itself (tabindex="-1") so the
+                            // `:focus-within` highlight kicks in — the
+                            // visible outline that the user expects after
+                            // deletion comes from focus, not the class.
+                            // Mirrors the arrow-nav handler in main.js.
+                            target.focus();
+                        }, 0);
+                    }
+                }
             }
         });
     });

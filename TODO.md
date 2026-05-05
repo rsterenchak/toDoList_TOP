@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-05
      
-- [ ] **[MEDIUM]** Apply todo-active focus to neighbor after todo deletion
+- [x] **[MEDIUM]** Apply todo-active focus to neighbor after todo deletion
   - Description: When a todo item is deleted, the `todo-active` class isn't reliably moved to an adjacent row, leaving the list with no active/focused todo until the user clicks one. Expected behavior is that on deletion the active state shifts to the next todo below the deleted one, falling back to the previous todo if the deleted item was last, and clearing only when the list is empty — keeping a visible anchor for keyboard navigation and arrow-key flow. Likely cause is the deletion handler in `main.js` re-rendering the list without restoring `todo-active` on a sibling; capture the deleted row's index before removal and re-apply the class to the row now occupying that index (or `length - 1` if past the end). `main.js` is over 25k tokens, so grep for the deletion handler and `todo-active` references with `offset`/`limit` rather than reading the whole file.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-05
 
 - [ ] **[MEDIUM]** Apply focus and arrow-key navigation to delete confirmation modal buttons
   - Description: When the delete confirmation modal opens (for either todo item or project deletion), neither the Cancel nor Delete button receives focus, so keyboard users have to reach for the mouse to dismiss or confirm. Expected behavior is that focus lands on Cancel by default when the modal opens (safer default for a destructive action), Left/Right arrow keys move focus between Cancel and Delete, Enter activates the focused button, and Escape closes the modal as it already does. Tab should also cycle between the two buttons and stay trapped within the modal while it's open. Likely changes are in the modal-open handler in `main.js` — grep for the delete-confirmation modal show function with `offset`/`limit` since `main.js` is over 25k tokens, then call `.focus()` on the Cancel button after the modal becomes visible and add a `keydown` listener for arrow keys scoped to the modal. Add or verify a `:focus-visible` style in `style.css` so the focused button is clearly distinguishable from the unfocused one.
