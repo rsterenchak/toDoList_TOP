@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-05-04',
-        added: [
-            'Footer shows how long it’s been since your last manual JSON export, mirrored on the Export JSON menu item so the gap is visible at the moment of backup.',
+        date: '2026-05-05',
+        fixed: [
+            'Pressing Delete on a focused project now opens the project-deletion confirmation instead of removing a todo.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-05-04',
         fixed: [
             'Ctrl+Enter now mirrors the Expand All button, expanding or collapsing every open task description at once.',
             'Hamburger toggle moved up to the top nav next to the ghost menu so both global controls share one row, leaving the project name, count, and Expand All as a clean second band.',
