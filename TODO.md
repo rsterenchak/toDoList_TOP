@@ -17,10 +17,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-05
          
-- [ ] **[LOW]** Make projButton reachable via down-arrow from last project and Enter to activate
+- [x] **[LOW]** Make projButton reachable via down-arrow from last project and Enter to activate
   - Description: Extend the existing project arrow-key navigation so pressing Down on the last project moves focus to the "+" project button at the bottom of the sidebar, and pressing Enter while it's focused triggers the new-project creation flow (same as clicking it). Up-arrow from the projButton should return focus to the last project. This rounds out keyboard navigation so users can add a project without reaching for the mouse. Likely changes are in `main.js` — find the existing project-row keydown handler (grep for the arrow-key branch with `offset`/`limit`, since `main.js` is over 25k tokens) and have its Down branch fall through to the projButton when there's no next project, plus wire a `keydown` listener on the projButton itself for Enter/Up. Add a visible `:focus-visible` style for the projButton in `style.css` matching the existing focus treatment on project rows so the focus state is clear.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-05
 
 ## Features
 
