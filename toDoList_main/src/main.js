@@ -229,6 +229,17 @@ function component() {
         '</g>' +
         '</svg>';
 
+    // When the no-projects empty state is showing, its Create button is the
+    // single keyboard affordance on the page (Enter creates the first
+    // project). Returning focus to settingsToggle after the menu closes
+    // would mean Enter just re-opens the menu instead of creating a
+    // project — so prefer the Create button when present.
+    function focusAfterSettingsClose() {
+        const createBtn = document.getElementById('emptyStateCreateBtn');
+        if (createBtn) { createBtn.focus(); return; }
+        settingsToggle.focus();
+    }
+
     function hideSettingsMenu() {
         const existing = document.getElementById('settingsMenu');
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
@@ -244,13 +255,14 @@ function component() {
         if (!menu) return;
         if (menu.contains(event.target) || settingsToggle.contains(event.target)) return;
         hideSettingsMenu();
+        focusAfterSettingsClose();
     }
 
     function onSettingsKeydown(event) {
         if (event.key === 'Escape') {
             event.stopPropagation();
             hideSettingsMenu();
-            settingsToggle.focus();
+            focusAfterSettingsClose();
         }
     }
 
@@ -271,6 +283,16 @@ function component() {
         item.addEventListener('click', function() {
             hideSettingsMenu();
             onActivate();
+            // After in-place actions (theme flip, ghost toggle, JSON export)
+            // focus has nowhere to go — the menu was its parent, and the
+            // action didn't open another control. Hand focus back to the
+            // empty-state Create button when present so Enter still
+            // creates a project. Skipped when onActivate opened something
+            // that grabbed focus (e.g., Help modal), since that control
+            // owns its own restoration.
+            if (!document.activeElement || document.activeElement === document.body) {
+                focusAfterSettingsClose();
+            }
         });
         return item;
     }
