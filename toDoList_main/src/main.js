@@ -151,6 +151,12 @@ function component() {
 
     addProj.id = 'addProj';
     projButton.id = 'projButton';
+    // tabindex makes the "+" reachable as a keyboard target when the user
+    // arrow-navigates past the last project row (sideMa keydown handler
+    // below) and so its own keydown listener can fire on Enter / ArrowUp.
+    projButton.setAttribute('tabindex', '0');
+    projButton.setAttribute('role', 'button');
+    projButton.setAttribute('aria-label', 'Add new project');
 
     mainTitle.id = 'mainTitle';
     mainList.id = 'mainList';
@@ -808,7 +814,17 @@ function component() {
             const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
             const idx = rows.indexOf(row);
             const next = e.key === 'ArrowDown' ? rows[idx + 1] : rows[idx - 1];
-            if (!next) return;
+            if (!next) {
+                // ArrowDown off the last project row falls through to the
+                // "+" add-project button so the keyboard path can reach
+                // new-project creation without grabbing the mouse. ArrowUp
+                // off the first row stays on it (no wrap).
+                if (e.key === 'ArrowDown') {
+                    const projBtn = document.getElementById('projButton');
+                    if (projBtn) projBtn.focus();
+                }
+                return;
+            }
             next.focus();
             // Auto-select the project so its todos populate the main pane as
             // the user arrow-navigates. Synthesize a click — the click handler
@@ -1443,6 +1459,29 @@ function component() {
 
     projButton.addEventListener("mouseleave", function() {
         this.style.boxShadow = "none";
+    });
+
+    // projButton keyboard nav. Enter triggers the add-project click flow
+    // (same path the mouse uses), ArrowUp returns focus to the last
+    // committed project row — closing the loop opened by the sideMa
+    // ArrowDown handler above. stopPropagation keeps the document-level
+    // todo arrow-nav handler from also firing and stealing focus to a
+    // todo row when no project row is the current focus target.
+    projButton.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            projButton.click();
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            const rows = sideMain.querySelectorAll('#projChild');
+            const last = rows[rows.length - 1];
+            if (last) last.focus();
+        }
     });
 
 
