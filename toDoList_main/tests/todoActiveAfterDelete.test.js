@@ -14,7 +14,8 @@ function read(relative) {
 // every row inactive — breaking the keyboard arrow-nav flow that resolves the
 // current row from `.todo-active` when nothing is focused. The expected shift
 // is: next row below, falling back to previous if the deleted row was last,
-// and clearing entirely when only the blank placeholder remains.
+// and falling back to the blank placeholder when the user just deleted the
+// last committed todo so the list still has a visible anchor.
 describe('todo-active focus shifts to neighbor after todo deletion', () => {
     const toDoRow = read('toDoRow.js');
 
@@ -64,14 +65,16 @@ describe('todo-active focus shifts to neighbor after todo deletion', () => {
         expect(after).toMatch(/length\s*-\s*1/);
     });
 
-    it('skips the blank placeholder so an emptied list ends up with no active row', () => {
+    it('does not gate the active-shift on the target having a non-empty title', () => {
         const body = extractDeleteHandler();
         const renderIdx = body.search(/addAllToDo_DOM\s*\(/);
         const after = body.slice(renderIdx);
-        // The blank placeholder row has `__item.tit === ''`. Checking the
-        // target's title is non-empty before adding the class prevents the
-        // last-committed-deletion case from marking the blank row active.
-        expect(after).toMatch(/__item/);
-        expect(after).toMatch(/\.tit/);
+        // Earlier behavior skipped the blank placeholder by checking
+        // `target.__item.tit` before adding the class, leaving an emptied
+        // list with no anchor. The current contract is: when the only
+        // remaining row is the blank placeholder, it still receives
+        // `.todo-active` so arrow-key nav has somewhere to resume from.
+        // Asserting the absence of the old guard pins that intent.
+        expect(after).not.toMatch(/target\.__item\s*&&\s*target\.__item\.tit/);
     });
 });
