@@ -24,15 +24,10 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Build help modal triggered by ? key, the help button, and the ghost menu
-  - Description: Create a modal explaining the app's chrome — topic-based sections for Tasks, Projects, the ghost menu, and Keyboard Shortcuts (rendered as a two-column table with monospace key-cap pills). Each section is a key for visible UI elements ("click rail icons to switch projects, hover for full names") rather than abstract documentation. Three triggers: the existing "?" button in the bottom-right, a global ? keypress, and a new "Help" item in the ghost menu. Modal closes three ways per the project standard: explicit close button, backdrop click, and Escape. Style matches the Void aesthetic — dark surface, purple uppercase letter-spaced section labels, the same key-cap pill treatment used elsewhere. Use grep + offset/limit when navigating main.js for existing modal infrastructure to mirror.
+- [ ] **[LOW]** Color-warn the export-staleness footer label as it ages
+  - Description: The "EXPORTED N AGO" footer label currently stays the same muted gray regardless of how long it's been since the last export, so users have no passive cue to back up their data. Shift the label's color (and prepend a small warning glyph) as the gap grows: under 3 days renders in the existing muted gray with no glyph; 3 to 7 days renders in amber (`--color-text-warning`) with a triangle-warning glyph; over 7 days renders in red (`--color-text-danger`) with the same glyph. The "never exported yet" state should jump straight to the urgent red+glyph treatment so first-time users get the same nudge. The label re-evaluates on every render and on the existing footer refresh tick — no new timers needed. Implementation lives in `main.js` (the footer label is rendered there — grep for the export-time label with `offset`/`limit` since `main.js` is over 25k tokens) plus `style.css` for the three color states and inline-glyph spacing. Use a small inline SVG triangle glyph rather than a new icon-font dependency, per the no-new-dependencies rule in `CLAUDE.md`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-04
-     
-- [x] **[LOW]** Add last-exported JSON timestamp to footer
-  - Description: Track the timestamp of the most recent manual JSON export and display it in the footer next to "X OPEN Y DONE" — formatted as relative time ("exported 3 days ago") so the indicator ages into a soft backup-reminder as the gap grows. Persist the timestamp in localStorage under a new key (e.g., `todoapp_lastExport`) and update it whenever the user selects "Export JSON" from the ghost menu. No indicator is needed for the localStorage autosave — that's continuous and would be visibly broken if it failed; the point of this one is specifically to nudge users to back up to a real file. Optionally mirror the same text inline next to the "Export JSON" item in the ghost menu for context at the moment of action.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-04
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
