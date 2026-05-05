@@ -622,7 +622,12 @@ body {
 }
 
 #confirmModalCancel:hover { background: var(--bg-hover); }
-#confirmModalCancel:focus { outline: none; border-color: var(--accent-text); }
+#confirmModalCancel:focus,
+#confirmModalCancel:focus-visible {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
 
 #confirmModalConfirm {
   background: var(--accent);
@@ -630,7 +635,11 @@ body {
   color: #fff;
 }
 #confirmModalConfirm:hover { background: var(--accent-text); border-color: var(--accent-text); }
-#confirmModalConfirm:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+#confirmModalConfirm:focus,
+#confirmModalConfirm:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
 
 #confirmModalConfirm.danger {
   background: var(--text-danger);
@@ -638,7 +647,11 @@ body {
   color: #fff;
 }
 #confirmModalConfirm.danger:hover { background: #c74747; border-color: #c74747; }
-#confirmModalConfirm.danger:focus { outline: none; box-shadow: 0 0 0 2px rgba(224, 85, 85, 0.3); }
+#confirmModalConfirm.danger:focus,
+#confirmModalConfirm.danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 85, 85, 0.5);
+}
 
 @keyframes confirmFadeIn {
   from { opacity: 0; }
