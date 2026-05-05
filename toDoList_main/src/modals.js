@@ -261,6 +261,13 @@ export function showChangelogModal() {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
+    // Capture whatever held focus before we hijack it for the Close button,
+    // so we can hand focus back when the modal closes. Without this, focus
+    // collapses to <body> on close — and any keyboard affordance the opener
+    // depended on (e.g., Enter on the auto-focused empty-state Create
+    // button) silently breaks until the user clicks something.
+    const previouslyFocused = document.activeElement;
+
     closeBtn.focus();
 
     // Mark the newest entry as seen the moment the modal opens. Drop the dot
@@ -275,6 +282,22 @@ export function showChangelogModal() {
         closed = true;
         document.removeEventListener('keydown', onKeydown, true);
         if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        // When the no-projects empty state is showing, its Create button is
+        // the single keyboard affordance on the page (Enter creates the
+        // first project). Prefer it over `previouslyFocused`, which is
+        // typically the footer version label that opened this modal —
+        // restoring focus there would mean Enter just re-opens the
+        // changelog instead of creating a project.
+        const createBtn = document.getElementById('emptyStateCreateBtn');
+        if (createBtn) {
+            createBtn.focus();
+            return;
+        }
+        if (previouslyFocused &&
+            typeof previouslyFocused.focus === 'function' &&
+            document.contains(previouslyFocused)) {
+            previouslyFocused.focus();
+        }
     }
 
     function onKeydown(event) {
@@ -486,6 +509,10 @@ export function showHelpModal() {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
+    // Capture focus before the modal hijacks it so close() can hand it
+    // back. See showChangelogModal for the rationale.
+    const previouslyFocused = document.activeElement;
+
     closeBtn.focus();
 
     let closed = false;
@@ -494,6 +521,19 @@ export function showHelpModal() {
         closed = true;
         document.removeEventListener('keydown', onKeydown, true);
         if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        // Prefer the empty-state Create button when present — it's the
+        // single keyboard affordance on that screen and Enter has to
+        // route to it for the no-projects flow to work.
+        const createBtn = document.getElementById('emptyStateCreateBtn');
+        if (createBtn) {
+            createBtn.focus();
+            return;
+        }
+        if (previouslyFocused &&
+            typeof previouslyFocused.focus === 'function' &&
+            document.contains(previouslyFocused)) {
+            previouslyFocused.focus();
+        }
     }
 
     function onKeydown(event) {

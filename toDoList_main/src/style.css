@@ -25,6 +25,7 @@
   --accent:        #8b7bff;
   --accent-dim:    rgba(139, 123, 255, 0.12);
   --accent-text:   #8b7bff;
+  --accent-glow:   rgba(139, 123, 255, 0.55);
 
   --text-primary:  #e6e7ee;
   --text-secondary:#8a8d9c;
@@ -70,6 +71,7 @@
   --accent:        #5d4eca;
   --accent-dim:    rgba(93, 78, 202, 0.18);
   --accent-text:   #4a3bb8;
+  --accent-glow:   rgba(93, 78, 202, 0.55);
 
   --text-primary:  #1d1f28;
   --text-secondary:#50535f;
@@ -1375,7 +1377,15 @@ html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease, background 0.12s ease;
+  /* Pulsing purple halo signals to keyboard users that Enter on the
+     focused button (the only interactive control on this empty-state
+     screen) will create the first project — without the glow the button
+     can read as decorative against the void background. box-shadow is
+     animated by the keyframe rule below; the focus ring uses `outline`
+     so it can layer on top of the pulse without being clobbered by it
+     (a `:focus` box-shadow override would freeze the pulse mid-cycle). */
+  animation: emptyStateCreateBtnPulse 2.4s ease-in-out infinite;
+  transition: filter 0.12s ease, transform 0.08s ease, background 0.12s ease;
 }
 #emptyStateCreateBtn:hover { filter: brightness(1.1); }
 #emptyStateCreateBtn:active {
@@ -1383,8 +1393,42 @@ html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill {
   filter: brightness(0.9);
 }
 #emptyStateCreateBtn:focus {
+  /* No focus ring — the pulsing halo already signals "this is the active
+     control." Adding an outline reads as a stacked second border. */
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+@keyframes emptyStateCreateBtnPulse {
+  0%, 100% { box-shadow: 0 0 8px var(--accent-glow),  0 0 18px var(--accent-glow); }
+  50%      { box-shadow: 0 0 22px var(--accent-glow), 0 0 50px var(--accent-glow); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #emptyStateCreateBtn {
+    animation: none;
+    box-shadow: 0 0 12px var(--accent-glow), 0 0 28px var(--accent-glow);
+  }
+}
+
+/* Keyboard hint sitting below the create button. The button auto-focuses
+   on the empty state, so Enter is already wired — the hint just makes
+   that affordance discoverable without the user having to guess. */
+.emptyStateHint {
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.emptyStateHint kbd {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  padding: 2px 6px;
+  margin: 0 2px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 #emptyStateInput {

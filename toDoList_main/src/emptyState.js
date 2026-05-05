@@ -19,6 +19,43 @@
 import { isCompletedSectionOpen, setCompletedSectionOpen } from './prefs.js';
 
 
+// One-time install of a document-wide click handler that re-focuses the
+// empty-state Create button after any click on a non-interactive region
+// of the page. The empty state's whole UX is "press Enter to create" —
+// but a stray click on background chrome (the navbar gutter, sidebar
+// surface, an empty mainList area, the body margin around outerContainer,
+// floating popover backdrops) drops focus to <body> and silently breaks
+// that affordance. Attaching to <body> covers everything inside
+// outerContainer plus anything else mounted as a top-level child of body
+// (modals, menus, the help FAB region, etc.).
+//
+// The handler is a no-op when the Create button isn't rendered (any
+// non-empty-state screen), so leaving it permanently attached is cheap.
+// We skip clicks on real interactive controls so they keep their normal
+// focus / open-menu / activate behavior — the goal is to recover from
+// "click hit empty space" cases, not to trap focus on the button.
+let bodyRefocusInstalled = false;
+function ensureBodyCreateBtnRefocus() {
+    if (bodyRefocusInstalled) return;
+    if (!document.body) return;
+    bodyRefocusInstalled = true;
+    document.body.addEventListener('click', function(event) {
+        const createBtn = document.getElementById('emptyStateCreateBtn');
+        if (!createBtn) return;
+        if (event.target === createBtn || createBtn.contains(event.target)) return;
+        // closest() walks up to find any actual interactive control the
+        // click might have been meant for — buttons, inputs, role=button
+        // divs (projButton, projChild rail icons), menu items, links.
+        // If we hit one, leave focus alone so its handler runs cleanly.
+        const interactive = event.target.closest(
+            'button, input, textarea, select, a, [role="button"], [role="menuitem"], [contenteditable="true"]'
+        );
+        if (interactive) return;
+        createBtn.focus();
+    });
+}
+
+
 // Insert a collapsible "Completed (N)" header before the first completed row
 // in mainList, or remove it entirely if no completed rows exist. Applies the
 // collapsed class to mainList so CSS can hide the completed rows (and any
@@ -156,11 +193,26 @@ export function updateEmptyState(mainListDiv) {
             }
         });
 
+        const hint = document.createElement('div');
+        hint.className = 'emptyStateHint';
+        hint.innerHTML = 'or press <kbd>Enter</kbd> to create';
+
         block.appendChild(icon);
         block.appendChild(title);
         block.appendChild(sub);
         block.appendChild(createBtn);
+        block.appendChild(hint);
         mainListDiv.appendChild(block);
+
+        ensureBodyCreateBtnRefocus();
+
+        // Auto-focus the create-project button so keyboard users can press Enter
+        // to start. Only apply when nothing else currently holds focus — don't
+        // re-steal it if the user has already moved on (e.g., to the hamburger
+        // menu) by the time this re-render lands.
+        if (!document.activeElement || document.activeElement === document.body) {
+            createBtn.focus();
+        }
         return;
     }
 
