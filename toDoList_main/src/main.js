@@ -811,6 +811,11 @@ function component() {
         }
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();
+            // stopPropagation so the document-level todo arrow-nav handler
+            // doesn't also fire and yank focus to a todo row right after
+            // we hand focus to the projButton (or to the next project row).
+            // Mirrors the same guard the projButton's own keydown uses.
+            e.stopPropagation();
             const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
             const idx = rows.indexOf(row);
             const next = e.key === 'ArrowDown' ? rows[idx + 1] : rows[idx - 1];
