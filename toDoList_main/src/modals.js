@@ -60,9 +60,10 @@ export function showConfirmModal(options) {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
-    // Focus the confirm button so keyboard users can Enter-to-confirm
-    // immediately and Escape-to-cancel works without a tab first.
-    confirmBtn.focus();
+    // Focus Cancel by default — the safer landing for a destructive action,
+    // so an accidental Enter on modal-open dismisses instead of deleting.
+    // Left/Right and Tab move focus to Delete; Enter on either fires it.
+    cancelBtn.focus();
 
     let closed = false;
     function close() {
@@ -76,6 +77,23 @@ export function showConfirmModal(options) {
         if (event.key === 'Escape') {
             event.stopPropagation();
             close();
+            return;
+        }
+        // Arrow keys swap focus between the two buttons. Trap Tab inside the
+        // dialog so focus can never escape into the disabled background while
+        // a destructive confirmation is pending.
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.key === 'ArrowLeft') cancelBtn.focus();
+            else confirmBtn.focus();
+            return;
+        }
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            event.stopPropagation();
+            const next = document.activeElement === cancelBtn ? confirmBtn : cancelBtn;
+            next.focus();
         }
     }
 

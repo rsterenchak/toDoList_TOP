@@ -12,10 +12,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-05
 
-- [ ] **[MEDIUM]** Apply focus and arrow-key navigation to delete confirmation modal buttons
+- [x] **[MEDIUM]** Apply focus and arrow-key navigation to delete confirmation modal buttons
   - Description: When the delete confirmation modal opens (for either todo item or project deletion), neither the Cancel nor Delete button receives focus, so keyboard users have to reach for the mouse to dismiss or confirm. Expected behavior is that focus lands on Cancel by default when the modal opens (safer default for a destructive action), Left/Right arrow keys move focus between Cancel and Delete, Enter activates the focused button, and Escape closes the modal as it already does. Tab should also cycle between the two buttons and stay trapped within the modal while it's open. Likely changes are in the modal-open handler in `main.js` — grep for the delete-confirmation modal show function with `offset`/`limit` since `main.js` is over 25k tokens, then call `.focus()` on the Cancel button after the modal becomes visible and add a `keydown` listener for arrow keys scoped to the modal. Add or verify a `:focus-visible` style in `style.css` so the focused button is clearly distinguishable from the unfocused one.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-05
          
 - [ ] **[LOW]** Make projButton reachable via down-arrow from last project and Enter to activate
   - Description: Extend the existing project arrow-key navigation so pressing Down on the last project moves focus to the "+" project button at the bottom of the sidebar, and pressing Enter while it's focused triggers the new-project creation flow (same as clicking it). Up-arrow from the projButton should return focus to the last project. This rounds out keyboard navigation so users can add a project without reaching for the mouse. Likely changes are in `main.js` — find the existing project-row keydown handler (grep for the arrow-key branch with `offset`/`limit`, since `main.js` is over 25k tokens) and have its Down branch fall through to the projButton when there's no next project, plus wire a `keydown` listener on the projButton itself for Enter/Up. Add a visible `:focus-visible` style for the projButton in `style.css` matching the existing focus treatment on project rows so the focus state is clear.
