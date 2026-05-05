@@ -24,10 +24,10 @@
 
 ## Features
 
-- [ ] **[LOW]** Color-warn the export-staleness footer label as it ages
+- [x] **[LOW]** Color-warn the export-staleness footer label as it ages
   - Description: The "EXPORTED N AGO" footer label currently stays the same muted gray regardless of how long it's been since the last export, so users have no passive cue to back up their data. Shift the label's color (and prepend a small warning glyph) as the gap grows: under 3 days renders in the existing muted gray with no glyph; 3 to 7 days renders in amber (`--color-text-warning`) with a triangle-warning glyph; over 7 days renders in red (`--color-text-danger`) with the same glyph. The "never exported yet" state should jump straight to the urgent red+glyph treatment so first-time users get the same nudge. The label re-evaluates on every render and on the existing footer refresh tick — no new timers needed. Implementation lives in `main.js` (the footer label is rendered there — grep for the export-time label with `offset`/`limit` since `main.js` is over 25k tokens) plus `style.css` for the three color states and inline-glyph spacing. Use a small inline SVG triangle glyph rather than a new icon-font dependency, per the no-new-dependencies rule in `CLAUDE.md`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-05
 
 ## In Progress
 
