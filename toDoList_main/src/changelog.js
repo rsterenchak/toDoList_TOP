@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-05',
         fixed: [
             'Pressing Delete on a focused project now opens the project-deletion confirmation instead of removing a todo.',
+            'The active highlight now shifts to the neighboring todo after a deletion so arrow-key navigation keeps a visible anchor.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-04',
         fixed: [
-            'Ctrl+Enter now mirrors the Expand All button, expanding or collapsing every open task description at once.',
             'Hamburger toggle moved up to the top nav next to the ghost menu so both global controls share one row, leaving the project name, count, and Expand All as a clean second band.',
             'Ctrl+Backspace now toggles the projects sidebar — same collapse/expand as the hamburger button, with the browser’s go-back gesture suppressed.',
             'Press ← to focus the active project icon and → to focus the new-task input.',

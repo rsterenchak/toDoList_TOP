@@ -456,12 +456,38 @@ export function buildToDoRow(item, toDoName) {
         showConfirmModal({
             message: 'Delete "' + label + '"? This cannot be undone.',
             onConfirm: function() {
+                // Capture the deleted row's slot among `#toDoChild` siblings
+                // before splicing it out, so after re-render we can shift
+                // `.todo-active` to whatever row now occupies that slot —
+                // keeping a visible anchor for arrow-key nav instead of
+                // leaving the list with no active row.
+                const mainDiv = document.getElementById('mainList');
+                const priorRows = mainDiv
+                    ? Array.prototype.slice.call(mainDiv.querySelectorAll('#toDoChild'))
+                    : [];
+                const deletedIdx = priorRows.indexOf(toDoChild);
+
                 listLogic.removeToDoByItem(toDoName, item);
 
-                const mainDiv = document.getElementById('mainList');
                 while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
 
                 addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);
+
+                if (deletedIdx >= 0) {
+                    const newRows = Array.prototype.slice.call(
+                        mainDiv.querySelectorAll('#toDoChild')
+                    );
+                    const target = newRows[deletedIdx] || newRows[newRows.length - 1];
+                    // Skip the blank placeholder (`__item.tit === ''`) so an
+                    // emptied list is left with no active row rather than
+                    // marking the new-task input slot as active.
+                    if (target && target.__item && target.__item.tit) {
+                        mainDiv.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                            if (el !== target) el.classList.remove('todo-active');
+                        });
+                        target.classList.add('todo-active');
+                    }
+                }
             }
         });
     });
