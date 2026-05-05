@@ -625,8 +625,8 @@ body {
 #confirmModalCancel:focus,
 #confirmModalCancel:focus-visible {
   outline: none;
-  border-color: var(--accent-text);
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 #confirmModalConfirm {
@@ -638,7 +638,7 @@ body {
 #confirmModalConfirm:focus,
 #confirmModalConfirm:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 #confirmModalConfirm.danger {
@@ -650,7 +650,7 @@ body {
 #confirmModalConfirm.danger:focus,
 #confirmModalConfirm.danger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(224, 85, 85, 0.5);
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 @keyframes confirmFadeIn {
