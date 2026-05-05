@@ -161,6 +161,14 @@ export function updateEmptyState(mainListDiv) {
         block.appendChild(sub);
         block.appendChild(createBtn);
         mainListDiv.appendChild(block);
+
+        // Auto-focus the create-project button so keyboard users can press Enter
+        // to start. Only apply when nothing else currently holds focus — don't
+        // re-steal it if the user has already moved on (e.g., to the hamburger
+        // menu) by the time this re-render lands.
+        if (!document.activeElement || document.activeElement === document.body) {
+            createBtn.focus();
+        }
         return;
     }
 
