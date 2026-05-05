@@ -121,10 +121,78 @@ export function formatRelativeExportedAt(iso, now) {
     return plural(Math.floor(diff / MS_PER_YEAR), 'year');
 }
 
+// Color thresholds for the footer label's age cue. Under the warn boundary
+// the label sits in the muted gray default; once it crosses, an inline
+// warning glyph appears alongside an amber tint, escalating to red past
+// the urgent boundary. The "never exported yet" state jumps straight to
+// urgent so first-time users see the same nudge.
+const STALE_WARN_DAYS = 3;
+const STALE_URGENT_DAYS = 7;
+
+export function exportStalenessState(iso, now) {
+    if (!iso) return 'urgent';
+    const t = Date.parse(iso);
+    if (isNaN(t)) return 'urgent';
+    const ref = (now ? now.getTime() : Date.now());
+    const days = Math.floor((ref - t) / MS_PER_DAY);
+    if (days < STALE_WARN_DAYS) return 'fresh';
+    if (days <= STALE_URGENT_DAYS) return 'warn';
+    return 'urgent';
+}
+
+function buildExportStaleGlyph() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'footExportGlyph');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('width', '10');
+    svg.setAttribute('height', '10');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    const triangle = document.createElementNS(NS, 'path');
+    triangle.setAttribute('d', 'M8 1.5 L15 14 L1 14 Z');
+    triangle.setAttribute('fill', 'none');
+    triangle.setAttribute('stroke', 'currentColor');
+    triangle.setAttribute('stroke-width', '1.5');
+    triangle.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(triangle);
+
+    const stem = document.createElementNS(NS, 'line');
+    stem.setAttribute('x1', '8');
+    stem.setAttribute('y1', '6');
+    stem.setAttribute('x2', '8');
+    stem.setAttribute('y2', '10');
+    stem.setAttribute('stroke', 'currentColor');
+    stem.setAttribute('stroke-width', '1.5');
+    stem.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(stem);
+
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('cx', '8');
+    dot.setAttribute('cy', '12');
+    dot.setAttribute('r', '0.9');
+    dot.setAttribute('fill', 'currentColor');
+    svg.appendChild(dot);
+
+    return svg;
+}
+
 export function refreshFooterExportLabel() {
     const el = document.getElementById('footExport');
     if (!el) return;
-    el.textContent = formatRelativeExportedAt(readLastExportedAt());
+    const iso = readLastExportedAt();
+    const label = formatRelativeExportedAt(iso);
+    const state = exportStalenessState(iso);
+
+    while (el.firstChild) el.removeChild(el.firstChild);
+    if (state !== 'fresh') {
+        el.appendChild(buildExportStaleGlyph());
+    }
+    el.appendChild(document.createTextNode(label));
+
+    el.classList.remove('footExport--fresh', 'footExport--warn', 'footExport--urgent');
+    el.classList.add('footExport--' + state);
 }
 
 

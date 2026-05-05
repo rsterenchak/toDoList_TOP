@@ -12,12 +12,8 @@ export const changelog = [
             'The delete confirmation modal now opens focused on Cancel, with Left/Right arrows and Tab cycling focus between Cancel and Delete inside the dialog.',
             'Down arrow on the last project now moves focus to the add-project button, where Enter creates a new project.',
         ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-04',
-        fixed: [
-            'Press ← to focus the active project icon and → to focus the new-task input.',
+        changed: [
+            'The last-exported footer label tints amber after 3 days and red after 7, with a warning glyph nudging you to back up.',
         ],
     },
 ];

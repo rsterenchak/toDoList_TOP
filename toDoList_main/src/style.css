@@ -299,11 +299,31 @@ body {
    than competing with the per-project counts. The same label is mirrored
    into the ghost menu's Export JSON state pill. */
 #footExport {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+/* Age cue — under 3 days the label keeps the muted gray default. Past the
+   warn threshold it picks up an amber tint plus a triangle glyph; past the
+   urgent threshold it shifts to red. The "never exported yet" state jumps
+   straight to urgent so first-time users see the same nudge. */
+#footExport.footExport--warn {
+  color: var(--text-warning);
+}
+
+#footExport.footExport--urgent {
+  color: var(--text-danger);
+}
+
+.footExportGlyph {
+  flex: 0 0 auto;
+  display: inline-block;
 }
 
 /* On narrow viewports the footer is already snug; the menu pill still
