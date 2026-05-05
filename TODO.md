@@ -6,6 +6,11 @@
   - Description: After clicking a project in the sidebar (or opening its context menu), pressing the Delete key prompts to delete the first todo in the active list instead of the project itself. Expected behavior is that Delete on a focused/selected project triggers the project-deletion confirmation flow (same as the context menu's Delete action), and only routes to todo deletion when a todo row is the current focus target. Likely cause is a global `keydown` handler in `main.js` whose Delete branch unconditionally targets todos — gate it on what's currently focused/selected (project row vs. todo row) before deciding which deletion path to fire. `main.js` is over 25k tokens, so grep for the Delete-key handler with `offset`/`limit` rather than reading the whole file. Confirmation copy should name the project being deleted and note that its todos will also be removed, per the destructive-action rule in `CLAUDE.md`.
   - File: `toDoList_main/src/main.js`
   - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[MEDIUM]** Apply todo-active focus to neighbor after todo deletion
+  - Description: When a todo item is deleted, the `todo-active` class isn't reliably moved to an adjacent row, leaving the list with no active/focused todo until the user clicks one. Expected behavior is that on deletion the active state shifts to the next todo below the deleted one, falling back to the previous todo if the deleted item was last, and clearing only when the list is empty — keeping a visible anchor for keyboard navigation and arrow-key flow. Likely cause is the deletion handler in `main.js` re-rendering the list without restoring `todo-active` on a sibling; capture the deleted row's index before removal and re-apply the class to the row now occupying that index (or `length - 1` if past the end). `main.js` is over 25k tokens, so grep for the deletion handler and `todo-active` references with `offset`/`limit` rather than reading the whole file.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)    
 
 ## Features
 
