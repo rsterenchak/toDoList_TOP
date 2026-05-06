@@ -9,7 +9,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add SomaFM music player with visualizer button to navbar
+- [x] **[MEDIUM]** Add SomaFM music player with visualizer button to navbar
   - Description: Add a focus-music player to the navbar's right cluster, sitting between `#pomodoroToggle` and `#settingsToggle`. The trigger is a 36×36 button whose icon is a 5-bar equalizer that animates while playing and settles flat when paused or idle — same visual vocabulary as the Pomodoro clock's progress sweep, but the icon itself is the state indicator rather than a hand. Click opens an anchored popover with a station picker (5–6 SomaFM stations), a play/pause primary button, and a volume slider. Audio streams via a single hidden `<audio>` element pointed at SomaFM's direct MP3 URLs (e.g. `https://somafm.com/groovesalad.pls`) — no API key, no new dependencies. Persist last-station and volume in localStorage; do not auto-resume on page load (mobile autoplay restrictions block it and unexpected audio is hostile). Pause the audio element when the Pomodoro `pomodoro-alert` body class lands so the chime isn't drowned out, and resume on acknowledgment if the user was playing before. Network-required and offline-fail are accepted compromises.
     - Behavior:
       1. Button visualizer bars animate via CSS-only `@keyframes` (scaleY pulse, staggered delays) while `data-music-status="PLAYING"`; flatten to a static 30% height when `IDLE` or `PAUSED`. `prefers-reduced-motion` flattens the bars to a single static shape (no animation).
@@ -31,7 +31,7 @@
       - Mobile: native autoplay restrictions block any `audio.play()` not initiated by a user gesture — the popover's play button is the only entry point, so this falls out naturally. Volume slider must be `font-size: 16px+` on mobile to avoid iOS Safari auto-zoom (the native range input doesn't trigger it but its focus ring inherits from the popover; verify on device).
       - Help modal: add a "Music" topic section to `HELP_TOPICS` in `modals.js` describing the button, the station picker, and the network-required nature of the feature.
   - File: `toDoList_main/src/music.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/modals.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-06
 
 ## In Progress
 
