@@ -232,7 +232,7 @@ function component() {
     // side stem button, a circular dial, and a single minute hand. The hand
     // pivots around the dial center (12, 14) as the session progresses.
     pomodoroToggle.innerHTML =
-        '<svg class="clockIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<svg class="clockIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<line x1="10" y1="3" x2="14" y2="3"/>' +
         '<line x1="12" y1="3" x2="12" y2="7"/>' +
         '<line x1="17" y1="8.5" x2="18.5" y2="7"/>' +
