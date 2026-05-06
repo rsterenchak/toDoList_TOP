@@ -3057,7 +3057,7 @@ html[data-sidebar-rail="off"] #projChild::before {
    snap. Reduced-motion variant below kills the animation entirely. */
 .clockIconHand {
   transition: transform 250ms linear;
-  transform-origin: 7px 7px;
+  transform-origin: 12px 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {
