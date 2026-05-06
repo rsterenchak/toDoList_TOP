@@ -2987,3 +2987,210 @@ html[data-sidebar-rail="off"] #projChild::before {
 @media (max-width: 380px) {
   #mainCrumb { display: none; }
 }
+
+
+/* POMODORO TIMER — clock icon button to the left of the ghost menu trigger
+   in the nav. Visual treatment mirrors #settingsToggle (36×36, rounded,
+   muted by default) so the two right-cluster buttons read as kin. The hand
+   inside the SVG is rotated inline from JS as the session progresses;
+   while idle the hand sits at 12 o'clock and the icon is muted, while a
+   running session recolors the icon to the accent. */
+#pomodoroToggle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#pomodoroToggle:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#pomodoroToggle:focus { outline: none; }
+#pomodoroToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+#pomodoroToggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#pomodoroToggle[data-pomo-status="RUNNING"],
+#pomodoroToggle[data-pomo-status="PAUSED"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+/* Pulse the icon briefly when a session completes, then settle into a
+   solid-fill accent state held until acknowledged. */
+#pomodoroToggle[data-pomo-status="COMPLETE_UNACKED"] {
+  color: var(--accent);
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  animation: pomodoroIconPulse 700ms ease-in-out 3;
+}
+
+@keyframes pomodoroIconPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+
+/* Hand sweep transition — runs on every JS-driven transform update so the
+   intra-tick movement reads as a continuous sweep rather than a stuttered
+   snap. Reduced-motion variant below kills the animation entirely. */
+.clockIconHand {
+  transition: transform 250ms linear;
+  transform-origin: 7px 7px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pomodoroToggle {
+    animation: none;
+  }
+  .clockIconHand {
+    transition: none;
+  }
+}
+
+/* Pomodoro popover — anchored by JS beneath the trigger. Visual vocabulary
+   matches #settingsMenu so the two surfaces read as siblings. */
+#pomodoroPopover {
+  position: fixed;
+  z-index: 30;
+  min-width: 220px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 12px;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pomodoroPopoverHeader {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+.pomodoroTabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+.pomodoroTab {
+  flex: 1 1 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pomodoroTab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.pomodoroTab.active {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+.pomodoroCountdownWrap {
+  display: flex;
+  justify-content: center;
+}
+.pomodoroCountdown {
+  font-family: inherit;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+.pomodoroCountdown:hover { background: var(--bg-hover); }
+.pomodoroCountdownInput {
+  /* font-size: 16px+ on mobile to prevent iOS Safari auto-zoom on focus.
+     Desktop reuses the same 32px sizing as the static countdown. */
+  font-family: inherit;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-align: center;
+  width: 6ch;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+.pomodoroActions {
+  display: flex;
+  gap: 8px;
+}
+.pomodoroPrimaryBtn,
+.pomodoroResetBtn {
+  flex: 1 1 0;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pomodoroPrimaryBtn {
+  background: var(--accent);
+  color: var(--bg-base);
+  border: 0.5px solid var(--accent);
+}
+.pomodoroPrimaryBtn:hover { filter: brightness(1.08); }
+.pomodoroResetBtn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-bright);
+}
+.pomodoroResetBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.pomodoroSuggestion {
+  display: flex;
+}
+.pomodoroSuggestBtn {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.pomodoroSuggestBtn:hover { background: var(--bg-hover); }
+
+/* Hide the floating help FAB when the pomodoro popover is open, mirroring
+   the settings-menu rule above so the two surfaces never overlap. */
+body:has(#pomodoroPopover) #helpFab { display: none; }

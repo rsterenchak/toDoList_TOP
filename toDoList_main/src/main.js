@@ -7,6 +7,13 @@ import {
     destroyCompanion,
 } from './companion.js';
 import {
+    ensurePomodoro,
+    formatMMSS,
+    parseMMSS,
+    nextSuggestedMode,
+    MODE_LABEL,
+} from './pomodoro.js';
+import {
     isCompactTitlesOn,
     setCompactTitlesOn,
     readSidebarWidthPref,
@@ -204,6 +211,322 @@ function component() {
         // Reset so re-selecting the same file fires change again.
         importFileInput.value = '';
     });
+
+    // ── pomodoro clock icon (sits left of the ghost menu trigger) ──
+    // Single 36px clock icon button. Click opens a small popover with mode
+    // tabs (Focus / Short / Long), an inline-editable MM:SS countdown, and
+    // Start / Pause / Reset controls. While a session is running the icon
+    // recolors to the accent and the SVG minute hand sweeps clockwise over
+    // the session duration as ambient progress feedback. The popover follows
+    // the same dismissal vocabulary as the settings menu (outside click,
+    // Escape, icon re-click). The actual state machine + audio + favicon
+    // swap + tab-title flash live in pomodoro.js.
+    const pomodoroToggle = document.createElement('button');
+    pomodoroToggle.id   = 'pomodoroToggle';
+    pomodoroToggle.type = 'button';
+    pomodoroToggle.setAttribute('aria-haspopup', 'dialog');
+    pomodoroToggle.setAttribute('aria-expanded', 'false');
+    pomodoroToggle.setAttribute('aria-label', 'Open Pomodoro timer');
+    pomodoroToggle.title = 'Pomodoro';
+    // Pixel-art clock face — same visual vocabulary as the ghost glyph.
+    // The minute hand is rotated via inline transform from JS as the
+    // session progresses, anchored at 12 o'clock.
+    pomodoroToggle.innerHTML =
+        '<svg class="clockIcon" viewBox="0 0 14 14" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<g class="clockIconBody" fill="currentColor">' +
+        '<rect x="5" y="0" width="4" height="1"/>' +
+        '<rect x="3" y="1" width="8" height="1"/>' +
+        '<rect x="2" y="2" width="10" height="1"/>' +
+        '<rect x="1" y="3" width="2" height="8"/>' +
+        '<rect x="11" y="3" width="2" height="8"/>' +
+        '<rect x="2" y="11" width="10" height="1"/>' +
+        '<rect x="3" y="12" width="8" height="1"/>' +
+        '<rect x="5" y="13" width="4" height="1"/>' +
+        '</g>' +
+        '<g class="clockIconFace" fill="var(--bg-base, #111)">' +
+        '<rect x="3" y="3" width="8" height="8"/>' +
+        '</g>' +
+        '<g class="clockIconHand" fill="currentColor" transform="rotate(0 7 7)">' +
+        '<rect x="6" y="4" width="1" height="3"/>' +
+        '</g>' +
+        '<g class="clockIconPivot" fill="currentColor">' +
+        '<rect x="6" y="6" width="1" height="1"/>' +
+        '</g>' +
+        '</svg>';
+
+    function getPomodoroController() {
+        return ensurePomodoro();
+    }
+
+    function syncPomodoroIcon() {
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        pomodoroToggle.setAttribute('data-pomo-status', snap.status);
+        pomodoroToggle.setAttribute('data-pomo-mode',   snap.mode);
+        const totalMs = (snap.durations[snap.mode] || 0) * 1000;
+        let progress = 0;
+        if (snap.status === 'RUNNING' && totalMs > 0) {
+            progress = 1 - (snap.remainingMs / totalMs);
+        } else if (snap.status === 'PAUSED' && totalMs > 0) {
+            progress = 1 - (snap.remainingMs / totalMs);
+        } else if (snap.status === 'COMPLETE_UNACKED') {
+            progress = 1;
+        }
+        progress = Math.max(0, Math.min(1, progress));
+        const hand = pomodoroToggle.querySelector('.clockIconHand');
+        if (hand) hand.setAttribute('transform', 'rotate(' + (progress * 360).toFixed(2) + ' 7 7)');
+    }
+
+    function hidePomodoroPopover() {
+        const existing = document.getElementById('pomodoroPopover');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        pomodoroToggle.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onPomodoroOutsideClick, true);
+        document.removeEventListener('keydown', onPomodoroKeydown, true);
+        window.removeEventListener('resize', hidePomodoroPopover);
+        window.removeEventListener('scroll', hidePomodoroPopover, true);
+    }
+
+    function onPomodoroOutsideClick(event) {
+        const pop = document.getElementById('pomodoroPopover');
+        if (!pop) return;
+        if (pop.contains(event.target) || pomodoroToggle.contains(event.target)) return;
+        hidePomodoroPopover();
+    }
+
+    function onPomodoroKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            hidePomodoroPopover();
+            pomodoroToggle.focus();
+        }
+    }
+
+    function showPomodoroPopover() {
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+
+        const pop = document.createElement('div');
+        pop.id = 'pomodoroPopover';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', 'Pomodoro timer');
+
+        const header = document.createElement('div');
+        header.className = 'pomodoroPopoverHeader';
+        header.textContent = 'Pomodoro';
+        pop.appendChild(header);
+
+        // Mode tabs — switching while a countdown is running resets it to the
+        // new mode's default. Same affordance the controller exposes via
+        // setMode; the tab is just a UI alias.
+        const tabs = document.createElement('div');
+        tabs.className = 'pomodoroTabs';
+        const tabConfig = [
+            ['focus', 'Focus'],
+            ['short', 'Short'],
+            ['long',  'Long'],
+        ];
+        const tabButtons = {};
+        tabConfig.forEach(function(pair) {
+            const tab = document.createElement('button');
+            tab.type = 'button';
+            tab.className = 'pomodoroTab';
+            tab.dataset.mode = pair[0];
+            tab.textContent = pair[1];
+            tab.setAttribute('role', 'tab');
+            tab.addEventListener('click', function() {
+                ctl.setMode(pair[0]);
+            });
+            tabs.appendChild(tab);
+            tabButtons[pair[0]] = tab;
+        });
+        pop.appendChild(tabs);
+
+        // Inline-editable MM:SS countdown. Click to edit; Enter / blur commit
+        // via parseMMSS, Escape reverts. Mobile-safe font-size handled in CSS.
+        const countdownWrap = document.createElement('div');
+        countdownWrap.className = 'pomodoroCountdownWrap';
+
+        const countdown = document.createElement('button');
+        countdown.type = 'button';
+        countdown.className = 'pomodoroCountdown';
+        countdown.setAttribute('aria-label', 'Edit duration');
+        countdownWrap.appendChild(countdown);
+
+        const countdownInput = document.createElement('input');
+        countdownInput.type  = 'text';
+        countdownInput.className = 'pomodoroCountdownInput';
+        countdownInput.inputMode = 'numeric';
+        countdownInput.maxLength = 5;
+        countdownInput.style.display = 'none';
+        countdownWrap.appendChild(countdownInput);
+
+        pop.appendChild(countdownWrap);
+
+        function commitCountdownEdit() {
+            const parsed = parseMMSS(countdownInput.value);
+            if (parsed !== null) {
+                ctl.setDuration(ctl.getState().mode, parsed);
+            }
+            countdownInput.style.display = 'none';
+            countdown.style.display = '';
+        }
+
+        countdown.addEventListener('click', function() {
+            // Editing the duration mid-session would be ambiguous; gate
+            // editing to IDLE so the inline input only appears when the
+            // edit will actually take effect.
+            const status = ctl.getState().status;
+            if (status === 'RUNNING' || status === 'PAUSED') return;
+            const snap = ctl.getState();
+            countdownInput.value = formatMMSS(Math.round(snap.remainingMs / 1000));
+            countdown.style.display = 'none';
+            countdownInput.style.display = '';
+            countdownInput.focus();
+            countdownInput.select();
+        });
+        countdownInput.addEventListener('blur', commitCountdownEdit);
+        countdownInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commitCountdownEdit();
+            } else if (event.key === 'Escape') {
+                event.stopPropagation();
+                countdownInput.style.display = 'none';
+                countdown.style.display = '';
+            }
+        });
+
+        // Action row — Start/Pause/Resume + Reset. The primary button label
+        // tracks the current status.
+        const actions = document.createElement('div');
+        actions.className = 'pomodoroActions';
+
+        const primaryBtn = document.createElement('button');
+        primaryBtn.type = 'button';
+        primaryBtn.className = 'pomodoroPrimaryBtn';
+
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'pomodoroResetBtn';
+        resetBtn.textContent = 'Reset';
+
+        actions.appendChild(primaryBtn);
+        actions.appendChild(resetBtn);
+        pop.appendChild(actions);
+
+        primaryBtn.addEventListener('click', function() {
+            const status = ctl.getState().status;
+            if (status === 'RUNNING') {
+                ctl.pause();
+            } else {
+                ctl.start();
+                // Per the spec — Start closes the popover so the icon's
+                // sweeping hand is the user's primary feedback channel.
+                hidePomodoroPopover();
+            }
+        });
+
+        resetBtn.addEventListener('click', function() {
+            ctl.reset();
+        });
+
+        // Suggestion row — only renders when a session has just completed
+        // and is awaiting acknowledgment. Auto-suggests the next mode.
+        const suggestion = document.createElement('div');
+        suggestion.className = 'pomodoroSuggestion';
+        const suggestBtn = document.createElement('button');
+        suggestBtn.type = 'button';
+        suggestBtn.className = 'pomodoroSuggestBtn';
+        suggestion.appendChild(suggestBtn);
+        pop.appendChild(suggestion);
+
+        suggestBtn.addEventListener('click', function() {
+            const next = nextSuggestedMode(ctl.getState().mode);
+            ctl.setMode(next);
+            ctl.start();
+            hidePomodoroPopover();
+        });
+
+        function syncPopoverFromState(snap) {
+            // Active mode tab
+            tabConfig.forEach(function(pair) {
+                tabButtons[pair[0]].classList.toggle('active', snap.mode === pair[0]);
+            });
+            countdown.textContent = formatMMSS(Math.round((snap.remainingMs || 0) / 1000));
+            // Primary button label and disabled state
+            if (snap.status === 'RUNNING')        primaryBtn.textContent = 'Pause';
+            else if (snap.status === 'PAUSED')    primaryBtn.textContent = 'Resume';
+            else                                  primaryBtn.textContent = 'Start';
+            // Suggestion only shows in the post-complete acknowledgment window
+            if (snap.status === 'COMPLETE_UNACKED') {
+                suggestion.style.display = '';
+                const nextMode = nextSuggestedMode(snap.mode);
+                suggestBtn.textContent = 'Start ' + (MODE_LABEL[nextMode] || nextMode).toLowerCase();
+            } else {
+                suggestion.style.display = 'none';
+            }
+        }
+
+        const unsubscribe = ctl.subscribe(syncPopoverFromState);
+        syncPopoverFromState(ctl.getState());
+
+        document.body.appendChild(pop);
+
+        // Anchor the popover beneath the trigger, right-aligned, clamped to
+        // the viewport — mirrors the settings menu placement.
+        const rect = pomodoroToggle.getBoundingClientRect();
+        const popRect = pop.getBoundingClientRect();
+        let top  = rect.bottom + 4;
+        let left = rect.right - popRect.width;
+        if (left < 4) left = 4;
+        if (top + popRect.height > window.innerHeight) {
+            top = Math.max(4, window.innerHeight - popRect.height - 4);
+        }
+        pop.style.top  = top + 'px';
+        pop.style.left = left + 'px';
+
+        pomodoroToggle.setAttribute('aria-expanded', 'true');
+
+        // Acknowledge any pending alert the moment the user opens the
+        // popover — the visit itself counts as acknowledgement, per the spec.
+        if (ctl.getState().status === 'COMPLETE_UNACKED') ctl.acknowledge();
+
+        document.addEventListener('click', onPomodoroOutsideClick, true);
+        document.addEventListener('keydown', onPomodoroKeydown, true);
+        window.addEventListener('resize', hidePomodoroPopover);
+        window.addEventListener('scroll', hidePomodoroPopover, true);
+
+        // Tear down the popover-scoped subscription on dismissal so the
+        // controller doesn't keep notifying a removed DOM element.
+        const origRemove = pop.parentNode ? null : null;
+        const observer = new MutationObserver(function() {
+            if (!document.contains(pop)) {
+                unsubscribe();
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+    }
+
+    pomodoroToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (document.getElementById('pomodoroPopover')) {
+            hidePomodoroPopover();
+        } else {
+            showPomodoroPopover();
+        }
+    });
+
+    // Subscribe at controller-level too so the icon sweep + accent recolor
+    // stay in sync regardless of whether the popover is open.
+    setTimeout(function() {
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+        ctl.subscribe(syncPomodoroIcon);
+        syncPomodoroIcon();
+    }, 0);
 
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
@@ -414,6 +737,7 @@ function component() {
     });
 
     nav.appendChild(sidebarToggle);
+    nav.appendChild(pomodoroToggle);
     nav.appendChild(settingsToggle);
     nav.appendChild(importFileInput);
 

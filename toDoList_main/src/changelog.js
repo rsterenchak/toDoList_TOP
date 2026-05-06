@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-06',
+        added: [
+            'Pomodoro timer in the header with focus and break modes, editable durations, and a chime, tab-title flash, and favicon swap when a session ends.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-05',
         fixed: [
-            'Pressing Delete on a focused project now opens the project-deletion confirmation instead of removing a todo.',
             'The active highlight now shifts to the neighboring todo after a deletion so arrow-key navigation keeps a visible anchor.',
             'The delete confirmation modal now opens focused on Cancel, with Left/Right arrows and Tab cycling focus between Cancel and Delete inside the dialog.',
             'Down arrow on the last project now moves focus to the add-project button, where Enter creates a new project.',

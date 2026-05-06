@@ -570,7 +570,8 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('helpModalBackdrop')      ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
-        document.getElementById('settingsMenu')
+        document.getElementById('settingsMenu')           ||
+        document.getElementById('pomodoroPopover')
     );
 }
 
