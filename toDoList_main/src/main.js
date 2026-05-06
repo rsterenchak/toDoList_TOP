@@ -228,29 +228,17 @@ function component() {
     pomodoroToggle.setAttribute('aria-expanded', 'false');
     pomodoroToggle.setAttribute('aria-label', 'Open Pomodoro timer');
     pomodoroToggle.title = 'Pomodoro';
-    // Pixel-art clock face — same visual vocabulary as the ghost glyph.
-    // The minute hand is rotated via inline transform from JS as the
-    // session progresses, anchored at 12 o'clock.
+    // Stroke-based stopwatch glyph: crown bar + top stem, an upper-right
+    // side stem button, a circular dial, and a single minute hand. The hand
+    // pivots around the dial center (12, 14) as the session progresses.
     pomodoroToggle.innerHTML =
-        '<svg class="clockIcon" viewBox="0 0 14 14" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">' +
-        '<g class="clockIconBody" fill="currentColor">' +
-        '<rect x="5" y="0" width="4" height="1"/>' +
-        '<rect x="3" y="1" width="8" height="1"/>' +
-        '<rect x="2" y="2" width="10" height="1"/>' +
-        '<rect x="1" y="3" width="2" height="8"/>' +
-        '<rect x="11" y="3" width="2" height="8"/>' +
-        '<rect x="2" y="11" width="10" height="1"/>' +
-        '<rect x="3" y="12" width="8" height="1"/>' +
-        '<rect x="5" y="13" width="4" height="1"/>' +
-        '</g>' +
-        '<g class="clockIconFace" fill="var(--bg-base, #111)">' +
-        '<rect x="3" y="3" width="8" height="8"/>' +
-        '</g>' +
-        '<g class="clockIconHand" fill="currentColor" transform="rotate(0 7 7)">' +
-        '<rect x="6" y="4" width="1" height="3"/>' +
-        '</g>' +
-        '<g class="clockIconPivot" fill="currentColor">' +
-        '<rect x="6" y="6" width="1" height="1"/>' +
+        '<svg class="clockIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<line x1="10" y1="3" x2="14" y2="3"/>' +
+        '<line x1="12" y1="3" x2="12" y2="7"/>' +
+        '<line x1="17" y1="8.5" x2="18.5" y2="7"/>' +
+        '<circle cx="12" cy="14" r="7"/>' +
+        '<g class="clockIconHand" transform="rotate(0 12 14)">' +
+        '<line x1="12" y1="14" x2="12" y2="9"/>' +
         '</g>' +
         '</svg>';
 
@@ -275,7 +263,7 @@ function component() {
         }
         progress = Math.max(0, Math.min(1, progress));
         const hand = pomodoroToggle.querySelector('.clockIconHand');
-        if (hand) hand.setAttribute('transform', 'rotate(' + (progress * 360).toFixed(2) + ' 7 7)');
+        if (hand) hand.setAttribute('transform', 'rotate(' + (progress * 360).toFixed(2) + ' 12 14)');
     }
 
     function hidePomodoroPopover() {
