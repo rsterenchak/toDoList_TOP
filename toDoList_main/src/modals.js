@@ -352,6 +352,16 @@ const HELP_TOPICS = [
             'Click outside the menu, press Escape, or click the ghost again to close it.',
         ],
     },
+    {
+        category: 'Music',
+        items: [
+            'Click the equalizer icon in the nav to open the focus-music player.',
+            'Pick one of the SomaFM stations and press Play; the visualizer bars on the icon pulse while audio is streaming.',
+            'Volume persists across reloads, but playback does not auto-resume — press Play after every page load.',
+            'Music pauses automatically when a Pomodoro session ends so the chime is audible, then resumes once you acknowledge the alert.',
+            'Streams require a network connection; offline use is not supported.',
+        ],
+    },
 ];
 
 const SHORTCUT_GROUPS = [
@@ -571,7 +581,8 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||
-        document.getElementById('pomodoroPopover')
+        document.getElementById('pomodoroPopover')        ||
+        document.getElementById('musicPopover')
     );
 }
 

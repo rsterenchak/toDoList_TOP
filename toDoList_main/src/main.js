@@ -14,6 +14,10 @@ import {
     MODE_LABEL,
 } from './pomodoro.js';
 import {
+    ensureMusic,
+    STATIONS as MUSIC_STATIONS,
+} from './music.js';
+import {
     isCompactTitlesOn,
     setCompactTitlesOn,
     readSidebarWidthPref,
@@ -516,6 +520,217 @@ function component() {
         syncPomodoroIcon();
     }, 0);
 
+    // ── Music player (SomaFM) ──
+    // Sits between the pomodoro toggle and the settings toggle in the right
+    // cluster. The button itself is the playing/idle indicator: a 5-bar
+    // equalizer that pulses while a stream is playing and flattens when idle
+    // or paused. The popover hosts a station picker, a play/pause primary
+    // button, and a volume slider. Stream + audio + persistence live in
+    // music.js; the pomodoro coordination (pause-on-alert) is owned there.
+    const musicToggle = document.createElement('button');
+    musicToggle.id   = 'musicToggle';
+    musicToggle.type = 'button';
+    musicToggle.setAttribute('aria-haspopup', 'dialog');
+    musicToggle.setAttribute('aria-expanded', 'false');
+    musicToggle.setAttribute('aria-label', 'Open focus music player');
+    musicToggle.title = 'Music';
+    // Five-bar equalizer glyph. Bars are <span>s so CSS can animate scaleY
+    // independently per bar; staggered keyframe delays give the wave the
+    // characteristic equalizer wobble while playing.
+    musicToggle.innerHTML =
+        '<span class="musicVizBars" aria-hidden="true">' +
+        '<span></span><span></span><span></span><span></span><span></span>' +
+        '</span>';
+    musicToggle.setAttribute('data-music-status', 'IDLE');
+
+    function getMusicController() {
+        return ensureMusic(ensurePomodoro());
+    }
+
+    function syncMusicIcon() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        musicToggle.setAttribute('data-music-status', snap.status);
+    }
+
+    function hideMusicPopover() {
+        const existing = document.getElementById('musicPopover');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        musicToggle.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onMusicOutsideClick, true);
+        document.removeEventListener('keydown', onMusicKeydown, true);
+        window.removeEventListener('resize', hideMusicPopover);
+        window.removeEventListener('scroll', hideMusicPopover, true);
+    }
+
+    function onMusicOutsideClick(event) {
+        const pop = document.getElementById('musicPopover');
+        if (!pop) return;
+        if (pop.contains(event.target) || musicToggle.contains(event.target)) return;
+        hideMusicPopover();
+    }
+
+    function onMusicKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            hideMusicPopover();
+            musicToggle.focus();
+        }
+    }
+
+    function showMusicPopover() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+
+        const pop = document.createElement('div');
+        pop.id = 'musicPopover';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', 'Focus music player');
+
+        const header = document.createElement('div');
+        header.className = 'musicPopoverHeader';
+        header.textContent = 'Focus music';
+        pop.appendChild(header);
+
+        // Station list — vertical column of buttons. Active station gets
+        // the accent-tinted row treatment (mirrors .pomodoroTab.active).
+        const stationList = document.createElement('div');
+        stationList.className = 'musicStationList';
+        const stationButtons = {};
+        MUSIC_STATIONS.forEach(function(station) {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'musicStationRow';
+            row.dataset.stationId = station.id;
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'musicStationName';
+            nameSpan.textContent = station.name;
+            const genreSpan = document.createElement('span');
+            genreSpan.className = 'musicStationGenre';
+            genreSpan.textContent = station.genre;
+            row.appendChild(nameSpan);
+            row.appendChild(genreSpan);
+            row.addEventListener('click', function() {
+                ctl.setStation(station.id);
+            });
+            stationList.appendChild(row);
+            stationButtons[station.id] = row;
+        });
+        pop.appendChild(stationList);
+
+        // Play/pause primary button — same visual weight as the pomodoro
+        // primary button so the two popovers read as siblings.
+        const actions = document.createElement('div');
+        actions.className = 'musicActions';
+
+        const primaryBtn = document.createElement('button');
+        primaryBtn.type = 'button';
+        primaryBtn.className = 'pomodoroPrimaryBtn musicPrimaryBtn';
+        actions.appendChild(primaryBtn);
+        pop.appendChild(actions);
+
+        primaryBtn.addEventListener('click', function() {
+            const status = ctl.getState().status;
+            if (status === 'PLAYING') ctl.pause();
+            else                      ctl.play();
+        });
+
+        // Volume row — native range input plus a numeric readout (0–100).
+        const volumeRow = document.createElement('div');
+        volumeRow.className = 'musicVolumeRow';
+        const volumeLabel = document.createElement('span');
+        volumeLabel.className = 'musicVolumeLabel';
+        volumeLabel.textContent = 'Volume';
+        const volumeSlider = document.createElement('input');
+        volumeSlider.type = 'range';
+        volumeSlider.min  = '0';
+        volumeSlider.max  = '100';
+        volumeSlider.step = '1';
+        volumeSlider.className = 'musicVolumeSlider';
+        volumeSlider.setAttribute('aria-label', 'Volume');
+        const volumeReadout = document.createElement('span');
+        volumeReadout.className = 'musicVolumeReadout';
+        volumeRow.appendChild(volumeLabel);
+        volumeRow.appendChild(volumeSlider);
+        volumeRow.appendChild(volumeReadout);
+        pop.appendChild(volumeRow);
+
+        volumeSlider.addEventListener('input', function() {
+            const v = parseInt(volumeSlider.value, 10);
+            if (!isNaN(v)) ctl.setVolume(v / 100);
+        });
+
+        function syncPopoverFromState(snap) {
+            // Active station highlight
+            MUSIC_STATIONS.forEach(function(station) {
+                const row = stationButtons[station.id];
+                if (row) row.classList.toggle('active', snap.stationId === station.id);
+            });
+            // Primary button label tracks the current status.
+            primaryBtn.textContent = snap.status === 'PLAYING' ? 'Pause' : 'Play';
+            // Volume slider + readout
+            const pct = Math.round((snap.volume || 0) * 100);
+            if (volumeSlider.value !== String(pct)) volumeSlider.value = String(pct);
+            volumeReadout.textContent = pct + '%';
+        }
+
+        const unsubscribe = ctl.subscribe(syncPopoverFromState);
+        syncPopoverFromState(ctl.getState());
+
+        document.body.appendChild(pop);
+
+        // Anchor the popover beneath the trigger, right-aligned, clamped to
+        // the viewport — mirrors the pomodoro popover placement.
+        const rect = musicToggle.getBoundingClientRect();
+        const popRect = pop.getBoundingClientRect();
+        let top  = rect.bottom + 4;
+        let left = rect.right - popRect.width;
+        if (left < 4) left = 4;
+        if (top + popRect.height > window.innerHeight) {
+            top = Math.max(4, window.innerHeight - popRect.height - 4);
+        }
+        pop.style.top  = top + 'px';
+        pop.style.left = left + 'px';
+
+        musicToggle.setAttribute('aria-expanded', 'true');
+
+        document.addEventListener('click', onMusicOutsideClick, true);
+        document.addEventListener('keydown', onMusicKeydown, true);
+        window.addEventListener('resize', hideMusicPopover);
+        window.addEventListener('scroll', hideMusicPopover, true);
+
+        // Tear down the popover-scoped subscription on dismissal so the
+        // controller doesn't keep notifying a removed DOM element.
+        const observer = new MutationObserver(function() {
+            if (!document.contains(pop)) {
+                unsubscribe();
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+    }
+
+    musicToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (document.getElementById('musicPopover')) {
+            hideMusicPopover();
+        } else {
+            showMusicPopover();
+        }
+    });
+
+    // Subscribe at controller-level so the visualizer reflects PLAYING /
+    // PAUSED / IDLE regardless of whether the popover is open. The pomodoro
+    // controller is passed through so music.js can wire up the
+    // pause-on-completion coordination on first ensureMusic() call.
+    setTimeout(function() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        ctl.subscribe(syncMusicIcon);
+        syncMusicIcon();
+    }, 0);
+
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
     settingsToggle.type = 'button';
@@ -726,6 +941,7 @@ function component() {
 
     nav.appendChild(sidebarToggle);
     nav.appendChild(pomodoroToggle);
+    nav.appendChild(musicToggle);
     nav.appendChild(settingsToggle);
     nav.appendChild(importFileInput);
 

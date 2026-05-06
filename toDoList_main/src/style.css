@@ -1098,7 +1098,8 @@ body:has(#changelogModalBackdrop) #helpFab,
 body:has(#helpModalBackdrop) #helpFab,
 body:has(#dueDatePopover) #helpFab,
 body:has(#projContextMenu) #helpFab,
-body:has(#settingsMenu) #helpFab {
+body:has(#settingsMenu) #helpFab,
+body:has(#musicPopover) #helpFab {
   display: none;
 }
 
@@ -3201,3 +3202,182 @@ html[data-sidebar-rail="off"] #projChild::before {
 /* Hide the floating help FAB when the pomodoro popover is open, mirroring
    the settings-menu rule above so the two surfaces never overlap. */
 body:has(#pomodoroPopover) #helpFab { display: none; }
+
+
+/* ── Music toggle (SomaFM player) ──
+   Sits between #pomodoroToggle and #settingsToggle in the right cluster.
+   The visualizer bars inside the button are the playing/paused indicator —
+   they pulse while data-music-status="PLAYING" and flatten otherwise. */
+#musicToggle {
+  position: relative;
+  /* The right-cluster anchor lives on #pomodoroToggle; the music button
+     rides the navbar's gap between siblings instead of carrying its own
+     auto-margin. */
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#musicToggle:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#musicToggle:focus { outline: none; }
+#musicToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+#musicToggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#musicToggle[data-music-status="PLAYING"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Five-bar equalizer. Each <span> is a single bar; transform-origin: bottom
+   so the scaleY animation reads as bars growing upward from the baseline. */
+.musicVizBars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+  width: 18px;
+}
+.musicVizBars > span {
+  display: inline-block;
+  width: 2px;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+  transform: scaleY(0.3);
+  transform-origin: bottom center;
+}
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span {
+  animation: musicVizBar 0.9s ease-in-out infinite;
+}
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span:nth-child(1) { animation-delay: 0s;   }
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span:nth-child(2) { animation-delay: 0.2s; }
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span:nth-child(3) { animation-delay: 0.4s; }
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span:nth-child(4) { animation-delay: 0.6s; }
+#musicToggle[data-music-status="PLAYING"] .musicVizBars > span:nth-child(5) { animation-delay: 0.8s; }
+
+@keyframes musicVizBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1.0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #musicToggle[data-music-status="PLAYING"] .musicVizBars > span {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
+
+/* Music popover — anchored by JS beneath the trigger. Visual vocabulary
+   matches #pomodoroPopover so the two surfaces read as siblings. */
+#musicPopover {
+  position: fixed;
+  z-index: 30;
+  min-width: 240px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 12px;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.musicPopoverHeader {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+.musicStationList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.musicStationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.musicStationRow:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.musicStationRow.active {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+.musicStationName { flex: 1 1 auto; }
+.musicStationGenre {
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.musicActions { display: flex; }
+.musicPrimaryBtn { flex: 1 1 auto; }
+.musicVolumeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.musicVolumeLabel {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.musicVolumeSlider {
+  flex: 1 1 auto;
+  /* font-size: 16px+ matches the mobile-zoom rule applied to the pomodoro
+     duration input — the slider itself doesn't trigger the auto-zoom but
+     its focus ring inherits popover typography. */
+  font-size: 16px;
+  accent-color: var(--accent);
+}
+.musicVolumeReadout {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* Hide the floating help FAB when the music popover is open, matching the
+   pomodoro / settings-menu rules so the two surfaces never overlap. */
+body:has(#musicPopover) #helpFab { display: none; }
