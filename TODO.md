@@ -9,34 +9,29 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Add Pomodoro timer with completion alerts to header
-  - Description: Add a clock-icon button to the top-bar's right cluster that opens a small popover with mode tabs (Focus / Short / Long), an inline-editable MM:SS countdown, and Start/Reset controls. Click the countdown to edit each mode's duration; durations, last-used mode, and sound preferences persist in localStorage under a `todoapp_pomodoro_` prefix. Starting a session closes the popover and recolors the icon to the accent, with the SVG minute hand sweeping a full clockwise revolution over the session duration as ambient progress feedback. Use an end-timestamp anchor (`endTs - performance.now()` per tick) rather than `setInterval` arithmetic so the timer survives a refresh and doesn't drift in inactive tabs.
-  - Behavior:
-    1. Idle: muted clock icon, hand at 12.
-    2. Click icon → popover opens with the current mode and countdown. Click MM:SS to edit duration; click a mode tab to swap.
-    3. Start → popover closes; icon recolors accent; hand begins sweeping clockwise over the session duration.
-    4. Click icon while running → popover reopens with live countdown and Pause/Resume.
-    5. Completion → fires the alert sequence (below) and stays in the unacknowledged state until the user clicks the clock icon or starts the next session.
-    6. After a session ends, the popover (when reopened) auto-suggests the next mode with a one-click advance — Focus → "Start short break", break → "Start focus session". The suggested duration remains inline-editable before starting.
-  - Completion alert (four visual layers + audio):
-    - Icon pulse: brief scale animation on the clock button, then settles into a solid accent-fill state held until acknowledged.
-    - Tab title flash: alternates `Break time! — Task Management` ↔ `Task Management` every ~700ms; clears on `visibilitychange` (tab regains focus) or on user acknowledgment.
-    - Favicon swap: switches to an accent-colored variant while the alert is unacknowledged; reverts on acknowledgment.
-    - Browser Notification: `new Notification('toDoList', { body, icon })` fired in parallel; no-ops gracefully if permission is denied. Permission requested lazily on the first Start click — not on page load.
-    - Audio: synthesized "soft bell" via Web Audio API (sine 880Hz fundamental + 1320Hz partial, ~1.6s exponential decay). Volume defaults to 60%; sound on/off toggle and volume both persist.
-  - Implementation notes:
-    - New module `pomodoro.js` mirrors `companion.js`'s shape — exports `createPomodoro(doc)` returning a controller `{ start, pause, reset, setMode, setDuration, acknowledge, subscribe, destroy }`. Holds no project/todo state; does not touch `listLogic.js`.
-    - State machine: IDLE → RUNNING → PAUSED → RUNNING → COMPLETE_UNACKED → IDLE (via `acknowledge()` or by starting the next session).
-    - Persisted shape under `todoapp_pomodoro_state`: `{ mode, durations: {focus, short, long}, endTimestamp, status, soundEnabled, volume }`.
-    - Popover dismissal: outside click, Escape, or icon re-click — matches the existing context-menu and due-date-popover patterns.
-    - Mobile-safe duration edit: the inline input needs `font-size: 16px+` to avoid iOS Safari auto-zoom.
-    - `prefers-reduced-motion`: hand sweep snaps in ~5° increments instead of continuous rotation; icon pulse and slide animations are skipped.
-    - Vanilla / no new dependencies — Web Audio, Notification, and Page Visibility APIs are all native.
-    - `main.js` is over 25k tokens — wire the icon and popover via grep + offset/limit, near the existing theme-toggle setup.
-    - Asset: commit a small accent-tinted favicon variant alongside the existing favicon for the unacknowledged-state swap target.
-  - Out of scope: per-todo Pomodoro association (linking sessions to specific items, completed-cycle counters), automatic focus → break promotion without the acknowledgment step, custom audio-file uploads, configurable long-break-every-N-cycles logic.
-  - File: `toDoList_main/src/pomodoro.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
-  - Completed: 2026-05-06
+- [ ] **[MEDIUM]** Add SomaFM music player with visualizer button to navbar
+  - Description: Add a focus-music player to the navbar's right cluster, sitting between `#pomodoroToggle` and `#settingsToggle`. The trigger is a 36×36 button whose icon is a 5-bar equalizer that animates while playing and settles flat when paused or idle — same visual vocabulary as the Pomodoro clock's progress sweep, but the icon itself is the state indicator rather than a hand. Click opens an anchored popover with a station picker (5–6 SomaFM stations), a play/pause primary button, and a volume slider. Audio streams via a single hidden `<audio>` element pointed at SomaFM's direct MP3 URLs (e.g. `https://somafm.com/groovesalad.pls`) — no API key, no new dependencies. Persist last-station and volume in localStorage; do not auto-resume on page load (mobile autoplay restrictions block it and unexpected audio is hostile). Pause the audio element when the Pomodoro `pomodoro-alert` body class lands so the chime isn't drowned out, and resume on acknowledgment if the user was playing before. Network-required and offline-fail are accepted compromises.
+    - Behavior:
+      1. Button visualizer bars animate via CSS-only `@keyframes` (scaleY pulse, staggered delays) while `data-music-status="PLAYING"`; flatten to a static 30% height when `IDLE` or `PAUSED`. `prefers-reduced-motion` flattens the bars to a single static shape (no animation).
+      2. While playing, the button picks up the accent color treatment used by `#pomodoroToggle[data-pomo-status="RUNNING"]` (accent border + accent fill text) so the right-cluster buttons read as kin.
+      3. Click toggles the popover open/closed. Popover dismisses on outside click, Escape, button re-click, viewport resize, and scroll — mirror the existing `hidePomodoroPopover` plumbing.
+      4. Station list is a vertical list of buttons; the active station gets an accent-tinted row (mirror `.pomodoroTab.active`). Genre tag right-aligned in muted SpaceMono uppercase, matching the pomodoro popover's typographic treatment.
+      5. Play/pause primary button uses the same `.pomodoroPrimaryBtn` styling. Volume slider is a native `<input type="range">` with a numeric readout (0–100).
+      6. Selecting a station while paused stages it but doesn't auto-play; selecting a station while playing performs a seamless swap (set `audio.src`, `audio.play()`).
+      7. Pomodoro coordination: subscribe to the pomodoro controller via `ensurePomodoro().subscribe(...)`. When `status` transitions to `COMPLETE_UNACKED`, capture `wasPlaying` and pause the audio element; on transition out of `COMPLETE_UNACKED` (acknowledge / reset / mode change / start), resume only if `wasPlaying` was true.
+    - Implementation notes:
+      - New module `toDoList_main/src/music.js` mirrors `pomodoro.js`'s shape: `createMusic(doc)` factory returning a controller (`play`, `pause`, `setStation`, `setVolume`, `subscribe`, `getState`, `destroy`), plus module-level `ensureMusic()` / `destroyMusic()` singleton accessors. State machine: `IDLE → PLAYING → PAUSED → PLAYING → IDLE`. Station list is a hardcoded constant in the module (no fetch, no API): Groove Salad, Drone Zone, Space Station Soma, DEF CON Radio, Lush, Deep Space One — exact list to be confirmed but format is `[{ id, name, genre, streamUrl }]`.
+      - localStorage keys under the `todoapp_` prefix: `todoapp_music_state` for `{ stationId, volume }`. State writes are best-effort (try/catch).
+      - `main.js`: import from `music.js` (`ensureMusic`, plus any helper exports), add `const musicToggle = document.createElement('button')`, wire it between `pomodoroToggle` and `settingsToggle` in the navbar (`nav.appendChild` order). Functions to add mirror the pomodoro plumbing: `getMusicController()`, `syncMusicIcon()`, `hideMusicPopover()`, `onMusicOutsideClick()`, `onMusicKeydown()`, `showMusicPopover()`. Subscribe at controller-level on the `setTimeout(0)` so the icon's playing/paused state stays in sync regardless of whether the popover is open.
+      - The existing `margin-left: auto` lives on `#pomodoroToggle` and pushes the whole right cluster to the navbar's right edge. The new music button should NOT carry `margin-left: auto` — it inherits the navbar's `gap: 8px` between siblings, sitting flush against the pomodoro button.
+      - `style.css`: add `#musicToggle` styled like `#pomodoroToggle`, `.musicVizBars` + `.musicVizBars span` rules with a `musicVizBar` keyframe (5 bars, scaleY 0.3 ↔ 1.0 with 0s / 0.2s / 0.4s / 0.6s / 0.8s delays). Style `#musicPopover` mirroring `#pomodoroPopover`. Add `body:has(#musicPopover) #helpFab { display: none; }` to match the existing FAB-hide rules.
+      - `modals.js`: extend `isAnyModalOrPopoverOpen()` to include `document.getElementById('musicPopover')` so the global `?` and `n` shortcuts (and the help FAB visibility) honor the music popover the same way they honor the pomodoro popover.
+      - `pomodoro.js`: no changes — the music module subscribes to the existing pomodoro controller. Coordination logic lives entirely in `music.js`.
+      - No new dependencies. No new build config. Audio is one `<audio>` element created lazily on first `play()` and reused thereafter.
+      - Mobile: native autoplay restrictions block any `audio.play()` not initiated by a user gesture — the popover's play button is the only entry point, so this falls out naturally. Volume slider must be `font-size: 16px+` on mobile to avoid iOS Safari auto-zoom (the native range input doesn't trigger it but its focus ring inherits from the popover; verify on device).
+      - Help modal: add a "Music" topic section to `HELP_TOPICS` in `modals.js` describing the button, the station picker, and the network-required nature of the feature.
+  - File: `toDoList_main/src/music.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/modals.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
