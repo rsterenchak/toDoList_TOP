@@ -170,9 +170,15 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         expect(rule).toMatch(/width:\s*36px\s*;/);
         expect(rule).toMatch(/height:\s*36px\s*;/);
         expect(rule).toMatch(/background:\s*transparent\s*;/);
-        // margin-left: auto pushes it to the far right edge of the nav now
-        // that the export/import cluster has been removed.
-        expect(rule).toMatch(/margin-left:\s*auto\s*;/);
+        // The `margin-left: auto` that pushes the right-side cluster flush
+        // right now lives on #pomodoroToggle (the leftmost member of that
+        // cluster in DOM order). settingsToggle inherits the position by
+        // sitting next to pomodoro under the navbar's `gap: 8px`, so its
+        // own rule must NOT redeclare margin-left: auto — that would split
+        // the slack between the two and break the cluster.
+        expect(rule).not.toMatch(/margin-left:\s*auto\s*;/);
+        const pomoRule = extractTopLevelRule('#pomodoroToggle');
+        expect(pomoRule).toMatch(/margin-left:\s*auto\s*;/);
     });
 
     it('drives a hover-pulse animation on #settingsToggle for discoverability', () => {

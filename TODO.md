@@ -9,7 +9,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add Pomodoro timer with completion alerts to header
+- [x] **[MEDIUM]** Add Pomodoro timer with completion alerts to header
   - Description: Add a clock-icon button to the top-bar's right cluster that opens a small popover with mode tabs (Focus / Short / Long), an inline-editable MM:SS countdown, and Start/Reset controls. Click the countdown to edit each mode's duration; durations, last-used mode, and sound preferences persist in localStorage under a `todoapp_pomodoro_` prefix. Starting a session closes the popover and recolors the icon to the accent, with the SVG minute hand sweeping a full clockwise revolution over the session duration as ambient progress feedback. Use an end-timestamp anchor (`endTs - performance.now()` per tick) rather than `setInterval` arithmetic so the timer survives a refresh and doesn't drift in inactive tabs.
   - Behavior:
     1. Idle: muted clock icon, hand at 12.
@@ -36,7 +36,7 @@
     - Asset: commit a small accent-tinted favicon variant alongside the existing favicon for the unacknowledged-state swap target.
   - Out of scope: per-todo Pomodoro association (linking sessions to specific items, completed-cycle counters), automatic focus → break promotion without the acknowledgment step, custom audio-file uploads, configurable long-break-every-N-cycles logic.
   - File: `toDoList_main/src/pomodoro.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-06
 
 ## In Progress
 
