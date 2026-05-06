@@ -371,7 +371,7 @@ body {
 #sideTit {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 0 12px;
   gap: 10px;
   height: var(--row-h);
@@ -2421,7 +2421,9 @@ body.row-dragging * { cursor: grabbing !important; }
    intentional interactions don't fight the ambient motion. */
 #settingsToggle {
   position: relative;
-  margin-left: auto;
+  /* margin-left: auto now lives on #pomodoroToggle (the leftmost item in
+     the right-side cluster), which absorbs the navbar slack so pomodoro
+     and settings sit side-by-side at the far right. */
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -2997,6 +2999,11 @@ html[data-sidebar-rail="off"] #projChild::before {
    running session recolors the icon to the accent. */
 #pomodoroToggle {
   position: relative;
+  /* margin-left: auto pushes pomodoro (and the settings toggle that
+     follows it in DOM order) to the right edge of the navbar so the
+     hamburger stays on the left and the two right-side controls cluster
+     together with the navbar's `gap: 8px` between them. */
+  margin-left: auto;
   width: 36px;
   height: 36px;
   border-radius: 8px;
