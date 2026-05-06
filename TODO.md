@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[LOW]** Auto-focus emptyStateCreateBtn and bind Enter to create first project
-  - Description: When the app loads with no existing projects, the "CREATE YOUR FIRST PROJECT" empty-state button (`emptyStateCreateBtn`) doesn't receive focus, so keyboard users have to tab or click into it to get started. Apply focus to the button on render of the empty state, and ensure pressing Enter while it's focused triggers the same new-project creation flow as a click — which it should already do as a `<button>`, but verify rather than assume. Focus should only auto-apply on the empty state itself, not re-steal focus if the user has already moved to another control (e.g., the hamburger menu) by the time the empty state renders. Implementation lives in `main.js` where the empty state is rendered — grep for `emptyStateCreateBtn` with `offset`/`limit` since `main.js` is over 25k tokens — and call `.focus()` on the button after it's appended to the DOM. Verify the existing `:focus-visible` style in `style.css` reads clearly against the empty-state background; if not, add a focus treatment matching other primary buttons.
+- [ ] **[LOW]** Replace pixel-art Pomodoro icon with stroke-based stopwatch
+  - Description: Swap the existing pixel-art clock SVG inside `pomodoroToggle.innerHTML` for a stroke-based stopwatch — crown bar + stem on top, side stem button on the upper right, circular dial, single hand. The new design uses a 24×24 viewBox (was 14×14) so the hand's rotation pivot moves from (7, 7) to (12, 14); `syncPomodoroIcon`'s rotate string and the `.clockIconHand` `transform-origin` in `style.css` must move in lockstep with the SVG or the sweep will be off-center. The `.clockIconBody`, `.clockIconFace`, and `.clockIconPivot` classes become vestigial once the new SVG is flat-stroked rather than grouped — remove them in the same commit so the cleanup doesn't drift into a follow-up.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-05
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
