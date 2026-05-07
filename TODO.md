@@ -9,7 +9,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add YouTube IFrame Player music feature with visualizer button and curated lofi/ambient stations
+- [x] **[MEDIUM]** Add YouTube IFrame Player music feature with visualizer button and curated lofi/ambient stations
   - Description: Add a focus-music player to the navbar's right cluster, sitting between `#pomodoroToggle` and `#settingsToggle`. The trigger is a 36×36 button whose icon is a 5-bar equalizer that animates while playing and settles flat when paused or idle. Click opens an anchored popover containing a visible 240×135 YouTube iframe (so the lofi/ambient stream artwork shows through, satisfying YouTube's TOS and giving a small ambient visual element), a station picker (curated list of ~6 starter stations + a "paste URL" entry), a play/pause primary button, a volume slider, and a "now playing" track-title line populated from `player.getVideoData()`. Audio is driven by the YouTube IFrame Player API — `<script src="https://www.youtube.com/iframe_api">` loaded lazily on first popover open, single player instance reused for the lifetime of the page. No API key, no OAuth, no backend. Persist last-station, volume, and any user-added custom stations in localStorage. Do not auto-resume on page load (mobile autoplay restrictions block it and unexpected audio is hostile). Pause the player when the Pomodoro `pomodoro-alert` body class lands so the chime isn't drowned out, and resume on acknowledgment if the user was playing before. Network-required and offline-fail are accepted compromises. Pre-roll ads on non-live content are an accepted compromise.
     - Behavior:
       1. Visualizer bars animate via CSS-only `@keyframes` (scaleY pulse, staggered delays) while the button carries `data-music-status="PLAYING"`; flatten to a static 30% scaleY when `IDLE`, `PAUSED`, or `BUFFERING`. `prefers-reduced-motion` flattens the bars unconditionally.
@@ -43,7 +43,7 @@
       - Mobile: tapping the play button on a 1px-wrapped iframe sometimes fails on iOS Safari — having the iframe visible at 240×135 inside the popover sidesteps this. The play button still must be a synchronous click handler within the user-gesture tick.
       - No new npm dependencies. The YT IFrame Player API is loaded directly from `youtube.com` at runtime.
   - File: `toDoList_main/src/music.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/modals.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-07
 
 ## In Progress
 
