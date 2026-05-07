@@ -6,30 +6,14 @@
 // app — failures degrade silently to the documented default.
 //
 // Theme persistence stays alongside the theme module; everything else
-// (compact titles, completed section, sidebar width, changelog last-seen)
-// is consolidated here so the persisted surface is auditable in one place.
+// (completed section, sidebar width, changelog last-seen) is consolidated
+// here so the persisted surface is auditable in one place.
 
-export const COMPACT_TITLES_KEY = 'todoapp_compactTitles';
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
-
-// ── compact titles ──
-export function isCompactTitlesOn() {
-    try {
-        return localStorage.getItem(COMPACT_TITLES_KEY) === 'true';
-    } catch (e) {
-        return false;
-    }
-}
-
-export function setCompactTitlesOn(on) {
-    try {
-        localStorage.setItem(COMPACT_TITLES_KEY, on ? 'true' : 'false');
-    } catch (e) { /* ignore quota/private-mode */ }
-}
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {

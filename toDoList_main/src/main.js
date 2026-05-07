@@ -14,8 +14,6 @@ import {
     MODE_LABEL,
 } from './pomodoro.js';
 import {
-    isCompactTitlesOn,
-    setCompactTitlesOn,
     readSidebarWidthPref,
     writeSidebarWidthPref,
     hasSidebarWidthPref,
@@ -67,23 +65,6 @@ import button from './addProj_button.svg';
 // on <html> before any rendering happens. See theme.js for the persistence
 // key, the matchMedia fallback, and the toggle button factory.
 applyTheme(resolveInitialTheme());
-
-
-// Persisted UI preference: compact-titles mode. When on, long todo titles are
-// visually truncated with a trailing ellipsis instead of overflowing or
-// wrapping. The underlying data is unchanged; CSS keys off
-// `data-compact-titles="on"` on <html> to apply text-overflow.
-//
-// All persisted UI prefs (compact-titles, completed-section open/closed flag,
-// sidebar width, changelog last-seen marker) live in prefs.js; the
-// completed-section flag is consumed by emptyState.js.
-function applyCompactTitles(on) {
-    document.documentElement.setAttribute('data-compact-titles', on ? 'on' : 'off');
-}
-
-// Apply the saved preference before component() builds the DOM so the very
-// first paint already matches the saved state — same pattern as applyTheme.
-applyCompactTitles(isCompactTitlesOn());
 
 
 // Sidebar rail vs. full mode. Rail (default) is a 54px column of first-letter
@@ -861,40 +842,6 @@ function component() {
     // the per-row switcher state in wireDescToggle stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
-
-    // Compact-titles toggle — pixel-art stacked-lines glyph (three horizontal
-    // bars, each shorter than the last). Sits immediately to the LEFT of the
-    // Expand All control so the two display-only viewport controls live
-    // together. Outline (off) / filled accent (on) is driven by aria-pressed
-    // in style.css; persisted state is reapplied in applyCompactTitles().
-    const COMPACT_TITLES_SVG =
-        '<svg class="compactTitlesIcon" viewBox="0 0 7 7" width="14" height="14" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true">' +
-        '<rect x="0" y="1" width="7" height="1"/>' +
-        '<rect x="0" y="3" width="5" height="1"/>' +
-        '<rect x="0" y="5" width="3" height="1"/>' +
-        '</svg>';
-
-    const compactTitlesBtn = document.createElement('button');
-    compactTitlesBtn.type = 'button';
-    compactTitlesBtn.id   = 'compactTitlesToggle';
-    compactTitlesBtn.className = 'compactTitlesBtn';
-    compactTitlesBtn.title = 'Compact titles';
-    compactTitlesBtn.setAttribute('aria-label', 'Compact titles');
-    compactTitlesBtn.innerHTML = COMPACT_TITLES_SVG;
-
-    function syncCompactTitlesBtn() {
-        compactTitlesBtn.setAttribute('aria-pressed', isCompactTitlesOn() ? 'true' : 'false');
-    }
-    syncCompactTitlesBtn();
-
-    compactTitlesBtn.addEventListener('click', function () {
-        const next = !isCompactTitlesOn();
-        setCompactTitlesOn(next);
-        applyCompactTitles(next);
-        syncCompactTitlesBtn();
-    });
-
-    bulkDescActions.appendChild(compactTitlesBtn);
 
     const bulkDescToggleBtn = document.createElement('button');
     bulkDescToggleBtn.type = 'button';

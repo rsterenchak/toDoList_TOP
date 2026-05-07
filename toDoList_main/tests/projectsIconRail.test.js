@@ -40,7 +40,7 @@ describe('projects sidebar — 54px icon rail', () => {
         expect(main).toMatch(/function\s+applySidebarRail\s*\(/);
         expect(main).toMatch(/setAttribute\(\s*['"]data-sidebar-rail['"]/);
         // Called at module top-level so the first paint already reflects the
-        // saved state — matches the pattern used by applyTheme/applyCompactTitles.
+        // saved state — matches the pattern used by applyTheme.
         expect(main).toMatch(/applySidebarRail\(\s*isSidebarRailOn\(\)\s*\)/);
     });
 
