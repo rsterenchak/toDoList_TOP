@@ -1123,109 +1123,13 @@ body:has(#settingsMenu) #helpFab {
   position: relative;
 }
 
-/* BULK DESCRIPTION CONTROLS — segmented toolbar group: Compact Titles
-   icon (left) + Expand All label (right). Children sit flush together
-   with shared 0.5px borders; only the outer corners get the 6px radius,
-   so the seam between the two reads as a single control group. */
+/* BULK DESCRIPTION CONTROL — wrapper for the Expand All toggle in the
+   Todo Items header, anchored to the right edge. */
 #bulkDescActions {
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-}
-
-/* Normalize each segment to the same height with square corners by
-   default. The first/last children below restore the outer radius. */
-#bulkDescActions > button {
-  height: 26px;
-  box-sizing: border-box;
-  border-radius: 0;
-}
-#bulkDescActions > button:first-child {
-  border-top-left-radius: var(--radius-md);
-  border-bottom-left-radius: var(--radius-md);
-}
-#bulkDescActions > button:last-child {
-  border-top-right-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
-}
-/* Collapse the seam: the second segment's left border overlaps the
-   first segment's right border so there's no double 1px line. */
-#bulkDescActions > button + button {
-  margin-left: -0.5px;
-}
-
-/* COMPACT TITLES TOGGLE — square icon segment sitting to the LEFT of the
-   Expand All control. Shares the outline aesthetic of its sibling: the
-   off state is fully transparent, and the on state (aria-pressed="true")
-   is communicated by a subtle accent-tinted fill plus accent-colored
-   icon — distinct enough to read as "on" without breaking the segmented
-   look. The stacked-lines glyph is inline pixel-art SVG matching the
-   chunky 1px-grid feel of the theme toggle's sun/moon. */
-.compactTitlesBtn {
-  background: transparent;
-  border: 0.5px solid var(--border-bright);
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
-}
-.compactTitlesBtn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-text);
-}
-.compactTitlesBtn:focus { outline: none; }
-.compactTitlesBtn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
-}
-.compactTitlesBtn[aria-pressed="true"] {
-  background: var(--accent-dim);
-  color: var(--accent-text);
-}
-.compactTitlesBtn[aria-pressed="true"]:hover {
-  background: var(--accent-dim);
-  border-color: var(--accent-text);
-}
-.compactTitlesIcon {
-  display: block;
-  pointer-events: none;
-}
-
-/* Visual title truncation — single-line ellipsis when the global toggle is
-   on. Stored data is unchanged; the input still scrolls and edits normally
-   when focused, and the native `title` attribute mirrors the full value so
-   hover reveals anything the ellipsis clips. */
-html[data-compact-titles="on"] #toDoInput {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-  max-width: 60ch;
-}
-/* While the input is focused (user is editing) drop the cap and ellipsis so
-   the full title is visible. Blurring restores the truncated state. */
-html[data-compact-titles="on"] #toDoInput:focus {
-  max-width: none;
-  text-overflow: clip;
-}
-/* Once the input caps at 60ch, the leftover flex space lands at the end of
-   the row by default — push the meta column (date pill onward) to the right
-   edge so it stays visually aligned with the row's right side. Skipped when
-   a `.recurringGlyph` is present, since the glyph already absorbs the
-   leftover via its own `margin-left: auto` and adding it here would split
-   the space and re-orphan the glyph in the middle. */
-html[data-compact-titles="on"] #toDoChild:not(:has(.recurringGlyph)) #duePill {
-  margin-left: auto;
 }
 
 .bulkDescBtn {

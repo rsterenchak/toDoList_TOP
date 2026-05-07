@@ -9,10 +9,10 @@
 
 ## Features
 
-- [ ] **[LOW]** Remove Compact titles toggle and supporting code
+- [x] **[LOW]** Remove Compact titles toggle and supporting code
   - Description: Remove the Compact titles button (stacked-lines glyph in the Todo Items header, left of Expand All) and all of its supporting code. In `main.js`, drop the `COMPACT_TITLES_SVG` constant, the `compactTitlesBtn` element, the `applyCompactTitles()` function and its boot-time call, the `syncCompactTitlesBtn()` helper, the click handler, the `bulkDescActions.appendChild(compactTitlesBtn)` line, and the `isCompactTitlesOn` / `setCompactTitlesOn` imports. In `prefs.js`, drop `COMPACT_TITLES_KEY`, `isCompactTitlesOn`, and `setCompactTitlesOn`. In `style.css`, drop the `.compactTitlesBtn` / `.compactTitlesIcon` rules and the `html[data-compact-titles="on"] #toDoInput` truncation rules (including the `:not(:has(.recurringGlyph)) #duePill` margin rule); also revisit the `#bulkDescActions` segmented-button styling since only Expand All will remain — the first/last-child border-radius split and `button + button` overlap rule become no-ops, so simplify back to a single button. Leaves the legacy `todoapp_compactTitles` localStorage key orphaned for existing users, which is fine — no migration needed.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-07
 
 ## In Progress
 
