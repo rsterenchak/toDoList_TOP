@@ -3105,3 +3105,299 @@ html[data-sidebar-rail="off"] #projChild::before {
 /* Hide the floating help FAB when the pomodoro popover is open, mirroring
    the settings-menu rule above so the two surfaces never overlap. */
 body:has(#pomodoroPopover) #helpFab { display: none; }
+
+
+/* FOCUS MUSIC — equalizer button between pomodoro and the ghost menu.
+   Matches #pomodoroToggle's 36×36 geometry so the right-cluster buttons
+   read as kin. The visualizer bars inside animate via CSS-only keyframes
+   while a station is playing and settle flat when paused/idle. The popover
+   the button anchors stays in the DOM at rest (the iframe inside it is the
+   audio source) and is hidden via the absence of `.open`. */
+#musicToggle {
+  position: relative;
+  /* No margin-left:auto — the navbar's `gap: 8px` between siblings sits us
+     flush against #pomodoroToggle on the right cluster. */
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#musicToggle:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#musicToggle:focus { outline: none; }
+#musicToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+#musicToggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#musicToggle[data-music-status="PLAYING"],
+#musicToggle[data-music-status="BUFFERING"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.musicVizBars {
+  display: inline-flex;
+  align-items: flex-end;
+  /* Explicit height — without it the children's percentage heights resolve
+     to 0 and the bars are invisible. */
+  height: 14px;
+  gap: 1.5px;
+}
+/* The visualizer bars carry the keyframe assignment unconditionally,
+   but start in `animation-play-state: paused` so they hold their
+   resting frame when no music is playing. The data-music-status rules
+   below flip play-state to `running` for PLAYING and BUFFERING — i.e.
+   while the user has actually requested audio. Using play-state rather
+   than swapping `animation: none` on/off means the bars resume from
+   wherever they were frozen instead of snapping back to the keyframe
+   start, which reads as a smoother pause/play transition.
+
+   transform-origin: bottom anchors the scale animation to the floor of
+   the bar so each tick grows upward (a bar visualizer's natural pivot)
+   instead of from the center. */
+.musicVizBars span {
+  display: block;
+  width: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  transform-origin: bottom;
+  animation: musicVizBar 1.1s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.musicVizBars span:nth-child(1) { animation-delay: 0s;    }
+.musicVizBars span:nth-child(2) { animation-delay: 0.18s; }
+.musicVizBars span:nth-child(3) { animation-delay: 0.36s; }
+.musicVizBars span:nth-child(4) { animation-delay: 0.54s; }
+.musicVizBars span:nth-child(5) { animation-delay: 0.72s; }
+
+/* Run the keyframes only while audio is actively requested. PLAYING is
+   the obvious case; BUFFERING is included so the bars keep moving while
+   YouTube loads the next station — without it the visualizer looks
+   frozen during the (sometimes multi-second) buffer and the user can't
+   tell the click registered. PAUSED and IDLE leave play-state at
+   `paused` so the bars hold still in sympathy with the audio. */
+#musicToggle[data-music-status="PLAYING"]   .musicVizBars span,
+#musicToggle[data-music-status="BUFFERING"] .musicVizBars span {
+  animation-play-state: running;
+}
+
+/* Wider amplitude (0.2 → 1.0) so the rise/fall reads from across the
+   navbar rather than looking like the bars are merely twitching. */
+@keyframes musicVizBar {
+  0%, 100% { transform: scaleY(0.2); }
+  50%      { transform: scaleY(1.0); }
+}
+
+/* Intentionally NOT honoring prefers-reduced-motion for the music
+   visualizer bars. The bars are 2px wide × ≤14px tall, looped at 1.1s,
+   and confined to a single nav-bar icon — well below the motion-
+   sensitivity threshold the preference is meant to guard against. The
+   "music is on" affordance disappears entirely if the bars freeze, so
+   the trade is worth it here. Other animations across the app (modals,
+   companion cheer, project-button attention pulse, etc.) still respect
+   the preference via their own @media blocks. */
+
+/* Music popover — anchored beneath #musicToggle. Always in the DOM so the
+   YT iframe (and therefore audio) survives close; the `.open` class drives
+   visibility. */
+#musicPopover {
+  position: fixed;
+  z-index: 30;
+  width: 280px;
+  max-height: 70vh;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 12px;
+  user-select: none;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+#musicPopover.open {
+  display: flex;
+}
+.musicPopoverHeader {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+.musicPlayerWrap {
+  display: flex;
+  justify-content: center;
+  background: #000;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  width: 240px;
+  height: 135px;
+  align-self: center;
+}
+#musicPlayerTarget {
+  width: 100%;
+  height: 100%;
+}
+.musicNowPlaying {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  min-height: 1.2em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.musicPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.musicPickerSection {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding: 0 4px;
+}
+.musicStationRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease;
+}
+.musicStationRow.active {
+  background: var(--accent-dim);
+}
+.musicStationRow:hover {
+  background: var(--bg-hover);
+}
+.musicStationName {
+  flex: 1 1 auto;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.musicStationGenre {
+  font-family: 'SpaceMono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.musicStationRemove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+.musicStationRemove:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.musicPasteRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.musicPasteBtn {
+  background: transparent;
+  border: 0.5px dashed var(--border-bright);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.musicPasteBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.musicPasteForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.musicPasteNameInput,
+.musicPasteUrlInput {
+  /* font-size: 16px+ on mobile to prevent iOS Safari auto-zoom on focus. */
+  font-family: inherit;
+  font-size: 16px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+.musicPasteError {
+  font-size: 11px;
+  color: var(--accent);
+}
+.musicControls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.musicPrimaryBtn {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--bg-base);
+  border: 0.5px solid var(--accent);
+  transition: filter 0.12s ease;
+}
+.musicPrimaryBtn:hover { filter: brightness(1.08); }
+.musicVolumeWrap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+.musicVolume {
+  width: 100%;
+}
+
+/* Hide the floating help FAB when the music popover is open. The popover
+   stays in the DOM at rest, so the rule must check the `.open` class
+   instead of element presence. */
+body:has(#musicPopover.open) #helpFab { display: none; }

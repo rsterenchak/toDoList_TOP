@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-07',
+        added: [
+            'Focus-music popover with curated lofi/ambient stations, paste-your-own YouTube URLs, and auto-pause when a Pomodoro session ends.',
+        ],
         changed: [
             'Compact titles toggle removed from the Todo Items header.',
         ],
@@ -24,7 +27,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-05',
         fixed: [
-            'Down arrow on the last project now moves focus to the add-project button, where Enter creates a new project.',
             'The empty-state Create button now starts focused so pressing Enter creates your first project without a tab or click.',
         ],
     },

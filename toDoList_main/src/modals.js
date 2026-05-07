@@ -352,6 +352,15 @@ const HELP_TOPICS = [
             'Click outside the menu, press Escape, or click the ghost again to close it.',
         ],
     },
+    {
+        category: 'Music',
+        items: [
+            'Click the equalizer button (between the pomodoro and the ghost menu) to open the focus-music popover.',
+            'Pick a curated lofi/ambient station, or paste a YouTube watch / playlist / live URL to add your own. Custom stations sit at the top of the picker; remove one with its × button.',
+            'Audio plays through a small embedded YouTube iframe — internet connection required. Live streams play continuously; non-live playlists may include YouTube ads.',
+            'When a Pomodoro session ends, music auto-pauses so the chime cuts through; it resumes after you acknowledge the alert if you were playing.',
+        ],
+    },
 ];
 
 const SHORTCUT_GROUPS = [
@@ -564,6 +573,9 @@ export function showHelpModal() {
 // isAnyModalOrPopoverOpen so the shortcut is suppressed under the same
 // conditions the FAB hides.
 export function isAnyModalOrPopoverOpen() {
+    // Music popover lives in the DOM at rest (the iframe inside it is the
+    // audio source — destroying it on close would cut playback) so we test
+    // for the `.open` class instead of element presence.
     return !!(
         document.getElementById('confirmModalBackdrop')   ||
         document.getElementById('changelogModalBackdrop') ||
@@ -571,7 +583,8 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||
-        document.getElementById('pomodoroPopover')
+        document.getElementById('pomodoroPopover')        ||
+        document.querySelector('#musicPopover.open')
     );
 }
 
