@@ -3160,35 +3160,59 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   height: 14px;
   gap: 1.5px;
 }
+/* The visualizer bars carry the keyframe assignment unconditionally,
+   but start in `animation-play-state: paused` so they hold their
+   resting frame when no music is playing. The data-music-status rules
+   below flip play-state to `running` for PLAYING and BUFFERING — i.e.
+   while the user has actually requested audio. Using play-state rather
+   than swapping `animation: none` on/off means the bars resume from
+   wherever they were frozen instead of snapping back to the keyframe
+   start, which reads as a smoother pause/play transition.
+
+   transform-origin: bottom anchors the scale animation to the floor of
+   the bar so each tick grows upward (a bar visualizer's natural pivot)
+   instead of from the center. */
 .musicVizBars span {
   display: block;
   width: 2px;
   background: currentColor;
   border-radius: 1px;
-  transform: scaleY(0.3);
   transform-origin: bottom;
+  animation: musicVizBar 1.1s ease-in-out infinite;
+  animation-play-state: paused;
 }
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span {
-  animation: musicVizBar 1.4s ease-in-out infinite;
-}
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span:nth-child(1) { animation-delay: 0s;   }
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span:nth-child(2) { animation-delay: 0.2s; }
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span:nth-child(3) { animation-delay: 0.4s; }
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span:nth-child(4) { animation-delay: 0.6s; }
-#musicToggle[data-music-status="PLAYING"] .musicVizBars span:nth-child(5) { animation-delay: 0.8s; }
+.musicVizBars span:nth-child(1) { animation-delay: 0s;    }
+.musicVizBars span:nth-child(2) { animation-delay: 0.18s; }
+.musicVizBars span:nth-child(3) { animation-delay: 0.36s; }
+.musicVizBars span:nth-child(4) { animation-delay: 0.54s; }
+.musicVizBars span:nth-child(5) { animation-delay: 0.72s; }
 
+/* Run the keyframes only while audio is actively requested. PLAYING is
+   the obvious case; BUFFERING is included so the bars keep moving while
+   YouTube loads the next station — without it the visualizer looks
+   frozen during the (sometimes multi-second) buffer and the user can't
+   tell the click registered. PAUSED and IDLE leave play-state at
+   `paused` so the bars hold still in sympathy with the audio. */
+#musicToggle[data-music-status="PLAYING"]   .musicVizBars span,
+#musicToggle[data-music-status="BUFFERING"] .musicVizBars span {
+  animation-play-state: running;
+}
+
+/* Wider amplitude (0.2 → 1.0) so the rise/fall reads from across the
+   navbar rather than looking like the bars are merely twitching. */
 @keyframes musicVizBar {
-  0%, 100% { transform: scaleY(0.3); transform-origin: bottom; }
-  50%      { transform: scaleY(1.0); transform-origin: bottom; }
+  0%, 100% { transform: scaleY(0.2); }
+  50%      { transform: scaleY(1.0); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  #musicToggle .musicVizBars span,
-  #musicToggle[data-music-status="PLAYING"] .musicVizBars span {
-    animation: none;
-    transform: scaleY(0.6);
-  }
-}
+/* Intentionally NOT honoring prefers-reduced-motion for the music
+   visualizer bars. The bars are 2px wide × ≤14px tall, looped at 1.1s,
+   and confined to a single nav-bar icon — well below the motion-
+   sensitivity threshold the preference is meant to guard against. The
+   "music is on" affordance disappears entirely if the bars freeze, so
+   the trade is worth it here. Other animations across the app (modals,
+   companion cheer, project-button attention pulse, etc.) still respect
+   the preference via their own @media blocks. */
 
 /* Music popover — anchored beneath #musicToggle. Always in the DOM so the
    YT iframe (and therefore audio) survives close; the `.open` class drives

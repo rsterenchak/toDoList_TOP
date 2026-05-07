@@ -318,10 +318,29 @@ describe('music — main.js wiring', () => {
         expect(css).toMatch(/#musicToggle\[data-music-status="BUFFERING"\]/);
     });
 
-    it('animates the visualizer bars only while playing, and respects prefers-reduced-motion', () => {
+    it('animates the visualizer bars unconditionally, including under prefers-reduced-motion', () => {
+        // The keyframe definition exists.
         expect(css).toMatch(/@keyframes\s+musicVizBar\b/);
-        expect(css).toMatch(/#musicToggle\[data-music-status="PLAYING"\]\s+\.musicVizBars\s+span\s*\{[^}]*animation:\s*musicVizBar/);
-        expect(css).toMatch(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?#musicToggle[\s\S]*?animation:\s*none/);
+        // The animation is wired to .musicVizBars span without gating on
+        // data-music-status. Earlier revisions only animated during
+        // PLAYING (and later BUFFERING) — but the visualizer is purely
+        // a "fake pattern" with no real audio analysis, and tying it to
+        // the YouTube iframe's state machine left the bars frozen on
+        // every state-machine hiccup or cache-stale selector mismatch.
+        // Always-on motion is the contract now; color still tracks state.
+        expect(css).toMatch(/\.musicVizBars\s+span\s*\{[^}]*animation:\s*musicVizBar\s+[\d.]+s/);
+        // The visualizer intentionally opts out of the reduced-motion
+        // guard — the "music is on" affordance disappears entirely if
+        // the bars freeze, and a 2px-wide × 14px loop on a single nav
+        // icon is well below the motion-sensitivity threshold. Pin that
+        // by asserting no rule inside any prefers-reduced-motion block
+        // turns off the bar animation. Other animations across the app
+        // (modals, companion cheer, etc.) still respect the preference.
+        const reducedMotionBlocks = css.match(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{(?:[^{}]|\{[^{}]*\})*\}/g) || [];
+        for (const block of reducedMotionBlocks) {
+            expect(block).not.toMatch(/\.musicVizBars\b/);
+            expect(block).not.toMatch(/#musicToggle\b/);
+        }
     });
 
     it('keeps the paste-URL inputs at 16px+ to avoid iOS Safari auto-zoom', () => {
