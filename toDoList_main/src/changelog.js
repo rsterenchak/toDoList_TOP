@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-09',
         fixed: [
             'Focus Music stations now show an Open-in-YouTube link so you can sign in on youtube.com when the embedded player gates playback.',
+            'Focus Music modal now opens YouTube from a single icon button in its header instead of an arrow on every station row.',
         ],
     },
     {
@@ -23,9 +24,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-06',
-        added: [
-            'Pomodoro timer in the header with focus and break modes, editable durations, and a chime, tab-title flash, and favicon swap when a session ends.',
-        ],
         fixed: [
             'Pomodoro toggle now uses a clean stroke-based stopwatch glyph in place of the pixel-art clock.',
         ],

@@ -3237,11 +3237,42 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   display: flex;
 }
 .musicPopoverHeader {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  align-items: center;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+.musicPopoverHeaderSpacer {
+  display: block;
+  width: 28px;
+  height: 28px;
+}
+.musicPopoverHeaderTitle {
   text-align: center;
+}
+.musicHeaderOpenExt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.musicHeaderOpenExt:hover,
+.musicHeaderOpenExt:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent);
+  outline: none;
 }
 .musicPlayerWrap {
   display: flex;
@@ -3311,23 +3342,6 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   font-size: 9px;
   letter-spacing: 0.08em;
   color: var(--text-muted);
-}
-.musicStationOpenExt {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  font-size: 12px;
-  line-height: 1;
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: pointer;
-}
-.musicStationOpenExt:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
 }
 .musicStationRemove {
   background: transparent;

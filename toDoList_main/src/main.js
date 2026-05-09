@@ -19,6 +19,7 @@ import {
     createPomodoroSubscriber,
     CURATED_STATIONS,
     youTubeUrlForStation,
+    getStationById,
 } from './music.js';
 import {
     readSidebarWidthPref,
@@ -595,7 +596,42 @@ function component() {
 
         const header = document.createElement('div');
         header.className = 'musicPopoverHeader';
-        header.textContent = 'Focus music';
+
+        // Empty left slot keeps the centered title true-centered regardless
+        // of the right-side icon-button width.
+        const headerLeft = document.createElement('span');
+        headerLeft.className = 'musicPopoverHeaderSpacer';
+        headerLeft.setAttribute('aria-hidden', 'true');
+
+        const headerTitle = document.createElement('span');
+        headerTitle.className = 'musicPopoverHeaderTitle';
+        headerTitle.textContent = 'Focus music';
+
+        // Icon-only "open the active station on youtube.com" button, sitting
+        // where users expect a modal control. Click resolves the URL from the
+        // current controller state at click time so swapping stations doesn't
+        // require rebuilding the header.
+        const headerOpenExt = document.createElement('button');
+        headerOpenExt.type = 'button';
+        headerOpenExt.className = 'musicHeaderOpenExt';
+        headerOpenExt.setAttribute('aria-label', 'Open in YouTube');
+        headerOpenExt.title = 'Open in YouTube';
+        headerOpenExt.innerHTML =
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M14 4h6v6"/>' +
+            '<path d="M10 14 20 4"/>' +
+            '<path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/>' +
+            '</svg>';
+        headerOpenExt.addEventListener('click', function() {
+            const snap = ctl.getState();
+            const station = getStationById(snap, snap.activeStationId);
+            const href = youTubeUrlForStation(station) || 'https://www.youtube.com';
+            window.open(href, '_blank', 'noopener');
+        });
+
+        header.appendChild(headerLeft);
+        header.appendChild(headerTitle);
+        header.appendChild(headerOpenExt);
         pop.appendChild(header);
 
         // Iframe target — the YT IFrame Player API replaces this <div> with
@@ -721,23 +757,6 @@ function component() {
 
             row.appendChild(nameBtn);
             row.appendChild(genre);
-
-            // Sign-in fallback: open the stream on youtube.com in a new tab
-            // so users on browsers that block the iframe sign-in popup can
-            // authenticate there and return.
-            const ytHref = youTubeUrlForStation(station);
-            if (ytHref) {
-                const openExt = document.createElement('a');
-                openExt.className = 'musicStationOpenExt';
-                openExt.href = ytHref;
-                openExt.target = '_blank';
-                openExt.rel = 'noopener noreferrer';
-                openExt.title = 'Open on YouTube (sign in there if needed)';
-                openExt.setAttribute('aria-label', 'Open ' + station.name + ' on YouTube');
-                openExt.textContent = '↗';
-                openExt.addEventListener('click', function(event) { event.stopPropagation(); });
-                row.appendChild(openExt);
-            }
 
             if (isCustom) {
                 const removeBtn = document.createElement('button');
