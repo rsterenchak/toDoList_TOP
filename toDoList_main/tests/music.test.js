@@ -409,44 +409,68 @@ describe('music — youTubeUrlForStation sign-in fallback', () => {
 });
 
 
-describe('music — main.js renders an Open-in-YouTube link in each station row', () => {
+describe('music — Focus Music modal header carries an Open-in-YouTube icon button', () => {
     const main = readFileSync(resolve(srcDir, 'main.js'), 'utf8');
     const css  = readFileSync(resolve(srcDir, 'style.css'), 'utf8');
 
-    it('imports the youTubeUrlForStation helper from music.js', () => {
+    it('imports the youTubeUrlForStation and getStationById helpers from music.js', () => {
         expect(main).toMatch(/import\s*\{[^}]*youTubeUrlForStation[^}]*\}\s*from\s*['"]\.\/music\.js['"]/);
+        expect(main).toMatch(/import\s*\{[^}]*getStationById[^}]*\}\s*from\s*['"]\.\/music\.js['"]/);
     });
 
-    it('creates an anchor with the musicStationOpenExt class for the station row', () => {
-        const idx = main.indexOf('musicStationOpenExt');
+    it('builds the header as a real <button> element (not an anchor)', () => {
+        const idx = main.indexOf('musicHeaderOpenExt');
         expect(idx).toBeGreaterThan(-1);
-        // Anchor element, not a button — semantics matter for "open in new tab".
+        // Find the createElement call attached to the headerOpenExt variable.
+        expect(main).toMatch(/headerOpenExt\s*=\s*document\.createElement\(\s*['"]button['"]\s*\)/);
+    });
+
+    it('opens the URL in a new tab via window.open with the noopener feature', () => {
+        const idx = main.indexOf('musicHeaderOpenExt');
+        const block = main.slice(idx, idx + 1500);
+        expect(block).toMatch(/window\.open\(\s*[^,]+,\s*['"]_blank['"]\s*,\s*['"]noopener['"]\s*\)/);
+    });
+
+    it('resolves the URL from the active station at click time, falling back to youtube.com', () => {
+        const idx = main.indexOf('musicHeaderOpenExt');
+        const block = main.slice(idx, idx + 1500);
+        expect(block).toMatch(/getStationById\s*\(/);
+        expect(block).toMatch(/youTubeUrlForStation\s*\(/);
+        expect(block).toMatch(/https:\/\/www\.youtube\.com/);
+    });
+
+    it('labels the icon button for assistive tech and tooltip on hover', () => {
+        const idx = main.indexOf('musicHeaderOpenExt');
+        const block = main.slice(idx, idx + 1500);
+        expect(block).toMatch(/aria-label['"\s,]+Open in YouTube/);
+        expect(block).toMatch(/title\s*=\s*['"]Open in YouTube['"]/);
+    });
+
+    it('lays the header out as a 3-column grid so the title stays centered', () => {
+        const idx = css.indexOf('.musicPopoverHeader');
+        expect(idx).toBeGreaterThan(-1);
+        const block = css.slice(idx, idx + 600);
+        expect(block).toMatch(/display:\s*grid/);
+        expect(block).toMatch(/grid-template-columns:/);
+    });
+
+    it('styles the header icon button with a hover affordance and ~28px hit target', () => {
+        const idx = css.indexOf('.musicHeaderOpenExt');
+        expect(idx).toBeGreaterThan(-1);
+        const block = css.slice(idx, idx + 800);
+        expect(block).toMatch(/width:\s*28px/);
+        expect(block).toMatch(/height:\s*28px/);
+        expect(css).toMatch(/\.musicHeaderOpenExt:hover/);
+    });
+
+    it('removes the per-row Open-in-YouTube arrows from the station rows', () => {
         const stationRowIdx = main.indexOf('function stationRow');
         expect(stationRowIdx).toBeGreaterThan(-1);
         const block = main.slice(stationRowIdx, stationRowIdx + 3000);
-        expect(block).toMatch(/createElement\(\s*['"]a['"]\s*\)/);
-        expect(block).toContain('musicStationOpenExt');
-    });
-
-    it('opens the link in a new tab with rel="noopener noreferrer"', () => {
-        const stationRowIdx = main.indexOf('function stationRow');
-        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
-        expect(block).toMatch(/\.target\s*=\s*['"]_blank['"]/);
-        expect(block).toMatch(/\.rel\s*=\s*['"]noopener\s+noreferrer['"]/);
-    });
-
-    it('routes the href through youTubeUrlForStation so the URL respects kind (live vs playlist)', () => {
-        const stationRowIdx = main.indexOf('function stationRow');
-        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
-        expect(block).toMatch(/youTubeUrlForStation\s*\(\s*station\s*\)/);
-    });
-
-    it('styles the link with hover affordance and a small icon-button footprint', () => {
-        const idx = css.indexOf('.musicStationOpenExt');
-        expect(idx).toBeGreaterThan(-1);
-        const block = css.slice(idx, idx + 600);
-        expect(block).toMatch(/text-decoration:\s*none/);
-        // Hover state must exist so the link is discoverable as interactive.
-        expect(css).toMatch(/\.musicStationOpenExt:hover/);
+        expect(block).not.toContain('musicStationOpenExt');
+        // The rendered ↗ glyph that lived in the row should no longer be there.
+        expect(block).not.toContain('↗');
+        // No leftover CSS for the removed per-row class either.
+        expect(css).not.toContain('.musicStationOpenExt');
     });
 });
