@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[LOW]** Replace pixel-art Pomodoro icon with stroke-based stopwatch
-  - Description: Swap the existing pixel-art clock SVG inside `pomodoroToggle.innerHTML` for a stroke-based stopwatch — crown bar + stem on top, side stem button on the upper right, circular dial, single hand. The new design uses a 24×24 viewBox (was 14×14) so the hand's rotation pivot moves from (7, 7) to (12, 14); `syncPomodoroIcon`'s rotate string and the `.clockIconHand` `transform-origin` in `style.css` must move in lockstep with the SVG or the sweep will be off-center. The `.clockIconBody`, `.clockIconFace`, and `.clockIconPivot` classes become vestigial once the new SVG is flat-stroked rather than grouped — remove them in the same commit so the cleanup doesn't drift into a follow-up.
+- [ ] **[MEDIUM]** Fix unclickable Sign in button in Focus Music YouTube iframe
+  - Description: When the embedded YouTube player in the Focus Music popover shows the "Sign in to confirm that you're not a bot" gate, clicking the Sign in link inside the iframe does nothing — the OAuth popup never opens, so the user can't authenticate and the player stays gated. The curated track list outside the iframe works normally, so this is scoped to clicks landing inside the YouTube embed itself. Most likely cause is a restrictive `sandbox` attribute on the iframe missing `allow-popups` and `allow-popups-to-escape-sandbox` (YouTube's sign-in flow opens `accounts.google.com` in a popup window, which a sandboxed iframe silently blocks); a secondary suspect is browser third-party cookie blocking, which would let the popup open but prevent the sign-in from persisting. Investigate the iframe element created for Focus Music in `main.js` — confirm whether a `sandbox` attribute is set and, if so, add `allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-forms`, or remove the attribute entirely so YouTube's default permissions apply. As a fallback for users on browsers that still block the popup (or who decline third-party cookies), add a small "Open in YouTube ↗" link next to each curated track that opens the stream on youtube.com in a new tab so the user can sign in there and return.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-06
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
