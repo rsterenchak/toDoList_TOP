@@ -147,6 +147,21 @@ function sanitizeRestoredState(raw) {
 }
 
 
+// Builds the canonical youtube.com URL for a station so the picker can link
+// out to youtube.com in a new tab. Used as a sign-in fallback: when the
+// embedded player surfaces the "Sign in to confirm you're not a bot" gate,
+// the in-iframe sign-in link is silently swallowed in some browsers, so the
+// user opens the stream on youtube.com proper, signs in there, and returns
+// to the app — the iframe inherits the auth via cookies.
+export function youTubeUrlForStation(station) {
+    if (!station || typeof station.sourceId !== 'string' || !station.sourceId) return '';
+    if (station.kind === 'playlist') {
+        return 'https://www.youtube.com/playlist?list=' + encodeURIComponent(station.sourceId);
+    }
+    return 'https://www.youtube.com/watch?v=' + encodeURIComponent(station.sourceId);
+}
+
+
 // Combined picker list — custom first, then curated. Stable id lookups for
 // `setStation` and the active-row highlight in the popover.
 export function getStationById(state, id) {

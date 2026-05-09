@@ -3312,6 +3312,23 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
+.musicStationOpenExt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+.musicStationOpenExt:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 .musicStationRemove {
   background: transparent;
   border: none;

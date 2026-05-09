@@ -16,6 +16,7 @@ import {
     DEFAULT_VOLUME,
     ensureMusic,
     destroyMusic,
+    youTubeUrlForStation,
 } from '../src/music.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -367,5 +368,85 @@ describe('music — main.js wiring', () => {
 describe('music — persistence key uses the todoapp_ prefix', () => {
     it('namespaces the localStorage key', () => {
         expect(MUSIC_STATE_KEY).toMatch(/^todoapp_/);
+    });
+});
+
+
+describe('music — youTubeUrlForStation sign-in fallback', () => {
+    it('builds a /watch?v= URL for live (single-video) stations', () => {
+        const url = youTubeUrlForStation({ kind: 'live', sourceId: 'jfKfPfyJRdk' });
+        expect(url).toBe('https://www.youtube.com/watch?v=jfKfPfyJRdk');
+    });
+
+    it('builds a /playlist?list= URL for playlist stations', () => {
+        const url = youTubeUrlForStation({
+            kind: 'playlist',
+            sourceId: 'PLOzDu-MXXLljn7nM-NLFhhRYNb1qaR-bn',
+        });
+        expect(url).toBe(
+            'https://www.youtube.com/playlist?list=PLOzDu-MXXLljn7nM-NLFhhRYNb1qaR-bn'
+        );
+    });
+
+    it('returns an empty string for stations without a sourceId', () => {
+        expect(youTubeUrlForStation(null)).toBe('');
+        expect(youTubeUrlForStation({})).toBe('');
+        expect(youTubeUrlForStation({ kind: 'live' })).toBe('');
+        expect(youTubeUrlForStation({ kind: 'live', sourceId: '' })).toBe('');
+    });
+
+    it('produces working URLs for every curated station', () => {
+        CURATED_STATIONS.forEach(function(station) {
+            const url = youTubeUrlForStation(station);
+            expect(url.startsWith('https://www.youtube.com/')).toBe(true);
+            if (station.kind === 'playlist') {
+                expect(url).toContain('/playlist?list=');
+            } else {
+                expect(url).toContain('/watch?v=');
+            }
+        });
+    });
+});
+
+
+describe('music — main.js renders an Open-in-YouTube link in each station row', () => {
+    const main = readFileSync(resolve(srcDir, 'main.js'), 'utf8');
+    const css  = readFileSync(resolve(srcDir, 'style.css'), 'utf8');
+
+    it('imports the youTubeUrlForStation helper from music.js', () => {
+        expect(main).toMatch(/import\s*\{[^}]*youTubeUrlForStation[^}]*\}\s*from\s*['"]\.\/music\.js['"]/);
+    });
+
+    it('creates an anchor with the musicStationOpenExt class for the station row', () => {
+        const idx = main.indexOf('musicStationOpenExt');
+        expect(idx).toBeGreaterThan(-1);
+        // Anchor element, not a button — semantics matter for "open in new tab".
+        const stationRowIdx = main.indexOf('function stationRow');
+        expect(stationRowIdx).toBeGreaterThan(-1);
+        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
+        expect(block).toMatch(/createElement\(\s*['"]a['"]\s*\)/);
+        expect(block).toContain('musicStationOpenExt');
+    });
+
+    it('opens the link in a new tab with rel="noopener noreferrer"', () => {
+        const stationRowIdx = main.indexOf('function stationRow');
+        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
+        expect(block).toMatch(/\.target\s*=\s*['"]_blank['"]/);
+        expect(block).toMatch(/\.rel\s*=\s*['"]noopener\s+noreferrer['"]/);
+    });
+
+    it('routes the href through youTubeUrlForStation so the URL respects kind (live vs playlist)', () => {
+        const stationRowIdx = main.indexOf('function stationRow');
+        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
+        expect(block).toMatch(/youTubeUrlForStation\s*\(\s*station\s*\)/);
+    });
+
+    it('styles the link with hover affordance and a small icon-button footprint', () => {
+        const idx = css.indexOf('.musicStationOpenExt');
+        expect(idx).toBeGreaterThan(-1);
+        const block = css.slice(idx, idx + 600);
+        expect(block).toMatch(/text-decoration:\s*none/);
+        // Hover state must exist so the link is discoverable as interactive.
+        expect(css).toMatch(/\.musicStationOpenExt:hover/);
     });
 });
