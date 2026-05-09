@@ -2997,7 +2997,7 @@ html[data-sidebar-rail="off"] #projChild::before {
   text-align: center;
 }
 /* Transient toggle confirmation pill — sits between the header and the tab
-   row, fades out via the .fading class. The Ctrl+Pause shortcut renders this
+   row, fades out via the .fading class. The Ctrl+Space shortcut renders this
    on every toggle so the user gets a definitive visual confirmation that the
    keyboard chord landed. */
 .pomodoroStatusPill {

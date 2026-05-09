@@ -496,9 +496,10 @@ function component() {
         }
     });
 
-    // ── Ctrl+Pause global shortcut ──
-    // Toggles the Pomodoro timer regardless of where focus is in the app —
-    // the chord doesn't collide with text entry, so no input-surface guard.
+    // ── Ctrl+Space global shortcut ──
+    // Toggles the Pomodoro timer from anywhere in the app. We skip while the
+    // user is typing in an input/textarea/contentEditable so Ctrl+Space can
+    // still insert a space (and so IME completion chords still work).
     // On every toggle a brief status pill ("Paused" amber / "Play" purple)
     // surfaces inside the popover header for visual confirmation. If the
     // popover was closed, we open it just long enough for the pill to fade,
@@ -586,9 +587,13 @@ function component() {
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Pause') return;
+        // Older Gecko reported the space key as 'Spacebar'; modern browsers
+        // emit ' '. Accept both so the shortcut works across engines.
+        if (e.key !== ' ' && e.key !== 'Spacebar') return;
         if (!e.ctrlKey) return;
         if (e.altKey || e.shiftKey || e.metaKey) return;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const ctl = getPomodoroController();
         if (!ctl) return;
         const result = ctl.toggle();
