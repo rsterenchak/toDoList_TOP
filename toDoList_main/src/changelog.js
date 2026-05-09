@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-09',
+        added: [
+            'Press Ctrl+Pause anywhere in the app to start, pause, or resume the Pomodoro timer, with a quick status pill confirming the toggle.',
+        ],
         fixed: [
             'Focus Music stations now show an Open-in-YouTube link so you can sign in on youtube.com when the embedded player gates playback.',
             'Focus Music modal now opens YouTube from a single icon button in its header instead of an arrow on every station row.',
@@ -19,13 +22,6 @@ export const changelog = [
         ],
         changed: [
             'Compact titles toggle removed from the Todo Items header.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-06',
-        fixed: [
-            'Pomodoro toggle now uses a clean stroke-based stopwatch glyph in place of the pixel-art clock.',
         ],
     },
 ];
