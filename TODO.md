@@ -19,7 +19,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add Ctrl+Pause global shortcut to toggle Pomodoro timer with status pill
+- [x] **[MEDIUM]** Add Ctrl+Pause global shortcut to toggle Pomodoro timer with status pill
   - Description: Wire a global `Ctrl + Pause/Break` keyboard shortcut that toggles the Pomodoro timer between running and paused, regardless of where focus is in the app (no input-suppression needed since the combo doesn't collide with text entry). On every toggle, surface a brief auto-fading status pill near the top of the Pomodoro popover — amber `Paused` (with `ti-player-pause` icon) when pausing, primary-purple `Play` (with `ti-player-play` icon) when resuming — so the user gets definitive visual confirmation that the toggle landed. If the popover is already open when the shortcut fires, the pill just appears inside it and fades. If the popover is closed, the popover opens, shows the pill, and auto-closes after the pill finishes fading so the user gets the confirmation without having to manually dismiss anything.
   - Behavior:
     1. Global `keydown` listener on `document` checks for `e.ctrlKey && e.key === 'Pause'`. On match, call `e.preventDefault()` and invoke the Pomodoro toggle.
@@ -41,7 +41,7 @@
     - Shortcut at 00:00 is a no-op (no pill, no popover open).
   - Out of scope: any change to existing Start/Reset button labels or layout (this entry only adds the keyboard path and the pill); changes to music player pause/resume coordination (existing behavior preserved); a settings UI to rebind the shortcut.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/pomodoro.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-09
 
 ## In Progress
 
