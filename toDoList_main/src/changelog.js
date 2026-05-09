@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-09',
+        fixed: [
+            'Focus Music stations now show an Open-in-YouTube link so you can sign in on youtube.com when the embedded player gates playback.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-07',
         added: [
             'Focus-music popover with curated lofi/ambient stations, paste-your-own YouTube URLs, and auto-pause when a Pomodoro session ends.',
@@ -21,13 +28,6 @@ export const changelog = [
         ],
         fixed: [
             'Pomodoro toggle now uses a clean stroke-based stopwatch glyph in place of the pixel-art clock.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-05',
-        fixed: [
-            'The empty-state Create button now starts focused so pressing Enter creates your first project without a tab or click.',
         ],
     },
 ];

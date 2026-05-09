@@ -18,6 +18,7 @@ import {
     parseYouTubeUrl,
     createPomodoroSubscriber,
     CURATED_STATIONS,
+    youTubeUrlForStation,
 } from './music.js';
 import {
     readSidebarWidthPref,
@@ -720,6 +721,23 @@ function component() {
 
             row.appendChild(nameBtn);
             row.appendChild(genre);
+
+            // Sign-in fallback: open the stream on youtube.com in a new tab
+            // so users on browsers that block the iframe sign-in popup can
+            // authenticate there and return.
+            const ytHref = youTubeUrlForStation(station);
+            if (ytHref) {
+                const openExt = document.createElement('a');
+                openExt.className = 'musicStationOpenExt';
+                openExt.href = ytHref;
+                openExt.target = '_blank';
+                openExt.rel = 'noopener noreferrer';
+                openExt.title = 'Open on YouTube (sign in there if needed)';
+                openExt.setAttribute('aria-label', 'Open ' + station.name + ' on YouTube');
+                openExt.textContent = '↗';
+                openExt.addEventListener('click', function(event) { event.stopPropagation(); });
+                row.appendChild(openExt);
+            }
 
             if (isCustom) {
                 const removeBtn = document.createElement('button');
