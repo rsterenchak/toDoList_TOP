@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Move Open in YouTube arrow to Focus Music modal header
+- [x] **[LOW]** Move Open in YouTube arrow to Focus Music modal header
   - Description: Relocate the per-row `↗` external-link arrows in the Focus Music popover to a single icon-only button in the top-right corner of the modal header. The header becomes a three-column grid — empty left slot, centered "FOCUS MUSIC" label, `ti-external-link` icon button right — so the title stays visually centered while the action sits where users expect modal controls. Clicking the header arrow opens the currently-playing station's YouTube URL in a new tab (`target="_blank" rel="noopener"`); if nothing is playing yet, fall back to `https://www.youtube.com`. Add `aria-label="Open in YouTube"` and a `title` attribute for tooltip on hover. Remove the trailing `↗` from each row in both the Curated and Your Stations sections — each curated row becomes `<title> <genre tag>`, each custom row becomes `<title> CUSTOM <X>`. The X (delete) button on custom stations stays.
   - Behavior:
     1. Header renders the icon button at all times (visible whether signed in or not, whether playing or not).
@@ -15,7 +15,7 @@
     - This change does not fix the underlying YouTube embed sign-in bot-gate; it gives the user a working escape hatch by letting them authenticate on youtube.com directly.
   - Out of scope: any iframe `sandbox` or popup permission changes (covered by the separate sign-in bug entry); changes to the player controls bar or section ordering.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-09
 
 ## Features
 
