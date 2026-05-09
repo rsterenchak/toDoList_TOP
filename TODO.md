@@ -2,10 +2,20 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Fix unclickable Sign in button in Focus Music YouTube iframe
-  - Description: When the embedded YouTube player in the Focus Music popover shows the "Sign in to confirm that you're not a bot" gate, clicking the Sign in link inside the iframe does nothing — the OAuth popup never opens, so the user can't authenticate and the player stays gated. The curated track list outside the iframe works normally, so this is scoped to clicks landing inside the YouTube embed itself. Most likely cause is a restrictive `sandbox` attribute on the iframe missing `allow-popups` and `allow-popups-to-escape-sandbox` (YouTube's sign-in flow opens `accounts.google.com` in a popup window, which a sandboxed iframe silently blocks); a secondary suspect is browser third-party cookie blocking, which would let the popup open but prevent the sign-in from persisting. Investigate the iframe element created for Focus Music in `main.js` — confirm whether a `sandbox` attribute is set and, if so, add `allow-popups allow-popups-to-escape-sandbox allow-scripts allow-same-origin allow-forms`, or remove the attribute entirely so YouTube's default permissions apply. As a fallback for users on browsers that still block the popup (or who decline third-party cookies), add a small "Open in YouTube ↗" link next to each curated track that opens the stream on youtube.com in a new tab so the user can sign in there and return.
+- [ ] **[LOW]** Move Open in YouTube arrow to Focus Music modal header
+  - Description: Relocate the per-row `↗` external-link arrows in the Focus Music popover to a single icon-only button in the top-right corner of the modal header. The header becomes a three-column grid — empty left slot, centered "FOCUS MUSIC" label, `ti-external-link` icon button right — so the title stays visually centered while the action sits where users expect modal controls. Clicking the header arrow opens the currently-playing station's YouTube URL in a new tab (`target="_blank" rel="noopener"`); if nothing is playing yet, fall back to `https://www.youtube.com`. Add `aria-label="Open in YouTube"` and a `title` attribute for tooltip on hover. Remove the trailing `↗` from each row in both the Curated and Your Stations sections — each curated row becomes `<title> <genre tag>`, each custom row becomes `<title> CUSTOM <X>`. The X (delete) button on custom stations stays.
+  - Behavior:
+    1. Header renders the icon button at all times (visible whether signed in or not, whether playing or not).
+    2. Click resolves the URL from the current station state in `todoapp_music_state` — prefer the active station's source URL, otherwise YouTube homepage.
+    3. Per-row arrows are removed from both row-builder paths (Curated and Your Stations) so the row markup is shorter and each row's right side is calmer.
+  - Implementation notes:
+    - Header lives in the Focus Music modal markup in `main.js` — search for the existing `FOCUS MUSIC` label to find it. Convert the current single-element header into a CSS grid with `grid-template-columns: 1fr auto 1fr` (or 18px / 1fr / 18px) so the title remains centered regardless of icon width.
+    - Use a real `<button>` (not an `<a>`) wired to a click handler that computes the URL and calls `window.open(url, '_blank', 'noopener')` — keeps the keyboard/focus behavior consistent with other modal buttons.
+    - Style the icon button to match the existing modal-control aesthetic (transparent bg, muted-purple stroke on hover, ~28×28px hit target). No new icon library needed — use the same SVG/icon-font approach already in use elsewhere in `main.js`.
+    - This change does not fix the underlying YouTube embed sign-in bot-gate; it gives the user a working escape hatch by letting them authenticate on youtube.com directly.
+  - Out of scope: any iframe `sandbox` or popup permission changes (covered by the separate sign-in bug entry); changes to the player controls bar or section ordering.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-09
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
