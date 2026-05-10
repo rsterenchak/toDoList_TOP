@@ -272,12 +272,171 @@ function component() {
         hidePomodoroPopover();
     }
 
+    // True when focus sits in a text-entry surface where Backspace must keep
+    // its native delete-character meaning. Used by the popover Backspace-to-
+    // close handlers below to avoid hijacking the user's typing in inline
+    // edit fields (countdown, paste-URL form, etc.).
+    function isFocusInTextInput() {
+        const ae = document.activeElement;
+        if (!ae) return false;
+        if (ae.tagName === 'TEXTAREA' || ae.isContentEditable) return true;
+        if (ae.tagName !== 'INPUT') return false;
+        const t = (ae.type || '').toLowerCase();
+        return t === 'text' || t === 'url' || t === 'search' || t === 'tel' ||
+               t === 'email' || t === 'password' || t === 'number';
+    }
+
+    // Shared arrow-key navigation for the pomodoro and music popovers. Walks
+    // visible focusable controls inside `popover` with wrap-around. Returns
+    // true when the keystroke was consumed so the caller can skip its own
+    // handling. Defers to native semantics when focus is on a control whose
+    // own arrow keys matter (range slider for ±value, text/textarea/CE for
+    // caret movement). The settings menu uses its own [role="menuitem"]-only
+    // walk in onSettingsKeydown — this helper covers the looser dialog-style
+    // popovers where any visible button/input can be a stop.
+    function popoverArrowNav(popover, event) {
+        const isUp   = event.key === 'ArrowUp';
+        const isDown = event.key === 'ArrowDown';
+        const isHome = event.key === 'Home';
+        const isEnd  = event.key === 'End';
+        if (!isUp && !isDown && !isHome && !isEnd) return false;
+
+        const ae = document.activeElement;
+        if (ae) {
+            const tag = ae.tagName;
+            if (tag === 'TEXTAREA' || ae.isContentEditable) return false;
+            if (tag === 'INPUT') {
+                const t = (ae.type || '').toLowerCase();
+                // Range step ↑↓; text-like inputs use ↑↓ for caret/history.
+                if (t === 'range' || t === 'text' || t === 'url' || t === 'search' ||
+                    t === 'tel' || t === 'email' || t === 'password' || t === 'number') {
+                    return false;
+                }
+            }
+        }
+
+        const sel = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+        const items = Array.from(popover.querySelectorAll(sel)).filter(function(el) {
+            // getClientRects is empty for display:none (and any display:none
+            // ancestor), filtering out the hidden countdown-edit input and
+            // the collapsed paste-URL form without a brittle style check.
+            return el.getClientRects().length > 0 && el.tabIndex !== -1;
+        });
+        if (!items.length) return false;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const currentIdx = items.indexOf(ae);
+        let nextIdx;
+        if (isHome) nextIdx = 0;
+        else if (isEnd) nextIdx = items.length - 1;
+        else if (currentIdx === -1) nextIdx = isDown ? 0 : items.length - 1;
+        else nextIdx = (currentIdx + (isDown ? 1 : -1) + items.length) % items.length;
+
+        items[nextIdx].focus();
+        return true;
+    }
+
     function onPomodoroKeydown(event) {
         if (event.key === 'Escape') {
             event.stopPropagation();
             hidePomodoroPopover();
             pomodoroToggle.focus();
+            return;
         }
+        const pop = document.getElementById('pomodoroPopover');
+        if (!pop) return;
+
+        // Backspace closes the popover (parity with the music popover) so
+        // keyboard users have a one-key "back out" anywhere in the menu.
+        // Skipped while editing the inline countdown so Backspace still
+        // deletes characters in the duration input.
+        if (event.key === 'Backspace' && !isFocusInTextInput()) {
+            event.preventDefault();
+            event.stopPropagation();
+            hidePomodoroPopover();
+            pomodoroToggle.focus();
+            return;
+        }
+
+        pomodoroArrowNav(pop, event);
+    }
+
+    // 2D arrow navigation matching the pomodoro popover's visual layout.
+    // Rows top-to-bottom: [Focus | Short | Long], [countdown], [Start | Reset],
+    // [Suggest] (last row only present in the COMPLETE_UNACKED state). Left
+    // /Right walk within a row, Up/Down between rows. Movement clamps at the
+    // edges (no wrap) — Backspace owns the "exit the menu" affordance, so
+    // wrap-around would only confuse the spatial model. Column index is
+    // preserved across row jumps and clamped to the new row's length so a
+    // Down from "Long" lands on Reset, not Start.
+    function pomodoroArrowNav(pop, event) {
+        const isLeft  = event.key === 'ArrowLeft';
+        const isRight = event.key === 'ArrowRight';
+        const isUp    = event.key === 'ArrowUp';
+        const isDown  = event.key === 'ArrowDown';
+        const isHome  = event.key === 'Home';
+        const isEnd   = event.key === 'End';
+        if (!isLeft && !isRight && !isUp && !isDown && !isHome && !isEnd) return;
+
+        // Defer to native caret handling when the inline countdown editor
+        // (a text input) has focus.
+        if (isFocusInTextInput()) return;
+
+        const rows = [];
+        const tabs = Array.from(pop.querySelectorAll('.pomodoroTab'));
+        if (tabs.length) rows.push(tabs);
+        const countdown = pop.querySelector('.pomodoroCountdown');
+        if (countdown && countdown.getClientRects().length > 0) rows.push([countdown]);
+        const actions = [
+            pop.querySelector('.pomodoroPrimaryBtn'),
+            pop.querySelector('.pomodoroResetBtn'),
+        ].filter(function(el) { return el && el.getClientRects().length > 0; });
+        if (actions.length) rows.push(actions);
+        const suggest = pop.querySelector('.pomodoroSuggestBtn');
+        if (suggest && suggest.getClientRects().length > 0) rows.push([suggest]);
+        if (!rows.length) return;
+
+        const ae = document.activeElement;
+        let curRow = -1, curCol = -1;
+        outer: for (let r = 0; r < rows.length; r++) {
+            for (let c = 0; c < rows[r].length; c++) {
+                if (rows[r][c] === ae) { curRow = r; curCol = c; break outer; }
+            }
+        }
+
+        // Entry from outside the grid (focus on the toggle): pick a corner
+        // based on the arrow direction. Other keys with no current position
+        // are no-ops so we don't pull focus on stray Left/Right.
+        if (curRow === -1) {
+            if (isDown || isHome) {
+                event.preventDefault();
+                event.stopPropagation();
+                rows[0][0].focus();
+            } else if (isUp || isEnd) {
+                event.preventDefault();
+                event.stopPropagation();
+                rows[rows.length - 1][0].focus();
+            }
+            return;
+        }
+
+        let nextRow = curRow, nextCol = curCol;
+        if (isLeft)       nextCol = Math.max(0, curCol - 1);
+        else if (isRight) nextCol = Math.min(rows[curRow].length - 1, curCol + 1);
+        else if (isUp)    nextRow = Math.max(0, curRow - 1);
+        else if (isDown)  nextRow = Math.min(rows.length - 1, curRow + 1);
+        else if (isHome)  { nextRow = 0; nextCol = 0; }
+        else if (isEnd)   { nextRow = rows.length - 1; nextCol = rows[nextRow].length - 1; }
+
+        // After a row change the preserved column may overrun the new row.
+        nextCol = Math.min(nextCol, rows[nextRow].length - 1);
+        if (nextRow === curRow && nextCol === curCol) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        rows[nextRow][nextCol].focus();
     }
 
     function showPomodoroPopover() {
@@ -674,7 +833,24 @@ function component() {
             event.stopPropagation();
             hideMusicPopover();
             musicToggle.focus();
+            return;
         }
+
+        // Backspace closes the popover from anywhere — the volume slider's
+        // native ↑↓ handling traps keyboard users with no arrow-key exit, so
+        // a "back out" key is essential. Skipped when typing in the paste-
+        // URL form so Backspace still deletes characters there.
+        if (event.key === 'Backspace' && !isFocusInTextInput()) {
+            if (!musicPopover || !musicPopover.classList.contains('open')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            hideMusicPopover();
+            musicToggle.focus();
+            return;
+        }
+
+        if (!musicPopover || !musicPopover.classList.contains('open')) return;
+        popoverArrowNav(musicPopover, event);
     }
 
     function repositionMusicPopover() {
@@ -1042,7 +1218,56 @@ function component() {
             event.stopPropagation();
             hideSettingsMenu();
             focusAfterSettingsClose();
+            return;
         }
+
+        // Backspace closes the menu (parity with the music + pomodoro
+        // popovers). The settings menu has no text-entry surfaces of its
+        // own, but the guard mirrors the others for consistency in case an
+        // input is added later.
+        if (event.key === 'Backspace' && !isFocusInTextInput()) {
+            event.preventDefault();
+            event.stopPropagation();
+            hideSettingsMenu();
+            focusAfterSettingsClose();
+            return;
+        }
+
+        // Arrow / Home / End nav across the menuitem rows. ArrowDown from the
+        // toggle drops focus on the first item; ArrowUp from the toggle lands
+        // on the last item. Within the menu, Up/Down wrap around so a long
+        // press cycles indefinitely. Dividers have role="separator" and are
+        // skipped naturally by the [role="menuitem"] selector. Enter/Space
+        // activation is handled by the native <button> elements.
+        const isUp   = event.key === 'ArrowUp';
+        const isDown = event.key === 'ArrowDown';
+        const isHome = event.key === 'Home';
+        const isEnd  = event.key === 'End';
+        if (!isUp && !isDown && !isHome && !isEnd) return;
+
+        const menu = document.getElementById('settingsMenu');
+        if (!menu) return;
+        const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+        if (!items.length) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const currentIdx = items.indexOf(document.activeElement);
+        let nextIdx;
+        if (isHome) {
+            nextIdx = 0;
+        } else if (isEnd) {
+            nextIdx = items.length - 1;
+        } else if (currentIdx === -1) {
+            // Focus is on the toggle (menu just opened) or somewhere outside
+            // the item list — entry direction picks the target.
+            nextIdx = isDown ? 0 : items.length - 1;
+        } else {
+            const delta = isDown ? 1 : -1;
+            nextIdx = (currentIdx + delta + items.length) % items.length;
+        }
+        items[nextIdx].focus();
     }
 
     function buildSettingsMenuItem(labelText, stateText, onActivate, extraClass) {
@@ -1757,7 +1982,17 @@ function component() {
         if (!currentRow) return;
 
         if (isEnter) {
-            const input = currentRow.querySelector('#toDoInput');
+            // Mirror the Delete guard below: require focus to be genuinely
+            // on a todo row. Without this, Enter pressed while focus is on
+            // an unrelated control (header toggles, sidebar toggle, etc.)
+            // falls through to the .todo-active fallback and routes the
+            // keystroke to the active todo's input — silently stealing
+            // focus and preventDefault-ing the focused button's own
+            // activation (e.g. blocking Enter from opening the pomodoro
+            // popover).
+            const focusedTodoRow = ae && ae.closest && ae.closest('#toDoChild');
+            if (!focusedTodoRow || committed.indexOf(focusedTodoRow) === -1) return;
+            const input = focusedTodoRow.querySelector('#toDoInput');
             if (!input) return;
             input.focus();
             const end = input.value.length;
