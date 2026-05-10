@@ -1446,6 +1446,26 @@ function component() {
         nextBtn.focus();
     });
 
+    // sidebarToggle ArrowDown — drop focus into the projects sidebar by
+    // landing on the first project row. Mirrors the inverse transition the
+    // sideMain ArrowUp handler already implements (top project →
+    // sidebarToggle), so the boundary is symmetric: arrow up out of the
+    // sidebar reaches the toggle, arrow down out of the toggle reaches the
+    // sidebar. Without this, the document-level todo arrow-nav handler
+    // catches the keystroke and lands focus on the first todo row in the
+    // main pane instead — wrong target since the sidebar sits directly
+    // below the toggle. stopPropagation keeps that document handler from
+    // also firing.
+    sidebarToggle.addEventListener('keydown', function(e) {
+        if (e.key !== 'ArrowDown') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const first = sideMain.querySelector('#projChild');
+        if (first) first.focus();
+    });
+
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);

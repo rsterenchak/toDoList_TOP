@@ -47,6 +47,10 @@ describe('header / footer arrow-key navigation', () => {
         return extractBlock("nav.addEventListener('keydown'");
     }
 
+    function extractSidebarToggleKeydown() {
+        return extractBlock("sidebarToggle.addEventListener('keydown'");
+    }
+
     it('ArrowUp off the first project row jumps to sidebarToggle', () => {
         const body = extractSideMainKeydown();
         // The no-next-row branch handles BOTH boundary directions: ArrowDown
@@ -138,5 +142,41 @@ describe('header / footer arrow-key navigation', () => {
         // scoped to the named four buttons.
         expect(body).toMatch(/indexOf/);
         expect(body).toMatch(/===\s*-1|=== -1/);
+    });
+
+    it('sidebarToggle ArrowDown focuses the first project row, not the first todo', () => {
+        // Spatial inverse of the existing sideMain ArrowUp → sidebarToggle
+        // transition: the projects sidebar sits directly below the toggle,
+        // so ArrowDown out of the toggle must enter the sidebar at its top.
+        // Without a dedicated handler the document-level todo arrow-nav
+        // handler catches the keystroke and lands focus on the first todo
+        // row in the main pane instead, skipping the sidebar entirely.
+        const body = extractSidebarToggleKeydown();
+        expect(body).toMatch(/['"]ArrowDown['"]/);
+        expect(body).toMatch(/['"]#projChild['"]/);
+        // The handler must not target todo rows or it would just reproduce
+        // the bug it exists to fix.
+        expect(body).not.toMatch(/#toDoChild/);
+    });
+
+    it('sidebarToggle ArrowDown stops propagation so the document arrow handler does not also fire', () => {
+        const body = extractSidebarToggleKeydown();
+        // Without stopPropagation, the document-level todo arrow-nav
+        // handler also runs and yanks focus to the first todo row after
+        // we hand focus to the project — focus would never settle in the
+        // sidebar.
+        expect(body).toMatch(/stopPropagation\(\s*\)/);
+        expect(body).toMatch(/preventDefault\(\s*\)/);
+    });
+
+    it('sidebarToggle ArrowDown handler ignores modifier-key chords', () => {
+        const body = extractSidebarToggleKeydown();
+        // Unmodified arrow only — Shift/Ctrl/Meta/Alt+Arrow are reserved
+        // for native selection and OS-level chords. Bailing on modifiers
+        // mirrors the gate the nav and projButton handlers already use.
+        expect(body).toMatch(/ctrlKey/);
+        expect(body).toMatch(/metaKey/);
+        expect(body).toMatch(/altKey/);
+        expect(body).toMatch(/shiftKey/);
     });
 });

@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix ArrowDown from sidebarToggle landing on first todo instead of first project
+- [x] **[MEDIUM]** Fix ArrowDown from sidebarToggle landing on first todo instead of first project
   - Description: Pressing ArrowDown while focused on `sidebarToggle` moves focus to the first todo row in the main panel instead of the first project (`projChild`) in the sidebar. Expected behavior is the spatial inverse of the existing ArrowUp transition (top project → sidebarToggle): from sidebarToggle, ArrowDown should focus the first `projChild` in the sidebar, since the sidebar sits directly below the toggle. Likely cause is the ArrowDown handler on `sidebarToggle` either targeting the wrong element (querying the todo list rather than the project list) or being absent entirely so default Tab-style focus order takes over and lands on the first focusable element after the toggle in DOM order.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-10
 
 ## Features
 
