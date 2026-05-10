@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add arrow-key navigation between sidebar, header buttons, and footer
+- [x] **[MEDIUM]** Add arrow-key navigation between sidebar, header buttons, and footer
   - Description: The header controls (sidebarToggle, pomodoroToggle, musicToggle, settingsToggle), the projects sidebar, and the footer version label are reachable only via Tab — there's no spatial arrow-key flow between them, which makes keyboard navigation feel disjointed. Add arrow-key navigation between these regions in directions that match the on-screen layout: Up from the top project row jumps to sidebarToggle, Right walks across the header buttons, and Down from the bottom projButton lands on footVersionLabel.
   - Behavior:
     1. From the top project row in the sidebar, ArrowUp focuses `sidebarToggle`.
@@ -20,7 +20,7 @@
     - No arrow-key handler hijacks input typing inside the "Add a task" field, the project rename field, or any modal text input.
   - Out of scope: full roving-tabindex refactor, new focus-ring styling, keyboard shortcuts other than the arrow keys listed above.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-10
 
 ## Features
 
