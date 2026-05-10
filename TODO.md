@@ -2,25 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Add arrow-key navigation between sidebar, header buttons, and footer
-  - Description: The header controls (sidebarToggle, pomodoroToggle, musicToggle, settingsToggle), the projects sidebar, and the footer version label are reachable only via Tab — there's no spatial arrow-key flow between them, which makes keyboard navigation feel disjointed. Add arrow-key navigation between these regions in directions that match the on-screen layout: Up from the top project row jumps to sidebarToggle, Right walks across the header buttons, and Down from the bottom projButton lands on footVersionLabel.
-  - Behavior:
-    1. From the top project row in the sidebar, ArrowUp focuses `sidebarToggle`.
-    2. From `sidebarToggle`, ArrowRight focuses `pomodoroToggle`; again to `musicToggle`; again to `settingsToggle`. ArrowLeft reverses the chain back to `sidebarToggle`.
-    3. From `projButton` (bottom of sidebar), ArrowDown focuses `footVersionLabel`.
-    4. Arrow keys must not interfere with the existing Up/Down behavior inside the project list — the new transitions only fire at the boundary positions (focus on first project row, focus on last/`projButton`, focus on the named header buttons).
-    5. Each landed element shows the existing `:focus-visible` ring so keyboard users can see where focus moved.
-  - Implementation notes:
-    - Add a delegated `keydown` listener (or per-element listeners) keyed on `e.key` for `ArrowUp`/`ArrowDown`/`ArrowLeft`/`ArrowRight`, calling `targetEl.focus()` and `e.preventDefault()` to suppress page scroll.
-    - For the sidebar boundaries, use the existing `document.querySelector('.selectedProject')` pattern plus a first/last-child check on the project list rather than closure-scoped variables, matching the convention elsewhere in `main.js`.
-    - `main.js` is over 25k tokens — locate the existing project-row and header-button event wiring with grep + offset/limit before adding handlers; co-locate the new logic with each element's existing listeners rather than introducing a new top-level block.
-  - Acceptance criteria:
-    - Tab order is unchanged; arrow keys are additive, not a replacement.
-    - All five transitions above work in both directions where specified.
-    - No arrow-key handler hijacks input typing inside the "Add a task" field, the project rename field, or any modal text input.
-  - Out of scope: full roving-tabindex refactor, new focus-ring styling, keyboard shortcuts other than the arrow keys listed above.
+- [ ] **[MEDIUM]** Fix ArrowDown from sidebarToggle landing on first todo instead of first project
+  - Description: Pressing ArrowDown while focused on `sidebarToggle` moves focus to the first todo row in the main panel instead of the first project (`projChild`) in the sidebar. Expected behavior is the spatial inverse of the existing ArrowUp transition (top project → sidebarToggle): from sidebarToggle, ArrowDown should focus the first `projChild` in the sidebar, since the sidebar sits directly below the toggle. Likely cause is the ArrowDown handler on `sidebarToggle` either targeting the wrong element (querying the todo list rather than the project list) or being absent entirely so default Tab-style focus order takes over and lands on the first focusable element after the toggle in DOM order.
   - File: `toDoList_main/src/main.js`
-  - Completed: 2026-05-10
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
