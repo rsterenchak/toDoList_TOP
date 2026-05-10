@@ -1,10 +1,16 @@
-// Pins the contract for the Ctrl+Pause global shortcut: it toggles the
+// Pins the contract for the Ctrl+Space global shortcut: it toggles the
 // Pomodoro timer through a single controller entry point, surfaces a
 // transient status pill inside the popover header for confirmation, and the
 // help-modal catalogue lists the chord under Global so the keyboard path is
 // discoverable. The controller's toggle() is unit-tested directly; the
 // main.js wiring is verified via source-level regex (mirroring the rest of
 // the pomodoro test file).
+//
+// History: this shortcut was originally Ctrl+Pause, but most modern
+// keyboards (Mac, Chromebook, compact laptops) lack a Pause/Break key, so
+// the chord was unreachable in practice. It was swapped to Ctrl+Space —
+// which collides with text entry, so the handler now requires an editable-
+// surface guard (see the input-focus test below).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -103,22 +109,30 @@ describe('pomodoro — toggle() controller method', () => {
 });
 
 
-describe('Ctrl+Pause — main.js shortcut wiring', () => {
+describe('Ctrl+Space — main.js shortcut wiring', () => {
     const main = read('main.js');
     const css  = read('style.css');
     const modals = read('modals.js');
 
     function findHandler() {
         const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
+        // The Pomodoro toggle handler is the one that gates on Ctrl plus the
+        // space key (' ' on modern engines, 'Spacebar' on older Gecko) and
+        // routes through the controller's toggle() entry point.
         return blocks.find(function(b) {
-            return /e\.key\s*!==\s*['"]Pause['"]/.test(b) && /ctrlKey/.test(b);
+            return /e\.key\s*!==\s*['"] ['"]/.test(b)
+                && /ctrlKey/.test(b)
+                && /\.toggle\(\s*\)/.test(b);
         });
     }
 
-    it('registers a global keydown listener that matches Ctrl+Pause', () => {
+    it('registers a global keydown listener that matches Ctrl+Space', () => {
         const handler = findHandler();
         expect(handler).toBeTruthy();
         expect(handler).toMatch(/e\.ctrlKey/);
+        // Both ' ' and 'Spacebar' should be accepted so older Gecko users
+        // can still trigger the shortcut.
+        expect(handler).toMatch(/['"]Spacebar['"]/);
     });
 
     it('bails on Alt, Shift, or Meta modifiers so the chord is exact', () => {
@@ -140,18 +154,17 @@ describe('Ctrl+Pause — main.js shortcut wiring', () => {
         expect(handler).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('does not bail on input/textarea focus (chord is not a typing combo)', () => {
-        // Per the spec: pressing Ctrl+Pause while typing in the new-todo
-        // input still toggles the timer. Verify the handler does not
-        // include an editable-surface guard.
+    it('bails on input/textarea/contentEditable focus so typing still inserts a space', () => {
+        // Ctrl+Space DOES collide with text entry (it inserts a space, and
+        // many IMEs use the chord to commit a candidate). The handler must
+        // therefore short-circuit when focus is on an editable surface so
+        // we don't steal the keystroke from the user.
         const handler = findHandler();
-        // Other shortcut handlers consult activeElement.tagName to bail in
-        // editable surfaces. This one must NOT — the body of the handler
-        // should reach toggle() without an INPUT/TEXTAREA short-circuit.
         const beforeToggle = handler.split(/\.toggle\(/)[0];
-        expect(beforeToggle).not.toMatch(/INPUT/);
-        expect(beforeToggle).not.toMatch(/TEXTAREA/);
-        expect(beforeToggle).not.toMatch(/isContentEditable/);
+        expect(beforeToggle).toMatch(/activeElement/);
+        expect(beforeToggle).toMatch(/INPUT/);
+        expect(beforeToggle).toMatch(/TEXTAREA/);
+        expect(beforeToggle).toMatch(/isContentEditable/);
     });
 
     it('renders a status pill helper with paused / playing variants', () => {
@@ -175,8 +188,8 @@ describe('Ctrl+Pause — main.js shortcut wiring', () => {
         expect(block).toMatch(/transition:\s*opacity/);
     });
 
-    it('lists Ctrl+Pause in the shortcuts modal under the Pomodoro toggle description', () => {
-        const idx = modals.indexOf("keys: ['Ctrl', 'Pause']");
+    it('lists Ctrl+Space in the shortcuts modal under the Pomodoro toggle description', () => {
+        const idx = modals.indexOf("keys: ['Ctrl', 'Space']");
         expect(idx).toBeGreaterThan(-1);
         const entry = modals.slice(idx, idx + 300);
         expect(entry).toMatch(/description:\s*['"][^'"]*Pomodoro[^'"]*['"]/i);
