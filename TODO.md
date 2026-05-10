@@ -45,10 +45,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Restyle STACK mobile empty states with ghost mascots
+- [x] **[MEDIUM]** Restyle STACK mobile empty states with ghost mascots
   - Description: Three retuned empty-state variants for the STACK mobile layout. NO PROJECTS centers a big purple ghost mascot SVG + "Welcome." + filled "+ New project" CTA pill (theme toggle is the only surviving control on this screen). NO TODOS YET keeps the project header above the empty state and accents the dashed `+ Add a task…` input row, with a muted gray ghost mascot and a dotted up-arrow pointing at the input. ALL CAUGHT UP shows a green-tinted ghost mascot + sparkles + a faded "Done today" list of completed tasks (only when Show completed is on). Applies at the existing `≤700px` breakpoint. Ghost mascot SVGs commit to `toDoList_main/src/` per CLAUDE.md (no icon libraries).
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`, plus new ghost mascot SVGs in `toDoList_main/src/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-10
 
 - [ ] **[MEDIUM]** Add bottom sheet utility surface for Pomodoro and music on mobile
   - Description: Add a bottom-anchored utility surface for the STACK mobile layout that houses the Pomodoro timer and the YouTube music player across three states: IDLE (12px collapsed handle nub at the bottom edge, still tappable to expand), PEEK (48px strip when timer or music is running, with a 3px drag handle, timer status with green dot + `MM:SS` on the left, divider, music status with `♪` + station name + animated CSS visualizer bars on the right, and an expand chevron `⌃` on the far right), and EXPANDED (sheet at ~50% viewport height with a faint `--accent` top edge, dimmed backdrop over STACK content above, drag handle pill, POMODORO section with big `MM:SS` + Reset / Pause·Start / Skip controls, MUSIC section with now-playing card and a `›` chevron opening an inline station picker drilldown that swaps the sheet content). The 240×135 YouTube iframe stays hidden in the DOM by default with audio-only role; a "Show video" toggle inside the picker reveals it inline above the station list.
