@@ -2,20 +2,25 @@
 
 ## Bugs
 
-- [x] **[LOW]** Move Open in YouTube arrow to Focus Music modal header
-  - Description: Relocate the per-row `↗` external-link arrows in the Focus Music popover to a single icon-only button in the top-right corner of the modal header. The header becomes a three-column grid — empty left slot, centered "FOCUS MUSIC" label, `ti-external-link` icon button right — so the title stays visually centered while the action sits where users expect modal controls. Clicking the header arrow opens the currently-playing station's YouTube URL in a new tab (`target="_blank" rel="noopener"`); if nothing is playing yet, fall back to `https://www.youtube.com`. Add `aria-label="Open in YouTube"` and a `title` attribute for tooltip on hover. Remove the trailing `↗` from each row in both the Curated and Your Stations sections — each curated row becomes `<title> <genre tag>`, each custom row becomes `<title> CUSTOM <X>`. The X (delete) button on custom stations stays.
+- [ ] **[MEDIUM]** Add arrow-key navigation between sidebar, header buttons, and footer
+  - Description: The header controls (sidebarToggle, pomodoroToggle, musicToggle, settingsToggle), the projects sidebar, and the footer version label are reachable only via Tab — there's no spatial arrow-key flow between them, which makes keyboard navigation feel disjointed. Add arrow-key navigation between these regions in directions that match the on-screen layout: Up from the top project row jumps to sidebarToggle, Right walks across the header buttons, and Down from the bottom projButton lands on footVersionLabel.
   - Behavior:
-    1. Header renders the icon button at all times (visible whether signed in or not, whether playing or not).
-    2. Click resolves the URL from the current station state in `todoapp_music_state` — prefer the active station's source URL, otherwise YouTube homepage.
-    3. Per-row arrows are removed from both row-builder paths (Curated and Your Stations) so the row markup is shorter and each row's right side is calmer.
+    1. From the top project row in the sidebar, ArrowUp focuses `sidebarToggle`.
+    2. From `sidebarToggle`, ArrowRight focuses `pomodoroToggle`; again to `musicToggle`; again to `settingsToggle`. ArrowLeft reverses the chain back to `sidebarToggle`.
+    3. From `projButton` (bottom of sidebar), ArrowDown focuses `footVersionLabel`.
+    4. Arrow keys must not interfere with the existing Up/Down behavior inside the project list — the new transitions only fire at the boundary positions (focus on first project row, focus on last/`projButton`, focus on the named header buttons).
+    5. Each landed element shows the existing `:focus-visible` ring so keyboard users can see where focus moved.
   - Implementation notes:
-    - Header lives in the Focus Music modal markup in `main.js` — search for the existing `FOCUS MUSIC` label to find it. Convert the current single-element header into a CSS grid with `grid-template-columns: 1fr auto 1fr` (or 18px / 1fr / 18px) so the title remains centered regardless of icon width.
-    - Use a real `<button>` (not an `<a>`) wired to a click handler that computes the URL and calls `window.open(url, '_blank', 'noopener')` — keeps the keyboard/focus behavior consistent with other modal buttons.
-    - Style the icon button to match the existing modal-control aesthetic (transparent bg, muted-purple stroke on hover, ~28×28px hit target). No new icon library needed — use the same SVG/icon-font approach already in use elsewhere in `main.js`.
-    - This change does not fix the underlying YouTube embed sign-in bot-gate; it gives the user a working escape hatch by letting them authenticate on youtube.com directly.
-  - Out of scope: any iframe `sandbox` or popup permission changes (covered by the separate sign-in bug entry); changes to the player controls bar or section ordering.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-09
+    - Add a delegated `keydown` listener (or per-element listeners) keyed on `e.key` for `ArrowUp`/`ArrowDown`/`ArrowLeft`/`ArrowRight`, calling `targetEl.focus()` and `e.preventDefault()` to suppress page scroll.
+    - For the sidebar boundaries, use the existing `document.querySelector('.selectedProject')` pattern plus a first/last-child check on the project list rather than closure-scoped variables, matching the convention elsewhere in `main.js`.
+    - `main.js` is over 25k tokens — locate the existing project-row and header-button event wiring with grep + offset/limit before adding handlers; co-locate the new logic with each element's existing listeners rather than introducing a new top-level block.
+  - Acceptance criteria:
+    - Tab order is unchanged; arrow keys are additive, not a replacement.
+    - All five transitions above work in both directions where specified.
+    - No arrow-key handler hijacks input typing inside the "Add a task" field, the project rename field, or any modal text input.
+  - Out of scope: full roving-tabindex refactor, new focus-ring styling, keyboard shortcuts other than the arrow keys listed above.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
