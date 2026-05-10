@@ -193,7 +193,7 @@ body {
 #themeToggle:focus { outline: none; }
 #themeToggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .themeIcon {
   position: absolute;
@@ -2355,7 +2355,7 @@ body.row-dragging * { cursor: grabbing !important; }
 #settingsToggle:focus { outline: none; }
 #settingsToggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--accent);
   animation: none;
   opacity: 1;
   transform: none;
@@ -2426,7 +2426,7 @@ body.row-dragging * { cursor: grabbing !important; }
 .settingsMenuItem:focus { outline: none; }
 .settingsMenuItem:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--accent-dim);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .settingsMenuItemLabel {
   flex: 1 1 auto;
@@ -2930,7 +2930,7 @@ html[data-sidebar-rail="off"] #projChild::before {
 #pomodoroToggle:focus { outline: none; }
 #pomodoroToggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 #pomodoroToggle[aria-expanded="true"] {
   border-color: var(--accent);
@@ -3170,7 +3170,7 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
 #musicToggle:focus { outline: none; }
 #musicToggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 #musicToggle[aria-expanded="true"] {
   border-color: var(--accent);
