@@ -257,6 +257,21 @@ export function createPomodoro(doc) {
         notify();
     }
 
+    // Single-entry toggle for the keyboard shortcut path in main.js. Returns
+    // 'playing' on a fresh start or resume, 'paused' on a pause, and 'noop'
+    // when the timer is sitting on a completed-but-unacknowledged session
+    // (the shortcut intentionally does not auto-restart from 00:00 — the
+    // user has to acknowledge or pick the next mode explicitly).
+    function toggle() {
+        if (state.status === 'COMPLETE_UNACKED') return 'noop';
+        if (state.status === 'RUNNING') {
+            pause();
+            return 'paused';
+        }
+        start();
+        return 'playing';
+    }
+
     function reset() {
         stopTick();
         state.status = 'IDLE';
@@ -478,6 +493,7 @@ export function createPomodoro(doc) {
     return {
         start:           start,
         pause:           pause,
+        toggle:          toggle,
         reset:           reset,
         setMode:         setMode,
         setDuration:     setDuration,

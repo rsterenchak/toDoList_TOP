@@ -496,6 +496,112 @@ function component() {
         }
     });
 
+    // ── Ctrl+Space global shortcut ──
+    // Toggles the Pomodoro timer from anywhere in the app. We skip while the
+    // user is typing in an input/textarea/contentEditable so Ctrl+Space can
+    // still insert a space (and so IME completion chords still work).
+    // On every toggle a brief status pill ("Paused" amber / "Play" purple)
+    // surfaces inside the popover header for visual confirmation. If the
+    // popover was closed, we open it just long enough for the pill to fade,
+    // then auto-close it; if it was already open, only the pill fades.
+    let pomodoroPillTimers = [];
+    let pomodoroPillOpenedByShortcut = false;
+
+    function clearPomodoroPillTimers() {
+        for (let i = 0; i < pomodoroPillTimers.length; i++) {
+            clearTimeout(pomodoroPillTimers[i]);
+        }
+        pomodoroPillTimers = [];
+    }
+
+    function buildPomodoroPillIcon(kind) {
+        // Inline SVG keeps the pill icon-library-free, matching the rest of
+        // main.js. The play triangle and pause bars are tiny (10px) so the
+        // pill stays compact alongside its label.
+        if (kind === 'paused') {
+            return '<svg class="pomodoroStatusPillIcon" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">' +
+                '<rect x="3" y="2" width="2" height="8" rx="0.5" fill="currentColor"/>' +
+                '<rect x="7" y="2" width="2" height="8" rx="0.5" fill="currentColor"/>' +
+                '</svg>';
+        }
+        return '<svg class="pomodoroStatusPillIcon" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">' +
+            '<path d="M3.5 2.2v7.6L10 6z" fill="currentColor"/>' +
+            '</svg>';
+    }
+
+    function showPomodoroStatusPill(kind) {
+        // Open the popover first if it's closed so we have a header to dock
+        // the pill into. Track that we opened it so the auto-close timer
+        // below knows to dismiss it after the pill fades.
+        const wasOpenAlready = !!document.getElementById('pomodoroPopover');
+        if (!wasOpenAlready) {
+            showPomodoroPopover();
+            pomodoroPillOpenedByShortcut = true;
+        }
+        const pop = document.getElementById('pomodoroPopover');
+        if (!pop) return;
+        const header = pop.querySelector('.pomodoroPopoverHeader');
+        if (!header) return;
+
+        // Cancel any in-flight pill so rapid repeated presses always reflect
+        // the latest toggle rather than stacking stale fade-outs.
+        clearPomodoroPillTimers();
+        const existing = pop.querySelector('.pomodoroStatusPill');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+        const pill = document.createElement('div');
+        pill.className = 'pomodoroStatusPill ' + (kind === 'paused' ? 'paused' : 'playing');
+        pill.setAttribute('role', 'status');
+        pill.innerHTML = buildPomodoroPillIcon(kind) +
+            '<span class="pomodoroStatusPillLabel">' +
+            (kind === 'paused' ? 'Paused' : 'Play') +
+            '</span>';
+        // Insert as a sibling between the header and whatever follows
+        // (typically the tabs row).
+        if (header.nextSibling) {
+            header.parentNode.insertBefore(pill, header.nextSibling);
+        } else {
+            header.parentNode.appendChild(pill);
+        }
+
+        // Visible at full opacity for ~1.2s, then fade over ~400ms via the
+        // .fading class (CSS transition). Auto-close path waits an extra
+        // ~200ms after removal so the user sees the pill finish before the
+        // popover blinks out.
+        pomodoroPillTimers.push(setTimeout(function() {
+            pill.classList.add('fading');
+        }, 1200));
+        pomodoroPillTimers.push(setTimeout(function() {
+            if (pill.parentNode) pill.parentNode.removeChild(pill);
+        }, 1600));
+        pomodoroPillTimers.push(setTimeout(function() {
+            // Timer-driven auto-close — this isn't a user-driven dismissal,
+            // so it intentionally bypasses the modal's "close 3 ways"
+            // convention. Only fires when the shortcut itself opened the
+            // popover; if the user already had it open, we leave it alone.
+            if (pomodoroPillOpenedByShortcut && document.getElementById('pomodoroPopover')) {
+                hidePomodoroPopover();
+            }
+            pomodoroPillOpenedByShortcut = false;
+        }, 1800));
+    }
+
+    document.addEventListener('keydown', function(e) {
+        // Older Gecko reported the space key as 'Spacebar'; modern browsers
+        // emit ' '. Accept both so the shortcut works across engines.
+        if (e.key !== ' ' && e.key !== 'Spacebar') return;
+        if (!e.ctrlKey) return;
+        if (e.altKey || e.shiftKey || e.metaKey) return;
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+        const result = ctl.toggle();
+        e.preventDefault();
+        if (result === 'noop') return;
+        showPomodoroStatusPill(result);
+    });
+
     // Subscribe at controller-level too so the icon sweep + accent recolor
     // stay in sync regardless of whether the popover is open.
     setTimeout(function() {

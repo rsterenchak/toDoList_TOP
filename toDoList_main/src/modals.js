@@ -388,6 +388,7 @@ const SHORTCUT_GROUPS = [
         items: [
             { keys: ['?'],      description: 'Open this help modal' },
             { keys: ['Esc'],    description: 'Close the open modal, popover, or context menu' },
+            { keys: ['Ctrl', 'Space'], description: 'Toggle the Pomodoro timer between play and pause from anywhere in the app' },
         ],
     },
 ];
