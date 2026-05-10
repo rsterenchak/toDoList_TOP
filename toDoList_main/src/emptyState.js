@@ -152,13 +152,31 @@ export function updateEmptyState(mainListDiv) {
         block.id = 'emptyState';
         block.classList.add('emptyStateNoProjects');
 
+        // Purple ghost mascot — visible at the ≤700px STACK breakpoint via
+        // CSS; hidden on desktop where the existing ✦ glyph + title carry
+        // the visual weight. Painted via background-image in style.css.
+        const mascot = document.createElement('div');
+        mascot.className = 'emptyStateMascot emptyStateMascotPurple';
+        mascot.setAttribute('aria-hidden', 'true');
+
         const icon = document.createElement('div');
         icon.className = 'emptyStateIcon';
         icon.textContent = '✦';
 
+        // Two title spans — desktop keeps the existing copy, STACK mobile
+        // swaps in the friendlier "Welcome." heading. CSS toggles
+        // visibility via display:none so screen readers only see the
+        // appropriate one for the current breakpoint.
         const title = document.createElement('div');
         title.className = 'emptyStateTitle';
-        title.textContent = 'No projects yet';
+        const titleDesktop = document.createElement('span');
+        titleDesktop.className = 'emptyStateTitleDesktop';
+        titleDesktop.textContent = 'No projects yet';
+        const titleMobile = document.createElement('span');
+        titleMobile.className = 'emptyStateTitleMobile';
+        titleMobile.textContent = 'Welcome.';
+        title.appendChild(titleDesktop);
+        title.appendChild(titleMobile);
 
         const sub = document.createElement('div');
         sub.className = 'emptyStateSub';
@@ -167,7 +185,14 @@ export function updateEmptyState(mainListDiv) {
         const createBtn = document.createElement('button');
         createBtn.id = 'emptyStateCreateBtn';
         createBtn.type = 'button';
-        createBtn.textContent = 'CREATE YOUR FIRST PROJECT';
+        const ctaDesktop = document.createElement('span');
+        ctaDesktop.className = 'ctaTextDesktop';
+        ctaDesktop.textContent = 'CREATE YOUR FIRST PROJECT';
+        const ctaMobile = document.createElement('span');
+        ctaMobile.className = 'ctaTextMobile';
+        ctaMobile.textContent = '+ New project';
+        createBtn.appendChild(ctaDesktop);
+        createBtn.appendChild(ctaMobile);
         createBtn.addEventListener('click', function() {
             // On mobile the sidebar is a drawer translated off-screen; open it
             // synchronously so the new projInput is in-layout and iOS Safari
@@ -197,6 +222,7 @@ export function updateEmptyState(mainListDiv) {
         hint.className = 'emptyStateHint';
         hint.innerHTML = 'or press <kbd>Enter</kbd> to create';
 
+        block.appendChild(mascot);
         block.appendChild(icon);
         block.appendChild(title);
         block.appendChild(sub);
@@ -235,6 +261,13 @@ export function updateEmptyState(mainListDiv) {
     const block = document.createElement('div');
     block.id = 'emptyState';
 
+    // Mascot variants — gray ghost for "no todos yet" (waiting), green
+    // ghost for "all caught up" (success). STACK mobile (≤700px) swaps
+    // the inline ✦/✓ glyph for the mascot via CSS; desktop ignores it.
+    const mascot = document.createElement('div');
+    mascot.className = 'emptyStateMascot';
+    mascot.setAttribute('aria-hidden', 'true');
+
     const icon = document.createElement('div');
     icon.className = 'emptyStateIcon';
 
@@ -245,10 +278,14 @@ export function updateEmptyState(mainListDiv) {
     sub.className = 'emptyStateSub';
 
     if (done === 0) {
+        block.classList.add('emptyStateNoTodos');
+        mascot.classList.add('emptyStateMascotGray');
         icon.textContent  = '✦';
         title.textContent = 'No todos yet';
         sub.textContent   = 'Type below to add your first one.';
     } else {
+        block.classList.add('emptyStateAllCaughtUp');
+        mascot.classList.add('emptyStateMascotGreen');
         icon.textContent  = '✓';
         title.textContent = 'All caught up';
         sub.textContent   = done === 1
@@ -283,7 +320,31 @@ export function updateEmptyState(mainListDiv) {
         target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
 
+    block.appendChild(mascot);
     block.appendChild(icon);
+
+    // STACK-only flourishes — sparkles around the green ghost on the
+    // "all caught up" screen; a dotted up-arrow pointing at the input
+    // on the "no todos yet" screen. Both are positioned absolutely
+    // around the mascot via CSS and are display:none on desktop.
+    if (done === 0) {
+        const upArrow = document.createElement('div');
+        upArrow.className = 'emptyStateUpArrow';
+        upArrow.setAttribute('aria-hidden', 'true');
+        block.appendChild(upArrow);
+    } else {
+        const sparkles = document.createElement('div');
+        sparkles.className = 'emptyStateSparkles';
+        sparkles.setAttribute('aria-hidden', 'true');
+        for (let i = 0; i < 4; i++) {
+            const sp = document.createElement('span');
+            sp.className = 'emptyStateSparkle';
+            sp.textContent = '✦';
+            sparkles.appendChild(sp);
+        }
+        block.appendChild(sparkles);
+    }
+
     block.appendChild(title);
     block.appendChild(sub);
     block.appendChild(input);

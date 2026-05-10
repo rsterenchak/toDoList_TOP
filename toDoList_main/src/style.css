@@ -1391,6 +1391,27 @@ body:has(#settingsMenu) #helpFab {
   display: none;
 }
 
+/* ── Empty-state ghost mascots, sparkles, and dotted up-arrow ──
+   These are STACK-mobile flourishes painted only at the ≤700px breakpoint
+   (rules below in the mobile media query enable them). On desktop they're
+   hidden so the existing ✦/✓ glyph + title carry the visual weight without
+   competing with the mascot. The mascot's background-image is set per
+   variant so all three states share one element class. */
+.emptyStateMascot,
+.emptyStateSparkles,
+.emptyStateUpArrow {
+  display: none;
+}
+
+/* Title and CTA-button text variants — desktop shows the existing copy,
+   mobile swaps in the STACK-tuned wording ("Welcome." / "+ New project").
+   Both spans live in the DOM at all times; CSS swaps which is rendered
+   so screen readers only encounter the appropriate string. */
+.emptyStateTitleMobile,
+.ctaTextMobile {
+  display: none;
+}
+
 /* Grab cursor on draggable rows; grabbing during active drag */
 #projChild[draggable="true"],
 #toDoChild[draggable="true"] { cursor: grab; }
@@ -2251,6 +2272,173 @@ body.row-dragging * { cursor: grabbing !important; }
   #emptyStateCreateBtn {
     width: 100%;
     max-width: 320px;
+  }
+
+  /* ── STACK empty-state mascots ──
+     Three retuned variants for the ≤700px layout: a big purple ghost on
+     NO PROJECTS (welcome screen), a muted gray ghost on NO TODOS YET with
+     a dotted up-arrow pointing at the input, and a green-tinted ghost
+     with sparkles on ALL CAUGHT UP. The desktop ✦/✓ icon is hidden in
+     favor of the mascot at this breakpoint. */
+  #emptyState .emptyStateIcon {
+    display: none;
+  }
+
+  .emptyStateMascot {
+    display: block;
+    width: 96px;
+    height: 112px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    margin: 0 auto;
+  }
+
+  #emptyState.emptyStateNoProjects .emptyStateMascot {
+    width: 144px;
+    height: 168px;
+    background-image: url('./ghost_purple.svg');
+    /* Soft purple glow under the welcome ghost — anchors the centered
+       layout the way the pulsing CTA does on its own at desktop. */
+    filter: drop-shadow(0 0 18px var(--accent-glow));
+  }
+
+  #emptyState.emptyStateNoTodos .emptyStateMascot {
+    width: 88px;
+    height: 102px;
+    background-image: url('./ghost_gray.svg');
+    opacity: 0.85;
+  }
+
+  #emptyState.emptyStateAllCaughtUp .emptyStateMascot {
+    width: 110px;
+    height: 128px;
+    background-image: url('./ghost_green.svg');
+    /* Faint green glow to read as "success" without going neon. */
+    filter: drop-shadow(0 0 14px rgba(154, 208, 168, 0.45));
+  }
+
+  /* Title + CTA copy swap: hide desktop strings, show STACK strings. */
+  .emptyStateTitleDesktop,
+  .ctaTextDesktop {
+    display: none;
+  }
+  .emptyStateTitleMobile {
+    display: block;
+  }
+  .ctaTextMobile {
+    display: inline;
+  }
+
+  /* "Welcome." heading — larger, friendlier, mixed-case (not the
+     uppercase mono label used on desktop). */
+  #emptyState.emptyStateNoProjects .emptyStateTitle {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    font-family: inherit;
+    color: var(--text-primary);
+    margin-top: 18px;
+  }
+
+  /* Hide the prose sub-line and the "press Enter" hint on the welcome
+     screen so the only surviving control is the "+ New project" pill
+     (per the STACK spec's NO PROJECTS reduction). */
+  #emptyState.emptyStateNoProjects .emptyStateSub,
+  #emptyState.emptyStateNoProjects .emptyStateHint {
+    display: none;
+  }
+
+  /* "+ New project" pill — filled accent, generous touch target,
+     dropping the desktop pulse animation since there's no longer a
+     void to anchor the user against. */
+  #emptyState.emptyStateNoProjects #emptyStateCreateBtn {
+    margin-top: 24px;
+    padding: 14px 24px;
+    border-radius: 999px;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    animation: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    min-height: 48px;
+  }
+
+  /* Dotted up-arrow under the gray ghost — points toward the input row
+     above. Stacked vertical dots + a chevron tip drawn with borders to
+     stay theme-token-driven (no SVG asset for this small affordance). */
+  .emptyStateUpArrow {
+    display: block;
+    width: 24px;
+    height: 38px;
+    margin: 0 auto 4px;
+    position: relative;
+  }
+  .emptyStateUpArrow::before {
+    /* Vertical dotted shaft */
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dotted var(--text-muted);
+    transform: translateX(-50%);
+  }
+  .emptyStateUpArrow::after {
+    /* Chevron tip pointing up */
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-left: 2px solid var(--text-muted);
+    border-top: 2px solid var(--text-muted);
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  /* Sparkles around the green ghost — four glyphs absolutely positioned
+     around the mascot so they read as ambient celebration rather than a
+     row of literal asterisks. Soft pulse keeps them alive without
+     competing with the ghost. */
+  .emptyStateSparkles {
+    display: block;
+    position: relative;
+    width: 0;
+    height: 0;
+    margin: 0 auto;
+    /* Sparkles are positioned relative to the mascot above them; pull
+       up so they overlay the mascot's edges. */
+    transform: translateY(-130px);
+  }
+  .emptyStateSparkle {
+    position: absolute;
+    color: var(--type-feature, #9ad0a8);
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.85;
+    animation: emptyStateSparkleTwinkle 2.8s ease-in-out infinite;
+  }
+  .emptyStateSparkle:nth-child(1) { top: -10px; left: -64px;  animation-delay: 0s; }
+  .emptyStateSparkle:nth-child(2) { top: -38px; left: 44px;   animation-delay: 0.4s; font-size: 11px; }
+  .emptyStateSparkle:nth-child(3) { top:  20px; left: -78px;  animation-delay: 0.9s; font-size: 10px; }
+  .emptyStateSparkle:nth-child(4) { top:  10px; left: 60px;   animation-delay: 1.3s; }
+
+  @keyframes emptyStateSparkleTwinkle {
+    0%, 100% { opacity: 0.35; transform: scale(0.85); }
+    50%      { opacity: 0.95; transform: scale(1.05); }
+  }
+
+  /* Accent the dashed input row pointed at by the up-arrow on
+     NO TODOS YET — a soft purple stroke on the empty-state input to
+     match the STACK spec's "accents the dashed + Add a task… input
+     row" direction. */
+  #emptyState.emptyStateNoTodos #emptyStateInput {
+    border-color: var(--accent);
+    border-style: dashed;
+    box-shadow: 0 0 0 0.5px var(--accent), 0 0 12px var(--accent-glow);
   }
 
   #projButton {
