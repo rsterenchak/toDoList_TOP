@@ -1567,10 +1567,66 @@ function component() {
     sideTitle.appendChild(sideHead);
     addProj.appendChild(projButton);
 
+    // ── mobile project header (STACK layout) ──
+    // On the ≤700px breakpoint the layout shifts to a STACK pattern: the
+    // active project name renders as a screen-level header above the todo
+    // list, with a "PROJECT N OF M" label, open/done counts, and tappable
+    // page dots that jump between projects. Hidden on desktop via CSS —
+    // desktop continues to use the sidebar rail/full pattern with the
+    // mainCrumb breadcrumb. The header rebuilds via the same
+    // MutationObserver path that drives the footer counts so its label,
+    // counts, and active dot stay in sync without explicit calls from
+    // mutation sites.
+    const mobileProjHeader  = document.createElement('div');
+    const mobileProjLabel   = document.createElement('div');
+    const mobileProjName    = document.createElement('div');
+    const mobileProjStats   = document.createElement('div');
+    const mobileProjCounts  = document.createElement('div');
+    const mobileProjOpen    = document.createElement('span');
+    const mobileProjDone    = document.createElement('span');
+    const mobileProjDots    = document.createElement('div');
+
+    mobileProjHeader.id = 'mobileProjHeader';
+    mobileProjLabel.id  = 'mobileProjLabel';
+    mobileProjName.id   = 'mobileProjName';
+    mobileProjStats.id  = 'mobileProjStats';
+    mobileProjCounts.id = 'mobileProjCounts';
+    mobileProjOpen.id   = 'mobileProjOpen';
+    mobileProjDone.id   = 'mobileProjDone';
+    mobileProjDots.id   = 'mobileProjDots';
+
+    mobileProjOpen.textContent = '0 open';
+    mobileProjDone.textContent = '0 done';
+
+    mobileProjDots.setAttribute('role', 'tablist');
+    mobileProjDots.setAttribute('aria-label', 'Switch project');
+
+    mobileProjCounts.appendChild(mobileProjOpen);
+    mobileProjCounts.appendChild(mobileProjDone);
+    mobileProjStats.appendChild(mobileProjCounts);
+    mobileProjStats.appendChild(mobileProjDots);
+    mobileProjHeader.appendChild(mobileProjLabel);
+    mobileProjHeader.appendChild(mobileProjName);
+    mobileProjHeader.appendChild(mobileProjStats);
+
+    main2.appendChild(mobileProjHeader);
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
     sideHead.textContent = 'Projects';
+
+    // ── mobile drawer close (X) button ──
+    // Adds an explicit dismiss affordance to the sidebar drawer at the
+    // ≤700px breakpoint so the modal-style three-way close vocabulary
+    // (X button, backdrop tap, Escape) is fully covered. Hidden on
+    // desktop via CSS — the sidebar there is a persistent rail/full
+    // pane, not a modal drawer.
+    const mobileSidebarClose = document.createElement('button');
+    mobileSidebarClose.id   = 'mobileSidebarClose';
+    mobileSidebarClose.type = 'button';
+    mobileSidebarClose.setAttribute('aria-label', 'Close projects drawer');
+    mobileSidebarClose.innerHTML = '×';
+    sideTitle.appendChild(mobileSidebarClose);
 
     // ── breadcrumb (top-left of main column) ──
     // Rail mode shows only single-letter chips, so the active project's full
@@ -1681,6 +1737,33 @@ function component() {
     });
 
     sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // X-button close inside the mobile drawer. Mirrors the backdrop click
+    // and the Escape handler below so the drawer satisfies CLAUDE.md's
+    // three-way modal close vocabulary at the ≤700px breakpoint.
+    mobileSidebarClose.addEventListener('click', function() {
+        closeSidebar();
+        sidebarToggle.focus();
+    });
+
+    // Escape closes the mobile drawer, completing the modal close
+    // vocabulary (X button, backdrop tap, Escape). Capture phase so an
+    // open drawer always wins over downstream Escape handlers (which
+    // would otherwise consume the keystroke for popovers and modals
+    // mounted underneath the drawer's backdrop). Bails when another
+    // modal/popover is already open so its own Escape handling owns the
+    // keystroke; bails on desktop where the sidebar is a persistent rail
+    // rather than a modal drawer.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (!isMobile()) return;
+        if (!sidebarIsOpen()) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        closeSidebar();
+        sidebarToggle.focus();
+    }, true);
 
     if (window.matchMedia('(pointer: coarse)').matches) {
         main1.addEventListener('click', function(e) {
@@ -2595,6 +2678,62 @@ function component() {
             mainCrumbCount.textContent = '';
             mainCrumb.setAttribute('data-empty', 'true');
         }
+
+        updateMobileProjHeader(name, open, done);
+    }
+
+    // Rebuild the mobile project header (label, name, counts, page dots)
+    // off the same observer signal updateFooterCounts uses. Page dots are
+    // re-rendered from listLogic each pass since project add / rename /
+    // delete don't reliably surface as a single mutation on #sideMa
+    // alone — recomputing from authoritative state keeps the dot row
+    // honest with cheap DOM churn (one button per project). Each dot
+    // proxies to the matching #projChild click so the existing selection
+    // / accent / addAllToDo_DOM machinery runs unchanged.
+    function updateMobileProjHeader(activeName, open, done) {
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const total = projects.length;
+        const activeIdx = activeName ? projects.indexOf(activeName) : -1;
+
+        if (total > 0 && activeIdx >= 0) {
+            mobileProjLabel.textContent = 'PROJECT ' + (activeIdx + 1) + ' OF ' + total;
+            mobileProjName.textContent  = activeName;
+            mobileProjHeader.removeAttribute('data-empty');
+        } else {
+            mobileProjLabel.textContent = '';
+            mobileProjName.textContent  = '';
+            mobileProjHeader.setAttribute('data-empty', 'true');
+        }
+
+        mobileProjOpen.textContent = open + ' open';
+        mobileProjDone.textContent = done + ' done';
+
+        while (mobileProjDots.firstChild) mobileProjDots.removeChild(mobileProjDots.firstChild);
+        projects.forEach(function(name, idx) {
+            const dot = document.createElement('button');
+            dot.type = 'button';
+            dot.className = 'mobileProjDot';
+            dot.setAttribute('role', 'tab');
+            dot.setAttribute('aria-label', 'Project ' + (idx + 1) + ' of ' + total + ': ' + name);
+            dot.setAttribute('aria-selected', idx === activeIdx ? 'true' : 'false');
+            if (idx === activeIdx) dot.classList.add('active');
+            // Apply the project's accent color so the dot row also reads as
+            // a color legend at a glance. CSS resolves --proj-accent against
+            // var(--accent) for the null/default case.
+            applyProjectAccent(dot, listLogic.getProjectColor(name));
+            dot.addEventListener('click', function() {
+                if (idx === activeIdx) return;
+                const rows = sideMain.querySelectorAll('#projChild');
+                for (let i = 0; i < rows.length; i++) {
+                    const inp = rows[i].querySelector('#projInput');
+                    if (inp && inp.value.trim() === name) {
+                        rows[i].click();
+                        break;
+                    }
+                }
+            });
+            mobileProjDots.appendChild(dot);
+        });
     }
 
     const footObserver = new MutationObserver(updateFooterCounts);

@@ -9,7 +9,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Implement STACK mobile layout with project-as-header and menu drawer
+- [x] **[MEDIUM]** Implement STACK mobile layout with project-as-header and menu drawer
   - Description: Replace the current mobile drawer-only layout with a "STACK" pattern where the project name renders as the screen header (large two-line title) with `PROJECT N OF M` label above and tappable page dots on the stats line; horizontal swipe-between-projects is dropped in favor of single-tap dots. The hamburger top-right opens a slide-in menu drawer (~78% width from right) containing the Projects list with active highlighting + "+ Add project", a View section (Show completed, Expand all descriptions, Sort By chip group), an Appearance section (Dark theme toggle, Companion ghost toggle), and a footer with version + project count. Empty states get retuned for STACK: NO PROJECTS centers a big purple ghost mascot + "Welcome." + filled "+ New project" CTA pill (theme toggle is the only surviving control), NO TODOS YET keeps the project header but accents the dashed input row and shows a muted gray ghost with a dotted up-arrow pointing to the input, ALL CAUGHT UP shows a green-tinted ghost + sparkles + faded "Done today" list of completed tasks (only when Show completed is on). Applies at the existing `≤700px` breakpoint.
   - Behavior:
     1. Project header renders as two-line title with `PROJECT N OF M` label above; stats line has open/done counts left, tappable page dots right
@@ -31,6 +31,17 @@
     - Project context menu has long-press equivalent on touch devices
   - Out of scope: drag-to-reorder visual feedback on touch (separate entry); music station picker (entry 2); task interaction patterns (entry 3)
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/emptyState.js`
+  - Completed: 2026-05-10
+  - Notes: Foundational STACK structure shipped — mobile project header (`PROJECT N OF M` label, name, open/done counts, tappable page dots), three-way drawer close vocabulary (X button, backdrop, Escape), and project-row long-press were all delivered. Visual-polish pieces and the drawer reorganization were broken out into the follow-up entries below so they can be designed and reviewed independently.
+
+- [ ] **[MEDIUM]** Reorganize mobile drawer into Projects / View / Appearance sections from right
+  - Description: Convert the current mobile sidebar drawer (slides in from the LEFT, contains Projects + "+ Add project") into the STACK menu drawer described in the original STACK task: ~78% viewport width, slides in from the RIGHT, sections in order — Projects (with active highlight + "+ Add project"), View (Show completed, Expand all descriptions, Sort By chip group), Appearance (Dark theme toggle, Companion ghost toggle), footer (version label + project count). Selecting a project from the drawer keeps it open (browse-and-decide). The View / Appearance controls already exist elsewhere (settings menu, completed-section caret, bulk desc toggle, theme toggle, companion toggle) — this task wires mobile mirrors of them inside the drawer rather than introducing new state.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[MEDIUM]** Restyle STACK mobile empty states with ghost mascots
+  - Description: Three retuned empty-state variants for the STACK mobile layout. NO PROJECTS centers a big purple ghost mascot SVG + "Welcome." + filled "+ New project" CTA pill (theme toggle is the only surviving control on this screen). NO TODOS YET keeps the project header above the empty state and accents the dashed `+ Add a task…` input row, with a muted gray ghost mascot and a dotted up-arrow pointing at the input. ALL CAUGHT UP shows a green-tinted ghost mascot + sparkles + a faded "Done today" list of completed tasks (only when Show completed is on). Applies at the existing `≤700px` breakpoint. Ghost mascot SVGs commit to `toDoList_main/src/` per CLAUDE.md (no icon libraries).
+  - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`, plus new ghost mascot SVGs in `toDoList_main/src/`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [ ] **[MEDIUM]** Add bottom sheet utility surface for Pomodoro and music on mobile
