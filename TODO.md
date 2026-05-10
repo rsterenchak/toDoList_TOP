@@ -34,8 +34,14 @@
   - Completed: 2026-05-10
   - Notes: Foundational STACK structure shipped — mobile project header (`PROJECT N OF M` label, name, open/done counts, tappable page dots), three-way drawer close vocabulary (X button, backdrop, Escape), and project-row long-press were all delivered. Visual-polish pieces and the drawer reorganization were broken out into the follow-up entries below so they can be designed and reviewed independently.
 
-- [ ] **[MEDIUM]** Reorganize mobile drawer into Projects / View / Appearance sections from right
+- [x] **[MEDIUM]** Reorganize mobile drawer into Projects / View / Appearance sections from right
   - Description: Convert the current mobile sidebar drawer (slides in from the LEFT, contains Projects + "+ Add project") into the STACK menu drawer described in the original STACK task: ~78% viewport width, slides in from the RIGHT, sections in order — Projects (with active highlight + "+ Add project"), View (Show completed, Expand all descriptions, Sort By chip group), Appearance (Dark theme toggle, Companion ghost toggle), footer (version label + project count). Selecting a project from the drawer keeps it open (browse-and-decide). The View / Appearance controls already exist elsewhere (settings menu, completed-section caret, bulk desc toggle, theme toggle, companion toggle) — this task wires mobile mirrors of them inside the drawer rather than introducing new state.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: 2026-05-10
+  - Notes: Sort By chip group deferred — no underlying sort state exists yet, and the task scope explicitly forbade introducing new state. Filed below as a separate entry to track once a sort backing is added.
+
+- [ ] **[LOW]** Add Sort By chip group to STACK mobile drawer View section
+  - Description: The STACK mobile drawer reorganization (Projects/View/Appearance) intentionally shipped without the Sort By chip group from the original STACK spec because no underlying sort state existed yet — wiring a chip group would have introduced new persisted state, contradicting the parent task's "rather than introducing new state" rule. Once a sort feature exists for the project's todo list (e.g., manual / due date / created), add a chip group inside the drawer's View section between "Show completed" and "Expand all descriptions" that mirrors the same state. Use the existing `.drawerToggleRow` styling pattern as a reference; chips should be ≥44px tall for mobile hit targets.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
