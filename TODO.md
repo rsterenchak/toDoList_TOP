@@ -24,29 +24,36 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Add Ctrl+Pause global shortcut to toggle Pomodoro timer with status pill
-  - Description: Wire a global `Ctrl + Pause/Break` keyboard shortcut that toggles the Pomodoro timer between running and paused, regardless of where focus is in the app (no input-suppression needed since the combo doesn't collide with text entry). On every toggle, surface a brief auto-fading status pill near the top of the Pomodoro popover — amber `Paused` (with `ti-player-pause` icon) when pausing, primary-purple `Play` (with `ti-player-play` icon) when resuming — so the user gets definitive visual confirmation that the toggle landed. If the popover is already open when the shortcut fires, the pill just appears inside it and fades. If the popover is closed, the popover opens, shows the pill, and auto-closes after the pill finishes fading so the user gets the confirmation without having to manually dismiss anything.
+- [ ] **[MEDIUM]** Add keyboard navigation within todo row sub-controls
+  - Description: A todo row's sub-controls (checkbox, title, due-date pill, expand caret, delete X, expanded description) aren't all reachable from the keyboard today — Tab order skips most of them and Enter doesn't consistently activate the focused control, so the row can't be driven without a mouse. Make every sub-control tabbable in visual order and Enter-activatable, including the description when the row is expanded, and wire arrow-key + Enter editing inside the due-date popover so dates can also be set entirely from the keyboard.
   - Behavior:
-    1. Global `keydown` listener on `document` checks for `e.ctrlKey && e.key === 'Pause'`. On match, call `e.preventDefault()` and invoke the Pomodoro toggle.
-    2. State machine: idle → Start (shows `Play` pill); running → Pause (shows `Paused` pill); paused → Resume (shows `Play` pill). Pomodoro at 00:00 / completed = no-op (don't auto-restart).
-    3. Pill renders inside the popover header area, between `POMODORO` and the tab row. Visible for ~1.2s at full opacity, then fades over ~400ms (CSS transition on opacity).
-    4. If popover was closed when shortcut fired, open it, render pill, then auto-close popover ~200ms after pill finishes fading (~1.8s total visible). If popover was already open, leave it open — only the pill fades.
-    5. Rapid repeated presses cancel and restart the fade timer for the new pill, so the indicator always reflects the latest toggle.
+    1. Tab into a todo row focuses the checkbox first; Shift+Tab from the next row's checkbox returns to the previous row's last sub-control (delete X if collapsed, description if expanded).
+    2. Within a collapsed row, Tab steps in visual order: checkbox → title → date pill → expand caret → delete X. Shift+Tab reverses.
+    3. Within an expanded row, Tab order extends to include the description after delete X: checkbox → title → date pill → expand caret → delete X → description. Shift+Tab reverses.
+    4. Checkbox focused, Enter → toggles completed state via the existing handler.
+    5. Title focused, Enter → enters the existing inline-edit mode; Enter again commits, Escape cancels.
+    6. Date pill focused, Enter → opens the due-date popover. Inside the popover, arrow keys move the highlighted day; Enter applies that date and closes the popover; **Backspace cancels and closes without changing the date**.
+    7. Expand caret focused, Enter → toggles the row's expanded/collapsed state. When collapsing, focus returns to the caret; when expanding, focus stays on the caret so Tab steps naturally into the new description.
+    8. Delete X focused, Enter → triggers the existing delete flow (including any confirmation already present).
+    9. Description focused, Enter → enters inline-edit mode for the description body; Enter again commits, Escape cancels. Only available while the row is expanded.
+    10. The existing `:focus-visible` ring shows the active sub-control at every step.
   - Implementation notes:
-    - Global listener belongs in `main.js` alongside the existing keyboard wiring; bootstrap it once on app init, not per popover open.
-    - `pomodoro.js` already follows the factory/singleton pattern with its own state — expose a `toggle()` method (or reuse existing `pause()` / `resume()` / `start()` and dispatch based on current state) so `main.js` only calls one entry point.
-    - The auto-close-after-toggle path is timer-driven, not user-driven, so it doesn't need to honor the modal's "close 3 ways" convention — it's a transient confirmation, not a modal interaction. Worth a one-line comment in the close handler noting this is the shortcut path.
-    - Pill styling: amber pill uses `border: 1px solid rgba(240,160,48,0.45)` + `background: rgba(240,160,48,0.10)` + amber dot or `ti-player-pause` icon at 11px. Play pill uses the same shape with the primary `#6C5DF5` ramp + `ti-player-play` icon. Both share a single `.pomodoroStatusPill` class with state-modifier classes (`.paused`, `.playing`).
-    - Fade-out animation in CSS only (no JS animation libs) — `opacity 1 → 0` over 400ms, paired with a `setTimeout` that removes the pill from the DOM after the transition completes.
-    - The `Pause/Break` key reports as `e.key === 'Pause'` in modern browsers; verify this on the user's primary browser before shipping (some keyboards lack the key entirely — note this as a known limitation, not a bug).
+    - Audit each sub-control for `tabindex`. Native buttons are already tabbable; non-button elements (title span, date pill if it's a `div`, description container) likely need `tabindex="0"`.
+    - The description's `tabindex` should toggle with the row's expanded state — `tabindex="0"` when expanded, `tabindex="-1"` (or removed) when collapsed — so it's not in the Tab order while hidden.
+    - Add `keydown` listeners checking `e.key === 'Enter'` on each non-button sub-control, calling the same handler the existing click invokes. For the date popover, also listen for `Backspace` to close-without-apply. `e.preventDefault()` where Enter would otherwise insert a newline (notably if title or description edit uses contenteditable/textarea).
+    - The four row builders (`addInitialToDo`, `regenToDos`, `appendNewToDoRow`, `addToDos_restore`) all need the same wiring — fold the new keyboard handlers into a shared helper called from all four rather than duplicating, so freshly created, mid-session, Enter-chained, and restored-on-refresh rows all behave identically.
+    - The date popover may already support arrow-key navigation internally — verify with grep before adding; if so, only wire the Enter-to-open, Enter-to-apply, and Backspace-to-cancel transitions.
+    - `main.js` is over 25k tokens — locate the row builders, expand-caret handler, and date popover with grep + offset/limit, never a full read.
   - Acceptance criteria:
-    - Pressing `Ctrl+Pause` while typing in the new-todo input still toggles the timer (the combo is not suppressed by input focus).
-    - Pill appears in correct color/label for each transition and fully fades within ~1.6s.
-    - Closed-popover path opens the popover, shows the pill, and auto-closes; open-popover path leaves the popover open.
-    - Shortcut at 00:00 is a no-op (no pill, no popover open).
-  - Out of scope: any change to existing Start/Reset button labels or layout (this entry only adds the keyboard path and the pill); changes to music player pause/resume coordination (existing behavior preserved); a settings UI to rebind the shortcut.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/pomodoro.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-09
+    - Every sub-control (including description when expanded) is reachable via Tab in visual order on freshly created rows, restored rows, rows reached via Enter chaining, and rows in any project.
+    - Enter activates the focused sub-control's primary action consistently across all rows.
+    - Backspace inside the open date popover closes it without modifying the date; outside the popover, Backspace retains its normal browser behavior (no global hijack).
+    - Description tabindex updates correctly as rows are expanded and collapsed.
+    - No regression in mouse/touch interaction; no regression in existing project-row keyboard behavior; no regression in the date popover's mouse flow.
+    - Inline title edit, inline description edit, date popover apply/cancel, expand toggle, and delete confirmation behave identically to their mouse equivalents.
+  - Out of scope: roving-tabindex refactor, keyboard equivalent of swipe-to-delete, multi-row keyboard selection, drag-and-drop reordering via keyboard.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
