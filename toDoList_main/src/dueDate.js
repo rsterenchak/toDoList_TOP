@@ -421,6 +421,25 @@ function onDuePopoverKeydown(event) {
         hideDueDatePopover();
         return;
     }
+    if (event.key === 'Backspace') {
+        // Close the popover without applying any pending date change so
+        // keyboard users can cancel out of the calendar without reaching
+        // for Escape. Skip when focus is inside an editable control within
+        // the popover (interval input, end-date input, pattern/unit selects)
+        // — those still need Backspace to delete characters or change the
+        // selected option. Outside the popover entirely, fall through so
+        // Backspace retains its normal browser meaning.
+        const ae = document.activeElement;
+        const insideEditable = !!(ae && popover.contains(ae) &&
+            (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' ||
+             ae.tagName === 'SELECT' || ae.isContentEditable));
+        if (insideEditable) return;
+        if (!popover.contains(ae) && ae !== document.body) return;
+        event.preventDefault();
+        event.stopPropagation();
+        hideDueDatePopover();
+        return;
+    }
     const isNav = event.key === 'ArrowLeft' || event.key === 'ArrowRight' ||
                   event.key === 'ArrowUp'   || event.key === 'ArrowDown' ||
                   event.key === 'Enter';

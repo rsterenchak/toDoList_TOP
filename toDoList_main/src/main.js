@@ -1992,6 +1992,14 @@ function component() {
             // popover).
             const focusedTodoRow = ae && ae.closest && ae.closest('#toDoChild');
             if (!focusedTodoRow || committed.indexOf(focusedTodoRow) === -1) return;
+            // Fire only when focus is on the row element itself (nav mode).
+            // When focus is on a sub-control (checkbox, due pill button,
+            // expand caret, delete X, description), Enter must activate
+            // that sub-control's own keydown handler instead of yanking
+            // focus to the title input. The row gets focus via the arrow-
+            // nav handler above (`target.focus()`); sub-controls receive
+            // focus via Tab.
+            if (ae !== focusedTodoRow) return;
             const input = focusedTodoRow.querySelector('#toDoInput');
             if (!input) return;
             input.focus();

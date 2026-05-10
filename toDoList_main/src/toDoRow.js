@@ -215,6 +215,17 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             switcher = 0;
         }
     });
+
+    // Enter on the focused expand caret routes through the same click handler
+    // so keyboard activation toggles the description panel identically to a
+    // mouse click. Focus stays on the caret either way: on expand, Tab steps
+    // naturally into the new description input; on collapse, the caret keeps
+    // focus so the user can re-open with Enter again.
+    descToggle.addEventListener("keydown", function(event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        descToggle.click();
+    });
 }
 
 
@@ -275,6 +286,12 @@ export function buildToDoRow(item, toDoName) {
     // Hide delete on blank placeholder rows — deleting the only available
     // input slot would leave the user with no way to create new items.
     if (!item.tit) closeButtonToDo.style.display = "none";
+    // tabindex + role mirror the descToggle treatment so keyboard users can
+    // tab to the delete button and press Enter to fire the same confirm-delete
+    // flow the mouse path uses. Hidden placeholder rows skip it via display:none.
+    closeButtonToDo.setAttribute("tabindex", "0");
+    closeButtonToDo.setAttribute("role", "button");
+    closeButtonToDo.setAttribute("aria-label", "Delete todo");
 
     // Blank placeholder rows hide the due-date pill for the same reason the
     // checkbox / toggle / close button hide above: there's no committed item
@@ -285,6 +302,12 @@ export function buildToDoRow(item, toDoName) {
 
     descToggle.id            = "descToggle";
     descToggle.style.display = item.tit ? "flex" : "none";
+    // tabindex makes the non-button caret focusable so keyboard users can
+    // reach it in tab order. Hidden placeholder rows (display:none) skip it
+    // naturally, and committing the row reveals it without a re-wire.
+    descToggle.setAttribute("tabindex", "0");
+    descToggle.setAttribute("role", "button");
+    descToggle.setAttribute("aria-label", "Toggle description");
 
     descSibling.id  = "descSibling";
     descSpacer1.id  = "descSpacer1";
@@ -346,6 +369,17 @@ export function buildToDoRow(item, toDoName) {
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
     wireToDoRowClick(toDoChild, toDoInput);
+
+    // Browsers natively toggle a checkbox on Space but NOT on Enter. Adding
+    // Enter→toggle here keeps the keyboard contract uniform with the row's
+    // other sub-controls (title, due pill, expand caret, delete X, description),
+    // each of which activates on Enter when focused.
+    checkToDo.addEventListener("keydown", function(event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        checkToDo.checked = !checkToDo.checked;
+        checkToDo.dispatchEvent(new Event("change"));
+    });
 
     toDoChild.setAttribute("data-value", toDoName);
     // Anchor the DOM row to its data-model item so reorderToDoDOM can match
@@ -425,6 +459,19 @@ export function buildToDoRow(item, toDoName) {
         toDoInput.title = item.tit || "";
     });
 
+    // Escape on the title cancels the in-progress edit by restoring the
+    // value captured on the last focus, then blurs so the user can move on.
+    // Mirrors the standard inline-edit cancel pattern used by other apps.
+    toDoInput.addEventListener("keydown", function(event) {
+        if (event.key !== "Escape") return;
+        toDoInput.value = savedTitle;
+        item.tit = savedTitle;
+        listLogic.saveToStorage();
+        toDoInput.title = savedTitle;
+        toDoInput.blur();
+        event.preventDefault();
+    });
+
     // descInput keydown — Enter to save (empty is a valid cleared state)
     descInput.addEventListener("keydown", function(event) {
         if (event.key !== "Enter") return;
@@ -446,6 +493,22 @@ export function buildToDoRow(item, toDoName) {
     descInput.addEventListener("blur", function() {
         item.desc = descInput.value.trim();
         listLogic.saveToStorage();
+    });
+
+    // Escape on the description cancels the in-progress edit by restoring
+    // the value captured on the last focus, then blurs. Matches the title's
+    // Escape semantics so both inline-edit surfaces feel the same.
+    let savedDesc = item.desc || "";
+    descInput.addEventListener("focus", function() {
+        savedDesc = item.desc || "";
+    });
+    descInput.addEventListener("keydown", function(event) {
+        if (event.key !== "Escape") return;
+        descInput.value = savedDesc;
+        item.desc = savedDesc;
+        listLogic.saveToStorage();
+        descInput.blur();
+        event.preventDefault();
     });
 
     // closeButtonToDo click — confirm, then remove this todo item and re-render.
@@ -509,6 +572,15 @@ export function buildToDoRow(item, toDoName) {
                 }
             }
         });
+    });
+
+    // Enter on the focused delete button routes through the same click
+    // handler so keyboard users get the same confirm-then-delete modal flow
+    // as a mouse click — the row is never deleted without confirmation.
+    closeButtonToDo.addEventListener("keydown", function(event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        closeButtonToDo.click();
     });
 
     closeButtonToDo.addEventListener("mouseenter", function() {
