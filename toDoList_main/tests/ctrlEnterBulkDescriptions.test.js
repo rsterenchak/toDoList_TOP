@@ -44,10 +44,20 @@ describe('Ctrl+Enter — bulk description toggle', () => {
     it('drops the legacy Completed-section toggle wiring from the chord', () => {
         // Regression guard: the old handler called setCompletedSectionOpen
         // and updateCompletedSection. Neither should run from the keydown
-        // path now that the chord is the bulk-description shortcut.
-        expect(main).not.toMatch(/setCompletedSectionOpen/);
-        expect(main).not.toMatch(/isCompletedSectionOpen/);
-        expect(main).not.toMatch(/updateCompletedSection/);
+        // path now that the chord is the bulk-description shortcut. Scope
+        // the check to the chord handler block — completed-section helpers
+        // are legitimately reused by other surfaces (the mobile drawer's
+        // Show completed toggle), so a file-wide regex would over-match.
+        const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
+        const handler = blocks.find(function(b) {
+            return /e\.key\s*!==\s*['"]Enter['"]/.test(b)
+                && /ctrlKey/.test(b)
+                && /metaKey/.test(b);
+        });
+        expect(handler).toBeTruthy();
+        expect(handler).not.toMatch(/setCompletedSectionOpen/);
+        expect(handler).not.toMatch(/isCompletedSectionOpen/);
+        expect(handler).not.toMatch(/updateCompletedSection/);
     });
 
     it('updates the shortcuts modal description to reflect the new behaviour', () => {

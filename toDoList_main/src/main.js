@@ -27,6 +27,8 @@ import {
     hasSidebarWidthPref,
     isSidebarRailOn,
     setSidebarRailOn,
+    isCompletedSectionOpen,
+    setCompletedSectionOpen,
 } from './prefs.js';
 import {
     applyTheme,
@@ -1683,11 +1685,159 @@ function component() {
         }
     });
 
+    // ── STACK mobile drawer sections (View / Appearance / Footer) ──
+    // The existing #sideBar already houses the Projects group (sideTit +
+    // sideMa + addProj). Below it on mobile we mount three more sections
+    // so the drawer reads as: Projects, View, Appearance, footer. Each
+    // toggle row mirrors a control that already exists in the desktop
+    // chrome (settings menu theme/companion, completed-section caret,
+    // bulk desc toggle) — no new persisted state is introduced. Hidden
+    // on desktop via CSS where the sidebar is a persistent rail/full
+    // pane rather than a modal drawer.
+    function createDrawerToggleRow(labelText, getState, onToggle) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'drawerToggleRow';
+        row.setAttribute('role', 'switch');
+        const labelEl = document.createElement('span');
+        labelEl.className = 'drawerToggleLabel';
+        labelEl.textContent = labelText;
+        const pill = document.createElement('span');
+        pill.className = 'drawerTogglePill';
+        function refresh() {
+            const on = !!getState();
+            row.classList.toggle('on', on);
+            row.setAttribute('aria-checked', on ? 'true' : 'false');
+            pill.textContent = on ? 'ON' : 'OFF';
+        }
+        row.appendChild(labelEl);
+        row.appendChild(pill);
+        row.addEventListener('click', function() {
+            onToggle();
+            refresh();
+        });
+        refresh();
+        return { row: row, refresh: refresh };
+    }
+
+    const drawerView = document.createElement('div');
+    drawerView.id = 'drawerView';
+    drawerView.className = 'drawerSection';
+    const drawerViewHeading = document.createElement('div');
+    drawerViewHeading.className = 'drawerSectionHeading';
+    drawerViewHeading.textContent = 'View';
+    drawerView.appendChild(drawerViewHeading);
+
+    // Show completed — mirrors the in-list #completedHeader caret. When the
+    // caret is mounted (project has at least one completed row) we route
+    // through its click so its own caret/aria-expanded flip in lockstep;
+    // when the caret isn't mounted yet we still write the pref so the
+    // setting takes effect the moment the first task is completed.
+    const drawerShowCompleted = createDrawerToggleRow(
+        'Show completed',
+        function() { return isCompletedSectionOpen(); },
+        function() {
+            const header = document.getElementById('completedHeader');
+            if (header) {
+                header.click();
+                return;
+            }
+            const next = !isCompletedSectionOpen();
+            setCompletedSectionOpen(next);
+            const list = document.getElementById('mainList');
+            if (list) list.classList.toggle('completedCollapsed', !next);
+        }
+    );
+    drawerView.appendChild(drawerShowCompleted.row);
+
+    // Expand all descriptions — mirrors the bulk desc toggle in the main
+    // column header. Routing through the button's click keeps the
+    // .expanded class + Expand/Collapse label flip in one place.
+    const drawerExpandAll = createDrawerToggleRow(
+        'Expand all descriptions',
+        function() { return bulkDescToggleBtn.classList.contains('expanded'); },
+        function() { bulkDescToggleBtn.click(); }
+    );
+    drawerView.appendChild(drawerExpandAll.row);
+
+    const drawerAppearance = document.createElement('div');
+    drawerAppearance.id = 'drawerAppearance';
+    drawerAppearance.className = 'drawerSection';
+    const drawerAppearanceHeading = document.createElement('div');
+    drawerAppearanceHeading.className = 'drawerSectionHeading';
+    drawerAppearanceHeading.textContent = 'Appearance';
+    drawerAppearance.appendChild(drawerAppearanceHeading);
+
+    // Dark theme — mirrors the settings-menu Theme item. Same
+    // theme-transitioning class + applyTheme + localStorage write so the
+    // 220ms cross-fade is identical to the menu path.
+    const drawerTheme = createDrawerToggleRow(
+        'Dark theme',
+        function() { return getCurrentTheme() === 'dark'; },
+        function() {
+            const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.add('theme-transitioning');
+            applyTheme(next);
+            try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
+            setTimeout(function() {
+                document.documentElement.classList.remove('theme-transitioning');
+            }, 220);
+        }
+    );
+    drawerAppearance.appendChild(drawerTheme.row);
+
+    // Companion ghost — mirrors the settings-menu Toggle floating ghost.
+    const drawerCompanion = createDrawerToggleRow(
+        'Companion ghost',
+        function() { return isCompanionEnabled(); },
+        function() {
+            const next = !isCompanionEnabled();
+            setCompanionEnabled(next);
+            if (next) ensureCompanion();
+            else      destroyCompanion();
+        }
+    );
+    drawerAppearance.appendChild(drawerCompanion.row);
+
+    const drawerFooter = document.createElement('div');
+    drawerFooter.id = 'drawerFooter';
+    const drawerFooterVersion = document.createElement('span');
+    drawerFooterVersion.id = 'drawerFooterVersion';
+    drawerFooterVersion.textContent = 'v1.1';
+    const drawerFooterCount = document.createElement('span');
+    drawerFooterCount.id = 'drawerFooterCount';
+    drawerFooterCount.textContent = '0 projects';
+    drawerFooter.appendChild(drawerFooterVersion);
+    drawerFooter.appendChild(drawerFooterCount);
+
+    main1.appendChild(drawerView);
+    main1.appendChild(drawerAppearance);
+    main1.appendChild(drawerFooter);
+
+    function refreshDrawerProjectCount() {
+        const count = listLogic.listProjectsArray().length;
+        drawerFooterCount.textContent = count + (count === 1 ? ' project' : ' projects');
+    }
+
+    function refreshDrawerSections() {
+        drawerShowCompleted.refresh();
+        drawerExpandAll.refresh();
+        drawerTheme.refresh();
+        drawerCompanion.refresh();
+        refreshDrawerProjectCount();
+    }
+    refreshDrawerProjectCount();
+
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth <= 700; }
 
     function openSidebar() {
         if (isMobile()) {
+            // Drawer state could have drifted while it was closed (theme
+            // toggled via settings menu, Expand All toggled by Ctrl+Enter,
+            // a project added/removed). Re-sync the mobile mirrors so the
+            // ON/OFF pills and footer count match reality on every open.
+            refreshDrawerSections();
             main1.classList.add('sidebar-open');
             sidebarOverlay.classList.add('visible');
         } else {
@@ -1765,13 +1915,10 @@ function component() {
         sidebarToggle.focus();
     }, true);
 
-    if (window.matchMedia('(pointer: coarse)').matches) {
-        main1.addEventListener('click', function(e) {
-            const onProjChild = e.target.closest('#projChild');
-            const onInput     = e.target.tagName === 'INPUT';
-            if (onProjChild && !onInput) { closeSidebar(); }
-        });
-    }
+    // STACK browse-and-decide: tapping a project row in the mobile drawer
+    // updates the active project but deliberately keeps the drawer open so
+    // the user can compare projects side by side. The drawer dismisses only
+    // through the three-way close vocabulary (X button, backdrop, Escape).
 
     // Clear todo-active on all rows when clicking outside any todo row
     document.addEventListener('click', function(e) {

@@ -14,12 +14,8 @@ export const changelog = [
             'Arrow keys now navigate between the projects sidebar, the header buttons, and the footer version label so keyboard users can move across the chrome without tabbing.',
             'Arrow Down from the sidebar toggle now lands on the first project instead of jumping past the sidebar to the first todo.',
         ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-09',
-        fixed: [
-            'Focus Music modal now opens YouTube from a single icon button in its header instead of an arrow on every station row.',
+        changed: [
+            'Mobile menu drawer slides in from the right with Projects, View, and Appearance sections plus a project-count footer, and tapping a project now keeps the drawer open so you can compare across projects.',
         ],
     },
 ];
