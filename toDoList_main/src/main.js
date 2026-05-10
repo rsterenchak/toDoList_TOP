@@ -1198,6 +1198,29 @@ function component() {
     nav.appendChild(settingsToggle);
     nav.appendChild(importFileInput);
 
+    // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
+    // across the four header buttons (sidebarToggle → pomodoroToggle →
+    // musicToggle → settingsToggle) so keyboard users can flow across
+    // the chrome without tabbing. Bails when any popover/modal is open
+    // so the in-popover focus management owns the keystrokes; bails on
+    // any modifier so OS-level chords pass through. stopPropagation
+    // keeps the document-level cross-pane handler from also re-routing
+    // focus to a project row or new-task input.
+    nav.addEventListener('keydown', function(e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const order = [sidebarToggle, pomodoroToggle, musicToggle, settingsToggle];
+        const idx = order.indexOf(e.target);
+        if (idx === -1) return;
+        const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+        const nextBtn = order[nextIdx];
+        if (!nextBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        nextBtn.focus();
+    });
+
     base.appendChild(nav);
     base.appendChild(main);
     base.appendChild(foot);
@@ -1592,10 +1615,17 @@ function component() {
                 // ArrowDown off the last project row falls through to the
                 // "+" add-project button so the keyboard path can reach
                 // new-project creation without grabbing the mouse. ArrowUp
-                // off the first row stays on it (no wrap).
+                // off the first row jumps to the sidebarToggle in the
+                // header so keyboard users can flow up into the header
+                // chain — closes the loop with the projButton ->
+                // footVersion bottom boundary so every chrome region is
+                // reachable by arrows alone.
                 if (e.key === 'ArrowDown') {
                     const projBtn = document.getElementById('projButton');
                     if (projBtn) projBtn.focus();
+                } else {
+                    const sidebarToggleEl = document.getElementById('sidebarToggle');
+                    if (sidebarToggleEl) sidebarToggleEl.focus();
                 }
                 return;
             }
@@ -2255,6 +2285,18 @@ function component() {
             const rows = sideMain.querySelectorAll('#projChild');
             const last = rows[rows.length - 1];
             if (last) last.focus();
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            // ArrowDown off the bottom of the sidebar lands on the
+            // version label area in the footer — the existing focusable
+            // #footVersion button is queried fresh so the focus-visible
+            // styling already wired for it (the dotted underline on
+            // #footVersionLabel) lights up without new CSS.
+            e.preventDefault();
+            e.stopPropagation();
+            const fv = document.getElementById('footVersion');
+            if (fv) fv.focus();
         }
     });
 
