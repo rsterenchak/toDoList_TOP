@@ -24,7 +24,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add keyboard navigation within todo row sub-controls
+- [x] **[MEDIUM]** Add keyboard navigation within todo row sub-controls
   - Description: A todo row's sub-controls (checkbox, title, due-date pill, expand caret, delete X, expanded description) aren't all reachable from the keyboard today — Tab order skips most of them and Enter doesn't consistently activate the focused control, so the row can't be driven without a mouse. Make every sub-control tabbable in visual order and Enter-activatable, including the description when the row is expanded, and wire arrow-key + Enter editing inside the due-date popover so dates can also be set entirely from the keyboard.
   - Behavior:
     1. Tab into a todo row focuses the checkbox first; Shift+Tab from the next row's checkbox returns to the previous row's last sub-control (delete X if collapsed, description if expanded).
@@ -53,7 +53,7 @@
     - Inline title edit, inline description edit, date popover apply/cancel, expand toggle, and delete confirmation behave identically to their mouse equivalents.
   - Out of scope: roving-tabindex refactor, keyboard equivalent of swipe-to-delete, multi-row keyboard selection, drag-and-drop reordering via keyboard.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-10
 
 ## In Progress
 
