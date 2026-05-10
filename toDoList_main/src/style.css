@@ -2259,9 +2259,181 @@ body.row-dragging * { cursor: grabbing !important; }
   #closeButtonToDo,
   #descToggle,
   #projChild,
-  #toDoChild {
+  #toDoChild,
+  .mobileProjDot,
+  #mobileSidebarClose {
     touch-action: manipulation;
   }
+
+  /* ── STACK mobile project header ──
+     Replaces the desktop breadcrumb at the ≤700px breakpoint with a
+     screen-level header: PROJECT N OF M label, two-line project name,
+     and a stats line with open/done counts on the left and tappable
+     page dots on the right. The header is the only place the active
+     project name appears textually on mobile, so the desktop
+     #mainCrumb is hidden alongside it (rule below). */
+  #mobileProjHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px 10px;
+    background: var(--bg-elevated);
+    border-bottom: 0.5px solid var(--border-dim);
+  }
+
+  #mobileProjHeader[data-empty="true"] {
+    display: none;
+  }
+
+  #mobileProjLabel {
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+
+  #mobileProjName {
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.18;
+    /* Two-line wrap for long project names — mobile titles read better
+       wrapped than ellipsised since the user expects to see the full
+       name they typed. clamp at two lines so chrome doesn't push the
+       todo list off-screen. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  #mobileProjStats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+  }
+
+  #mobileProjCounts {
+    display: flex;
+    gap: 12px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  #mobileProjOpen { color: var(--text-primary); }
+  #mobileProjDone { color: var(--text-muted); }
+
+  /* Page dots row — one button per project. Each button is a 44×44 hit
+     target (CLAUDE.md mobile rule + STACK acceptance criterion) with a
+     visible 10×10 dot centered inside via padding. The active dot
+     scales up and uses the project's accent color; inactive dots use
+     the muted border tone. */
+  #mobileProjDots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0;
+    max-width: 60%;
+  }
+
+  .mobileProjDot {
+    width: 44px;
+    height: 44px;
+    padding: 17px;
+    margin: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileProjDot::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-bright);
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+
+  .mobileProjDot.active::before {
+    background: var(--proj-accent, var(--accent));
+    transform: scale(1.4);
+  }
+
+  .mobileProjDot:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -6px;
+    border-radius: 8px;
+  }
+
+  /* Hide the desktop breadcrumb in the main column and the empty
+     mainTitle bar — the mobile header replaces both. Bulk desc actions
+     re-anchor to the right edge of the mobile header instead of the
+     mainTitle row, but that's deferred to a follow-up; keep the
+     mainTitle visible so #bulkDescActions stays reachable. */
+  #mainCrumb { display: none; }
+
+  /* ── Mobile drawer X close button ──
+     Top-right of the sidebar drawer at the ≤700px breakpoint. Pairs
+     with the existing backdrop tap and the new Escape handler in
+     main.js to satisfy the three-way modal close vocabulary. Hidden
+     on desktop where the sidebar is a persistent rail/full pane. */
+  #mobileSidebarClose {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 1;
+  }
+
+  #mobileSidebarClose:hover,
+  #mobileSidebarClose:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    outline: none;
+  }
+
+  /* sideTitle is the drawer's top bar — give it relative positioning
+     so the absolute-positioned close button anchors against it. */
+  #sideTit { position: relative; }
+}
+
+/* Hide the mobile-only chrome at desktop sizes — these elements live
+   in the DOM at all viewports so the JS path stays single-branch, but
+   they should never paint above the breakpoint. */
+@media (min-width: 701px) {
+  #mobileProjHeader { display: none; }
+  #mobileSidebarClose { display: none; }
 }
 
 /* ══════════════════════════════════════════
