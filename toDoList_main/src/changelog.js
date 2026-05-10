@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-10',
         added: [
-            'Tab now reaches every todo row control in visual order — checkbox, title, due date, expand caret, delete, and description — and Enter activates the focused one.',
             'Mobile layout now shows a project header with page dots to jump between projects, and the drawer closes via an X button or Escape.',
         ],
         fixed: [
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         changed: [
             'Mobile menu drawer slides in from the right with Projects, View, and Appearance sections plus a project-count footer, and tapping a project now keeps the drawer open so you can compare across projects.',
+            'Mobile empty-state screens now show a ghost mascot — a purple welcome ghost when no projects exist, a gray ghost on a fresh project, and a green ghost with sparkles when everything is done.',
         ],
     },
 ];
