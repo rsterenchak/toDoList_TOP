@@ -2,27 +2,34 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Reorder NO TODOS YET empty-state on mobile to place input above ghost and up-arrow
-  - Description: On the STACK mobile `NO TODOS YET` empty state, the dashed task input should sit at the top of the empty pane with the ghost mascot and dotted up-arrow rendered below it — the arrow points upward at the input as a visual cue ("type up there"). The current build renders the elements in the wrong order: ghost at top, then up-arrow, then `NO TODOS YET` title, then the `New item` input at the bottom — the up-arrow now points at the title rather than at the input it was designed to indicate. Fix is in `emptyState.js` where the block is built and appended: the current order is `[mascot, icon, upArrow, title, sub, input]` (with mascot/upArrow visible only on mobile). For the `emptyStateNoTodos` variant specifically, the mobile DOM should be `[input, mascot, upArrow, title, sub]` so the arrow visually anchors to the input above it. Don't reorder with CSS `flex order` — desktop's `emptyStateNoTodos` block uses the same DOM and the desktop ordering (`[icon, title, sub, input]`) is currently correct. Two options: (a) build the block with the input first when the variant is `emptyStateNoTodos`, then use CSS `order` to push the input back down on desktop to preserve current desktop layout, or (b) detect mobile via `window.matchMedia('(max-width: 700px)')` at build time and conditionally insert the input at the top of the block. Option (a) is cleaner — single DOM, layout-driven swap. The `emptyStateAllCaughtUp` and `emptyStateNoProjects` variants don't have this issue and stay as-is.
-  - Behavior:
-    1. On mobile `NO TODOS YET`: input renders at the top of the empty pane (immediately below the project header divider), gray ghost mascot below it, dotted up-arrow below the ghost pointing up at the input, then `NO TODOS YET` title and sub
-    2. The dashed accent border on the input (added in the previous corrective entry — `border-color: var(--accent); border-style: dashed`) remains
-    3. Up-arrow's dotted shaft visually terminates near the bottom edge of the input above it — verify the existing `.emptyStateUpArrow` height (38px) places its tip close enough to the input; bump if needed
-    4. Desktop `NO TODOS YET` (701px+) keeps the existing order: title → sub → input at the bottom (current behavior)
-    5. `ALL CAUGHT UP` and `NO PROJECTS` variants are unchanged on both mobile and desktop
+- [ ] **[LOW]** Reposition NO TODOS YET up-arrow between input and ghost mascot
+  - Description: On the STACK mobile `NO TODOS YET` empty state, the dotted up-arrow is currently rendering below the ghost mascot, pointing up at the ghost rather than at the dashed task input above. The previous corrective entry hoisted the input to the top of the empty pane but left the up-arrow's source-order position unchanged, so the runtime DOM reads `input → mascot → upArrow → title → sub`. The arrow needs to sit between the input and the ghost so its chevron tip terminates near the bottom edge of the input — visually anchoring the "type up there" cue to the input it indicates. Fix is in `emptyState.js`: in the `done === 0` branch, append `upArrow` to the block *before* the mascot, so the final mobile DOM order becomes `input → upArrow → mascot → title → sub`. The arrow's existing `.emptyStateUpArrow` height (38px with an 8px gap to its chevron tip) should land cleanly between the input's bottom edge and the ghost's top — verify the visual spacing and bump `margin: 0 auto 4px` if a larger gap is needed for breathing room. Desktop's `NO TODOS YET` keeps its existing layout (the up-arrow is `display: none` on desktop, so source-order changes here don't affect it).
   - Acceptance criteria:
-    - Mobile `NO TODOS YET` renders input → ghost → arrow → title → sub, top to bottom
-    - The up-arrow's chevron tip points at the input above it, not at the title below it
-    - Desktop `NO TODOS YET` layout is unchanged
-    - The empty-state input's focus and Enter-to-commit behavior is unchanged (still delegates to the hidden placeholder row's `#toDoInput`)
+    - On mobile, dotted up-arrow renders directly below the dashed input and directly above the ghost mascot — never below the mascot
+    - Arrow's chevron tip points up toward the input's bottom edge with reasonable visual proximity (≤8px gap)
+    - Desktop layout is unchanged (up-arrow stays `display: none` above 700px)
+    - `ALL CAUGHT UP` and `NO PROJECTS` variants are unchanged
   - Implementation notes:
-    - In `emptyState.js`, when `done === 0` (the `emptyStateNoTodos` branch), append the input to the block before the mascot rather than at the end
-    - On desktop, add `order: 99` to `#emptyState.emptyStateNoTodos #emptyStateInput` so it returns to the bottom of the flex column — desktop's `#emptyState` is `display: flex; flex-direction: column` (from `#mainList.emptyStatePresent`), so `order` works
-    - On mobile, the input already has natural source order at the top — no CSS needed at the breakpoint
-    - The mascot, up-arrow, and sparkles are `display: none` on desktop anyway (their `display: block` rule lives in the mobile media query), so the desktop layout effectively renders `[title, sub, input]` regardless of where the input sits in source order
-  - Out of scope: changing the `ALL CAUGHT UP` or `NO PROJECTS` layouts; redesigning the up-arrow shape; mascot animation
+    - In `emptyState.js`'s `done === 0` branch, move the `block.appendChild(upArrow)` call to immediately follow whatever appends the input (or, given the input is hoisted to the top of the block, place `upArrow` right after the input append and before the mascot)
+    - No CSS changes needed — purely a source-order swap
+  - Out of scope: redesigning the arrow's visual style; mascot size or position tuning
+  - File: `toDoList_main/src/emptyState.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[LOW]** Reorder ALL CAUGHT UP empty-state on mobile to place input above ghost mascot
+  - Description: On the STACK mobile `ALL CAUGHT UP` empty state, the new-task input is rendering at the bottom of the empty-state block (below the green ghost, sparkles, title, and sub), but the prototype places the input at the top of the empty pane so the user can keep adding tasks without scrolling past the celebratory mascot. Same pattern as the previous `NO TODOS YET` reorder fix — that entry only touched the `done === 0` branch in `emptyState.js`, leaving the `done > 0` `emptyStateAllCaughtUp` branch with the original append order: `mascot → icon → sparkles → title → sub → input`. Mobile DOM should be `input → mascot → sparkles → title → sub` (no up-arrow on this variant — the celebratory ghost doesn't need a directional cue back to the input). Use the same approach as the previous fix: hoist the input to the top of the block when building, then add `order: 99` to `#emptyState.emptyStateAllCaughtUp #emptyStateInput` on desktop so the input returns to the bottom of the desktop flex column (preserving current desktop layout). The mascot, sparkles, and up-arrow are all `display: none` on desktop, so source-order changes here only affect mobile rendering.
+  - Acceptance criteria:
+    - On mobile `ALL CAUGHT UP`: input renders at the top of the empty pane (below the project header divider), green ghost + sparkles below it, `ALL CAUGHT UP` title and `N todos completed.` sub below the ghost, then the COMPLETED section as the next mainList child
+    - On desktop `ALL CAUGHT UP` (701px+): input stays at the bottom of the block — unchanged from current behavior
+    - Input placeholder text remains `New item` on both variants
+    - Sparkles' absolute positioning around the mascot still reads correctly (the `.emptyStateSparkles` element uses `transform: translateY(-130px)` to overlay on the mascot — verify this still lands on the ghost after the source-order swap)
+  - Implementation notes:
+    - In `emptyState.js`, the `done > 0` branch in `updateEmptyState` builds the block with `block.appendChild(mascot)` → `block.appendChild(icon)` → `block.appendChild(sparkles)` → `block.appendChild(title)` → `block.appendChild(sub)` → `block.appendChild(input)`. Move the `input` append to the top of this sequence (or insert before the mascot)
+    - Add `#emptyState.emptyStateAllCaughtUp #emptyStateInput { order: 99 }` in the desktop CSS scope (outside the mobile media query, since the parent `#mainList.emptyStatePresent` is `display: flex` on both viewports). The desktop CSS for the input is in the main empty-state block — drop the `order` rule near it
+    - Verify the sparkles' `transform: translateY(-130px)` still positions them over the mascot after the swap; if the mascot is now in a different flex position, the offset may need adjustment
+  - Out of scope: changing the COMPLETED section's behavior or position; tuning the sparkles' twinkle animation; redesigning the mascot
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
