@@ -4372,4 +4372,76 @@ body:has(#musicPopover.open) #helpFab { display: none; }
 
   /* Hide the floating help FAB while the expanded sheet covers it. */
   body:has(#bottomSheet[data-state="EXPANDED"]) #helpFab { display: none; }
+
+  /* Pilcrow indicator next to the date pill — surfaces "this row has a
+     description" on collapsed rows without expanding the layout into a
+     subtitle line. Mobile-only so desktop's existing expand caret +
+     description sibling continue to do the same job there. The glyph
+     sits before the duePill and inherits the muted token. */
+  #toDoChild[data-has-desc="true"] #duePill::before {
+    content: '¶';
+    margin-right: 6px;
+    color: var(--text-muted, #9b9eb4);
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.85;
+  }
+}
+
+/* ──────────────────────────────────────────
+   UNDO TOAST
+   Bottom-anchored, single-line "Deleted X — UNDO" toast surfaced by the
+   STACK mobile swipe-left-to-delete flow as the destructive-action
+   recovery path required by CLAUDE.md. Singleton at the document level,
+   floats above the bottom sheet so the UNDO affordance is reachable
+   without dismissing other UI.
+══════════════════════════════════════════ */
+#undoToast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  border-radius: 10px;
+  background: var(--bg-elevated, #20212c);
+  color: var(--text-primary, #e9eaf5);
+  border: 1px solid var(--border-mid, #2a2c3a);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  line-height: 1.2;
+  pointer-events: auto;
+}
+.undoToastLabel {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.undoToastButton {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--accent, #b29cff);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-height: 32px;
+  border-radius: 6px;
+}
+.undoToastButton:hover,
+.undoToastButton:focus-visible {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+  outline: none;
+}
+@media (max-width: 700px) {
+  #undoToast {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
 }

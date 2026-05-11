@@ -120,6 +120,69 @@ describe('listLogic — todos', () => {
 
         expect(listLogic.projectLength('Groceries')).toBe(lengthBefore);
     });
+
+    // ── insertToDoAt — backs the mobile swipe-delete UNDO recovery path ──
+
+    it('insertToDoAt restores a previously-removed item at its original position', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        listLogic.addToDo('Groceries', 'Bread');
+        listLogic.addToDo('Groceries', 'Cheese');
+
+        const bread = listLogic.listItems('Groceries').find(i => i.tit === 'Bread');
+        const breadIdx = listLogic.listItems('Groceries').indexOf(bread);
+
+        listLogic.removeToDoByItem('Groceries', bread);
+        expect(listLogic.listItems('Groceries').map(i => i.tit)).not.toContain('Bread');
+
+        listLogic.insertToDoAt('Groceries', bread, breadIdx);
+
+        // Order is identical to the pre-delete state
+        const titles = listLogic.listItems('Groceries').map(i => i.tit);
+        expect(titles).toEqual(['', 'Milk', 'Bread', 'Cheese']);
+    });
+
+    it('insertToDoAt clamps out-of-range indices to the array bounds', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        listLogic.removeToDoByItem('Groceries', milk);
+
+        listLogic.insertToDoAt('Groceries', milk, 999);
+
+        expect(listLogic.listItems('Groceries').map(i => i.tit)).toContain('Milk');
+    });
+
+    it('insertToDoAt is a no-op when called twice for the same item (idempotent undo)', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        const milkIdx = listLogic.listItems('Groceries').indexOf(milk);
+
+        listLogic.removeToDoByItem('Groceries', milk);
+        listLogic.insertToDoAt('Groceries', milk, milkIdx);
+        // Second call must not double-insert
+        listLogic.insertToDoAt('Groceries', milk, milkIdx);
+
+        const matches = listLogic.listItems('Groceries').filter(i => i.tit === 'Milk');
+        expect(matches).toHaveLength(1);
+    });
+
+    it('insertToDoAt re-pins the blank placeholder at index 0 even when caller asks for index 0', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        listLogic.removeToDoByItem('Groceries', milk);
+
+        // Caller passes index 0 (which would land before the blank
+        // placeholder) — sortCompletedInPlace must still re-pin the blank.
+        listLogic.insertToDoAt('Groceries', milk, 0);
+
+        expect(listLogic.listItems('Groceries')[0].tit).toBe('');
+    });
+
+    it('insertToDoAt on a missing project is a safe no-op', () => {
+        const stranger = { tit: 'Ghost', completed: false };
+        expect(() => {
+            listLogic.insertToDoAt('DoesNotExist', stranger, 0);
+        }).not.toThrow();
+    });
 });
 
 

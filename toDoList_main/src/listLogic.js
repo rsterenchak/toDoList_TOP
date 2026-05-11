@@ -276,6 +276,33 @@ export const listLogic = (function () {
     };
 
 
+    // Re-insert a previously-removed todo item at a specific position in the
+    // project's items array. Backs the mobile swipe-delete "undo" path: the
+    // caller captures the array index before splicing the item out so this
+    // function can restore the item to the same slot. sortCompletedInPlace
+    // still runs afterward, so the final landing slot may shift if the item
+    // is completed (re-partitioned to the bottom) or the requested index
+    // collides with the pinned blank placeholder at index 0 — both are
+    // expected outcomes that preserve the model invariants.
+    function insertToDoAt(project, item, index) {
+
+        if (!allProjects[project] || !item) return;
+
+        const arr = allProjects[project].items;
+        // Reject duplicate re-inserts — the caller is expected to call this
+        // exactly once per remove, so a duplicate here usually signals a
+        // racing event (e.g. two UNDO taps) and would corrupt the array.
+        if (arr.indexOf(item) !== -1) return;
+
+        const clamped = Math.min(Math.max(parseInt(index, 10) || 0, 0), arr.length);
+        arr.splice(clamped, 0, item);
+
+        sortCompletedInPlace(arr);
+
+        saveToStorage();
+    };
+
+
     function editProject(currentProperty, newProperty) {
 
         // Reject empty/whitespace renames — a '' key collides with the
@@ -606,6 +633,7 @@ export const listLogic = (function () {
         addToDo,
         removeToDo,
         removeToDoByItem,
+        insertToDoAt,
         editProject,
         listItems,
         projectLength,
