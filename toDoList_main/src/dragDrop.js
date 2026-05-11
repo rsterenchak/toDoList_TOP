@@ -40,7 +40,6 @@ const TOUCH_ARM_MS         = 180;   // hold before a touch-drag arms
 const TOUCH_ARM_MOVE_PX    = 8;     // pre-arm move that cancels the arm (treat as scroll)
 const AUTOSCROLL_EDGE_PX   = 40;    // distance from edge that triggers auto-scroll
 const AUTOSCROLL_STEP_PX   = 8;     // pixels scrolled per tick while in the edge zone
-const SWIPE_THRESHOLD_PX   = 80;    // horizontal distance that commits a swipe action
 const SWIPE_SNAPBACK_MS    = 260;   // release-below-threshold snap-back duration
 
 
@@ -286,6 +285,13 @@ export function setupRowDrag(row, cfg) {
             // that happens swipe can't reclaim the gesture either.
             if (state.swipeCfg && adx > ady) {
                 state.mode = 'swipe';
+                // Capture the row-relative commit threshold (half row width)
+                // once per gesture. Row width can differ from viewport width
+                // (sidebar present on tablet-portrait, drawer reservations),
+                // so a row-relative target lands closer to the user's intent
+                // than a fixed pixel constant. Cached here rather than read
+                // per-touchmove to avoid layout thrash during the drag.
+                state.swipeThreshold = row.getBoundingClientRect().width * 0.5;
                 row.classList.add('swiping');
                 row.classList.toggle('swipe-right', dx > 0);
                 row.classList.toggle('swipe-left',  dx < 0);
@@ -305,7 +311,8 @@ export function setupRowDrag(row, cfg) {
             row.classList.toggle('swipe-left',  dx < 0);
             row.style.setProperty('--swipe-dx', dx + 'px');
             row.style.setProperty('--swipe-width', Math.abs(dx) + 'px');
-            const progress = Math.min(Math.abs(dx) / SWIPE_THRESHOLD_PX, 1);
+            const threshold = state.swipeThreshold > 0 ? state.swipeThreshold : 1;
+            const progress = Math.min(Math.abs(dx) / threshold, 1);
             row.style.setProperty('--swipe-progress', progress.toFixed(3));
             return;
         }
@@ -331,7 +338,7 @@ export function setupRowDrag(row, cfg) {
 
         if (state.mode === 'swipe') {
             const dx = state.swipeDx || 0;
-            const past = Math.abs(dx) >= SWIPE_THRESHOLD_PX;
+            const past = state.swipeThreshold > 0 && Math.abs(dx) >= state.swipeThreshold;
 
             if (past) {
                 // Reset visual state first so the row doesn't linger translated

@@ -143,3 +143,34 @@ describe('STACK mobile task interactions — single-swipe-at-a-time', () => {
         );
     });
 });
+
+
+describe('STACK mobile task interactions — row-relative swipe-to-action threshold', () => {
+
+    const dragDrop = read('dragDrop.js');
+
+    it('commit threshold is the row width times 0.5, captured once per gesture', () => {
+        // The fixed SWIPE_THRESHOLD_PX = 80 constant is gone; the threshold
+        // is row-relative so it adapts to layouts where the row width
+        // differs from viewport width (sidebar present, drawer reservations).
+        expect(dragDrop).not.toMatch(/SWIPE_THRESHOLD_PX/);
+        expect(dragDrop).toMatch(
+            /swipeThreshold\s*=\s*row\.getBoundingClientRect\(\)\.width\s*\*\s*0\.5/
+        );
+    });
+
+    it('touchmove progress is scaled against the cached row-relative threshold', () => {
+        // --swipe-progress drives the action-pane reveal opacity/intensity.
+        // Scaling it against the same row-relative target as the commit
+        // check keeps the visual ramp consistent regardless of row width.
+        expect(dragDrop).toMatch(
+            /Math\.min\(Math\.abs\(dx\)\s*\/\s*threshold,\s*1\)/
+        );
+    });
+
+    it('touchend commit check uses the cached row-relative threshold', () => {
+        expect(dragDrop).toMatch(
+            /past\s*=\s*state\.swipeThreshold\s*>\s*0\s*&&\s*Math\.abs\(dx\)\s*>=\s*state\.swipeThreshold/
+        );
+    });
+});
