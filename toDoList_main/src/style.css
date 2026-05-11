@@ -4560,4 +4560,22 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #undoToast {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
+
+  /* ── Hide desktop right-cluster nav buttons on STACK mobile ──
+     Pomodoro + music utilities migrate to the bottom sheet; the ghost
+     menu's actions (Export JSON, Import JSON, Theme, Toggle floating
+     ghost, Help) are mirrored in the drawer's Appearance / footer
+     sections or are desktop-only affordances. With these three hidden,
+     #navBar reads as just the hamburger on the left and empty space on
+     the right — the project name in #mobileProjHeader directly below
+     carries the visual weight the icon cluster carries on desktop.
+     Controllers (pomodoro state, music iframe) keep running in the
+     background since their DOM stays mounted; only the trigger chrome
+     is hidden. This block sits at the bottom of the file so the rules
+     come AFTER the desktop #pomodoroToggle / #musicToggle / #settingsToggle
+     declarations and win the cascade at equal (1-ID) specificity without
+     needing !important. */
+  #pomodoroToggle,
+  #musicToggle,
+  #settingsToggle { display: none; }
 }
