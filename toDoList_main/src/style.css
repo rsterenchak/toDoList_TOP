@@ -485,6 +485,16 @@ body {
   border-left: 4px solid transparent;
   white-space: nowrap;
   overflow: hidden;
+  /* Suppress the iOS native long-press text-selection gesture and the
+     Edit/Copy/Look Up callout bar — both would otherwise fire alongside
+     the app's custom 500ms long-press context menu and paint blue
+     selection handles underneath it. Desktop right-click also doesn't
+     need to select the row label, so the rule is global. The #projInput
+     descendant re-enables selection so the rename flow can still place
+     a caret and select text inside the input once focused. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 #projChild:hover { background: var(--bg-hover); }
 /* Keyboard focus indicator — used when the user lands on a project via the
@@ -529,6 +539,12 @@ body {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Override the parent #projChild's user-select: none so the rename
+     flow can still place a caret and select text inside the input once
+     it becomes editable. pointer-events on the input is toggled by JS,
+     so this only takes effect in the edit-mode state. */
+  user-select: auto;
+  -webkit-user-select: auto;
 }
 #projInput::placeholder { color: var(--text-muted); font-style: italic; }
 #projInput:focus { outline: none; background: transparent; color: var(--text-primary); }
