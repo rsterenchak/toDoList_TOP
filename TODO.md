@@ -2,52 +2,31 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Hide pomodoro, music, and ghost menu buttons from mobile nav bar
-  - Description: At the ≤700px STACK breakpoint, `#navBar` should contain only the hamburger toggle on the left — the pomodoro clock icon (`#pomodoroToggle`), focus music equalizer (`#musicToggle`), and ghost menu (`#settingsToggle`) all live in the top-right cluster on desktop but have no place in the STACK mobile chrome. The pomodoro and music utilities are slated for the upcoming bottom sheet (separate entry); the ghost menu's actions (Export JSON, Import JSON, Theme, Toggle floating ghost, Help) are either already mirrored in the drawer (`drawerTheme`, `drawerCompanion`) or are desktop-only affordances. Hide all three at the `@media (max-width: 700px)` breakpoint with `display: none`. The mobile nav should read as just `[☰]` on the left with empty space to the right — the project name in `#mobileProjHeader` directly below carries the visual weight that the icon cluster carries on desktop. This is an interim state until the bottom sheet (entry 2) lands and reintroduces pomodoro + music as the sheet's expanded content; export/import/theme/companion already have permanent homes in the drawer, so they don't need a mobile re-mount.
+- [ ] **[MEDIUM]** Move hamburger toggle to top-right of mobile project header, hide navBar on mobile
+  - Description: In the STACK prototype, the hamburger menu toggle sits at the top-right of the viewport, vertically aligned with the `PROJECT N OF M` label — not in a separate nav bar above the project header. The current build keeps `#sidebarToggle` in its desktop position inside `#navBar` (top-left of a dedicated 44px nav row), which adds an unnecessary chrome band above the project header and pushes the entire mobile layout down by `var(--nav-h) + env(safe-area-inset-top)`. Move the hamburger to the top-right of `#mobileProjHeader` and hide `#navBar` entirely at the ≤700px breakpoint. The mobile project header already uses `padding: 14px 16px 10px` and has `#mobileProjLabel` at the top — the hamburger should anchor to the top-right of that same row, sitting at the same vertical baseline as the label. Implementation can either (a) position `#sidebarToggle` absolutely within `#mobileProjHeader` at the breakpoint via `position: absolute; top: env(safe-area-inset-top, 0) + 10px; right: 16px`, or (b) restructure the header to use a two-row grid where row 1 is `[label | hamburger]` and row 2 is the name + stats. Option (a) preserves the existing DOM (hamburger stays in `#navBar`) and is purely a CSS move, but requires `#mobileProjHeader` to have `position: relative` and enough top padding to clear the absolute child. Option (b) is more semantic but requires the hamburger to be re-parented in main.js, which complicates the desktop fallback. Recommend option (a) — single-file CSS change, no main.js touched. With `#navBar { display: none }` at ≤700px, the project header becomes the topmost element and the safe-area-inset-top moves to `#mobileProjHeader` instead.
   - Behavior:
-    1. Below 701px, `#navBar` shows only `#sidebarToggle` (hamburger) — all three right-cluster buttons are hidden
-    2. The hamburger's keyboard tab order on mobile flows: hamburger → directly into the projects drawer when opened, or into `#mobileProjHeader` page dots when closed
-    3. Above 701px, the full nav cluster (hamburger + pomodoro + music + ghost) renders unchanged
-    4. Pomodoro state continues running in the background on mobile even though its icon is hidden — the global Ctrl+Space shortcut still toggles it (desktop affordance, but the controller is platform-agnostic)
-    5. Music continues playing on mobile if a station was started on desktop and the user resized down — the iframe lives in `#musicPopover` which stays in the DOM regardless
+    1. Below 701px, `#navBar` is `display: none` — its 44px chrome band disappears entirely
+    2. `#sidebarToggle` repositions to the top-right of `#mobileProjHeader` via absolute positioning, sitting at the same vertical baseline as `#mobileProjLabel`
+    3. `#mobileProjHeader` absorbs the safe-area-inset-top padding that previously lived on `#navBar`, so iOS notch / Dynamic Island clearance is preserved
+    4. The project name (`#mobileProjName`) and stats (`#mobileProjStats`) sit below the label+hamburger row with the existing 6px column gap
+    5. Above 701px, the hamburger returns to its desktop position inside `#navBar` and `#mobileProjHeader` is hidden — desktop layout is unchanged
   - Acceptance criteria:
-    - Mobile viewport shows only the hamburger in the nav bar, no other icons visible
-    - Desktop viewport (701px+) is unchanged — all four nav buttons render
-    - No layout shift in the navbar height when the icons hide (they're `flex-shrink: 0` so removing them just frees horizontal space)
-    - Ghost menu's hover-pulse animation isn't visible on mobile (the element is `display: none`, so the animation can't paint)
-    - Keyboard arrow-nav across the nav (`nav.addEventListener('keydown', ...)`) doesn't break — the handler walks `[sidebarToggle, pomodoroToggle, musicToggle, settingsToggle]` and `indexOf` returns -1 for hidden elements, so left/right just no-op on hidden targets (verify this is the case; if not, gate the handler on `!isMobile()`)
+    - Hamburger sits at the top-right of the viewport at the ≤700px breakpoint, on the same horizontal line as `PROJECT N OF M`
+    - No 44px empty band above the project header
+    - Hamburger remains a ≥44×44 hit target (the existing `width: 36px; height: 36px` is below the touch standard — increase to 44×44 on mobile via the breakpoint override, or add invisible padding)
+    - iOS safe-area-inset-top is respected — on a notched device the hamburger doesn't tuck behind the Dynamic Island
+    - Tapping the hamburger still opens the drawer; X / backdrop / Escape close it as before
+    - Desktop layout (701px+) is unchanged
   - Implementation notes:
-    - All three buttons share the same right-cluster geometry pattern (`margin-left: auto` on `#pomodoroToggle`, then `gap: 8px` carries the rest)
-    - Hiding with `display: none` on the buttons themselves keeps `#navBar`'s flex layout intact and lets `#sidebarToggle` sit naturally on the left edge
-    - `#sidebarToggle` doesn't need any change — it's already first in DOM order and has no `margin-left: auto`
-    - This is a CSS-only PR — no main.js changes needed
-    - The interim hidden state means the existing keyboard shortcuts that act on these icons (Ctrl+Space for pomodoro toggle, "?" for help modal) still work, since they operate on the controller / modal directly and don't traverse the hidden icon
-  - Out of scope: bottom sheet that re-mounts pomodoro and music as expanded content (entry 2 from the original STACK trio); preserving any of the icons in the mobile chrome long-term — the sheet is the permanent home
+    - `#sidebarToggle` already exists in `#navBar` — keep it there, just reposition it absolutely at the breakpoint
+    - `#mobileProjHeader` needs `position: relative` and top padding bumped to accommodate the absolute child: roughly `padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px`
+    - `#sidebarToggle` at ≤700px: `position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); right: 12px; width: 44px; height: 44px; z-index: 2`
+    - `#navBar` at ≤700px: `display: none`
+    - `#mobileProjHeader` and `#mobileProjStats` already use `padding-top: 14px` and the label sits at the top — the hamburger's `top: calc(env(...) + 8px)` should land it ~2px above the label baseline for visual centering with the small mono label text
+    - `#outerContainer`'s grid at the breakpoint currently allocates `calc(var(--nav-h) + env(safe-area-inset-top))` for the nav row — with the nav hidden, that track collapses naturally since the nav is `display: none`, but verify the grid doesn't reserve the space anyway (`#outerContainer { grid-template-rows: calc(var(--nav-h) + env(safe-area-inset-top)) minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom)) }` will still hold the slot empty). Fix by overriding to `grid-template-rows: 0 minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom))` at the breakpoint, or by collapsing the nav row entirely via `grid-template-rows: auto minmax(0, 1fr) auto`
+  - Out of scope: bottom sheet that re-mounts pomodoro + music (entry 2); hamburger long-press menu; redesigning the project header's two-row layout to put the hamburger on its own row
   - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
-
-- [x] **[MEDIUM]** Fix STACK mobile header typography and empty-state ordering to match prototype
-  - Description: The STACK mobile project header is rendering with the wrong typography family and color treatment, and the empty-state block on `NO TODOS YET` is hoisting above the header. Three corrections needed: (1) `#mobileProjName` should use SpaceMono in the project accent color, not the system sans serif in `var(--text-primary)` — the prototype calls for a monospace title in purple to match the rest of the Void theme's mono chrome, and the current `font-family: inherit; color: var(--text-primary)` renders it as plain sans-serif white. (2) `#mobileProjLabel` and `#mobileProjCounts` should also use SpaceMono with the tighter 0.12–0.16em letter-spacing already used for `#footVersion` and `#footOpen` / `#footDone` on desktop — the current `font-family: inherit` falls through to system sans and the letter shapes don't match the rest of the app's mono chrome. (3) On the `NO TODOS YET` empty state, the `#emptyState` block is rendering above `#mobileProjHeader` because `#mainList.emptyStatePresent` uses `display: flex; flex-direction: column` with `justify-content: center` and `#emptyState` flexes with `flex: 1 1 auto` — but on mobile, the empty state must render *below* the project header, not above it. Fix by ensuring `#mobileProjHeader` paints first regardless of empty state class on `#mainList`, since the two elements are siblings under `main2`. The root cause is likely that the empty state's `position` or the `#mainBar` grid is allowing the empty state to visually overflow upward; verify the DOM order by checking which element is `main2.firstChild` at runtime — `#mobileProjHeader` was appended before `#mainList`, so the visual reorder must be a CSS layout artifact.
-  - Behavior:
-    1. `#mobileProjName` renders in SpaceMono at 20–22px, weight 700, color `var(--accent)` (project's accent purple)
-    2. `#mobileProjLabel` renders in SpaceMono at 10px with `letter-spacing: 0.16em`, color `var(--text-muted)`
-    3. `#mobileProjCounts` (both `#mobileProjOpen` and `#mobileProjDone`) renders in SpaceMono at 10–11px with `letter-spacing: 0.12em`, matching the footer counts treatment on desktop
-    4. Empty-state block renders *below* the project header at all times — `NO TODOS YET`, `ALL CAUGHT UP`, etc. paint inside `#mainList` underneath the header, never above it
-    5. Project-color accent on the title still resolves via `var(--proj-accent, var(--accent))` so per-project color swatches recolor the title
-  - Acceptance criteria:
-    - Title font matches the SpaceMono used elsewhere — visually identical character shapes to `PROJECT N OF M` label and `OPEN`/`DONE` counts
-    - Title color uses the accent purple (or per-project accent), not white
-    - All chrome text in `#mobileProjHeader` uses SpaceMono — no sans-serif leak
-    - Empty-state screens render in source order: header on top, empty state in the list area below
-    - Desktop layout (>700px) is unchanged — desktop `#mainCrumb` and `#footVersion` already use SpaceMono and shouldn't be affected
-  - Implementation notes:
-    - `font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace` is the existing token used elsewhere (search `#footVersion` / `#footOpen` / `.dueMonthTitle` for the canonical stack)
-    - `color: var(--proj-accent, var(--accent))` mirrors the pattern already on `.selectedProject` and the page dots, so per-project color settings work for free
-    - For the empty-state ordering: check whether `#mainList.emptyStatePresent` is being applied while `#mobileProjHeader` has `data-empty="true"` — if both fire at once, the header collapses (via `display: none` on `[data-empty="true"]`) and the empty state takes the whole pane; this may be the actual root cause and means `#mobileProjHeader[data-empty="true"]` should NOT hide the header when the project exists but has no todos
-    - The `data-empty` attribute on `#mobileProjHeader` is set in `updateMobileProjHeader` based on `total > 0 && activeIdx >= 0` — if a project exists with zero todos, `total` is still > 0 so the header should render, but verify the runtime DOM to confirm
-  - Out of scope: page dot spacing audit (separate entry); bottom sheet for utilities (entry 2); empty-state mascot tuning
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
