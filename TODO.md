@@ -2,34 +2,27 @@
 
 ## Bugs
 
-- [x] **[LOW]** Reposition NO TODOS YET up-arrow between input and ghost mascot
-  - Description: On the STACK mobile `NO TODOS YET` empty state, the dotted up-arrow is currently rendering below the ghost mascot, pointing up at the ghost rather than at the dashed task input above. The previous corrective entry hoisted the input to the top of the empty pane but left the up-arrow's source-order position unchanged, so the runtime DOM reads `input → mascot → upArrow → title → sub`. The arrow needs to sit between the input and the ghost so its chevron tip terminates near the bottom edge of the input — visually anchoring the "type up there" cue to the input it indicates. Fix is in `emptyState.js`: in the `done === 0` branch, append `upArrow` to the block *before* the mascot, so the final mobile DOM order becomes `input → upArrow → mascot → title → sub`. The arrow's existing `.emptyStateUpArrow` height (38px with an 8px gap to its chevron tip) should land cleanly between the input's bottom edge and the ghost's top — verify the visual spacing and bump `margin: 0 auto 4px` if a larger gap is needed for breathing room. Desktop's `NO TODOS YET` keeps its existing layout (the up-arrow is `display: none` on desktop, so source-order changes here don't affect it).
+- [ ] **[HIGH]** Hide inline-expand date chips and description toggle from desktop placeholder todo row
+  - Description: The blank placeholder todo row (the `+ Add a task — press Enter` dashed row at the top of every project's task list) is rendering a chip cluster on its right side: `Today`, `Tomorrow`, a calendar icon, and a `+ ¶` description toggle. These chips are the mobile inline-expand task-creation affordance from the STACK design and should not appear on desktop at all — desktop placeholder rows should look identical to committed todo rows (checkbox / title input / due pill / drag handle / close button), just with the dashed `+ Add a task…` placeholder text and the leading `+` glyph. On mobile, the chips should only render when the user *taps* the placeholder to expand it into the active inline-creation state; the resting placeholder still looks identical to a committed row. Two things to fix: (1) hide the chip cluster on desktop entirely via `@media (min-width: 701px) { .chipCluster { display: none } }` (or whatever selector wraps the Today/Tomorrow/calendar/¶ controls), and (2) gate the chip cluster's rendering on mobile so it only appears when the placeholder row has an `.expanded` or `.active` class — the resting placeholder should look the same as a committed row regardless of viewport. The current state suggests the chips were added unconditionally to the placeholder row template in `toDoRow.js` (likely in `buildToDoRow` when `!item.tit`) without the mobile-only + active-only gating. Verify by grepping `toDoRow.js` for the chip-cluster element creation — it was likely added inside the `if (!item.tit)` branch alongside the `#addGlyph` placeholder cue. The fix is to either (a) remove the chip-cluster creation entirely from the placeholder template and add it dynamically on focus/tap (deferred to a future mobile inline-expand entry), or (b) keep the cluster in the DOM but hide it via CSS in all states except mobile + expanded.
+  - Behavior:
+    1. On desktop (>700px), placeholder row renders identically to a committed row: `[+ glyph][placeholder input "Add a task — press Enter"][due pill][drag handle][close button]` — no chips, no extra controls
+    2. On mobile (≤700px) at rest, placeholder row also renders identically to a committed row — chips hidden until the user taps the input
+    3. Chip cluster (`Today`, `Tomorrow`, calendar, `+ ¶`) is currently leaking onto desktop and onto the resting mobile placeholder; both should be eliminated
+    4. The cluster's eventual mobile home is the inline-expand state from the STACK design (entry 3 from the original trio: "Add mobile task interactions: inline-expand creation, tap-to-view, swipe complete and delete") — until that entry lands, the cluster should be hidden in all states
   - Acceptance criteria:
-    - On mobile, dotted up-arrow renders directly below the dashed input and directly above the ghost mascot — never below the mascot
-    - Arrow's chevron tip points up toward the input's bottom edge with reasonable visual proximity (≤8px gap)
-    - Desktop layout is unchanged (up-arrow stays `display: none` above 700px)
-    - `ALL CAUGHT UP` and `NO PROJECTS` variants are unchanged
+    - Desktop placeholder row matches a committed row visually — no chip controls visible
+    - Mobile placeholder row at rest also matches a committed row — no chips at rest
+    - The placeholder input's existing focus / commit / Enter-to-create behavior is unchanged
+    - The leading `+` glyph (`#addGlyph`) remains as the only placeholder-row-specific affordance
+    - The placeholder row's `pointer-events` and click handlers are unchanged — first click still focuses the input
   - Implementation notes:
-    - In `emptyState.js`'s `done === 0` branch, move the `block.appendChild(upArrow)` call to immediately follow whatever appends the input (or, given the input is hoisted to the top of the block, place `upArrow` right after the input append and before the mascot)
-    - No CSS changes needed — purely a source-order swap
-  - Out of scope: redesigning the arrow's visual style; mascot size or position tuning
-  - File: `toDoList_main/src/emptyState.js`
-  - Completed: 2026-05-11
-
-- [x] **[LOW]** Reorder ALL CAUGHT UP empty-state on mobile to place input above ghost mascot
-  - Description: On the STACK mobile `ALL CAUGHT UP` empty state, the new-task input is rendering at the bottom of the empty-state block (below the green ghost, sparkles, title, and sub), but the prototype places the input at the top of the empty pane so the user can keep adding tasks without scrolling past the celebratory mascot. Same pattern as the previous `NO TODOS YET` reorder fix — that entry only touched the `done === 0` branch in `emptyState.js`, leaving the `done > 0` `emptyStateAllCaughtUp` branch with the original append order: `mascot → icon → sparkles → title → sub → input`. Mobile DOM should be `input → mascot → sparkles → title → sub` (no up-arrow on this variant — the celebratory ghost doesn't need a directional cue back to the input). Use the same approach as the previous fix: hoist the input to the top of the block when building, then add `order: 99` to `#emptyState.emptyStateAllCaughtUp #emptyStateInput` on desktop so the input returns to the bottom of the desktop flex column (preserving current desktop layout). The mascot, sparkles, and up-arrow are all `display: none` on desktop, so source-order changes here only affect mobile rendering.
-  - Acceptance criteria:
-    - On mobile `ALL CAUGHT UP`: input renders at the top of the empty pane (below the project header divider), green ghost + sparkles below it, `ALL CAUGHT UP` title and `N todos completed.` sub below the ghost, then the COMPLETED section as the next mainList child
-    - On desktop `ALL CAUGHT UP` (701px+): input stays at the bottom of the block — unchanged from current behavior
-    - Input placeholder text remains `New item` on both variants
-    - Sparkles' absolute positioning around the mascot still reads correctly (the `.emptyStateSparkles` element uses `transform: translateY(-130px)` to overlay on the mascot — verify this still lands on the ghost after the source-order swap)
-  - Implementation notes:
-    - In `emptyState.js`, the `done > 0` branch in `updateEmptyState` builds the block with `block.appendChild(mascot)` → `block.appendChild(icon)` → `block.appendChild(sparkles)` → `block.appendChild(title)` → `block.appendChild(sub)` → `block.appendChild(input)`. Move the `input` append to the top of this sequence (or insert before the mascot)
-    - Add `#emptyState.emptyStateAllCaughtUp #emptyStateInput { order: 99 }` in the desktop CSS scope (outside the mobile media query, since the parent `#mainList.emptyStatePresent` is `display: flex` on both viewports). The desktop CSS for the input is in the main empty-state block — drop the `order` rule near it
-    - Verify the sparkles' `transform: translateY(-130px)` still positions them over the mascot after the swap; if the mascot is now in a different flex position, the offset may need adjustment
-  - Out of scope: changing the COMPLETED section's behavior or position; tuning the sparkles' twinkle animation; redesigning the mascot
-  - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
+    - `toDoRow.js`'s `buildToDoRow` is the likely culprit — the chip cluster was probably added inside the `if (!item.tit)` branch that already creates `#addGlyph`
+    - The cleanest fix is to remove the chip-cluster element creation entirely from the placeholder template, since (a) it's not used on desktop, (b) the mobile inline-expand entry isn't built yet, and (c) leaving dead DOM in the placeholder row risks future divergence. The cluster can be re-introduced as part of entry 3 when the inline-expand state is actually wired up
+    - If the cluster element creation is reused by other code paths, gate it with CSS instead: `#toDoChild:has(#addGlyph) .chipCluster { display: none }` (the placeholder is the only row with `#addGlyph`)
+    - Check the recent commit history on `toDoRow.js` for the chip-cluster addition — likely landed in the same PR as the previous mobile-layout corrective entry but slipped past review because it only manifests on resting placeholder rows
+  - Out of scope: building the mobile inline-expand state (entry 3 from the STACK trio — separate ticket); date-chip persistence across chained entries; description toggle behavior
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
