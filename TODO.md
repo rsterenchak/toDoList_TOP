@@ -2,27 +2,55 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Hide inline-expand date chips and description toggle from desktop placeholder todo row
-  - Description: The blank placeholder todo row (the `+ Add a task — press Enter` dashed row at the top of every project's task list) is rendering a chip cluster on its right side: `Today`, `Tomorrow`, a calendar icon, and a `+ ¶` description toggle. These chips are the mobile inline-expand task-creation affordance from the STACK design and should not appear on desktop at all — desktop placeholder rows should look identical to committed todo rows (checkbox / title input / due pill / drag handle / close button), just with the dashed `+ Add a task…` placeholder text and the leading `+` glyph. On mobile, the chips should only render when the user *taps* the placeholder to expand it into the active inline-creation state; the resting placeholder still looks identical to a committed row. Two things to fix: (1) hide the chip cluster on desktop entirely via `@media (min-width: 701px) { .chipCluster { display: none } }` (or whatever selector wraps the Today/Tomorrow/calendar/¶ controls), and (2) gate the chip cluster's rendering on mobile so it only appears when the placeholder row has an `.expanded` or `.active` class — the resting placeholder should look the same as a committed row regardless of viewport. The current state suggests the chips were added unconditionally to the placeholder row template in `toDoRow.js` (likely in `buildToDoRow` when `!item.tit`) without the mobile-only + active-only gating. Verify by grepping `toDoRow.js` for the chip-cluster element creation — it was likely added inside the `if (!item.tit)` branch alongside the `#addGlyph` placeholder cue. The fix is to either (a) remove the chip-cluster creation entirely from the placeholder template and add it dynamically on focus/tap (deferred to a future mobile inline-expand entry), or (b) keep the cluster in the DOM but hide it via CSS in all states except mobile + expanded.
-  - Behavior:
-    1. On desktop (>700px), placeholder row renders identically to a committed row: `[+ glyph][placeholder input "Add a task — press Enter"][due pill][drag handle][close button]` — no chips, no extra controls
-    2. On mobile (≤700px) at rest, placeholder row also renders identically to a committed row — chips hidden until the user taps the input
-    3. Chip cluster (`Today`, `Tomorrow`, calendar, `+ ¶`) is currently leaking onto desktop and onto the resting mobile placeholder; both should be eliminated
-    4. The cluster's eventual mobile home is the inline-expand state from the STACK design (entry 3 from the original trio: "Add mobile task interactions: inline-expand creation, tap-to-view, swipe complete and delete") — until that entry lands, the cluster should be hidden in all states
+- [ ] **[HIGH]** Respect iOS safe-area-inset-top on STACK mobile welcome and project header
+  - Description: On iPhone with notch / Dynamic Island, the iOS status bar (time, signal, battery) is overlapping the top of the mobile UI — both the welcome empty state's ghost mascot area and the project header's `PROJECT N OF M` label region. The `viewport-fit=cover` meta is set and `env(safe-area-inset-top)` is being used in `#outerContainer`'s grid track and `#navBar`'s padding, but the welcome state (which has `#navBar` hidden after the previous corrective entry) and the project header aren't getting that inset. When `#navBar` is `display: none` on mobile, the safe-area-inset-top reservation needs to move to whichever element is now the topmost — `#mobileProjHeader` for projects-loaded screens, and the empty-state container for the welcome screen. Two fixes: (1) `#mobileProjHeader { padding-top: calc(env(safe-area-inset-top, 0px) + 14px) }` and adjust the absolute-positioned `#sidebarToggle` inside it to `top: calc(env(safe-area-inset-top, 0px) + 8px)`. (2) On the welcome empty state (`#emptyState.emptyStateNoProjects`), add `padding-top: calc(env(safe-area-inset-top, 0px) + 48px)` so the ghost mascot doesn't tuck under the status bar / Dynamic Island. The hamburger on the welcome screen also needs to shift down by the same inset since it's the only top-bar control there.
   - Acceptance criteria:
-    - Desktop placeholder row matches a committed row visually — no chip controls visible
-    - Mobile placeholder row at rest also matches a committed row — no chips at rest
-    - The placeholder input's existing focus / commit / Enter-to-create behavior is unchanged
-    - The leading `+` glyph (`#addGlyph`) remains as the only placeholder-row-specific affordance
-    - The placeholder row's `pointer-events` and click handlers are unchanged — first click still focuses the input
+    - On a notched iPhone (15 Pro, X-series, etc.), the iOS status bar never overlaps `PROJECT N OF M` or the project name
+    - On the welcome empty state, the ghost mascot starts below the Dynamic Island / status bar with comfortable breathing room (≥24px gap)
+    - The hamburger toggle on both screens sits below the status bar, never tucked behind it
+    - On non-notched devices and browser DevTools at iPhone SE sizes, the layout is unchanged (the env() value resolves to 0)
+    - Status bar style continues to use the existing `apple-mobile-web-app-status-bar-style: black-translucent` so the OS chrome blends with the app's dark theme
   - Implementation notes:
-    - `toDoRow.js`'s `buildToDoRow` is the likely culprit — the chip cluster was probably added inside the `if (!item.tit)` branch that already creates `#addGlyph`
-    - The cleanest fix is to remove the chip-cluster element creation entirely from the placeholder template, since (a) it's not used on desktop, (b) the mobile inline-expand entry isn't built yet, and (c) leaving dead DOM in the placeholder row risks future divergence. The cluster can be re-introduced as part of entry 3 when the inline-expand state is actually wired up
-    - If the cluster element creation is reused by other code paths, gate it with CSS instead: `#toDoChild:has(#addGlyph) .chipCluster { display: none }` (the placeholder is the only row with `#addGlyph`)
-    - Check the recent commit history on `toDoRow.js` for the chip-cluster addition — likely landed in the same PR as the previous mobile-layout corrective entry but slipped past review because it only manifests on resting placeholder rows
-  - Out of scope: building the mobile inline-expand state (entry 3 from the STACK trio — separate ticket); date-chip persistence across chained entries; description toggle behavior
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
+    - `#outerContainer` already allocates `calc(var(--nav-h) + env(safe-area-inset-top))` for the nav row — with `#navBar` now `display: none` on mobile, that track collapses, freeing the space. The inset needs to be re-applied to whatever sits at the top of the visible viewport instead
+    - For the welcome state, the `#emptyState.emptyStateNoProjects` block currently uses `padding: 48px 16px 40px` on mobile — bump the top padding to absorb the inset
+    - For the project-loaded state, the `#mobileProjHeader { padding: 14px 16px 10px }` becomes `padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px`
+    - The hamburger's absolute position inside `#mobileProjHeader` was set to `top: calc(env(safe-area-inset-top, 0px) + 8px)` in the previous entry — verify it landed, since the screenshot shows it sitting flush at the very top edge of the viewport
+  - Out of scope: home-indicator (bottom) safe area on the footer; landscape orientation behavior
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[HIGH]** Suppress iOS native text-selection on long-press of project rows
+  - Description: On iOS, long-pressing a project row in the mobile drawer fires *both* the iOS native text-selection gesture (showing the blue selection handles + `Edit` callout bar with copy/lookup) *and* the app's custom project context menu (color swatches + Delete). The two stack on top of each other, the native selection visible underneath the custom menu. The app's `attachProjectContextMenu` in `projectRow.js` wires a 500ms touch long-press timer that calls `showProjectContextMenu`, but doesn't prevent the iOS default selection gesture from firing on the same long-press. Fix is to add CSS `user-select: none` and `-webkit-user-select: none` to `#projChild` and its descendant `#projInput` at the ≤700px breakpoint (or globally — desktop right-click for context menu doesn't need text selection either), plus `-webkit-touch-callout: none` to suppress the iOS callout bar entirely. The `touch-action: manipulation` rule already exists for `#projChild` in the mobile media query but doesn't cover selection. Verify the rename flow still works after this fix — when a user activates Edit from the context menu, the `#projInput` needs to become editable (the existing `Edit` handler sets `pointer-events: auto; cursor: text` and focuses it); confirm that focusing the input automatically re-enables text editing in iOS despite the user-select: none on the parent.
+  - Acceptance criteria:
+    - Long-press on a project row in the mobile drawer shows ONLY the app's custom context menu (color swatches + Edit / Delete) — no iOS blue selection handles, no `Edit / Copy / Look Up` callout bar
+    - Rename flow still works: tap `Edit` in the context menu → input becomes editable, soft keyboard appears, user can type and commit
+    - Long-press on a todo row (which has its own context menu / swipe behavior in a future entry) is unaffected by this change — todos use a different selector
+    - Desktop right-click on a project row still opens the custom context menu without any text-selection artifacts
+  - Implementation notes:
+    - Add to `#projChild` in style.css: `user-select: none; -webkit-user-select: none; -webkit-touch-callout: none`
+    - `#projInput` inherits user-select from its parent; need to explicitly override when it becomes editable. The existing `Edit` handler in `projectRow.js` sets `pointer-events: auto; cursor: text` — also set `user-select: auto; -webkit-user-select: auto` at the same time
+    - Re-lock the input after rename commit (the existing `keydown` handler on `Enter` sets `pointer-events: none; cursor: default` — also re-set `user-select: none`)
+    - `-webkit-touch-callout: none` is the key rule — it's the iOS-specific property that suppresses the long-press callout bar, separate from selection
+  - Out of scope: same fix for todo rows (separate entry needed if/when todo long-press lands); changing the long-press timeout
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/projectRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+     
+- [ ] **[MEDIUM]** Hide hamburger toggle when mobile drawer is open
+  - Description: When the mobile drawer is open, the hamburger toggle is rendering *inside* the drawer's top-right corner (image 3) where the drawer's own X close button should be the only dismiss affordance. The hamburger is positioned absolutely within `#mobileProjHeader` (per the recent corrective entry that moved it from `#navBar`), but the drawer slides over `#mobileProjHeader` and the hamburger paints on top of the drawer's surface — making it look like a control inside the drawer rather than the one outside it that opened the drawer. The result is two controls in the same corner: the hamburger and the X close button stacked. Fix is to hide `#sidebarToggle` whenever the drawer is open, using a CSS sibling selector or a class on the body / html. Cleanest approach: when `#sideBar.sidebar-open` is present, hide `#sidebarToggle` via `body:has(#sideBar.sidebar-open) #sidebarToggle { display: none }` at the ≤700px breakpoint. The X close button inside the drawer takes over dismissal, along with the existing Escape and backdrop tap paths.
+  - Acceptance criteria:
+    - Mobile drawer closed: hamburger visible at the top-right of `#mobileProjHeader`, tap opens the drawer
+    - Mobile drawer open: hamburger hidden entirely, only the X close button inside the drawer is visible at the top-right
+    - Closing the drawer (via X, backdrop, Escape) restores the hamburger
+    - Desktop layout (701px+) is unchanged — desktop sidebar is a persistent rail/full pane, not a drawer
+    - The transition between drawer open / closed doesn't visually flash the hamburger (a brief opacity transition or `display: none` swap is fine)
+  - Implementation notes:
+    - Add `body:has(#sideBar.sidebar-open) #sidebarToggle { display: none }` inside the existing `@media (max-width: 700px)` block
+    - Alternatively, set a class on `<html>` or `<body>` when the drawer opens (in the existing `openSidebar` / `closeSidebar` functions in main.js) and key the CSS off that — slightly more compatible with older browsers, but `:has()` is now widely supported
+    - The X close button (`#mobileSidebarClose`) is positioned absolutely inside `#sideTit` at `top: 8px; right: 8px` and is hidden on desktop — verify it remains the sole top-right control inside the open drawer
+    - No JS changes needed if going the `:has()` route
+  - Out of scope: animating the hamburger → X transformation; changing the drawer's slide-in direction; adding a swipe-to-close gesture
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
