@@ -2681,12 +2681,27 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 8px;
   }
 
-  /* Hide the desktop breadcrumb in the main column and the empty
-     mainTitle bar — the mobile header replaces both. Bulk desc actions
-     re-anchor to the right edge of the mobile header instead of the
-     mainTitle row, but that's deferred to a follow-up; keep the
-     mainTitle visible so #bulkDescActions stays reachable. */
+  /* Hide the desktop breadcrumb in the main column and collapse the
+     empty mainTitle row — the mobile header replaces both. #mainBar's
+     desktop grid reserves a --row-h track for #mainTitle; without a
+     third track the mobileProjHeader gets stuffed into that fixed-height
+     track and pushes its content into a dead band. Switch the grid to
+     three auto tracks (header, title, list) and hide the title row so
+     mainList sits flush below the mobile header.
+
+     #bulkDescActions lives inside #mainTitle so it disappears too, but
+     the drawer's "Expand all descriptions" toggle calls
+     bulkDescToggleBtn.click() directly — display:none doesn't disable
+     a button, so the toggle stays fully reachable. */
   #mainCrumb { display: none; }
+  #mainBar   { grid-template-rows: auto auto 1fr; }
+  #mainTitle { display: none; }
+
+  /* The mobile header's #mobileProjCounts already shows open/done
+     counts under the project name; the desktop footer counts would
+     duplicate them in the bottom chrome. Hide them on mobile so the
+     footer collapses to the version label only. */
+  #footCounts { display: none; }
 
   /* ── Mobile drawer X close button ──
      Top-right of the sidebar drawer at the ≤700px breakpoint. Pairs

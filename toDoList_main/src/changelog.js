@@ -13,13 +13,7 @@ export const changelog = [
         ],
         changed: [
             'Mobile swipe-to-complete and swipe-to-delete now commit at half the task row’s width, so the action triggers consistently no matter how wide the row renders.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-10',
-        fixed: [
-            'Arrow Down from the sidebar toggle now lands on the first project instead of jumping past the sidebar to the first todo.',
+            'Mobile project header now sits flush above the todo list with page dots visible on the stats row, and the footer no longer duplicates the open/done counts.',
         ],
     },
 ];
