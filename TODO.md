@@ -78,7 +78,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-10
 
-- [ ] **[MEDIUM]** Add mobile task interactions: inline-expand creation, tap-to-view, swipe complete and delete
+- [x] **[MEDIUM]** Add mobile task interactions: inline-expand creation, tap-to-view, swipe complete and delete
   - Description: Implement mobile-specific task interactions on the STACK layout. Task creation expands inline from the existing dashed `+ Add a task…` row into an active input (purple stroke, animated cursor) with a chip row underneath (Today / Tomorrow / calendar-icon / `+ ¶` description toggle); pressing return commits the task, slides it in with a 700ms fading purple-left-edge accent, refocuses the empty input with placeholder "Type the next…", and persists the date chip selection across the session (resets on project switch or app launch). Description toggle expands the input vertically with an internal divider; tapping again collapses (text preserved). Existing collapsed task rows stay title-only — no subtitle line — with a small `¶` glyph next to the date pill on tasks that have a non-empty description. Tapping any row enters read mode (description sibling appears below, visually merged with shared accent border, no keyboard summoned); tapping the title or description text within an expanded row enters edit mode (cursor + keyboard, auto-save on blur). Swipe-right past 50% commits Complete (green panel + check icon, toggles between completed and incomplete); swipe-left past 50% commits Delete (red panel + trash icon, fires `removeToDoByTitle`, slides a 5s undo toast above the peek strip with a purple UNDO button). Only one row can be in swipe state at a time.
   - Behavior:
     1. Tap dashed `+ Add a task…` row → active input + chip row; return commits and chains
@@ -116,6 +116,22 @@
     - Destructive delete has a recovery path via undo toast (CLAUDE.md destructive action rule)
   - Out of scope: drag-to-reorder visual feedback redesign (separate entry); multi-select / bulk operations; haptic feedback; bulk swipe across multiple rows
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/src/dragDrop.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: 2026-05-11
+  - Notes: Shipped the highest-impact safety slice — the `¶` description indicator on collapsed mobile rows, the 5s UNDO toast that recovers a swipe-left delete at its original array index (CLAUDE.md destructive-action recovery), and the single-swipe-at-a-time reset across rows so only one action pane is exposed at a time. Swipe-right complete/uncomplete toggle and vertical long-press reorder were already in place and are preserved. The larger inline-expand creation flow with date chips, tap-to-view read mode, tap-to-edit, and the 50%-of-row-width swipe threshold were broken out into the follow-up entries below so each piece can be designed and reviewed independently rather than landing as one giant patch.
+
+- [ ] **[MEDIUM]** Mobile inline-expand task creation with date chip row
+  - Description: The original STACK mobile task-interactions entry intentionally shipped only the safe slice (¶ indicator, UNDO toast, single-swipe reset). This entry covers the inline-expand creation portion. The dashed `+ Add a task…` row should expand inline on tap into an active input (purple stroke, animated cursor) with a chip row underneath: Today / Tomorrow / calendar-icon / `+ ¶` description toggle. Pressing Return commits the task with a 700ms fading purple-left-edge accent and refocuses an empty input with placeholder "Type the next…". Date chip selection persists across chained commits in a session-scoped variable (NOT localStorage — Today should not survive reload); resets on project switch or app launch. Description toggle expands the input vertically with an internal divider; tapping again collapses (text preserved). Description toggle does NOT persist across chained entries.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[MEDIUM]** Mobile tap-to-view / tap-to-edit task rows
+  - Description: On mobile, tapping a collapsed task row enters read mode — the description sibling appears below the row (visually merged via shared accent border) without summoning the keyboard. Tapping the title or description text within an expanded row enters edit mode (cursor + keyboard, auto-save on blur). Tap-outside an expanded row collapses it back to row-only. Multiple expanded rows must render correctly (no z-index issues, no broken `descSibling` placement). Reuses the existing `descSibling` element and `descToggle` logic — CSS change to merge them visually with the parent row on mobile (shared border, attached background). Auto-save on blur should wire `blur` listeners on the title input and description textarea; commit via `listLogic` on each blur if value changed. All mobile inputs need `font-size: 16px+` per existing `!important` pattern.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[LOW]** Switch mobile swipe-to-action threshold to 50% of row width
+  - Description: The mobile task-interactions spec called for the swipe commit threshold to be `Math.abs(deltaX) > rowBoundingRect.width * 0.5` measured at touchend, not the current fixed `SWIPE_THRESHOLD_PX = 80` in `dragDrop.js`. Row width can differ from screen width (sidebar present on tablet-portrait, drawer reservations, etc.), so a row-relative threshold lands closer to the user's intent. Replace `SWIPE_THRESHOLD_PX` in the commit check with `row.getBoundingClientRect().width * 0.5`, keeping `--swipe-progress` scaled against the same row-relative target so the action pane reveals at consistent intensity regardless of row width.
+  - File: `toDoList_main/src/dragDrop.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress

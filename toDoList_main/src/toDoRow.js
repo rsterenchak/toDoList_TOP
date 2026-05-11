@@ -28,6 +28,7 @@ import {
     updateRecurringGlyph,
 } from './dueDate.js';
 import { showConfirmModal } from './modals.js';
+import { showUndoToast } from './undoToast.js';
 import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
 
@@ -40,6 +41,22 @@ function defaultDueParts() {
     const future = new Date();
     future.setDate(future.getDate() + DEFAULT_DUE_OFFSET_DAYS);
     return { m: future.getMonth() + 1, d: future.getDate(), y: future.getFullYear() };
+}
+
+
+// Mirror `item.desc` onto `data-has-desc` on the row so CSS can surface a
+// small "¶" pilcrow next to the date pill when a collapsed row carries a
+// non-empty description. The data-attribute drives the indicator instead
+// of a JS-managed child element so descSibling edits / restores can keep
+// state in sync with a single attribute write per change.
+function updateDescIndicator(toDoChild, item) {
+    if (!toDoChild) return;
+    const has = !!(item && typeof item.desc === 'string' && item.desc.trim().length > 0);
+    if (has) {
+        toDoChild.setAttribute('data-has-desc', 'true');
+    } else {
+        toDoChild.removeAttribute('data-has-desc');
+    }
 }
 
 
@@ -354,6 +371,7 @@ export function buildToDoRow(item, toDoName) {
     updateDuePillLabel(duePill, item);
     applyDueUrgency(toDoChild, item);
     updateRecurringGlyph(toDoChild, item);
+    updateDescIndicator(toDoChild, item);
 
     duePill.addEventListener('click', function(event) {
         event.stopPropagation();
@@ -367,7 +385,11 @@ export function buildToDoRow(item, toDoName) {
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
-    attachToDoDrag(toDoChild, toDoInput, toDoName, { checkToDo: checkToDo, closeButtonToDo: closeButtonToDo });
+    attachToDoDrag(toDoChild, toDoInput, toDoName, {
+        checkToDo: checkToDo,
+        closeButtonToDo: closeButtonToDo,
+        item: item
+    });
     wireToDoRowClick(toDoChild, toDoInput);
 
     // Browsers natively toggle a checkbox on Space but NOT on Enter. Adding
@@ -480,6 +502,7 @@ export function buildToDoRow(item, toDoName) {
         item.desc = val;
         listLogic.saveToStorage();
         descInput.style.border = "none";
+        updateDescIndicator(toDoChild, item);
         descInput.blur();
     });
 
@@ -487,12 +510,14 @@ export function buildToDoRow(item, toDoName) {
     descInput.addEventListener("keyup", function() {
         item.desc = descInput.value.trim();
         listLogic.saveToStorage();
+        updateDescIndicator(toDoChild, item);
     });
 
     // descInput blur — persist on click-away so cleared values aren't lost
     descInput.addEventListener("blur", function() {
         item.desc = descInput.value.trim();
         listLogic.saveToStorage();
+        updateDescIndicator(toDoChild, item);
     });
 
     // Escape on the description cancels the in-progress edit by restoring
@@ -671,8 +696,11 @@ export function reorderToDoDOM(projectName) {
 // math, and text selection inside the title input isn't hijacked by the
 // browser's drag handler during editing.
 // `swipeTargets` (optional) wires horizontal swipe-to-complete / swipe-to-delete
-// on touch devices. Reuses the existing checkbox change and close-button click
-// paths so persistence and delete confirmation stay identical.
+// on touch devices. Swipe-right reuses the existing checkbox change path so
+// persistence is identical. Swipe-left commits the delete immediately (no
+// confirm modal — the mobile flow uses a 5s UNDO toast for recovery per
+// the STACK mobile task-interactions spec) and surfaces an undo affordance
+// the user can tap to restore the row at its original position.
 export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
 
     const swipeCfg = swipeTargets ? {
@@ -685,7 +713,45 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
         onLeft: function() {
             const btn = swipeTargets.closeButtonToDo;
             if (!btn || btn.style.display === 'none') return;
-            btn.click();
+            const item = swipeTargets.item;
+            // Resolve the live project name from the row — the closed-over
+            // `project` value may be stale if the user navigated away and
+            // back, but the row's data-value is kept in sync by selectProject.
+            const projectName = toDoChild.dataset && toDoChild.dataset.value
+                ? toDoChild.dataset.value
+                : project;
+            if (!item || !projectName) {
+                // Fall back to the existing confirm-modal path when we can't
+                // identify the item — keeps the safety net intact for any
+                // unexpected wiring instead of silently dropping the action.
+                btn.click();
+                return;
+            }
+            const items = listLogic.listItems(projectName) || [];
+            const originalIndex = items.indexOf(item);
+            if (originalIndex === -1) return;
+
+            const label = (item.tit || '').trim() || 'todo';
+
+            listLogic.removeToDoByItem(projectName, item);
+
+            const mainDiv = document.getElementById('mainList');
+            if (mainDiv) {
+                while (mainDiv.firstChild) { mainDiv.removeChild(mainDiv.firstChild); }
+                addAllToDo_DOM(listLogic.listItems(projectName), projectName);
+            }
+
+            showUndoToast({
+                label: 'Deleted "' + label + '"',
+                onUndo: function() {
+                    listLogic.insertToDoAt(projectName, item, originalIndex);
+                    const md = document.getElementById('mainList');
+                    if (md) {
+                        while (md.firstChild) { md.removeChild(md.firstChild); }
+                        addAllToDo_DOM(listLogic.listItems(projectName), projectName);
+                    }
+                }
+            });
         }
     } : null;
 

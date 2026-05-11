@@ -221,6 +221,21 @@ export function setupRowDrag(row, cfg) {
         if (event.touches.length !== 1) return;
         if (!cfg.isDraggable()) return;
 
+        // Single-swipe-at-a-time: a new gesture starting on this row resets
+        // any other row that's currently mid-swipe or mid-snapback in the
+        // document. Without this, a rapid swap of finger between rows can
+        // leave a previous row visually translated while a new gesture
+        // takes over, which competes for the user's attention and breaks
+        // the expectation that only one action pane is exposed.
+        document.querySelectorAll('.swiping, .swipe-releasing').forEach(function(other) {
+            if (other === row) return;
+            if (other._swipeReleaseTimer) {
+                clearTimeout(other._swipeReleaseTimer);
+                other._swipeReleaseTimer = null;
+            }
+            resetSwipeRow(other);
+        });
+
         // A new gesture cancels any pending swipe snap-back on this row so
         // the starting transform snaps to the user's finger cleanly.
         if (row._swipeReleaseTimer) {

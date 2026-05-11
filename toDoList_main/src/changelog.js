@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-05-10',
+        date: '2026-05-11',
         added: [
-            'Mobile gains a bottom utility sheet that surfaces the Pomodoro timer and music player as a peek strip when running and expands to full controls on tap.',
+            'Swipe-left to delete a task on mobile now offers a 5-second UNDO to restore the task at its original spot, and rows with descriptions get a small ¶ marker beside the date pill.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-05-10',
         fixed: [
             'Arrow keys now navigate between the projects sidebar, the header buttons, and the footer version label so keyboard users can move across the chrome without tabbing.',
             'Arrow Down from the sidebar toggle now lands on the first project instead of jumping past the sidebar to the first todo.',
