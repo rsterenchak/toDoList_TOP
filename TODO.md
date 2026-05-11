@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Hide inline-expand date chips and description toggle from desktop placeholder todo row
+- [x] **[HIGH]** Hide inline-expand date chips and description toggle from desktop placeholder todo row
   - Description: The blank placeholder todo row (the `+ Add a task — press Enter` dashed row at the top of every project's task list) is rendering a chip cluster on its right side: `Today`, `Tomorrow`, a calendar icon, and a `+ ¶` description toggle. These chips are the mobile inline-expand task-creation affordance from the STACK design and should not appear on desktop at all — desktop placeholder rows should look identical to committed todo rows (checkbox / title input / due pill / drag handle / close button), just with the dashed `+ Add a task…` placeholder text and the leading `+` glyph. On mobile, the chips should only render when the user *taps* the placeholder to expand it into the active inline-creation state; the resting placeholder still looks identical to a committed row. Two things to fix: (1) hide the chip cluster on desktop entirely via `@media (min-width: 701px) { .chipCluster { display: none } }` (or whatever selector wraps the Today/Tomorrow/calendar/¶ controls), and (2) gate the chip cluster's rendering on mobile so it only appears when the placeholder row has an `.expanded` or `.active` class — the resting placeholder should look the same as a committed row regardless of viewport. The current state suggests the chips were added unconditionally to the placeholder row template in `toDoRow.js` (likely in `buildToDoRow` when `!item.tit`) without the mobile-only + active-only gating. Verify by grepping `toDoRow.js` for the chip-cluster element creation — it was likely added inside the `if (!item.tit)` branch alongside the `#addGlyph` placeholder cue. The fix is to either (a) remove the chip-cluster creation entirely from the placeholder template and add it dynamically on focus/tap (deferred to a future mobile inline-expand entry), or (b) keep the cluster in the DOM but hide it via CSS in all states except mobile + expanded.
   - Behavior:
     1. On desktop (>700px), placeholder row renders identically to a committed row: `[+ glyph][placeholder input "Add a task — press Enter"][due pill][drag handle][close button]` — no chips, no extra controls
@@ -22,7 +22,7 @@
     - Check the recent commit history on `toDoRow.js` for the chip-cluster addition — likely landed in the same PR as the previous mobile-layout corrective entry but slipped past review because it only manifests on resting placeholder rows
   - Out of scope: building the mobile inline-expand state (entry 3 from the STACK trio — separate ticket); date-chip persistence across chained entries; description toggle behavior
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 

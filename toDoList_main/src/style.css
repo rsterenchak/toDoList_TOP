@@ -2898,6 +2898,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #drawerView,
   #drawerAppearance,
   #drawerFooter { display: none; }
+  #mobileCreateChips { display: none; }
 }
 
 /* ══════════════════════════════════════════
