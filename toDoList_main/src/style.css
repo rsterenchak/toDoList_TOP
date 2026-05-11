@@ -2306,8 +2306,9 @@ body.row-dragging * { cursor: grabbing !important; }
 
   /* Reset the desktop `order: 99` override so the input renders at its
      natural source-order position (top of the block) on mobile. The
-     mobile NO TODOS YET layout is [input, mascot, up-arrow, title, sub]
-     so the dotted arrow visually points up at the input above it. */
+     mobile NO TODOS YET layout is [input, up-arrow, mascot, title, sub]
+     so the dotted arrow's tip terminates just below the input it points
+     up at, with the ghost mascot sitting beneath the arrow. */
   #emptyState.emptyStateNoTodos #emptyStateInput {
     order: 0;
   }
