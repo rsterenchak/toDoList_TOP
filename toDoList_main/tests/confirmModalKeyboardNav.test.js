@@ -28,26 +28,18 @@ describe('confirm modal — focus + arrow-key navigation', () => {
         return nextFn === -1 ? after : after.slice(0, nextFn);
     }
 
+    // Returns the body of the rule whose selector list contains `selector`.
+    // Tolerates grouped selectors like "#a:focus,\n#a:focus-visible { ... }"
+    // — finds the selector substring, then reads from the next `{` to the
+    // following `}`. Cheap O(n) scan, no per-character regex allocation.
     function extractTopLevelRule(selector) {
-        let depth = 0;
-        for (let i = 0; i < css.length; i++) {
-            const c = css[i];
-            if (c === '{') { depth++; continue; }
-            if (c === '}') { depth--; continue; }
-            if (depth !== 0) continue;
-            // Match selector lists like "#a,\n#b" — find the matching name as
-            // either the start of a list or after a comma.
-            const head = css.slice(i);
-            const re = new RegExp(
-                '^(?:[^{}]*[,\\s])?' + selector.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&') + '\\b'
-            );
-            if (re.test(head.split('{')[0])) {
-                const blockStart = css.indexOf('{', i);
-                const blockEnd = css.indexOf('}', blockStart);
-                return css.slice(blockStart + 1, blockEnd);
-            }
-        }
-        throw new Error(`Top-level rule for "${selector}" not found`);
+        const idx = css.indexOf(selector);
+        if (idx === -1) throw new Error(`Selector "${selector}" not found in CSS`);
+        const blockStart = css.indexOf('{', idx);
+        if (blockStart === -1) throw new Error(`No opening brace after "${selector}"`);
+        const blockEnd = css.indexOf('}', blockStart);
+        if (blockEnd === -1) throw new Error(`No closing brace after "${selector}"`);
+        return css.slice(blockStart + 1, blockEnd);
     }
 
     it('focuses the Cancel button on open, not the Delete/Confirm button', () => {
