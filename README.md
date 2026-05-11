@@ -1,6 +1,6 @@
 # Project and Task Manager Application
 
-
+![Tests](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/test.yml/badge.svg)
 
 ## Overview
 
