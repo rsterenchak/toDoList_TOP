@@ -19,7 +19,7 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
      
-- [ ] **[HIGH]** Suppress iOS native text-selection on long-press of project rows
+- [x] **[HIGH]** Suppress iOS native text-selection on long-press of project rows
   - Description: On iOS, long-pressing a project row in the mobile drawer fires *both* the iOS native text-selection gesture (showing the blue selection handles + `Edit` callout bar with copy/lookup) *and* the app's custom project context menu (color swatches + Delete). The two stack on top of each other, the native selection visible underneath the custom menu. The app's `attachProjectContextMenu` in `projectRow.js` wires a 500ms touch long-press timer that calls `showProjectContextMenu`, but doesn't prevent the iOS default selection gesture from firing on the same long-press. Fix is to add CSS `user-select: none` and `-webkit-user-select: none` to `#projChild` and its descendant `#projInput` at the ≤700px breakpoint (or globally — desktop right-click for context menu doesn't need text selection either), plus `-webkit-touch-callout: none` to suppress the iOS callout bar entirely. The `touch-action: manipulation` rule already exists for `#projChild` in the mobile media query but doesn't cover selection. Verify the rename flow still works after this fix — when a user activates Edit from the context menu, the `#projInput` needs to become editable (the existing `Edit` handler sets `pointer-events: auto; cursor: text` and focuses it); confirm that focusing the input automatically re-enables text editing in iOS despite the user-select: none on the parent.
   - Acceptance criteria:
     - Long-press on a project row in the mobile drawer shows ONLY the app's custom context menu (color swatches + Edit / Delete) — no iOS blue selection handles, no `Edit / Copy / Look Up` callout bar
@@ -33,7 +33,7 @@
     - `-webkit-touch-callout: none` is the key rule — it's the iOS-specific property that suppresses the long-press callout bar, separate from selection
   - Out of scope: same fix for todo rows (separate entry needed if/when todo long-press lands); changing the long-press timeout
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/projectRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
      
 - [ ] **[MEDIUM]** Hide hamburger toggle when mobile drawer is open
   - Description: When the mobile drawer is open, the hamburger toggle is rendering *inside* the drawer's top-right corner (image 3) where the drawer's own X close button should be the only dismiss affordance. The hamburger is positioned absolutely within `#mobileProjHeader` (per the recent corrective entry that moved it from `#navBar`), but the drawer slides over `#mobileProjHeader` and the hamburger paints on top of the drawer's surface — making it look like a control inside the drawer rather than the one outside it that opened the drawer. The result is two controls in the same corner: the hamburger and the X close button stacked. Fix is to hide `#sidebarToggle` whenever the drawer is open, using a CSS sibling selector or a class on the body / html. Cleanest approach: when `#sideBar.sidebar-open` is present, hide `#sidebarToggle` via `body:has(#sideBar.sidebar-open) #sidebarToggle { display: none }` at the ≤700px breakpoint. The X close button inside the drawer takes over dismissal, along with the existing Escape and backdrop tap paths.
