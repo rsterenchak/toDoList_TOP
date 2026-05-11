@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-11',
         fixed: [
-            'Mobile nav bar now shows only the hamburger menu — the pomodoro, music, and ghost menu icons no longer appear on phones.',
             'Mobile project header now renders in SpaceMono with a project-accent title color, and the empty-state block always paints below the header.',
             'Hamburger menu now anchors at the top-right of the mobile project header, removing the empty nav band that previously sat above it.',
             'Mobile no-todos empty state now positions the task input above the ghost mascot and dotted up-arrow, so the arrow points up at the input it was designed to indicate.',
             'Mobile no-todos empty state\'s dotted up-arrow now sits directly between the task input and the ghost mascot, anchoring its tip to the input above.',
+        ],
+        changed: [
+            'Mobile all-caught-up empty state now places the new-task input above the green ghost mascot, keeping adding tasks within reach.',
         ],
     },
 ];

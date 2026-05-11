@@ -72,7 +72,7 @@ describe('STACK mobile NO TODOS YET source order', () => {
         expect(order).toEqual(['input', 'upArrow', 'mascot', 'icon', 'title', 'sub']);
     });
 
-    it('keeps the all-caught-up variant input at the bottom of the block', () => {
+    it('renders the input as the first child of the all-caught-up empty-state block', () => {
         const mainList = makeMainList();
         addCommittedRow(mainList, 'finished task', true);
         addCommittedRow(mainList, '', false);
@@ -81,12 +81,17 @@ describe('STACK mobile NO TODOS YET source order', () => {
         const block = mainList.querySelector('#emptyState.emptyStateAllCaughtUp');
         expect(block).not.toBeNull();
 
-        // The all-caught-up variant is unchanged by the no-todos reorder
-        // — sparkles flow with the mascot, and the input stays at the
-        // bottom of the block in source order.
+        // The all-caught-up variant mirrors the no-todos reorder: the
+        // input is hoisted to the top of the block in source order so
+        // the user can keep adding tasks without scrolling past the
+        // celebratory green ghost. Desktop preserves the historical
+        // [icon, title, sub, input] layout via a CSS `order: 99` rule;
+        // mobile resets that so the natural source order paints.
         const order = Array.from(block.children).map(classOf);
-        expect(order[0]).toBe('mascot');
-        expect(order[order.length - 1]).toBe('input');
+        expect(order[0]).toBe('input');
+        expect(order[1]).toBe('mascot');
+        expect(order[order.length - 2]).toBe('title');
+        expect(order[order.length - 1]).toBe('sub');
     });
 
     it('preserves the dashed accent border CSS on the empty-state input', () => {
@@ -106,7 +111,17 @@ describe('STACK mobile NO TODOS YET source order', () => {
             // the visible desktop layout stays [icon, title, sub, input]
             // even though it appears first in source.
             expect(css).toMatch(
-                /#emptyState\.emptyStateNoTodos\s+#emptyStateInput\s*\{[^}]*order:\s*99/
+                /#emptyState\.emptyStateNoTodos\s+#emptyStateInput[\s\S]*?order:\s*99/
+            );
+        });
+
+        it('pushes the all-caught-up input to the bottom of the desktop flex column with order: 99', () => {
+            // Same desktop fallback as the no-todos variant: the input is
+            // first in source order on mobile, but `order: 99` pushes it
+            // back to the bottom of the desktop flex column so existing
+            // desktop layout is preserved.
+            expect(css).toMatch(
+                /#emptyState\.emptyStateAllCaughtUp\s+#emptyStateInput[\s\S]*?order:\s*99/
             );
         });
 
@@ -114,12 +129,15 @@ describe('STACK mobile NO TODOS YET source order', () => {
             // The mobile-scoped reset is required: without it, the desktop
             // `order: 99` rule would also apply on mobile and re-push the
             // input back to the bottom — defeating the whole point of the
-            // reorder.
+            // reorder. Both variants share the reset.
             const mobileBlockMatch = css.match(/@media\s*\(max-width:\s*700px\)\s*\{([\s\S]*)$/);
             expect(mobileBlockMatch).not.toBeNull();
             const mobileBlock = mobileBlockMatch[1];
             expect(mobileBlock).toMatch(
-                /#emptyState\.emptyStateNoTodos\s+#emptyStateInput\s*\{[^}]*order:\s*0/
+                /#emptyState\.emptyStateNoTodos\s+#emptyStateInput[\s\S]*?order:\s*0/
+            );
+            expect(mobileBlock).toMatch(
+                /#emptyState\.emptyStateAllCaughtUp\s+#emptyStateInput[\s\S]*?order:\s*0/
             );
         });
     });

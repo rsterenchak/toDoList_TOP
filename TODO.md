@@ -16,7 +16,7 @@
   - File: `toDoList_main/src/emptyState.js`
   - Completed: 2026-05-11
 
-- [ ] **[LOW]** Reorder ALL CAUGHT UP empty-state on mobile to place input above ghost mascot
+- [x] **[LOW]** Reorder ALL CAUGHT UP empty-state on mobile to place input above ghost mascot
   - Description: On the STACK mobile `ALL CAUGHT UP` empty state, the new-task input is rendering at the bottom of the empty-state block (below the green ghost, sparkles, title, and sub), but the prototype places the input at the top of the empty pane so the user can keep adding tasks without scrolling past the celebratory mascot. Same pattern as the previous `NO TODOS YET` reorder fix — that entry only touched the `done === 0` branch in `emptyState.js`, leaving the `done > 0` `emptyStateAllCaughtUp` branch with the original append order: `mascot → icon → sparkles → title → sub → input`. Mobile DOM should be `input → mascot → sparkles → title → sub` (no up-arrow on this variant — the celebratory ghost doesn't need a directional cue back to the input). Use the same approach as the previous fix: hoist the input to the top of the block when building, then add `order: 99` to `#emptyState.emptyStateAllCaughtUp #emptyStateInput` on desktop so the input returns to the bottom of the desktop flex column (preserving current desktop layout). The mascot, sparkles, and up-arrow are all `display: none` on desktop, so source-order changes here only affect mobile rendering.
   - Acceptance criteria:
     - On mobile `ALL CAUGHT UP`: input renders at the top of the empty pane (below the project header divider), green ghost + sparkles below it, `ALL CAUGHT UP` title and `N todos completed.` sub below the ghost, then the COMPLETED section as the next mainList child
@@ -29,7 +29,7 @@
     - Verify the sparkles' `transform: translateY(-130px)` still positions them over the mascot after the swap; if the mascot is now in a different flex position, the offset may need adjustment
   - Out of scope: changing the COMPLETED section's behavior or position; tuning the sparkles' twinkle animation; redesigning the mascot
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 

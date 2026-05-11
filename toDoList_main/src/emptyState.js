@@ -344,6 +344,13 @@ export function updateEmptyState(mainListDiv) {
         block.appendChild(title);
         block.appendChild(sub);
     } else {
+        // On ALL CAUGHT UP, mobile renders the input above the green
+        // ghost so the user can keep adding tasks without scrolling past
+        // the celebratory mascot. Desktop preserves the historical
+        // [icon, title, sub, input] layout via a CSS `order: 99` rule on
+        // the input — mascot, sparkles, and icon are display:none on
+        // desktop so reordering them in source has no visible effect.
+        block.appendChild(input);
         block.appendChild(mascot);
         block.appendChild(icon);
         const sparkles = document.createElement('div');
@@ -358,7 +365,6 @@ export function updateEmptyState(mainListDiv) {
         block.appendChild(sparkles);
         block.appendChild(title);
         block.appendChild(sub);
-        block.appendChild(input);
     }
 
     // Insert at the top of mainList. The placeholder row is hidden via CSS

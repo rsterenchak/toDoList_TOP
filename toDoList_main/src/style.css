@@ -1360,14 +1360,16 @@ body:has(#settingsMenu) #helpFab {
 }
 #emptyStateInput:focus::placeholder { color: transparent; }
 
-/* NO TODOS YET — the input is built first in source order so the
-   mobile up-arrow can visually anchor to it (the arrow points up at
-   the input above). On desktop the mascot/arrow are display:none and
-   the desktop layout expects [icon, title, sub, input], so push the
-   input back to the bottom of the flex column with `order`. Reset
-   `order` inside the ≤700px media block so mobile gets the natural
-   source-order layout with the input at the top. */
-#emptyState.emptyStateNoTodos #emptyStateInput {
+/* NO TODOS YET / ALL CAUGHT UP — the input is built first in source
+   order so the mobile mascot (and, on NO TODOS YET, the dotted up-arrow
+   anchored to the input above) can sit beneath it. On desktop the
+   mascot/arrow/sparkles are display:none and the desktop layout expects
+   [icon, title, sub, input], so push the input back to the bottom of
+   the flex column with `order`. Reset `order` inside the ≤700px media
+   block so mobile gets the natural source-order layout with the input
+   at the top. */
+#emptyState.emptyStateNoTodos #emptyStateInput,
+#emptyState.emptyStateAllCaughtUp #emptyStateInput {
   order: 99;
 }
 
@@ -2308,8 +2310,12 @@ body.row-dragging * { cursor: grabbing !important; }
      natural source-order position (top of the block) on mobile. The
      mobile NO TODOS YET layout is [input, up-arrow, mascot, title, sub]
      so the dotted arrow's tip terminates just below the input it points
-     up at, with the ghost mascot sitting beneath the arrow. */
-  #emptyState.emptyStateNoTodos #emptyStateInput {
+     up at, with the ghost mascot sitting beneath the arrow. ALL CAUGHT
+     UP follows the same pattern: [input, mascot, sparkles, title, sub]
+     keeps the input within reach so the user can add tasks without
+     scrolling past the celebratory ghost. */
+  #emptyState.emptyStateNoTodos #emptyStateInput,
+  #emptyState.emptyStateAllCaughtUp #emptyStateInput {
     order: 0;
   }
 
