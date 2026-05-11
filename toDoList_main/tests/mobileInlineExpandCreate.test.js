@@ -270,6 +270,21 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(mediaIdx).toBeGreaterThan(-1);
         expect(chipsIdx).toBeGreaterThan(mediaIdx);
     });
+
+    it('hides the chip cluster at the ≥701px desktop breakpoint', () => {
+        // The chip DOM is attached unconditionally to every blank placeholder
+        // so the JS path stays single-branch, but on desktop the cluster
+        // (Today / Tomorrow / 📅 / + ¶) must never paint — desktop
+        // placeholder rows must look identical to committed rows.
+        const desktopBlocks = Array.from(
+            css.matchAll(/@media\s*\(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g)
+        );
+        expect(desktopBlocks.length).toBeGreaterThan(0);
+        const hidesChips = desktopBlocks.some(function(m) {
+            return /#mobileCreateChips\s*\{[^}]*display:\s*none/.test(m[0]);
+        });
+        expect(hidesChips).toBe(true);
+    });
 });
 
 
