@@ -320,19 +320,29 @@ export function updateEmptyState(mainListDiv) {
         target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
 
-    block.appendChild(mascot);
-    block.appendChild(icon);
-
     // STACK-only flourishes — sparkles around the green ghost on the
     // "all caught up" screen; a dotted up-arrow pointing at the input
     // on the "no todos yet" screen. Both are positioned absolutely
     // around the mascot via CSS and are display:none on desktop.
     if (done === 0) {
+        // On NO TODOS YET, mobile renders the input above the mascot so the
+        // dotted up-arrow visually anchors to the input it's pointing at.
+        // Desktop preserves the [icon, title, sub, input] layout via a CSS
+        // `order: 99` rule on the input — mascot and arrow are
+        // display:none on desktop so reordering them in source has no
+        // visible effect there.
+        block.appendChild(input);
+        block.appendChild(mascot);
+        block.appendChild(icon);
         const upArrow = document.createElement('div');
         upArrow.className = 'emptyStateUpArrow';
         upArrow.setAttribute('aria-hidden', 'true');
         block.appendChild(upArrow);
+        block.appendChild(title);
+        block.appendChild(sub);
     } else {
+        block.appendChild(mascot);
+        block.appendChild(icon);
         const sparkles = document.createElement('div');
         sparkles.className = 'emptyStateSparkles';
         sparkles.setAttribute('aria-hidden', 'true');
@@ -343,11 +353,10 @@ export function updateEmptyState(mainListDiv) {
             sparkles.appendChild(sp);
         }
         block.appendChild(sparkles);
+        block.appendChild(title);
+        block.appendChild(sub);
+        block.appendChild(input);
     }
-
-    block.appendChild(title);
-    block.appendChild(sub);
-    block.appendChild(input);
 
     // Insert at the top of mainList. The placeholder row is hidden via CSS
     // (#mainList.emptyStatePresent #toDoChild:first-of-type) so the block
