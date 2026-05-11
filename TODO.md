@@ -26,7 +26,7 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-05-11
 
-- [ ] **[MEDIUM]** Fix STACK mobile header typography and empty-state ordering to match prototype
+- [x] **[MEDIUM]** Fix STACK mobile header typography and empty-state ordering to match prototype
   - Description: The STACK mobile project header is rendering with the wrong typography family and color treatment, and the empty-state block on `NO TODOS YET` is hoisting above the header. Three corrections needed: (1) `#mobileProjName` should use SpaceMono in the project accent color, not the system sans serif in `var(--text-primary)` — the prototype calls for a monospace title in purple to match the rest of the Void theme's mono chrome, and the current `font-family: inherit; color: var(--text-primary)` renders it as plain sans-serif white. (2) `#mobileProjLabel` and `#mobileProjCounts` should also use SpaceMono with the tighter 0.12–0.16em letter-spacing already used for `#footVersion` and `#footOpen` / `#footDone` on desktop — the current `font-family: inherit` falls through to system sans and the letter shapes don't match the rest of the app's mono chrome. (3) On the `NO TODOS YET` empty state, the `#emptyState` block is rendering above `#mobileProjHeader` because `#mainList.emptyStatePresent` uses `display: flex; flex-direction: column` with `justify-content: center` and `#emptyState` flexes with `flex: 1 1 auto` — but on mobile, the empty state must render *below* the project header, not above it. Fix by ensuring `#mobileProjHeader` paints first regardless of empty state class on `#mainList`, since the two elements are siblings under `main2`. The root cause is likely that the empty state's `position` or the `#mainBar` grid is allowing the empty state to visually overflow upward; verify the DOM order by checking which element is `main2.firstChild` at runtime — `#mobileProjHeader` was appended before `#mainList`, so the visual reorder must be a CSS layout artifact.
   - Behavior:
     1. `#mobileProjName` renders in SpaceMono at 20–22px, weight 700, color `var(--accent)` (project's accent purple)
@@ -47,7 +47,7 @@
     - The `data-empty` attribute on `#mobileProjHeader` is set in `updateMobileProjHeader` based on `total > 0 && activeIdx >= 0` — if a project exists with zero todos, `total` is still > 0 so the header should render, but verify the runtime DOM to confirm
   - Out of scope: page dot spacing audit (separate entry); bottom sheet for utilities (entry 2); empty-state mascot tuning
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 

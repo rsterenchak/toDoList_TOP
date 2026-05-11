@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-11',
         added: [
-            'Adding a task on mobile now expands inline with Today / Tomorrow / 📅 date chips and a description toggle, with a purple flash on commit and a "Type the next…" prompt for chained entries.',
             'Tapping a task on mobile now expands the description below the row for a quick read without summoning the keyboard; tap the title or description text to start editing, or tap outside to collapse.',
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             'Mobile nav bar now shows only the hamburger menu — the pomodoro, music, and ghost menu icons no longer appear on phones.',
+            'Mobile project header now renders in SpaceMono with a project-accent title color, and the empty-state block always paints below the header.',
         ],
     },
 ];
