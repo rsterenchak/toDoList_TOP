@@ -2575,10 +2575,25 @@ function component() {
     // through the three-way close vocabulary (X button, backdrop, Escape).
 
     // Clear todo-active on all rows when clicking outside any todo row
+    // and collapse any rows that were auto-expanded into mobile-read mode
+    // by a tap (data-mobile-read="true"). Mobile-read collapse must respect
+    // the descSibling — tapping inside the description input should not
+    // collapse the row out from under the user mid-edit; only a tap that
+    // lands outside both the row and its description triggers collapse.
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('#toDoChild')) {
+        const insideRow = e.target.closest('#toDoChild');
+        const insideDesc = e.target.closest('#descSibling');
+        if (!insideRow) {
             document.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
                 el.classList.remove('todo-active');
+            });
+        }
+        if (!insideRow && !insideDesc) {
+            document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(function(el) {
+                const dt = el.querySelector('#descToggle');
+                if (dt && dt.classList.contains('open')) {
+                    dt.click();
+                }
             });
         }
     });

@@ -178,7 +178,17 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 // First click on a committed row marks it todo-active (enabling pointer-events on
 // the input). Second click on the input then focuses it for editing.
 // Blank placeholder rows skip straight to focus on first click.
-function wireToDoRowClick(toDoChild, toDoInput) {
+//
+// Mobile (≤700px) replaces the desktop one-tap-to-edit with a two-stage
+// tap-to-view / tap-to-edit flow on committed rows: the first tap on a
+// collapsed row programmatically opens the description panel via the
+// existing descToggle (so descSibling appears below) and marks the row
+// `data-mobile-read="true"` WITHOUT focusing the input — the user can read
+// the description without summoning the soft keyboard. A second tap on the
+// title input area falls through to the focus path below and enters edit
+// mode. The auto-opened state is auto-collapsed when the user taps outside
+// the row+descSibling unit (handled in main.js's document click listener).
+function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
     toDoChild.addEventListener('click', function(e) {
         // Let dedicated controls handle their own clicks without interference
         if (e.target.id === 'checkToDo'      ||
@@ -191,6 +201,35 @@ function wireToDoRowClick(toDoChild, toDoInput) {
         // Blank rows: focus immediately (user intends to type a new item)
         if (!toDoInput.value.trim()) {
             toDoInput.focus();
+            return;
+        }
+
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
+        const descOpen = !!(descToggle && descToggle.classList.contains('open'));
+
+        // Mobile tap-to-view: first tap on a collapsed committed row enters
+        // read mode (descSibling appears below) without summoning the
+        // keyboard. Subsequent taps on the title area fall through to the
+        // focus path so the user can edit.
+        if (isMobile && !descOpen && descToggle) {
+            // Only one row stays in mobile-read at a time — collapse any
+            // other rows that were auto-expanded by a previous tap.
+            document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(function(other) {
+                if (other === toDoChild) return;
+                const otherToggle = other.querySelector('#descToggle');
+                if (otherToggle && otherToggle.classList.contains('open')) {
+                    otherToggle.click();
+                }
+            });
+            descToggle.click();
+            toDoChild.setAttribute('data-mobile-read', 'true');
+            // Mark .todo-active so the input is interactive on the next tap
+            // (matches the existing committed-row activation rule), but do
+            // NOT call .focus() — that would summon the soft keyboard.
+            document.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+                if (el !== toDoChild) el.classList.remove('todo-active');
+            });
+            toDoChild.classList.add('todo-active');
             return;
         }
 
@@ -207,6 +246,19 @@ function wireToDoRowClick(toDoChild, toDoInput) {
             toDoInput.setSelectionRange(end, end);
         }
     });
+
+    // Whenever the description panel closes — manually via descToggle or
+    // programmatically via the outside-tap collapse — clear the
+    // mobile-read marker so the row's state stays in sync with what the
+    // user can actually see. Without this the next tap would skip the
+    // open-and-stay-in-read step and jump straight to focus.
+    if (descToggle) {
+        descToggle.addEventListener('click', function() {
+            if (!descToggle.classList.contains('open')) {
+                toDoChild.removeAttribute('data-mobile-read');
+            }
+        });
+    }
 }
 
 
@@ -411,7 +463,7 @@ export function buildToDoRow(item, toDoName) {
         closeButtonToDo: closeButtonToDo,
         item: item
     });
-    wireToDoRowClick(toDoChild, toDoInput);
+    wireToDoRowClick(toDoChild, toDoInput, descToggle);
 
     // Browsers natively toggle a checkbox on Space but NOT on Enter. Adding
     // Enter→toggle here keeps the keyboard contract uniform with the row's

@@ -2512,6 +2512,19 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 0 0 6px 6px;
   }
 
+  /* Tap-to-view: when a committed row is auto-expanded into read mode by
+     a tap (data-mobile-read), drape an accent left-edge across the row
+     so the descSibling below — which already paints a left accent border
+     — reads as a continuous card with the row above. Inset box-shadow is
+     used because the row's border is set inline from JS and would
+     otherwise win specificity over a CSS border rule. */
+  #toDoChild[data-mobile-read="true"] {
+    box-shadow: inset 2px 0 0 var(--accent-dim);
+  }
+  #toDoChild[data-mobile-read="true"] + #descSibling {
+    margin-top: -5px;
+  }
+
   /* 700ms fading purple left-edge accent on the just-committed row —
      the STACK spec's "fading purple-left-edge accent" cue. Uses inset
      box-shadow so the indicator paints inside the row's existing border
