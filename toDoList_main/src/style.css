@@ -2320,7 +2320,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #emptyState.emptyStateNoProjects {
-    padding: 48px 16px 40px;
+    padding: calc(env(safe-area-inset-top, 0px) + 48px) 16px 40px;
   }
   #emptyStateCreateBtn {
     width: 100%;
