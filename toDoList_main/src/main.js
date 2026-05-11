@@ -58,6 +58,7 @@ import {
     focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
+import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import {
     exportTodosToFile,
     importFromFile,
@@ -3815,6 +3816,13 @@ function restoreFromStorage() {
                 }
                 projChild.classList.remove("unselectedProject");
                 projChild.classList.add("selectedProject");
+
+                // STACK mobile inline-expand: project switch resets the
+                // session-scoped date chip back to Today and clears the
+                // chaining-mode placeholder so the new project's first
+                // blank reads as a fresh "Add a task…" rather than a
+                // continuation from the previous project.
+                resetMobileCreateSession();
 
                 const name  = titleInput.value;
                 const items = listLogic.listItems(name);

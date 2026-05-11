@@ -31,6 +31,12 @@ import { showConfirmModal } from './modals.js';
 import { showUndoToast } from './undoToast.js';
 import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
+import {
+    attachMobileCreateChips,
+    applyChosenDueToItem,
+    markChainingActive,
+    isChainingActive,
+} from './mobileTaskCreate.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -281,6 +287,14 @@ export function buildToDoRow(item, toDoName) {
     toDoInput.autocomplete = "off";
     toDoInput.id          = "toDoInput";
     toDoInput.placeholder = "Add a task — press Enter";
+    // Blank placeholders built after the user's first mobile commit in
+    // this project session switch to the "Type the next…" copy so the
+    // chained-entry flow reads as a continuous stream. The desktop
+    // affordance string above remains the default; only chained mobile
+    // blanks override it.
+    if (!item.tit && isChainingActive()) {
+        toDoInput.placeholder = "Type the next…";
+    }
     toDoInput.style.fontSize = "14px";
     toDoInput.value       = item.tit || "";
     toDoInput.style.border = "none";
@@ -373,6 +387,13 @@ export function buildToDoRow(item, toDoName) {
     updateRecurringGlyph(toDoChild, item);
     updateDescIndicator(toDoChild, item);
 
+    // STACK mobile inline-expand chips — only the blank placeholder gets
+    // the chip row, since it's the only row the chip controls (Today /
+    // Tomorrow / calendar / description toggle) make sense on. The chip
+    // row is visually surfaced via CSS at the ≤700px breakpoint when the
+    // row is focus-within.
+    attachMobileCreateChips(toDoChild, item);
+
     duePill.addEventListener('click', function(event) {
         event.stopPropagation();
         if (document.getElementById('dueDatePopover')) {
@@ -429,6 +450,14 @@ export function buildToDoRow(item, toDoName) {
         toDoInput.title = val;
         item.tit = val;
         item.pri = 2;
+        // STACK mobile inline-expand: if the user picked Today / Tomorrow
+        // from the chip row (or left the default Today), stamp that date
+        // before the desktop fallback. The chip module no-ops on Custom
+        // chip selection — the popover already wrote item.due in that
+        // path, so parseItemDue catches it below and the fallback skips.
+        if (window.innerWidth <= 700 && !parseItemDue(item)) {
+            applyChosenDueToItem(item, toDoChild);
+        }
         // If no due date is set yet, default to today + 7 days so the urgency
         // classes and footer counter have something meaningful to key off.
         if (!parseItemDue(item)) {
@@ -448,6 +477,28 @@ export function buildToDoRow(item, toDoName) {
         // Strip the blank-row affordance cue — once committed, this row is a
         // real todo and the leading `+` glyph would be misleading.
         if (addGlyph && addGlyph.parentElement) addGlyph.remove();
+
+        // STACK mobile commit accent — 700ms fading purple left-edge so the
+        // user sees their just-committed task land. Also flips the session
+        // into "chaining" mode so the next blank placeholder built by
+        // appendNewToDoRow uses the "Type the next…" copy instead of the
+        // initial dashed-row hint.
+        if (window.innerWidth <= 700) {
+            // Strip the blank-placeholder marker now that this row is a
+            // real todo; the chip row CSS rules key off the attribute.
+            toDoChild.removeAttribute('data-blank-placeholder');
+            toDoChild.classList.remove('mobile-create-row');
+            const chipRow = toDoChild.querySelector('#mobileCreateChips');
+            if (chipRow) chipRow.remove();
+
+            if (!prefersReducedMotion()) {
+                toDoChild.classList.add('justCommittedMobile');
+                setTimeout(function() {
+                    toDoChild.classList.remove('justCommittedMobile');
+                }, 700);
+            }
+            markChainingActive();
+        }
 
         toDoInput.blur();
         if (isFirstCommit) {

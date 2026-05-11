@@ -2441,6 +2441,94 @@ body.row-dragging * { cursor: grabbing !important; }
     box-shadow: 0 0 0 0.5px var(--accent), 0 0 12px var(--accent-glow);
   }
 
+  /* ── STACK mobile inline-expand task creation ──
+     The dashed `+ Add a task…` placeholder row expands inline on focus
+     to reveal a chip row underneath (Today / Tomorrow / 📅 / + ¶).
+     Hidden by default; surfaced when the row is focus-within. Layout
+     uses flex-wrap so the chip row drops to a second line under the
+     input + sub-controls without rebuilding the row's DOM. */
+  #toDoChild[data-blank-placeholder] {
+    border-style: dashed;
+    border-color: var(--border-mid);
+  }
+  #toDoChild[data-blank-placeholder]:focus-within {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--item-h);
+    padding-bottom: 8px;
+    border-style: solid;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.5px var(--accent), 0 0 14px var(--accent-glow);
+  }
+  #mobileCreateChips {
+    display: none;
+    flex-basis: 100%;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding-top: 8px;
+    margin-top: 6px;
+    border-top: 0.5px dashed var(--border-mid);
+  }
+  #toDoChild[data-blank-placeholder]:focus-within #mobileCreateChips {
+    display: flex;
+  }
+  .mobileCreateChip {
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 999px;
+    min-height: 44px;
+    padding: 0 14px;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .mobileCreateChip:hover { background: var(--bg-hover); }
+  .mobileCreateChip.mobileCreateChipSelected {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .mobileCreateDescChip {
+    margin-left: auto;
+  }
+
+  /* Description toggled open: visually merge the descSibling panel that
+     CSS already renders below the row by tightening the gap and sharing
+     a dashed divider — the spec calls for "an internal divider" so the
+     two read as one extended creation surface rather than two separate
+     boxes. */
+  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #descSibling {
+    margin-top: -5px;
+    border-top: 0.5px dashed var(--border-mid);
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* 700ms fading purple left-edge accent on the just-committed row —
+     the STACK spec's "fading purple-left-edge accent" cue. Uses inset
+     box-shadow so the indicator paints inside the row's existing border
+     radius without resizing the row or shifting siblings. */
+  #toDoChild.justCommittedMobile {
+    animation: justCommittedMobileFlash 0.7s ease-out;
+  }
+  @keyframes justCommittedMobileFlash {
+    0%   { box-shadow: inset 4px 0 0 var(--accent); }
+    100% { box-shadow: inset 4px 0 0 transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #toDoChild.justCommittedMobile {
+      animation: none;
+    }
+  }
+
   #projButton {
     width: 32px;
     height: 32px;
