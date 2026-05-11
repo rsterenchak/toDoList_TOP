@@ -1360,6 +1360,17 @@ body:has(#settingsMenu) #helpFab {
 }
 #emptyStateInput:focus::placeholder { color: transparent; }
 
+/* NO TODOS YET — the input is built first in source order so the
+   mobile up-arrow can visually anchor to it (the arrow points up at
+   the input above). On desktop the mascot/arrow are display:none and
+   the desktop layout expects [icon, title, sub, input], so push the
+   input back to the bottom of the flex column with `order`. Reset
+   `order` inside the ≤700px media block so mobile gets the natural
+   source-order layout with the input at the top. */
+#emptyState.emptyStateNoTodos #emptyStateInput {
+  order: 99;
+}
+
 /* When the empty-state block is present, switch #mainList from its
    fixed-row grid to a flex column so the block can center vertically
    in the available space. Completed rows (and the Completed header)
@@ -2291,6 +2302,14 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 16px !important;
     width: 100%;
     max-width: 320px;
+  }
+
+  /* Reset the desktop `order: 99` override so the input renders at its
+     natural source-order position (top of the block) on mobile. The
+     mobile NO TODOS YET layout is [input, mascot, up-arrow, title, sub]
+     so the dotted arrow visually points up at the input above it. */
+  #emptyState.emptyStateNoTodos #emptyStateInput {
+    order: 0;
   }
 
   #emptyState.emptyStateNoProjects {

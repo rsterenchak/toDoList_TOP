@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-11',
         changed: [
-            'Mobile swipe-to-complete and swipe-to-delete now commit at half the task row’s width, so the action triggers consistently no matter how wide the row renders.',
             'Mobile project header now sits flush above the todo list with page dots visible on the stats row, and the footer no longer duplicates the open/done counts.',
         ],
         fixed: [
             'Mobile nav bar now shows only the hamburger menu — the pomodoro, music, and ghost menu icons no longer appear on phones.',
             'Mobile project header now renders in SpaceMono with a project-accent title color, and the empty-state block always paints below the header.',
             'Hamburger menu now anchors at the top-right of the mobile project header, removing the empty nav band that previously sat above it.',
+            'Mobile no-todos empty state now positions the task input above the ghost mascot and dotted up-arrow, so the arrow points up at the input it was designed to indicate.',
         ],
     },
 ];
