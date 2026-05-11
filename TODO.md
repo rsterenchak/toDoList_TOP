@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Respect iOS safe-area-inset-top on STACK mobile welcome and project header
+- [x] **[HIGH]** Respect iOS safe-area-inset-top on STACK mobile welcome and project header
   - Description: On iPhone with notch / Dynamic Island, the iOS status bar (time, signal, battery) is overlapping the top of the mobile UI — both the welcome empty state's ghost mascot area and the project header's `PROJECT N OF M` label region. The `viewport-fit=cover` meta is set and `env(safe-area-inset-top)` is being used in `#outerContainer`'s grid track and `#navBar`'s padding, but the welcome state (which has `#navBar` hidden after the previous corrective entry) and the project header aren't getting that inset. When `#navBar` is `display: none` on mobile, the safe-area-inset-top reservation needs to move to whichever element is now the topmost — `#mobileProjHeader` for projects-loaded screens, and the empty-state container for the welcome screen. Two fixes: (1) `#mobileProjHeader { padding-top: calc(env(safe-area-inset-top, 0px) + 14px) }` and adjust the absolute-positioned `#sidebarToggle` inside it to `top: calc(env(safe-area-inset-top, 0px) + 8px)`. (2) On the welcome empty state (`#emptyState.emptyStateNoProjects`), add `padding-top: calc(env(safe-area-inset-top, 0px) + 48px)` so the ghost mascot doesn't tuck under the status bar / Dynamic Island. The hamburger on the welcome screen also needs to shift down by the same inset since it's the only top-bar control there.
   - Acceptance criteria:
     - On a notched iPhone (15 Pro, X-series, etc.), the iOS status bar never overlaps `PROJECT N OF M` or the project name
