@@ -35,7 +35,7 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/projectRow.js`
   - Completed: 2026-05-11
      
-- [ ] **[MEDIUM]** Hide hamburger toggle when mobile drawer is open
+- [x] **[MEDIUM]** Hide hamburger toggle when mobile drawer is open
   - Description: When the mobile drawer is open, the hamburger toggle is rendering *inside* the drawer's top-right corner (image 3) where the drawer's own X close button should be the only dismiss affordance. The hamburger is positioned absolutely within `#mobileProjHeader` (per the recent corrective entry that moved it from `#navBar`), but the drawer slides over `#mobileProjHeader` and the hamburger paints on top of the drawer's surface — making it look like a control inside the drawer rather than the one outside it that opened the drawer. The result is two controls in the same corner: the hamburger and the X close button stacked. Fix is to hide `#sidebarToggle` whenever the drawer is open, using a CSS sibling selector or a class on the body / html. Cleanest approach: when `#sideBar.sidebar-open` is present, hide `#sidebarToggle` via `body:has(#sideBar.sidebar-open) #sidebarToggle { display: none }` at the ≤700px breakpoint. The X close button inside the drawer takes over dismissal, along with the existing Escape and backdrop tap paths.
   - Acceptance criteria:
     - Mobile drawer closed: hamburger visible at the top-right of `#mobileProjHeader`, tap opens the drawer
@@ -50,7 +50,7 @@
     - No JS changes needed if going the `:has()` route
   - Out of scope: animating the hamburger → X transformation; changing the drawer's slide-in direction; adding a swipe-to-close gesture
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 
