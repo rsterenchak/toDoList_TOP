@@ -2285,6 +2285,14 @@ body.row-dragging * { cursor: grabbing !important; }
     transform: translateX(0);
   }
 
+  /* Hide the hamburger toggle while the drawer is open so the drawer's
+     own X close button is the sole top-right control — otherwise the
+     hamburger paints over the open drawer and stacks two controls in
+     the same corner. */
+  body:has(#sideBar.sidebar-open) #sidebarToggle {
+    display: none;
+  }
+
   .dragHandle { opacity: 1; }
 
   #toDoChild {
