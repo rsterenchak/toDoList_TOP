@@ -2577,6 +2577,14 @@ body.row-dragging * { cursor: grabbing !important; }
     padding: 14px 16px 10px;
     background: var(--bg-elevated);
     border-bottom: 0.5px solid var(--border-dim);
+    /* Establish a stacking context above #mainList so the empty-state
+       block (which lives inside #mainList) can never visually paint over
+       or hoist above the header at any viewport height. The header is
+       row 1 of #mainBar's grid and mainList is row 3 in source order, so
+       this is a defensive guarantee against any future flex/grid rule
+       that might reorder them. */
+    position: relative;
+    z-index: 1;
   }
 
   #mobileProjHeader[data-empty="true"] {
@@ -2584,7 +2592,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #mobileProjLabel {
-    font-family: inherit;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -2594,10 +2602,14 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #mobileProjName {
-    font-family: inherit;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 22px;
     font-weight: 700;
-    color: var(--text-primary);
+    /* Project accent (purple by default, recolored per-project via the
+       --proj-accent custom property set on #mobileProjHeader by
+       updateMobileProjHeader). Matches the Void theme's mono chrome
+       elsewhere — desktop's #mainCrumb already reads as accent-colored. */
+    color: var(--proj-accent, var(--accent));
     line-height: 1.18;
     /* Two-line wrap for long project names — mobile titles read better
        wrapped than ellipsised since the user expects to see the full
@@ -2621,7 +2633,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #mobileProjCounts {
     display: flex;
     gap: 12px;
-    font-family: inherit;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.12em;

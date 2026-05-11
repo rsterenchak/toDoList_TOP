@@ -3515,10 +3515,15 @@ function component() {
             mobileProjLabel.textContent = 'PROJECT ' + (activeIdx + 1) + ' OF ' + total;
             mobileProjName.textContent  = activeName;
             mobileProjHeader.removeAttribute('data-empty');
+            // Per-project accent flows into the title via --proj-accent on
+            // the header; mobileProjName resolves it through CSS
+            // var(--proj-accent, var(--accent)).
+            applyProjectAccent(mobileProjHeader, listLogic.getProjectColor(activeName));
         } else {
             mobileProjLabel.textContent = '';
             mobileProjName.textContent  = '';
             mobileProjHeader.setAttribute('data-empty', 'true');
+            applyProjectAccent(mobileProjHeader, null);
         }
 
         mobileProjOpen.textContent = open + ' open';
