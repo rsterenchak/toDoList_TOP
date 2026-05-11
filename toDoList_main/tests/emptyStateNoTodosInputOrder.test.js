@@ -63,12 +63,13 @@ describe('STACK mobile NO TODOS YET source order', () => {
         expect(block).not.toBeNull();
 
         const order = Array.from(block.children).map(classOf);
-        // The mobile-correct source order: input first, then mascot, icon,
-        // up-arrow, title, sub. On desktop the input is pushed to the
-        // bottom via CSS `order: 99`; mobile resets that to keep the
-        // natural source order. Desktop layout is verified by the CSS
-        // assertion below.
-        expect(order).toEqual(['input', 'mascot', 'icon', 'upArrow', 'title', 'sub']);
+        // The mobile-correct source order: input first, then the dotted
+        // up-arrow directly beneath it (so its chevron tip points at the
+        // input above), then the mascot, icon, title, and sub. On desktop
+        // the input is pushed to the bottom via CSS `order: 99`; mobile
+        // resets that to keep the natural source order. Desktop layout is
+        // verified by the CSS assertion below.
+        expect(order).toEqual(['input', 'upArrow', 'mascot', 'icon', 'title', 'sub']);
     });
 
     it('keeps the all-caught-up variant input at the bottom of the block', () => {

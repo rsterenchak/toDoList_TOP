@@ -327,17 +327,20 @@ export function updateEmptyState(mainListDiv) {
     if (done === 0) {
         // On NO TODOS YET, mobile renders the input above the mascot so the
         // dotted up-arrow visually anchors to the input it's pointing at.
-        // Desktop preserves the [icon, title, sub, input] layout via a CSS
-        // `order: 99` rule on the input — mascot and arrow are
-        // display:none on desktop so reordering them in source has no
-        // visible effect there.
+        // The arrow is appended directly after the input (and before the
+        // mascot) so the chevron tip terminates near the input's bottom
+        // edge — putting the arrow under the mascot would leave it
+        // pointing at the wrong element. Desktop preserves the
+        // [icon, title, sub, input] layout via a CSS `order: 99` rule on
+        // the input — mascot and arrow are display:none on desktop so
+        // reordering them in source has no visible effect there.
         block.appendChild(input);
-        block.appendChild(mascot);
-        block.appendChild(icon);
         const upArrow = document.createElement('div');
         upArrow.className = 'emptyStateUpArrow';
         upArrow.setAttribute('aria-hidden', 'true');
         block.appendChild(upArrow);
+        block.appendChild(mascot);
+        block.appendChild(icon);
         block.appendChild(title);
         block.appendChild(sub);
     } else {
