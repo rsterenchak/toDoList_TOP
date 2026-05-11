@@ -94,9 +94,13 @@ describe('STACK mobile nav utility buttons hidden', () => {
         expect(hit).not.toBeNull();
     });
 
-    it('#sidebarToggle (hamburger) is NOT hidden — it remains the only nav button on mobile', () => {
+    it('#sidebarToggle (hamburger) is NOT unconditionally hidden — it remains the only nav button on mobile when the drawer is closed', () => {
         // Strip comments so the source narrative around #sidebarToggle
         // (which can mention "display: none" elsewhere) can't be matched.
+        // The hamburger may be hidden conditionally while the drawer is
+        // open (see stackDrawerHidesHamburger.test.js) — that selector
+        // gates on #sideBar.sidebar-open, so it's not an unconditional
+        // hide and is allowed here.
         const blocks = allMobileMediaBlocks();
         for (const block of blocks) {
             const stripped = block.text.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -105,11 +109,12 @@ describe('STACK mobile nav utility buttons hidden', () => {
             while ((match = ruleRe.exec(stripped)) !== null) {
                 const selectorList = match[1];
                 const body = match[2];
-                if (/#sidebarToggle\b/.test(selectorList) && /display:\s*none/.test(body)) {
-                    throw new Error(
-                        'sidebarToggle is hidden by mobile rule: ' + selectorList.trim()
-                    );
-                }
+                if (!/#sidebarToggle\b/.test(selectorList)) continue;
+                if (!/display:\s*none/.test(body)) continue;
+                if (/#sideBar\.sidebar-open/.test(selectorList)) continue;
+                throw new Error(
+                    'sidebarToggle is unconditionally hidden by mobile rule: ' + selectorList.trim()
+                );
             }
         }
     });
