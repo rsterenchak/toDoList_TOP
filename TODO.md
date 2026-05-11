@@ -2,31 +2,27 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Move hamburger toggle to top-right of mobile project header, hide navBar on mobile
-  - Description: In the STACK prototype, the hamburger menu toggle sits at the top-right of the viewport, vertically aligned with the `PROJECT N OF M` label — not in a separate nav bar above the project header. The current build keeps `#sidebarToggle` in its desktop position inside `#navBar` (top-left of a dedicated 44px nav row), which adds an unnecessary chrome band above the project header and pushes the entire mobile layout down by `var(--nav-h) + env(safe-area-inset-top)`. Move the hamburger to the top-right of `#mobileProjHeader` and hide `#navBar` entirely at the ≤700px breakpoint. The mobile project header already uses `padding: 14px 16px 10px` and has `#mobileProjLabel` at the top — the hamburger should anchor to the top-right of that same row, sitting at the same vertical baseline as the label. Implementation can either (a) position `#sidebarToggle` absolutely within `#mobileProjHeader` at the breakpoint via `position: absolute; top: env(safe-area-inset-top, 0) + 10px; right: 16px`, or (b) restructure the header to use a two-row grid where row 1 is `[label | hamburger]` and row 2 is the name + stats. Option (a) preserves the existing DOM (hamburger stays in `#navBar`) and is purely a CSS move, but requires `#mobileProjHeader` to have `position: relative` and enough top padding to clear the absolute child. Option (b) is more semantic but requires the hamburger to be re-parented in main.js, which complicates the desktop fallback. Recommend option (a) — single-file CSS change, no main.js touched. With `#navBar { display: none }` at ≤700px, the project header becomes the topmost element and the safe-area-inset-top moves to `#mobileProjHeader` instead.
+- [ ] **[MEDIUM]** Reorder NO TODOS YET empty-state on mobile to place input above ghost and up-arrow
+  - Description: On the STACK mobile `NO TODOS YET` empty state, the dashed task input should sit at the top of the empty pane with the ghost mascot and dotted up-arrow rendered below it — the arrow points upward at the input as a visual cue ("type up there"). The current build renders the elements in the wrong order: ghost at top, then up-arrow, then `NO TODOS YET` title, then the `New item` input at the bottom — the up-arrow now points at the title rather than at the input it was designed to indicate. Fix is in `emptyState.js` where the block is built and appended: the current order is `[mascot, icon, upArrow, title, sub, input]` (with mascot/upArrow visible only on mobile). For the `emptyStateNoTodos` variant specifically, the mobile DOM should be `[input, mascot, upArrow, title, sub]` so the arrow visually anchors to the input above it. Don't reorder with CSS `flex order` — desktop's `emptyStateNoTodos` block uses the same DOM and the desktop ordering (`[icon, title, sub, input]`) is currently correct. Two options: (a) build the block with the input first when the variant is `emptyStateNoTodos`, then use CSS `order` to push the input back down on desktop to preserve current desktop layout, or (b) detect mobile via `window.matchMedia('(max-width: 700px)')` at build time and conditionally insert the input at the top of the block. Option (a) is cleaner — single DOM, layout-driven swap. The `emptyStateAllCaughtUp` and `emptyStateNoProjects` variants don't have this issue and stay as-is.
   - Behavior:
-    1. Below 701px, `#navBar` is `display: none` — its 44px chrome band disappears entirely
-    2. `#sidebarToggle` repositions to the top-right of `#mobileProjHeader` via absolute positioning, sitting at the same vertical baseline as `#mobileProjLabel`
-    3. `#mobileProjHeader` absorbs the safe-area-inset-top padding that previously lived on `#navBar`, so iOS notch / Dynamic Island clearance is preserved
-    4. The project name (`#mobileProjName`) and stats (`#mobileProjStats`) sit below the label+hamburger row with the existing 6px column gap
-    5. Above 701px, the hamburger returns to its desktop position inside `#navBar` and `#mobileProjHeader` is hidden — desktop layout is unchanged
+    1. On mobile `NO TODOS YET`: input renders at the top of the empty pane (immediately below the project header divider), gray ghost mascot below it, dotted up-arrow below the ghost pointing up at the input, then `NO TODOS YET` title and sub
+    2. The dashed accent border on the input (added in the previous corrective entry — `border-color: var(--accent); border-style: dashed`) remains
+    3. Up-arrow's dotted shaft visually terminates near the bottom edge of the input above it — verify the existing `.emptyStateUpArrow` height (38px) places its tip close enough to the input; bump if needed
+    4. Desktop `NO TODOS YET` (701px+) keeps the existing order: title → sub → input at the bottom (current behavior)
+    5. `ALL CAUGHT UP` and `NO PROJECTS` variants are unchanged on both mobile and desktop
   - Acceptance criteria:
-    - Hamburger sits at the top-right of the viewport at the ≤700px breakpoint, on the same horizontal line as `PROJECT N OF M`
-    - No 44px empty band above the project header
-    - Hamburger remains a ≥44×44 hit target (the existing `width: 36px; height: 36px` is below the touch standard — increase to 44×44 on mobile via the breakpoint override, or add invisible padding)
-    - iOS safe-area-inset-top is respected — on a notched device the hamburger doesn't tuck behind the Dynamic Island
-    - Tapping the hamburger still opens the drawer; X / backdrop / Escape close it as before
-    - Desktop layout (701px+) is unchanged
+    - Mobile `NO TODOS YET` renders input → ghost → arrow → title → sub, top to bottom
+    - The up-arrow's chevron tip points at the input above it, not at the title below it
+    - Desktop `NO TODOS YET` layout is unchanged
+    - The empty-state input's focus and Enter-to-commit behavior is unchanged (still delegates to the hidden placeholder row's `#toDoInput`)
   - Implementation notes:
-    - `#sidebarToggle` already exists in `#navBar` — keep it there, just reposition it absolutely at the breakpoint
-    - `#mobileProjHeader` needs `position: relative` and top padding bumped to accommodate the absolute child: roughly `padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px`
-    - `#sidebarToggle` at ≤700px: `position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); right: 12px; width: 44px; height: 44px; z-index: 2`
-    - `#navBar` at ≤700px: `display: none`
-    - `#mobileProjHeader` and `#mobileProjStats` already use `padding-top: 14px` and the label sits at the top — the hamburger's `top: calc(env(...) + 8px)` should land it ~2px above the label baseline for visual centering with the small mono label text
-    - `#outerContainer`'s grid at the breakpoint currently allocates `calc(var(--nav-h) + env(safe-area-inset-top))` for the nav row — with the nav hidden, that track collapses naturally since the nav is `display: none`, but verify the grid doesn't reserve the space anyway (`#outerContainer { grid-template-rows: calc(var(--nav-h) + env(safe-area-inset-top)) minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom)) }` will still hold the slot empty). Fix by overriding to `grid-template-rows: 0 minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom))` at the breakpoint, or by collapsing the nav row entirely via `grid-template-rows: auto minmax(0, 1fr) auto`
-  - Out of scope: bottom sheet that re-mounts pomodoro + music (entry 2); hamburger long-press menu; redesigning the project header's two-row layout to put the hamburger on its own row
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-11
+    - In `emptyState.js`, when `done === 0` (the `emptyStateNoTodos` branch), append the input to the block before the mascot rather than at the end
+    - On desktop, add `order: 99` to `#emptyState.emptyStateNoTodos #emptyStateInput` so it returns to the bottom of the flex column — desktop's `#emptyState` is `display: flex; flex-direction: column` (from `#mainList.emptyStatePresent`), so `order` works
+    - On mobile, the input already has natural source order at the top — no CSS needed at the breakpoint
+    - The mascot, up-arrow, and sparkles are `display: none` on desktop anyway (their `display: block` rule lives in the mobile media query), so the desktop layout effectively renders `[title, sub, input]` regardless of where the input sits in source order
+  - Out of scope: changing the `ALL CAUGHT UP` or `NO PROJECTS` layouts; redesigning the up-arrow shape; mascot animation
+  - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
