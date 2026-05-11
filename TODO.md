@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Reorder NO TODOS YET empty-state on mobile to place input above ghost and up-arrow
+- [x] **[MEDIUM]** Reorder NO TODOS YET empty-state on mobile to place input above ghost and up-arrow
   - Description: On the STACK mobile `NO TODOS YET` empty state, the dashed task input should sit at the top of the empty pane with the ghost mascot and dotted up-arrow rendered below it — the arrow points upward at the input as a visual cue ("type up there"). The current build renders the elements in the wrong order: ghost at top, then up-arrow, then `NO TODOS YET` title, then the `New item` input at the bottom — the up-arrow now points at the title rather than at the input it was designed to indicate. Fix is in `emptyState.js` where the block is built and appended: the current order is `[mascot, icon, upArrow, title, sub, input]` (with mascot/upArrow visible only on mobile). For the `emptyStateNoTodos` variant specifically, the mobile DOM should be `[input, mascot, upArrow, title, sub]` so the arrow visually anchors to the input above it. Don't reorder with CSS `flex order` — desktop's `emptyStateNoTodos` block uses the same DOM and the desktop ordering (`[icon, title, sub, input]`) is currently correct. Two options: (a) build the block with the input first when the variant is `emptyStateNoTodos`, then use CSS `order` to push the input back down on desktop to preserve current desktop layout, or (b) detect mobile via `window.matchMedia('(max-width: 700px)')` at build time and conditionally insert the input at the top of the block. Option (a) is cleaner — single DOM, layout-driven swap. The `emptyStateAllCaughtUp` and `emptyStateNoProjects` variants don't have this issue and stay as-is.
   - Behavior:
     1. On mobile `NO TODOS YET`: input renders at the top of the empty pane (immediately below the project header divider), gray ghost mascot below it, dotted up-arrow below the ghost pointing up at the input, then `NO TODOS YET` title and sub
@@ -22,7 +22,7 @@
     - The mascot, up-arrow, and sparkles are `display: none` on desktop anyway (their `display: block` rule lives in the mobile media query), so the desktop layout effectively renders `[title, sub, input]` regardless of where the input sits in source order
   - Out of scope: changing the `ALL CAUGHT UP` or `NO PROJECTS` layouts; redesigning the up-arrow shape; mascot animation
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 
