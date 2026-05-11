@@ -50,7 +50,7 @@
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`, plus new ghost mascot SVGs in `toDoList_main/src/`
   - Completed: 2026-05-10
 
-- [ ] **[MEDIUM]** Add bottom sheet utility surface for Pomodoro and music on mobile
+- [x] **[MEDIUM]** Add bottom sheet utility surface for Pomodoro and music on mobile
   - Description: Add a bottom-anchored utility surface for the STACK mobile layout that houses the Pomodoro timer and the YouTube music player across three states: IDLE (12px collapsed handle nub at the bottom edge, still tappable to expand), PEEK (48px strip when timer or music is running, with a 3px drag handle, timer status with green dot + `MM:SS` on the left, divider, music status with `♪` + station name + animated CSS visualizer bars on the right, and an expand chevron `⌃` on the far right), and EXPANDED (sheet at ~50% viewport height with a faint `--accent` top edge, dimmed backdrop over STACK content above, drag handle pill, POMODORO section with big `MM:SS` + Reset / Pause·Start / Skip controls, MUSIC section with now-playing card and a `›` chevron opening an inline station picker drilldown that swaps the sheet content). The 240×135 YouTube iframe stays hidden in the DOM by default with audio-only role; a "Show video" toggle inside the picker reveals it inline above the station list.
   - Behavior:
     1. IDLE → PEEK on timer start or music play; if both active, peek shows both segments side by side
@@ -76,7 +76,7 @@
     - Backdrop tap on the picker drilldown returns to controls view, not all the way to dismiss
   - Out of scope: Pomodoro session config (interval lengths, sound) — uses existing defaults; lock-screen / notification-center integration; PiP video for music
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-10
 
 - [ ] **[MEDIUM]** Add mobile task interactions: inline-expand creation, tap-to-view, swipe complete and delete
   - Description: Implement mobile-specific task interactions on the STACK layout. Task creation expands inline from the existing dashed `+ Add a task…` row into an active input (purple stroke, animated cursor) with a chip row underneath (Today / Tomorrow / calendar-icon / `+ ¶` description toggle); pressing return commits the task, slides it in with a 700ms fading purple-left-edge accent, refocuses the empty input with placeholder "Type the next…", and persists the date chip selection across the session (resets on project switch or app launch). Description toggle expands the input vertically with an internal divider; tapping again collapses (text preserved). Existing collapsed task rows stay title-only — no subtitle line — with a small `¶` glyph next to the date pill on tasks that have a non-empty description. Tapping any row enters read mode (description sibling appears below, visually merged with shared accent border, no keyboard summoned); tapping the title or description text within an expanded row enters edit mode (cursor + keyboard, auto-save on blur). Swipe-right past 50% commits Complete (green panel + check icon, toggles between completed and incomplete); swipe-left past 50% commits Delete (red panel + trash icon, fires `removeToDoByTitle`, slides a 5s undo toast above the peek strip with a purple UNDO button). Only one row can be in swipe state at a time.
