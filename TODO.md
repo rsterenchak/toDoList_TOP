@@ -124,10 +124,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-11
 
-- [ ] **[MEDIUM]** Mobile tap-to-view / tap-to-edit task rows
+- [x] **[MEDIUM]** Mobile tap-to-view / tap-to-edit task rows
   - Description: On mobile, tapping a collapsed task row enters read mode — the description sibling appears below the row (visually merged via shared accent border) without summoning the keyboard. Tapping the title or description text within an expanded row enters edit mode (cursor + keyboard, auto-save on blur). Tap-outside an expanded row collapses it back to row-only. Multiple expanded rows must render correctly (no z-index issues, no broken `descSibling` placement). Reuses the existing `descSibling` element and `descToggle` logic — CSS change to merge them visually with the parent row on mobile (shared border, attached background). Auto-save on blur should wire `blur` listeners on the title input and description textarea; commit via `listLogic` on each blur if value changed. All mobile inputs need `font-size: 16px+` per existing `!important` pattern.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 - [x] **[LOW]** Switch mobile swipe-to-action threshold to 50% of row width
   - Description: The mobile task-interactions spec called for the swipe commit threshold to be `Math.abs(deltaX) > rowBoundingRect.width * 0.5` measured at touchend, not the current fixed `SWIPE_THRESHOLD_PX = 80` in `dragDrop.js`. Row width can differ from screen width (sidebar present on tablet-portrait, drawer reservations, etc.), so a row-relative threshold lands closer to the user's intent. Replace `SWIPE_THRESHOLD_PX` in the commit check with `row.getBoundingClientRect().width * 0.5`, keeping `--swipe-progress` scaled against the same row-relative target so the action pane reveals at consistent intensity regardless of row width.
