@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Move hamburger toggle to top-right of mobile project header, hide navBar on mobile
+- [x] **[MEDIUM]** Move hamburger toggle to top-right of mobile project header, hide navBar on mobile
   - Description: In the STACK prototype, the hamburger menu toggle sits at the top-right of the viewport, vertically aligned with the `PROJECT N OF M` label — not in a separate nav bar above the project header. The current build keeps `#sidebarToggle` in its desktop position inside `#navBar` (top-left of a dedicated 44px nav row), which adds an unnecessary chrome band above the project header and pushes the entire mobile layout down by `var(--nav-h) + env(safe-area-inset-top)`. Move the hamburger to the top-right of `#mobileProjHeader` and hide `#navBar` entirely at the ≤700px breakpoint. The mobile project header already uses `padding: 14px 16px 10px` and has `#mobileProjLabel` at the top — the hamburger should anchor to the top-right of that same row, sitting at the same vertical baseline as the label. Implementation can either (a) position `#sidebarToggle` absolutely within `#mobileProjHeader` at the breakpoint via `position: absolute; top: env(safe-area-inset-top, 0) + 10px; right: 16px`, or (b) restructure the header to use a two-row grid where row 1 is `[label | hamburger]` and row 2 is the name + stats. Option (a) preserves the existing DOM (hamburger stays in `#navBar`) and is purely a CSS move, but requires `#mobileProjHeader` to have `position: relative` and enough top padding to clear the absolute child. Option (b) is more semantic but requires the hamburger to be re-parented in main.js, which complicates the desktop fallback. Recommend option (a) — single-file CSS change, no main.js touched. With `#navBar { display: none }` at ≤700px, the project header becomes the topmost element and the safe-area-inset-top moves to `#mobileProjHeader` instead.
   - Behavior:
     1. Below 701px, `#navBar` is `display: none` — its 44px chrome band disappears entirely
@@ -26,7 +26,7 @@
     - `#outerContainer`'s grid at the breakpoint currently allocates `calc(var(--nav-h) + env(safe-area-inset-top))` for the nav row — with the nav hidden, that track collapses naturally since the nav is `display: none`, but verify the grid doesn't reserve the space anyway (`#outerContainer { grid-template-rows: calc(var(--nav-h) + env(safe-area-inset-top)) minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom)) }` will still hold the slot empty). Fix by overriding to `grid-template-rows: 0 minmax(0, 1fr) calc(var(--foot-h) + env(safe-area-inset-bottom))` at the breakpoint, or by collapsing the nav row entirely via `grid-template-rows: auto minmax(0, 1fr) auto`
   - Out of scope: bottom sheet that re-mounts pomodoro + music (entry 2); hamburger long-press menu; redesigning the project header's two-row layout to put the hamburger on its own row
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## Features
 

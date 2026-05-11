@@ -2173,7 +2173,7 @@ body.row-dragging * { cursor: grabbing !important; }
        share, which would otherwise push the footer row below the viewport
        and produce the "only top of the text is visible" clipping on iOS. */
     grid-template-rows:
-      calc(var(--nav-h) + env(safe-area-inset-top))
+      0
       minmax(0, 1fr)
       calc(var(--foot-h) + env(safe-area-inset-bottom));
   }
@@ -2181,12 +2181,39 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Safe-area insets — with viewport-fit=cover in the document meta,
      env(safe-area-inset-*) reports non-zero on notched iOS devices
      and when the app is launched from the home screen in standalone
-     mode. Padding the nav and footer keeps the Dynamic Island and
-     home indicator clear of the app chrome. */
+     mode. The footer keeps its bottom inset; the top inset moves to
+     #mobileProjHeader (see below) since #navBar collapses on mobile. */
+
+  /* Collapse the desktop nav band to zero-height invisible chrome.
+     #sidebarToggle is the only navBar child still meaningful on mobile
+     (pomodoro / music / settings are display:none here), so we strip
+     navBar's box but keep it rendering — its position:relative anchor
+     and overflow:visible let the absolutely-positioned hamburger child
+     escape the 0-height track. The grid override above also reserves
+     0 for the nav row so #mainSec sits flush at viewport top. */
   #navBar {
-    padding-top: env(safe-area-inset-top);
-    padding-left: max(12px, env(safe-area-inset-left));
-    padding-right: max(12px, env(safe-area-inset-right));
+    padding: 0;
+    border: none;
+    background: transparent;
+    height: 0;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  /* Hamburger absolute-anchored to the top-right of the viewport,
+     visually aligning with PROJECT N OF M in the project header
+     directly below the collapsed nav. position:absolute resolves
+     against #navBar's position:relative; with navBar at top:0 and
+     0 height, the offsets compute to viewport-top coordinates.
+     Bumped from the desktop 36×36 to 44×44 to meet the touch hit
+     target standard. */
+  #sidebarToggle {
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    z-index: 20;
   }
 
   #footBar {
@@ -2574,7 +2601,7 @@ body.row-dragging * { cursor: grabbing !important; }
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 14px 16px 10px;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px;
     background: var(--bg-elevated);
     border-bottom: 0.5px solid var(--border-dim);
     /* Establish a stacking context above #mainList so the empty-state
