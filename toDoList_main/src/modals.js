@@ -585,7 +585,8 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||
         document.getElementById('pomodoroPopover')        ||
-        document.querySelector('#musicPopover.open')
+        document.querySelector('#musicPopover.open')      ||
+        document.querySelector('#bottomSheet[data-state="EXPANDED"]')
     );
 }
 

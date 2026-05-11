@@ -1480,6 +1480,653 @@ function component() {
     const helpFab = createHelpFab();
     base.appendChild(helpFab);
 
+    // ── Mobile bottom sheet utility surface ──
+    // Bottom-anchored sheet for STACK mobile (≤700px) that houses the
+    // Pomodoro timer and the YouTube music player without changing either
+    // controller's logic. Three visible states:
+    //   IDLE      — 12px collapsed handle nub at the bottom edge
+    //   PEEK      — 48px strip with timer + music segments, expand chevron
+    //   EXPANDED  — sheet at min(50dvh, 320px) with full controls
+    // State transitions are driven by controller subscriptions: timer start
+    // or music play → PEEK; both stopped → IDLE (with a 3s grace window so
+    // a completion frame is visible briefly). EXPANDED is user-driven (tap
+    // or drag-up). Dismissal vocabulary follows CLAUDE.md's modal rule:
+    // backdrop tap, drag-down past 30%, Escape.
+    const bottomSheet = document.createElement('div');
+    bottomSheet.id = 'bottomSheet';
+    bottomSheet.setAttribute('data-state', 'IDLE');
+    bottomSheet.setAttribute('data-view', 'controls');
+
+    const sheetBackdrop = document.createElement('div');
+    sheetBackdrop.id = 'bottomSheetBackdrop';
+
+    // Single tap target for the IDLE nub. The visible glyph is 12px tall but
+    // the button uses absolute positioning with extra hit area (≥44×44) so
+    // the touch target meets the acceptance criteria.
+    const sheetNub = document.createElement('button');
+    sheetNub.id = 'bottomSheetNub';
+    sheetNub.type = 'button';
+    sheetNub.setAttribute('aria-label', 'Open utilities');
+    const sheetNubInner = document.createElement('span');
+    sheetNubInner.className = 'sheetNubBar';
+    sheetNub.appendChild(sheetNubInner);
+
+    // PEEK strip — visible at 48px when a utility is running. Left segment is
+    // the timer (green dot + MM:SS), right segment is music (♪ + station name
+    // + CSS visualizer bars). The grid uses two equal columns so the layout
+    // doesn't shift when one segment empties — the still-running side stays
+    // anchored to its column.
+    const sheetPeek = document.createElement('button');
+    sheetPeek.id = 'bottomSheetPeek';
+    sheetPeek.type = 'button';
+    sheetPeek.setAttribute('aria-label', 'Open utilities');
+
+    const peekHandle = document.createElement('span');
+    peekHandle.className = 'sheetPeekHandle';
+    sheetPeek.appendChild(peekHandle);
+
+    const peekContent = document.createElement('span');
+    peekContent.className = 'sheetPeekContent';
+
+    const peekPomodoro = document.createElement('span');
+    peekPomodoro.className = 'sheetPeekPomodoro';
+    const peekDot = document.createElement('span');
+    peekDot.className = 'sheetPeekDot';
+    peekDot.setAttribute('aria-hidden', 'true');
+    const peekTime = document.createElement('span');
+    peekTime.className = 'sheetPeekTime';
+    peekTime.textContent = '';
+    peekPomodoro.appendChild(peekDot);
+    peekPomodoro.appendChild(peekTime);
+
+    const peekDivider = document.createElement('span');
+    peekDivider.className = 'sheetPeekDivider';
+    peekDivider.setAttribute('aria-hidden', 'true');
+
+    const peekMusic = document.createElement('span');
+    peekMusic.className = 'sheetPeekMusic';
+    const peekNote = document.createElement('span');
+    peekNote.className = 'sheetPeekNote';
+    peekNote.textContent = '♪';
+    peekNote.setAttribute('aria-hidden', 'true');
+    const peekStation = document.createElement('span');
+    peekStation.className = 'sheetPeekStation';
+    peekStation.textContent = '';
+    const peekBars = document.createElement('span');
+    peekBars.className = 'sheetPeekBars';
+    peekBars.setAttribute('aria-hidden', 'true');
+    // Four bars with staggered animation durations — the parent has an
+    // explicit height so each bar's percentage-based height computes.
+    for (let i = 0; i < 4; i++) {
+        const bar = document.createElement('span');
+        bar.className = 'sheetPeekBar';
+        peekBars.appendChild(bar);
+    }
+    peekMusic.appendChild(peekNote);
+    peekMusic.appendChild(peekStation);
+    peekMusic.appendChild(peekBars);
+
+    peekContent.appendChild(peekPomodoro);
+    peekContent.appendChild(peekDivider);
+    peekContent.appendChild(peekMusic);
+    sheetPeek.appendChild(peekContent);
+
+    const peekChevron = document.createElement('span');
+    peekChevron.className = 'sheetPeekChevron';
+    peekChevron.textContent = '⌃';
+    peekChevron.setAttribute('aria-hidden', 'true');
+    sheetPeek.appendChild(peekChevron);
+
+    // EXPANDED sheet — dialog role per CLAUDE.md modal conventions.
+    const sheetExpanded = document.createElement('div');
+    sheetExpanded.id = 'bottomSheetExpanded';
+    sheetExpanded.setAttribute('role', 'dialog');
+    sheetExpanded.setAttribute('aria-label', 'Utilities');
+    sheetExpanded.setAttribute('aria-modal', 'true');
+
+    const sheetDragHandle = document.createElement('span');
+    sheetDragHandle.className = 'sheetDragHandle';
+    sheetDragHandle.setAttribute('aria-hidden', 'true');
+    sheetExpanded.appendChild(sheetDragHandle);
+
+    // Controls view — the default content of the expanded sheet. The picker
+    // view is mounted as a sibling and toggled via data-view on the parent.
+    const sheetControls = document.createElement('div');
+    sheetControls.className = 'sheetView sheetViewControls';
+    sheetControls.setAttribute('data-sheet-view', 'controls');
+
+    // POMODORO section
+    const sheetPomSection = document.createElement('section');
+    sheetPomSection.className = 'sheetSection sheetPomSection';
+    const sheetPomHeading = document.createElement('h3');
+    sheetPomHeading.className = 'sheetSectionHeading';
+    sheetPomHeading.textContent = 'POMODORO';
+    sheetPomSection.appendChild(sheetPomHeading);
+
+    const sheetPomTime = document.createElement('div');
+    sheetPomTime.className = 'sheetPomTime';
+    sheetPomTime.textContent = '25:00';
+    sheetPomSection.appendChild(sheetPomTime);
+
+    const sheetPomTabs = document.createElement('div');
+    sheetPomTabs.className = 'sheetPomTabs';
+    const pomModeButtons = {};
+    [['focus', 'Focus'], ['short', 'Short'], ['long', 'Long']].forEach(function(pair) {
+        const tabBtn = document.createElement('button');
+        tabBtn.type = 'button';
+        tabBtn.className = 'sheetPomTab';
+        tabBtn.setAttribute('data-mode', pair[0]);
+        tabBtn.textContent = pair[1];
+        tabBtn.addEventListener('click', function() {
+            const ctl = getPomodoroController();
+            if (ctl) ctl.setMode(pair[0]);
+        });
+        pomModeButtons[pair[0]] = tabBtn;
+        sheetPomTabs.appendChild(tabBtn);
+    });
+    sheetPomSection.appendChild(sheetPomTabs);
+
+    const sheetPomActions = document.createElement('div');
+    sheetPomActions.className = 'sheetPomActions';
+    const sheetPomReset = document.createElement('button');
+    sheetPomReset.type = 'button';
+    sheetPomReset.className = 'sheetPomReset';
+    sheetPomReset.textContent = 'Reset';
+    sheetPomReset.addEventListener('click', function() {
+        const ctl = getPomodoroController();
+        if (ctl) ctl.reset();
+    });
+    const sheetPomPrimary = document.createElement('button');
+    sheetPomPrimary.type = 'button';
+    sheetPomPrimary.className = 'sheetPomPrimary';
+    sheetPomPrimary.textContent = 'Start';
+    sheetPomPrimary.addEventListener('click', function() {
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+        const status = ctl.getState().status;
+        if (status === 'RUNNING') ctl.pause(); else ctl.start();
+    });
+    const sheetPomSkip = document.createElement('button');
+    sheetPomSkip.type = 'button';
+    sheetPomSkip.className = 'sheetPomSkip';
+    sheetPomSkip.textContent = 'Skip';
+    sheetPomSkip.addEventListener('click', function() {
+        const ctl = getPomodoroController();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        const next = nextSuggestedMode(snap.mode);
+        ctl.setMode(next);
+    });
+    sheetPomActions.appendChild(sheetPomReset);
+    sheetPomActions.appendChild(sheetPomPrimary);
+    sheetPomActions.appendChild(sheetPomSkip);
+    sheetPomSection.appendChild(sheetPomActions);
+
+    sheetControls.appendChild(sheetPomSection);
+
+    // MUSIC section — compact "now playing" card with a chevron that opens
+    // the inline station picker drilldown (view swap, not a stacked sheet).
+    const sheetMusicSection = document.createElement('section');
+    sheetMusicSection.className = 'sheetSection sheetMusicSection';
+    const sheetMusicHeading = document.createElement('h3');
+    sheetMusicHeading.className = 'sheetSectionHeading';
+    sheetMusicHeading.textContent = 'MUSIC';
+    sheetMusicSection.appendChild(sheetMusicHeading);
+
+    const sheetMusicCard = document.createElement('div');
+    sheetMusicCard.className = 'sheetMusicCard';
+
+    const sheetMusicInfo = document.createElement('div');
+    sheetMusicInfo.className = 'sheetMusicInfo';
+    const sheetMusicStation = document.createElement('div');
+    sheetMusicStation.className = 'sheetMusicStation';
+    sheetMusicStation.textContent = '';
+    const sheetMusicTitle = document.createElement('div');
+    sheetMusicTitle.className = 'sheetMusicTitle';
+    sheetMusicTitle.textContent = '';
+    sheetMusicInfo.appendChild(sheetMusicStation);
+    sheetMusicInfo.appendChild(sheetMusicTitle);
+    sheetMusicCard.appendChild(sheetMusicInfo);
+
+    const sheetMusicPlayPause = document.createElement('button');
+    sheetMusicPlayPause.type = 'button';
+    sheetMusicPlayPause.className = 'sheetMusicPlayPause';
+    sheetMusicPlayPause.setAttribute('aria-label', 'Play');
+    sheetMusicPlayPause.textContent = '▶';
+    sheetMusicCard.appendChild(sheetMusicPlayPause);
+
+    const sheetMusicMore = document.createElement('button');
+    sheetMusicMore.type = 'button';
+    sheetMusicMore.className = 'sheetMusicMore';
+    sheetMusicMore.setAttribute('aria-label', 'Choose station');
+    sheetMusicMore.textContent = '›';
+    sheetMusicCard.appendChild(sheetMusicMore);
+
+    sheetMusicSection.appendChild(sheetMusicCard);
+    sheetControls.appendChild(sheetMusicSection);
+
+    sheetExpanded.appendChild(sheetControls);
+
+    // Picker view — inline drilldown that swaps `data-view` rather than
+    // stacking. Backdrop tap on this view returns to controls, not dismiss.
+    const sheetPicker = document.createElement('div');
+    sheetPicker.className = 'sheetView sheetViewPicker';
+    sheetPicker.setAttribute('data-sheet-view', 'picker');
+
+    const sheetPickerHeader = document.createElement('div');
+    sheetPickerHeader.className = 'sheetPickerHeader';
+    const sheetPickerBack = document.createElement('button');
+    sheetPickerBack.type = 'button';
+    sheetPickerBack.className = 'sheetPickerBack';
+    sheetPickerBack.setAttribute('aria-label', 'Back to controls');
+    sheetPickerBack.textContent = '‹';
+    const sheetPickerTitle = document.createElement('h3');
+    sheetPickerTitle.className = 'sheetPickerTitle';
+    sheetPickerTitle.textContent = 'Stations';
+    sheetPickerHeader.appendChild(sheetPickerBack);
+    sheetPickerHeader.appendChild(sheetPickerTitle);
+    sheetPicker.appendChild(sheetPickerHeader);
+
+    // Show-video toggle. The mobile player target lives below this control;
+    // toggling adds/removes a `show-video` class on the picker view which
+    // flips the target's `display`. Playback is unaffected because the
+    // iframe stays attached either way.
+    const sheetShowVideoRow = document.createElement('label');
+    sheetShowVideoRow.className = 'sheetShowVideoRow';
+    const sheetShowVideoCheck = document.createElement('input');
+    sheetShowVideoCheck.type = 'checkbox';
+    sheetShowVideoCheck.className = 'sheetShowVideoCheck';
+    const sheetShowVideoLabel = document.createElement('span');
+    sheetShowVideoLabel.className = 'sheetShowVideoLabel';
+    sheetShowVideoLabel.textContent = 'Show video';
+    sheetShowVideoRow.appendChild(sheetShowVideoCheck);
+    sheetShowVideoRow.appendChild(sheetShowVideoLabel);
+    sheetPicker.appendChild(sheetShowVideoRow);
+
+    const sheetPlayerWrap = document.createElement('div');
+    sheetPlayerWrap.className = 'sheetPlayerWrap';
+    const sheetPlayerTarget = document.createElement('div');
+    sheetPlayerTarget.id = 'bottomSheetMusicPlayerTarget';
+    sheetPlayerWrap.appendChild(sheetPlayerTarget);
+    sheetPicker.appendChild(sheetPlayerWrap);
+
+    sheetShowVideoCheck.addEventListener('change', function() {
+        sheetPicker.classList.toggle('show-video', sheetShowVideoCheck.checked);
+    });
+
+    const sheetStationList = document.createElement('div');
+    sheetStationList.className = 'sheetStationList';
+    sheetPicker.appendChild(sheetStationList);
+
+    // Custom URL paste form — same UX as the desktop popover, mirrored at
+    // mobile-safe input font sizes (handled in style.css).
+    const sheetPasteRow = document.createElement('div');
+    sheetPasteRow.className = 'sheetPasteRow';
+    const sheetPasteBtn = document.createElement('button');
+    sheetPasteBtn.type = 'button';
+    sheetPasteBtn.className = 'sheetPasteBtn';
+    sheetPasteBtn.textContent = '+ Paste YouTube URL';
+    sheetPasteRow.appendChild(sheetPasteBtn);
+
+    const sheetPasteForm = document.createElement('div');
+    sheetPasteForm.className = 'sheetPasteForm';
+    sheetPasteForm.style.display = 'none';
+    const sheetPasteName = document.createElement('input');
+    sheetPasteName.type = 'text';
+    sheetPasteName.className = 'sheetPasteName';
+    sheetPasteName.placeholder = 'Station name (optional)';
+    const sheetPasteUrl = document.createElement('input');
+    sheetPasteUrl.type = 'text';
+    sheetPasteUrl.className = 'sheetPasteUrl';
+    sheetPasteUrl.placeholder = 'https://youtube.com/watch?v=…';
+    const sheetPasteError = document.createElement('div');
+    sheetPasteError.className = 'sheetPasteError';
+    sheetPasteError.style.display = 'none';
+    sheetPasteForm.appendChild(sheetPasteName);
+    sheetPasteForm.appendChild(sheetPasteUrl);
+    sheetPasteForm.appendChild(sheetPasteError);
+    sheetPasteRow.appendChild(sheetPasteForm);
+    sheetPicker.appendChild(sheetPasteRow);
+
+    sheetPasteBtn.addEventListener('click', function() {
+        const open = sheetPasteForm.style.display !== 'none';
+        sheetPasteForm.style.display = open ? 'none' : '';
+        if (!open) setTimeout(function() { sheetPasteUrl.focus(); }, 0);
+    });
+    sheetPasteUrl.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const parsed = parseYouTubeUrl(sheetPasteUrl.value);
+        if (!parsed) {
+            sheetPasteError.textContent = "Couldn't read that URL. Try a watch / playlist / live link.";
+            sheetPasteError.style.display = '';
+            return;
+        }
+        const station = ctl.addCustomStation(sheetPasteName.value, sheetPasteUrl.value);
+        if (!station) {
+            sheetPasteError.textContent = "Couldn't add that station.";
+            sheetPasteError.style.display = '';
+            return;
+        }
+        sheetPasteName.value = '';
+        sheetPasteUrl.value = '';
+        sheetPasteError.style.display = 'none';
+        sheetPasteForm.style.display = 'none';
+    });
+
+    sheetExpanded.appendChild(sheetPicker);
+
+    sheetMusicMore.addEventListener('click', function() {
+        bottomSheet.setAttribute('data-view', 'picker');
+    });
+    sheetPickerBack.addEventListener('click', function() {
+        bottomSheet.setAttribute('data-view', 'controls');
+    });
+
+    sheetMusicPlayPause.addEventListener('click', function() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const status = ctl.getState().status;
+        if (status === 'PLAYING' || status === 'BUFFERING') {
+            ctl.pause();
+        } else {
+            ctl.play(sheetPlayerTarget);
+        }
+    });
+
+    bottomSheet.appendChild(sheetBackdrop);
+    bottomSheet.appendChild(sheetNub);
+    bottomSheet.appendChild(sheetPeek);
+    bottomSheet.appendChild(sheetExpanded);
+    base.appendChild(bottomSheet);
+
+    // ── State machine ──
+    // setSheetState centralizes the IDLE/PEEK/EXPANDED transition so we can
+    // funnel all the visibility plumbing (hide on drawer, hide on NO
+    // PROJECTS, etc.) through a single call.
+    let sheetIdleGraceTimer = null;
+    function clearIdleGraceTimer() {
+        if (sheetIdleGraceTimer !== null) {
+            clearTimeout(sheetIdleGraceTimer);
+            sheetIdleGraceTimer = null;
+        }
+    }
+    function setSheetState(next) {
+        if (next !== 'IDLE' && next !== 'PEEK' && next !== 'EXPANDED') return;
+        if (next !== 'IDLE') clearIdleGraceTimer();
+        if (bottomSheet.getAttribute('data-state') === next) return;
+        bottomSheet.setAttribute('data-state', next);
+        if (next === 'EXPANDED') {
+            document.documentElement.classList.add('bottom-sheet-expanded');
+        } else {
+            document.documentElement.classList.remove('bottom-sheet-expanded');
+            // Closing collapses any view-swap so the next open lands on
+            // the default controls view, not whichever drilldown the user
+            // last had open.
+            bottomSheet.setAttribute('data-view', 'controls');
+        }
+    }
+
+    // Drive PEEK/IDLE off whether either utility is active. Timer is
+    // "active" while running, paused, or in the post-complete acknowledgement
+    // window; music is "active" while PLAYING or BUFFERING.
+    function utilityIsActive() {
+        const pomCtl = getPomodoroController();
+        const musicCtl = getMusicController();
+        const pomActive = pomCtl ? (function() {
+            const s = pomCtl.getState().status;
+            return s === 'RUNNING' || s === 'PAUSED' || s === 'COMPLETE_UNACKED';
+        })() : false;
+        const musicActive = musicCtl ? (function() {
+            const s = musicCtl.getState().status;
+            return s === 'PLAYING' || s === 'BUFFERING';
+        })() : false;
+        return { pomActive: pomActive, musicActive: musicActive, any: pomActive || musicActive };
+    }
+
+    function refreshAutoState() {
+        const current = bottomSheet.getAttribute('data-state');
+        if (current === 'EXPANDED') return; // user-driven; don't override
+        const active = utilityIsActive();
+        if (active.any) {
+            clearIdleGraceTimer();
+            setSheetState('PEEK');
+        } else if (current === 'PEEK') {
+            // 3s grace so a completion frame ("00:00 — Break time!") is
+            // legible before we collapse to IDLE.
+            if (sheetIdleGraceTimer === null) {
+                sheetIdleGraceTimer = setTimeout(function() {
+                    sheetIdleGraceTimer = null;
+                    if (!utilityIsActive().any &&
+                        bottomSheet.getAttribute('data-state') === 'PEEK') {
+                        setSheetState('IDLE');
+                    }
+                }, 3000);
+            }
+        } else {
+            setSheetState('IDLE');
+        }
+    }
+
+    function syncPomodoroSheet(snap) {
+        snap = snap || (getPomodoroController() && getPomodoroController().getState());
+        if (!snap) return;
+        const seconds = Math.max(0, Math.round((snap.remainingMs || 0) / 1000));
+        const mm = Math.floor(seconds / 60);
+        const ss = seconds - mm * 60;
+        const formatted = (mm < 10 ? '0' + mm : '' + mm) + ':' + (ss < 10 ? '0' + ss : '' + ss);
+        peekTime.textContent = formatted;
+        sheetPomTime.textContent = formatted;
+        peekPomodoro.setAttribute('data-status', snap.status);
+        peekPomodoro.style.display = (snap.status === 'RUNNING' || snap.status === 'PAUSED' || snap.status === 'COMPLETE_UNACKED') ? '' : 'none';
+        Object.keys(pomModeButtons).forEach(function(mode) {
+            pomModeButtons[mode].classList.toggle('active', snap.mode === mode);
+        });
+        if (snap.status === 'RUNNING') sheetPomPrimary.textContent = 'Pause';
+        else if (snap.status === 'PAUSED') sheetPomPrimary.textContent = 'Resume';
+        else sheetPomPrimary.textContent = 'Start';
+        refreshAutoState();
+    }
+
+    function syncMusicSheet(snap) {
+        snap = snap || (getMusicController() && getMusicController().getState());
+        if (!snap) return;
+        const stationName = snap.activeStation ? snap.activeStation.name : '';
+        peekStation.textContent = stationName;
+        sheetMusicStation.textContent = stationName;
+        sheetMusicTitle.textContent = snap.nowPlaying && snap.nowPlaying.title ? snap.nowPlaying.title : '';
+        const isPlaying = snap.status === 'PLAYING' || snap.status === 'BUFFERING';
+        peekMusic.setAttribute('data-status', snap.status);
+        peekMusic.classList.toggle('active', isPlaying);
+        peekMusic.style.display = isPlaying ? '' : 'none';
+        sheetMusicPlayPause.textContent = isPlaying ? '❚❚' : '▶';
+        sheetMusicPlayPause.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+        renderSheetStationList(snap);
+        refreshAutoState();
+    }
+
+    function renderSheetStationList(snap) {
+        sheetStationList.textContent = '';
+        function addRow(station, isCustom) {
+            const row = document.createElement('div');
+            row.className = 'sheetStationRow' + (snap.activeStationId === station.id ? ' active' : '');
+            row.dataset.stationId = station.id;
+            const name = document.createElement('button');
+            name.type = 'button';
+            name.className = 'sheetStationName';
+            name.textContent = station.name;
+            name.addEventListener('click', function() {
+                const ctl = getMusicController();
+                if (ctl) ctl.setStation(station.id);
+            });
+            const genre = document.createElement('span');
+            genre.className = 'sheetStationGenre';
+            genre.textContent = (station.genre || '').toUpperCase();
+            row.appendChild(name);
+            row.appendChild(genre);
+            if (isCustom) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'sheetStationRemove';
+                remove.setAttribute('aria-label', 'Remove ' + station.name);
+                remove.textContent = '×';
+                remove.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const ctl = getMusicController();
+                    if (ctl) ctl.removeCustomStation(station.id);
+                });
+                row.appendChild(remove);
+            }
+            sheetStationList.appendChild(row);
+        }
+        if (snap.customStations && snap.customStations.length) {
+            const head = document.createElement('div');
+            head.className = 'sheetStationSection';
+            head.textContent = 'Your stations';
+            sheetStationList.appendChild(head);
+            snap.customStations.forEach(function(s) { addRow(s, true); });
+        }
+        const head = document.createElement('div');
+        head.className = 'sheetStationSection';
+        head.textContent = 'Curated';
+        sheetStationList.appendChild(head);
+        snap.curatedStations.forEach(function(s) { addRow(s, false); });
+    }
+
+    // Subscribe controllers — these may not be ready at component() time but
+    // ensure* lazy-creates them. setTimeout 0 mirrors the pattern used for
+    // syncMusicIcon's subscription above.
+    setTimeout(function() {
+        const pomCtl = getPomodoroController();
+        if (pomCtl) {
+            pomCtl.subscribe(syncPomodoroSheet);
+            syncPomodoroSheet(pomCtl.getState());
+        }
+        const musicCtl = getMusicController();
+        if (musicCtl) {
+            musicCtl.subscribe(syncMusicSheet);
+            syncMusicSheet(musicCtl.getState());
+        }
+        refreshAutoState();
+    }, 0);
+
+    // Tap / drag to expand. Native click on the nub or peek strip expands;
+    // pointermove-based drag-up is wired below for a tactile feel.
+    sheetNub.addEventListener('click', function() { setSheetState('EXPANDED'); });
+    sheetPeek.addEventListener('click', function(e) {
+        // Suppress click if pointer interaction marked a drag — the
+        // pointerup handler stamps `data-suppress-click` to coordinate.
+        if (sheetPeek.dataset.suppressClick === '1') {
+            delete sheetPeek.dataset.suppressClick;
+            return;
+        }
+        setSheetState('EXPANDED');
+    });
+
+    // Backdrop tap. When the picker drilldown is active, the backdrop tap
+    // first returns to the controls view (per acceptance criteria); a second
+    // tap then dismisses. This matches the spec line: "Backdrop tap on the
+    // picker drilldown returns to controls view, not all the way to dismiss".
+    sheetBackdrop.addEventListener('click', function() {
+        if (bottomSheet.getAttribute('data-view') === 'picker') {
+            bottomSheet.setAttribute('data-view', 'controls');
+            return;
+        }
+        // Return to whichever lower state applies.
+        const active = utilityIsActive();
+        setSheetState(active.any ? 'PEEK' : 'IDLE');
+    });
+
+    // Escape closes EXPANDED, returning to the lower state. Capture phase so
+    // we win over the mobile drawer's Escape handler when both could fire.
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (bottomSheet.getAttribute('data-state') !== 'EXPANDED') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (bottomSheet.getAttribute('data-view') === 'picker') {
+            bottomSheet.setAttribute('data-view', 'controls');
+            return;
+        }
+        const active = utilityIsActive();
+        setSheetState(active.any ? 'PEEK' : 'IDLE');
+    }, true);
+
+    // Drag-down to dismiss / drag-up to expand. Pointer events keep mouse +
+    // touch on one code path. The drag threshold is 30% of the sheet's
+    // current height per the acceptance criteria.
+    function attachDragGesture(targetEl, intent) {
+        // intent: 'expand' for nub/peek (drag-up opens), 'dismiss' for
+        // sheetDragHandle (drag-down closes).
+        let startY = 0;
+        let pointerId = null;
+        let dragging = false;
+        targetEl.addEventListener('pointerdown', function(e) {
+            if (e.isPrimary === false) return;
+            startY = e.clientY;
+            pointerId = e.pointerId;
+            dragging = true;
+            try { targetEl.setPointerCapture(pointerId); } catch (err) { /* defensive */ }
+        });
+        targetEl.addEventListener('pointermove', function(e) {
+            if (!dragging || e.pointerId !== pointerId) return;
+            const dy = e.clientY - startY;
+            if (intent === 'expand' && dy < -10) {
+                dragging = false;
+                try { targetEl.releasePointerCapture(pointerId); } catch (err) { /* defensive */ }
+                if (targetEl === sheetPeek) sheetPeek.dataset.suppressClick = '1';
+                setSheetState('EXPANDED');
+            } else if (intent === 'dismiss' && dy > 0) {
+                const h = sheetExpanded.getBoundingClientRect().height || 1;
+                if (dy / h > 0.3) {
+                    dragging = false;
+                    try { targetEl.releasePointerCapture(pointerId); } catch (err) { /* defensive */ }
+                    const active = utilityIsActive();
+                    setSheetState(active.any ? 'PEEK' : 'IDLE');
+                }
+            }
+        });
+        targetEl.addEventListener('pointerup', function(e) {
+            if (e.pointerId !== pointerId) return;
+            dragging = false;
+            try { targetEl.releasePointerCapture(pointerId); } catch (err) { /* defensive */ }
+        });
+        targetEl.addEventListener('pointercancel', function() { dragging = false; });
+    }
+    attachDragGesture(sheetNub, 'expand');
+    attachDragGesture(sheetPeek, 'expand');
+    attachDragGesture(sheetDragHandle, 'dismiss');
+
+    // Expose a tiny imperative API for tests + visibility coordination from
+    // the drawer / empty-state hooks below.
+    function refreshSheetVisibility() {
+        const drawerOpen = main1.classList.contains('sidebar-open');
+        const noProjects = !!document.querySelector('#emptyState.emptyStateNoProjects');
+        // hide entirely when drawer covers everything or no projects exist
+        bottomSheet.classList.toggle('hidden-by-drawer', drawerOpen);
+        bottomSheet.classList.toggle('hidden-by-empty', noProjects);
+        if (drawerOpen || noProjects) {
+            if (bottomSheet.getAttribute('data-state') === 'EXPANDED') {
+                // Collapsing here keeps Escape/backdrop handlers from
+                // firing against an off-screen sheet that the user can't see.
+                const active = utilityIsActive();
+                setSheetState(active.any ? 'PEEK' : 'IDLE');
+            }
+        }
+    }
+    // Watch the mainList classList + empty-state mutations so the sheet hides
+    // when NO PROJECTS appears or is removed.
+    setTimeout(function() {
+        try {
+            const observer = new MutationObserver(refreshSheetVisibility);
+            observer.observe(mainList, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        } catch (err) { /* defensive */ }
+        refreshSheetVisibility();
+    }, 0);
+    window.bottomSheetRefreshVisibility = refreshSheetVisibility;
+
     // Footer — version label on the left, open/done counts for the selected
     // project on the right. Counts are recomputed by a MutationObserver that
     // watches #mainList (todo add/remove, .completed toggle) and #sideMa
@@ -1840,6 +2487,9 @@ function component() {
             refreshDrawerSections();
             main1.classList.add('sidebar-open');
             sidebarOverlay.classList.add('visible');
+            if (typeof window.bottomSheetRefreshVisibility === 'function') {
+                window.bottomSheetRefreshVisibility();
+            }
         } else {
             main.classList.remove('sidebar-collapsed');
         }
@@ -1849,6 +2499,9 @@ function component() {
         if (isMobile()) {
             main1.classList.remove('sidebar-open');
             sidebarOverlay.classList.remove('visible');
+            if (typeof window.bottomSheetRefreshVisibility === 'function') {
+                window.bottomSheetRefreshVisibility();
+            }
         } else {
             main.classList.add('sidebar-collapsed');
         }
