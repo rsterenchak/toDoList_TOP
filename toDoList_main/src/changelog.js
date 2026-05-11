@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             'Swipe-left to delete a task on mobile now offers a 5-second UNDO to restore the task at its original spot, and rows with descriptions get a small ¶ marker beside the date pill.',
         ],
+        changed: [
+            'Mobile swipe-to-complete and swipe-to-delete now commit at half the task row’s width, so the action triggers consistently no matter how wide the row renders.',
+        ],
     },
     {
         version: '1.1',
@@ -18,7 +21,6 @@ export const changelog = [
             'Arrow Down from the sidebar toggle now lands on the first project instead of jumping past the sidebar to the first todo.',
         ],
         changed: [
-            'Mobile menu drawer slides in from the right with Projects, View, and Appearance sections plus a project-count footer, and tapping a project now keeps the drawer open so you can compare across projects.',
             'Mobile empty-state screens now show a ghost mascot — a purple welcome ghost when no projects exist, a gray ghost on a fresh project, and a green ghost with sparkles when everything is done.',
         ],
     },

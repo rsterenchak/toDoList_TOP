@@ -129,10 +129,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[LOW]** Switch mobile swipe-to-action threshold to 50% of row width
+- [x] **[LOW]** Switch mobile swipe-to-action threshold to 50% of row width
   - Description: The mobile task-interactions spec called for the swipe commit threshold to be `Math.abs(deltaX) > rowBoundingRect.width * 0.5` measured at touchend, not the current fixed `SWIPE_THRESHOLD_PX = 80` in `dragDrop.js`. Row width can differ from screen width (sidebar present on tablet-portrait, drawer reservations, etc.), so a row-relative threshold lands closer to the user's intent. Replace `SWIPE_THRESHOLD_PX` in the commit check with `row.getBoundingClientRect().width * 0.5`, keeping `--swipe-progress` scaled against the same row-relative target so the action pane reveals at consistent intensity regardless of row width.
   - File: `toDoList_main/src/dragDrop.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-11
 
 ## In Progress
 
