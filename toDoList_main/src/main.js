@@ -2220,43 +2220,56 @@ function component() {
     // ── mobile project header (STACK layout) ──
     // On the ≤700px breakpoint the layout shifts to a STACK pattern: the
     // active project name renders as a screen-level header above the todo
-    // list, with a "PROJECT N OF M" label, open/done counts, and tappable
-    // page dots that jump between projects. Hidden on desktop via CSS —
-    // desktop continues to use the sidebar rail/full pattern with the
-    // mainCrumb breadcrumb. The header rebuilds via the same
-    // MutationObserver path that drives the footer counts so its label,
-    // counts, and active dot stay in sync without explicit calls from
-    // mutation sites.
-    const mobileProjHeader  = document.createElement('div');
-    const mobileProjLabel   = document.createElement('div');
-    const mobileProjName    = document.createElement('div');
-    const mobileProjStats   = document.createElement('div');
-    const mobileProjCounts  = document.createElement('div');
-    const mobileProjOpen    = document.createElement('span');
-    const mobileProjDone    = document.createElement('span');
-    const mobileProjDots    = document.createElement('div');
+    // list, with a "PROJECT N OF M" label, open/done counts, and a
+    // swipe-on-title gesture (flanked by ‹ / › chevron affordances) that
+    // jumps between projects. Hidden on desktop via CSS — desktop
+    // continues to use the sidebar rail/full pattern with the mainCrumb
+    // breadcrumb. The header rebuilds via the same MutationObserver path
+    // that drives the footer counts so its label, counts, and chevron
+    // enable state stay in sync without explicit calls from mutation
+    // sites.
+    const mobileProjHeader   = document.createElement('div');
+    const mobileProjLabel    = document.createElement('div');
+    const mobileProjTitleRow = document.createElement('div');
+    const mobileProjPrev     = document.createElement('button');
+    const mobileProjName     = document.createElement('div');
+    const mobileProjNext     = document.createElement('button');
+    const mobileProjStats    = document.createElement('div');
+    const mobileProjCounts   = document.createElement('div');
+    const mobileProjOpen     = document.createElement('span');
+    const mobileProjDone     = document.createElement('span');
 
-    mobileProjHeader.id = 'mobileProjHeader';
-    mobileProjLabel.id  = 'mobileProjLabel';
-    mobileProjName.id   = 'mobileProjName';
-    mobileProjStats.id  = 'mobileProjStats';
-    mobileProjCounts.id = 'mobileProjCounts';
-    mobileProjOpen.id   = 'mobileProjOpen';
-    mobileProjDone.id   = 'mobileProjDone';
-    mobileProjDots.id   = 'mobileProjDots';
+    mobileProjHeader.id   = 'mobileProjHeader';
+    mobileProjLabel.id    = 'mobileProjLabel';
+    mobileProjTitleRow.id = 'mobileProjTitleRow';
+    mobileProjPrev.id     = 'mobileProjPrev';
+    mobileProjName.id     = 'mobileProjName';
+    mobileProjNext.id     = 'mobileProjNext';
+    mobileProjStats.id    = 'mobileProjStats';
+    mobileProjCounts.id   = 'mobileProjCounts';
+    mobileProjOpen.id     = 'mobileProjOpen';
+    mobileProjDone.id     = 'mobileProjDone';
 
     mobileProjOpen.textContent = '0 open';
     mobileProjDone.textContent = '0 done';
 
-    mobileProjDots.setAttribute('role', 'tablist');
-    mobileProjDots.setAttribute('aria-label', 'Switch project');
+    mobileProjPrev.type = 'button';
+    mobileProjNext.type = 'button';
+    mobileProjPrev.className = 'mobileProjChev';
+    mobileProjNext.className = 'mobileProjChev';
+    mobileProjPrev.textContent = '‹'; // ‹
+    mobileProjNext.textContent = '›'; // ›
+    mobileProjPrev.setAttribute('aria-label', 'Previous project');
+    mobileProjNext.setAttribute('aria-label', 'Next project');
 
     mobileProjCounts.appendChild(mobileProjOpen);
     mobileProjCounts.appendChild(mobileProjDone);
     mobileProjStats.appendChild(mobileProjCounts);
-    mobileProjStats.appendChild(mobileProjDots);
+    mobileProjTitleRow.appendChild(mobileProjPrev);
+    mobileProjTitleRow.appendChild(mobileProjName);
+    mobileProjTitleRow.appendChild(mobileProjNext);
     mobileProjHeader.appendChild(mobileProjLabel);
-    mobileProjHeader.appendChild(mobileProjName);
+    mobileProjHeader.appendChild(mobileProjTitleRow);
     mobileProjHeader.appendChild(mobileProjStats);
 
     main2.appendChild(mobileProjHeader);
@@ -3498,14 +3511,149 @@ function component() {
         updateMobileProjHeader(name, open, done);
     }
 
-    // Rebuild the mobile project header (label, name, counts, page dots)
-    // off the same observer signal updateFooterCounts uses. Page dots are
-    // re-rendered from listLogic each pass since project add / rename /
-    // delete don't reliably surface as a single mutation on #sideMa
-    // alone — recomputing from authoritative state keeps the dot row
-    // honest with cheap DOM churn (one button per project). Each dot
-    // proxies to the matching #projChild click so the existing selection
-    // / accent / addAllToDo_DOM machinery runs unchanged.
+    // Resolve the project name at the given index in the authoritative
+    // listLogic order and route the selection through the matching
+    // #projChild click — the same path the sidebar uses. Returns true
+    // when the navigation committed (i.e. the target index resolved to
+    // a real, non-active project), false otherwise. Centralising the
+    // routing keeps the chevron click and the swipe gesture sharing one
+    // selection codepath so the existing accent + addAllToDo_DOM dance
+    // runs unchanged.
+    function navigateToProjectByIndex(targetIdx) {
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const total = projects.length;
+        if (total === 0) return false;
+        if (targetIdx < 0 || targetIdx >= total) return false;
+        const targetName = projects[targetIdx];
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const inp = rows[i].querySelector('#projInput');
+            if (inp && inp.value.trim() === targetName) {
+                rows[i].click();
+                if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                    try { navigator.vibrate(10); } catch (_) { /* noop */ }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    mobileProjPrev.addEventListener('click', function() {
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const activeName = mobileProjName.textContent || '';
+        const activeIdx  = activeName ? projects.indexOf(activeName) : -1;
+        if (activeIdx > 0) navigateToProjectByIndex(activeIdx - 1);
+    });
+    mobileProjNext.addEventListener('click', function() {
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const activeName = mobileProjName.textContent || '';
+        const activeIdx  = activeName ? projects.indexOf(activeName) : -1;
+        if (activeIdx >= 0 && activeIdx < projects.length - 1) navigateToProjectByIndex(activeIdx + 1);
+    });
+
+    // ── swipe-on-title gesture (mobile only) ──
+    // Horizontal swipe on the title row navigates prev/next project,
+    // mirroring the chevron clicks. Hard-stop at the ends with a small
+    // rubber-band translate so the user feels the boundary. Vertical
+    // dominant gestures fall through to native scroll — we never
+    // preventDefault until we're sure the gesture is horizontal-dominant
+    // and past a small intent threshold. Scoped to the title row only;
+    // row swipe-to-delete already owns horizontal gestures over
+    // #mainList below.
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeActive = false;
+    let swipeHorizontal = false;
+    const SWIPE_COMMIT_PX = 40;
+    const SWIPE_INTENT_PX = 10;
+    const RUBBER_BAND = 0.25;
+
+    function clearSwipeTransform() {
+        mobileProjTitleRow.style.transform = '';
+        mobileProjTitleRow.style.transition = 'transform 160ms ease';
+        setTimeout(function() {
+            mobileProjTitleRow.style.transition = '';
+        }, 200);
+    }
+
+    function activeProjectIndex() {
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const activeName = mobileProjName.textContent || '';
+        return { projects: projects, idx: activeName ? projects.indexOf(activeName) : -1 };
+    }
+
+    mobileProjTitleRow.addEventListener('touchstart', function(event) {
+        if (event.touches.length !== 1) return;
+        const t = event.touches[0];
+        swipeStartX = t.clientX;
+        swipeStartY = t.clientY;
+        swipeActive = true;
+        swipeHorizontal = false;
+        mobileProjTitleRow.style.transition = '';
+    }, { passive: true });
+
+    mobileProjTitleRow.addEventListener('touchmove', function(event) {
+        if (!swipeActive || event.touches.length !== 1) return;
+        const t = event.touches[0];
+        const dx = t.clientX - swipeStartX;
+        const dy = t.clientY - swipeStartY;
+        if (!swipeHorizontal) {
+            if (Math.abs(dx) < SWIPE_INTENT_PX && Math.abs(dy) < SWIPE_INTENT_PX) return;
+            if (Math.abs(dy) > Math.abs(dx)) {
+                swipeActive = false;
+                return;
+            }
+            swipeHorizontal = true;
+        }
+        const state = activeProjectIndex();
+        const atStart = state.idx <= 0;
+        const atEnd   = state.idx >= state.projects.length - 1;
+        let translate = dx;
+        if ((dx > 0 && atStart) || (dx < 0 && atEnd)) {
+            translate = dx * RUBBER_BAND;
+        }
+        mobileProjTitleRow.style.transform = 'translateX(' + translate + 'px)';
+        if (event.cancelable) event.preventDefault();
+    }, { passive: false });
+
+    function endSwipe(event) {
+        if (!swipeActive) return;
+        const wasHorizontal = swipeHorizontal;
+        swipeActive = false;
+        swipeHorizontal = false;
+        if (!wasHorizontal) {
+            clearSwipeTransform();
+            return;
+        }
+        const touch = (event.changedTouches && event.changedTouches[0]) || null;
+        const dx = touch ? (touch.clientX - swipeStartX) : 0;
+        clearSwipeTransform();
+        if (Math.abs(dx) < SWIPE_COMMIT_PX) return;
+        const state = activeProjectIndex();
+        if (state.idx < 0) return;
+        if (dx < 0 && state.idx < state.projects.length - 1) {
+            navigateToProjectByIndex(state.idx + 1);
+        } else if (dx > 0 && state.idx > 0) {
+            navigateToProjectByIndex(state.idx - 1);
+        }
+    }
+
+    mobileProjTitleRow.addEventListener('touchend', endSwipe);
+    mobileProjTitleRow.addEventListener('touchcancel', function() {
+        if (swipeActive) {
+            swipeActive = false;
+            swipeHorizontal = false;
+            clearSwipeTransform();
+        }
+    });
+
+    // Rebuild the mobile project header (label, name, counts, chevron
+    // enable state) off the same observer signal updateFooterCounts
+    // uses. The chevrons' disabled state is recomputed each pass since
+    // project add / rename / delete don't reliably surface as a single
+    // mutation on #sideMa alone — driving disabled off authoritative
+    // state keeps the boundaries honest.
     function updateMobileProjHeader(activeName, open, done) {
         const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
         const total = projects.length;
@@ -3529,32 +3677,12 @@ function component() {
         mobileProjOpen.textContent = open + ' open';
         mobileProjDone.textContent = done + ' done';
 
-        while (mobileProjDots.firstChild) mobileProjDots.removeChild(mobileProjDots.firstChild);
-        projects.forEach(function(name, idx) {
-            const dot = document.createElement('button');
-            dot.type = 'button';
-            dot.className = 'mobileProjDot';
-            dot.setAttribute('role', 'tab');
-            dot.setAttribute('aria-label', 'Project ' + (idx + 1) + ' of ' + total + ': ' + name);
-            dot.setAttribute('aria-selected', idx === activeIdx ? 'true' : 'false');
-            if (idx === activeIdx) dot.classList.add('active');
-            // Apply the project's accent color so the dot row also reads as
-            // a color legend at a glance. CSS resolves --proj-accent against
-            // var(--accent) for the null/default case.
-            applyProjectAccent(dot, listLogic.getProjectColor(name));
-            dot.addEventListener('click', function() {
-                if (idx === activeIdx) return;
-                const rows = sideMain.querySelectorAll('#projChild');
-                for (let i = 0; i < rows.length; i++) {
-                    const inp = rows[i].querySelector('#projInput');
-                    if (inp && inp.value.trim() === name) {
-                        rows[i].click();
-                        break;
-                    }
-                }
-            });
-            mobileProjDots.appendChild(dot);
-        });
+        const atStart = activeIdx <= 0;
+        const atEnd   = activeIdx < 0 || activeIdx >= total - 1;
+        mobileProjPrev.disabled = atStart;
+        mobileProjNext.disabled = atEnd;
+        mobileProjPrev.setAttribute('aria-disabled', atStart ? 'true' : 'false');
+        mobileProjNext.setAttribute('aria-disabled', atEnd ? 'true' : 'false');
     }
 
     const footObserver = new MutationObserver(updateFooterCounts);

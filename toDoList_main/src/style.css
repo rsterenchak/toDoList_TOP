@@ -2635,16 +2635,17 @@ body.row-dragging * { cursor: grabbing !important; }
   #descToggle,
   #projChild,
   #toDoChild,
-  .mobileProjDot,
+  .mobileProjChev,
   #mobileSidebarClose {
     touch-action: manipulation;
   }
 
   /* ── STACK mobile project header ──
      Replaces the desktop breadcrumb at the ≤700px breakpoint with a
-     screen-level header: PROJECT N OF M label, two-line project name,
-     and a stats line with open/done counts on the left and tappable
-     page dots on the right. The header is the only place the active
+     screen-level header: PROJECT N OF M label, a two-line project
+     name flanked by prev/next chevrons (with a horizontal
+     swipe-on-title gesture as an alternative), and a stats line with
+     the open/done counts. The header is the only place the active
      project name appears textually on mobile, so the desktop
      #mainCrumb is hidden alongside it (rule below). */
   #mobileProjHeader {
@@ -2678,6 +2679,23 @@ body.row-dragging * { cursor: grabbing !important; }
     line-height: 1;
   }
 
+  /* Title row — chevron · name · chevron. The chevrons are visual
+     affordances for the horizontal swipe-on-title gesture wired in
+     main.js; they're also tap targets in their own right. The row is
+     the swipe surface, so touch-action is locked to pan-y to let the
+     gesture handler claim horizontal drags without fighting native
+     scroll. */
+  #mobileProjTitleRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    will-change: transform;
+  }
+
   #mobileProjName {
     font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 22px;
@@ -2688,6 +2706,9 @@ body.row-dragging * { cursor: grabbing !important; }
        elsewhere — desktop's #mainCrumb already reads as accent-colored. */
     color: var(--proj-accent, var(--accent));
     line-height: 1.18;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
     /* Two-line wrap for long project names — mobile titles read better
        wrapped than ellipsised since the user expects to see the full
        name they typed. clamp at two lines so chrome doesn't push the
@@ -2697,6 +2718,51 @@ body.row-dragging * { cursor: grabbing !important; }
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
+  }
+
+  /* Prev / next project chevrons flanking the project name. 44×44
+     hit targets (CLAUDE.md mobile rule) with a smaller visible glyph
+     centered inside. Disabled state mutes the glyph at the project
+     list boundaries; the title row's swipe gesture also hard-stops
+     there. */
+  .mobileProjChev {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    flex: 0 0 44px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--text-muted);
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .mobileProjChev:hover,
+  .mobileProjChev:focus-visible {
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .mobileProjChev:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -6px;
+    border-radius: 8px;
+  }
+
+  .mobileProjChev:disabled,
+  .mobileProjChev[aria-disabled="true"] {
+    color: var(--border-dim);
+    cursor: default;
+    opacity: 0.55;
   }
 
   #mobileProjStats {
@@ -2721,54 +2787,6 @@ body.row-dragging * { cursor: grabbing !important; }
 
   #mobileProjOpen { color: var(--text-primary); }
   #mobileProjDone { color: var(--text-muted); }
-
-  /* Page dots row — one button per project. Each button is a 44×44 hit
-     target (CLAUDE.md mobile rule + STACK acceptance criterion) with a
-     visible 10×10 dot centered inside via padding. The active dot
-     scales up and uses the project's accent color; inactive dots use
-     the muted border tone. */
-  #mobileProjDots {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0;
-    max-width: 60%;
-  }
-
-  .mobileProjDot {
-    width: 44px;
-    height: 44px;
-    padding: 17px;
-    margin: 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .mobileProjDot::before {
-    content: '';
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--border-bright);
-    transition: background 0.15s ease, transform 0.15s ease;
-  }
-
-  .mobileProjDot.active::before {
-    background: var(--proj-accent, var(--accent));
-    transform: scale(1.4);
-  }
-
-  .mobileProjDot:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -6px;
-    border-radius: 8px;
-  }
 
   /* Hide the desktop breadcrumb in the main column and collapse the
      empty mainTitle row — the mobile header replaces both. #mainBar's
