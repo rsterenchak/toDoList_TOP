@@ -2867,17 +2867,21 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* sideTitle is the drawer's top bar — give it relative positioning
-     so the absolute-positioned close button anchors against it. Add a
-     safe-area-aware top padding so the PROJECTS label clears the
-     status bar / notch / Dynamic Island, matching the floor pattern
-     used on #mobileProjHeader. The min-height keeps the natural
-     var(--row-h) content row beneath the padding so the centered
-     label doesn't get squeezed. */
+     so the absolute-positioned close button anchors against it. The
+     safe-area inset that clears the status bar / notch / Dynamic
+     Island lives on #sideBar's padding-top, not here: a padding-top
+     on #sideTit only shifts in-flow children (the PROJECTS label) —
+     the absolutely-positioned close button anchors against #sideTit's
+     padding-box top edge and would ignore the inset, so the inset
+     must live on the parent for the whole header block (close button
+     included) to drop below device chrome as one unit. The
+     padding-top here is just visual breathing room above the
+     centered label. */
   #sideTit {
     position: relative;
     height: auto;
-    padding-top: calc(max(env(safe-area-inset-top, 0px), 36px) + 14px);
-    min-height: calc(var(--row-h) + max(env(safe-area-inset-top, 0px), 36px) + 14px);
+    padding-top: 14px;
+    min-height: calc(var(--row-h) + 14px);
   }
 
   /* ── STACK drawer extension sections ──
