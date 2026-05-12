@@ -2342,7 +2342,31 @@ body.row-dragging * { cursor: grabbing !important; }
     min-height: 0;
     overflow-y: auto;
   }
-  #sideMa { flex: 0 1 auto; }
+  /* Re-declare min-height:0 and overflow-y:auto on the mobile #sideMa
+     rule so a long projects list shrinks the scroll wrapper and scrolls
+     internally instead of growing the flex item and pushing #sideTit
+     out the top of #sidebarTop (and #addProj down into the bottom
+     half). min-height:0 is essential — without it the grid child can't
+     shrink below its content size, so flex-shrink:1 never engages and
+     no scrollbar appears. The bottom-edge mask fades the last ~18px of
+     the visible scroll area to hint at "more below" when the list
+     overflows; when content fits and align-content:start keeps it at
+     the top, the fade overlaps empty #bg-elevated and is invisible. */
+  #sideMa {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 calc(100% - 18px),
+      transparent
+    );
+            mask-image: linear-gradient(
+      to bottom,
+      #000 calc(100% - 18px),
+      transparent
+    );
+  }
 
   /* Hide the hamburger toggle while the drawer is open so the drawer's
      own X close button is the sole top-right control — otherwise the
