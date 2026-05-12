@@ -2280,9 +2280,13 @@ body.row-dragging * { cursor: grabbing !important; }
     /* Use 100dvh so the drawer fills the dynamic viewport on iOS Safari
        — height:100% only fills #mainSec, which doesn't reach the home
        indicator on Safari and leaves a dark strip below the V1.1 footer.
-       Padding-bottom reserves the home-indicator safe area at the drawer
-       level so the bg extends past it while content stays above. */
+       Padding-top reserves the status-bar / notch / Dynamic Island safe
+       area so the absolutely-positioned close button (top:8px relative
+       to #sideTit) clears the device chrome; padding-bottom reserves
+       the home-indicator safe area at the drawer level so the bg
+       extends past it while content stays above. */
     height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 9;
     transform: translateX(100%);
