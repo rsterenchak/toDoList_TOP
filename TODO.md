@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-12
      
-- [ ] **[MEDIUM]** Fix sidebar close button being clipped by iOS status bar and home indicator
+- [x] **[MEDIUM]** Fix sidebar close button being clipped by iOS status bar and home indicator
   - Description: On iOS, when the projects sidebar is open the close (×) button in the top-right corner is overlapped by the status bar (time, signal, battery), and the footer row (`V1.1 · 2 PROJECTS`) sits under the home indicator. The sidebar treats the viewport as if it extends to the physical screen edges, but on notched/Dynamic-Island devices it needs to inset for the system chrome. Fix by adding `padding-top: env(safe-area-inset-top)` and `padding-bottom: env(safe-area-inset-bottom)` to the sidebar container (scoped to the mobile breakpoint — desktop browsers don't have this overlap). The close button and everything beneath it shift down with the inset; the footer pads up off the home indicator. Note: `env()` only returns non-zero on iOS when the viewport meta tag includes `viewport-fit=cover` — verify `template.html` has it and add it if not. Out of scope: applying safe-area insets to the main todo list / header (separate audit if needed).
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/template.html`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 - [ ] **[LOW]** Center empty-state ghost, welcome text, and new project button vertically on mobile
   - Description: On the empty-state welcome screen (no projects yet), the ghost mascot, "Welcome." label, and "+ New project" button currently sit in the upper third of the viewport, leaving a large unbalanced gap below. Center the whole block at true vertical 50% of the available area (viewport minus the fixed footer), so the content reads as deliberately placed rather than top-anchored. Scope is empty-state only — once a project exists and `addInitialToDo` runs, the regular layout takes over and should be untouched. Implementation likely lives in the empty-state container's CSS in `style.css` (flex column with `justify-content: center` against a height that excludes the footer, or equivalent); confirm no inline style writes in `main.js` are overriding the centering, since inline styles win on specificity.
