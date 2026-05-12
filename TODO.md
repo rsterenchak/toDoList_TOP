@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Increase top padding on mobile project header to clear device UI elements
+- [x] **[MEDIUM]** Increase top padding on mobile project header to clear device UI elements
   - Description: The `#mobileProjHeader` top padding currently resolves to `calc(max(env(safe-area-inset-top, 0px), 24px) + 14px)`, yielding a 38px floor. On devices with status bars, notches, or Dynamic Island — and especially when the app runs in a browser tab rather than as an installed PWA (where `env(safe-area-inset-top)` may report 0 and the 24px fallback kicks in) — the "PROJECT N OF M" label and project title visually collide with the OS chrome. Raise the floor from 24px to ~44px (matches iOS status bar height) and bump the additive buffer from 14px to ~20px so there's comfortable clearance in both standalone and in-browser modes. Verify against iOS Safari (notched + Dynamic Island), Android Chrome, and both installed-PWA and tab-mode rendering; only `style.css` should need changes.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 ## Features
 
