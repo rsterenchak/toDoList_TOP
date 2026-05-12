@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Fix mobile sidebar height gap and push PROJECTS header below device chrome
-  - Description: On mobile, the open sidebar has two related spacing issues. **Bottom gap**: `#sideBar` uses `height: 100%` which only fills its `#mainSec` parent — on iOS Safari and any browser where the parent doesn't reach the visual viewport bottom (URL bar, home-indicator area), this leaves a visible dark strip below the V1.1 footer. Switch to `height: 100dvh` so the sidebar fills the dynamic viewport, and add `padding-bottom: env(safe-area-inset-bottom, 0px)` so the footer sits flush above the home indicator on devices that have one. **Top crowding**: the `PROJECTS` header sits too close to the status bar / notch / Dynamic Island. Add top padding using the same safe-area-aware pattern already in use on `#mobileProjHeader` — `calc(max(env(safe-area-inset-top, 0px), 36px) + 14px)` — yielding a ~50px floor that comfortably clears device chrome in both installed-PWA and in-browser modes. Both fixes live entirely in `style.css`; verify the taller sidebar header doesn't push the project list or the View/Appearance sections into needing scroll on shorter devices.
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-12
+- [ ] **[MEDIUM]** Fix sidebar background still not reaching viewport bottom on mobile
+  - Description: After the prior fix (sidebar `height: 100dvh` + `padding-bottom: env(safe-area-inset-bottom)`), the open `#sideBar` still terminates above the visual viewport bottom on mobile — a strip of the dimmed main app footer remains visible below the sidebar in the gap. Likely cause: `#sideBar` is `position: absolute` and its containing block is `#mainSec` (or another positioned ancestor that doesn't span the full viewport — the navBar above shrinks the available area, and any bottom chrome further constrains it). `height: 100dvh` extends from the parent's top, not the viewport's, so even at full dynamic viewport units the sidebar can be clipped or stop short of the screen edge. Investigate by checking the computed bounds of `#mainSec` and `#outerContainer` in DevTools — the fix is likely either (a) switch `#sideBar` to `position: fixed` and anchor directly to the viewport, or (b) make the absolute containing block reach the viewport bottom (e.g., `#mainSec` height/min-height tied to `100dvh - navbarHeight`). Also grep `main.js` for any inline `style.height`, `style.bottom`, or `style.top` writes to `#sideBar` that might be overriding the CSS — per the project's known inline-style-wins-on-specificity gotcha.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
