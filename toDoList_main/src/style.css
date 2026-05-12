@@ -2300,6 +2300,14 @@ body.row-dragging * { cursor: grabbing !important; }
     padding: 0 8px 0 4px;
   }
 
+  /* Per-row delete X is redundant on mobile — swipe-left + UNDO toast is
+     the expected touch pattern for destructive removal, and the swipe
+     handler in dragDrop.js calls listLogic.removeToDoByItem directly
+     rather than going through the button. */
+  #closeButtonToDo {
+    display: none;
+  }
+
   /* ── Prevent iOS Safari zoom on input focus ──
      Any input smaller than 16px triggers auto-zoom.
      !important is required because inline styles set in
