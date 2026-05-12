@@ -2659,7 +2659,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #mobileProjHeader {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 20px;
     padding: calc(max(env(safe-area-inset-top, 0px), 44px) + 20px) 16px 10px;
     background: var(--bg-elevated);
     border-bottom: 0.5px solid var(--border-dim);

@@ -72,6 +72,16 @@ describe('STACK mobile project header typography + stacking', () => {
         expect(rule).toMatch(/letter-spacing:\s*0\.12em/);
     });
 
+    it('#mobileProjHeader stacks its children with a 20px gap', () => {
+        // The three child rows — PROJECT N OF M label, the title row with
+        // chevrons, and the open/done stats row — each read as their own
+        // distinct band. A 20px gap (rather than the prior 6px) gives the
+        // header room to breathe without eating meaningfully into the
+        // todo list below.
+        const rule = extractMobileRule('#mobileProjHeader');
+        expect(rule).toMatch(/gap:\s*20px/);
+    });
+
     it('#mobileProjHeader establishes a stacking context above #mainList', () => {
         // Defensive guarantee: even if a future flex/grid rule reorders
         // children of #mainBar, the empty-state block (rendered inside
