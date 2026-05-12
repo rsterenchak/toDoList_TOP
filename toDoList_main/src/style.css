@@ -2272,7 +2272,13 @@ body.row-dragging * { cursor: grabbing !important; }
     left: auto;
     width: 78vw;
     max-width: 380px;
-    height: 100%;
+    /* Use 100dvh so the drawer fills the dynamic viewport on iOS Safari
+       — height:100% only fills #mainSec, which doesn't reach the home
+       indicator on Safari and leaves a dark strip below the V1.1 footer.
+       Padding-bottom reserves the home-indicator safe area at the drawer
+       level so the bg extends past it while content stays above. */
+    height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     z-index: 9;
     transform: translateX(100%);
     transition: transform 0.25s ease;
@@ -2852,8 +2858,18 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* sideTitle is the drawer's top bar — give it relative positioning
-     so the absolute-positioned close button anchors against it. */
-  #sideTit { position: relative; }
+     so the absolute-positioned close button anchors against it. Add a
+     safe-area-aware top padding so the PROJECTS label clears the
+     status bar / notch / Dynamic Island, matching the floor pattern
+     used on #mobileProjHeader. The min-height keeps the natural
+     var(--row-h) content row beneath the padding so the centered
+     label doesn't get squeezed. */
+  #sideTit {
+    position: relative;
+    height: auto;
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 36px) + 14px);
+    min-height: calc(var(--row-h) + max(env(safe-area-inset-top, 0px), 36px) + 14px);
+  }
 
   /* ── STACK drawer extension sections ──
      Mounted beneath the existing Projects group (#sideTit + #sideMa +
