@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix mobile sidebar height gap and push PROJECTS header below device chrome
+- [x] **[MEDIUM]** Fix mobile sidebar height gap and push PROJECTS header below device chrome
   - Description: On mobile, the open sidebar has two related spacing issues. **Bottom gap**: `#sideBar` uses `height: 100%` which only fills its `#mainSec` parent — on iOS Safari and any browser where the parent doesn't reach the visual viewport bottom (URL bar, home-indicator area), this leaves a visible dark strip below the V1.1 footer. Switch to `height: 100dvh` so the sidebar fills the dynamic viewport, and add `padding-bottom: env(safe-area-inset-bottom, 0px)` so the footer sits flush above the home indicator on devices that have one. **Top crowding**: the `PROJECTS` header sits too close to the status bar / notch / Dynamic Island. Add top padding using the same safe-area-aware pattern already in use on `#mobileProjHeader` — `calc(max(env(safe-area-inset-top, 0px), 36px) + 14px)` — yielding a ~50px floor that comfortably clears device chrome in both installed-PWA and in-browser modes. Both fixes live entirely in `style.css`; verify the taller sidebar header doesn't push the project list or the View/Appearance sections into needing scroll on shorter devices.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 ## Features
 
