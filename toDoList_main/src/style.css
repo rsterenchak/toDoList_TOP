@@ -2266,7 +2266,12 @@ body.row-dragging * { cursor: grabbing !important; }
      existing #sideMa scroll area mount in main.js as
      #drawerView / #drawerAppearance / #drawerFooter. */
   #sideBar {
-    position: absolute;
+    /* position:fixed anchors the drawer to the viewport. position:absolute
+       resolves against #mainSec, whose overflow:hidden clips the drawer at
+       the top of the footer grid track — leaving a strip of dimmed footer
+       chrome visible below the open drawer on mobile. Fixed positioning
+       lets height:100dvh actually reach the home indicator. */
+    position: fixed;
     top: 0;
     right: 0;
     left: auto;

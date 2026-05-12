@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-12',
         fixed: [
-            'Mobile top chrome now keeps breathing room above the hamburger button, project header, and welcome screen in browser tabs and on non-notched devices.',
             'Per-row delete button is hidden on mobile in favor of the swipe-left gesture with its UNDO toast.',
             'Project header on mobile now leaves taller top clearance so the project label and title clear the iOS status bar and Dynamic Island.',
             'Mobile project header now spaces its label, title row, and counts row further apart so each reads as its own band.',
             'Mobile sidebar drawer now reaches the bottom of the screen on iOS and its PROJECTS header clears the status bar and notch.',
+            'Mobile sidebar drawer background now extends flush to the bottom of the screen with no footer strip showing through behind it.',
         ],
     },
 ];
