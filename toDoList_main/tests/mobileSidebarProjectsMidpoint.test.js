@@ -11,7 +11,7 @@ function read(relative) {
 
 // Pins the mobile sidebar drawer's two-halves layout: on mobile the
 // drawer splits into #sidebarTop (projects header + project list +
-// add-project button) and #sidebarBottom (View / Appearance / footer)
+// add-project button) and #sidebarBottom (Settings button + footer)
 // with each half taking exactly 50% of the sidebar height. The top
 // half uses justify-content:center so the projects block centers as
 // a single group within the upper half — empty space splits evenly
@@ -59,9 +59,8 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
             expect(main).toMatch(/sidebarTop\.appendChild\(addProj\)/);
         });
 
-        it('the drawer block (drawerView, drawerAppearance, drawerFooter) mounts into #sidebarBottom', () => {
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerView\)/);
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerAppearance\)/);
+        it('the drawer block (drawerSettingsBtn, drawerFooter) mounts into #sidebarBottom', () => {
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtn\)/);
             expect(main).toMatch(/sidebarBottom\.appendChild\(drawerFooter\)/);
         });
 
@@ -118,11 +117,10 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
             expect(match[1]).toMatch(/min-height:\s*0/);
         });
 
-        it('drawer sections inside #sidebarBottom remain display:none on desktop so the bottom half collapses', () => {
+        it('drawer chrome inside #sidebarBottom remains display:none on desktop so the bottom half collapses', () => {
             const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
             const hidesDrawer = desktop.find(function(block) {
-                return /#drawerView/.test(block)
-                    && /#drawerAppearance/.test(block)
+                return /#drawerSettingsBtn/.test(block)
                     && /#drawerFooter/.test(block)
                     && /display:\s*none/.test(block);
             });

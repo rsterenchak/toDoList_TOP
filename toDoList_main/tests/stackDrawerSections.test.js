@@ -11,13 +11,14 @@ function read(relative) {
 
 // Pins the STACK mobile drawer reorganization: the drawer slides in from
 // the RIGHT at 78vw width and reads top-to-bottom as
-//   Projects → View → Appearance → footer
-// The View / Appearance toggle rows mirror controls that already live in
-// the desktop chrome (settings menu, completed-section caret, bulk desc
-// toggle); no new persisted state is introduced — the underlying
-// pref/state functions are shared. Selecting a project from the drawer
-// keeps it open (browse-and-decide).
-describe('STACK mobile drawer — reorganized sections', () => {
+//   Projects → Settings button → footer
+// The previous inline View / Appearance toggle rows now live behind a
+// single Settings button at the bottom of #sidebarBottom that opens a
+// modal. Each toggle preserves its underlying state source (the in-list
+// completed caret, the bulkDesc toggle, theme prefs, companion prefs) —
+// no new persisted state is introduced. Selecting a project from the
+// drawer still keeps it open (browse-and-decide).
+describe('STACK mobile drawer — Settings entry + modal', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
@@ -43,22 +44,12 @@ describe('STACK mobile drawer — reorganized sections', () => {
         });
     });
 
-    describe('drawer section structure', () => {
-        it('mounts a View section with the View heading', () => {
-            expect(main).toMatch(/drawerView\.id\s*=\s*['"]drawerView['"]/);
-            expect(main).toMatch(/drawerViewHeading\.textContent\s*=\s*['"]View['"]/);
-            // The drawer sections live inside the #sidebarBottom wrapper
-            // (added so the projects group can bottom-anchor to the
-            // sidebar midpoint on mobile) which is itself appended to
-            // #sideBar, so the section still mounts into the drawer.
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerView\)/);
+    describe('drawer bottom structure', () => {
+        it('mounts a Settings button inside #sidebarBottom', () => {
+            expect(main).toMatch(/drawerSettingsBtn\.id\s*=\s*['"]drawerSettingsBtn['"]/);
+            expect(main).toMatch(/drawerSettingsBtn\.textContent\s*=\s*['"]Settings['"]/);
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtn\)/);
             expect(main).toMatch(/main1\.appendChild\(sidebarBottom\)/);
-        });
-
-        it('mounts an Appearance section with the Appearance heading', () => {
-            expect(main).toMatch(/drawerAppearance\.id\s*=\s*['"]drawerAppearance['"]/);
-            expect(main).toMatch(/drawerAppearanceHeading\.textContent\s*=\s*['"]Appearance['"]/);
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerAppearance\)/);
         });
 
         it('mounts a footer with version label and project count', () => {
@@ -68,21 +59,27 @@ describe('STACK mobile drawer — reorganized sections', () => {
             expect(main).toMatch(/sidebarBottom\.appendChild\(drawerFooter\)/);
         });
 
-        it('mounts the sections in order: View → Appearance → Footer', () => {
-            const viewIdx       = main.indexOf('sidebarBottom.appendChild(drawerView)');
-            const appearanceIdx = main.indexOf('sidebarBottom.appendChild(drawerAppearance)');
-            const footerIdx     = main.indexOf('sidebarBottom.appendChild(drawerFooter)');
-            expect(viewIdx).toBeGreaterThan(-1);
-            expect(appearanceIdx).toBeGreaterThan(viewIdx);
-            expect(footerIdx).toBeGreaterThan(appearanceIdx);
+        it('mounts the Settings button before the footer (Settings → Footer source order)', () => {
+            const settingsIdx = main.indexOf('sidebarBottom.appendChild(drawerSettingsBtn)');
+            const footerIdx   = main.indexOf('sidebarBottom.appendChild(drawerFooter)');
+            expect(settingsIdx).toBeGreaterThan(-1);
+            expect(footerIdx).toBeGreaterThan(settingsIdx);
+        });
+
+        it('the previous inline drawer View / Appearance sections are no longer mounted', () => {
+            // The four toggles moved into the Settings modal; the
+            // always-visible drawerView / drawerAppearance wrappers
+            // should not be appended to the drawer anymore.
+            expect(main).not.toMatch(/sidebarBottom\.appendChild\(drawerView\)/);
+            expect(main).not.toMatch(/sidebarBottom\.appendChild\(drawerAppearance\)/);
         });
     });
 
-    describe('View section toggles mirror existing controls', () => {
+    describe('Settings modal hosts the four toggles under View / Appearance sub-headers', () => {
         it('Show completed toggle reads/writes the same pref the in-list caret uses', () => {
             // The label is the user-facing copy; the underlying state
             // routes through isCompletedSectionOpen / setCompletedSectionOpen
-            // so the drawer toggle and the in-list caret stay in lockstep.
+            // so the modal toggle and the in-list caret stay in lockstep.
             expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Show completed['"]/);
             // Prefer the in-list caret's click when mounted so its caret
             // glyph + aria-expanded flip alongside the pref write.
@@ -91,17 +88,12 @@ describe('STACK mobile drawer — reorganized sections', () => {
 
         it('Expand all descriptions toggle dispatches through the bulkDesc button', () => {
             expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Expand all descriptions['"]/);
-            // Routing through the button's click keeps the .expanded class
-            // and Expand/Collapse label flip in one place rather than
-            // duplicating that logic at the drawer site.
             const expandBlockStart = main.indexOf("'Expand all descriptions'");
             expect(expandBlockStart).toBeGreaterThan(-1);
             const slice = main.slice(expandBlockStart, expandBlockStart + 400);
             expect(slice).toMatch(/bulkDescToggleBtn\.click\(\s*\)/);
         });
-    });
 
-    describe('Appearance section toggles mirror existing settings menu items', () => {
         it('Dark theme toggle uses the same applyTheme + localStorage write as the settings menu', () => {
             expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Dark theme['"]/);
             const themeBlockStart = main.indexOf("'Dark theme'");
@@ -121,6 +113,53 @@ describe('STACK mobile drawer — reorganized sections', () => {
             expect(slice).toMatch(/ensureCompanion\(\s*\)/);
             expect(slice).toMatch(/destroyCompanion\(\s*\)/);
         });
+
+        it('Settings modal groups toggles under View and Appearance sub-headers', () => {
+            const showFnIdx = main.indexOf('function showSettingsModal()');
+            expect(showFnIdx).toBeGreaterThan(-1);
+            const slice = main.slice(showFnIdx, showFnIdx + 4000);
+            expect(slice).toMatch(/viewHeading\.textContent\s*=\s*['"]View['"]/);
+            expect(slice).toMatch(/appearanceHeading\.textContent\s*=\s*['"]Appearance['"]/);
+            // All four toggle builders mount into the modal body.
+            expect(slice).toMatch(/buildShowCompletedToggle\(\s*\)/);
+            expect(slice).toMatch(/buildExpandAllToggle\(\s*\)/);
+            expect(slice).toMatch(/buildDarkThemeToggle\(\s*\)/);
+            expect(slice).toMatch(/buildCompanionToggle\(\s*\)/);
+        });
+
+        it('Settings button click opens the modal', () => {
+            const start = main.indexOf("drawerSettingsBtn.addEventListener('click'");
+            expect(start).toBeGreaterThan(-1);
+            const slice = main.slice(start, start + 240);
+            expect(slice).toMatch(/showSettingsModal\(\s*\)/);
+        });
+    });
+
+    describe('Settings modal three-way close vocabulary (CLAUDE.md modal rule)', () => {
+        const showFnIdx = main.indexOf('function showSettingsModal()');
+        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 6000) : '';
+
+        it('explicit close (×) button is mounted and closes the modal', () => {
+            expect(fnSlice).toMatch(/closeX\.id\s*=\s*['"]settingsModalClose['"]/);
+            expect(fnSlice).toMatch(/closeX\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        });
+
+        it('backdrop click closes the modal', () => {
+            expect(fnSlice).toMatch(/backdrop\.addEventListener\(\s*['"]click['"]/);
+            expect(fnSlice).toMatch(/event\.target\s*===\s*backdrop[\s\S]*?close\(\s*\)/);
+        });
+
+        it('Escape closes the modal', () => {
+            expect(fnSlice).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
+            expect(fnSlice).toMatch(/document\.addEventListener\(\s*['"]keydown['"]/);
+        });
+
+        it('settingsModalBackdrop participates in the global modal-open check', () => {
+            const modals = read('modals.js');
+            const fn = modals.match(/function isAnyModalOrPopoverOpen\(\)\s*\{[\s\S]*?\}/);
+            expect(fn).toBeTruthy();
+            expect(fn[0]).toMatch(/settingsModalBackdrop/);
+        });
     });
 
     describe('drawer state stays in sync with the rest of the chrome', () => {
@@ -133,14 +172,10 @@ describe('STACK mobile drawer — reorganized sections', () => {
             expect(slice).toMatch(/sidebar-open/);
         });
 
-        it('refreshDrawerSections re-reads every toggle\'s state and the project count', () => {
+        it('refreshDrawerSections refreshes the project count footer (toggle state is rebuilt per modal open)', () => {
             const fnIdx = main.indexOf('function refreshDrawerSections()');
             expect(fnIdx).toBeGreaterThan(-1);
             const slice = main.slice(fnIdx, fnIdx + 400);
-            expect(slice).toMatch(/drawerShowCompleted\.refresh\(\s*\)/);
-            expect(slice).toMatch(/drawerExpandAll\.refresh\(\s*\)/);
-            expect(slice).toMatch(/drawerTheme\.refresh\(\s*\)/);
-            expect(slice).toMatch(/drawerCompanion\.refresh\(\s*\)/);
             expect(slice).toMatch(/refreshDrawerProjectCount\(\s*\)/);
         });
 
@@ -163,11 +198,10 @@ describe('STACK mobile drawer — reorganized sections', () => {
     });
 
     describe('desktop hides the new drawer-only chrome', () => {
-        it('drawer sections are hidden at desktop sizes', () => {
+        it('drawer Settings button and footer are hidden at desktop sizes', () => {
             const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
             const hidesDrawer = desktop.find(function(block) {
-                return /#drawerView/.test(block)
-                    && /#drawerAppearance/.test(block)
+                return /#drawerSettingsBtn/.test(block)
                     && /#drawerFooter/.test(block)
                     && /display:\s*none/.test(block);
             });
