@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix bottom drawer swipe-down close gesture stopping after inner touch
+- [x] **[HIGH]** Fix bottom drawer swipe-down close gesture stopping after inner touch
   - Description: On mobile, the bottom drawer's swipe-down close gesture works when the drawer is first opened, but stops firing as soon as the user taps or touches any content inside the drawer — the swipe no longer dismisses the drawer and the user has to find another close mechanism. Expected behavior is for the swipe-down dismiss gesture to remain active for the lifetime of the open drawer, independent of whether its inner content has been interacted with. Likely causes: inner touch handlers calling `stopPropagation()` so the drawer's `touchstart`/`touchmove`/`touchend` listeners never receive subsequent gestures; or the gesture state machine (drag-in-progress flag, captured start Y) getting stranded or reset by an inner touch and never re-arming. Investigate the drawer's swipe-handling block in `main.js` (grep with offset/limit since `main.js` is >25k tokens) and confirm the listeners are attached to the drawer container and don't bail based on `event.target` not being the drawer itself.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
      
 - [ ] **[MEDIUM]** Fix sidebar close button being clipped by iOS status bar and home indicator
   - Description: On iOS, when the projects sidebar is open the close (×) button in the top-right corner is overlapped by the status bar (time, signal, battery), and the footer row (`V1.1 · 2 PROJECTS`) sits under the home indicator. The sidebar treats the viewport as if it extends to the physical screen edges, but on notched/Dynamic-Island devices it needs to inset for the system chrome. Fix by adding `padding-top: env(safe-area-inset-top)` and `padding-bottom: env(safe-area-inset-bottom)` to the sidebar container (scoped to the mobile breakpoint — desktop browsers don't have this overlap). The close button and everything beneath it shift down with the inset; the footer pads up off the home indicator. Note: `env()` only returns non-zero on iOS when the viewport meta tag includes `viewport-fit=cover` — verify `template.html` has it and add it if not. Out of scope: applying safe-area insets to the main todo list / header (separate audit if needed).
