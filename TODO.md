@@ -7,6 +7,11 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[MEDIUM]** Fix mobile top chrome hugging the device edge in browser tabs
+  - Description: On the ≤700px breakpoint, the hamburger button (`#sidebarToggle`) and the project header (`#mobileProjHeader`) sit too close to the top of the viewport in any context where `env(safe-area-inset-top)` reports `0` — i.e. regular browser tabs on iOS Safari / Chrome and any non-notched device. The current rules use `calc(env(safe-area-inset-top, 0px) + Npx)`, which collapses to just the `Npx` floor when the inset is zero, so the status bar / URL bar visually clashes with the app chrome. Fix by wrapping the inset in `max()` with a sensible floor so there's always breathing room: `top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)` for `#sidebarToggle` and `padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 14px)` for `#mobileProjHeader`. Apply the same `max()` floor to `#emptyState.emptyStateNoProjects`'s top padding so the welcome ghost doesn't ride the top edge either. Notched standalone-PWA devices still expand to the real inset; everywhere else gets the 24px guarantee.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Hide per-row delete button on mobile in favor of swipe-left
   - Description: At the ≤700px breakpoint, the per-row `×` delete button on each todo row is redundant — the existing swipe-left-to-delete gesture (with the 5s UNDO toast) already covers destructive removal and is the expected mobile pattern. Hide `#closeButtonToDo` inside the existing `@media (max-width: 700px)` block in `style.css` so the row's right cluster reads as just the due pill + expand caret on mobile, while desktop keeps the button untouched. The swipe handler in `attachToDoDrag` already calls `listLogic.removeToDoByItem` directly and only falls back to `btn.click()` when it can't resolve the item, so hiding the button doesn't break the swipe path. Worth eyeballing the row's right padding (currently `0 8px 0 4px`) after the change — with the X gone, `#descToggle` becomes the rightmost child and may sit a touch close to the edge.
   - File: `toDoList_main/src/style.css`
