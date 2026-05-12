@@ -2957,7 +2957,18 @@ body.row-dragging * { cursor: grabbing !important; }
      #addProj). The Settings button replaces the previous inline View /
      Appearance toggle rows — the four toggles now live behind it in
      #settingsModal. Visual weight matches #projButton (border + elevated
-     surface) but with a full-width label rather than a 26px icon. */
+     surface) but with a full-width label rather than a 26px icon. The
+     wrap grows to fill the space above the footer so the button centers
+     within the drawer's bottom half on both axes; centering lives on
+     the wrap (not on shared #sidebarBottom) so the footer sibling stays
+     bottom-anchored. */
+  #drawerSettingsBtnWrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   #drawerSettingsBtn {
     margin: 16px 16px 8px;
     min-height: 44px;
@@ -3151,6 +3162,7 @@ body.row-dragging * { cursor: grabbing !important; }
 @media (min-width: 701px) {
   #mobileProjHeader { display: none; }
   #mobileSidebarClose { display: none; }
+  #drawerSettingsBtnWrap,
   #drawerSettingsBtn,
   #drawerFooter { display: none; }
   #mobileCreateChips { display: none; }
