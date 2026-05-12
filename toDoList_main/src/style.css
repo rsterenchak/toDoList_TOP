@@ -2320,19 +2320,20 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Split the sidebar drawer into two equal halves. Top half holds the
-     projects group (#sideTit + #sideMa + #addProj) with content
-     bottom-anchored at the midpoint via justify-content:flex-end, so
-     short project lists hover just above center and long lists fill
-     upward and scroll within #sideMa. Bottom half holds the View /
-     Appearance / footer block, content top-anchored naturally so the
-     settings sit just below the midpoint and the footer drops to the
-     bottom of the drawer (above the env(safe-area-inset-bottom) padding
-     on #sideBar). #sideMa drops its flex-grow so it sizes to its rows
-     within the top half — letting the parent's flex-end justification
-     pack everything against the midpoint when there is free space. */
+     projects group (#sideTit + #sideMa + #addProj) centered as a single
+     block within the upper half via justify-content:center, so the empty
+     space splits evenly above and below the projects block when the list
+     is short, and long lists fill outward from the midline and scroll
+     within #sideMa. Bottom half holds the View / Appearance / footer
+     block, content top-anchored naturally so the settings sit just below
+     the midpoint and the footer drops to the bottom of the drawer (above
+     the env(safe-area-inset-bottom) padding on #sideBar). #sideMa drops
+     its flex-grow so it sizes to its rows within the top half — letting
+     the parent's center justification pack everything around the midline
+     when there is free space. */
   #sidebarTop {
     flex: 0 0 50%;
-    justify-content: flex-end;
+    justify-content: center;
     overflow: hidden;
     min-height: 0;
   }
