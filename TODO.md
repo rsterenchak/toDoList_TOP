@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Increase top padding on mobile project header to clear device UI elements
-  - Description: The `#mobileProjHeader` top padding currently resolves to `calc(max(env(safe-area-inset-top, 0px), 24px) + 14px)`, yielding a 38px floor. On devices with status bars, notches, or Dynamic Island — and especially when the app runs in a browser tab rather than as an installed PWA (where `env(safe-area-inset-top)` may report 0 and the 24px fallback kicks in) — the "PROJECT N OF M" label and project title visually collide with the OS chrome. Raise the floor from 24px to ~44px (matches iOS status bar height) and bump the additive buffer from 14px to ~20px so there's comfortable clearance in both standalone and in-browser modes. Verify against iOS Safari (notched + Dynamic Island), Android Chrome, and both installed-PWA and tab-mode rendering; only `style.css` should need changes.
+- [ ] **[LOW]** Increase vertical spacing between elements inside mobile project header to 20px
+  - Description: Inside `#mobileProjHeader` the three stacked elements — the "PROJECT N OF M" counter, the title row with arrows, and the "N OPEN N DONE" status line — currently sit at a 6px gap and feel cramped. Bump the container's `gap` from `6px` to `20px` so each row reads as its own distinct band. If any of the child rows carry their own top/bottom margins fighting the parent gap, normalize those to 0 so the 20px `gap` is the single source of truth. Purely a `style.css` change — verify the taller header still clears the top safe-area cleanly and doesn't eat meaningfully into the todo list area below.
   - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-12
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
