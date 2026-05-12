@@ -9,17 +9,18 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the mobile sidebar drawer's two-halves layout: on mobile the
+// Pins the mobile sidebar drawer's two-region layout: on mobile the
 // drawer splits into #sidebarTop (projects header + project list +
-// add-project button) and #sidebarBottom (Settings button + footer)
-// with each half taking exactly 50% of the sidebar height. The top
-// half uses justify-content:center so the projects block centers as
-// a single group within the upper half — empty space splits evenly
-// above and below, long lists fill outward from the midline and
-// #sideMa scrolls within the top half. Desktop is unchanged: the top
-// wrapper grows to fill the sidebar and the bottom wrapper holds
-// elements that are display:none above the 700px breakpoint.
-describe('Mobile sidebar — projects block centers in the upper half', () => {
+// add-project button) and #sidebarBottom (Settings button + footer).
+// #sidebarBottom sizes to its actual content (~80–100px) and
+// #sidebarTop fills all remaining vertical space inside #sideBar.
+// #sidebarTop uses justify-content:center so the projects block stays
+// vertically centered within the available area when the list is
+// short; long lists fill outward and #sideMa scrolls within
+// #sidebarTop. Desktop is unchanged: the top wrapper grows to fill
+// the sidebar and the bottom wrapper holds elements that are
+// display:none above the 700px breakpoint.
+describe('Mobile sidebar — projects fill remaining height above content-sized bottom', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
@@ -72,23 +73,23 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
         });
     });
 
-    describe('mobile CSS pins each half to exactly 50% of the sidebar', () => {
-        it('#sidebarTop is sized flex:0 0 50%', () => {
+    describe('mobile CSS sizes #sidebarBottom to its content and expands #sidebarTop', () => {
+        it('#sidebarTop fills remaining height (flex:1)', () => {
             const rule = extractMobileRule('#sidebarTop');
-            expect(rule).toMatch(/flex:\s*0\s+0\s+50%/);
+            expect(rule).toMatch(/flex:\s*1\s*;/);
         });
 
-        it('#sidebarBottom is sized flex:0 0 50%', () => {
+        it('#sidebarBottom sizes to its content (flex:0 0 auto)', () => {
             const rule = extractMobileRule('#sidebarBottom');
-            expect(rule).toMatch(/flex:\s*0\s+0\s+50%/);
+            expect(rule).toMatch(/flex:\s*0\s+0\s+auto/);
         });
 
-        it('#sidebarTop uses justify-content:center so its content centers within the upper half', () => {
+        it('#sidebarTop uses justify-content:center so its content centers within the available area', () => {
             const rule = extractMobileRule('#sidebarTop');
             expect(rule).toMatch(/justify-content:\s*center/);
         });
 
-        it('#sidebarTop allows the top half to clip its content so long lists scroll inside #sideMa rather than spilling out the top', () => {
+        it('#sidebarTop clips its content and sets min-height:0 so long lists scroll inside #sideMa rather than spilling out the top', () => {
             const rule = extractMobileRule('#sidebarTop');
             expect(rule).toMatch(/overflow:\s*hidden/);
             expect(rule).toMatch(/min-height:\s*0/);

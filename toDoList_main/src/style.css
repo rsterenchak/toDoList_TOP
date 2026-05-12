@@ -2319,26 +2319,26 @@ body.row-dragging * { cursor: grabbing !important; }
     transform: translateX(0);
   }
 
-  /* Split the sidebar drawer into two equal halves. Top half holds the
-     projects group (#sideTit + #sideMa + #addProj) centered as a single
-     block within the upper half via justify-content:center, so the empty
-     space splits evenly above and below the projects block when the list
-     is short, and long lists fill outward from the midline and scroll
-     within #sideMa. Bottom half holds the View / Appearance / footer
-     block, content top-anchored naturally so the settings sit just below
-     the midpoint and the footer drops to the bottom of the drawer (above
-     the env(safe-area-inset-bottom) padding on #sideBar). #sideMa drops
-     its flex-grow so it sizes to its rows within the top half — letting
-     the parent's center justification pack everything around the midline
-     when there is free space. */
+  /* #sidebarBottom sizes to its actual content (the Settings button wrap
+     and the version footer — roughly 80–100px) and #sidebarTop expands
+     to fill all remaining vertical space inside #sideBar. min-height:0
+     on #sidebarTop is required so its flex child #sideMa can still
+     shrink and engage internal scrolling when projects overflow; without
+     it the flex-fill parent won't allow the scrollable child to shrink.
+     justify-content:center on #sidebarTop keeps the projects group
+     (#sideTit + #sideMa + #addProj) vertically centered within the
+     available area when the list is short; long lists fill outward and
+     scroll within #sideMa. This sizing is self-adjusting — if rows are
+     added or removed from #sidebarBottom later, no proportions need
+     updating. */
   #sidebarTop {
-    flex: 0 0 50%;
+    flex: 1;
     justify-content: center;
     overflow: hidden;
     min-height: 0;
   }
   #sidebarBottom {
-    flex: 0 0 50%;
+    flex: 0 0 auto;
     min-height: 0;
     overflow-y: auto;
   }
