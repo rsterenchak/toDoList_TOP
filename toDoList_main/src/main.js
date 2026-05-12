@@ -2479,9 +2479,23 @@ function component() {
     //   addProj    — bottom: "+" add-project button. In rail mode the button
     //                renders with a dashed border; in full mode it stays a
     //                solid surface chip.
-    main1.appendChild(sideTitle);
-    main1.appendChild(sideMain);
-    main1.appendChild(addProj);
+    // On mobile (≤700px) the sidebar splits into two equal halves via the
+    // #sidebarTop / #sidebarBottom wrappers so the projects block
+    // bottom-anchors to the vertical midpoint instead of pinning to the
+    // top — the View/Appearance/footer block then top-anchors at the
+    // midpoint. Desktop treats #sidebarTop as a flex:1 1 auto growth
+    // region and #sidebarBottom is visually inert (its children are
+    // display:none above 700px), so desktop layout is unchanged.
+    const sidebarTop = document.createElement('div');
+    const sidebarBottom = document.createElement('div');
+    sidebarTop.id = 'sidebarTop';
+    sidebarBottom.id = 'sidebarBottom';
+    main1.appendChild(sidebarTop);
+    main1.appendChild(sidebarBottom);
+
+    sidebarTop.appendChild(sideTitle);
+    sidebarTop.appendChild(sideMain);
+    sidebarTop.appendChild(addProj);
 
     sideTitle.appendChild(sideHead);
     addProj.appendChild(projButton);
@@ -2740,9 +2754,9 @@ function component() {
     drawerFooter.appendChild(drawerFooterVersion);
     drawerFooter.appendChild(drawerFooterCount);
 
-    main1.appendChild(drawerView);
-    main1.appendChild(drawerAppearance);
-    main1.appendChild(drawerFooter);
+    sidebarBottom.appendChild(drawerView);
+    sidebarBottom.appendChild(drawerAppearance);
+    sidebarBottom.appendChild(drawerFooter);
 
     function refreshDrawerProjectCount() {
         const count = listLogic.listProjectsArray().length;
