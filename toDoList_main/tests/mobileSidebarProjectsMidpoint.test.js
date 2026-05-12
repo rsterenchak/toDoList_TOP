@@ -59,8 +59,8 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
             expect(main).toMatch(/sidebarTop\.appendChild\(addProj\)/);
         });
 
-        it('the drawer block (drawerSettingsBtn, drawerFooter) mounts into #sidebarBottom', () => {
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtn\)/);
+        it('the drawer block (Settings button wrap, drawerFooter) mounts into #sidebarBottom', () => {
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtnWrap\)/);
             expect(main).toMatch(/sidebarBottom\.appendChild\(drawerFooter\)/);
         });
 

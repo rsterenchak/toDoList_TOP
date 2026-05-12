@@ -2739,6 +2739,12 @@ function component() {
     drawerSettingsBtn.setAttribute('aria-expanded', 'false');
     drawerSettingsBtn.textContent = 'Settings';
 
+    // Wrap the Settings button so flex centering can apply to the wrap
+    // without rearranging the footer sibling inside #sidebarBottom.
+    const drawerSettingsBtnWrap = document.createElement('div');
+    drawerSettingsBtnWrap.id = 'drawerSettingsBtnWrap';
+    drawerSettingsBtnWrap.appendChild(drawerSettingsBtn);
+
     const drawerFooter = document.createElement('div');
     drawerFooter.id = 'drawerFooter';
     const drawerFooterVersion = document.createElement('span');
@@ -2750,7 +2756,7 @@ function component() {
     drawerFooter.appendChild(drawerFooterVersion);
     drawerFooter.appendChild(drawerFooterCount);
 
-    sidebarBottom.appendChild(drawerSettingsBtn);
+    sidebarBottom.appendChild(drawerSettingsBtnWrap);
     sidebarBottom.appendChild(drawerFooter);
 
     function refreshDrawerProjectCount() {

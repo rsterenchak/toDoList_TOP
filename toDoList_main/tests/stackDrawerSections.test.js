@@ -45,10 +45,12 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
     });
 
     describe('drawer bottom structure', () => {
-        it('mounts a Settings button inside #sidebarBottom', () => {
+        it('mounts a Settings button inside #sidebarBottom (via a centering wrap)', () => {
             expect(main).toMatch(/drawerSettingsBtn\.id\s*=\s*['"]drawerSettingsBtn['"]/);
             expect(main).toMatch(/drawerSettingsBtn\.textContent\s*=\s*['"]Settings['"]/);
-            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtn\)/);
+            expect(main).toMatch(/drawerSettingsBtnWrap\.id\s*=\s*['"]drawerSettingsBtnWrap['"]/);
+            expect(main).toMatch(/drawerSettingsBtnWrap\.appendChild\(drawerSettingsBtn\)/);
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtnWrap\)/);
             expect(main).toMatch(/main1\.appendChild\(sidebarBottom\)/);
         });
 
@@ -60,7 +62,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('mounts the Settings button before the footer (Settings → Footer source order)', () => {
-            const settingsIdx = main.indexOf('sidebarBottom.appendChild(drawerSettingsBtn)');
+            const settingsIdx = main.indexOf('sidebarBottom.appendChild(drawerSettingsBtnWrap)');
             const footerIdx   = main.indexOf('sidebarBottom.appendChild(drawerFooter)');
             expect(settingsIdx).toBeGreaterThan(-1);
             expect(footerIdx).toBeGreaterThan(settingsIdx);
@@ -206,6 +208,54 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
                     && /display:\s*none/.test(block);
             });
             expect(hidesDrawer).toBeTruthy();
+        });
+
+        it('the Settings button wrap is also hidden at desktop sizes', () => {
+            const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
+            const hidesWrap = desktop.find(function(block) {
+                return /#drawerSettingsBtnWrap/.test(block)
+                    && /display:\s*none/.test(block);
+            });
+            expect(hidesWrap).toBeTruthy();
+        });
+    });
+
+    describe('Settings button centers within the drawer bottom half on both axes', () => {
+        it('#drawerSettingsBtnWrap is a flex container with center justify and center align on mobile', () => {
+            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            expect(mobileBlock).toBeTruthy();
+            const block = mobileBlock[0];
+            const wrapRule = block.match(/#drawerSettingsBtnWrap\s*\{([^}]*)\}/);
+            expect(wrapRule, 'expected a mobile rule for #drawerSettingsBtnWrap').not.toBeNull();
+            const body = wrapRule[1];
+            expect(body).toMatch(/display:\s*flex/);
+            expect(body).toMatch(/justify-content:\s*center/);
+            expect(body).toMatch(/align-items:\s*center/);
+        });
+
+        it('#drawerSettingsBtnWrap grows to fill the space above the footer so vertical centering has room', () => {
+            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            expect(mobileBlock).toBeTruthy();
+            const block = mobileBlock[0];
+            const wrapRule = block.match(/#drawerSettingsBtnWrap\s*\{([^}]*)\}/);
+            expect(wrapRule).not.toBeNull();
+            // flex-grow on the wrap so it consumes the available height
+            // above the footer (footer is flex-shrink:0 and stays bottom-
+            // anchored). Without grow, the wrap collapses to button size
+            // and "vertical centering" is a no-op.
+            expect(wrapRule[1]).toMatch(/flex:\s*1\s+1\s+auto/);
+        });
+
+        it('centering layout is scoped to the wrap, not applied to the shared #sidebarBottom parent', () => {
+            // Pin the wrapping-div approach so the footer sibling inside
+            // #sidebarBottom is not rearranged by flex centering.
+            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            expect(mobileBlock).toBeTruthy();
+            const block = mobileBlock[0];
+            const bottomRule = block.match(/#sidebarBottom\s*\{([^}]*)\}/);
+            expect(bottomRule, 'expected a mobile rule for #sidebarBottom').not.toBeNull();
+            expect(bottomRule[1]).not.toMatch(/justify-content:\s*center/);
+            expect(bottomRule[1]).not.toMatch(/align-items:\s*center/);
         });
     });
 });
