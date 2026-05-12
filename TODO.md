@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[LOW]** Increase vertical spacing between elements inside mobile project header to 20px
-  - Description: Inside `#mobileProjHeader` the three stacked elements — the "PROJECT N OF M" counter, the title row with arrows, and the "N OPEN N DONE" status line — currently sit at a 6px gap and feel cramped. Bump the container's `gap` from `6px` to `20px` so each row reads as its own distinct band. If any of the child rows carry their own top/bottom margins fighting the parent gap, normalize those to 0 so the 20px `gap` is the single source of truth. Purely a `style.css` change — verify the taller header still clears the top safe-area cleanly and doesn't eat meaningfully into the todo list area below.
+- [ ] **[MEDIUM]** Fix mobile sidebar height gap and push PROJECTS header below device chrome
+  - Description: On mobile, the open sidebar has two related spacing issues. **Bottom gap**: `#sideBar` uses `height: 100%` which only fills its `#mainSec` parent — on iOS Safari and any browser where the parent doesn't reach the visual viewport bottom (URL bar, home-indicator area), this leaves a visible dark strip below the V1.1 footer. Switch to `height: 100dvh` so the sidebar fills the dynamic viewport, and add `padding-bottom: env(safe-area-inset-bottom, 0px)` so the footer sits flush above the home indicator on devices that have one. **Top crowding**: the `PROJECTS` header sits too close to the status bar / notch / Dynamic Island. Add top padding using the same safe-area-aware pattern already in use on `#mobileProjHeader` — `calc(max(env(safe-area-inset-top, 0px), 36px) + 14px)` — yielding a ~50px floor that comfortably clears device chrome in both installed-PWA and in-browser modes. Both fixes live entirely in `style.css`; verify the taller sidebar header doesn't push the project list or the View/Appearance sections into needing scroll on shorter devices.
   - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-12
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
