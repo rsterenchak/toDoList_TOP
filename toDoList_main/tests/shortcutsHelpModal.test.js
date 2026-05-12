@@ -99,7 +99,7 @@ describe('floating help button + help modal', () => {
     it('isAnyModalOrPopoverOpen covers every existing modal/popover/context menu', () => {
         const fnIdx = modals.indexOf('function isAnyModalOrPopoverOpen');
         expect(fnIdx).toBeGreaterThan(-1);
-        const body = modals.slice(fnIdx, fnIdx + 600);
+        const body = modals.slice(fnIdx, fnIdx + 1200);
         ['confirmModalBackdrop',
          'changelogModalBackdrop',
          'helpModalBackdrop',

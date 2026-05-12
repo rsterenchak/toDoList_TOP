@@ -2629,15 +2629,16 @@ function component() {
         }
     });
 
-    // ── STACK mobile drawer sections (View / Appearance / Footer) ──
-    // The existing #sideBar already houses the Projects group (sideTit +
-    // sideMa + addProj). Below it on mobile we mount three more sections
-    // so the drawer reads as: Projects, View, Appearance, footer. Each
-    // toggle row mirrors a control that already exists in the desktop
-    // chrome (settings menu theme/companion, completed-section caret,
-    // bulk desc toggle) — no new persisted state is introduced. Hidden
-    // on desktop via CSS where the sidebar is a persistent rail/full
-    // pane rather than a modal drawer.
+    // ── STACK mobile drawer settings entry + footer ──
+    // The drawer's previous always-visible View / Appearance toggle rows
+    // (Show completed, Expand all descriptions, Dark theme, Companion
+    // ghost) reclaimed ~200px of vertical space. They now live behind a
+    // single "Settings" button at the bottom of #sidebarBottom which
+    // opens a modal grouping the same four toggles under VIEW and
+    // APPEARANCE sub-headers. Each toggle preserves its original label,
+    // state source, and click handler — only the rendering location
+    // moves. The drawer footer (version label + project count) remains
+    // visible in the sidebar, sitting beneath the Settings button.
     function createDrawerToggleRow(labelText, getState, onToggle) {
         const row = document.createElement('button');
         row.type = 'button';
@@ -2664,84 +2665,79 @@ function component() {
         return { row: row, refresh: refresh };
     }
 
-    const drawerView = document.createElement('div');
-    drawerView.id = 'drawerView';
-    drawerView.className = 'drawerSection';
-    const drawerViewHeading = document.createElement('div');
-    drawerViewHeading.className = 'drawerSectionHeading';
-    drawerViewHeading.textContent = 'View';
-    drawerView.appendChild(drawerViewHeading);
-
     // Show completed — mirrors the in-list #completedHeader caret. When the
     // caret is mounted (project has at least one completed row) we route
     // through its click so its own caret/aria-expanded flip in lockstep;
     // when the caret isn't mounted yet we still write the pref so the
     // setting takes effect the moment the first task is completed.
-    const drawerShowCompleted = createDrawerToggleRow(
-        'Show completed',
-        function() { return isCompletedSectionOpen(); },
-        function() {
-            const header = document.getElementById('completedHeader');
-            if (header) {
-                header.click();
-                return;
+    function buildShowCompletedToggle() {
+        return createDrawerToggleRow(
+            'Show completed',
+            function() { return isCompletedSectionOpen(); },
+            function() {
+                const header = document.getElementById('completedHeader');
+                if (header) {
+                    header.click();
+                    return;
+                }
+                const next = !isCompletedSectionOpen();
+                setCompletedSectionOpen(next);
+                const list = document.getElementById('mainList');
+                if (list) list.classList.toggle('completedCollapsed', !next);
             }
-            const next = !isCompletedSectionOpen();
-            setCompletedSectionOpen(next);
-            const list = document.getElementById('mainList');
-            if (list) list.classList.toggle('completedCollapsed', !next);
-        }
-    );
-    drawerView.appendChild(drawerShowCompleted.row);
+        );
+    }
 
     // Expand all descriptions — mirrors the bulk desc toggle in the main
     // column header. Routing through the button's click keeps the
     // .expanded class + Expand/Collapse label flip in one place.
-    const drawerExpandAll = createDrawerToggleRow(
-        'Expand all descriptions',
-        function() { return bulkDescToggleBtn.classList.contains('expanded'); },
-        function() { bulkDescToggleBtn.click(); }
-    );
-    drawerView.appendChild(drawerExpandAll.row);
-
-    const drawerAppearance = document.createElement('div');
-    drawerAppearance.id = 'drawerAppearance';
-    drawerAppearance.className = 'drawerSection';
-    const drawerAppearanceHeading = document.createElement('div');
-    drawerAppearanceHeading.className = 'drawerSectionHeading';
-    drawerAppearanceHeading.textContent = 'Appearance';
-    drawerAppearance.appendChild(drawerAppearanceHeading);
+    function buildExpandAllToggle() {
+        return createDrawerToggleRow(
+            'Expand all descriptions',
+            function() { return bulkDescToggleBtn.classList.contains('expanded'); },
+            function() { bulkDescToggleBtn.click(); }
+        );
+    }
 
     // Dark theme — mirrors the settings-menu Theme item. Same
     // theme-transitioning class + applyTheme + localStorage write so the
     // 220ms cross-fade is identical to the menu path.
-    const drawerTheme = createDrawerToggleRow(
-        'Dark theme',
-        function() { return getCurrentTheme() === 'dark'; },
-        function() {
-            const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-            document.documentElement.classList.add('theme-transitioning');
-            applyTheme(next);
-            try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
-            setTimeout(function() {
-                document.documentElement.classList.remove('theme-transitioning');
-            }, 220);
-        }
-    );
-    drawerAppearance.appendChild(drawerTheme.row);
+    function buildDarkThemeToggle() {
+        return createDrawerToggleRow(
+            'Dark theme',
+            function() { return getCurrentTheme() === 'dark'; },
+            function() {
+                const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
+                document.documentElement.classList.add('theme-transitioning');
+                applyTheme(next);
+                try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
+                setTimeout(function() {
+                    document.documentElement.classList.remove('theme-transitioning');
+                }, 220);
+            }
+        );
+    }
 
     // Companion ghost — mirrors the settings-menu Toggle floating ghost.
-    const drawerCompanion = createDrawerToggleRow(
-        'Companion ghost',
-        function() { return isCompanionEnabled(); },
-        function() {
-            const next = !isCompanionEnabled();
-            setCompanionEnabled(next);
-            if (next) ensureCompanion();
-            else      destroyCompanion();
-        }
-    );
-    drawerAppearance.appendChild(drawerCompanion.row);
+    function buildCompanionToggle() {
+        return createDrawerToggleRow(
+            'Companion ghost',
+            function() { return isCompanionEnabled(); },
+            function() {
+                const next = !isCompanionEnabled();
+                setCompanionEnabled(next);
+                if (next) ensureCompanion();
+                else      destroyCompanion();
+            }
+        );
+    }
+
+    const drawerSettingsBtn = document.createElement('button');
+    drawerSettingsBtn.id = 'drawerSettingsBtn';
+    drawerSettingsBtn.type = 'button';
+    drawerSettingsBtn.setAttribute('aria-haspopup', 'dialog');
+    drawerSettingsBtn.setAttribute('aria-expanded', 'false');
+    drawerSettingsBtn.textContent = 'Settings';
 
     const drawerFooter = document.createElement('div');
     drawerFooter.id = 'drawerFooter';
@@ -2754,8 +2750,7 @@ function component() {
     drawerFooter.appendChild(drawerFooterVersion);
     drawerFooter.appendChild(drawerFooterCount);
 
-    sidebarBottom.appendChild(drawerView);
-    sidebarBottom.appendChild(drawerAppearance);
+    sidebarBottom.appendChild(drawerSettingsBtn);
     sidebarBottom.appendChild(drawerFooter);
 
     function refreshDrawerProjectCount() {
@@ -2764,13 +2759,113 @@ function component() {
     }
 
     function refreshDrawerSections() {
-        drawerShowCompleted.refresh();
-        drawerExpandAll.refresh();
-        drawerTheme.refresh();
-        drawerCompanion.refresh();
+        // The four toggles now live inside the Settings modal which builds
+        // its rows from scratch on every open, so per-toggle refresh calls
+        // here would refresh detached buttons. The drawer footer's project
+        // count is the only piece that still needs syncing on drawer open.
         refreshDrawerProjectCount();
     }
     refreshDrawerProjectCount();
+
+    // Settings modal — three-way close (X button, backdrop, Escape) per
+    // CLAUDE.md. Lives in the same DOM at all viewports but only reachable
+    // via #drawerSettingsBtn, which is itself drawer-bound and therefore
+    // mobile-only via CSS.
+    function showSettingsModal() {
+        const prior = document.getElementById('settingsModalBackdrop');
+        if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'settingsModalBackdrop';
+
+        const dialog = document.createElement('div');
+        dialog.id = 'settingsModal';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-labelledby', 'settingsModalTitle');
+
+        const header = document.createElement('div');
+        header.id = 'settingsModalHeader';
+
+        const title = document.createElement('div');
+        title.id = 'settingsModalTitle';
+        title.textContent = 'Settings';
+
+        const closeX = document.createElement('button');
+        closeX.id = 'settingsModalClose';
+        closeX.type = 'button';
+        closeX.setAttribute('aria-label', 'Close settings');
+        closeX.textContent = '×';
+
+        header.appendChild(title);
+        header.appendChild(closeX);
+
+        const body = document.createElement('div');
+        body.id = 'settingsModalBody';
+
+        const viewSection = document.createElement('section');
+        viewSection.id = 'settingsViewSection';
+        viewSection.className = 'settingsSection';
+        const viewHeading = document.createElement('div');
+        viewHeading.className = 'settingsSectionHeading';
+        viewHeading.textContent = 'View';
+        viewSection.appendChild(viewHeading);
+        viewSection.appendChild(buildShowCompletedToggle().row);
+        viewSection.appendChild(buildExpandAllToggle().row);
+
+        const appearanceSection = document.createElement('section');
+        appearanceSection.id = 'settingsAppearanceSection';
+        appearanceSection.className = 'settingsSection';
+        const appearanceHeading = document.createElement('div');
+        appearanceHeading.className = 'settingsSectionHeading';
+        appearanceHeading.textContent = 'Appearance';
+        appearanceSection.appendChild(appearanceHeading);
+        appearanceSection.appendChild(buildDarkThemeToggle().row);
+        appearanceSection.appendChild(buildCompanionToggle().row);
+
+        body.appendChild(viewSection);
+        body.appendChild(appearanceSection);
+
+        dialog.appendChild(header);
+        dialog.appendChild(body);
+        backdrop.appendChild(dialog);
+        document.body.appendChild(backdrop);
+
+        const previouslyFocused = document.activeElement;
+        closeX.focus();
+        drawerSettingsBtn.setAttribute('aria-expanded', 'true');
+
+        let closed = false;
+        function close() {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKeydown, true);
+            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            drawerSettingsBtn.setAttribute('aria-expanded', 'false');
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                previouslyFocused.focus();
+            }
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                close();
+            }
+        }
+
+        closeX.addEventListener('click', close);
+        backdrop.addEventListener('click', function(event) {
+            if (event.target === backdrop) close();
+        });
+        document.addEventListener('keydown', onKeydown, true);
+    }
+
+    drawerSettingsBtn.addEventListener('click', function() {
+        showSettingsModal();
+    });
 
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth <= 700; }

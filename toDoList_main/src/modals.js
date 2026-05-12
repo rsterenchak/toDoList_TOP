@@ -581,6 +581,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('confirmModalBackdrop')   ||
         document.getElementById('changelogModalBackdrop') ||
         document.getElementById('helpModalBackdrop')      ||
+        document.getElementById('settingsModalBackdrop')  ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-12',
+        changed: [
+            'Mobile sidebar drawer\'s view and appearance toggles now open from a Settings button at the bottom of the drawer, freeing the inline space they used to consume.',
+        ],
         fixed: [
-            'Mobile sidebar drawer close button no longer hides behind the iOS status bar, notch, or Dynamic Island.',
             'Mobile sidebar drawer × button now reliably clears the iOS status bar, notch, and Dynamic Island on every iOS layout.',
             'Mobile sidebar drawer\'s projects block now bottom-anchors to the sidebar\'s vertical midpoint instead of pinning to the top.',
             'Mobile sidebar drawer\'s projects block now centers within the upper half so empty space splits evenly above and below it.',
