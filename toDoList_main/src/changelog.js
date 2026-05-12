@@ -11,6 +11,7 @@ export const changelog = [
             'Mobile sidebar projects list now scrolls internally with a fading bottom edge when many projects exist, keeping the header and add-project button pinned in place.',
             'Mobile sidebar drawer\'s Settings button now centers within the lower half on both axes instead of pinning to the top.',
             'Mobile sidebar drawer\'s projects area now expands to fill the remaining height above the settings and version footer instead of being capped to half the drawer.',
+            'Mobile welcome screen now vertically centers the ghost mascot, "Welcome." label, and "+ New project" button within the viewport instead of clustering them in the upper third.',
         ],
     },
 ];

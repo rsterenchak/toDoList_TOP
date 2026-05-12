@@ -2437,6 +2437,20 @@ body.row-dragging * { cursor: grabbing !important; }
   #emptyState.emptyStateNoProjects {
     padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 48px) 16px 40px;
   }
+  /* Vertically center the NO PROJECTS welcome block within the available
+     main area (viewport minus the fixed footer; navBar is zero-height on
+     mobile). The base #emptyState rule sets `justify-content: center` and
+     the .emptyStatePresent override stretches the block via `flex: 1 1
+     auto`, but on iOS Safari the flex-grow chain can short-circuit when
+     #mainList's overflow:auto is in play, leaving the block collapsed to
+     its natural content height — the mascot, "Welcome." label, and
+     "+ New project" pill then sit in the upper third of the viewport
+     with a large unbalanced gap below. Pinning min-height to the full
+     parent gives `justify-content: center` a definite area to resolve
+     against. */
+  #mainList.emptyStatePresent #emptyState.emptyStateNoProjects {
+    min-height: 100%;
+  }
   #emptyStateCreateBtn {
     width: 100%;
     max-width: 320px;
