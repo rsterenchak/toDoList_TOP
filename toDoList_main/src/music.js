@@ -104,6 +104,8 @@ function writePersistedState(state) {
         localStorage.setItem(MUSIC_STATE_KEY, JSON.stringify({
             activeStationId: state.activeStationId,
             volume: state.volume,
+            muted: state.muted,
+            preMuteVolume: state.preMuteVolume,
             customStations: state.customStations,
         }));
     } catch (e) { /* quota / private mode — best-effort */ }
@@ -115,6 +117,11 @@ function defaultState() {
         // on first open. Playback still requires an explicit user gesture.
         activeStationId: CURATED_STATIONS[0].id,
         volume: DEFAULT_VOLUME,
+        // Mute is a user-toggled overlay on top of the slider position. While
+        // muted, `volume` reads 0 (so the player and the slider stay in
+        // lockstep); `preMuteVolume` holds the level to restore on unmute.
+        muted: false,
+        preMuteVolume: DEFAULT_VOLUME,
         customStations: [],
         status: 'IDLE',
         nowPlaying: null,
@@ -131,6 +138,10 @@ function sanitizeRestoredState(raw) {
     if (typeof raw.activeStationId === 'string') fresh.activeStationId = raw.activeStationId;
     if (typeof raw.volume === 'number' && raw.volume >= 0 && raw.volume <= 1) {
         fresh.volume = raw.volume;
+    }
+    if (typeof raw.muted === 'boolean') fresh.muted = raw.muted;
+    if (typeof raw.preMuteVolume === 'number' && raw.preMuteVolume >= 0 && raw.preMuteVolume <= 1) {
+        fresh.preMuteVolume = raw.preMuteVolume;
     }
     if (Array.isArray(raw.customStations)) {
         fresh.customStations = raw.customStations
@@ -258,6 +269,8 @@ export function createMusic(doc) {
             activeStationId: state.activeStationId,
             activeStation:   getStationById(state, state.activeStationId),
             volume:          state.volume,
+            muted:           state.muted,
+            preMuteVolume:   state.preMuteVolume,
             status:          state.status,
             nowPlaying:      state.nowPlaying ? Object.assign({}, state.nowPlaying) : null,
             customStations:  state.customStations.slice(),
@@ -275,6 +288,27 @@ export function createMusic(doc) {
     function setVolume(volume) {
         if (typeof volume !== 'number' || !isFinite(volume)) return;
         state.volume = Math.max(0, Math.min(1, volume));
+        // Dragging the slider above 0 while muted is an implicit unmute —
+        // matches the UX of most native players.
+        if (state.muted && state.volume > 0) state.muted = false;
+        if (player && typeof player.setVolume === 'function') {
+            try { player.setVolume(Math.round(state.volume * 100)); } catch (e) { /* defensive */ }
+        }
+        persist();
+        notify();
+    }
+
+    function setMuted(muted) {
+        muted = !!muted;
+        if (muted === state.muted) return;
+        if (muted) {
+            if (state.volume > 0) state.preMuteVolume = state.volume;
+            state.muted = true;
+            state.volume = 0;
+        } else {
+            state.muted = false;
+            state.volume = state.preMuteVolume > 0 ? state.preMuteVolume : DEFAULT_VOLUME;
+        }
         if (player && typeof player.setVolume === 'function') {
             try { player.setVolume(Math.round(state.volume * 100)); } catch (e) { /* defensive */ }
         }
@@ -484,6 +518,7 @@ export function createMusic(doc) {
         pause:                      pause,
         setStation:                 setStation,
         setVolume:                  setVolume,
+        setMuted:                   setMuted,
         addCustomStation:           addCustomStation,
         removeCustomStation:        removeCustomStation,
         subscribe:                  subscribe,

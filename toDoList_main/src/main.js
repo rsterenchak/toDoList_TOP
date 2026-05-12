@@ -1789,6 +1789,65 @@ function component() {
     sheetPasteRow.appendChild(sheetPasteForm);
     sheetPicker.appendChild(sheetPasteRow);
 
+    // Volume row — sits directly below the paste-URL button. Speaker icon on
+    // the left doubles as a mute toggle; native range in the middle drives
+    // the controller in real time; small percentage readout on the right
+    // stays in lockstep. Mobile-safe: the row reserves a 44px+ hit zone even
+    // though the visible thumb is small.
+    const sheetVolumeRow = document.createElement('div');
+    sheetVolumeRow.className = 'sheetVolumeRow';
+
+    const SHEET_VOL_ICON_ON =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M15 8a5 5 0 0 1 0 8"/>' +
+        '<path d="M17.7 5a9 9 0 0 1 0 14"/>' +
+        '<path d="M6 15h-2a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1-1.5 .5l-3.5-4.5"/>' +
+        '</svg>';
+    const SHEET_VOL_ICON_OFF =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M6 15h-2a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1-1.5 .5l-3.5-4.5"/>' +
+        '<path d="M16 10l4 4"/>' +
+        '<path d="M20 10l-4 4"/>' +
+        '</svg>';
+
+    const sheetVolumeIcon = document.createElement('button');
+    sheetVolumeIcon.type = 'button';
+    sheetVolumeIcon.className = 'sheetVolumeIcon';
+    sheetVolumeIcon.setAttribute('aria-label', 'Mute');
+    sheetVolumeIcon.title = 'Mute';
+    sheetVolumeIcon.innerHTML = SHEET_VOL_ICON_ON;
+
+    const sheetVolumeSlider = document.createElement('input');
+    sheetVolumeSlider.type = 'range';
+    sheetVolumeSlider.min = '0';
+    sheetVolumeSlider.max = '100';
+    sheetVolumeSlider.step = '1';
+    sheetVolumeSlider.className = 'sheetVolumeSlider';
+    sheetVolumeSlider.setAttribute('aria-label', 'Volume');
+
+    const sheetVolumePct = document.createElement('span');
+    sheetVolumePct.className = 'sheetVolumePct';
+    sheetVolumePct.setAttribute('aria-live', 'polite');
+    sheetVolumePct.textContent = '50%';
+
+    sheetVolumeRow.appendChild(sheetVolumeIcon);
+    sheetVolumeRow.appendChild(sheetVolumeSlider);
+    sheetVolumeRow.appendChild(sheetVolumePct);
+    sheetPicker.appendChild(sheetVolumeRow);
+
+    sheetVolumeSlider.addEventListener('input', function() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const v = parseInt(sheetVolumeSlider.value, 10);
+        if (isFinite(v)) ctl.setVolume(v / 100);
+    });
+    sheetVolumeIcon.addEventListener('click', function() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        ctl.setMuted(!snap.muted);
+    });
+
     sheetPasteBtn.addEventListener('click', function() {
         const open = sheetPasteForm.style.display !== 'none';
         sheetPasteForm.style.display = open ? 'none' : '';
@@ -1944,6 +2003,13 @@ function component() {
         peekMusic.style.display = isPlaying ? '' : 'none';
         sheetMusicPlayPause.textContent = isPlaying ? '❚❚' : '▶';
         sheetMusicPlayPause.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+        const pct = Math.round((snap.volume || 0) * 100);
+        sheetVolumeSlider.value = String(pct);
+        sheetVolumePct.textContent = pct + '%';
+        sheetVolumeRow.classList.toggle('muted', !!snap.muted);
+        sheetVolumeIcon.innerHTML = snap.muted ? SHEET_VOL_ICON_OFF : SHEET_VOL_ICON_ON;
+        sheetVolumeIcon.setAttribute('aria-label', snap.muted ? 'Unmute' : 'Mute');
+        sheetVolumeIcon.title = snap.muted ? 'Unmute' : 'Mute';
         renderSheetStationList(snap);
         refreshAutoState();
     }
