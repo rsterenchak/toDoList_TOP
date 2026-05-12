@@ -17,10 +17,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-12
 
-- [ ] **[LOW]** Hide per-row delete button on mobile in favor of swipe-left
+- [x] **[LOW]** Hide per-row delete button on mobile in favor of swipe-left
   - Description: At the ≤700px breakpoint, the per-row `×` delete button on each todo row is redundant — the existing swipe-left-to-delete gesture (with the 5s UNDO toast) already covers destructive removal and is the expected mobile pattern. Hide `#closeButtonToDo` inside the existing `@media (max-width: 700px)` block in `style.css` so the row's right cluster reads as just the due pill + expand caret on mobile, while desktop keeps the button untouched. The swipe handler in `attachToDoDrag` already calls `listLogic.removeToDoByItem` directly and only falls back to `btn.click()` when it can't resolve the item, so hiding the button doesn't break the swipe path. Worth eyeballing the row's right padding (currently `0 8px 0 4px`) after the change — with the X gone, `#descToggle` becomes the rightmost child and may sit a touch close to the edge.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 ## Features
 
