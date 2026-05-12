@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Center sidebarTop children as a group within the upper half on mobile
+- [x] **[MEDIUM]** Center sidebarTop children as a group within the upper half on mobile
   - Description: Follow-up to the prior PR that anchored sidebarTop to the upper half of the sidebar. Currently the contents of `#sidebarTop` (`#sideTit` header + close button, `#sideMa` projects grid, `#addProj` add-project button) sit pinned to the bottom of `#sidebarTop`, leaving a tall empty region above the PROJECTS header. Center the three children as a single group within `#sidebarTop` so the empty space splits evenly above and below the block. Implementation: on `#sidebarTop` set `display: flex; flex-direction: column; justify-content: center` (it's already flex per devtools — just swap the justify-content value). The three children remain in their existing stacked order with their own internal spacing; only the group's vertical position within `#sidebarTop` changes. Scope to the mobile breakpoint only to match the prior fix — desktop sidebar layout untouched. Should be a `style.css`-only change; no `main.js` edits expected since the flex container already exists.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 - [ ] **[LOW]** Center empty-state ghost, welcome text, and new project button vertically on mobile
   - Description: On the empty-state welcome screen (no projects yet), the ghost mascot, "Welcome." label, and "+ New project" button currently sit in the upper third of the viewport, leaving a large unbalanced gap below. Center the whole block at true vertical 50% of the available area (viewport minus the fixed footer), so the content reads as deliberately placed rather than top-anchored. Scope is empty-state only — once a project exists and `addInitialToDo` runs, the regular layout takes over and should be untouched. Implementation likely lives in the empty-state container's CSS in `style.css` (flex column with `justify-content: center` against a height that excludes the footer, or equivalent); confirm no inline style writes in `main.js` are overriding the centering, since inline styles win on specificity.

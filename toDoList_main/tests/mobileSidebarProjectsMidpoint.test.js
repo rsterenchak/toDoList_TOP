@@ -13,11 +13,11 @@ function read(relative) {
 // drawer splits into #sidebarTop (projects header + project list +
 // add-project button) and #sidebarBottom (View / Appearance / footer)
 // with each half taking exactly 50% of the sidebar height. The top
-// half uses justify-content:flex-end so the projects block
-// bottom-anchors to the sidebar's vertical midpoint instead of pinning
-// to the top — short lists hover near center, long lists fill upward
-// and #sideMa scrolls within the top half. Desktop is unchanged: the
-// top wrapper grows to fill the sidebar and the bottom wrapper holds
+// half uses justify-content:center so the projects block centers as
+// a single group within the upper half — empty space splits evenly
+// above and below, long lists fill outward from the midline and
+// #sideMa scrolls within the top half. Desktop is unchanged: the top
+// wrapper grows to fill the sidebar and the bottom wrapper holds
 // elements that are display:none above the 700px breakpoint.
 describe('Mobile sidebar — projects block centers in the upper half', () => {
     const main = read('main.js');
@@ -84,9 +84,9 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
             expect(rule).toMatch(/flex:\s*0\s+0\s+50%/);
         });
 
-        it('#sidebarTop uses justify-content:flex-end so its content bottom-anchors to the midpoint', () => {
+        it('#sidebarTop uses justify-content:center so its content centers within the upper half', () => {
             const rule = extractMobileRule('#sidebarTop');
-            expect(rule).toMatch(/justify-content:\s*flex-end/);
+            expect(rule).toMatch(/justify-content:\s*center/);
         });
 
         it('#sidebarTop allows the top half to clip its content so long lists scroll inside #sideMa rather than spilling out the top', () => {
@@ -95,7 +95,7 @@ describe('Mobile sidebar — projects block centers in the upper half', () => {
             expect(rule).toMatch(/min-height:\s*0/);
         });
 
-        it('#sideMa drops its flex-grow on mobile so the projects block sizes to its rows and the parent\'s flex-end justification can pack everything at the midpoint', () => {
+        it('#sideMa drops its flex-grow on mobile so the projects block sizes to its rows and the parent\'s center justification can pack everything around the midline', () => {
             const rule = extractMobileRule('#sideMa');
             // 0 1 auto means: no grow, may shrink (so scroll can engage
             // when the list overflows the top half), natural basis.
