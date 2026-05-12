@@ -15,9 +15,10 @@ function read(relative) {
 // along the bottom edge so the user doesn't have to first locate the
 // small nub, translates the sheet with the finger so the gesture feels
 // physical, and commits on a 40px distance / short upward velocity.
-// While the sheet is expanded the reverse gesture (swipe-down on the
-// drag handle) dismisses. Verified through source inspection because
-// main.js is too large to instantiate end-to-end in jsdom (per CLAUDE.md).
+// While the sheet is expanded the reverse gesture (swipe-down anywhere
+// on the drawer container) dismisses. Verified through source inspection
+// because main.js is too large to instantiate end-to-end in jsdom (per
+// CLAUDE.md).
 describe('Mobile bottom sheet swipe-up gesture', () => {
     const main = read('main.js');
     const css  = read('style.css');
@@ -56,17 +57,20 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
         expect(main).toMatch(/matchMedia\(\s*['"]\(pointer:\s*coarse\)['"]\s*\)\.matches/);
     });
 
-    it('attaches touch swipe handlers to the nub, peek strip, swipe zone, and drag handle', () => {
+    it('attaches touch swipe handlers to the nub, peek strip, swipe zone, and drawer container', () => {
         expect(main).toMatch(/attachSheetTouchSwipe\(sheetNub,\s*['"]open['"]\)/);
         expect(main).toMatch(/attachSheetTouchSwipe\(sheetPeek,\s*['"]open['"]\)/);
         expect(main).toMatch(/attachSheetTouchSwipe\(sheetSwipeZone,\s*['"]open['"]\)/);
-        expect(main).toMatch(/attachSheetTouchSwipe\(sheetDragHandle,\s*['"]close['"]\)/);
+        // Close swipe binds to the whole drawer container, not just the
+        // small drag handle, so the dismiss gesture stays available after
+        // the user has interacted with controls inside the drawer.
+        expect(main).toMatch(/attachSheetTouchSwipe\(sheetExpanded,\s*['"]close['"]\)/);
     });
 
     it('wires touchstart / touchmove / touchend on the swipe targets', () => {
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         expect(slice).toMatch(/addEventListener\(\s*['"]touchstart['"]/);
         expect(slice).toMatch(/addEventListener\(\s*['"]touchmove['"]/);
         expect(slice).toMatch(/addEventListener\(\s*['"]touchend['"]/);
@@ -80,7 +84,7 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
         expect(main).toMatch(/SHEET_SWIPE_COMMIT_PX\s*=\s*40/);
         expect(main).toMatch(/SHEET_SWIPE_VELOCITY_PX\s*=\s*0?\.5/);
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         // Open path: distance OR velocity commits to EXPANDED.
         expect(slice).toMatch(/\(-dy\)\s*>=\s*SHEET_SWIPE_COMMIT_PX[\s\S]{0,200}velocity\s*>=\s*SHEET_SWIPE_VELOCITY_PX[\s\S]{0,400}setSheetState\(\s*['"]EXPANDED['"]\s*\)/);
     });
@@ -99,7 +103,7 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
 
     it('rejects horizontal-dominant or wrong-direction gestures before resolving', () => {
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         // Horizontal-dominant: abandon the gesture without altering state.
         expect(slice).toMatch(/Math\.abs\(dx\)\s*>\s*Math\.abs\(dy\)[\s\S]{0,150}active\s*=\s*false/);
         // Wrong-direction guards: open path bails on dy >= 0, close on dy <= 0.
@@ -112,17 +116,17 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
         // 40px / velocity threshold reverts the sheet to whatever state
         // the gesture started in (IDLE or PEEK).
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         // Open path: if not committed, restore the origin state.
         expect(slice).toMatch(/setSheetState\(originState\)/);
     });
 
-    it('swipe-down on the drag handle dismisses to PEEK or IDLE based on utility activity', () => {
+    it('swipe-down on the drawer container dismisses to PEEK or IDLE based on utility activity', () => {
         // Mirrors the existing pointer-event 30% rule but uses the same
         // 40px / velocity contract as the open path, and routes through
         // utilityIsActive() to land on PEEK if a timer / music is running.
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         expect(slice).toMatch(/const act\s*=\s*utilityIsActive\(\)/);
         expect(slice).toMatch(/setSheetState\(\s*act\.any\s*\?\s*['"]PEEK['"]\s*:\s*['"]IDLE['"]\s*\)/);
     });
@@ -133,7 +137,7 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
         // data-suppress-click flag the existing pointer handler uses so
         // the post-touch click is swallowed.
         const fnIdx = main.indexOf('function attachSheetTouchSwipe(');
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 8000);
         expect(slice).toMatch(/targetEl === sheetPeek[\s\S]{0,200}sheetPeek\.dataset\.suppressClick\s*=\s*['"]1['"]/);
     });
 
