@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Increase vertical spacing between elements inside mobile project header to 20px
+- [x] **[LOW]** Increase vertical spacing between elements inside mobile project header to 20px
   - Description: Inside `#mobileProjHeader` the three stacked elements — the "PROJECT N OF M" counter, the title row with arrows, and the "N OPEN N DONE" status line — currently sit at a 6px gap and feel cramped. Bump the container's `gap` from `6px` to `20px` so each row reads as its own distinct band. If any of the child rows carry their own top/bottom margins fighting the parent gap, normalize those to 0 so the 20px `gap` is the single source of truth. Purely a `style.css` change — verify the taller header still clears the top safe-area cleanly and doesn't eat meaningfully into the todo list area below.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 ## Features
 

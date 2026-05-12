@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-12',
-        added: [
-            'Swipe up from the bottom edge of the screen on mobile to open the utilities sheet, and swipe down on its handle to close it.',
-        ],
         fixed: [
             'Mobile project header now switches projects via prev/next chevrons and a horizontal swipe on the title row, replacing the page-dot indicator.',
             'Mobile top chrome now keeps breathing room above the hamburger button, project header, and welcome screen in browser tabs and on non-notched devices.',
             'Per-row delete button is hidden on mobile in favor of the swipe-left gesture with its UNDO toast.',
             'Project header on mobile now leaves taller top clearance so the project label and title clear the iOS status bar and Dynamic Island.',
+            'Mobile project header now spaces its label, title row, and counts row further apart so each reads as its own band.',
         ],
     },
 ];
