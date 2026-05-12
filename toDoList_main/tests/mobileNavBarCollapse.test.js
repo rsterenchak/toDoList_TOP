@@ -72,7 +72,7 @@ describe('STACK mobile nav-bar collapse', () => {
         // safe-area-inset-top tucks it below the iOS Dynamic Island.
         const rule = extractMobileRule('#sidebarToggle');
         expect(rule).toMatch(/position:\s*absolute/);
-        expect(rule).toMatch(/top:\s*calc\(\s*env\(safe-area-inset-top[^)]*\)\s*\+\s*8px\s*\)/);
+        expect(rule).toMatch(/top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/);
         expect(rule).toMatch(/right:\s*12px/);
         expect(rule).toMatch(/z-index:\s*20/);
     });
@@ -91,7 +91,7 @@ describe('STACK mobile nav-bar collapse', () => {
         // the project header so the iOS notch / Dynamic Island clearance
         // still applies above PROJECT N OF M.
         const rule = extractMobileRule('#mobileProjHeader');
-        expect(rule).toMatch(/padding:\s*calc\(\s*env\(safe-area-inset-top[^)]*\)\s*\+\s*14px\s*\)\s+16px\s+10px/);
+        expect(rule).toMatch(/padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*14px\s*\)\s+16px\s+10px/);
         // Defensive: the absolute-positioning target context was already
         // declared on the header; keep it present so future moves don't
         // accidentally drop it.
