@@ -13,11 +13,17 @@ function read(relative) {
 // The bug was: on iOS Safari the open drawer used height:100% which only
 // fills #mainSec — that container doesn't reach the visual viewport
 // bottom, leaving a dark strip below the V1.1 footer. The PROJECTS
-// header also sat directly under the status bar / notch. The fix:
+// header also sat directly under the status bar / notch, and the
+// absolutely-positioned × close button stayed clipped even after a
+// padding-top was added to #sideTit (absolute children sit at the
+// containing block's padding-box top edge and ignore its padding-top).
+// The fix:
 // - #sideBar uses height:100dvh so it fills the dynamic viewport
 // - #sideBar reserves env(safe-area-inset-bottom) at the drawer level
-// - #sideTit gains a top padding floored at 36px + 14px so the label
-//   clears device chrome in both PWA and in-browser modes
+// - #sideBar reserves env(safe-area-inset-top) as the single source of
+//   inset truth, shifting the whole #sideTit block — close button and
+//   PROJECTS label — below device chrome as one unit
+// - #sideTit carries only visual breathing-room padding (no env())
 describe('Mobile sidebar drawer safe-area layout', () => {
     const css = read('style.css');
 
@@ -79,17 +85,24 @@ describe('Mobile sidebar drawer safe-area layout', () => {
         expect(rule).not.toMatch(/position:\s*absolute/);
     });
 
-    it('#sideTit floors safe-area-inset-top at 36px and adds 14px so PROJECTS clears the notch / status bar', () => {
+    // The safe-area inset that clears the iOS status bar / notch /
+    // Dynamic Island lives on #sideBar's padding-top (see test above),
+    // not on #sideTit. Putting env(safe-area-inset-top) on #sideTit
+    // shifts only its in-flow children (the PROJECTS label); the
+    // absolutely-positioned close button anchors against #sideTit's
+    // padding-box top edge and would still sit at top:8px under the
+    // status bar. Carrying the inset on the parent shifts the entire
+    // #sideTit block — close button included — down as one unit, with
+    // a single source of inset truth so other top-anchored children
+    // can't drift out of sync.
+    it('#sideTit does NOT reapply env(safe-area-inset-top) — the inset lives on #sideBar so the close button shifts down with the header block', () => {
         const rule = extractMobileRule('#sideTit');
-        expect(rule).toMatch(
-            /padding-top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*36px\s*\)\s*\+\s*14px\s*\)/
-        );
+        expect(rule).not.toMatch(/env\(\s*safe-area-inset-top/);
     });
 
-    it('#sideTit min-height accommodates the safe-area top padding plus the natural --row-h content row', () => {
+    it('#sideTit keeps a non-inset padding-top + min-height so the PROJECTS label has visual breathing room above the natural --row-h content row', () => {
         const rule = extractMobileRule('#sideTit');
-        expect(rule).toMatch(
-            /min-height:\s*calc\(\s*var\(--row-h\)\s*\+\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*36px\s*\)\s*\+\s*14px\s*\)/
-        );
+        expect(rule).toMatch(/padding-top:\s*14px/);
+        expect(rule).toMatch(/min-height:\s*calc\(\s*var\(--row-h\)\s*\+\s*14px\s*\)/);
     });
 });
