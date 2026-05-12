@@ -12,6 +12,11 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[MEDIUM]** Add swipe-up gesture to open bottom menu on mobile
+  - Description: The bottom menu (footer labeled "TASK MANAGEMENT V1.1") currently opens only via tap on its handle. Add a swipe-up gesture as an alternative trigger — wire `touchstart`/`touchmove`/`touchend` on the handle and a thin hit zone along the bottom edge, track the Y delta during the move, and open the menu once an upward swipe crosses a threshold (~40px distance or a short upward velocity). While the menu is open, the reverse gesture (swipe-down) should close it. Apply only on touch devices (`pointer: coarse` matchMedia check) so desktop pointer behavior is unaffected, and reuse the existing handle as the gesture origin rather than adding new visual chrome. Consider translating the menu with the finger during the drag so the gesture feels physical, then snap open/closed based on final position; this is `main.js` gesture-wiring territory (grep for existing swipe handlers and mirror that pattern).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Hide per-row delete button on mobile in favor of swipe-left
   - Description: At the ≤700px breakpoint, the per-row `×` delete button on each todo row is redundant — the existing swipe-left-to-delete gesture (with the 5s UNDO toast) already covers destructive removal and is the expected mobile pattern. Hide `#closeButtonToDo` inside the existing `@media (max-width: 700px)` block in `style.css` so the row's right cluster reads as just the due pill + expand caret on mobile, while desktop keeps the button untouched. The swipe handler in `attachToDoDrag` already calls `listLogic.removeToDoByItem` directly and only falls back to `btn.click()` when it can't resolve the item, so hiding the button doesn't break the swipe path. Worth eyeballing the row's right padding (currently `0 8px 0 4px`) after the change — with the X gone, `#descToggle` becomes the rightmost child and may sit a touch close to the edge.
   - File: `toDoList_main/src/style.css`
