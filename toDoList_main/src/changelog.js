@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             'Mobile project header now switches projects via prev/next chevrons and a horizontal swipe on the title row, replacing the page-dot indicator.',
             'Mobile top chrome now keeps breathing room above the hamburger button, project header, and welcome screen in browser tabs and on non-notched devices.',
+            'Per-row delete button is hidden on mobile in favor of the swipe-left gesture with its UNDO toast.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-11',
         fixed: [
-            'Long-pressing a project row on iOS now opens only the app\'s context menu, suppressing the iOS native text-selection handles and callout bar.',
             'Mobile drawer now hides the hamburger toggle while open so only the drawer\'s close button remains in the top-right corner.',
         ],
     },
