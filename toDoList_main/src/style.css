@@ -2238,7 +2238,7 @@ body.row-dragging * { cursor: grabbing !important; }
      target standard. */
   #sidebarToggle {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px);
     right: 12px;
     width: 44px;
     height: 44px;
@@ -2344,7 +2344,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   #emptyState.emptyStateNoProjects {
-    padding: calc(env(safe-area-inset-top, 0px) + 48px) 16px 40px;
+    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 48px) 16px 40px;
   }
   #emptyStateCreateBtn {
     width: 100%;
@@ -2652,7 +2652,7 @@ body.row-dragging * { cursor: grabbing !important; }
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 10px;
+    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 14px) 16px 10px;
     background: var(--bg-elevated);
     border-bottom: 0.5px solid var(--border-dim);
     /* Establish a stacking context above #mainList so the empty-state

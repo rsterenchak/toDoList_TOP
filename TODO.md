@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-12
 
-- [ ] **[MEDIUM]** Fix mobile top chrome hugging the device edge in browser tabs
+- [x] **[MEDIUM]** Fix mobile top chrome hugging the device edge in browser tabs
   - Description: On the ≤700px breakpoint, the hamburger button (`#sidebarToggle`) and the project header (`#mobileProjHeader`) sit too close to the top of the viewport in any context where `env(safe-area-inset-top)` reports `0` — i.e. regular browser tabs on iOS Safari / Chrome and any non-notched device. The current rules use `calc(env(safe-area-inset-top, 0px) + Npx)`, which collapses to just the `Npx` floor when the inset is zero, so the status bar / URL bar visually clashes with the app chrome. Fix by wrapping the inset in `max()` with a sensible floor so there's always breathing room: `top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)` for `#sidebarToggle` and `padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 14px)` for `#mobileProjHeader`. Apply the same `max()` floor to `#emptyState.emptyStateNoProjects`'s top padding so the welcome ghost doesn't ride the top edge either. Notched standalone-PWA devices still expand to the real inset; everywhere else gets the 24px guarantee.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 - [ ] **[MEDIUM]** Add swipe-up gesture to open bottom menu on mobile
   - Description: The bottom menu (footer labeled "TASK MANAGEMENT V1.1") currently opens only via tap on its handle. Add a swipe-up gesture as an alternative trigger — wire `touchstart`/`touchmove`/`touchend` on the handle and a thin hit zone along the bottom edge, track the Y delta during the move, and open the menu once an upward swipe crosses a threshold (~40px distance or a short upward velocity). While the menu is open, the reverse gesture (swipe-down) should close it. Apply only on touch devices (`pointer: coarse` matchMedia check) so desktop pointer behavior is unaffected, and reuse the existing handle as the gesture origin rather than adding new visual chrome. Consider translating the menu with the finger during the drag so the gesture feels physical, then snap open/closed based on final position; this is `main.js` gesture-wiring territory (grep for existing swipe handlers and mirror that pattern).

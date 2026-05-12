@@ -51,7 +51,7 @@ describe('STACK mobile welcome empty-state safe-area-inset-top', () => {
         // screen, so the inset reservation lives here instead of on a nav.
         const rule = extractMobileRule('#emptyState.emptyStateNoProjects');
         expect(rule).toMatch(
-            /padding:\s*calc\(\s*env\(safe-area-inset-top[^)]*\)\s*\+\s*48px\s*\)\s+16px\s+40px/
+            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*48px\s*\)\s+16px\s+40px/
         );
     });
 
@@ -61,7 +61,7 @@ describe('STACK mobile welcome empty-state safe-area-inset-top', () => {
         // top-of-viewport elements on mobile.
         const rule = extractMobileRule('#mobileProjHeader');
         expect(rule).toMatch(
-            /padding:\s*calc\(\s*env\(safe-area-inset-top[^)]*\)\s*\+\s*14px\s*\)\s+16px\s+10px/
+            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*14px\s*\)\s+16px\s+10px/
         );
     });
 
@@ -70,7 +70,7 @@ describe('STACK mobile welcome empty-state safe-area-inset-top', () => {
         // empty state and projects-loaded). It must clear the status bar.
         const rule = extractMobileRule('#sidebarToggle');
         expect(rule).toMatch(
-            /top:\s*calc\(\s*env\(safe-area-inset-top[^)]*\)\s*\+\s*8px\s*\)/
+            /top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/
         );
     });
 });
