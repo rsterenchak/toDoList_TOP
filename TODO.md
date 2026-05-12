@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix sidebar background still not reaching viewport bottom on mobile
+- [x] **[MEDIUM]** Fix sidebar background still not reaching viewport bottom on mobile
   - Description: After the prior fix (sidebar `height: 100dvh` + `padding-bottom: env(safe-area-inset-bottom)`), the open `#sideBar` still terminates above the visual viewport bottom on mobile — a strip of the dimmed main app footer remains visible below the sidebar in the gap. Likely cause: `#sideBar` is `position: absolute` and its containing block is `#mainSec` (or another positioned ancestor that doesn't span the full viewport — the navBar above shrinks the available area, and any bottom chrome further constrains it). `height: 100dvh` extends from the parent's top, not the viewport's, so even at full dynamic viewport units the sidebar can be clipped or stop short of the screen edge. Investigate by checking the computed bounds of `#mainSec` and `#outerContainer` in DevTools — the fix is likely either (a) switch `#sideBar` to `position: fixed` and anchor directly to the viewport, or (b) make the absolute containing block reach the viewport bottom (e.g., `#mainSec` height/min-height tied to `100dvh - navbarHeight`). Also grep `main.js` for any inline `style.height`, `style.bottom`, or `style.top` writes to `#sideBar` that might be overriding the CSS — per the project's known inline-style-wins-on-specificity gotcha.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-12
 
 ## Features
 

@@ -53,6 +53,18 @@ describe('Mobile sidebar drawer safe-area layout', () => {
         expect(rule).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom\s*,\s*0px\)/);
     });
 
+    // Regression: position:absolute resolves against #mainSec, whose
+    // overflow:hidden clipped the drawer above the footer track and left
+    // a strip of dimmed app footer visible below the open drawer. Pinning
+    // the drawer to the viewport with position:fixed lets height:100dvh
+    // actually reach the home indicator instead of being clipped by the
+    // ancestor grid track.
+    it('#sideBar uses position:fixed so it anchors to the viewport rather than the clipped #mainSec containing block', () => {
+        const rule = extractMobileRule('#sideBar');
+        expect(rule).toMatch(/position:\s*fixed/);
+        expect(rule).not.toMatch(/position:\s*absolute/);
+    });
+
     it('#sideTit floors safe-area-inset-top at 36px and adds 14px so PROJECTS clears the notch / status bar', () => {
         const rule = extractMobileRule('#sideTit');
         expect(rule).toMatch(
