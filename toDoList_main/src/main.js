@@ -2055,9 +2055,11 @@ function component() {
         setSheetState(active.any ? 'PEEK' : 'IDLE');
     }, true);
 
-    // Drag-down to dismiss / drag-up to expand. Pointer events keep mouse +
-    // touch on one code path. The drag threshold is 30% of the sheet's
-    // current height per the acceptance criteria.
+    // Drag-down to dismiss / drag-up to expand. Pointer events cover mouse
+    // + pen here; the richer touch-event swipe handler below owns the
+    // touch path so finger gestures get the wider bottom-edge hit zone
+    // and translate-with-finger feel. Bailing on pointerType === 'touch'
+    // prevents the two handlers from double-firing on the same gesture.
     function attachDragGesture(targetEl, intent) {
         // intent: 'expand' for nub/peek (drag-up opens), 'dismiss' for
         // sheetDragHandle (drag-down closes).
@@ -2066,6 +2068,7 @@ function component() {
         let dragging = false;
         targetEl.addEventListener('pointerdown', function(e) {
             if (e.isPrimary === false) return;
+            if (e.pointerType === 'touch') return;
             startY = e.clientY;
             pointerId = e.pointerId;
             dragging = true;
@@ -2099,6 +2102,168 @@ function component() {
     attachDragGesture(sheetNub, 'expand');
     attachDragGesture(sheetPeek, 'expand');
     attachDragGesture(sheetDragHandle, 'dismiss');
+
+    // ── Touch-event swipe gesture for opening / closing the bottom sheet ──
+    // Adds a swipe-up alternative to tap on the handle (and a reverse
+    // swipe-down to dismiss while open). Touch path is separated from the
+    // pointer-event drag above so we can: (a) widen the hit zone via a
+    // thin invisible strip along the bottom edge so the user doesn't have
+    // to hit the small visual handle, (b) translate the sheet with the
+    // finger so the gesture feels physical, and (c) commit on a 40px
+    // distance OR a short upward velocity rather than the pointer path's
+    // 10px instant threshold. Coarse-pointer gated so desktop mouse drag
+    // keeps the existing handler unchanged.
+    const sheetSwipeZone = document.createElement('div');
+    sheetSwipeZone.className = 'sheetSwipeZone';
+    sheetSwipeZone.setAttribute('aria-hidden', 'true');
+    bottomSheet.insertBefore(sheetSwipeZone, sheetNub);
+
+    function isCoarsePointer() {
+        try {
+            return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        } catch (err) { return false; }
+    }
+
+    const SHEET_SWIPE_INTENT_PX   = 8;
+    const SHEET_SWIPE_COMMIT_PX   = 40;
+    const SHEET_SWIPE_VELOCITY_PX = 0.5; // px/ms — short upward flick
+
+    // Live inline transform applied to sheetExpanded so the finger drags
+    // the sheet 1:1. Cleared on commit / snap-back; the CSS class-driven
+    // transition resumes after clearing so the snap animates.
+    function setSheetDragTransform(translatePx) {
+        sheetExpanded.style.transition = 'none';
+        sheetExpanded.style.transform = 'translateY(' + translatePx + 'px)';
+    }
+    function clearSheetDragTransform() {
+        sheetExpanded.style.transform = '';
+        sheetExpanded.style.transition = '';
+    }
+
+    function attachSheetTouchSwipe(targetEl, mode) {
+        // mode: 'open' (swipe-up from IDLE/PEEK → EXPANDED),
+        //       'close' (swipe-down from EXPANDED → lower state).
+        let startX = 0;
+        let startY = 0;
+        let startTime = 0;
+        let originState = '';
+        let active = false;
+        let resolved = false;
+        let sheetHeight = 320;
+        let lastY = 0;
+        let lastTime = 0;
+
+        targetEl.addEventListener('touchstart', function(event) {
+            if (!isCoarsePointer()) return;
+            if (event.touches.length !== 1) return;
+            const state = bottomSheet.getAttribute('data-state');
+            if (mode === 'open' && state === 'EXPANDED') return;
+            if (mode === 'close' && state !== 'EXPANDED') return;
+            const t = event.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            lastY = startY;
+            startTime = (event.timeStamp || Date.now());
+            lastTime = startTime;
+            originState = state;
+            active = true;
+            resolved = false;
+            const measured = sheetExpanded.getBoundingClientRect().height;
+            sheetHeight = measured > 0 ? measured : 320;
+        }, { passive: true });
+
+        targetEl.addEventListener('touchmove', function(event) {
+            if (!active || event.touches.length !== 1) return;
+            const t = event.touches[0];
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            lastY = t.clientY;
+            lastTime = (event.timeStamp || Date.now());
+            if (!resolved) {
+                // Wait until the gesture's direction is clearly vertical
+                // and past the intent threshold before committing the
+                // path. Horizontal-dominant or wrong-direction releases
+                // the gesture without altering sheet state.
+                if (Math.abs(dy) < SHEET_SWIPE_INTENT_PX) return;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    active = false;
+                    return;
+                }
+                if (mode === 'open' && dy >= 0) { active = false; return; }
+                if (mode === 'close' && dy <= 0) { active = false; return; }
+                resolved = true;
+                if (mode === 'open') {
+                    // Promote to EXPANDED so the sheet is in the visual
+                    // stack while we apply the live offset. The inline
+                    // transform overrides the CSS translateY(0) target.
+                    bottomSheet.setAttribute('data-state', 'EXPANDED');
+                    if (targetEl === sheetPeek) sheetPeek.dataset.suppressClick = '1';
+                }
+            }
+            if (mode === 'open') {
+                const progress = Math.min(1, Math.max(0, -dy / sheetHeight));
+                setSheetDragTransform((1 - progress) * sheetHeight);
+            } else {
+                const offset = Math.max(0, Math.min(sheetHeight, dy));
+                setSheetDragTransform(offset);
+            }
+            if (event.cancelable) event.preventDefault();
+        }, { passive: false });
+
+        function endGesture(event) {
+            if (!active) return;
+            active = false;
+            const wasResolved = resolved;
+            resolved = false;
+            if (!wasResolved) return;
+            const touch = (event.changedTouches && event.changedTouches[0]) || null;
+            const finalY = touch ? touch.clientY : lastY;
+            const finalT = (event.timeStamp || Date.now());
+            const dy = finalY - startY;
+            const dt = Math.max(1, finalT - startTime);
+            clearSheetDragTransform();
+            if (mode === 'open') {
+                const velocity = -dy / dt;
+                const committed = ((-dy) >= SHEET_SWIPE_COMMIT_PX) ||
+                                  (velocity >= SHEET_SWIPE_VELOCITY_PX);
+                if (committed) {
+                    setSheetState('EXPANDED');
+                } else {
+                    // Force the attribute back via setAttribute since
+                    // setSheetState bails when the current value already
+                    // matches the next state.
+                    bottomSheet.setAttribute('data-state', originState);
+                    setSheetState(originState);
+                }
+            } else {
+                const velocity = dy / dt;
+                const committed = (dy >= SHEET_SWIPE_COMMIT_PX) ||
+                                  (velocity >= SHEET_SWIPE_VELOCITY_PX);
+                if (committed) {
+                    const act = utilityIsActive();
+                    setSheetState(act.any ? 'PEEK' : 'IDLE');
+                }
+                // else: stay EXPANDED; cleared transform lets CSS snap back.
+            }
+        }
+        targetEl.addEventListener('touchend', endGesture);
+        targetEl.addEventListener('touchcancel', function() {
+            if (!active) return;
+            active = false;
+            const wasResolved = resolved;
+            resolved = false;
+            clearSheetDragTransform();
+            if (wasResolved && mode === 'open') {
+                bottomSheet.setAttribute('data-state', originState);
+                setSheetState(originState);
+            }
+        });
+    }
+
+    attachSheetTouchSwipe(sheetNub, 'open');
+    attachSheetTouchSwipe(sheetPeek, 'open');
+    attachSheetTouchSwipe(sheetSwipeZone, 'open');
+    attachSheetTouchSwipe(sheetDragHandle, 'close');
 
     // Expose a tiny imperative API for tests + visibility coordination from
     // the drawer / empty-state hooks below.

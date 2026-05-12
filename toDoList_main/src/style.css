@@ -4209,6 +4209,25 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex; }
   #bottomSheet:not([data-state="IDLE"]) #bottomSheetNub { display: none; }
 
+  /* Bottom-edge swipe hit zone — invisible 16px strip that catches
+     swipe-up gestures starting from the screen border so the user
+     doesn't have to first locate the small visual nub. Touch-only
+     (gated by pointer: coarse below); hidden while EXPANDED so it
+     doesn't intercept taps inside the open sheet. Pointer-events are
+     off by default so mouse hover/click on the strip is a no-op on
+     non-touch devices. */
+  .sheetSwipeZone {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 16px;
+    background: transparent;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #bottomSheet[data-state="EXPANDED"] .sheetSwipeZone { display: none; }
+
   /* PEEK strip — 48px, two equal columns + chevron. The two columns mean
      stopping/starting one segment doesn't shift the other. */
   #bottomSheetPeek {
@@ -4686,4 +4705,13 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #pomodoroToggle,
   #musicToggle,
   #settingsToggle { display: none; }
+}
+
+/* Bottom-edge swipe hit zone is touch-only — pointer-events are auto'd
+   in only when the device's primary input is coarse so a hovering mouse
+   doesn't get stuck on an invisible strip along the bottom of the
+   viewport. Combines with the @media (max-width: 700px) base rules
+   above. */
+@media (max-width: 700px) and (pointer: coarse) {
+  .sheetSwipeZone { pointer-events: auto; }
 }
