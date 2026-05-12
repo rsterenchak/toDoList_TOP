@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Add volume slider below sheetPasteBtn in music station popover
-  - Description: Add a volume control row directly below `#sheetPasteBtn` ("+ Paste YouTube URL") inside the music station popover, separated from the button by a thin 1px divider matching the existing inter-row separators. The row is a flex container with three elements: a Tabler speaker icon on the left (`ti-volume`, ~16px, purple `#9D93EE` to match the popover accent), a horizontal slider filling the middle (3px track in `rgba(108,93,245,0.25)`, fill and thumb in the purple accent `#6C5DF5` / `#9D93EE`, ~12px circular thumb), and a small percentage readout on the right (`65%` style, ~10px, purple, fixed ~26px min-width so the slider doesn't reflow as the value changes). The speaker icon doubles as a tappable mute toggle — clicking it stores the pre-mute level, drops volume to 0 visually, and the icon swaps to `ti-volume-off`; clicking again restores. Wire the slider's `input` event to set the YouTube IFrame player's volume in real time, persist the value (and mute state) under the existing `todoapp_music_state` localStorage key so it survives reloads, and restore on init. Use a native `<input type="range" min="0" max="100">` styled to match the Void aesthetic — no new dependencies. Mobile note: the slider track and thumb both need generous touch hit zones (≥ 44px tall via padding or pseudo-element) since the visible thumb is only 12px.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/music.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-12
+- [ ] **[HIGH]** Fix bottom drawer swipe-down close gesture stopping after inner touch
+  - Description: On mobile, the bottom drawer's swipe-down close gesture works when the drawer is first opened, but stops firing as soon as the user taps or touches any content inside the drawer — the swipe no longer dismisses the drawer and the user has to find another close mechanism. Expected behavior is for the swipe-down dismiss gesture to remain active for the lifetime of the open drawer, independent of whether its inner content has been interacted with. Likely causes: inner touch handlers calling `stopPropagation()` so the drawer's `touchstart`/`touchmove`/`touchend` listeners never receive subsequent gestures; or the gesture state machine (drag-in-progress flag, captured start Y) getting stranded or reset by an inner touch and never re-arming. Investigate the drawer's swipe-handling block in `main.js` (grep with offset/limit since `main.js` is >25k tokens) and confirm the listeners are attached to the drawer container and don't bail based on `event.target` not being the drawer itself.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
