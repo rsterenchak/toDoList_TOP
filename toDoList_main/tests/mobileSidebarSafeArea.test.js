@@ -53,6 +53,20 @@ describe('Mobile sidebar drawer safe-area layout', () => {
         expect(rule).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom\s*,\s*0px\)/);
     });
 
+    // Regression: the mobile drawer's close (×) button is position:absolute
+    // with top:8px relative to #sideTit. Absolute positioning ignores its
+    // containing block's padding for the offset origin, so #sideTit's
+    // existing padding-top inset did not push the close button below the
+    // notch / status bar — only the PROJECTS label, which sits inside the
+    // padding area. Adding env(safe-area-inset-top) at the #sideBar level
+    // shifts #sideTit (and therefore the absolutely-positioned close
+    // button) down by the inset on iOS, so the × control clears the
+    // status bar / Dynamic Island.
+    it('#sideBar reserves env(safe-area-inset-top) so the close button clears the iOS status bar / notch', () => {
+        const rule = extractMobileRule('#sideBar');
+        expect(rule).toMatch(/padding-top:\s*env\(safe-area-inset-top\s*,\s*0px\)/);
+    });
+
     // Regression: position:absolute resolves against #mainSec, whose
     // overflow:hidden clipped the drawer above the footer track and left
     // a strip of dimmed app footer visible below the open drawer. Pinning
