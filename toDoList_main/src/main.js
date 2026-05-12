@@ -2218,6 +2218,28 @@ function component() {
         let sheetHeight = 320;
         let lastY = 0;
         let lastTime = 0;
+        // For 'close' mode the listener lives on the whole drawer container
+        // so a swipe-down anywhere on the panel (not just the tiny drag
+        // handle) dismisses. When the touch starts inside a scrollable
+        // child that is already scrolled, defer to native scroll instead
+        // of stealing the gesture.
+        let scrollableAtStart = null;
+        let scrollableTopAtStart = 0;
+
+        function findScrollableAncestor(node) {
+            let el = node;
+            while (el && el !== targetEl && el !== document.body) {
+                try {
+                    const cs = window.getComputedStyle(el);
+                    if (cs && /(auto|scroll)/.test(cs.overflowY) &&
+                        el.scrollHeight > el.clientHeight) {
+                        return el;
+                    }
+                } catch (err) { /* defensive */ }
+                el = el.parentElement;
+            }
+            return null;
+        }
 
         targetEl.addEventListener('touchstart', function(event) {
             if (!isCoarsePointer()) return;
@@ -2236,6 +2258,10 @@ function component() {
             resolved = false;
             const measured = sheetExpanded.getBoundingClientRect().height;
             sheetHeight = measured > 0 ? measured : 320;
+            scrollableAtStart = (mode === 'close')
+                ? findScrollableAncestor(event.target)
+                : null;
+            scrollableTopAtStart = scrollableAtStart ? scrollableAtStart.scrollTop : 0;
         }, { passive: true });
 
         targetEl.addEventListener('touchmove', function(event) {
@@ -2257,6 +2283,13 @@ function component() {
                 }
                 if (mode === 'open' && dy >= 0) { active = false; return; }
                 if (mode === 'close' && dy <= 0) { active = false; return; }
+                // Yield to inner scroll when the touch started inside a
+                // scrollable child that wasn't already at the top — the
+                // user means to scroll up through content, not dismiss.
+                if (mode === 'close' && scrollableAtStart && scrollableTopAtStart > 0) {
+                    active = false;
+                    return;
+                }
                 resolved = true;
                 if (mode === 'open') {
                     // Promote to EXPANDED so the sheet is in the visual
@@ -2329,7 +2362,12 @@ function component() {
     attachSheetTouchSwipe(sheetNub, 'open');
     attachSheetTouchSwipe(sheetPeek, 'open');
     attachSheetTouchSwipe(sheetSwipeZone, 'open');
-    attachSheetTouchSwipe(sheetDragHandle, 'close');
+    // Close swipe binds to the whole drawer container — not just the tiny
+    // drag handle — so the swipe-down dismiss stays available after the
+    // user has interacted with controls inside the drawer. The handler
+    // bails on inner scrollable regions that aren't already at scrollTop=0
+    // so native scrolling is preserved.
+    attachSheetTouchSwipe(sheetExpanded, 'close');
 
     // Expose a tiny imperative API for tests + visibility coordination from
     // the drawer / empty-state hooks below.
