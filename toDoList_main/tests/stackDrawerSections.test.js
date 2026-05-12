@@ -47,26 +47,31 @@ describe('STACK mobile drawer — reorganized sections', () => {
         it('mounts a View section with the View heading', () => {
             expect(main).toMatch(/drawerView\.id\s*=\s*['"]drawerView['"]/);
             expect(main).toMatch(/drawerViewHeading\.textContent\s*=\s*['"]View['"]/);
-            expect(main).toMatch(/main1\.appendChild\(drawerView\)/);
+            // The drawer sections live inside the #sidebarBottom wrapper
+            // (added so the projects group can bottom-anchor to the
+            // sidebar midpoint on mobile) which is itself appended to
+            // #sideBar, so the section still mounts into the drawer.
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerView\)/);
+            expect(main).toMatch(/main1\.appendChild\(sidebarBottom\)/);
         });
 
         it('mounts an Appearance section with the Appearance heading', () => {
             expect(main).toMatch(/drawerAppearance\.id\s*=\s*['"]drawerAppearance['"]/);
             expect(main).toMatch(/drawerAppearanceHeading\.textContent\s*=\s*['"]Appearance['"]/);
-            expect(main).toMatch(/main1\.appendChild\(drawerAppearance\)/);
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerAppearance\)/);
         });
 
         it('mounts a footer with version label and project count', () => {
             expect(main).toMatch(/drawerFooter\.id\s*=\s*['"]drawerFooter['"]/);
             expect(main).toMatch(/drawerFooterVersion\.id\s*=\s*['"]drawerFooterVersion['"]/);
             expect(main).toMatch(/drawerFooterCount\.id\s*=\s*['"]drawerFooterCount['"]/);
-            expect(main).toMatch(/main1\.appendChild\(drawerFooter\)/);
+            expect(main).toMatch(/sidebarBottom\.appendChild\(drawerFooter\)/);
         });
 
         it('mounts the sections in order: View → Appearance → Footer', () => {
-            const viewIdx       = main.indexOf('main1.appendChild(drawerView)');
-            const appearanceIdx = main.indexOf('main1.appendChild(drawerAppearance)');
-            const footerIdx     = main.indexOf('main1.appendChild(drawerFooter)');
+            const viewIdx       = main.indexOf('sidebarBottom.appendChild(drawerView)');
+            const appearanceIdx = main.indexOf('sidebarBottom.appendChild(drawerAppearance)');
+            const footerIdx     = main.indexOf('sidebarBottom.appendChild(drawerFooter)');
             expect(viewIdx).toBeGreaterThan(-1);
             expect(appearanceIdx).toBeGreaterThan(viewIdx);
             expect(footerIdx).toBeGreaterThan(appearanceIdx);

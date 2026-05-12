@@ -53,9 +53,12 @@ describe('projects sidebar — 54px icon rail', () => {
     });
 
     it('places the add-project button at the bottom of the sidebar column', () => {
-        // addProj is the last flex child of #sideBar so it sits below the
-        // scrollable project list (#sideMa).
-        expect(main).toMatch(/main1\.appendChild\(\s*sideMain\s*\)[\s\S]{0,200}main1\.appendChild\(\s*addProj\s*\)/);
+        // addProj is the last child of the projects group (now inside the
+        // #sidebarTop wrapper so the group can bottom-anchor to the
+        // sidebar midpoint on mobile) so it sits below the scrollable
+        // project list (#sideMa). On desktop #sidebarTop grows to fill
+        // #sideBar so addProj still pins to the bottom of the column.
+        expect(main).toMatch(/sidebarTop\.appendChild\(\s*sideMain\s*\)[\s\S]{0,200}sidebarTop\.appendChild\(\s*addProj\s*\)/);
         // It is no longer nested inside #sideTit.
         expect(main).not.toMatch(/sideTitle\.appendChild\(\s*addProj\s*\)/);
     });
