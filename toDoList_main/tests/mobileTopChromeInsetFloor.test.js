@@ -49,10 +49,10 @@ describe('Mobile top chrome max() inset floor', () => {
         );
     });
 
-    it('#mobileProjHeader floors the safe-area inset at 24px in its top padding', () => {
+    it('#mobileProjHeader floors the safe-area inset at 44px in its top padding to clear iOS status bar / Dynamic Island', () => {
         const rule = extractMobileRule('#mobileProjHeader');
         expect(rule).toMatch(
-            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*14px\s*\)\s+16px\s+10px/
+            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*44px\s*\)\s*\+\s*20px\s*\)\s+16px\s+10px/
         );
     });
 

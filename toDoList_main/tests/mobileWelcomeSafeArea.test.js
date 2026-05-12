@@ -61,7 +61,7 @@ describe('STACK mobile welcome empty-state safe-area-inset-top', () => {
         // top-of-viewport elements on mobile.
         const rule = extractMobileRule('#mobileProjHeader');
         expect(rule).toMatch(
-            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*14px\s*\)\s+16px\s+10px/
+            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*44px\s*\)\s*\+\s*20px\s*\)\s+16px\s+10px/
         );
     });
 
