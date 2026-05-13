@@ -19,7 +19,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Relocate view-switch pills to top bar and remove sidebar PROJECTS label
+- [x] **[MEDIUM]** Relocate view-switch pills to top bar and remove sidebar PROJECTS label
   - Description: Move the TODAY/PROJECTS pill bar from its current centered position in the main panel header row up into the top bar, anchored to the left immediately right of the hamburger icon. Remove the all-caps "PROJECTS" label that currently sits at the top of the sidebar so the project list begins directly at the sidebar's top padding. Together these align the layout with the chosen Today dashboard mockup and resolve the vertical asymmetry between the sidebar (which no longer has a header) and the main panel (which previously did).
     - Behavior:
       1. Top bar layout becomes: hamburger icon (far left) → small gap → TODAY pill → PROJECTS pill → flexible spacer → existing right-side icon cluster (pomodoro, stats, ghost). Pills keep their active/inactive styling, click behavior, and view-persistence wiring from the shell entry.
@@ -32,7 +32,7 @@
       - `main.js` is over 25k tokens; grep for the pill bar creation block from the shell entry and the existing top-bar render block before reading, with offset/limit pagination.
     - Out of scope: any change to pill visuals (color, shape, animation) beyond position; the sidebar's + button placement or styling; the right-side icon cluster; any change to EXPAND ALL.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-13
 
 ## In Progress
 
