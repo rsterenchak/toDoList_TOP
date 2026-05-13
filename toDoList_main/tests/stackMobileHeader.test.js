@@ -25,16 +25,18 @@ describe('STACK mobile project header', () => {
     it('mounts the mobile project header inside the main column', () => {
         expect(main).toMatch(/mobileProjHeader\.id\s*=\s*['"]mobileProjHeader['"]/);
         // The header is appended to main2 (the main column / #mainBar) so
-        // it sits in the same scroll context as the todo list, above the
-        // existing #mainTitle row.
+        // it sits in the same scroll context as the todo list. The
+        // desktop #mainTitle bar that previously followed it was removed
+        // when sidebar incomplete-count badges landed; the header now
+        // sits directly above #mainList.
         expect(main).toMatch(/main2\.appendChild\(mobileProjHeader\)/);
         const headerIdx = main.indexOf('main2.appendChild(mobileProjHeader)');
-        const titleIdx  = main.indexOf('main2.appendChild(mainTitle)');
+        const listIdx   = main.indexOf('main2.appendChild(mainList)');
         expect(headerIdx).toBeGreaterThan(-1);
-        expect(titleIdx).toBeGreaterThan(-1);
-        // Header must precede mainTitle in the DOM so it renders above
-        // the bulk-description chrome on mobile.
-        expect(headerIdx).toBeLessThan(titleIdx);
+        expect(listIdx).toBeGreaterThan(-1);
+        // Header must precede the todo list in the DOM so it renders
+        // above on mobile.
+        expect(headerIdx).toBeLessThan(listIdx);
     });
 
     it('renders a PROJECT N OF M label and the project name', () => {
