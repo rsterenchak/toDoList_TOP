@@ -23,20 +23,30 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Relocate view-switch pills to top bar and remove sidebar PROJECTS label
-  - Description: Move the TODAY/PROJECTS pill bar from its current centered position in the main panel header row up into the top bar, anchored to the left immediately right of the hamburger icon. Remove the all-caps "PROJECTS" label that currently sits at the top of the sidebar so the project list begins directly at the sidebar's top padding. Together these align the layout with the chosen Today dashboard mockup and resolve the vertical asymmetry between the sidebar (which no longer has a header) and the main panel (which previously did).
+- [ ] **[MEDIUM]** Add Calendar view shell with month grid and right-side day detail panel
+  - Description: Add a third top-level view, Calendar, alongside TODAY and PROJECTS. The view consists of a month grid on the left and a day-detail panel on the right; clicking a date in the grid populates the panel with that day's todos. This entry covers the view shell, grid rendering, day selection, and read-only display of the selected day's tasks. Drag-to-reschedule, recurring task instance projection, view-mode toggle (week/agenda), and add-from-calendar are explicitly deferred to follow-up entries.
     - Behavior:
-      1. Top bar layout becomes: hamburger icon (far left) → small gap → TODAY pill → PROJECTS pill → flexible spacer → existing right-side icon cluster (pomodoro, stats, ghost). Pills keep their active/inactive styling, click behavior, and view-persistence wiring from the shell entry.
-      2. The previous pill container in the main panel header row is removed. EXPAND ALL stays where it is (right-aligned, only rendered on PROJECTS view).
-      3. The sidebar's "PROJECTS" all-caps header label is removed entirely. The project list now begins at the sidebar's existing top padding; the + button at the sidebar's bottom is unchanged.
-      4. On TODAY view, the main panel's first visible element is now the date header — no header row sits above it, since EXPAND ALL is PROJECTS-only.
+      1. Add a `CALENDAR` pill as the third pill in the top bar, sized to match the existing TODAY/PROJECTS compact spec (12px text, 4px 12px padding). Active/inactive styling follows the existing pill rules. Persistence already exists via `todoapp_active_view`; `"calendar"` becomes a valid value.
+      2. The Calendar view replaces the main panel content when active. The sidebar auto-collapses on entry to CALENDAR (same rule as TODAY); reopens on switch to PROJECTS.
+      3. Month grid layout: 7 columns × 5-6 rows. Header row shows day-of-week initials (S M T W T F S). Cells show the day number top-aligned. Today's date gets a subtle purple outline. The selected date gets a purple-tinted background fill (`~#2a2435`). Leading/trailing days from adjacent months are dimmed (`~#4a4a5c`). Grid defaults to the current month on first load.
+      4. Density indicator: each cell with one or more incomplete todos due on that date shows a small horizontal row of purple dots below the day number — 1 dot for 1 task, 2 dots for 2, 3 dots for 3 or more. Capped at 3 dots; no 4+ representation needed at this stage.
+      5. Month navigation: `<` and `>` chevrons flank the month label (e.g. "May 2026") above the grid. Clicking moves the grid one month back/forward. The selected date persists across month changes (it becomes a leading/trailing day if scrolled past) unless the user clicks a new date in the visible month.
+      6. Day-detail panel (right side, ~300px wide): shows selected date as a header (e.g. "TUESDAY MAY 12", purple all-caps), item count subtitle ("3 items" or "No items on this day"), and a list of incomplete todos for that date. Each task row reuses the shared row builder from the Today restyle entry with the due pill omitted (date is implied by selection) — checkbox, project pill, title only. Add a `{ hideDuePill: true }` option to the row builder if it doesn't already exist.
+      7. Clicking a task row body in the day panel switches the active view to PROJECTS, selects that task's parent project, and scrolls the row into view (same behavior as Today rows). Clicking the checkbox toggles completion via the existing path and re-renders the calendar — the dot count for that date should update in the same render pass.
+      8. On view-switch to CALENDAR, the selected date defaults to today. Selected date is not persisted across page reloads — always resets to today on load.
     - Implementation notes:
-      - On narrow / mobile widths, the top bar may not have room for hamburger + two pills + three right-side icons. Start with the simplest fix: compress pill padding via a `<600px` breakpoint. If that's still tight, fall back to hiding pill text behind a small dropdown. Pill text needs to stay at `font-size: 16px+` to avoid iOS auto-zoom regardless of which approach is taken.
-      - The pill bar was created in `main.js` in the shell entry; if any inline styles were applied there (background, border, layout), they need to be updated in `main.js` directly — CSS-only changes will be overridden.
-      - `main.js` is over 25k tokens; grep for the pill bar creation block from the shell entry and the existing top-bar render block before reading, with offset/limit pagination.
-    - Out of scope: any change to pill visuals (color, shape, animation) beyond position; the sidebar's + button placement or styling; the right-side icon cluster; any change to EXPAND ALL.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-13
+      - Aggregation goes through `listLogic.js`. Add a `getCalendarMonth(year, month)` helper returning `{ "YYYY-MM-DD": [todos] }` for all dates visible in the calendar grid for that month, including leading days from the previous month and trailing days from the next so the grid is always complete. Filter to incomplete todos with a matching due date; exclude items with no due date. Recurring tasks render their current instance only at this stage; next-instance projection is deferred to the recurring-task integration entry.
+      - Compute date comparisons via `new Date(year, month, day).setHours(0,0,0,0)` to avoid timezone drift, same approach as the Today aggregation.
+      - Reuse the shared row builder from the Today restyle entry, passing `{ hideDuePill: true }`. If the builder doesn't currently support that option, add it as a small extension rather than copy-pasting a near-duplicate row builder.
+      - Top bar now carries three pills + hamburger + three right-side icons. At mobile widths this gets tight; the breakpoint compression added in the top-bar relocation entry needs to be re-evaluated for three pills — likely further padding reduction, with horizontal scroll on the pill cluster as a fallback. Pills must still hit `font-size: 16px+` on mobile.
+      - `main.js` is over 25k tokens; grep for the pill bar (added in the top-bar relocation entry), the Today view container, and the sidebar toggle function before reading. Use offset/limit pagination.
+    - Acceptance criteria:
+      - Unit tests in `tests/listLogic.test.js` for `getCalendarMonth()` covering: empty input, single date with one todo, single date with multiple todos (including >3 to confirm the cap doesn't affect the helper's output), todos spread across the month, todos with no due date excluded, completed todos excluded, leading and trailing days populated, edge case where a todo's due date falls on the first or last visible cell of the grid.
+      - Switching between TODAY, PROJECTS, and CALENDAR pills works smoothly with no flicker; `todoapp_active_view` persists correctly across reloads with `"calendar"` as a valid value.
+      - Completing a todo from the day-detail panel updates the calendar dot count on that date in the same render pass.
+    - Out of scope: drag-to-reschedule (separate entry); recurring task instance projection on future dates (separate entry); week and agenda view modes (separate entry); add-from-calendar including a "+ ADD FOR THIS DAY" button (separate entry); editing a todo's due date from the calendar; hover preview of tasks for non-selected dates; multi-day or all-day event spans; project-colored dots; auto-advancing the selected date when the calendar is left open past midnight.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
