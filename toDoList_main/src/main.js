@@ -4234,6 +4234,10 @@ function restoreFromStorage() {
     if (savedProjects.length === 0) {
         updateEmptyState(document.getElementById('mainList'));
         applyActiveView(getActiveView());
+        // Initial-load default: the saved view dictates whether the desktop
+        // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
+        // when applyActiveView's view-change guard would otherwise skip it.
+        applyViewDefaultSidebar(getActiveView());
         return;
     }
 
@@ -4496,6 +4500,10 @@ function restoreFromStorage() {
     // sidebar reads as "no active project" — Today owns the main panel
     // and the project list is just navigation chrome at that point.
     applyActiveView(getActiveView());
+    // Initial-load default: the saved view dictates whether the desktop
+    // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
+    // when applyActiveView's view-change guard would otherwise skip it.
+    applyViewDefaultSidebar(getActiveView());
 
 }
 
@@ -4510,6 +4518,7 @@ function restoreFromStorage() {
 // flexible.
 function applyActiveView(view) {
     const safe = view === 'projects' ? 'projects' : 'today';
+    const prevView = getActiveView();
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -4536,6 +4545,30 @@ function applyActiveView(view) {
             selected.classList.add('unselectedProject');
         }
         refreshTodayDateHeader();
+    }
+
+    // Switching views resets the desktop projects sidebar to the new
+    // view's default: TODAY collapses to the icon rail (the dashboard
+    // owns the main panel, the project list is just navigation chrome)
+    // and PROJECTS expands to the full named-project sidebar. A no-op
+    // when the view hasn't actually changed so the hamburger override
+    // the user took within the current view is preserved.
+    if (prevView !== safe) {
+        applyViewDefaultSidebar(safe);
+    }
+}
+
+// Reset the desktop projects sidebar to a view's default open/collapsed
+// state. TODAY collapses to the 54px icon rail; PROJECTS expands to the
+// full named-project sidebar. Mobile keeps its drawer behavior — the
+// rail is a desktop-and-up affordance and the mobile drawer is hidden
+// by default regardless of view.
+function applyViewDefaultSidebar(view) {
+    if (window.innerWidth <= 700) return;
+    const wantRail = view !== 'projects';
+    if (isSidebarRailOn() !== wantRail) {
+        setSidebarRailOn(wantRail);
+        applySidebarRail(wantRail);
     }
 }
 

@@ -19,7 +19,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Auto-collapse projects sidebar when TODAY view is active
+- [x] **[MEDIUM]** Auto-collapse projects sidebar when TODAY view is active
   - Description: When the active view is TODAY, the projects sidebar feels out of place — narrow, near-empty, and contextually disconnected from the dashboard content. Auto-collapse the sidebar whenever TODAY becomes active, and auto-expand it when PROJECTS becomes active. The hamburger button continues to work as a manual override within the current view (the user can open the sidebar while on TODAY if they want), but switching views resets to the new view's default. This reuses the existing sidebar toggle path rather than introducing new inline styles.
     - Behavior:
       1. On view-switch to TODAY: call the existing sidebar-close function (the same path the hamburger uses).
