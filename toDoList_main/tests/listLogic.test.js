@@ -1166,60 +1166,6 @@ describe('listLogic — getCalendarMonth', () => {
 });
 
 
-// ── PROJECT INCOMPLETE COUNT ─────────────────────────────────────────
-describe('listLogic — getProjectIncompleteCount', () => {
-    beforeEach(() => {
-        listLogic._reset();
-    });
-
-    it('returns 0 for a missing project', () => {
-        expect(listLogic.getProjectIncompleteCount('Nope')).toBe(0);
-    });
-
-    it('returns 0 for an empty project (only the blank placeholder)', () => {
-        listLogic.addProject('Empty');
-        expect(listLogic.getProjectIncompleteCount('Empty')).toBe(0);
-    });
-
-    it('returns 0 when every committed todo is completed', () => {
-        listLogic.addProject('Done');
-        listLogic.addToDo('Done', 'A');
-        listLogic.addToDo('Done', 'B');
-        listLogic.listItems('Done').forEach((item) => {
-            if (item.tit) item.completed = true;
-        });
-        expect(listLogic.getProjectIncompleteCount('Done')).toBe(0);
-    });
-
-    it('returns the full committed count when every todo is incomplete', () => {
-        listLogic.addProject('Open');
-        listLogic.addToDo('Open', 'A');
-        listLogic.addToDo('Open', 'B');
-        listLogic.addToDo('Open', 'C');
-        expect(listLogic.getProjectIncompleteCount('Open')).toBe(3);
-    });
-
-    it('counts only incomplete todos when completion is mixed', () => {
-        listLogic.addProject('Mix');
-        listLogic.addToDo('Mix', 'A');
-        listLogic.addToDo('Mix', 'B');
-        listLogic.addToDo('Mix', 'C');
-        listLogic.addToDo('Mix', 'D');
-        const items = listLogic.listItems('Mix');
-        items.find((i) => i.tit === 'A').completed = true;
-        items.find((i) => i.tit === 'C').completed = true;
-        expect(listLogic.getProjectIncompleteCount('Mix')).toBe(2);
-    });
-
-    it('excludes the blank placeholder row from the count', () => {
-        listLogic.addProject('Solo');
-        listLogic.addToDo('Solo', 'Real');
-        // The blank placeholder pinned at index 0 must not inflate the count.
-        expect(listLogic.getProjectIncompleteCount('Solo')).toBe(1);
-    });
-});
-
-
 describe('listLogic — sanitizeRecurrence', () => {
     it('clamps an unknown pattern to "daily"', () => {
         const result = sanitizeRecurrence({ pattern: 'made-up' });

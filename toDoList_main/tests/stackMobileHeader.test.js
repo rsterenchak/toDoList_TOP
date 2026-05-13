@@ -22,20 +22,19 @@ describe('STACK mobile project header', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
-    it('mounts the mobile project header inside the main column above the todo list', () => {
+    it('mounts the mobile project header inside the main column', () => {
         expect(main).toMatch(/mobileProjHeader\.id\s*=\s*['"]mobileProjHeader['"]/);
-        // The header is appended to main2 (the main column / #mainBar)
-        // so it sits in the same scroll context as the todo list. The
-        // former #mainTitle row was removed, so the header now sits
-        // directly above #mainList.
+        // The header is appended to main2 (the main column / #mainBar) so
+        // it sits in the same scroll context as the todo list, above the
+        // existing #mainTitle row.
         expect(main).toMatch(/main2\.appendChild\(mobileProjHeader\)/);
         const headerIdx = main.indexOf('main2.appendChild(mobileProjHeader)');
-        const listIdx   = main.indexOf('main2.appendChild(mainList)');
+        const titleIdx  = main.indexOf('main2.appendChild(mainTitle)');
         expect(headerIdx).toBeGreaterThan(-1);
-        expect(listIdx).toBeGreaterThan(-1);
-        // Header must precede mainList in the DOM so it renders above
-        // the todo rows on mobile.
-        expect(headerIdx).toBeLessThan(listIdx);
+        expect(titleIdx).toBeGreaterThan(-1);
+        // Header must precede mainTitle in the DOM so it renders above
+        // the bulk-description chrome on mobile.
+        expect(headerIdx).toBeLessThan(titleIdx);
     });
 
     it('renders a PROJECT N OF M label and the project name', () => {
@@ -143,12 +142,10 @@ describe('STACK mobile project header', () => {
         expect(desktop).toBeTruthy();
     });
 
-    it('hides the floating EXPAND ALL wrapper on mobile so it can\'t paint over the first todo row', () => {
-        // The desktop EXPAND ALL toggle floats over the top-right of
-        // the project view. On mobile the drawer\'s "Expand all
-        // descriptions" toggle reaches the same handler, so the
-        // floating wrapper is hidden at narrow viewports.
+    it('hides the desktop breadcrumb on mobile so the header is the single source of project name', () => {
+        // The mobile header replaces the desktop breadcrumb as the place
+        // the active project name appears textually below 700px.
         const mobile = css.slice(css.indexOf('@media (max-width: 700px)'));
-        expect(mobile).toMatch(/#bulkDescActions\s*\{\s*display:\s*none/);
+        expect(mobile).toMatch(/#mainCrumb\s*\{\s*display:\s*none/);
     });
 });
