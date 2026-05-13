@@ -493,11 +493,7 @@ body {
 #projChild {
   display: grid;
   align-content: center;
-  align-items: center;
-  /* 1fr name (ellipsis truncates), 12px breathing space, auto badge. The
-     badge has fixed-feeling width via its own padding so the trailing
-     column collapses to badge content + its own internal padding. */
-  grid-template-columns: 1fr 12px auto;
+  grid-template-columns: 1fr 12px;
   cursor: pointer;
   background: transparent;
   min-height: 44px;
@@ -577,24 +573,6 @@ body {
 #projInput:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text-primary);
   -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
-}
-
-/* Incomplete-count pill on the right of every project row. Always
-   visible (including count == 0) so layout is consistent across rows,
-   and right-aligned so long names ellipsise into the row's 1fr column
-   before encroaching on the badge. */
-.projCountBadge {
-  justify-self: end;
-  align-self: center;
-  color: #9D93EE;
-  background: rgba(108, 93, 245, 0.18);
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  line-height: 1;
-  padding: 1px 7px;
-  border-radius: 99px;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 /* PROJECT CONTEXT MENU */
@@ -1162,16 +1140,12 @@ body:has(#settingsMenu) #helpFab {
 /* MAIN BAR */
 #mainBar {
   display: grid;
-  /* Single 1fr row holds the scrollable todo list. The Today and
-     Calendar dashboards, when active, overlay it via explicit grid
-     placement (see #todayView below). The PROJECTS view's title bar
-     (formerly row 1 here) was removed — the active project name now
-     reads from the sidebar selection and per-row incomplete-count
-     badges, so the main panel starts directly with the add-task row.
-     The bulk-description Expand All toggle (#bulkDescActions) lives
-     here as an absolutely-positioned overlay on the top-right of the
-     add-task row rather than as a flow child. */
-  grid-template-rows: 1fr;
+  /* Row 1 (--row-h) is the project view's title bar. Row 2 (1fr) is
+     the scrollable todo list. The Today dashboard, when active,
+     overlays rows 1-2 via explicit grid placement (see #todayView
+     below). The view-switch pill bar lives in the top nav, not here,
+     so the main panel no longer reserves a row for it. */
+  grid-template-rows: var(--row-h) 1fr;
   background: var(--bg-base);
   overflow: hidden;
   min-width: 0;
@@ -1247,7 +1221,7 @@ body:has(#settingsMenu) #helpFab {
   display: flex;
 }
 
-#mainBar[data-view="today"] #bulkDescActions,
+#mainBar[data-view="today"] #mainTitle,
 #mainBar[data-view="today"] #mainList,
 #mainBar[data-view="today"] #mobileProjHeader {
   display: none;
@@ -1503,7 +1477,7 @@ body:has(#settingsMenu) #helpFab {
   display: flex;
 }
 
-#mainBar[data-view="calendar"] #bulkDescActions,
+#mainBar[data-view="calendar"] #mainTitle,
 #mainBar[data-view="calendar"] #mainList,
 #mainBar[data-view="calendar"] #mobileProjHeader {
   display: none;
@@ -1683,20 +1657,25 @@ body:has(#settingsMenu) #helpFab {
   gap: 4px;
 }
 
-/* BULK DESCRIPTION CONTROL — Expand All / Collapse All toggle anchored
-   to the top-right of the main panel, vertically centered over the
-   add-task row at the top of #mainList. Floats above mainList rather
-   than sitting in flow so the row doesn't have to reserve trailing
-   space for it. */
+/* ── MAIN TITLE BAR ── */
+#mainTitle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--border-dim);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* BULK DESCRIPTION CONTROL — wrapper for the Expand All toggle in the
+   Todo Items header, anchored to the right edge. */
 #bulkDescActions {
   position: absolute;
-  right: 16px;
-  /* item-h is the height of one todo row, padding above mainList is
-     4px (see #mainList rule below). Centre the toggle over the first
-     row so it aligns with the add-task input. */
-  top: calc(4px + var(--item-h) / 2);
+  right: 8px;
+  top: 50%;
   transform: translateY(-50%);
-  z-index: 2;
 }
 
 .bulkDescBtn {
@@ -3425,14 +3404,27 @@ body.row-dragging * { cursor: grabbing !important; }
   #mobileProjOpen { color: var(--text-primary); }
   #mobileProjDone { color: var(--text-muted); }
 
+  /* Hide the desktop breadcrumb in the main column and collapse the
+     empty mainTitle row — the mobile header replaces both. #mainBar's
+     desktop grid reserves a --row-h track for #mainTitle; without a
+     third track the mobileProjHeader gets stuffed into that fixed-height
+     track and pushes its content into a dead band. Switch the grid to
+     three auto tracks (header, title, list) and hide the title row so
+     mainList sits flush below the mobile header.
+
+     #bulkDescActions lives inside #mainTitle so it disappears too, but
+     the drawer's "Expand all descriptions" toggle calls
+     bulkDescToggleBtn.click() directly — display:none doesn't disable
+     a button, so the toggle stays fully reachable. */
+  #mainCrumb { display: none; }
   /* Mobile-only layout: the mobile project header sits in row 1 (auto),
-     #mainList lands in row 2 (1fr). The view-switch pills live in the
-     top nav, and the desktop breadcrumb / Expand-All cluster has been
-     removed from the projects view — the drawer's "Expand all
-     descriptions" toggle calls bulkDescToggleBtn.click() directly, so
-     hiding #bulkDescActions doesn't strand the affordance. */
-  #mainBar   { grid-template-rows: auto 1fr; }
-  #bulkDescActions { display: none; }
+     the hidden #mainTitle would otherwise auto-place into row 2, and
+     #mainList lands explicitly in the final 1fr track. The view-switch
+     pills no longer live here — they were moved to the top nav — so
+     the main panel no longer reserves a row for them on mobile either. */
+  #mainBar   { grid-template-rows: auto auto 1fr; }
+  #mainList  { grid-row: 3; }
+  #mainTitle { display: none; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and
      nav gaps so the four 36px nav buttons still fit alongside three
@@ -4232,8 +4224,7 @@ body.row-dragging * { cursor: grabbing !important; }
     pointer-events: none;
   }
   html[data-sidebar-rail="on"] #projChild #projInput,
-  html[data-sidebar-rail="on"] #projChild > div,
-  html[data-sidebar-rail="on"] #projChild .projCountBadge {
+  html[data-sidebar-rail="on"] #projChild > div {
     display: none;
   }
   html[data-sidebar-rail="on"] #projChild:hover {

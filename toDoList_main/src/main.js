@@ -107,44 +107,6 @@ function applyProjectInitial(projChild, name) {
 }
 
 
-// Ensure the row has a sidebar incomplete-count badge, returning the
-// badge element. Idempotent — re-runs on the same row reuse the existing
-// span rather than stacking duplicates. Created with a default "0" so the
-// row reads as consistently shaped before the first count update lands.
-function ensureSidebarCountBadge(projChild) {
-    if (!projChild) return null;
-    let badge = projChild.querySelector('.projCountBadge');
-    if (badge) return badge;
-    badge = document.createElement('span');
-    badge.className = 'projCountBadge';
-    badge.setAttribute('aria-hidden', 'true');
-    badge.textContent = '0';
-    projChild.appendChild(badge);
-    return badge;
-}
-
-
-// Recompute and write the incomplete-count badge on every sidebar
-// project row from listLogic's authoritative state. Cheap O(rows) work
-// driven by the same MutationObserver that powers footer counts, so
-// add / complete / uncomplete / delete on any todo lands in the same
-// render pass that updates the main panel.
-function refreshSidebarCountBadges() {
-    const sideMa = document.getElementById('sideMa');
-    if (!sideMa) return;
-    const rows = sideMa.querySelectorAll('#projChild');
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const input = row.querySelector('#projInput');
-        const name = input ? input.value.trim() : '';
-        const badge = ensureSidebarCountBadge(row);
-        if (!badge) continue;
-        const count = name ? listLogic.getProjectIncompleteCount(name) : 0;
-        badge.textContent = String(count);
-    }
-}
-
-
 function component() {
 
 
@@ -2761,6 +2723,7 @@ function component() {
     main2.appendChild(todayView);
     main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
+    main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
     // ── mobile drawer close (X) button ──
@@ -2818,13 +2781,7 @@ function component() {
     bulkDescToggleBtn.appendChild(bulkDescCaret);
 
     bulkDescActions.appendChild(bulkDescToggleBtn);
-    // bulkDescActions is anchored to the top-right of the main panel (over
-    // the add-task row) via the absolute positioning in style.css. mainTitle
-    // is no longer attached to the DOM on PROJECTS view — the breadcrumb
-    // duplicated information already in the sidebar — so this control hangs
-    // off #mainBar directly. The append happens after #mainList below so it
-    // wins natural source-order paint as the top-most sibling.
-    main2.appendChild(bulkDescActions);
+    mainTitle.appendChild(bulkDescActions);
 
     bulkDescToggleBtn.addEventListener('click', function () {
         const expanded = bulkDescToggleBtn.classList.toggle('expanded');
@@ -3698,7 +3655,6 @@ function component() {
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
         projChild.appendChild(spacer);
-        ensureSidebarCountBadge(projChild);
 
         // spacer.style.border = "1px solid red";
         spacer.style.width = "12px";
@@ -4097,12 +4053,6 @@ function component() {
         footOpen.textContent = open + ' OPEN';
         footDone.textContent = done + ' DONE';
 
-        // Sidebar incomplete-count badges piggy-back on the same observer
-        // signal that drives the footer/breadcrumb refresh. Every add /
-        // complete / uncomplete / delete on a todo lands here in the same
-        // render pass that updated #mainList, so no badge can read stale.
-        refreshSidebarCountBadges();
-
         // Breadcrumb in the main column mirrors the active project name and
         // open count. In rail mode this is the only place the full name
         // appears textually; in full-sidebar mode CSS hides it to avoid
@@ -4302,7 +4252,6 @@ function component() {
         attributeFilter: ['class']
     });
     footObserver.observe(sideMain, {
-        childList: true,
         subtree: true,
         attributes: true,
         attributeFilter: ['class', 'value']
@@ -4425,7 +4374,6 @@ function restoreFromStorage() {
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
         projChild.appendChild(spacer);
-        ensureSidebarCountBadge(projChild);
 
         // track current name for rename
         let currentProperty = projectName;
