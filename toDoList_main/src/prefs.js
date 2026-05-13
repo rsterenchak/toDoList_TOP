@@ -14,6 +14,7 @@ export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
+export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -74,6 +75,26 @@ export function isSidebarRailOn() {
 export function setSidebarRailOn(on) {
     try {
         localStorage.setItem(SIDEBAR_RAIL_KEY, on ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── active top-level view (today vs. projects) ──
+// The main panel hosts two top-level views: the Today dashboard and the
+// project view. The pill bar near the top of the main panel switches
+// between them; this pref restores the active view across reloads.
+// Default is 'today' so first-time users land on the dashboard.
+export function getActiveView() {
+    try {
+        const v = localStorage.getItem(ACTIVE_VIEW_KEY);
+        return v === 'projects' ? 'projects' : 'today';
+    } catch (e) {
+        return 'today';
+    }
+}
+
+export function setActiveView(view) {
+    try {
+        localStorage.setItem(ACTIVE_VIEW_KEY, view === 'projects' ? 'projects' : 'today');
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

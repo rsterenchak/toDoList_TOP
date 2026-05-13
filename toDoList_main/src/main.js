@@ -29,6 +29,8 @@ import {
     setSidebarRailOn,
     isCompletedSectionOpen,
     setCompletedSectionOpen,
+    getActiveView,
+    setActiveView,
 } from './prefs.js';
 import {
     applyTheme,
@@ -2555,6 +2557,68 @@ function component() {
     mobileProjHeader.appendChild(mobileProjTitleRow);
     mobileProjHeader.appendChild(mobileProjStats);
 
+    // ── top-level view switcher (Today / Projects) ──
+    // Pill bar near the top of the main panel toggles between the new
+    // Today dashboard shell and the existing project view. The active
+    // view is persisted in localStorage under `todoapp_active_view` and
+    // restored on load; the pill click handlers below route through
+    // applyActiveView so the same code path runs for user clicks,
+    // initial restore, and the auto-switch fired when a project row is
+    // clicked. The actual show/hide is driven by a `data-view` attribute
+    // on #mainBar so CSS can swap surfaces without per-element style
+    // writes.
+    const viewSwitcher = document.createElement('div');
+    viewSwitcher.id = 'viewSwitcher';
+    viewSwitcher.setAttribute('role', 'tablist');
+    viewSwitcher.setAttribute('aria-label', 'Switch view');
+
+    const viewPillToday = document.createElement('button');
+    viewPillToday.id = 'viewPillToday';
+    viewPillToday.type = 'button';
+    viewPillToday.className = 'viewPill';
+    viewPillToday.setAttribute('role', 'tab');
+    viewPillToday.setAttribute('aria-pressed', 'false');
+    viewPillToday.textContent = 'TODAY';
+
+    const viewPillProjects = document.createElement('button');
+    viewPillProjects.id = 'viewPillProjects';
+    viewPillProjects.type = 'button';
+    viewPillProjects.className = 'viewPill';
+    viewPillProjects.setAttribute('role', 'tab');
+    viewPillProjects.setAttribute('aria-pressed', 'false');
+    viewPillProjects.textContent = 'PROJECTS';
+
+    viewSwitcher.appendChild(viewPillToday);
+    viewSwitcher.appendChild(viewPillProjects);
+
+    viewPillToday.addEventListener('click', function() {
+        applyActiveView('today');
+    });
+    viewPillProjects.addEventListener('click', function() {
+        applyActiveView('projects');
+    });
+
+    // ── Today dashboard shell ──
+    // Date header + empty state only — actual overdue/today/upcoming
+    // aggregation lands in a follow-up. The shell sits in the main
+    // panel alongside the project view and toggles via #mainBar's
+    // data-view attribute so neither view re-renders the other on
+    // switch.
+    const todayView = document.createElement('div');
+    todayView.id = 'todayView';
+
+    const todayDateHeader = document.createElement('div');
+    todayDateHeader.id = 'todayDateHeader';
+
+    const todayEmpty = document.createElement('div');
+    todayEmpty.id = 'todayEmpty';
+    todayEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
+
+    todayView.appendChild(todayDateHeader);
+    todayView.appendChild(todayEmpty);
+
+    main2.appendChild(viewSwitcher);
+    main2.appendChild(todayView);
     main2.appendChild(mobileProjHeader);
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
@@ -3440,6 +3504,11 @@ function component() {
 
         console.log("Called projButton");
 
+        // Creating a project implies the user wants the project view —
+        // switch back from TODAY so the new row's todo list lands in
+        // front of the user instead of behind the dashboard shell.
+        applyActiveView('projects');
+
         // Rail mode hides #projInput, so the user has no visible typing
         // surface for the new project name. Expand to full sidebar mode for
         // the entry — the user can re-collapse via the hamburger after.
@@ -3662,6 +3731,11 @@ function component() {
                 projChild.addEventListener("click", function(event){
 
                     console.log("called project selection");
+
+                    // Clicking a project always means the user wants the
+                    // project view active — switch back from TODAY if
+                    // needed before resolving the selection.
+                    applyActiveView('projects');
 
                     const alreadySelected = projChild.classList.contains('selectedProject');
 
@@ -4159,6 +4233,7 @@ function restoreFromStorage() {
 
     if (savedProjects.length === 0) {
         updateEmptyState(document.getElementById('mainList'));
+        applyActiveView(getActiveView());
         return;
     }
 
@@ -4330,6 +4405,10 @@ function restoreFromStorage() {
         // select this project and show its todos
         projChild.addEventListener("click", function(event) {
 
+            // Clicking a project always switches the top-level view back
+            // to PROJECTS — TODAY is a dashboard, not a project context.
+            applyActiveView('projects');
+
             const alreadySelected = projChild.classList.contains('selectedProject');
 
             // first click — select the project
@@ -4412,6 +4491,77 @@ function restoreFromStorage() {
     }
     focusBlankToDoInputIfDesktop();
 
+    // Honour the persisted top-level view. When the saved view is
+    // 'today', this also clears the auto-selected last project so the
+    // sidebar reads as "no active project" — Today owns the main panel
+    // and the project list is just navigation chrome at that point.
+    applyActiveView(getActiveView());
+
+}
+
+// Apply the top-level Today / Projects view. Module-scope so both the
+// in-component pill click handlers and the restoreFromStorage auto-init
+// path can route through one entry point. Writes the chosen view to
+// localStorage, flips #mainBar's data-view attribute (the CSS show/hide
+// hook for the two surfaces), syncs the pill .active state, and — when
+// switching to today — clears any selected project in the sidebar and
+// refreshes the date header text. Safe to call before component() has
+// run; missing nodes short-circuit silently so the boot order stays
+// flexible.
+function applyActiveView(view) {
+    const safe = view === 'projects' ? 'projects' : 'today';
+    setActiveView(safe);
+
+    const mainBar = document.getElementById('mainBar');
+    if (mainBar) mainBar.setAttribute('data-view', safe);
+
+    const pillToday    = document.getElementById('viewPillToday');
+    const pillProjects = document.getElementById('viewPillProjects');
+    if (pillToday) {
+        pillToday.classList.toggle('active', safe === 'today');
+        pillToday.setAttribute('aria-pressed', safe === 'today' ? 'true' : 'false');
+    }
+    if (pillProjects) {
+        pillProjects.classList.toggle('active', safe === 'projects');
+        pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
+    }
+
+    if (safe === 'today') {
+        // No project should appear selected while TODAY owns the main
+        // panel — the sidebar selection only makes sense once PROJECTS
+        // is the active view.
+        const selected = document.querySelector('.selectedProject');
+        if (selected) {
+            selected.classList.remove('selectedProject');
+            selected.classList.add('unselectedProject');
+        }
+        refreshTodayDateHeader();
+    }
+}
+
+// Renders the Today view's date header in the user's locale, e.g.
+// "Tuesday, May 13, 2026". Called on every switch to TODAY so the
+// header reflects the current date even after the tab has been left
+// open across midnight.
+function refreshTodayDateHeader() {
+    const header = document.getElementById('todayDateHeader');
+    if (!header) return;
+    const today = new Date();
+    let text;
+    try {
+        text = today.toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    } catch (e) {
+        // Older runtimes without full Intl support fall back to the
+        // default Date#toDateString — still date-shaped, just less
+        // localised.
+        text = today.toDateString();
+    }
+    header.textContent = text;
 }
 
 // ── helpers used only by restoreFromStorage ──

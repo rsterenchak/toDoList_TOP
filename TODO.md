@@ -19,7 +19,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add Today dashboard view with view-switch navigation
+- [x] **[MEDIUM]** Add Today dashboard view with view-switch navigation
   - Description: Introduce a new top-level "Today" view as the app's home screen, alongside the existing project view, with a pill-style nav bar at the top of the main panel for switching between them. This entry covers the view-switch infrastructure and the Today shell only — actual aggregation of overdue/today/upcoming items and section rendering will land in a follow-up entry.
     - Behavior:
       1. Render a pill bar near the top of the main panel with two pills: `TODAY` (active by default on first load) and `PROJECTS`. Clicking swaps the main panel content between the new Today view and the existing project view.
