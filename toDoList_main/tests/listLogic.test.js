@@ -872,6 +872,145 @@ describe('listLogic — recurrence persistence', () => {
 });
 
 
+// ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────────
+describe('listLogic — getTodayAggregation', () => {
+    // Fix "now" to noon local on 2026-05-13 so the day boundary is
+    // unambiguous and the test isn't sensitive to the suite's wall clock.
+    const now = new Date(2026, 4, 13, 12, 0, 0); // May is month index 4
+
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('returns empty buckets when there are no projects', () => {
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.overdue).toEqual([]);
+        expect(result.today).toEqual([]);
+        expect(result.upcoming).toEqual([]);
+        expect(result.counts).toEqual({ overdue: 0, today: 0, upcoming: 0 });
+    });
+
+    it('returns empty buckets when no todos have due dates', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'No due');
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 0, today: 0, upcoming: 0 });
+    });
+
+    it('buckets only-overdue items into the overdue list', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Late');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Late');
+        item.due = '5-10-2026'; // 3 days before "today"
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 1, today: 0, upcoming: 0 });
+        expect(result.overdue[0].item.tit).toBe('Late');
+        expect(result.overdue[0].project).toBe('P');
+    });
+
+    it('buckets only-today items into the today list', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Now');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Now');
+        item.due = '5-13-2026';
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 0, today: 1, upcoming: 0 });
+        expect(result.today[0].item.tit).toBe('Now');
+    });
+
+    it('buckets only-upcoming items into the upcoming list', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Soon');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Soon');
+        item.due = '5-15-2026'; // 2 days after today
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 0, today: 0, upcoming: 1 });
+        expect(result.upcoming[0].item.tit).toBe('Soon');
+    });
+
+    it('buckets mixed-state todos across multiple projects', () => {
+        listLogic.addProject('Work');
+        listLogic.addProject('Home');
+        listLogic.addToDo('Work', 'Pay invoice');
+        listLogic.addToDo('Work', 'Standup');
+        listLogic.addToDo('Home', 'Trash');
+        listLogic.addToDo('Home', 'Groceries');
+
+        listLogic.listItems('Work').find(i => i.tit === 'Pay invoice').due = '5-1-2026';   // overdue
+        listLogic.listItems('Work').find(i => i.tit === 'Standup').due     = '5-13-2026';  // today
+        listLogic.listItems('Home').find(i => i.tit === 'Trash').due       = '5-13-2026';  // today
+        listLogic.listItems('Home').find(i => i.tit === 'Groceries').due   = '5-18-2026';  // upcoming
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 1, today: 2, upcoming: 1 });
+
+        // Today bucket sorted by title (same date → tiebreaker)
+        expect(result.today.map(e => e.item.tit)).toEqual(['Standup', 'Trash']);
+        expect(result.upcoming[0].project).toBe('Home');
+    });
+
+    it('excludes completed items from every bucket', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Done already');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Done already');
+        item.due = '5-10-2026';
+        item.completed = true;
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 0, today: 0, upcoming: 0 });
+    });
+
+    it('excludes items with no due date from every bucket', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Floating');
+        // due is '' by default — no explicit assignment
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.counts).toEqual({ overdue: 0, today: 0, upcoming: 0 });
+    });
+
+    it('excludes items beyond 7 days from upcoming', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Way out');
+        listLogic.addToDo('P', 'Edge');
+        listLogic.listItems('P').find(i => i.tit === 'Way out').due = '5-21-2026'; // 8 days out
+        listLogic.listItems('P').find(i => i.tit === 'Edge').due    = '5-20-2026'; // 7 days out (boundary)
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.upcoming.map(e => e.item.tit)).toEqual(['Edge']);
+    });
+
+    it('treats a due date set to midnight today as today, not overdue', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Midnight');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Midnight');
+        item.due = '5-13-2026';
+
+        // Pass a "now" that's also exactly at midnight today — the
+        // comparison should still treat the item as today, not overdue.
+        const midnightNow = new Date(2026, 4, 13, 0, 0, 0, 0);
+        const result = listLogic.getTodayAggregation(midnightNow);
+        expect(result.counts).toEqual({ overdue: 0, today: 1, upcoming: 0 });
+    });
+
+    it('sorts overdue oldest-first and breaks ties alphabetically', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Bravo');
+        listLogic.addToDo('P', 'Alpha');
+        listLogic.addToDo('P', 'Charlie');
+        listLogic.listItems('P').find(i => i.tit === 'Bravo').due   = '5-10-2026';
+        listLogic.listItems('P').find(i => i.tit === 'Alpha').due   = '5-10-2026';
+        listLogic.listItems('P').find(i => i.tit === 'Charlie').due = '5-1-2026';
+
+        const result = listLogic.getTodayAggregation(now);
+        expect(result.overdue.map(e => e.item.tit)).toEqual(['Charlie', 'Alpha', 'Bravo']);
+    });
+});
+
+
 describe('listLogic — sanitizeRecurrence', () => {
     it('clamps an unknown pattern to "daily"', () => {
         const result = sanitizeRecurrence({ pattern: 'made-up' });

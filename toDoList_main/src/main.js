@@ -2599,22 +2599,30 @@ function component() {
     });
 
     // ── Today dashboard shell ──
-    // Date header + empty state only — actual overdue/today/upcoming
-    // aggregation lands in a follow-up. The shell sits in the main
-    // panel alongside the project view and toggles via #mainBar's
-    // data-view attribute so neither view re-renders the other on
-    // switch.
+    // Date header, count summary, overdue/today/upcoming sections, and
+    // an empty state that only shows when every bucket is empty. The
+    // shell sits in the main panel alongside the project view and
+    // toggles via #mainBar's data-view attribute so neither view
+    // re-renders the other on switch.
     const todayView = document.createElement('div');
     todayView.id = 'todayView';
 
     const todayDateHeader = document.createElement('div');
     todayDateHeader.id = 'todayDateHeader';
 
+    const todayCountSummary = document.createElement('div');
+    todayCountSummary.id = 'todayCountSummary';
+
+    const todaySections = document.createElement('div');
+    todaySections.id = 'todaySections';
+
     const todayEmpty = document.createElement('div');
     todayEmpty.id = 'todayEmpty';
     todayEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
 
     todayView.appendChild(todayDateHeader);
+    todayView.appendChild(todayCountSummary);
+    todayView.appendChild(todaySections);
     todayView.appendChild(todayEmpty);
 
     main2.appendChild(viewSwitcher);
@@ -4545,6 +4553,7 @@ function applyActiveView(view) {
             selected.classList.add('unselectedProject');
         }
         refreshTodayDateHeader();
+        renderTodayDashboard();
     }
 
     // Switching views resets the desktop projects sidebar to the new
@@ -4596,6 +4605,214 @@ function refreshTodayDateHeader() {
     }
     header.textContent = text;
 }
+
+// ── Today dashboard renderer ──
+// Pulls the aggregated overdue / today / upcoming buckets from
+// listLogic.getTodayAggregation and replaces the contents of the
+// count-summary line and #todaySections. The empty-state element
+// shows only when every bucket is empty.
+function renderTodayDashboard() {
+    const summary  = document.getElementById('todayCountSummary');
+    const sections = document.getElementById('todaySections');
+    const empty    = document.getElementById('todayEmpty');
+    if (!summary || !sections || !empty) return;
+
+    const agg = listLogic.getTodayAggregation();
+    const totalItems = agg.counts.overdue + agg.counts.today + agg.counts.upcoming;
+
+    while (summary.firstChild) summary.removeChild(summary.firstChild);
+    while (sections.firstChild) sections.removeChild(sections.firstChild);
+
+    appendTodayCountSegment(summary, 'overdue', agg.counts.overdue, agg.counts.overdue + ' overdue');
+    appendCountSeparator(summary);
+    appendTodayCountSegment(summary, 'today', agg.counts.today, agg.counts.today + ' today');
+    appendCountSeparator(summary);
+    appendTodayCountSegment(summary, 'upcoming', agg.counts.upcoming, agg.counts.upcoming + ' upcoming');
+
+    empty.style.display = totalItems === 0 ? '' : 'none';
+
+    if (agg.counts.overdue > 0) {
+        sections.appendChild(buildTodaySection('OVERDUE', 'overdue', agg.overdue));
+    }
+    if (agg.counts.today > 0) {
+        sections.appendChild(buildTodaySection('TODAY', 'today', agg.today));
+    }
+    if (agg.counts.upcoming > 0) {
+        sections.appendChild(buildTodaySection('UPCOMING', 'upcoming', agg.upcoming));
+    }
+}
+
+function appendTodayCountSegment(parent, bucket, count, label) {
+    const seg = document.createElement('span');
+    seg.className = 'todayCountSegment';
+    seg.setAttribute('data-bucket', bucket);
+    seg.setAttribute('data-empty', count === 0 ? 'true' : 'false');
+
+    const dot = document.createElement('span');
+    dot.className = 'todayCountDot';
+    dot.setAttribute('aria-hidden', 'true');
+
+    const text = document.createElement('span');
+    text.className = 'todayCountText';
+    text.textContent = label;
+
+    if (bucket === 'upcoming') {
+        // Upcoming has no leading dot in the count summary line — only
+        // overdue and today carry a colored dot. Keep the segment but
+        // skip the dot for visual rhythm matching the spec.
+        seg.appendChild(text);
+    } else {
+        seg.appendChild(dot);
+        seg.appendChild(text);
+    }
+    parent.appendChild(seg);
+}
+
+function appendCountSeparator(parent) {
+    const sep = document.createElement('span');
+    sep.className = 'todayCountSep';
+    sep.textContent = '·';
+    sep.setAttribute('aria-hidden', 'true');
+    parent.appendChild(sep);
+}
+
+function buildTodaySection(label, bucket, entries) {
+    const section = document.createElement('section');
+    section.className = 'todaySection';
+    section.setAttribute('data-bucket', bucket);
+
+    const header = document.createElement('h3');
+    header.className = 'todaySectionHeader';
+    header.textContent = label;
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'todaySectionList';
+    entries.forEach(function(entry) {
+        list.appendChild(buildTodayRow(entry, bucket));
+    });
+    section.appendChild(list);
+
+    return section;
+}
+
+// Build a single Today-view task row: checkbox + title + project pill +
+// due-date tag. The project pill is non-interactive in this entry per
+// the task spec. Checkbox toggles completion (recurring items go
+// through advanceRecurringTodo); clicking the title switches to
+// PROJECTS, selects the parent project, and scrolls to the matching
+// todo row.
+function buildTodayRow(entry, bucket) {
+    const row = document.createElement('div');
+    row.className = 'todayRow';
+    row.setAttribute('data-bucket', bucket);
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'todayRowCheck';
+    checkbox.checked = !!entry.item.completed;
+    checkbox.setAttribute('aria-label', 'Mark ' + entry.item.tit + ' complete');
+    checkbox.addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+    checkbox.addEventListener('change', function() {
+        handleTodayCheckboxToggle(entry, checkbox);
+    });
+
+    const title = document.createElement('button');
+    title.type = 'button';
+    title.className = 'todayRowTitle';
+    title.textContent = entry.item.tit;
+    title.addEventListener('click', function() {
+        jumpToProjectTodo(entry.project, entry.item);
+    });
+
+    const pill = document.createElement('span');
+    pill.className = 'todayRowProjectPill';
+    pill.textContent = entry.project;
+
+    const tag = document.createElement('span');
+    tag.className = 'todayRowDueTag';
+    tag.setAttribute('data-bucket', bucket);
+    tag.textContent = formatTodayDueTag(entry.due, bucket);
+
+    row.appendChild(checkbox);
+    row.appendChild(title);
+    row.appendChild(pill);
+    row.appendChild(tag);
+
+    return row;
+}
+
+function handleTodayCheckboxToggle(entry, checkbox) {
+    const item = entry.item;
+    const project = entry.project;
+    const wasCompleted = !!item.completed;
+
+    // Recurring branch mirrors the projects-view checkbox: when the
+    // user checks a recurring todo, advance its due date instead of
+    // marking it complete. Fall through to the standard completion
+    // path when there's no recurrence or the next due exceeds endDate.
+    if (checkbox.checked && !wasCompleted && item.recurrence) {
+        const advanced = listLogic.advanceRecurringTodo(project, item, new Date());
+        if (advanced) {
+            renderTodayDashboard();
+            return;
+        }
+    }
+
+    item.completed = checkbox.checked;
+    listLogic.sortCompletedToBottom(project);
+    renderTodayDashboard();
+}
+
+function formatTodayDueTag(due, bucket) {
+    if (bucket === 'today') return 'TODAY';
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[due.getMonth()] + ' ' + due.getDate();
+}
+
+// Switch to PROJECTS, select the named project (delegating to its
+// projChild click handler so accent, sidebar state, and rendering all
+// run through the canonical path), then scroll the matching todo row
+// into view.
+function jumpToProjectTodo(projectName, item) {
+    const projRows = document.querySelectorAll('#projChild');
+    let target = null;
+    projRows.forEach(function(row) {
+        const input = row.querySelector('#projInput');
+        if (input && input.value === projectName) target = row;
+    });
+    if (!target) {
+        applyActiveView('projects');
+        return;
+    }
+
+    if (!target.classList.contains('selectedProject')) {
+        target.click();
+    } else {
+        // Already selected — just flip the view back.
+        applyActiveView('projects');
+    }
+
+    // Wait one frame so the row DOM is rebuilt before scrolling.
+    requestAnimationFrame(function() {
+        const mainList = document.getElementById('mainList');
+        if (!mainList) return;
+        const rows = mainList.querySelectorAll('#toDoChild');
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].__item === item) {
+                try {
+                    rows[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } catch (_) {
+                    rows[i].scrollIntoView();
+                }
+                break;
+            }
+        }
+    });
+}
+
 
 // ── helpers used only by restoreFromStorage ──
 

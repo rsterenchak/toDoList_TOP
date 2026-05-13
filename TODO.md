@@ -19,7 +19,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Aggregate overdue/today/upcoming todos and render sections on Today dashboard
+- [x] **[MEDIUM]** Aggregate overdue/today/upcoming todos and render sections on Today dashboard
   - Description: Replace the placeholder empty state on the Today view with a real cross-project aggregation: a count summary line, three sections (OVERDUE / TODAY / UPCOMING), and task rows with checkbox, title, project pill, and due-date tag. Aggregation logic lives in `listLogic.js` as a single helper returning `{ overdue, today, upcoming, counts }`; rendering and event wiring stay in `main.js`.
     - Behavior:
       1. Aggregate non-completed todos across all projects, bucketing by due date relative to start of today (local timezone): `overdue` (due < today), `today` (due === today), `upcoming` (due within next 7 days, exclusive of today). Todos with no due date are excluded from the Today view. Todos more than 7 days out are excluded.
@@ -38,7 +38,7 @@
       - Completing a todo from the Today view also reflects in its parent project's view when the user switches.
     - Out of scope: recurring-task interaction with the Today view (a recurring task that just completed should re-spawn its next instance — separate concern); editing due dates from the Today view (tag is display-only); a "focus on this task" entry point on each row; collapsible sections; a "completed today" count or section; clickable project pills; performance optimization for very large todo counts.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-13
 
 ## In Progress
 

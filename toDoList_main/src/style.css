@@ -1242,6 +1242,157 @@ body:has(#settingsMenu) #helpFab {
   color: var(--text-muted);
 }
 
+/* Count summary line ─ rendered directly under the date header. Each
+   segment carries a small dot (overdue / today) plus a label; upcoming
+   skips the dot per spec. Empty segments render in muted text so the
+   layout stays stable when a bucket has no items. */
+#todayCountSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--text-muted);
+  margin: 0 0 20px 0;
+}
+
+#todayCountSummary .todayCountSegment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#todayCountSummary .todayCountDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+#todayCountSummary .todayCountSep {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+#todayCountSummary .todayCountSegment[data-bucket="overdue"]  { color: var(--text-urgent); }
+#todayCountSummary .todayCountSegment[data-bucket="today"]    { color: var(--accent-text); }
+#todayCountSummary .todayCountSegment[data-bucket="upcoming"] { color: var(--text-muted); }
+#todayCountSummary .todayCountSegment[data-empty="true"]      { color: var(--text-muted); }
+
+/* Sections container — vertical stack of OVERDUE / TODAY / UPCOMING. */
+#todaySections {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.todaySection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.todaySectionHeader {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  margin: 0 0 4px 0;
+}
+
+.todaySectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Task row in the Today dashboard — checkbox | title | project pill |
+   due-date tag, with the tag pushed to the right edge. */
+.todayRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-row);
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-md);
+  min-height: 40px;
+}
+
+.todayRow .todayRowCheck {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.todayRow .todayRowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todayRow .todayRowTitle:hover {
+  color: var(--accent-text);
+}
+
+.todayRow .todayRowTitle:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.todayRow .todayRowProjectPill {
+  flex-shrink: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-text);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  line-height: 1.2;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todayRow .todayRowDueTag {
+  flex-shrink: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.todayRow .todayRowDueTag[data-bucket="overdue"]  { color: var(--text-urgent); }
+.todayRow .todayRowDueTag[data-bucket="today"]    { color: var(--accent-text); }
+.todayRow .todayRowDueTag[data-bucket="upcoming"] { color: var(--text-muted); }
+
 /* ── MAIN TITLE BAR ── */
 #mainTitle {
   display: flex;
