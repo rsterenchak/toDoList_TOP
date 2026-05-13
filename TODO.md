@@ -19,18 +19,19 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Add Today dashboard view with view-switch navigation
-  - Description: Introduce a new top-level "Today" view as the app's home screen, alongside the existing project view, with a pill-style nav bar at the top of the main panel for switching between them. This entry covers the view-switch infrastructure and the Today shell only — actual aggregation of overdue/today/upcoming items and section rendering will land in a follow-up entry.
+- [ ] **[MEDIUM]** Auto-collapse projects sidebar when TODAY view is active
+  - Description: When the active view is TODAY, the projects sidebar feels out of place — narrow, near-empty, and contextually disconnected from the dashboard content. Auto-collapse the sidebar whenever TODAY becomes active, and auto-expand it when PROJECTS becomes active. The hamburger button continues to work as a manual override within the current view (the user can open the sidebar while on TODAY if they want), but switching views resets to the new view's default. This reuses the existing sidebar toggle path rather than introducing new inline styles.
     - Behavior:
-      1. Render a pill bar near the top of the main panel with two pills: `TODAY` (active by default on first load) and `PROJECTS`. Clicking swaps the main panel content between the new Today view and the existing project view.
-      2. Persist the active view across reloads via a `todoapp_active_view` localStorage key (default `"today"`). Read on `restoreFromStorage()`; write whenever the active pill changes.
-      3. When TODAY is active, no project should appear selected in the sidebar — clear any `.selectedProject` class on view switch. Clicking a project in the sidebar should automatically switch the active view back to PROJECTS.
-      4. The Today shell renders only a date header (e.g. "Tuesday, May 12, 2026") and an empty state below ("No items due yet — add a todo from any project to see it here"). The actual count summary line and overdue/today/upcoming sections come in the follow-up aggregation entry.
+      1. On view-switch to TODAY: call the existing sidebar-close function (the same path the hamburger uses).
+      2. On view-switch to PROJECTS: call the existing sidebar-open function. Existing project list, selection state, and `.selectedProject` class behavior must remain intact.
+      3. Within a view, the hamburger continues to toggle the sidebar as today. A user can open the sidebar on TODAY manually; switching views resets to the new view's default.
+      4. On initial page load in `restoreFromStorage()`, apply the active view's default sidebar state — if persisted `todoapp_active_view` is `"today"`, start with the sidebar collapsed.
     - Implementation notes:
-      - On mobile widths, the pill bar sits below the existing header without crowding it. Pills must use `font-size: 16px+` to avoid iOS auto-zoom.
-      - `main.js` is over 25k tokens; navigate with grep + offset/limit when locating the top-bar render block.
-    - Out of scope: aggregation logic (overdue/today/upcoming filtering + section rendering — separate entry); a CALENDAR pill or view; recurring-task interaction with the Today view.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/style.css`
+      - Reuse the existing sidebar toggle function rather than writing new inline style assignments — inline styles in `main.js` override CSS and tend to leak into other behaviors.
+      - The existing "don't auto-close sidebar on desktop when a project is selected" rule (touch-only via `pointer: coarse`) is unrelated and must continue to work.
+      - `main.js` is over 25k tokens; grep for the existing hamburger handler / sidebar toggle function and the view-switch handler from the previous entry, with offset/limit pagination.
+    - Out of scope: any change to the sidebar's content or styling; mobile behavior (sidebar is already hidden on mobile by default — this entry is desktop-focused).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
