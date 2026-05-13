@@ -1170,7 +1170,7 @@ body:has(#settingsMenu) #helpFab {
 
 .viewPill {
   font-family: inherit;
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1178,7 +1178,7 @@ body:has(#settingsMenu) #helpFab {
   color: var(--text-muted);
   border: 1px solid var(--border-bright);
   border-radius: 999px;
-  padding: 6px 18px;
+  padding: 4px 12px;
   line-height: 1;
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
@@ -3163,17 +3163,12 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainList  { grid-row: 3; }
   #mainTitle { display: none; }
 
-  /* Slimmer pills on mobile so the top nav fits the hamburger, both
-     pills, and the right-side icon cluster without crowding. The pill
-     font-size stays at 16px (see base rule) so iOS Safari does not
-     auto-zoom on tap. */
-  .viewPill { padding: 6px 14px; }
-
-  /* Narrower viewports (<600px) tighten the pills and nav gaps further
-     so the four 36px nav buttons still fit alongside both pills
-     without the right-side icon cluster getting pushed off-screen. */
+  /* Narrower viewports (<600px) tighten the pill letter-spacing and
+     nav gaps so the four 36px nav buttons still fit alongside both
+     pills without the right-side icon cluster getting pushed
+     off-screen. The pills themselves keep the compact base size. */
   @media (max-width: 600px) {
-    .viewPill { padding: 6px 10px; letter-spacing: 0.08em; }
+    .viewPill { letter-spacing: 0.08em; }
     #viewSwitcher { gap: 4px; }
     #navBar { padding: 0 8px; gap: 6px; }
   }

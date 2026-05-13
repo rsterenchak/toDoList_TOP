@@ -14,12 +14,8 @@ export const changelog = [
         changed: [
             'View-switch pills moved into the top bar next to the hamburger, and the sidebar PROJECTS label was removed so the project list begins at the sidebar\'s top edge.',
         ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-12',
         fixed: [
-            'Mobile welcome screen now vertically centers the ghost mascot, "Welcome." label, and "+ New project" button within the viewport instead of clustering them in the upper third.',
+            'TODAY / PROJECTS view-switch pills in the top bar reduced to a more compact size.',
         ],
     },
 ];
