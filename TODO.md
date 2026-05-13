@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Remove mainTitle from PROJECTS view and add incomplete-count badges to sidebar projects
+- [x] **[MEDIUM]** Remove mainTitle from PROJECTS view and add incomplete-count badges to sidebar projects
   - Description: The PROJECTS view's `mainTitle` strip duplicates information already in the sidebar (the selected project's name) and reads as cramped against the sidebar's right edge. Remove `mainTitle` entirely. Move the open-item count to a small badge on each sidebar project row so it's always visible — not just for the selected project. The PROJECTS main panel now starts directly with the existing add-task input row, matching how TODAY and CALENDAR start with their primary content. The EXPAND ALL control (which lived in the `mainTitle` row) relocates to the right side of the add-task row.
     - Behavior:
       1. Remove the `mainTitle` div rendering from the PROJECTS view in `main.js`. The main panel's first visible element on PROJECTS is now the add-task input row.
@@ -24,7 +24,7 @@
       - Selected project's purple-left-border accent and bold weight remain intact on the row that now also has a badge.
     - Out of scope: color-coding badges by count or urgency (all stay purple); showing a completed-count alongside incomplete; click-on-badge interactions; animation when count changes; surfacing badges anywhere outside the sidebar.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-13
 
 ## Features
 
