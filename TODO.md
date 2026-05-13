@@ -2,13 +2,13 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Reduce TODAY/PROJECTS pill button size to compact
+- [x] **[LOW]** Reduce TODAY/PROJECTS pill button size to compact
   - Description: Shrink the TODAY/PROJECTS view-switch pills in the top bar to a more compact size — currently they're visually heavy for a global nav element. New specs: `font-size: 12px`, `padding: 4px 12px`, resulting in roughly 22px tall pills. Keep the existing letter-spacing, uppercase transform, font-weight, border-radius (999px), and active/inactive coloring exactly as they are — this is a size-only change.
     - Implementation notes:
       - If any inline styles were applied to the pills in `main.js` during the pill-bar creation or top-bar relocation entries (font-size, padding, height), update them directly in `main.js` — inline JS styles override CSS and have been a recurring source of styling bugs in this codebase.
       - On mobile, verify the pills still meet a usable tap target. At ~22px tall they're on the smaller side vertically, but the horizontal padding keeps them ~70–80px wide, which is workable.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-13
 
 ## Features
 

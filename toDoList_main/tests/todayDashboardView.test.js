@@ -214,11 +214,12 @@ describe('Today dashboard view + view switcher', () => {
             expect(rule).toMatch(/display:\s*flex/);
         });
 
-        it('gives .viewPill at least 16px font-size so iOS Safari does not auto-zoom on tap', () => {
+        it('sizes .viewPill compactly (12px font, 4px 12px padding) for a slim top-bar nav element', () => {
             const idx = css.indexOf('.viewPill {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/font-size:\s*16px/);
+            expect(rule).toMatch(/font-size:\s*12px/);
+            expect(rule).toMatch(/padding:\s*4px\s+12px/);
         });
 
         it('uses the accent variable for the active pill (honors theme)', () => {
