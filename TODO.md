@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Restyle Today view todo rows to match Projects view row style
+- [x] **[MEDIUM]** Restyle Today view todo rows to match Projects view row style
   - Description: Update the Today view's todo row rendering to visually match the Projects view's todo rows — dark card fill, rounded corners, more generous padding, and the dotted-border due pill with calendar icon. Move the project-name pill from its current right-side position to the left of the title, where it functions as a leading context chip. The due pill takes the right-aligned slot the project pill used to occupy, matching the Projects view's layout exactly. The project pill changes from a filled style to a purple-outline + purple-text style to align with the rest of the row's chip aesthetic.
     - Behavior:
       1. Row layout (left to right): completion checkbox → project pill → todo title → due pill (right-aligned).
@@ -19,7 +19,7 @@
       - `main.js` is over 25k tokens; grep for `buildTodayRow` (or the Today-row creation block from the aggregation entry) and the existing project-row builder before reading, with offset/limit pagination.
     - Out of scope: making the due pill interactive on the Today view (clicking the chevron should not yet open the date popover — the pill remains display-only in this entry; interactivity is a follow-up entry); a description-toggle control on Today rows; an X close/remove control on Today rows; the four-builder consolidation refactor.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-13
 
 ## Features
 
