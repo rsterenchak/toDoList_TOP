@@ -19,19 +19,25 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Auto-collapse projects sidebar when TODAY view is active
-  - Description: When the active view is TODAY, the projects sidebar feels out of place — narrow, near-empty, and contextually disconnected from the dashboard content. Auto-collapse the sidebar whenever TODAY becomes active, and auto-expand it when PROJECTS becomes active. The hamburger button continues to work as a manual override within the current view (the user can open the sidebar while on TODAY if they want), but switching views resets to the new view's default. This reuses the existing sidebar toggle path rather than introducing new inline styles.
+- [ ] **[MEDIUM]** Aggregate overdue/today/upcoming todos and render sections on Today dashboard
+  - Description: Replace the placeholder empty state on the Today view with a real cross-project aggregation: a count summary line, three sections (OVERDUE / TODAY / UPCOMING), and task rows with checkbox, title, project pill, and due-date tag. Aggregation logic lives in `listLogic.js` as a single helper returning `{ overdue, today, upcoming, counts }`; rendering and event wiring stay in `main.js`.
     - Behavior:
-      1. On view-switch to TODAY: call the existing sidebar-close function (the same path the hamburger uses).
-      2. On view-switch to PROJECTS: call the existing sidebar-open function. Existing project list, selection state, and `.selectedProject` class behavior must remain intact.
-      3. Within a view, the hamburger continues to toggle the sidebar as today. A user can open the sidebar on TODAY manually; switching views resets to the new view's default.
-      4. On initial page load in `restoreFromStorage()`, apply the active view's default sidebar state — if persisted `todoapp_active_view` is `"today"`, start with the sidebar collapsed.
+      1. Aggregate non-completed todos across all projects, bucketing by due date relative to start of today (local timezone): `overdue` (due < today), `today` (due === today), `upcoming` (due within next 7 days, exclusive of today). Todos with no due date are excluded from the Today view. Todos more than 7 days out are excluded.
+      2. Count summary line sits directly below the date header: `● {overdueCount} overdue · ● {todayCount} today · {upcomingCount} upcoming`. Overdue count in coral (`#d85a30`), today count in purple (`#9D93EE`), upcoming in muted text. When a count is zero, render its segment in muted text but keep the segment for layout stability.
+      3. Render sections in order: OVERDUE, TODAY, UPCOMING. Each has a purple all-caps header label and a list of task rows. Sections with zero items are skipped entirely (no header, no empty placeholder). Within each section, sort by due date (earliest first), tiebreaker title alphabetical.
+      4. Each task row shows: completion checkbox, todo title, project pill (project name, purple-on-dark, non-interactive in this entry), and a right-aligned due-date tag. Due-date tag format: `TODAY` for items in the today bucket, short month-day (e.g. `MAY 10`) for everything else. Color: coral for overdue, purple for today, muted for upcoming.
+      5. Clicking the checkbox toggles completion via the existing complete-toggle path in `listLogic.js`, then re-renders the aggregation. Clicking the row title switches the active view to PROJECTS, selects the parent project (sets `.selectedProject`), and scrolls to that todo row.
+      6. The existing empty state ("No items due yet — add a todo from any project to see it here") shows only when all three buckets are empty.
     - Implementation notes:
-      - Reuse the existing sidebar toggle function rather than writing new inline style assignments — inline styles in `main.js` override CSS and tend to leak into other behaviors.
-      - The existing "don't auto-close sidebar on desktop when a project is selected" rule (touch-only via `pointer: coarse`) is unrelated and must continue to work.
-      - `main.js` is over 25k tokens; grep for the existing hamburger handler / sidebar toggle function and the view-switch handler from the previous entry, with offset/limit pagination.
-    - Out of scope: any change to the sidebar's content or styling; mobile behavior (sidebar is already hidden on mobile by default — this entry is desktop-focused).
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+      - Aggregation goes through `listLogic.js` per the data-model-routing principle. Export a single `getTodayAggregation()` helper; `main.js` consumes it. Don't duplicate the bucketing logic in `main.js`.
+      - Compare dates against start-of-today computed as `new Date().setHours(0,0,0,0)` to avoid timezone drift between stored due-date strings and the comparison.
+      - The Today task row shares checkbox, project pill, and due-tag styling with the projects view where possible. Worth introducing a shared `buildTodayRow(item)` builder rather than copy-pasting from the existing todo-row builders — and small enough not to require the larger four-builder refactor on the horizon.
+      - `main.js` is over 25k tokens; grep for the Today view render block from the shell entry and for the existing complete-toggle wiring before reading. Use offset/limit pagination.
+    - Acceptance criteria:
+      - Unit tests in `tests/listLogic.test.js` for `getTodayAggregation()` covering: empty input, only overdue, only today, only upcoming, mixed buckets, completed items excluded, items with no due date excluded, items beyond 7 days excluded, and the timezone-edge case of a due date set to midnight today.
+      - Completing a todo from the Today view also reflects in its parent project's view when the user switches.
+    - Out of scope: recurring-task interaction with the Today view (a recurring task that just completed should re-spawn its next instance — separate concern); editing due dates from the Today view (tag is display-only); a "focus on this task" entry point on each row; collapsible sections; a "completed today" count or section; clickable project pills; performance optimization for very large todo counts.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
