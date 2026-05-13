@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-13',
         added: [
-            'Today dashboard now lists overdue, today, and upcoming todos aggregated across every project, with a count summary and a checkbox plus project pill on each row.',
             'New Calendar view alongside Today and Projects: a month grid with density dots on dates that have todos, plus a side panel listing the selected day\'s tasks.',
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         fixed: [
             'TODAY / PROJECTS view-switch pills in the top bar reduced to a more compact size.',
             'Today dashboard rows now share the Projects-view card style with a leading purple-outline project chip and a calendar-icon due pill that recolors amber for items due today or within three days.',
+            'Sidebar project rows now show a per-project incomplete-count badge, and the Projects view starts directly with the add-task input row with the Expand All toggle anchored to its right edge.',
         ],
     },
 ];

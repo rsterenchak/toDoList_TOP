@@ -492,8 +492,12 @@ body {
 /* PROJECT ROWS */
 #projChild {
   display: grid;
+  align-items: center;
   align-content: center;
-  grid-template-columns: 1fr 12px;
+  /* Name column shrinks/ellipsises; the incomplete-count badge keeps its
+     natural width so it stays fully visible on the right. */
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
   cursor: pointer;
   background: transparent;
   min-height: 44px;
@@ -573,6 +577,23 @@ body {
 #projInput:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text-primary);
   -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
+}
+
+/* INCOMPLETE-COUNT BADGE — small pill at the right edge of every sidebar
+   project row. Reads as the number of committed, not-yet-completed todos
+   for that project. Shows "0" for empty/all-done projects so the layout
+   stays consistent across rows. */
+#projCount {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.18);
+  padding: 1px 7px;
+  border-radius: 99px;
+  justify-self: end;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 /* PROJECT CONTEXT MENU */
@@ -1140,12 +1161,14 @@ body:has(#settingsMenu) #helpFab {
 /* MAIN BAR */
 #mainBar {
   display: grid;
-  /* Row 1 (--row-h) is the project view's title bar. Row 2 (1fr) is
-     the scrollable todo list. The Today dashboard, when active,
-     overlays rows 1-2 via explicit grid placement (see #todayView
-     below). The view-switch pill bar lives in the top nav, not here,
-     so the main panel no longer reserves a row for it. */
-  grid-template-rows: var(--row-h) 1fr;
+  /* Single 1fr row holds the scrollable todo list. The Today dashboard
+     and Calendar views, when active, overlay it via explicit grid
+     placement (see #todayView / #calendarView below). The view-switch
+     pill bar lives in the top nav, not here. The PROJECTS view's
+     former title bar (mainTitle) has been removed — the project list
+     begins directly with the add-task input row, and the EXPAND ALL
+     control floats over the row's right edge via #bulkDescActions. */
+  grid-template-rows: 1fr;
   background: var(--bg-base);
   overflow: hidden;
   min-width: 0;
@@ -1221,9 +1244,9 @@ body:has(#settingsMenu) #helpFab {
   display: flex;
 }
 
-#mainBar[data-view="today"] #mainTitle,
 #mainBar[data-view="today"] #mainList,
-#mainBar[data-view="today"] #mobileProjHeader {
+#mainBar[data-view="today"] #mobileProjHeader,
+#mainBar[data-view="today"] #bulkDescActions {
   display: none;
 }
 
@@ -1477,9 +1500,9 @@ body:has(#settingsMenu) #helpFab {
   display: flex;
 }
 
-#mainBar[data-view="calendar"] #mainTitle,
 #mainBar[data-view="calendar"] #mainList,
-#mainBar[data-view="calendar"] #mobileProjHeader {
+#mainBar[data-view="calendar"] #mobileProjHeader,
+#mainBar[data-view="calendar"] #bulkDescActions {
   display: none;
 }
 
@@ -1657,25 +1680,19 @@ body:has(#settingsMenu) #helpFab {
   gap: 4px;
 }
 
-/* ── MAIN TITLE BAR ── */
-#mainTitle {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 14px;
-  border-bottom: 0.5px solid var(--border-dim);
-  background: var(--bg-elevated);
-  flex-shrink: 0;
-  position: relative;
-}
-
-/* BULK DESCRIPTION CONTROL — wrapper for the Expand All toggle in the
-   Todo Items header, anchored to the right edge. */
+/* BULK DESCRIPTION CONTROL — Expand All toggle right-aligned on the
+   add-task row at the top of #mainList. Positioned absolutely against
+   #mainBar (position: relative) so it floats over the first todo row
+   without participating in the row's own flex layout. Vertically
+   centered against the blank placeholder row that sits at the top of
+   #mainList (4px list padding + 5px row margin + half of 44px row
+   height = ~31px to the row's vertical midpoint). */
 #bulkDescActions {
   position: absolute;
-  right: 8px;
-  top: 50%;
+  top: 31px;
+  right: 18px;
   transform: translateY(-50%);
+  z-index: 2;
 }
 
 .bulkDescBtn {
@@ -3257,13 +3274,13 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* ── STACK mobile project header ──
-     Replaces the desktop breadcrumb at the ≤700px breakpoint with a
-     screen-level header: PROJECT N OF M label, a two-line project
+     Replaces the desktop top-row chrome at the ≤700px breakpoint with
+     a screen-level header: PROJECT N OF M label, a two-line project
      name flanked by prev/next chevrons (with a horizontal
      swipe-on-title gesture as an alternative), and a stats line with
      the open/done counts. The header is the only place the active
-     project name appears textually on mobile, so the desktop
-     #mainCrumb is hidden alongside it (rule below). */
+     project name appears textually on mobile — the sidebar's
+     incomplete-count badges supply per-project counts. */
   #mobileProjHeader {
     display: flex;
     flex-direction: column;
@@ -3319,7 +3336,7 @@ body.row-dragging * { cursor: grabbing !important; }
     /* Project accent (purple by default, recolored per-project via the
        --proj-accent custom property set on #mobileProjHeader by
        updateMobileProjHeader). Matches the Void theme's mono chrome
-       elsewhere — desktop's #mainCrumb already reads as accent-colored. */
+       elsewhere. */
     color: var(--proj-accent, var(--accent));
     line-height: 1.18;
     flex: 1 1 auto;
@@ -3404,27 +3421,20 @@ body.row-dragging * { cursor: grabbing !important; }
   #mobileProjOpen { color: var(--text-primary); }
   #mobileProjDone { color: var(--text-muted); }
 
-  /* Hide the desktop breadcrumb in the main column and collapse the
-     empty mainTitle row — the mobile header replaces both. #mainBar's
-     desktop grid reserves a --row-h track for #mainTitle; without a
-     third track the mobileProjHeader gets stuffed into that fixed-height
-     track and pushes its content into a dead band. Switch the grid to
-     three auto tracks (header, title, list) and hide the title row so
-     mainList sits flush below the mobile header.
-
-     #bulkDescActions lives inside #mainTitle so it disappears too, but
-     the drawer's "Expand all descriptions" toggle calls
-     bulkDescToggleBtn.click() directly — display:none doesn't disable
-     a button, so the toggle stays fully reachable. */
-  #mainCrumb { display: none; }
-  /* Mobile-only layout: the mobile project header sits in row 1 (auto),
-     the hidden #mainTitle would otherwise auto-place into row 2, and
-     #mainList lands explicitly in the final 1fr track. The view-switch
-     pills no longer live here — they were moved to the top nav — so
-     the main panel no longer reserves a row for them on mobile either. */
-  #mainBar   { grid-template-rows: auto auto 1fr; }
-  #mainList  { grid-row: 3; }
-  #mainTitle { display: none; }
+  /* On mobile the mobile project header replaces the desktop top-row
+     chrome. The EXPAND ALL toggle isn't appropriate at the small
+     viewport (the drawer's "Expand all descriptions" toggle calls
+     bulkDescToggleBtn.click() directly, so the button stays reachable
+     from there) — hide its floating wrapper so it doesn't paint over
+     the first todo row at narrow widths. */
+  #bulkDescActions { display: none; }
+  /* Mobile-only layout: the mobile project header sits in row 1 (auto)
+     and #mainList lands explicitly in the final 1fr track. The
+     view-switch pills no longer live here — they were moved to the top
+     nav — so the main panel no longer reserves a row for them on
+     mobile either. */
+  #mainBar   { grid-template-rows: auto 1fr; }
+  #mainList  { grid-row: 2; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and
      nav gaps so the four 36px nav buttons still fit alongside three
@@ -4312,59 +4322,6 @@ html[data-sidebar-rail="off"] #projChild::after,
 html[data-sidebar-rail="off"] #projChild::before {
   content: none;
 }
-
-/* ── BREADCRUMB (top-left of main column) ──
-   Shows "<Project Name> · <N> open" so the active project's full name is
-   visible textually even in rail mode (where the rail only shows
-   initials). Hidden when no project is selected (data-empty="true") so
-   the empty state doesn't render a stranded separator. */
-#mainCrumb {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  text-transform: none;
-  min-width: 0;
-  max-width: calc(100% - 100px);
-  overflow: hidden;
-}
-#mainCrumb[data-empty="true"] {
-  visibility: hidden;
-}
-#mainCrumbName {
-  font-weight: 700;
-  color: var(--accent-text);
-  letter-spacing: 0.04em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-#mainCrumbSep {
-  color: var(--text-muted);
-}
-#mainCrumbCount {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* On narrow viewports there's no room for the breadcrumb alongside the
-   bulk description controls — drop the open count first and the project
-   name only on the smallest screens. */
-@media (max-width: 540px) {
-  #mainCrumbCount, #mainCrumbSep { display: none; }
-}
-@media (max-width: 380px) {
-  #mainCrumb { display: none; }
-}
-
 
 /* POMODORO TIMER — clock icon button to the left of the ghost menu trigger
    in the nav. Visual treatment mirrors #settingsToggle (36×36, rounded,
