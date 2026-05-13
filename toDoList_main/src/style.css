@@ -1313,25 +1313,78 @@ body:has(#settingsMenu) #helpFab {
   gap: 4px;
 }
 
-/* Task row in the Today dashboard — checkbox | title | project pill |
-   due-date tag, with the tag pushed to the right edge. */
+/* Task row in the Today dashboard — checkbox | project pill | title |
+   due pill (right-aligned). Mirrors the Projects-view row card (dark fill,
+   rounded corners, generous padding) so the two views read as the same
+   surface. The project pill sits in the leading context slot as a purple-
+   outline chip; the due pill is markup-identical to the Projects-view
+   pill (calendar icon + label + chevron) but display-only — interactivity
+   ships in a follow-up entry. Urgency recoloring is driven by .due-soon /
+   .due-overdue classes added by applyDueUrgency, matching the
+   Projects-view amber / red treatment. */
 .todayRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 11px 14px;
   background: var(--bg-row);
-  border: 0.5px solid var(--border-dim);
+  border: 0.5px solid var(--border-bright);
   border-radius: var(--radius-md);
-  min-height: 40px;
+  min-width: 0;
+  cursor: pointer;
+  transition: background 0.10s ease, border-color 0.12s ease;
 }
 
+.todayRow:hover { background: var(--bg-hover); }
+
 .todayRow .todayRowCheck {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  margin: 0;
   cursor: pointer;
-  accent-color: var(--accent);
+  background: var(--bg-base);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.todayRow .todayRowCheck:hover { border-color: var(--accent-text); }
+.todayRow .todayRowCheck:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.todayRow .todayRowCheck:checked::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.todayRow .todayRowProjectPill {
+  flex-shrink: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: transparent;
+  border: 1px solid var(--accent-text);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  line-height: 1.2;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .todayRow .todayRowTitle {
@@ -1361,38 +1414,41 @@ body:has(#settingsMenu) #helpFab {
   border-radius: var(--radius-sm);
 }
 
-.todayRow .todayRowProjectPill {
+/* Display-only mirror of #duePill. border:1px solid currentColor lets the
+   urgency text recolor (amber for due-soon / today, red for overdue) carry
+   to the border without extra rules. pointer-events:none keeps the row's
+   jump-to-project click handler firing when the user clicks the pill. */
+.todayRow .todayRowDuePill {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 3px 6px 3px 5px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent-text);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-text);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  line-height: 1.2;
-  max-width: 120px;
+  color: var(--text-secondary);
+  line-height: 1;
+  max-width: 160px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
-.todayRow .todayRowDueTag {
+.todayRow .todayRowDuePill .duePillIcon { flex-shrink: 0; }
+.todayRow .todayRowDuePill .duePillLabel { line-height: 1; }
+.todayRow .todayRowDuePill .duePillChevron {
   flex-shrink: 0;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  opacity: 0.7;
 }
 
-.todayRow .todayRowDueTag[data-bucket="overdue"]  { color: var(--text-urgent); }
-.todayRow .todayRowDueTag[data-bucket="today"]    { color: var(--accent-text); }
-.todayRow .todayRowDueTag[data-bucket="upcoming"] { color: var(--text-muted); }
+.todayRow.due-soon    .todayRowDuePill { color: var(--text-warning); }
+.todayRow.due-overdue .todayRowDuePill { color: var(--text-urgent); }
 
 /* ── MAIN TITLE BAR ── */
 #mainTitle {

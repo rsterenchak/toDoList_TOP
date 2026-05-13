@@ -61,6 +61,7 @@ import {
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
+import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
     exportTodosToFile,
     importFromFile,
@@ -4695,15 +4696,21 @@ function buildTodaySection(label, bucket, entries) {
     return section;
 }
 
-// Build a single Today-view task row: checkbox + title + project pill +
-// due-date tag. The project pill is non-interactive in this entry per
-// the task spec. Checkbox toggles completion (recurring items go
-// through advanceRecurringTodo); clicking the title switches to
-// PROJECTS, selects the parent project, and scrolls to the matching
-// todo row.
+// Build a single Today-view task row matching the Projects-view row card:
+// checkbox → project pill → title → due pill (right-aligned). The project
+// pill is a non-interactive purple-outline chip; the due pill mirrors the
+// Projects-view due pill markup via updateDuePillLabel (calendar icon +
+// label + chevron) but is display-only in this entry — clicking it does
+// not open the date popover (interactivity is a follow-up entry).
+// Checkbox toggles completion (recurring items go through
+// advanceRecurringTodo); clicking the row body (outside the checkbox and
+// pills) switches to PROJECTS, selects the parent project, and scrolls
+// to the matching todo row.
+// TODO: extract shared due-pill builder so both views render through the
+// same factory rather than duplicating the markup invariants.
 function buildTodayRow(entry, bucket) {
     const row = document.createElement('div');
-    row.className = 'todayRow';
+    row.className = 'todayRow todoRowCard';
     row.setAttribute('data-bucket', bucket);
 
     const checkbox = document.createElement('input');
@@ -4718,27 +4725,41 @@ function buildTodayRow(entry, bucket) {
         handleTodayCheckboxToggle(entry, checkbox);
     });
 
+    const projectPill = document.createElement('span');
+    projectPill.className = 'todayRowProjectPill';
+    projectPill.textContent = entry.project;
+    projectPill.title = entry.project;
+
     const title = document.createElement('button');
     title.type = 'button';
     title.className = 'todayRowTitle';
     title.textContent = entry.item.tit;
-    title.addEventListener('click', function() {
-        jumpToProjectTodo(entry.project, entry.item);
-    });
+    title.title = entry.item.tit;
 
-    const pill = document.createElement('span');
-    pill.className = 'todayRowProjectPill';
-    pill.textContent = entry.project;
-
-    const tag = document.createElement('span');
-    tag.className = 'todayRowDueTag';
-    tag.setAttribute('data-bucket', bucket);
-    tag.textContent = formatTodayDueTag(entry.due, bucket);
+    const duePill = document.createElement('span');
+    duePill.className = 'todayRowDuePill';
+    duePill.setAttribute('aria-hidden', 'true');
+    updateDuePillLabel(duePill, entry.item);
 
     row.appendChild(checkbox);
+    row.appendChild(projectPill);
     row.appendChild(title);
-    row.appendChild(pill);
-    row.appendChild(tag);
+    row.appendChild(duePill);
+
+    // .due-soon / .due-overdue keyed on daysUntilDue — the same urgency
+    // classes the Projects-view rows use, so the shared CSS rules recolor
+    // the due pill (amber for today / due-in-N-days ≤3, red for overdue).
+    applyDueUrgency(row, entry.item);
+
+    // Row-level click jumps to the parent project. Clicks on the checkbox
+    // stop propagation in its own handler; the pills are pointer-events:
+    // none in CSS so they pass through. The title is a <button> so keyboard
+    // Enter activates jump natively — mouse clicks on the title bubble up
+    // to this listener.
+    row.addEventListener('click', function(e) {
+        if (e.target.closest('.todayRowCheck')) return;
+        jumpToProjectTodo(entry.project, entry.item);
+    });
 
     return row;
 }
@@ -4763,12 +4784,6 @@ function handleTodayCheckboxToggle(entry, checkbox) {
     item.completed = checkbox.checked;
     listLogic.sortCompletedToBottom(project);
     renderTodayDashboard();
-}
-
-function formatTodayDueTag(due, bucket) {
-    if (bucket === 'today') return 'TODAY';
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    return months[due.getMonth()] + ' ' + due.getDate();
 }
 
 // Switch to PROJECTS, select the named project (delegating to its

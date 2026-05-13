@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-13',
         added: [
-            'New Today dashboard view with a TODAY / PROJECTS pill switcher at the top of the main panel; Today shows a date header and an empty-state placeholder, with item aggregation coming next.',
             'Switching to the Today view now auto-collapses the projects sidebar to its icon rail, and switching back to Projects auto-expands it; the hamburger still works as a manual override within either view.',
             'Today dashboard now lists overdue, today, and upcoming todos aggregated across every project, with a count summary and a checkbox plus project pill on each row.',
         ],
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             'TODAY / PROJECTS view-switch pills in the top bar reduced to a more compact size.',
+            'Today dashboard rows now share the Projects-view card style with a leading purple-outline project chip and a calendar-icon due pill that recolors amber for items due today or within three days.',
         ],
     },
 ];
