@@ -2,24 +2,29 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Restyle Today view todo rows to match Projects view row style
-  - Description: Update the Today view's todo row rendering to visually match the Projects view's todo rows — dark card fill, rounded corners, more generous padding, and the dotted-border due pill with calendar icon. Move the project-name pill from its current right-side position to the left of the title, where it functions as a leading context chip. The due pill takes the right-aligned slot the project pill used to occupy, matching the Projects view's layout exactly. The project pill changes from a filled style to a purple-outline + purple-text style to align with the rest of the row's chip aesthetic.
+- [ ] **[MEDIUM]** Remove mainTitle from PROJECTS view and add incomplete-count badges to sidebar projects
+  - Description: The PROJECTS view's `mainTitle` strip duplicates information already in the sidebar (the selected project's name) and reads as cramped against the sidebar's right edge. Remove `mainTitle` entirely. Move the open-item count to a small badge on each sidebar project row so it's always visible — not just for the selected project. The PROJECTS main panel now starts directly with the existing add-task input row, matching how TODAY and CALENDAR start with their primary content. The EXPAND ALL control (which lived in the `mainTitle` row) relocates to the right side of the add-task row.
     - Behavior:
-      1. Row layout (left to right): completion checkbox → project pill → todo title → due pill (right-aligned).
-      2. Row card: dark fill matching the Projects-view row fill (`~#1a1a22`), `border-radius: 6px`, padding ~11px vertical × 14px horizontal, ~4px vertical gap between rows.
-      3. Project pill: purple outline + purple text on transparent background, all-caps, same monospace styling currently used. `max-width: ~110px` with `text-overflow: ellipsis` and `white-space: nowrap` for long project names.
-      4. Due pill: visually identical to the existing Projects-view due pill — dotted 1px border, calendar icon, all-caps date text, chevron-down affordance. Amber border + amber text variant for items due today and "due in N days" labels (≤3 days out), matching the Projects view's existing amber styling convention.
-      5. Checkbox styling matches the Projects-view checkbox (size, border, hover, checked state).
-      6. The existing click-row-to-jump-to-project behavior (from the aggregation entry) remains intact: clicking the row body outside the checkbox and pills switches to PROJECTS view, selects the project, and scrolls to the todo.
+      1. Remove the `mainTitle` div rendering from the PROJECTS view in `main.js`. The main panel's first visible element on PROJECTS is now the add-task input row.
+      2. Update sidebar project rendering: each row becomes `[project name (truncates) … [count badge]]` in a horizontal flex. The selected project keeps its existing purple left-border accent and bold weight.
+      3. Badge content: incomplete todo count for the project as an integer. Shows `0` for empty / all-completed projects so layout stays consistent across rows (no hiding).
+      4. Badge styling: small pill, `color: #9D93EE`, `background: rgba(108, 93, 245, 0.18)`, `font-family: 'Courier New', monospace`, `font-size: 11px`, padding `1px 7px`, `border-radius: 99px`. Right-aligned within the row.
+      5. Badge updates: every add / complete / uncomplete / delete on a todo must re-render the affected project's sidebar badge in the same pass that re-renders the main panel. Adding or deleting a project also updates correctly. No stale counts after any operation.
+      6. Project name truncation: existing ellipsis truncation continues to work — the name flex item shrinks to fit; the badge is fixed-width and always fully visible on the right.
+      7. Relocate EXPAND ALL: right-aligned on the add-task row. Existing dropdown behavior (Expand all / Collapse all) is unchanged; only position changes.
     - Implementation notes:
-      - Reuse the existing project-row CSS classes for the card fill, checkbox, and due pill where possible. If `style.css` doesn't currently expose them as shared classes, extract a `.todoRowCard` (or similarly named) class that both views share, so future tweaks only touch one place.
-      - The due-pill rendering currently lives inside the project-row builder in `main.js`. If extracting it cleanly to a small shared helper is straightforward, do so and reuse it in `buildTodayRow`. If not, match the markup and styles directly in `buildTodayRow` and leave a `// TODO: extract shared due-pill builder` comment for a future cleanup pass.
-      - Inline JS style assignments on the existing Today rows (set during the aggregation entry) must be removed if they conflict with the new CSS — inline styles override stylesheets in this codebase and have been a recurring source of bugs.
-      - The four-builder consolidation refactor on the roadmap remains separate; don't pull it into this entry. Only `buildTodayRow` is in scope.
-      - `main.js` is over 25k tokens; grep for `buildTodayRow` (or the Today-row creation block from the aggregation entry) and the existing project-row builder before reading, with offset/limit pagination.
-    - Out of scope: making the due pill interactive on the Today view (clicking the chevron should not yet open the date popover — the pill remains display-only in this entry; interactivity is a follow-up entry); a description-toggle control on Today rows; an X close/remove control on Today rows; the four-builder consolidation refactor.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-13
+      - Add a `getProjectIncompleteCount(project)` helper in `listLogic.js` rather than inlining the filter at the sidebar render site — this centralizes the definition of "open" in one place per the data-model-routing principle and is trivially testable.
+      - All badge and layout styling lives in `style.css`. No inline JS style assignments on the badge — inline styles in `main.js` override CSS and have been a recurring source of bugs in this codebase.
+      - Badges are only visible when the sidebar is visible. With the auto-collapse rule on TODAY and CALENDAR views, badges only appear on PROJECTS, which is the intended scope — open counts elsewhere (footer total, Today summary line) are separate and unaffected.
+      - `main.js` is over 25k tokens; grep for `mainTitle`, the sidebar project list render block, the EXPAND ALL handler, and the add/complete/delete todo handlers before reading. Use offset/limit pagination.
+    - Acceptance criteria:
+      - Unit tests in `tests/listLogic.test.js` for `getProjectIncompleteCount()` covering: empty project (returns 0), all completed (returns 0), all incomplete (returns full count), mixed completion states.
+      - Adding, deleting, completing, and uncompleting a todo each update the parent project's badge in the same render pass — no stale counts.
+      - Long project names truncate with ellipsis and the count badge remains fully visible on the right.
+      - Selected project's purple-left-border accent and bold weight remain intact on the row that now also has a badge.
+    - Out of scope: color-coding badges by count or urgency (all stay purple); showing a completed-count alongside incomplete; click-on-badge interactions; animation when count changes; surfacing badges anywhere outside the sidebar.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
