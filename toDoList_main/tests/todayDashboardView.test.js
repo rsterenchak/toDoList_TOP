@@ -39,20 +39,23 @@ describe('Today dashboard view + view switcher', () => {
         it("getActiveView defaults to 'today' when nothing is stored", () => {
             const fnIdx = prefs.indexOf('function getActiveView');
             expect(fnIdx).toBeGreaterThan(-1);
-            const body = prefs.slice(fnIdx, fnIdx + 400);
-            // Only 'projects' is honored as a non-default value; any other
-            // value (including null / missing) falls back to 'today'.
-            expect(body).toMatch(/===\s*['"]projects['"]\s*\?\s*['"]projects['"]\s*:\s*['"]today['"]/);
+            const body = prefs.slice(fnIdx, fnIdx + 600);
+            // 'projects' and 'calendar' are honored as non-default values;
+            // anything else (including null / missing) falls back to 'today'.
+            expect(body).toMatch(/===\s*['"]projects['"]/);
+            expect(body).toMatch(/===\s*['"]calendar['"]/);
+            expect(body).toMatch(/return\s*['"]today['"]/);
         });
 
-        it('setActiveView writes only the two known view tokens', () => {
+        it('setActiveView writes only the three known view tokens', () => {
             const fnIdx = prefs.indexOf('function setActiveView');
             expect(fnIdx).toBeGreaterThan(-1);
-            const body = prefs.slice(fnIdx, fnIdx + 400);
+            const body = prefs.slice(fnIdx, fnIdx + 600);
             expect(body).toMatch(/setItem\(\s*ACTIVE_VIEW_KEY/);
-            // Reject anything other than 'projects' / 'today' so a stray
-            // string can't pollute the stored pref.
-            expect(body).toMatch(/===\s*['"]projects['"]\s*\?\s*['"]projects['"]\s*:\s*['"]today['"]/);
+            // Reject anything other than 'projects' / 'calendar' / 'today'
+            // so a stray string can't pollute the stored pref.
+            expect(body).toMatch(/===\s*['"]projects['"]/);
+            expect(body).toMatch(/===\s*['"]calendar['"]/);
         });
     });
 
