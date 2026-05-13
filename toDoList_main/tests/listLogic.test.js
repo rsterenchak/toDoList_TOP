@@ -1183,3 +1183,48 @@ describe('listLogic — sanitizeRecurrence', () => {
         expect(sanitizeRecurrence('daily')).toBeNull();
     });
 });
+
+
+// ── PROJECT INCOMPLETE COUNT ────────────────────────────────────────
+describe('listLogic — getProjectIncompleteCount', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('returns 0 for a missing project', () => {
+        expect(listLogic.getProjectIncompleteCount('Nope')).toBe(0);
+    });
+
+    it('returns 0 for an empty project (blank placeholder only)', () => {
+        listLogic.addProject('Empty');
+        expect(listLogic.getProjectIncompleteCount('Empty')).toBe(0);
+    });
+
+    it('returns 0 when every real todo is completed', () => {
+        listLogic.addProject('AllDone');
+        listLogic.addToDo('AllDone', 'Milk');
+        listLogic.addToDo('AllDone', 'Bread');
+        const items = listLogic.listItems('AllDone');
+        items.forEach((item) => { if (item.tit) item.completed = true; });
+        expect(listLogic.getProjectIncompleteCount('AllDone')).toBe(0);
+    });
+
+    it('returns the full count when every real todo is incomplete', () => {
+        listLogic.addProject('Open');
+        listLogic.addToDo('Open', 'A');
+        listLogic.addToDo('Open', 'B');
+        listLogic.addToDo('Open', 'C');
+        expect(listLogic.getProjectIncompleteCount('Open')).toBe(3);
+    });
+
+    it('counts only incomplete real todos when state is mixed', () => {
+        listLogic.addProject('Mixed');
+        listLogic.addToDo('Mixed', 'A');
+        listLogic.addToDo('Mixed', 'B');
+        listLogic.addToDo('Mixed', 'C');
+        const items = listLogic.listItems('Mixed');
+        const b = items.find((i) => i.tit === 'B');
+        b.completed = true;
+        expect(listLogic.getProjectIncompleteCount('Mixed')).toBe(2);
+    });
+});
