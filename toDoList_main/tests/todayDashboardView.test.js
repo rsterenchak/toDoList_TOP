@@ -198,17 +198,15 @@ describe('Today dashboard view + view switcher', () => {
     });
 
     describe('CSS surfaces (style.css)', () => {
-        it('uses a single 1fr row on #mainBar since the title bar was removed', () => {
-            // The pill bar is now a child of #navBar, not #mainBar; the
-            // desktop project-view title bar (breadcrumb + Expand-All
-            // toggle) was removed when sidebar incomplete-count badges
-            // landed. The main panel grid is a single 1fr row for the
-            // todo list, which the Today / Calendar shells overlay via
-            // grid-row: 1 / -1.
+        it('drops the leading auto row from #mainBar since the pill bar moved to the top nav', () => {
+            // The pill bar is now a child of #navBar, not #mainBar, so
+            // the main panel grid is back to a two-row title + list
+            // layout. The Today shell overlays both rows via grid-row:
+            // 1 / -1 (see assertion below).
             const idx = css.indexOf('#mainBar {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/grid-template-rows:\s*1fr/);
+            expect(rule).toMatch(/grid-template-rows:\s*var\(--row-h\)\s+1fr/);
             expect(rule).not.toMatch(/grid-template-rows:\s*auto\s+var\(--row-h\)/);
         });
 
@@ -245,7 +243,7 @@ describe('Today dashboard view + view switcher', () => {
 
         it('hides the project view surfaces when TODAY is active', () => {
             expect(css).toMatch(
-                /#mainBar\[data-view="today"\]\s+#bulkDescActions[\s\S]*#mainBar\[data-view="today"\]\s+#mainList[\s\S]*#mainBar\[data-view="today"\]\s+#mobileProjHeader[\s\S]*display:\s*none/
+                /#mainBar\[data-view="today"\]\s+#mainTitle[\s\S]*#mainBar\[data-view="today"\]\s+#mainList[\s\S]*#mainBar\[data-view="today"\]\s+#mobileProjHeader[\s\S]*display:\s*none/
             );
         });
 
@@ -258,7 +256,7 @@ describe('Today dashboard view + view switcher', () => {
             expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
         });
 
-        it('mobile #mainBar grid carries only mobile header + list (no leading pill row, no title row)', () => {
+        it('mobile #mainBar grid carries only mobile header + hidden title + list (no leading pill row)', () => {
             const mediaStart = css.indexOf('@media (max-width: 700px)');
             expect(mediaStart).toBeGreaterThan(-1);
             // Find the matching close of the @media block.
@@ -272,10 +270,11 @@ describe('Today dashboard view + view switcher', () => {
                 }
             }
             const block = css.slice(mediaStart, mediaEnd);
-            // Two tracks now: mobile project header, list. The desktop
-            // title bar was removed when sidebar incomplete-count badges
-            // landed, so no third track is reserved for it.
-            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+1fr/);
+            // Three tracks now: mobile project header, hidden title, list.
+            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+auto\s+1fr/);
+            // mainList anchored to the final 1fr track explicitly so the
+            // hidden mainTitle doesn't shift it into an auto track.
+            expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*3/);
         });
     });
 });

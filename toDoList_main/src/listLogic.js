@@ -542,25 +542,6 @@ export const listLogic = (function () {
     }
 
 
-    // ── PROJECT INCOMPLETE COUNT ────────────────────────────────────
-    // Count incomplete real todos in a project. The blank placeholder row
-    // (tit === '') is skipped because it never represents a real task.
-    // Returns 0 for missing projects so render-site call sites can stay
-    // unguarded.
-    function getProjectIncompleteCount(projectName) {
-        const entry = allProjects[projectName];
-        if (!entry || !Array.isArray(entry.items)) return 0;
-        let count = 0;
-        for (let i = 0; i < entry.items.length; i++) {
-            const item = entry.items[i];
-            if (!item || !item.tit) continue;
-            if (item.completed) continue;
-            count++;
-        }
-        return count;
-    }
-
-
     // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────
     // Walk every project's items once and bucket non-completed todos with
     // due dates into overdue / today / upcoming relative to the start of
@@ -796,7 +777,6 @@ export const listLogic = (function () {
         advanceRecurringTodo,
         getTodayAggregation,
         getCalendarMonth,
-        getProjectIncompleteCount,
         _reset
     };
 
