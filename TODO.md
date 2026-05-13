@@ -19,26 +19,20 @@
 
 ## Features
 
-- [x] **[MEDIUM]** Aggregate overdue/today/upcoming todos and render sections on Today dashboard
-  - Description: Replace the placeholder empty state on the Today view with a real cross-project aggregation: a count summary line, three sections (OVERDUE / TODAY / UPCOMING), and task rows with checkbox, title, project pill, and due-date tag. Aggregation logic lives in `listLogic.js` as a single helper returning `{ overdue, today, upcoming, counts }`; rendering and event wiring stay in `main.js`.
+- [ ] **[MEDIUM]** Relocate view-switch pills to top bar and remove sidebar PROJECTS label
+  - Description: Move the TODAY/PROJECTS pill bar from its current centered position in the main panel header row up into the top bar, anchored to the left immediately right of the hamburger icon. Remove the all-caps "PROJECTS" label that currently sits at the top of the sidebar so the project list begins directly at the sidebar's top padding. Together these align the layout with the chosen Today dashboard mockup and resolve the vertical asymmetry between the sidebar (which no longer has a header) and the main panel (which previously did).
     - Behavior:
-      1. Aggregate non-completed todos across all projects, bucketing by due date relative to start of today (local timezone): `overdue` (due < today), `today` (due === today), `upcoming` (due within next 7 days, exclusive of today). Todos with no due date are excluded from the Today view. Todos more than 7 days out are excluded.
-      2. Count summary line sits directly below the date header: `● {overdueCount} overdue · ● {todayCount} today · {upcomingCount} upcoming`. Overdue count in coral (`#d85a30`), today count in purple (`#9D93EE`), upcoming in muted text. When a count is zero, render its segment in muted text but keep the segment for layout stability.
-      3. Render sections in order: OVERDUE, TODAY, UPCOMING. Each has a purple all-caps header label and a list of task rows. Sections with zero items are skipped entirely (no header, no empty placeholder). Within each section, sort by due date (earliest first), tiebreaker title alphabetical.
-      4. Each task row shows: completion checkbox, todo title, project pill (project name, purple-on-dark, non-interactive in this entry), and a right-aligned due-date tag. Due-date tag format: `TODAY` for items in the today bucket, short month-day (e.g. `MAY 10`) for everything else. Color: coral for overdue, purple for today, muted for upcoming.
-      5. Clicking the checkbox toggles completion via the existing complete-toggle path in `listLogic.js`, then re-renders the aggregation. Clicking the row title switches the active view to PROJECTS, selects the parent project (sets `.selectedProject`), and scrolls to that todo row.
-      6. The existing empty state ("No items due yet — add a todo from any project to see it here") shows only when all three buckets are empty.
+      1. Top bar layout becomes: hamburger icon (far left) → small gap → TODAY pill → PROJECTS pill → flexible spacer → existing right-side icon cluster (pomodoro, stats, ghost). Pills keep their active/inactive styling, click behavior, and view-persistence wiring from the shell entry.
+      2. The previous pill container in the main panel header row is removed. EXPAND ALL stays where it is (right-aligned, only rendered on PROJECTS view).
+      3. The sidebar's "PROJECTS" all-caps header label is removed entirely. The project list now begins at the sidebar's existing top padding; the + button at the sidebar's bottom is unchanged.
+      4. On TODAY view, the main panel's first visible element is now the date header — no header row sits above it, since EXPAND ALL is PROJECTS-only.
     - Implementation notes:
-      - Aggregation goes through `listLogic.js` per the data-model-routing principle. Export a single `getTodayAggregation()` helper; `main.js` consumes it. Don't duplicate the bucketing logic in `main.js`.
-      - Compare dates against start-of-today computed as `new Date().setHours(0,0,0,0)` to avoid timezone drift between stored due-date strings and the comparison.
-      - The Today task row shares checkbox, project pill, and due-tag styling with the projects view where possible. Worth introducing a shared `buildTodayRow(item)` builder rather than copy-pasting from the existing todo-row builders — and small enough not to require the larger four-builder refactor on the horizon.
-      - `main.js` is over 25k tokens; grep for the Today view render block from the shell entry and for the existing complete-toggle wiring before reading. Use offset/limit pagination.
-    - Acceptance criteria:
-      - Unit tests in `tests/listLogic.test.js` for `getTodayAggregation()` covering: empty input, only overdue, only today, only upcoming, mixed buckets, completed items excluded, items with no due date excluded, items beyond 7 days excluded, and the timezone-edge case of a due date set to midnight today.
-      - Completing a todo from the Today view also reflects in its parent project's view when the user switches.
-    - Out of scope: recurring-task interaction with the Today view (a recurring task that just completed should re-spawn its next instance — separate concern); editing due dates from the Today view (tag is display-only); a "focus on this task" entry point on each row; collapsible sections; a "completed today" count or section; clickable project pills; performance optimization for very large todo counts.
-  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: 2026-05-13
+      - On narrow / mobile widths, the top bar may not have room for hamburger + two pills + three right-side icons. Start with the simplest fix: compress pill padding via a `<600px` breakpoint. If that's still tight, fall back to hiding pill text behind a small dropdown. Pill text needs to stay at `font-size: 16px+` to avoid iOS auto-zoom regardless of which approach is taken.
+      - The pill bar was created in `main.js` in the shell entry; if any inline styles were applied there (background, border, layout), they need to be updated in `main.js` directly — CSS-only changes will be overridden.
+      - `main.js` is over 25k tokens; grep for the pill bar creation block from the shell entry and the existing top-bar render block before reading, with offset/limit pagination.
+    - Out of scope: any change to pill visuals (color, shape, animation) beyond position; the sidebar's + button placement or styling; the right-side icon cluster; any change to EXPAND ALL.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
 
