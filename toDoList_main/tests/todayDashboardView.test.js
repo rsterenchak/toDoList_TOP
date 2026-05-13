@@ -70,8 +70,14 @@ describe('Today dashboard view + view switcher', () => {
             expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]PROJECTS['"]/);
         });
 
-        it('appends the pill bar to the main panel (#mainBar / main2)', () => {
-            expect(main).toMatch(/main2\.appendChild\(\s*viewSwitcher\s*\)/);
+        it('mounts the pill bar in the top nav, anchored right of the hamburger', () => {
+            // The pill bar lives inside #navBar (next to the hamburger
+            // toggle) and pushes the right-side icon cluster — pomodoro,
+            // music, settings — to the far right via margin-right:auto
+            // on #viewSwitcher. insertBefore(pomodoroToggle) preserves
+            // the existing right-cluster order while anchoring the pills
+            // left of it.
+            expect(main).toMatch(/nav\.insertBefore\(\s*viewSwitcher\s*,\s*pomodoroToggle\s*\)/);
             expect(main).toMatch(/main2\.appendChild\(\s*todayView\s*\)/);
         });
 
@@ -189,11 +195,16 @@ describe('Today dashboard view + view switcher', () => {
     });
 
     describe('CSS surfaces (style.css)', () => {
-        it('extends #mainBar grid template with a leading auto row for the pill bar', () => {
+        it('drops the leading auto row from #mainBar since the pill bar moved to the top nav', () => {
+            // The pill bar is now a child of #navBar, not #mainBar, so
+            // the main panel grid is back to a two-row title + list
+            // layout. The Today shell overlays both rows via grid-row:
+            // 1 / -1 (see assertion below).
             const idx = css.indexOf('#mainBar {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/grid-template-rows:\s*auto\s+var\(--row-h\)\s+1fr/);
+            expect(rule).toMatch(/grid-template-rows:\s*var\(--row-h\)\s+1fr/);
+            expect(rule).not.toMatch(/grid-template-rows:\s*auto\s+var\(--row-h\)/);
         });
 
         it('styles #viewSwitcher as a flex row of pills', () => {
@@ -232,14 +243,16 @@ describe('Today dashboard view + view switcher', () => {
             );
         });
 
-        it('places #todayView in grid rows 2 through end so it overlays the project content area', () => {
+        it('places #todayView across all of #mainBar so it overlays the project content area', () => {
+            // Two rows now (title + list); the dashboard spans both so
+            // the switch is a clean swap instead of a partial overlay.
             const idx = css.indexOf('#todayView {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/grid-row:\s*2\s*\/\s*-1/);
+            expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
         });
 
-        it('extends the mobile #mainBar grid by one leading auto row', () => {
+        it('mobile #mainBar grid carries only mobile header + hidden title + list (no leading pill row)', () => {
             const mediaStart = css.indexOf('@media (max-width: 700px)');
             expect(mediaStart).toBeGreaterThan(-1);
             // Find the matching close of the @media block.
@@ -253,10 +266,11 @@ describe('Today dashboard view + view switcher', () => {
                 }
             }
             const block = css.slice(mediaStart, mediaEnd);
-            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+auto\s+auto\s+1fr/);
+            // Three tracks now: mobile project header, hidden title, list.
+            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+auto\s+1fr/);
             // mainList anchored to the final 1fr track explicitly so the
             // hidden mainTitle doesn't shift it into an auto track.
-            expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*4/);
+            expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*3/);
         });
     });
 });

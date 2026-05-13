@@ -11,12 +11,14 @@ export const changelog = [
             'Switching to the Today view now auto-collapses the projects sidebar to its icon rail, and switching back to Projects auto-expands it; the hamburger still works as a manual override within either view.',
             'Today dashboard now lists overdue, today, and upcoming todos aggregated across every project, with a count summary and a checkbox plus project pill on each row.',
         ],
+        changed: [
+            'View-switch pills moved into the top bar next to the hamburger, and the sidebar PROJECTS label was removed so the project list begins at the sidebar\'s top edge.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-05-12',
         fixed: [
-            'Mobile sidebar drawer\'s projects area now expands to fill the remaining height above the settings and version footer instead of being capped to half the drawer.',
             'Mobile welcome screen now vertically centers the ghost mascot, "Welcome." label, and "+ New project" button within the viewport instead of clustering them in the upper third.',
         ],
     },

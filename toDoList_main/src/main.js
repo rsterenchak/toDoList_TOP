@@ -125,8 +125,6 @@ function component() {
     const sideTitle = document.createElement('div');
     const sideMain = document.createElement('div');
 
-    const sideHead = document.createElement('div');
-
     const addProj = document.createElement('div');
     const projButton = document.createElement('div');
 
@@ -147,8 +145,6 @@ function component() {
 
     sideTitle.id = 'sideTit';
     sideMain.id = 'sideMa';
-
-    sideHead.id = 'sideHead';
 
     addProj.id = 'addProj';
     projButton.id = 'projButton';
@@ -2475,8 +2471,11 @@ function component() {
     main.appendChild(main2);
 
     // Sidebar layout (flex column):
-    //   sideTitle  — top: "PROJECTS" label (visible only in full mode;
-    //                hidden via CSS in rail mode since it's empty there)
+    //   sideTitle  — top: empty drawer header on mobile (holds the close X
+    //                button; hidden via CSS on desktop). The PROJECTS label
+    //                that used to live here moved out — the view-switch
+    //                pills now sit in the top nav, and the project list
+    //                begins directly at the sidebar's top padding.
     //   sideMain   — middle: scrollable project rows
     //   addProj    — bottom: "+" add-project button. In rail mode the button
     //                renders with a dashed border; in full mode it stays a
@@ -2499,7 +2498,6 @@ function component() {
     sidebarTop.appendChild(sideMain);
     sidebarTop.appendChild(addProj);
 
-    sideTitle.appendChild(sideHead);
     addProj.appendChild(projButton);
 
     // ── mobile project header (STACK layout) ──
@@ -2558,15 +2556,18 @@ function component() {
     mobileProjHeader.appendChild(mobileProjStats);
 
     // ── top-level view switcher (Today / Projects) ──
-    // Pill bar near the top of the main panel toggles between the new
-    // Today dashboard shell and the existing project view. The active
-    // view is persisted in localStorage under `todoapp_active_view` and
-    // restored on load; the pill click handlers below route through
-    // applyActiveView so the same code path runs for user clicks,
-    // initial restore, and the auto-switch fired when a project row is
-    // clicked. The actual show/hide is driven by a `data-view` attribute
-    // on #mainBar so CSS can swap surfaces without per-element style
-    // writes.
+    // Pill bar in the top nav (anchored immediately right of the
+    // hamburger) toggles between the Today dashboard shell and the
+    // existing project view. The active view is persisted in
+    // localStorage under `todoapp_active_view` and restored on load;
+    // the pill click handlers below route through applyActiveView so
+    // the same code path runs for user clicks, initial restore, and
+    // the auto-switch fired when a project row is clicked. The actual
+    // show/hide is driven by a `data-view` attribute on #mainBar so
+    // CSS can swap surfaces without per-element style writes. The
+    // pills are inserted into `nav` after main2's children are wired
+    // up below; insertBefore(pomodoroToggle) leaves the right-side
+    // icon cluster's existing order untouched.
     const viewSwitcher = document.createElement('div');
     viewSwitcher.id = 'viewSwitcher';
     viewSwitcher.setAttribute('role', 'tablist');
@@ -2625,13 +2626,11 @@ function component() {
     todayView.appendChild(todaySections);
     todayView.appendChild(todayEmpty);
 
-    main2.appendChild(viewSwitcher);
+    nav.insertBefore(viewSwitcher, pomodoroToggle);
     main2.appendChild(todayView);
     main2.appendChild(mobileProjHeader);
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
-
-    sideHead.textContent = 'Projects';
 
     // ── mobile drawer close (X) button ──
     // Adds an explicit dismiss affordance to the sidebar drawer at the

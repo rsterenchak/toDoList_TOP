@@ -55,17 +55,18 @@ describe('STACK mobile layout collapse', () => {
         return match[1];
     }
 
-    it('#mainBar grid adds a leading auto row for the view switcher pill bar at the mobile breakpoint', () => {
-        // The desktop grid is `auto var(--row-h) 1fr` (three tracks:
-        // view switcher / title / list). Mobile extends to four tracks
-        // (view switcher / mobile header / hidden title / list) so the
-        // mobile project header and the pill bar each get their own
-        // row without colliding. The hidden mainTitle still reserves a
-        // track for source-order auto-placement to walk; #mainList is
-        // pinned to the final 1fr track explicitly so it doesn't shift
-        // into the wrong row.
+    it('#mainBar grid uses a three-track layout at the mobile breakpoint', () => {
+        // The desktop grid is `var(--row-h) 1fr` (two tracks: title /
+        // list — the view switcher pill bar lives in the top nav now,
+        // not in the main panel). Mobile extends to three tracks
+        // (mobile header / hidden title / list) so the mobile project
+        // header gets its own row without colliding with the title or
+        // list. The hidden mainTitle still reserves a track for source-
+        // order auto-placement to walk; #mainList is pinned to the
+        // final 1fr track explicitly so it doesn't shift into the wrong
+        // row.
         const rule = extractMobileRule('#mainBar');
-        expect(rule).toMatch(/grid-template-rows:\s*auto\s+auto\s+auto\s+1fr/);
+        expect(rule).toMatch(/grid-template-rows:\s*auto\s+auto\s+1fr/);
     });
 
     it('#mainTitle is hidden at the mobile breakpoint so its row collapses', () => {
