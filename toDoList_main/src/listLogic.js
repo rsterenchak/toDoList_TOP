@@ -542,6 +542,79 @@ export const listLogic = (function () {
     }
 
 
+    // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────
+    // Walk every project's items once and bucket non-completed todos with
+    // due dates into overdue / today / upcoming relative to the start of
+    // the local day. Returns `{ overdue, today, upcoming, counts }` where
+    // each bucket is an array of `{ item, project, due }` entries sorted
+    // by due date (earliest first), with title alphabetical as the
+    // tiebreaker. The optional `now` parameter is for tests — production
+    // callers pass nothing and the aggregation uses the system clock.
+    function getTodayAggregation(now) {
+        const referenceNow = now instanceof Date ? now : new Date();
+        const startOfToday = new Date(
+            referenceNow.getFullYear(),
+            referenceNow.getMonth(),
+            referenceNow.getDate()
+        );
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const upcomingCutoff = new Date(startOfToday.getTime() + 7 * msPerDay);
+
+        const overdue = [];
+        const today = [];
+        const upcoming = [];
+
+        Object.keys(allProjects).forEach(function(projectName) {
+            const entry = allProjects[projectName];
+            if (!entry || !Array.isArray(entry.items)) return;
+            entry.items.forEach(function(item) {
+                if (!item || !item.tit) return;
+                if (item.completed) return;
+                const dueDate = parseDueParts(item.due);
+                if (!dueDate) return;
+                const dueStart = new Date(
+                    dueDate.getFullYear(),
+                    dueDate.getMonth(),
+                    dueDate.getDate()
+                ).getTime();
+                const todayStart = startOfToday.getTime();
+                const bucketEntry = {
+                    item: item,
+                    project: projectName,
+                    due: new Date(dueStart),
+                };
+                if (dueStart < todayStart) {
+                    overdue.push(bucketEntry);
+                } else if (dueStart === todayStart) {
+                    today.push(bucketEntry);
+                } else if (dueStart <= upcomingCutoff.getTime()) {
+                    upcoming.push(bucketEntry);
+                }
+            });
+        });
+
+        const sortFn = function(a, b) {
+            const diff = a.due.getTime() - b.due.getTime();
+            if (diff !== 0) return diff;
+            return String(a.item.tit).localeCompare(String(b.item.tit));
+        };
+        overdue.sort(sortFn);
+        today.sort(sortFn);
+        upcoming.sort(sortFn);
+
+        return {
+            overdue: overdue,
+            today: today,
+            upcoming: upcoming,
+            counts: {
+                overdue: overdue.length,
+                today: today.length,
+                upcoming: upcoming.length,
+            },
+        };
+    }
+
+
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -648,6 +721,7 @@ export const listLogic = (function () {
         snapshotProjects,
         setRecurrence,
         advanceRecurringTodo,
+        getTodayAggregation,
         _reset
     };
 
