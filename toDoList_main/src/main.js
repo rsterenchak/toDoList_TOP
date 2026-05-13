@@ -2590,14 +2590,26 @@ function component() {
     viewPillProjects.setAttribute('aria-pressed', 'false');
     viewPillProjects.textContent = 'PROJECTS';
 
+    const viewPillCalendar = document.createElement('button');
+    viewPillCalendar.id = 'viewPillCalendar';
+    viewPillCalendar.type = 'button';
+    viewPillCalendar.className = 'viewPill';
+    viewPillCalendar.setAttribute('role', 'tab');
+    viewPillCalendar.setAttribute('aria-pressed', 'false');
+    viewPillCalendar.textContent = 'CALENDAR';
+
     viewSwitcher.appendChild(viewPillToday);
     viewSwitcher.appendChild(viewPillProjects);
+    viewSwitcher.appendChild(viewPillCalendar);
 
     viewPillToday.addEventListener('click', function() {
         applyActiveView('today');
     });
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
+    });
+    viewPillCalendar.addEventListener('click', function() {
+        applyActiveView('calendar');
     });
 
     // ── Today dashboard shell ──
@@ -2627,8 +2639,89 @@ function component() {
     todayView.appendChild(todaySections);
     todayView.appendChild(todayEmpty);
 
+    // ── Calendar view shell ──
+    // Month grid on the left + day-detail panel on the right. The grid
+    // renders 7 columns × 5-6 rows including leading/trailing days from
+    // adjacent months; clicking a cell selects that date and re-renders
+    // the day-detail panel. The panel reuses buildTodayRow with
+    // { hideDuePill: true } so the row layout matches the Today view
+    // sans the redundant date pill (the date is implied by selection).
+    // Calendar visible-month + selected-date state lives in module-level
+    // vars (calendarVisibleYear/Month/SelectedDate) so the prev/next
+    // buttons and cell-click handlers can mutate them without threading
+    // refs through every callback.
+    const calendarView = document.createElement('div');
+    calendarView.id = 'calendarView';
+
+    const calendarGridSide = document.createElement('div');
+    calendarGridSide.id = 'calendarGridSide';
+
+    const calendarHeader = document.createElement('div');
+    calendarHeader.id = 'calendarHeader';
+
+    const calendarPrevBtn = document.createElement('button');
+    calendarPrevBtn.type = 'button';
+    calendarPrevBtn.id = 'calendarPrev';
+    calendarPrevBtn.className = 'calendarNavBtn';
+    calendarPrevBtn.setAttribute('aria-label', 'Previous month');
+    calendarPrevBtn.textContent = '‹';
+
+    const calendarMonthLabel = document.createElement('div');
+    calendarMonthLabel.id = 'calendarMonthLabel';
+
+    const calendarNextBtn = document.createElement('button');
+    calendarNextBtn.type = 'button';
+    calendarNextBtn.id = 'calendarNext';
+    calendarNextBtn.className = 'calendarNavBtn';
+    calendarNextBtn.setAttribute('aria-label', 'Next month');
+    calendarNextBtn.textContent = '›';
+
+    calendarHeader.appendChild(calendarPrevBtn);
+    calendarHeader.appendChild(calendarMonthLabel);
+    calendarHeader.appendChild(calendarNextBtn);
+
+    const calendarDowRow = document.createElement('div');
+    calendarDowRow.id = 'calendarDowRow';
+    ['S','M','T','W','T','F','S'].forEach(function(c, idx) {
+        const cell = document.createElement('div');
+        cell.className = 'calendarDowCell';
+        cell.textContent = c;
+        cell.setAttribute('data-dow', String(idx));
+        calendarDowRow.appendChild(cell);
+    });
+
+    const calendarGrid = document.createElement('div');
+    calendarGrid.id = 'calendarGrid';
+
+    calendarGridSide.appendChild(calendarHeader);
+    calendarGridSide.appendChild(calendarDowRow);
+    calendarGridSide.appendChild(calendarGrid);
+
+    const calendarPanel = document.createElement('div');
+    calendarPanel.id = 'calendarDayPanel';
+    const calendarPanelHeader = document.createElement('h3');
+    calendarPanelHeader.id = 'calendarDayHeader';
+    const calendarPanelCount = document.createElement('div');
+    calendarPanelCount.id = 'calendarDayCount';
+    const calendarPanelList = document.createElement('div');
+    calendarPanelList.id = 'calendarDayList';
+    calendarPanel.appendChild(calendarPanelHeader);
+    calendarPanel.appendChild(calendarPanelCount);
+    calendarPanel.appendChild(calendarPanelList);
+
+    calendarView.appendChild(calendarGridSide);
+    calendarView.appendChild(calendarPanel);
+
+    calendarPrevBtn.addEventListener('click', function() {
+        shiftCalendarMonth(-1);
+    });
+    calendarNextBtn.addEventListener('click', function() {
+        shiftCalendarMonth(1);
+    });
+
     nav.insertBefore(viewSwitcher, pomodoroToggle);
     main2.appendChild(todayView);
+    main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
     main2.appendChild(mainTitle);
     main2.appendChild(mainList);
@@ -4525,7 +4618,9 @@ function restoreFromStorage() {
 // run; missing nodes short-circuit silently so the boot order stays
 // flexible.
 function applyActiveView(view) {
-    const safe = view === 'projects' ? 'projects' : 'today';
+    let safe = 'today';
+    if (view === 'projects') safe = 'projects';
+    else if (view === 'calendar') safe = 'calendar';
     const prevView = getActiveView();
     setActiveView(safe);
 
@@ -4534,6 +4629,7 @@ function applyActiveView(view) {
 
     const pillToday    = document.getElementById('viewPillToday');
     const pillProjects = document.getElementById('viewPillProjects');
+    const pillCalendar = document.getElementById('viewPillCalendar');
     if (pillToday) {
         pillToday.classList.toggle('active', safe === 'today');
         pillToday.setAttribute('aria-pressed', safe === 'today' ? 'true' : 'false');
@@ -4541,6 +4637,10 @@ function applyActiveView(view) {
     if (pillProjects) {
         pillProjects.classList.toggle('active', safe === 'projects');
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
+    }
+    if (pillCalendar) {
+        pillCalendar.classList.toggle('active', safe === 'calendar');
+        pillCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
 
     if (safe === 'today') {
@@ -4554,14 +4654,26 @@ function applyActiveView(view) {
         }
         refreshTodayDateHeader();
         renderTodayDashboard();
+    } else if (safe === 'calendar') {
+        // CALENDAR owns the main panel the same way TODAY does — drop
+        // any sidebar project selection on entry and rebuild the grid +
+        // day-detail panel against the current month.
+        const selected = document.querySelector('.selectedProject');
+        if (selected) {
+            selected.classList.remove('selectedProject');
+            selected.classList.add('unselectedProject');
+        }
+        resetCalendarStateToToday();
+        renderCalendarView();
     }
 
     // Switching views resets the desktop projects sidebar to the new
-    // view's default: TODAY collapses to the icon rail (the dashboard
-    // owns the main panel, the project list is just navigation chrome)
-    // and PROJECTS expands to the full named-project sidebar. A no-op
-    // when the view hasn't actually changed so the hamburger override
-    // the user took within the current view is preserved.
+    // view's default: TODAY/CALENDAR collapse to the icon rail (the
+    // dashboard owns the main panel, the project list is just
+    // navigation chrome) and PROJECTS expands to the full named-project
+    // sidebar. A no-op when the view hasn't actually changed so the
+    // hamburger override the user took within the current view is
+    // preserved.
     if (prevView !== safe) {
         applyViewDefaultSidebar(safe);
     }
@@ -4706,9 +4818,15 @@ function buildTodaySection(label, bucket, entries) {
 // advanceRecurringTodo); clicking the row body (outside the checkbox and
 // pills) switches to PROJECTS, selects the parent project, and scrolls
 // to the matching todo row.
+//   options.hideDuePill — Calendar's day-detail panel shares this builder
+//     but omits the due pill, since the date is implied by the selected
+//     calendar cell. Pass an `onAfterToggle` callback when the caller's
+//     surrounding view needs a custom re-render (e.g. the calendar
+//     redraws the dot density on the toggled date).
 // TODO: extract shared due-pill builder so both views render through the
 // same factory rather than duplicating the markup invariants.
-function buildTodayRow(entry, bucket) {
+function buildTodayRow(entry, bucket, options) {
+    options = options || {};
     const row = document.createElement('div');
     row.className = 'todayRow todoRowCard';
     row.setAttribute('data-bucket', bucket);
@@ -4722,7 +4840,7 @@ function buildTodayRow(entry, bucket) {
         e.stopPropagation();
     });
     checkbox.addEventListener('change', function() {
-        handleTodayCheckboxToggle(entry, checkbox);
+        handleTodayCheckboxToggle(entry, checkbox, options.onAfterToggle);
     });
 
     const projectPill = document.createElement('span');
@@ -4736,20 +4854,22 @@ function buildTodayRow(entry, bucket) {
     title.textContent = entry.item.tit;
     title.title = entry.item.tit;
 
-    const duePill = document.createElement('span');
-    duePill.className = 'todayRowDuePill';
-    duePill.setAttribute('aria-hidden', 'true');
-    updateDuePillLabel(duePill, entry.item);
-
     row.appendChild(checkbox);
     row.appendChild(projectPill);
     row.appendChild(title);
-    row.appendChild(duePill);
 
-    // .due-soon / .due-overdue keyed on daysUntilDue — the same urgency
-    // classes the Projects-view rows use, so the shared CSS rules recolor
-    // the due pill (amber for today / due-in-N-days ≤3, red for overdue).
-    applyDueUrgency(row, entry.item);
+    if (!options.hideDuePill) {
+        const duePill = document.createElement('span');
+        duePill.className = 'todayRowDuePill';
+        duePill.setAttribute('aria-hidden', 'true');
+        updateDuePillLabel(duePill, entry.item);
+        row.appendChild(duePill);
+
+        // .due-soon / .due-overdue keyed on daysUntilDue — the same urgency
+        // classes the Projects-view rows use, so the shared CSS rules recolor
+        // the due pill (amber for today / due-in-N-days ≤3, red for overdue).
+        applyDueUrgency(row, entry.item);
+    }
 
     // Row-level click jumps to the parent project. Clicks on the checkbox
     // stop propagation in its own handler; the pills are pointer-events:
@@ -4764,7 +4884,7 @@ function buildTodayRow(entry, bucket) {
     return row;
 }
 
-function handleTodayCheckboxToggle(entry, checkbox) {
+function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
     const item = entry.item;
     const project = entry.project;
     const wasCompleted = !!item.completed;
@@ -4776,14 +4896,16 @@ function handleTodayCheckboxToggle(entry, checkbox) {
     if (checkbox.checked && !wasCompleted && item.recurrence) {
         const advanced = listLogic.advanceRecurringTodo(project, item, new Date());
         if (advanced) {
-            renderTodayDashboard();
+            if (typeof onAfter === 'function') onAfter();
+            else renderTodayDashboard();
             return;
         }
     }
 
     item.completed = checkbox.checked;
     listLogic.sortCompletedToBottom(project);
-    renderTodayDashboard();
+    if (typeof onAfter === 'function') onAfter();
+    else renderTodayDashboard();
 }
 
 // Switch to PROJECTS, select the named project (delegating to its
@@ -4824,6 +4946,177 @@ function jumpToProjectTodo(projectName, item) {
                 break;
             }
         }
+    });
+}
+
+
+// ── CALENDAR VIEW ──────────────────────────────────────────────────
+// Visible month + selected date for the Calendar view. Module-scope so
+// the prev/next month buttons and individual cell-click handlers can
+// mutate the state without threading refs through every callback. Both
+// values reset to today on every entry to the Calendar view — neither
+// is persisted across reloads (the spec is explicit: "Selected date is
+// not persisted across page reloads — always resets to today on load").
+let calendarVisibleYear  = null;
+let calendarVisibleMonth = null; // 0..11
+let calendarSelectedKey  = null; // 'YYYY-MM-DD'
+
+function resetCalendarStateToToday() {
+    const today = new Date();
+    calendarVisibleYear  = today.getFullYear();
+    calendarVisibleMonth = today.getMonth();
+    calendarSelectedKey  = formatCalendarKeyForDate(today);
+}
+
+function shiftCalendarMonth(delta) {
+    if (calendarVisibleYear === null || calendarVisibleMonth === null) {
+        resetCalendarStateToToday();
+    }
+    const target = new Date(calendarVisibleYear, calendarVisibleMonth + delta, 1);
+    calendarVisibleYear  = target.getFullYear();
+    calendarVisibleMonth = target.getMonth();
+    // The selected date persists across month nav — it just becomes a
+    // leading/trailing day in the new month's grid (or falls outside
+    // the visible cells entirely).
+    renderCalendarView();
+}
+
+// Local-time YYYY-MM-DD formatter. Mirrors listLogic.formatCalendarKey;
+// duplicated here because main.js does not currently import private
+// helpers from listLogic (only the public IIFE methods). Keep in sync.
+function formatCalendarKeyForDate(date) {
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    return y + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (d < 10 ? '0' + d : '' + d);
+}
+
+function parseCalendarKey(key) {
+    if (!key || typeof key !== 'string') return null;
+    const parts = key.split('-');
+    if (parts.length !== 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m - 1, d);
+}
+
+const CALENDAR_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CALENDAR_WEEKDAY_NAMES = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+
+// Full Calendar view render: month label, 7×5-6 grid with density dots,
+// and the right-side day-detail panel for the currently selected date.
+// Reads through listLogic.getCalendarMonth(), which returns one entry
+// per visible grid cell so this function can iterate the keys without
+// computing offsets a second time.
+function renderCalendarView() {
+    const grid       = document.getElementById('calendarGrid');
+    const monthLabel = document.getElementById('calendarMonthLabel');
+    if (!grid || !monthLabel) return;
+    if (calendarVisibleYear === null || calendarVisibleMonth === null) {
+        resetCalendarStateToToday();
+    }
+
+    monthLabel.textContent = CALENDAR_MONTH_NAMES[calendarVisibleMonth] + ' ' + calendarVisibleYear;
+
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    const monthMap = listLogic.getCalendarMonth(calendarVisibleYear, calendarVisibleMonth);
+    const keys = Object.keys(monthMap).sort(); // ISO sort = chronological
+
+    const todayKey = formatCalendarKeyForDate(new Date());
+
+    keys.forEach(function(key) {
+        const dt = parseCalendarKey(key);
+        if (!dt) return;
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'calendarCell';
+        cell.setAttribute('data-date', key);
+        cell.setAttribute('role', 'gridcell');
+
+        const inMonth = dt.getMonth() === calendarVisibleMonth && dt.getFullYear() === calendarVisibleYear;
+        if (!inMonth) cell.classList.add('outOfMonth');
+        if (key === todayKey) cell.classList.add('isToday');
+        if (key === calendarSelectedKey) cell.classList.add('isSelected');
+
+        const dayNum = document.createElement('span');
+        dayNum.className = 'calendarCellDay';
+        dayNum.textContent = String(dt.getDate());
+        cell.appendChild(dayNum);
+
+        // Density indicator — 1/2/3+ dots for the number of incomplete
+        // todos due on that date. Capped at 3 per spec; cells with no
+        // todos render no dot strip at all so the day number sits cleanly.
+        const todos = monthMap[key] || [];
+        if (todos.length > 0) {
+            const dotsWrap = document.createElement('span');
+            dotsWrap.className = 'calendarCellDots';
+            dotsWrap.setAttribute('aria-hidden', 'true');
+            const dotCount = Math.min(todos.length, 3);
+            for (let i = 0; i < dotCount; i++) {
+                const dot = document.createElement('span');
+                dot.className = 'calendarCellDot';
+                dotsWrap.appendChild(dot);
+            }
+            cell.appendChild(dotsWrap);
+        }
+
+        cell.addEventListener('click', function() {
+            calendarSelectedKey = key;
+            renderCalendarView();
+        });
+
+        grid.appendChild(cell);
+    });
+
+    renderCalendarDayPanel(monthMap);
+}
+
+// Day-detail panel renderer — reads the already-built monthMap so the
+// task list mirrors exactly what the grid's dot densities counted, and
+// updates the panel header / count / row list in a single pass. Reuses
+// buildTodayRow with { hideDuePill: true }; checkbox toggles re-render
+// the whole calendar so the dot count for the toggled date refreshes
+// in lockstep.
+function renderCalendarDayPanel(monthMap) {
+    const headerEl = document.getElementById('calendarDayHeader');
+    const countEl  = document.getElementById('calendarDayCount');
+    const listEl   = document.getElementById('calendarDayList');
+    if (!headerEl || !countEl || !listEl) return;
+
+    const dt = parseCalendarKey(calendarSelectedKey);
+    if (!dt) {
+        headerEl.textContent = '';
+        countEl.textContent = '';
+        while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+        return;
+    }
+
+    headerEl.textContent =
+        CALENDAR_WEEKDAY_NAMES[dt.getDay()] + ' ' +
+        CALENDAR_MONTH_NAMES[dt.getMonth()].toUpperCase() + ' ' +
+        dt.getDate();
+
+    const entries = monthMap[calendarSelectedKey] || [];
+    if (entries.length === 0) {
+        countEl.textContent = 'No items on this day';
+    } else if (entries.length === 1) {
+        countEl.textContent = '1 item';
+    } else {
+        countEl.textContent = entries.length + ' items';
+    }
+
+    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+    entries.forEach(function(entry) {
+        const row = buildTodayRow(entry, 'calendar', {
+            hideDuePill: true,
+            onAfterToggle: renderCalendarView,
+        });
+        listEl.appendChild(row);
     });
 }
 

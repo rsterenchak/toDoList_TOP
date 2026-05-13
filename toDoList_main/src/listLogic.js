@@ -615,6 +615,60 @@ export const listLogic = (function () {
     }
 
 
+    // ── CALENDAR MONTH AGGREGATION ──────────────────────────────────
+    // Build the month-grid payload for the Calendar view. Returns a map
+    // keyed by ISO `YYYY-MM-DD` strings, where each value is an array of
+    // `{ item, project }` entries for the incomplete todos due on that
+    // date. The returned keys span every cell of the visible grid: the
+    // first day of the month is back-aligned to the prior Sunday (so the
+    // grid starts on a Sunday column), and the last day of the month is
+    // forward-aligned to the following Saturday — leading/trailing days
+    // from adjacent months are included so the grid is always complete.
+    // Dates with no incomplete todos still appear as keys with an empty
+    // array so the renderer can iterate the grid by looking up each cell
+    // without missing-key fallbacks. Completed todos and items with no
+    // due date are excluded.
+    function getCalendarMonth(year, month) {
+        const yr = parseInt(year, 10);
+        const mn = parseInt(month, 10);
+        if (isNaN(yr) || isNaN(mn)) return {};
+
+        const firstOfMonth = new Date(yr, mn, 1);
+        const startOffset = firstOfMonth.getDay(); // 0 Sun .. 6 Sat
+        const gridStart = new Date(yr, mn, 1 - startOffset);
+
+        const lastOfMonth = new Date(yr, mn + 1, 0);
+        const endOffset = 6 - lastOfMonth.getDay();
+        const gridEnd = new Date(yr, mn, lastOfMonth.getDate() + endOffset);
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const totalDays = Math.round((gridEnd.getTime() - gridStart.getTime()) / msPerDay) + 1;
+
+        const result = {};
+        for (let i = 0; i < totalDays; i++) {
+            const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+            result[formatCalendarKey(d)] = [];
+        }
+
+        Object.keys(allProjects).forEach(function(projectName) {
+            const entry = allProjects[projectName];
+            if (!entry || !Array.isArray(entry.items)) return;
+            entry.items.forEach(function(item) {
+                if (!item || !item.tit) return;
+                if (item.completed) return;
+                const dueDate = parseDueParts(item.due);
+                if (!dueDate) return;
+                const key = formatCalendarKey(dueDate);
+                if (Object.prototype.hasOwnProperty.call(result, key)) {
+                    result[key].push({ item: item, project: projectName });
+                }
+            });
+        });
+
+        return result;
+    }
+
+
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -722,6 +776,7 @@ export const listLogic = (function () {
         setRecurrence,
         advanceRecurringTodo,
         getTodayAggregation,
+        getCalendarMonth,
         _reset
     };
 
@@ -778,6 +833,16 @@ function parseDueParts(due) {
 
 function formatDueParts(date) {
     return (date.getMonth() + 1) + '-' + date.getDate() + '-' + date.getFullYear();
+}
+
+// ISO YYYY-MM-DD key used by the Calendar month grid. Local fields only —
+// the renderer compares against `new Date(y, m, d)` cells, so a UTC-based
+// toISOString() would drift the key by a day in non-UTC timezones.
+export function formatCalendarKey(date) {
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    return y + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (d < 10 ? '0' + d : '' + d);
 }
 
 function parseEndDate(end) {

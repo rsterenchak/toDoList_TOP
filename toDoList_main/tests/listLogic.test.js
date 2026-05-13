@@ -1011,6 +1011,161 @@ describe('listLogic — getTodayAggregation', () => {
 });
 
 
+// ── CALENDAR MONTH AGGREGATION ─────────────────────────────────────
+describe('listLogic — getCalendarMonth', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    function keysOf(map) {
+        return Object.keys(map).sort();
+    }
+
+    it('returns an empty-array map for every visible cell when no projects exist', () => {
+        // May 2026 — May 1 is a Friday, so the grid starts on Sun Apr 26
+        // and ends on Sat Jun 6. That's 42 cells (6 rows × 7 cols).
+        const map = listLogic.getCalendarMonth(2026, 4);
+        const keys = keysOf(map);
+        expect(keys.length).toBe(42);
+        expect(keys[0]).toBe('2026-04-26');
+        expect(keys[keys.length - 1]).toBe('2026-06-06');
+        keys.forEach(k => expect(map[k]).toEqual([]));
+    });
+
+    it('groups a single incomplete todo under its due-date key', () => {
+        listLogic.addProject('Work');
+        listLogic.addToDo('Work', 'Standup');
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Standup');
+        item.due = '5-13-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-05-13']).toHaveLength(1);
+        expect(map['2026-05-13'][0].item.tit).toBe('Standup');
+        expect(map['2026-05-13'][0].project).toBe('Work');
+    });
+
+    it('groups multiple todos on the same date in the same bucket', () => {
+        listLogic.addProject('Home');
+        listLogic.addToDo('Home', 'Dishes');
+        listLogic.addToDo('Home', 'Laundry');
+        listLogic.addToDo('Home', 'Vacuum');
+        listLogic.listItems('Home').find(i => i.tit === 'Dishes').due  = '5-15-2026';
+        listLogic.listItems('Home').find(i => i.tit === 'Laundry').due = '5-15-2026';
+        listLogic.listItems('Home').find(i => i.tit === 'Vacuum').due  = '5-15-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-05-15']).toHaveLength(3);
+    });
+
+    it('does not cap the per-date bucket — caller decides display (e.g. 3-dot cap)', () => {
+        // The helper itself must surface the full count so consumers can
+        // distinguish a 3-task date from a 5-task date (e.g. for tooltips,
+        // analytics, or the day-detail panel).
+        listLogic.addProject('P');
+        for (let i = 0; i < 5; i++) {
+            const title = 'Task ' + i;
+            listLogic.addToDo('P', title);
+            listLogic.listItems('P').find(it => it.tit === title).due = '5-20-2026';
+        }
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-05-20']).toHaveLength(5);
+    });
+
+    it('spreads todos across the month under distinct keys', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'A');
+        listLogic.addToDo('P', 'B');
+        listLogic.addToDo('P', 'C');
+        listLogic.listItems('P').find(i => i.tit === 'A').due = '5-2-2026';
+        listLogic.listItems('P').find(i => i.tit === 'B').due = '5-13-2026';
+        listLogic.listItems('P').find(i => i.tit === 'C').due = '5-28-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-05-02']).toHaveLength(1);
+        expect(map['2026-05-13']).toHaveLength(1);
+        expect(map['2026-05-28']).toHaveLength(1);
+    });
+
+    it('excludes todos with no due date from every bucket', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Floating');
+        // due is '' by default
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        Object.keys(map).forEach(k => expect(map[k]).toEqual([]));
+    });
+
+    it('excludes completed todos from every bucket', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Already done');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Already done');
+        item.due = '5-13-2026';
+        item.completed = true;
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-05-13']).toEqual([]);
+    });
+
+    it('includes leading days from the previous month with their own buckets', () => {
+        // May 2026 starts on Friday; leading days are Sun Apr 26 .. Thu Apr 30.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Late Apr');
+        listLogic.listItems('P').find(i => i.tit === 'Late Apr').due = '4-28-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-04-28']).toHaveLength(1);
+        expect(map['2026-04-28'][0].item.tit).toBe('Late Apr');
+    });
+
+    it('includes trailing days from the next month with their own buckets', () => {
+        // May 2026 ends Sun May 31; trailing days are Mon Jun 1 .. Sat Jun 6.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Early Jun');
+        listLogic.listItems('P').find(i => i.tit === 'Early Jun').due = '6-3-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-06-03']).toHaveLength(1);
+        expect(map['2026-06-03'][0].item.tit).toBe('Early Jun');
+    });
+
+    it('places a todo on the first visible cell of the grid', () => {
+        // First visible cell for May 2026 is Sun Apr 26.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'First cell');
+        listLogic.listItems('P').find(i => i.tit === 'First cell').due = '4-26-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-04-26']).toHaveLength(1);
+    });
+
+    it('places a todo on the last visible cell of the grid', () => {
+        // Last visible cell for May 2026 is Sat Jun 6.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Last cell');
+        listLogic.listItems('P').find(i => i.tit === 'Last cell').due = '6-6-2026';
+
+        const map = listLogic.getCalendarMonth(2026, 4);
+        expect(map['2026-06-06']).toHaveLength(1);
+    });
+
+    it('returns {} when year or month is not a valid number', () => {
+        expect(listLogic.getCalendarMonth('not', 'numeric')).toEqual({});
+        expect(listLogic.getCalendarMonth(NaN, 4)).toEqual({});
+    });
+
+    it('handles a month that starts on Sunday (no leading days needed)', () => {
+        // February 2026: Feb 1 is Sunday, last day is Feb 28 (also Saturday).
+        // Grid is exactly 4 weeks = 28 cells, no leading/trailing fill.
+        const map = listLogic.getCalendarMonth(2026, 1);
+        const keys = keysOf(map);
+        expect(keys.length).toBe(28);
+        expect(keys[0]).toBe('2026-02-01');
+        expect(keys[keys.length - 1]).toBe('2026-02-28');
+    });
+});
+
+
 describe('listLogic — sanitizeRecurrence', () => {
     it('clamps an unknown pattern to "daily"', () => {
         const result = sanitizeRecurrence({ pattern: 'made-up' });
