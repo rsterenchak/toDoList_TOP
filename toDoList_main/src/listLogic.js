@@ -542,6 +542,25 @@ export const listLogic = (function () {
     }
 
 
+    // Return the count of incomplete (not completed) committed todos in
+    // the named project. Blank placeholder rows (`tit === ''`) are excluded
+    // so adding a project doesn't make the sidebar badge read as "1 open"
+    // before the user has typed anything. Centralizing the "open" definition
+    // here keeps the sidebar badges, the footer summary, and any future
+    // count consumer in lockstep.
+    function getProjectIncompleteCount(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.items)) return 0;
+        let count = 0;
+        for (let i = 0; i < entry.items.length; i++) {
+            const item = entry.items[i];
+            if (!item || !item.tit) continue;
+            if (!item.completed) count++;
+        }
+        return count;
+    }
+
+
     // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────
     // Walk every project's items once and bucket non-completed todos with
     // due dates into overdue / today / upcoming relative to the start of
@@ -777,6 +796,7 @@ export const listLogic = (function () {
         advanceRecurringTodo,
         getTodayAggregation,
         getCalendarMonth,
+        getProjectIncompleteCount,
         _reset
     };
 

@@ -129,7 +129,6 @@ function component() {
     const addProj = document.createElement('div');
     const projButton = document.createElement('div');
 
-    const mainTitle = document.createElement('div');
     const mainList = document.createElement('div');
 
     const sidebarToggle  = document.createElement('button');
@@ -156,7 +155,6 @@ function component() {
     projButton.setAttribute('role', 'button');
     projButton.setAttribute('aria-label', 'Add new project');
 
-    mainTitle.id = 'mainTitle';
     mainList.id = 'mainList';
 
     sidebarToggle.id        = 'sidebarToggle';
@@ -2507,9 +2505,9 @@ function component() {
     // list, with a "PROJECT N OF M" label, open/done counts, and a
     // swipe-on-title gesture (flanked by ‹ / › chevron affordances) that
     // jumps between projects. Hidden on desktop via CSS — desktop
-    // continues to use the sidebar rail/full pattern with the mainCrumb
-    // breadcrumb. The header rebuilds via the same MutationObserver path
-    // that drives the footer counts so its label, counts, and chevron
+    // continues to use the sidebar rail/full pattern. The header rebuilds
+    // via the same MutationObserver path that drives the footer counts so
+    // its label, counts, and chevron
     // enable state stay in sync without explicit calls from mutation
     // sites.
     const mobileProjHeader   = document.createElement('div');
@@ -2723,7 +2721,6 @@ function component() {
     main2.appendChild(todayView);
     main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
-    main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
     // ── mobile drawer close (X) button ──
@@ -2739,29 +2736,11 @@ function component() {
     mobileSidebarClose.innerHTML = '×';
     sideTitle.appendChild(mobileSidebarClose);
 
-    // ── breadcrumb (top-left of main column) ──
-    // Rail mode shows only single-letter chips, so the active project's full
-    // name appears textually only here. "<Project Name> · <N> open" stays
-    // current via the same MutationObserver path that drives the footer
-    // counts. Hidden in full sidebar mode where the project name is already
-    // visible in the rail expansion.
-    const mainCrumb = document.createElement('div');
-    mainCrumb.id = 'mainCrumb';
-    const mainCrumbName = document.createElement('span');
-    mainCrumbName.id = 'mainCrumbName';
-    const mainCrumbSep = document.createElement('span');
-    mainCrumbSep.id = 'mainCrumbSep';
-    mainCrumbSep.textContent = '·';
-    mainCrumbSep.setAttribute('aria-hidden', 'true');
-    const mainCrumbCount = document.createElement('span');
-    mainCrumbCount.id = 'mainCrumbCount';
-    mainCrumb.appendChild(mainCrumbName);
-    mainCrumb.appendChild(mainCrumbSep);
-    mainCrumb.appendChild(mainCrumbCount);
-    mainTitle.appendChild(mainCrumb);
-
-    // Bulk description control — single toggle in the Todo Items header,
-    // right-aligned. Clicks are dispatched to each row's own #descToggle so
+    // Bulk description control — single toggle right-aligned on the
+    // add-task row at the top of the project list. Floats over the right
+    // edge of the main panel via #bulkDescActions positioning in CSS so it
+    // visually sits on the add-task row without participating in the row's
+    // own layout. Clicks are dispatched to each row's own #descToggle so
     // the per-row switcher state in wireDescToggle stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
@@ -2781,7 +2760,7 @@ function component() {
     bulkDescToggleBtn.appendChild(bulkDescCaret);
 
     bulkDescActions.appendChild(bulkDescToggleBtn);
-    mainTitle.appendChild(bulkDescActions);
+    main2.appendChild(bulkDescActions);
 
     bulkDescToggleBtn.addEventListener('click', function () {
         const expanded = bulkDescToggleBtn.classList.toggle('expanded');
@@ -3630,7 +3609,7 @@ function component() {
         const projChild = document.createElement("div");
 
         const titleInput = document.createElement("input");
-        const spacer = document.createElement("div");
+        const countBadge = document.createElement("span");
 
 
         projChild.classList.add("unselectedProject");
@@ -3650,14 +3629,17 @@ function component() {
         titleInput.style.pointerEvents = "auto";
         titleInput.style.cursor = "text";
 
+        // Incomplete-count badge — reads 0 on fresh rows; refreshed by
+        // updateProjectBadges once the project commits and todos exist.
+        countBadge.id = "projCount";
+        countBadge.setAttribute('aria-hidden', 'true');
+        countBadge.textContent = "0";
+
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(spacer);
-
-        // spacer.style.border = "1px solid red";
-        spacer.style.width = "12px";
+        projChild.appendChild(countBadge);
 
         let currentProperty = "";
         let newProperty = "";
@@ -4053,21 +4035,28 @@ function component() {
         footOpen.textContent = open + ' OPEN';
         footDone.textContent = done + ' DONE';
 
-        // Breadcrumb in the main column mirrors the active project name and
-        // open count. In rail mode this is the only place the full name
-        // appears textually; in full-sidebar mode CSS hides it to avoid
-        // duplicating what's already in the rail expansion.
-        if (name) {
-            mainCrumbName.textContent = name;
-            mainCrumbCount.textContent = open + ' open';
-            mainCrumb.removeAttribute('data-empty');
-        } else {
-            mainCrumbName.textContent = '';
-            mainCrumbCount.textContent = '';
-            mainCrumb.setAttribute('data-empty', 'true');
-        }
-
+        updateProjectBadges();
         updateMobileProjHeader(name, open, done);
+    }
+
+    // Refresh the incomplete-count badge on every sidebar project row.
+    // Routes through listLogic.getProjectIncompleteCount so the "open"
+    // definition (committed + not completed) stays in one place. Called
+    // from the existing updateFooterCounts observer pass — every todo
+    // add / complete / uncomplete / delete and project selection change
+    // already triggers it, and we add childList on sideMain below so
+    // project add / remove fire the same path.
+    function updateProjectBadges() {
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const badge = row.querySelector('#projCount');
+            if (!badge) continue;
+            const input = row.querySelector('#projInput');
+            const name = input ? input.value.trim() : '';
+            const count = name ? listLogic.getProjectIncompleteCount(name) : 0;
+            badge.textContent = String(count);
+        }
     }
 
     // Resolve the project name at the given index in the authoritative
@@ -4252,6 +4241,7 @@ function component() {
         attributeFilter: ['class']
     });
     footObserver.observe(sideMain, {
+        childList: true,
         subtree: true,
         attributes: true,
         attributeFilter: ['class', 'value']
@@ -4350,7 +4340,7 @@ function restoreFromStorage() {
 
         const projChild   = document.createElement("div");
         const titleInput  = document.createElement("input");
-        const spacer      = document.createElement("div");
+        const countBadge  = document.createElement("span");
 
         projChild.classList.add("unselectedProject");
         projChild.id = "projChild";
@@ -4369,11 +4359,13 @@ function restoreFromStorage() {
         titleInput.style.pointerEvents = "none";
         titleInput.style.cursor = "default";
 
-        spacer.style.width  = "12px";
+        countBadge.id = "projCount";
+        countBadge.setAttribute('aria-hidden', 'true');
+        countBadge.textContent = String(listLogic.getProjectIncompleteCount(projectName));
 
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
-        projChild.appendChild(spacer);
+        projChild.appendChild(countBadge);
 
         // track current name for rename
         let currentProperty = projectName;
