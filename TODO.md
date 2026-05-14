@@ -2,13 +2,13 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Reorder top-bar view pills: PROJECTS first
+- [x] **[LOW]** Reorder top-bar view pills: PROJECTS first
   - Description: Reorder the top-bar view-switch pills so PROJECTS appears first, followed by TODAY and CALENDAR. Pill styling, click handlers, view-switch behavior, and `todoapp_active_view` persistence wiring are unchanged — this is a DOM-order change only.
     - Implementation notes:
       - Update the pill creation order in `main.js` (or the pill array if pills are defined as data). Also check `style.css` for any selectors that target pills by `:nth-child` or sibling position — those need updating or replacing with class-based selectors.
       - The default landing view (currently TODAY via the `todoapp_active_view` localStorage default) is NOT changed by this entry — only the visual order. If you also want the default landing view to become PROJECTS, that's a separate one-line change.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-14
 
 ## Features
 

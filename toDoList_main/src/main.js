@@ -2595,8 +2595,8 @@ function component() {
     viewPillCalendar.setAttribute('aria-pressed', 'false');
     viewPillCalendar.textContent = 'CALENDAR';
 
-    viewSwitcher.appendChild(viewPillToday);
     viewSwitcher.appendChild(viewPillProjects);
+    viewSwitcher.appendChild(viewPillToday);
     viewSwitcher.appendChild(viewPillCalendar);
 
     viewPillToday.addEventListener('click', function() {
