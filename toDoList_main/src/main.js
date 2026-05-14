@@ -129,7 +129,6 @@ function component() {
     const addProj = document.createElement('div');
     const projButton = document.createElement('div');
 
-    const mainTitle = document.createElement('div');
     const mainList = document.createElement('div');
 
     const sidebarToggle  = document.createElement('button');
@@ -156,7 +155,6 @@ function component() {
     projButton.setAttribute('role', 'button');
     projButton.setAttribute('aria-label', 'Add new project');
 
-    mainTitle.id = 'mainTitle';
     mainList.id = 'mainList';
 
     sidebarToggle.id        = 'sidebarToggle';
@@ -2506,12 +2504,11 @@ function component() {
     // active project name renders as a screen-level header above the todo
     // list, with a "PROJECT N OF M" label, open/done counts, and a
     // swipe-on-title gesture (flanked by ‹ / › chevron affordances) that
-    // jumps between projects. Hidden on desktop via CSS — desktop
-    // continues to use the sidebar rail/full pattern with the mainCrumb
-    // breadcrumb. The header rebuilds via the same MutationObserver path
-    // that drives the footer counts so its label, counts, and chevron
-    // enable state stay in sync without explicit calls from mutation
-    // sites.
+    // jumps between projects. Hidden on desktop via CSS — desktop relies on
+    // the sidebar rail/full pattern to surface the active project name. The
+    // header rebuilds via the same MutationObserver path that drives the
+    // footer counts so its label, counts, and chevron enable state stay in
+    // sync without explicit calls from mutation sites.
     const mobileProjHeader   = document.createElement('div');
     const mobileProjLabel    = document.createElement('div');
     const mobileProjTitleRow = document.createElement('div');
@@ -2723,7 +2720,6 @@ function component() {
     main2.appendChild(todayView);
     main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
-    main2.appendChild(mainTitle);
     main2.appendChild(mainList);
 
     // ── mobile drawer close (X) button ──
@@ -2739,30 +2735,11 @@ function component() {
     mobileSidebarClose.innerHTML = '×';
     sideTitle.appendChild(mobileSidebarClose);
 
-    // ── breadcrumb (top-left of main column) ──
-    // Rail mode shows only single-letter chips, so the active project's full
-    // name appears textually only here. "<Project Name> · <N> open" stays
-    // current via the same MutationObserver path that drives the footer
-    // counts. Hidden in full sidebar mode where the project name is already
-    // visible in the rail expansion.
-    const mainCrumb = document.createElement('div');
-    mainCrumb.id = 'mainCrumb';
-    const mainCrumbName = document.createElement('span');
-    mainCrumbName.id = 'mainCrumbName';
-    const mainCrumbSep = document.createElement('span');
-    mainCrumbSep.id = 'mainCrumbSep';
-    mainCrumbSep.textContent = '·';
-    mainCrumbSep.setAttribute('aria-hidden', 'true');
-    const mainCrumbCount = document.createElement('span');
-    mainCrumbCount.id = 'mainCrumbCount';
-    mainCrumb.appendChild(mainCrumbName);
-    mainCrumb.appendChild(mainCrumbSep);
-    mainCrumb.appendChild(mainCrumbCount);
-    mainTitle.appendChild(mainCrumb);
-
-    // Bulk description control — single toggle in the Todo Items header,
-    // right-aligned. Clicks are dispatched to each row's own #descToggle so
-    // the per-row switcher state in wireDescToggle stays in sync with the DOM.
+    // Bulk description control — single toggle anchored to the right end of
+    // the top add-task row. Lives as an absolutely-positioned overlay inside
+    // #mainBar so the list can scroll beneath it without dragging the button
+    // along. Clicks are dispatched to each row's own #descToggle so the
+    // per-row switcher state in wireDescToggle stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
 
@@ -2781,7 +2758,7 @@ function component() {
     bulkDescToggleBtn.appendChild(bulkDescCaret);
 
     bulkDescActions.appendChild(bulkDescToggleBtn);
-    mainTitle.appendChild(bulkDescActions);
+    main2.appendChild(bulkDescActions);
 
     bulkDescToggleBtn.addEventListener('click', function () {
         const expanded = bulkDescToggleBtn.classList.toggle('expanded');
@@ -4091,20 +4068,6 @@ function component() {
         }
         footOpen.textContent = open + ' OPEN';
         footDone.textContent = done + ' DONE';
-
-        // Breadcrumb in the main column mirrors the active project name and
-        // open count. In rail mode this is the only place the full name
-        // appears textually; in full-sidebar mode CSS hides it to avoid
-        // duplicating what's already in the rail expansion.
-        if (name) {
-            mainCrumbName.textContent = name;
-            mainCrumbCount.textContent = open + ' open';
-            mainCrumb.removeAttribute('data-empty');
-        } else {
-            mainCrumbName.textContent = '';
-            mainCrumbCount.textContent = '';
-            mainCrumb.setAttribute('data-empty', 'true');
-        }
 
         updateMobileProjHeader(name, open, done);
     }

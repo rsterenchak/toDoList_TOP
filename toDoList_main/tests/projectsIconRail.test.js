@@ -86,20 +86,6 @@ describe('projects sidebar — 54px icon rail', () => {
         expect(calls).toBeGreaterThanOrEqual(3);
     });
 
-    it('renders the active project name + open count in a main-column breadcrumb', () => {
-        expect(main).toMatch(/mainCrumb\.id\s*=\s*['"]mainCrumb['"]/);
-        expect(main).toMatch(/mainCrumbName\.id\s*=\s*['"]mainCrumbName['"]/);
-        expect(main).toMatch(/mainCrumbCount\.id\s*=\s*['"]mainCrumbCount['"]/);
-        // The breadcrumb is wired into the existing footer-counts updater so
-        // it tracks both project selection and todo add/remove/complete.
-        const fnIdx = main.indexOf('function updateFooterCounts');
-        expect(fnIdx).toBeGreaterThan(-1);
-        const body = main.slice(fnIdx, main.indexOf('}', fnIdx + 600) + 1);
-        expect(body).toMatch(/mainCrumbName\.textContent/);
-        expect(body).toMatch(/mainCrumbCount\.textContent/);
-        expect(body).toMatch(/open\s*\+\s*['"] open['"]|['"] open['"]\s*\+|open\s*\+\s*['"] open/);
-    });
-
     it('locks the rail track to 54px and hides the resizer when rail is on', () => {
         expect(css).toMatch(/--rail-w:\s*54px/);
         expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#mainSec[\s\S]*grid-template-columns:\s*var\(--rail-w\)/);

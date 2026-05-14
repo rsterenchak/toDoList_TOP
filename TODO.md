@@ -27,7 +27,7 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Remove mainTitle from PROJECTS view and relocate EXPAND ALL to add-task row
+- [x] **[MEDIUM]** Remove mainTitle from PROJECTS view and relocate EXPAND ALL to add-task row — Completed: 2026-05-14
   - Description: With sidebar count badges in place from the previous entry, `mainTitle` on the PROJECTS view is now strictly redundant — it shows the selected project's name, which is already highlighted in the sidebar. Remove it. The main panel's first visible element on PROJECTS becomes the existing add-task input row. The EXPAND ALL control (currently inside `mainTitle`) relocates to the right end of the add-task row.
     - Behavior:
       1. The `mainTitle` div and all DOM nodes inside it are removed from the PROJECTS view. The main panel's first visible element on PROJECTS is now the add-task input row.
