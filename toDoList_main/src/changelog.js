@@ -9,14 +9,12 @@ export const changelog = [
         fixed: [
             'Sidebar project rows now show a small pill with each project\'s incomplete todo count.',
             'Removed the redundant project-name bar above the todo list; the EXPAND ALL toggle now sits at the right end of the add-task row.',
+            'Top-bar view-switch pills reordered to show PROJECTS first, followed by TODAY and CALENDAR.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-13',
-        changed: [
-            'View-switch pills moved into the top bar next to the hamburger, and the sidebar PROJECTS label was removed so the project list begins at the sidebar\'s top edge.',
-        ],
         fixed: [
             'TODAY / PROJECTS view-switch pills in the top bar reduced to a more compact size.',
             'Today dashboard rows now share the Projects-view card style with a leading purple-outline project chip and a calendar-icon due pill that recolors amber for items due today or within three days.',

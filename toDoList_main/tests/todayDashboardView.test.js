@@ -88,6 +88,15 @@ describe('Today dashboard view + view switcher', () => {
             expect(main).toMatch(/viewPillToday\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]today['"]/);
             expect(main).toMatch(/viewPillProjects\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]projects['"]/);
         });
+
+        it('appends pills in PROJECTS, TODAY, CALENDAR order', () => {
+            // Visual order in the top bar: PROJECTS first, then TODAY,
+            // then CALENDAR. Pinned so a future refactor can't silently
+            // re-shuffle the pill sequence.
+            expect(main).toMatch(
+                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillToday\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillCalendar\s*\)/
+            );
+        });
     });
 
     describe('Today shell DOM', () => {
