@@ -1424,18 +1424,21 @@ function component() {
     nav.appendChild(importFileInput);
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
-    // across the four header buttons (sidebarToggle → pomodoroToggle →
-    // musicToggle → settingsToggle) so keyboard users can flow across
-    // the chrome without tabbing. Bails when any popover/modal is open
-    // so the in-popover focus management owns the keystrokes; bails on
-    // any modifier so OS-level chords pass through. stopPropagation
-    // keeps the document-level cross-pane handler from also re-routing
-    // focus to a project row or new-task input.
+    // across the seven header controls (sidebarToggle → viewPillProjects
+    // → viewPillToday → viewPillCalendar → pomodoroToggle → musicToggle
+    // → settingsToggle) so keyboard users can flow across the chrome
+    // without tabbing. The pill references resolve at handler execution
+    // time, by which point component() has finished initialising them.
+    // Bails when any popover/modal is open so the in-popover focus
+    // management owns the keystrokes; bails on any modifier so OS-level
+    // chords pass through. stopPropagation keeps the document-level
+    // cross-pane handler from also re-routing focus to a project row or
+    // new-task input.
     nav.addEventListener('keydown', function(e) {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, pomodoroToggle, musicToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar, pomodoroToggle, musicToggle, settingsToggle];
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;

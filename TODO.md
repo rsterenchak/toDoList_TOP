@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Extend header arrow-key nav walk to include PROJECTS / TODAY / CALENDAR pills
+- [x] **[MEDIUM]** Extend header arrow-key nav walk to include PROJECTS / TODAY / CALENDAR pills
   - Description: The delegated `nav.addEventListener('keydown', ...)` handler in `main.js` currently walks ArrowLeft/ArrowRight across `[sidebarToggle, pomodoroToggle, musicToggle, settingsToggle]`, skipping the three view-switcher pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) that sit between the hamburger and the right-side icon cluster. Extend the `order` array to insert the three pills in their on-screen DOM sequence (PROJECTS, TODAY, CALENDAR) between `sidebarToggle` and `pomodoroToggle`, so ArrowRight from the hamburger steps into PROJECTS, walks through TODAY and CALENDAR, then lands on `pomodoroToggle` and continues through music and settings; ArrowLeft mirrors the walk in reverse. The pills are already native `<button>` elements inside `nav`, so the existing delegated handler catches their keydowns and the existing `.viewPill:focus-visible` outline provides the focus indicator — the only change needed is the order array (no new event listeners, no new styling). Update `headerFooterArrowKeyNav.test.js` so the "walks all four header buttons" assertion becomes "walks all seven header controls" and pin the new sequence with a regex covering `sidebarToggle → viewPillProjects → viewPillToday → viewPillCalendar → pomodoroToggle → musicToggle → settingsToggle`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/headerFooterArrowKeyNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-14
 
 ## Features
 
