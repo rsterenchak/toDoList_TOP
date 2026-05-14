@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Redesign mobile UI with Dense layout, bottom tab bar, and Today/Calendar views
+- [x] **[MEDIUM]** Redesign mobile UI with Dense layout, bottom tab bar, and Today/Calendar views
   - Description: Replace the current centered-title mobile layout with a compact "Dense" header — hamburger + tappable project name dropdown (▾) + overflow dots in a single row, followed by inline `5 OPEN` / `39 DONE` count pills. Add a persistent bottom tab bar with three destinations: Projects (current paradigm), Today (all tasks due today across projects), and Calendar (month-grid view of tasks by date). Integrate the new tab bar with the existing `#bottomSheet` utility surface so the Pomodoro/music sheet still works — the PEEK strip floats above the tab bar, the EXPANDED sheet covers the tab bar in focus mode, and the IDLE nub stays as a fallback handle when no utility is active. Also fix the top safe-area cut-off where the iOS status bar overlaps the project header.
   - Behavior:
     1. Mobile header (`≤700px`) collapses to a single ~40px row: hamburger left, purple project name with `▾` chevron (opens the existing sidebar / project picker), overflow dots right. The `PROJECT 1 OF 3` label and large centered title with side `<` `>` arrows are removed — the dropdown replaces the carousel pattern.
@@ -41,7 +41,7 @@
     - Search as a fourth tab.
     - Per-project filtering inside the Today view (Today is global by design).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/src/template.html`, `toDoList_main/tests/listLogic.test.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-14
 
 ## Features
 
