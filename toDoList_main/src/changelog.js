@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-05-14',
         fixed: [
             'Sidebar project rows now show a small pill with each project\'s incomplete todo count.',
+            'Removed the redundant project-name bar above the todo list; the EXPAND ALL toggle now sits at the right end of the add-task row.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-13',
-        added: [
-            'New Calendar view alongside Today and Projects: a month grid with density dots on dates that have todos, plus a side panel listing the selected day\'s tasks.',
-        ],
         changed: [
             'View-switch pills moved into the top bar next to the hamburger, and the sidebar PROJECTS label was removed so the project list begins at the sidebar\'s top edge.',
         ],

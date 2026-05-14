@@ -9,16 +9,15 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile layout corrective fixes that finally collapse the
-// dead band beneath `PROJECT N OF M`, ensure the page-dot row paints, and
-// strip the duplicate open/done counts from the mobile footer. The desktop
-// chrome uses #mainTitle as a fixed-height bar above the todo list; on the
-// ≤700px breakpoint the mobile header replaces it, but the desktop grid
-// reserves a --row-h track that — without the override — wedges the mobile
-// header into a short, ill-fitting track and leaves dead space below the
-// project name. Companion to stackMobileHeader.test.js which pins the
-// header's content; this file pins the layout overrides that make it
-// render correctly.
+// Pins the STACK mobile layout corrective fixes that collapse the dead
+// band beneath `PROJECT N OF M`, ensure the page-dot row paints, and
+// strip the duplicate open/done counts from the mobile footer. The
+// desktop chrome retired the old #mainTitle bar — the project view's
+// main panel now stacks the mobile project header (mobile-only) over
+// the scrollable #mainList, with the EXPAND ALL toggle anchored as an
+// overlay on the add-task row. Companion to stackMobileHeader.test.js
+// which pins the header's content; this file pins the layout overrides
+// that make it render correctly.
 describe('STACK mobile layout collapse', () => {
     const css = read('style.css');
 
@@ -55,28 +54,22 @@ describe('STACK mobile layout collapse', () => {
         return match[1];
     }
 
-    it('#mainBar grid uses a three-track layout at the mobile breakpoint', () => {
-        // The desktop grid is `var(--row-h) 1fr` (two tracks: title /
-        // list — the view switcher pill bar lives in the top nav now,
-        // not in the main panel). Mobile extends to three tracks
-        // (mobile header / hidden title / list) so the mobile project
-        // header gets its own row without colliding with the title or
-        // list. The hidden mainTitle still reserves a track for source-
-        // order auto-placement to walk; #mainList is pinned to the
-        // final 1fr track explicitly so it doesn't shift into the wrong
-        // row.
+    it('#mainBar grid uses a two-track layout at the mobile breakpoint', () => {
+        // Desktop's grid is a single 1fr track (just the list — the
+        // view switcher pill bar lives in the top nav). Mobile extends
+        // to two tracks (mobile header / list) so the mobile project
+        // header gets its own row above the list. #mainList is pinned
+        // to the final 1fr track explicitly so source-order placement
+        // can't shift it into the wrong row.
         const rule = extractMobileRule('#mainBar');
-        expect(rule).toMatch(/grid-template-rows:\s*auto\s+auto\s+1fr/);
+        expect(rule).toMatch(/grid-template-rows:\s*auto\s+1fr/);
     });
 
-    it('#mainTitle is hidden at the mobile breakpoint so its row collapses', () => {
-        // Hiding the title row eliminates the dead band between
-        // `PROJECT N OF M` and the todo list. The desktop chrome
-        // (breadcrumb + bulk desc toggle) lives inside #mainTitle and
-        // vanishes with it; the drawer's "Expand all descriptions"
-        // toggle invokes bulkDescToggleBtn.click() directly, which
-        // continues to work on a display:none button.
-        const rule = extractMobileRule('#mainTitle');
+    it('#bulkDescActions is hidden at the mobile breakpoint', () => {
+        // The overlay button is desktop-only chrome; the drawer's
+        // "Expand all descriptions" toggle invokes bulkDescToggleBtn.click()
+        // directly, which continues to work on a display:none button.
+        const rule = extractMobileRule('#bulkDescActions');
         expect(rule).toMatch(/display:\s*none/);
     });
 
@@ -102,14 +95,14 @@ describe('STACK mobile layout collapse', () => {
         // sitting later in the file than the desktop rules so they win
         // the cascade at equal specificity (1 ID each).
         const desktopMainBar  = css.indexOf('#mainBar {');
-        const desktopMainTitle = css.indexOf('#mainTitle {');
+        const desktopBulkDesc = css.indexOf('#bulkDescActions {');
         const desktopFootCounts = css.indexOf('#footCounts {');
         const mobileBlock = css.indexOf('@media (max-width: 700px)');
         expect(desktopMainBar).toBeGreaterThan(-1);
-        expect(desktopMainTitle).toBeGreaterThan(-1);
+        expect(desktopBulkDesc).toBeGreaterThan(-1);
         expect(desktopFootCounts).toBeGreaterThan(-1);
         expect(mobileBlock).toBeGreaterThan(desktopMainBar);
-        expect(mobileBlock).toBeGreaterThan(desktopMainTitle);
+        expect(mobileBlock).toBeGreaterThan(desktopBulkDesc);
         expect(mobileBlock).toBeGreaterThan(desktopFootCounts);
     });
 });
