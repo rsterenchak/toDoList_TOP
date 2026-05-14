@@ -2,10 +2,46 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Extend header arrow-key nav walk to include PROJECTS / TODAY / CALENDAR pills
-  - Description: The delegated `nav.addEventListener('keydown', ...)` handler in `main.js` currently walks ArrowLeft/ArrowRight across `[sidebarToggle, pomodoroToggle, musicToggle, settingsToggle]`, skipping the three view-switcher pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) that sit between the hamburger and the right-side icon cluster. Extend the `order` array to insert the three pills in their on-screen DOM sequence (PROJECTS, TODAY, CALENDAR) between `sidebarToggle` and `pomodoroToggle`, so ArrowRight from the hamburger steps into PROJECTS, walks through TODAY and CALENDAR, then lands on `pomodoroToggle` and continues through music and settings; ArrowLeft mirrors the walk in reverse. The pills are already native `<button>` elements inside `nav`, so the existing delegated handler catches their keydowns and the existing `.viewPill:focus-visible` outline provides the focus indicator — the only change needed is the order array (no new event listeners, no new styling). Update `headerFooterArrowKeyNav.test.js` so the "walks all four header buttons" assertion becomes "walks all seven header controls" and pin the new sequence with a regex covering `sidebarToggle → viewPillProjects → viewPillToday → viewPillCalendar → pomodoroToggle → musicToggle → settingsToggle`.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/headerFooterArrowKeyNav.test.js`
-  - Completed: 2026-05-14
+- [ ] **[MEDIUM]** Redesign mobile UI with Dense layout, bottom tab bar, and Today/Calendar views
+  - Description: Replace the current centered-title mobile layout with a compact "Dense" header — hamburger + tappable project name dropdown (▾) + overflow dots in a single row, followed by inline `5 OPEN` / `39 DONE` count pills. Add a persistent bottom tab bar with three destinations: Projects (current paradigm), Today (all tasks due today across projects), and Calendar (month-grid view of tasks by date). Integrate the new tab bar with the existing `#bottomSheet` utility surface so the Pomodoro/music sheet still works — the PEEK strip floats above the tab bar, the EXPANDED sheet covers the tab bar in focus mode, and the IDLE nub stays as a fallback handle when no utility is active. Also fix the top safe-area cut-off where the iOS status bar overlaps the project header.
+  - Behavior:
+    1. Mobile header (`≤700px`) collapses to a single ~40px row: hamburger left, purple project name with `▾` chevron (opens the existing sidebar / project picker), overflow dots right. The `PROJECT 1 OF 3` label and large centered title with side `<` `>` arrows are removed — the dropdown replaces the carousel pattern.
+    2. Beneath the header, render `5 OPEN` and `39 DONE` as small inline pills — open uses `rgba(108,93,245,.15)` fill with `#a799ff` text, done uses a neutral surface fill with muted text.
+    3. Bottom tab bar (`#mobileTabBar`) paints at `≤700px` with three tabs: Projects (`ti-list`), Today (`ti-target`), Calendar (`ti-calendar`). Active tab gets a 2px purple top indicator plus bold purple label/icon; inactive tabs are muted. Labels uppercase, 9–10px, 0.3px letter-spacing. Total bar height ~56px including safe-area-inset-bottom.
+    4. Today view shows every open todo across all projects whose `due` equals today (local time, not UTC midnight drift), sorted by project then position. Each row uses the same checkbox/title/date affordances as Projects, plus a small project-name chip showing which project the row belongs to. Empty state: a short text message ("Nothing due today") with the existing ghost mascot.
+    5. Calendar view shows a month grid (CSS grid, no date library). Each day cell shows the date number plus a small purple count dot if any open todos fall on that day. Tapping a day filters the list rendered below the grid to that day's todos. Month navigation via left/right chevrons in the calendar header.
+    6. Sheet coexistence: at `≤700px`, the existing `#bottomSheetNub` (IDLE) and `#bottomSheetPeek` (PEEK) reposition so their `bottom` is `var(--mobile-tab-h, 56px)` instead of `0` — they sit directly above the tab bar. The IDLE nub is preserved as a fallback handle when no utility is active. When `data-state="EXPANDED"`, the sheet's `bottom` stays at `0` so it covers the tab bar entirely (focus mode); on dismiss (drag past 30%, Escape, backdrop tap), both sheet and tab bar return.
+    7. The bottom-edge swipe-up zone (`.sheetSwipeZone`) lifts its 16px hit area to sit above the tab bar — otherwise tabs intercept every swipe.
+    8. Safe-area fix: the app root container gets `padding-top: env(safe-area-inset-top, 0px)` and `padding-bottom: env(safe-area-inset-bottom, 0px)`. Add `viewport-fit=cover` to the `<meta name="viewport">` in `template.html` if not already present.
+  - Acceptance criteria:
+    - Mobile (`≤700px`) shows the Dense header, count pills, and bottom tab bar; the previous centered-title + arrows layout no longer renders at this breakpoint.
+    - Tapping Projects / Today / Calendar swaps the main content area without a full page reload; the active tab indicator updates.
+    - Today view only shows open todos whose `due` equals today in the local timezone; completed items are excluded unless the existing "Show completed" sidebar toggle is on.
+    - Calendar count dots match actual todo counts per day; tapping a day filters the list; navigating months keeps the selected day if it exists in the new month, otherwise selects the 1st.
+    - With Pomodoro or music active, the PEEK strip is visible directly above the tab bar showing the timer + station readout. Tap on PEEK still expands the sheet.
+    - With nothing active, the IDLE nub renders just above the tab bar and can still be tapped or dragged to bring up the sheet.
+    - EXPANDED sheet visually covers the tab bar (no tabs peeking through). On dismiss, the tab bar reappears in the same position.
+    - On notched iPhones (or any device reporting non-zero `env(safe-area-inset-top)`), the project header sits below the status bar and the tab bar sits above the home indicator; no content is cut off at either edge.
+    - Desktop (`>700px`) layout is unchanged — `#mobileTabBar` does not paint, the existing header layout is preserved.
+    - All `tests/stackBottomSheet.test.js` assertions that pinned `bottom: 0` for PEEK/IDLE positions are updated to the new `bottom: var(--mobile-tab-h)` math in the same commit; EXPANDED bottom assertion stays at `0`.
+  - Implementation notes:
+    - `main.js` is over 25k tokens — navigate with grep + offset/limit. Hot spots: the `#bottomSheet` builder + state machine, the project-switcher chevron next to the title, the mobile drawer (`main1.classList.contains('sidebar-open')`), the empty-state branches, and `refreshSheetVisibility`.
+    - Today view is a pure read across `listLogic` — add a `getAllTodosDueOn(dateISO)` helper to `listLogic.js` rather than reaching into project state from UI. Pair with `tests/listLogic.test.js` cases covering: midnight boundary, empty result, single-project result, mixed-project result, and that completed items are excluded.
+    - Calendar view renders with CSS grid and `Date` math — no new dependency.
+    - Tab bar must hide when the mobile drawer is open and when `#emptyState.emptyStateNoProjects` is active, mirroring `refreshSheetVisibility`. Add a sibling `refreshTabBarVisibility` and hook it into the same drawer open/close events.
+    - Define `--mobile-tab-h: 56px` as a CSS variable so the PEEK strip's `bottom`, the swipe zone's `bottom`, and the tab bar's `height` all derive from one source.
+    - The existing `attachDragGesture` plumbing is untouched — only the resting positions move.
+    - No new dependencies (per `CLAUDE.md`) — vanilla JS, CSS, factory-function/module patterns.
+    - Any new inputs (e.g., on the Calendar view) must use `font-size: 16px+` to avoid iOS Safari focus-zoom.
+    - Keep the dynamic viewport units (`100dvh`) already in use; don't regress to `100vh`.
+  - Out of scope:
+    - Rendering recurring tasks in Today or Calendar views — the rolling-todo data model lands in a separate entry.
+    - Drag-to-reschedule on the Calendar view; for now, rescheduling still happens through the existing due-date popover on each row.
+    - Week view, agenda view, or any non-month Calendar layouts.
+    - Search as a fourth tab.
+    - Per-project filtering inside the Today view (Today is global by design).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/src/template.html`, `toDoList_main/tests/listLogic.test.js`, `toDoList_main/tests/stackBottomSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
