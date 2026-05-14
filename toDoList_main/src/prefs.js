@@ -82,17 +82,19 @@ export function setSidebarRailOn(on) {
 // The main panel hosts three top-level views: the Today dashboard, the
 // project view, and the Calendar month grid. The pill bar in the top
 // nav switches between them; this pref restores the active view across
-// reloads. Default is 'today' so first-time users land on the dashboard;
-// any stored value other than 'projects' or 'calendar' also falls back
-// to 'today' so a stale or hand-edited pref can't desync the renderer.
+// reloads. Default is 'projects' so first-time users (or anyone whose
+// storage was cleared) land on the project list; any stored value
+// other than the three known tokens also falls back to 'projects' so
+// a stale or hand-edited pref can't desync the renderer.
 export function getActiveView() {
     try {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';
         if (v === 'calendar') return 'calendar';
-        return 'today';
+        if (v === 'today') return 'today';
+        return 'projects';
     } catch (e) {
-        return 'today';
+        return 'projects';
     }
 }
 

@@ -36,15 +36,17 @@ describe('Today dashboard view + view switcher', () => {
             expect(prefs).toMatch(/export\s+function\s+setActiveView\s*\(/);
         });
 
-        it("getActiveView defaults to 'today' when nothing is stored", () => {
+        it("getActiveView defaults to 'projects' when nothing is stored", () => {
             const fnIdx = prefs.indexOf('function getActiveView');
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
-            // 'projects' and 'calendar' are honored as non-default values;
-            // anything else (including null / missing) falls back to 'today'.
+            // All three view tokens are honored when persisted — 'today',
+            // 'projects', and 'calendar'. When the key is absent (first
+            // load, cleared storage) the fallback is 'projects'.
             expect(body).toMatch(/===\s*['"]projects['"]/);
             expect(body).toMatch(/===\s*['"]calendar['"]/);
-            expect(body).toMatch(/return\s*['"]today['"]/);
+            expect(body).toMatch(/===\s*['"]today['"]/);
+            expect(body).toMatch(/return\s*['"]projects['"]/);
         });
 
         it('setActiveView writes only the three known view tokens', () => {
