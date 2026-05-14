@@ -14,7 +14,9 @@ function read(relative) {
 // Tab order is unchanged — these arrow handlers are additive so keyboard
 // users can flow between regions without reaching for the mouse:
 //   • ArrowUp from the top project row jumps to sidebarToggle.
-//   • ArrowLeft / ArrowRight cycle across the four header buttons.
+//   • ArrowLeft / ArrowRight cycle across the seven header controls
+//     (hamburger, PROJECTS / TODAY / CALENDAR pills, pomodoro, music,
+//     settings).
 //   • ArrowDown from projButton lands on the footer version button.
 describe('header / footer arrow-key navigation', () => {
     const main = read('main.js');
@@ -104,12 +106,14 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/['"]ArrowRight['"]/);
     });
 
-    it('nav handler walks all four header buttons in on-screen order', () => {
+    it('nav handler walks all seven header controls in on-screen order', () => {
         const body = extractNavKeydown();
-        // Order must mirror the visual layout: hamburger, pomodoro, music,
+        // Order must mirror the visual layout: hamburger, the three
+        // view-switcher pills (PROJECTS, TODAY, CALENDAR — that's the
+        // sequence #viewSwitcher appendChilds them in), pomodoro, music,
         // settings. A different order would make ArrowRight land on the
         // wrong neighbor relative to where focus appears on screen.
-        const seq = body.match(/sidebarToggle[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
+        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillToday[\s\S]*?viewPillCalendar[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
         expect(seq).toBeTruthy();
     });
 
@@ -134,12 +138,12 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('nav handler bails when the keystroke originates outside the four header buttons', () => {
+    it('nav handler bails when the keystroke originates outside the seven header controls', () => {
         const body = extractNavKeydown();
         // Without an in-order check, an Arrow press while focus was on an
         // unrelated nav child (e.g., a transient input) would still pick a
         // neighbor and yank focus. A simple indexOf gate keeps the handler
-        // scoped to the named four buttons.
+        // scoped to the named controls.
         expect(body).toMatch(/indexOf/);
         expect(body).toMatch(/===\s*-1|=== -1/);
     });

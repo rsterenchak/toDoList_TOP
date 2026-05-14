@@ -11,13 +11,7 @@ export const changelog = [
             'Removed the redundant project-name bar above the todo list; the EXPAND ALL toggle now sits at the right end of the add-task row.',
             'Top-bar view-switch pills reordered to show PROJECTS first, followed by TODAY and CALENDAR.',
             'Default landing view for first-time or cleared-storage visits switched from TODAY to PROJECTS.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-13',
-        fixed: [
-            'Today dashboard rows now share the Projects-view card style with a leading purple-outline project chip and a calendar-icon due pill that recolors amber for items due today or within three days.',
+            'Header arrow-key navigation now walks through the PROJECTS, TODAY, and CALENDAR pills between the hamburger and the right-side icons.',
         ],
     },
 ];
