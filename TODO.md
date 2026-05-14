@@ -2,52 +2,11 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Add incomplete-count badges to sidebar project rows — Completed: 2026-05-14
-  - Description: Add a small numeric badge to each sidebar project row showing the project's incomplete todo count. This entry is purely additive — `mainTitle`, EXPAND ALL, and all other existing PROJECTS-view chrome remain untouched. A follow-up entry will remove `mainTitle` and relocate EXPAND ALL once badges are verified working.
-    - Behavior:
-      1. Each sidebar project row gains a right-aligned count badge: `[project name (truncates) … [badge]]`. Selected project's existing purple left-border accent and bold weight remain intact.
-      2. Badge content is the incomplete todo count as an integer; renders `0` for empty / all-completed projects (no hiding) so layout stays consistent.
-      3. Badge styling: small pill, `color: #9D93EE`, `background: rgba(108, 93, 245, 0.18)`, `font-family: 'Courier New', monospace`, `font-size: 11px`, padding `1px 7px`, `border-radius: 99px`. Right-aligned within the row.
-      4. Badge updates: every add / complete / uncomplete / delete on a todo, and every add / delete / rename of a project, re-renders the affected badge in the same pass as the rest of the UI. No stale counts.
-      5. Project name truncation is preserved — name shrinks to fit, badge stays fully visible.
+- [ ] **[LOW]** Reorder top-bar view pills: PROJECTS first
+  - Description: Reorder the top-bar view-switch pills so PROJECTS appears first, followed by TODAY and CALENDAR. Pill styling, click handlers, view-switch behavior, and `todoapp_active_view` persistence wiring are unchanged — this is a DOM-order change only.
     - Implementation notes:
-      - Add `getProjectIncompleteCount(project)` helper to `listLogic.js` rather than inlining the filter at the render site — centralizes the definition of "open" per the data-model-routing principle.
-      - All badge styling lives in `style.css`. No inline JS style assignments — inline styles in `main.js` override CSS and have been a recurring bug source.
-      - This entry is strictly additive: do not remove, relocate, or restyle `mainTitle`, EXPAND ALL, the footer count, or anything else outside the sidebar. Any tempting "while I'm here" cleanups belong in the follow-up entry.
-      - `main.js` is over 25k tokens; grep for the sidebar project list render block and the add / complete / uncomplete / delete todo handlers before reading. Use offset/limit pagination.
-    - Acceptance criteria:
-      - Page loads without console errors after the change.
-      - Unit tests in `tests/listLogic.test.js` for `getProjectIncompleteCount()`: empty project (returns 0), all completed (returns 0), all incomplete (returns full count), mixed completion states.
-      - Adding, deleting, completing, and uncompleting a todo each update the parent project's badge in the same render pass.
-      - Renaming a project preserves its badge.
-      - Selected project's purple-left-border accent and bold weight remain intact on a row that now has a badge.
-      - Long project names truncate with ellipsis; badge remains fully visible.
-      - All existing PROJECTS-view functionality (mainTitle, EXPAND ALL, add task, due-date popover, rename, etc.) is unchanged.
-    - Out of scope: any change to `mainTitle`, EXPAND ALL, footer counts, or main-panel layout; color-coding; click-on-badge interactions; animation; surfacing badges outside the sidebar.
-  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
-
-- [x] **[MEDIUM]** Remove mainTitle from PROJECTS view and relocate EXPAND ALL to add-task row — Completed: 2026-05-14
-  - Description: With sidebar count badges in place from the previous entry, `mainTitle` on the PROJECTS view is now strictly redundant — it shows the selected project's name, which is already highlighted in the sidebar. Remove it. The main panel's first visible element on PROJECTS becomes the existing add-task input row. The EXPAND ALL control (currently inside `mainTitle`) relocates to the right end of the add-task row.
-    - Behavior:
-      1. The `mainTitle` div and all DOM nodes inside it are removed from the PROJECTS view. The main panel's first visible element on PROJECTS is now the add-task input row.
-      2. EXPAND ALL moves to the right end of the add-task row. Existing dropdown content (Expand all / Collapse all) and behavior are unchanged; only its position changes.
-    - Implementation notes:
-      - **Before removing any code**, run a project-wide search for the identifier `mainTitle` and enumerate every site that references it: text-content updates, querySelector / getElementById calls, classList operations, parent-element traversal, event listeners, CSS selectors. Every site needs to be updated or removed in the same diff. A single surviving null reference will throw on bootstrap and break the page — this exact failure happened the last time this work was attempted.
-      - Specifically verify (non-exhaustive): the project-selection handler that updates the title text on click, the rename-project commit path, the footer count rendering (confirm it does NOT depend on mainTitle and continues to update independently), the EXPAND ALL handler and its dropdown anchoring logic, the initial render in `restoreFromStorage()`, and any `#mainTitle` CSS selectors.
-      - EXPAND ALL relocation: the dropdown's anchor element changes. Verify the positioning logic (likely absolute / fixed) still aligns correctly against the new anchor. If the dropdown's position is computed from anchor `getBoundingClientRect()`, no math change is needed — just re-aim at the new element.
-      - All styling changes live in `style.css`. No inline JS style assignments.
-      - `main.js` is over 25k tokens; grep for `mainTitle`, `EXPAND ALL`, `expandAll`, the add-task row render block, and the project-selection handler before reading. Use offset/limit pagination.
-    - Acceptance criteria:
-      - Page loads without console errors after the change. This is the explicit smoke test — verify before doing anything else.
-      - Switching between projects works smoothly — no flicker, no errors, no stale state.
-      - Renaming a project (double-click → edit → Enter or blur) still commits and re-renders correctly.
-      - The footer's `0 OPEN / 0 DONE` count still updates on add / complete / uncomplete / delete.
-      - EXPAND ALL's dropdown opens, positions correctly relative to its new anchor on the add-task row, and both Expand all / Collapse all items still toggle the description-expand state correctly.
-      - The sidebar count badges from the previous entry continue working.
-      - No CSS rules in `style.css` reference `#mainTitle` after the change (orphan selectors removed).
-      - All existing tests pass.
-    - Out of scope: any change to the sidebar count badges; changes to the footer counts or its rendering; restyling the add-task row beyond placing EXPAND ALL on its right side; restyling EXPAND ALL itself.
+      - Update the pill creation order in `main.js` (or the pill array if pills are defined as data). Also check `style.css` for any selectors that target pills by `:nth-child` or sibling position — those need updating or replacing with class-based selectors.
+      - The default landing view (currently TODAY via the `todoapp_active_view` localStorage default) is NOT changed by this entry — only the visual order. If you also want the default landing view to become PROJECTS, that's a separate one-line change.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
