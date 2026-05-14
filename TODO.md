@@ -2,13 +2,13 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Change default landing view from TODAY to PROJECTS
+- [x] **[LOW]** Change default landing view from TODAY to PROJECTS
   - Description: Update the default value used when no `todoapp_active_view` key exists in localStorage (i.e. first load on a new device, or after clearing storage). Existing users with a persisted view preference are unaffected — they continue landing on whichever view they last had active.
     - Implementation notes:
       - Single change: in `restoreFromStorage()` (or wherever the active-view key is read on bootstrap), change the fallback from `"today"` to `"projects"`. Search for the literal string `"today"` near the active-view read site to locate it.
       - Confirm the fallback applies only when the localStorage read returns `null` / undefined — not when it returns a valid persisted value. Existing users should not get bounced to PROJECTS if they last had TODAY or CALENDAR selected.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-14
 
 ## Features
 
