@@ -2,13 +2,13 @@
 
 ## Bugs
 
-- [x] **[LOW]** Reorder top-bar view pills: PROJECTS first
-  - Description: Reorder the top-bar view-switch pills so PROJECTS appears first, followed by TODAY and CALENDAR. Pill styling, click handlers, view-switch behavior, and `todoapp_active_view` persistence wiring are unchanged — this is a DOM-order change only.
+- [ ] **[LOW]** Change default landing view from TODAY to PROJECTS
+  - Description: Update the default value used when no `todoapp_active_view` key exists in localStorage (i.e. first load on a new device, or after clearing storage). Existing users with a persisted view preference are unaffected — they continue landing on whichever view they last had active.
     - Implementation notes:
-      - Update the pill creation order in `main.js` (or the pill array if pills are defined as data). Also check `style.css` for any selectors that target pills by `:nth-child` or sibling position — those need updating or replacing with class-based selectors.
-      - The default landing view (currently TODAY via the `todoapp_active_view` localStorage default) is NOT changed by this entry — only the visual order. If you also want the default landing view to become PROJECTS, that's a separate one-line change.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-14
+      - Single change: in `restoreFromStorage()` (or wherever the active-view key is read on bootstrap), change the fallback from `"today"` to `"projects"`. Search for the literal string `"today"` near the active-view read site to locate it.
+      - Confirm the fallback applies only when the localStorage read returns `null` / undefined — not when it returns a valid persisted value. Existing users should not get bounced to PROJECTS if they last had TODAY or CALENDAR selected.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
