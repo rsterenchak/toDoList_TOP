@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-14',
+        fixed: [
+            'Sidebar project rows now show a small pill with each project\'s incomplete todo count.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-13',
         added: [
-            'Today dashboard now lists overdue, today, and upcoming todos aggregated across every project, with a count summary and a checkbox plus project pill on each row.',
             'New Calendar view alongside Today and Projects: a month grid with density dots on dates that have todos, plus a side panel listing the selected day\'s tasks.',
         ],
         changed: [

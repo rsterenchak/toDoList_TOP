@@ -493,7 +493,12 @@ body {
 #projChild {
   display: grid;
   align-content: center;
-  grid-template-columns: 1fr 12px;
+  /* Middle `auto` column hosts .projBadge — the incomplete-count pill.
+     Title input lives in the leading `minmax(0, 1fr)` so it can shrink
+     and ellipsis-truncate without pushing the badge off the row, and
+     the trailing 12px spacer keeps a consistent gutter on the right. */
+  grid-template-columns: minmax(0, 1fr) auto 12px;
+  column-gap: 8px;
   cursor: pointer;
   background: transparent;
   min-height: 44px;
@@ -573,6 +578,27 @@ body {
 #projInput:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text-primary);
   -webkit-box-shadow: 0 0 0px 1000px var(--bg-surface) inset;
+}
+
+/* Per-project incomplete-count badge. Sits in the middle grid cell of
+   #projChild, right-aligned against the trailing 12px spacer. Stays
+   hidden via [data-empty="true"] while the row is uncommitted so a new
+   "+" project row doesn't flash a stray "0" while the user is still
+   typing the name. */
+.projBadge {
+  justify-self: end;
+  align-self: center;
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.18);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 1px 7px;
+  border-radius: 99px;
+  pointer-events: none;
+}
+.projBadge[data-empty="true"] {
+  display: none;
 }
 
 /* PROJECT CONTEXT MENU */

@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add incomplete-count badges to sidebar project rows
+- [x] **[MEDIUM]** Add incomplete-count badges to sidebar project rows — Completed: 2026-05-14
   - Description: Add a small numeric badge to each sidebar project row showing the project's incomplete todo count. This entry is purely additive — `mainTitle`, EXPAND ALL, and all other existing PROJECTS-view chrome remain untouched. A follow-up entry will remove `mainTitle` and relocate EXPAND ALL once badges are verified working.
     - Behavior:
       1. Each sidebar project row gains a right-aligned count badge: `[project name (truncates) … [badge]]`. Selected project's existing purple left-border accent and bold weight remain intact.

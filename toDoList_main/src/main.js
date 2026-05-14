@@ -3630,6 +3630,7 @@ function component() {
         const projChild = document.createElement("div");
 
         const titleInput = document.createElement("input");
+        const badge = document.createElement("div");
         const spacer = document.createElement("div");
 
 
@@ -3650,10 +3651,17 @@ function component() {
         titleInput.style.pointerEvents = "auto";
         titleInput.style.cursor = "text";
 
+        // Right-aligned incomplete-count pill. Stays empty (hidden via CSS)
+        // until the row commits and updateAllProjectBadges runs against the
+        // committed name; this keeps the in-progress new-project row from
+        // showing a stray "0" while the user is still typing the name.
+        badge.className = "projBadge";
+        badge.setAttribute('aria-hidden', 'true');
 
         // Create element with textbox for input
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
+        projChild.appendChild(badge);
         projChild.appendChild(spacer);
 
         // spacer.style.border = "1px solid red";
@@ -4037,7 +4045,38 @@ function component() {
 
 
 
+    // Walk every committed sidebar project row and stamp its incomplete
+    // count into the row's `.projBadge` child. Driven off the same
+    // MutationObserver signal that powers updateFooterCounts so badges
+    // refresh on every add / complete / uncomplete / delete of a todo
+    // and every add / rename / delete of a project — keeping all sidebar
+    // counts in lockstep without per-callsite wiring.
+    function updateAllProjectBadges() {
+        if (!sideMain) return;
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const input = row.querySelector('#projInput');
+            const badge = row.querySelector('.projBadge');
+            if (!badge) continue;
+            const name = input ? input.value.trim() : '';
+            // Uncommitted rows (new-project input still empty, or input
+            // mid-rename with an empty value) have no project to count
+            // against — clear the badge so the row stays clean instead
+            // of displaying a stray "0" during the input flow.
+            if (!name || listLogic.listProjectsArray().indexOf(name) === -1) {
+                badge.textContent = '';
+                badge.setAttribute('data-empty', 'true');
+                continue;
+            }
+            const count = listLogic.getProjectIncompleteCount(name);
+            badge.textContent = String(count);
+            badge.removeAttribute('data-empty');
+        }
+    }
+
     function updateFooterCounts() {
+        updateAllProjectBadges();
         const selected = sideMain.querySelector('.selectedProject');
         let open = 0, done = 0;
         let name = '';
@@ -4350,6 +4389,7 @@ function restoreFromStorage() {
 
         const projChild   = document.createElement("div");
         const titleInput  = document.createElement("input");
+        const badge       = document.createElement("div");
         const spacer      = document.createElement("div");
 
         projChild.classList.add("unselectedProject");
@@ -4369,10 +4409,14 @@ function restoreFromStorage() {
         titleInput.style.pointerEvents = "none";
         titleInput.style.cursor = "default";
 
+        badge.className = "projBadge";
+        badge.setAttribute('aria-hidden', 'true');
+
         spacer.style.width  = "12px";
 
         sideMaDiv.appendChild(projChild);
         projChild.appendChild(titleInput);
+        projChild.appendChild(badge);
         projChild.appendChild(spacer);
 
         // track current name for rename

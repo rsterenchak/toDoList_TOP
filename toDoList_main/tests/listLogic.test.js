@@ -389,6 +389,81 @@ describe('listLogic — per-project color', () => {
     });
 });
 
+
+// ── PER-PROJECT INCOMPLETE COUNT ──────────────────────────────────
+// Backs the sidebar project-row badge: counts non-blank, non-completed
+// items per project. Blank placeholder must not be counted (it isn't
+// user-facing work) and completed items must not be counted (the badge
+// is "open work remaining", not "total ever logged").
+
+describe('listLogic — getProjectIncompleteCount', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Errands');
+    });
+
+    it('returns 0 for a project with only the blank placeholder', () => {
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(0);
+    });
+
+    it('returns 0 when every real todo is completed', () => {
+        listLogic.addToDo('Errands', 'Milk');
+        listLogic.addToDo('Errands', 'Bread');
+        const items = listLogic.listItems('Errands');
+        items.find(i => i.tit === 'Milk').completed = true;
+        items.find(i => i.tit === 'Bread').completed = true;
+
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(0);
+    });
+
+    it('returns the full count when every real todo is incomplete', () => {
+        listLogic.addToDo('Errands', 'Milk');
+        listLogic.addToDo('Errands', 'Bread');
+        listLogic.addToDo('Errands', 'Eggs');
+
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(3);
+    });
+
+    it('counts only incomplete entries in a mixed-state project', () => {
+        listLogic.addToDo('Errands', 'A');
+        listLogic.addToDo('Errands', 'B');
+        listLogic.addToDo('Errands', 'C');
+        listLogic.addToDo('Errands', 'D');
+        const items = listLogic.listItems('Errands');
+        items.find(i => i.tit === 'A').completed = true;
+        items.find(i => i.tit === 'C').completed = true;
+
+        // B and D remain open
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(2);
+    });
+
+    it('returns 0 for an unknown project name', () => {
+        expect(listLogic.getProjectIncompleteCount('DoesNotExist')).toBe(0);
+    });
+
+    it('decrements after an incomplete todo is removed', () => {
+        listLogic.addToDo('Errands', 'Milk');
+        listLogic.addToDo('Errands', 'Bread');
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(2);
+
+        const items = listLogic.listItems('Errands');
+        const milk = items.find(i => i.tit === 'Milk');
+        listLogic.removeToDoByItem('Errands', milk);
+
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(1);
+    });
+
+    it('survives a project rename — count moves with the new key', () => {
+        listLogic.addToDo('Errands', 'Milk');
+        listLogic.addToDo('Errands', 'Bread');
+        listLogic.editProject('Errands', 'Shopping');
+
+        expect(listLogic.getProjectIncompleteCount('Shopping')).toBe(2);
+        expect(listLogic.getProjectIncompleteCount('Errands')).toBe(0);
+    });
+});
+
+
 // ── DATA INTEGRITY ─────────────────────────────────────────────────
 // These tests lock down invariants around operations that can silently
 // corrupt state — adding over an existing project, renaming onto an
