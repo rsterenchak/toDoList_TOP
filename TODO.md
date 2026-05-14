@@ -2,28 +2,53 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Remove mainTitle from PROJECTS view and add incomplete-count badges to sidebar projects
-  - Description: The PROJECTS view's `mainTitle` strip duplicates information already in the sidebar (the selected project's name) and reads as cramped against the sidebar's right edge. Remove `mainTitle` entirely. Move the open-item count to a small badge on each sidebar project row so it's always visible — not just for the selected project. The PROJECTS main panel now starts directly with the existing add-task input row, matching how TODAY and CALENDAR start with their primary content. The EXPAND ALL control (which lived in the `mainTitle` row) relocates to the right side of the add-task row.
+- [ ] **[MEDIUM]** Add incomplete-count badges to sidebar project rows
+  - Description: Add a small numeric badge to each sidebar project row showing the project's incomplete todo count. This entry is purely additive — `mainTitle`, EXPAND ALL, and all other existing PROJECTS-view chrome remain untouched. A follow-up entry will remove `mainTitle` and relocate EXPAND ALL once badges are verified working.
     - Behavior:
-      1. Remove the `mainTitle` div rendering from the PROJECTS view in `main.js`. The main panel's first visible element on PROJECTS is now the add-task input row.
-      2. Update sidebar project rendering: each row becomes `[project name (truncates) … [count badge]]` in a horizontal flex. The selected project keeps its existing purple left-border accent and bold weight.
-      3. Badge content: incomplete todo count for the project as an integer. Shows `0` for empty / all-completed projects so layout stays consistent across rows (no hiding).
-      4. Badge styling: small pill, `color: #9D93EE`, `background: rgba(108, 93, 245, 0.18)`, `font-family: 'Courier New', monospace`, `font-size: 11px`, padding `1px 7px`, `border-radius: 99px`. Right-aligned within the row.
-      5. Badge updates: every add / complete / uncomplete / delete on a todo must re-render the affected project's sidebar badge in the same pass that re-renders the main panel. Adding or deleting a project also updates correctly. No stale counts after any operation.
-      6. Project name truncation: existing ellipsis truncation continues to work — the name flex item shrinks to fit; the badge is fixed-width and always fully visible on the right.
-      7. Relocate EXPAND ALL: right-aligned on the add-task row. Existing dropdown behavior (Expand all / Collapse all) is unchanged; only position changes.
+      1. Each sidebar project row gains a right-aligned count badge: `[project name (truncates) … [badge]]`. Selected project's existing purple left-border accent and bold weight remain intact.
+      2. Badge content is the incomplete todo count as an integer; renders `0` for empty / all-completed projects (no hiding) so layout stays consistent.
+      3. Badge styling: small pill, `color: #9D93EE`, `background: rgba(108, 93, 245, 0.18)`, `font-family: 'Courier New', monospace`, `font-size: 11px`, padding `1px 7px`, `border-radius: 99px`. Right-aligned within the row.
+      4. Badge updates: every add / complete / uncomplete / delete on a todo, and every add / delete / rename of a project, re-renders the affected badge in the same pass as the rest of the UI. No stale counts.
+      5. Project name truncation is preserved — name shrinks to fit, badge stays fully visible.
     - Implementation notes:
-      - Add a `getProjectIncompleteCount(project)` helper in `listLogic.js` rather than inlining the filter at the sidebar render site — this centralizes the definition of "open" in one place per the data-model-routing principle and is trivially testable.
-      - All badge and layout styling lives in `style.css`. No inline JS style assignments on the badge — inline styles in `main.js` override CSS and have been a recurring source of bugs in this codebase.
-      - Badges are only visible when the sidebar is visible. With the auto-collapse rule on TODAY and CALENDAR views, badges only appear on PROJECTS, which is the intended scope — open counts elsewhere (footer total, Today summary line) are separate and unaffected.
-      - `main.js` is over 25k tokens; grep for `mainTitle`, the sidebar project list render block, the EXPAND ALL handler, and the add/complete/delete todo handlers before reading. Use offset/limit pagination.
+      - Add `getProjectIncompleteCount(project)` helper to `listLogic.js` rather than inlining the filter at the render site — centralizes the definition of "open" per the data-model-routing principle.
+      - All badge styling lives in `style.css`. No inline JS style assignments — inline styles in `main.js` override CSS and have been a recurring bug source.
+      - This entry is strictly additive: do not remove, relocate, or restyle `mainTitle`, EXPAND ALL, the footer count, or anything else outside the sidebar. Any tempting "while I'm here" cleanups belong in the follow-up entry.
+      - `main.js` is over 25k tokens; grep for the sidebar project list render block and the add / complete / uncomplete / delete todo handlers before reading. Use offset/limit pagination.
     - Acceptance criteria:
-      - Unit tests in `tests/listLogic.test.js` for `getProjectIncompleteCount()` covering: empty project (returns 0), all completed (returns 0), all incomplete (returns full count), mixed completion states.
-      - Adding, deleting, completing, and uncompleting a todo each update the parent project's badge in the same render pass — no stale counts.
-      - Long project names truncate with ellipsis and the count badge remains fully visible on the right.
-      - Selected project's purple-left-border accent and bold weight remain intact on the row that now also has a badge.
-    - Out of scope: color-coding badges by count or urgency (all stay purple); showing a completed-count alongside incomplete; click-on-badge interactions; animation when count changes; surfacing badges anywhere outside the sidebar.
+      - Page loads without console errors after the change.
+      - Unit tests in `tests/listLogic.test.js` for `getProjectIncompleteCount()`: empty project (returns 0), all completed (returns 0), all incomplete (returns full count), mixed completion states.
+      - Adding, deleting, completing, and uncompleting a todo each update the parent project's badge in the same render pass.
+      - Renaming a project preserves its badge.
+      - Selected project's purple-left-border accent and bold weight remain intact on a row that now has a badge.
+      - Long project names truncate with ellipsis; badge remains fully visible.
+      - All existing PROJECTS-view functionality (mainTitle, EXPAND ALL, add task, due-date popover, rename, etc.) is unchanged.
+    - Out of scope: any change to `mainTitle`, EXPAND ALL, footer counts, or main-panel layout; color-coding; click-on-badge interactions; animation; surfacing badges outside the sidebar.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
+- [ ] **[MEDIUM]** Remove mainTitle from PROJECTS view and relocate EXPAND ALL to add-task row
+  - Description: With sidebar count badges in place from the previous entry, `mainTitle` on the PROJECTS view is now strictly redundant — it shows the selected project's name, which is already highlighted in the sidebar. Remove it. The main panel's first visible element on PROJECTS becomes the existing add-task input row. The EXPAND ALL control (currently inside `mainTitle`) relocates to the right end of the add-task row.
+    - Behavior:
+      1. The `mainTitle` div and all DOM nodes inside it are removed from the PROJECTS view. The main panel's first visible element on PROJECTS is now the add-task input row.
+      2. EXPAND ALL moves to the right end of the add-task row. Existing dropdown content (Expand all / Collapse all) and behavior are unchanged; only its position changes.
+    - Implementation notes:
+      - **Before removing any code**, run a project-wide search for the identifier `mainTitle` and enumerate every site that references it: text-content updates, querySelector / getElementById calls, classList operations, parent-element traversal, event listeners, CSS selectors. Every site needs to be updated or removed in the same diff. A single surviving null reference will throw on bootstrap and break the page — this exact failure happened the last time this work was attempted.
+      - Specifically verify (non-exhaustive): the project-selection handler that updates the title text on click, the rename-project commit path, the footer count rendering (confirm it does NOT depend on mainTitle and continues to update independently), the EXPAND ALL handler and its dropdown anchoring logic, the initial render in `restoreFromStorage()`, and any `#mainTitle` CSS selectors.
+      - EXPAND ALL relocation: the dropdown's anchor element changes. Verify the positioning logic (likely absolute / fixed) still aligns correctly against the new anchor. If the dropdown's position is computed from anchor `getBoundingClientRect()`, no math change is needed — just re-aim at the new element.
+      - All styling changes live in `style.css`. No inline JS style assignments.
+      - `main.js` is over 25k tokens; grep for `mainTitle`, `EXPAND ALL`, `expandAll`, the add-task row render block, and the project-selection handler before reading. Use offset/limit pagination.
+    - Acceptance criteria:
+      - Page loads without console errors after the change. This is the explicit smoke test — verify before doing anything else.
+      - Switching between projects works smoothly — no flicker, no errors, no stale state.
+      - Renaming a project (double-click → edit → Enter or blur) still commits and re-renders correctly.
+      - The footer's `0 OPEN / 0 DONE` count still updates on add / complete / uncomplete / delete.
+      - EXPAND ALL's dropdown opens, positions correctly relative to its new anchor on the add-task row, and both Expand all / Collapse all items still toggle the description-expand state correctly.
+      - The sidebar count badges from the previous entry continue working.
+      - No CSS rules in `style.css` reference `#mainTitle` after the change (orphan selectors removed).
+      - All existing tests pass.
+    - Out of scope: any change to the sidebar count badges; changes to the footer counts or its rendering; restyling the add-task row beyond placing EXPAND ALL on its right side; restyling EXPAND ALL itself.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
