@@ -453,6 +453,25 @@ export const listLogic = (function () {
     }
 
 
+    // Count the project's currently-open todos: non-blank, non-completed
+    // items only. The blank placeholder pinned at index 0 is part of the
+    // data model (the "add a task" input) and is never user-visible work,
+    // so it's filtered alongside completed entries. Returns 0 for unknown
+    // project names and for projects whose items list is missing.
+    function getProjectIncompleteCount(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.items)) return 0;
+        let count = 0;
+        for (let i = 0; i < entry.items.length; i++) {
+            const item = entry.items[i];
+            if (!item || !item.tit) continue;
+            if (item.completed) continue;
+            count++;
+        }
+        return count;
+    }
+
+
     // Read the persisted per-project color key, or null when the project is
     // using the theme accent (or doesn't exist). Callers map the key to a
     // concrete color via the PROJECT_COLOR_HEX table in projectMenu.js.
@@ -769,6 +788,7 @@ export const listLogic = (function () {
         sortCompletedToBottom,
         getProjectColor,
         setProjectColor,
+        getProjectIncompleteCount,
         PROJECT_COLOR_KEYS,
         saveToStorage,
         replaceAllProjects,
