@@ -2809,6 +2809,17 @@ body.row-dragging * { cursor: grabbing !important; }
     z-index: 20;
   }
 
+  /* On mobile #navBar collapses to height:0 and the view-switch pills
+     would otherwise render at y=0 of the viewport, clipping into the
+     iOS status bar / Dynamic Island. Mirror the #sidebarToggle floor
+     so the pills sit in the same y-band as the hamburger, and reserve
+     56px on the right (44px hamburger + 12px right inset) so the last
+     pill never tucks under the absolutely-positioned hamburger. */
+  #viewSwitcher {
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px);
+    padding-right: 56px;
+  }
+
   #footBar {
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: max(16px, env(safe-area-inset-left));
