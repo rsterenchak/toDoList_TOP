@@ -2,10 +2,28 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Fix view-switch pills clipping into iOS status bar on mobile
-  - Description: On mobile (≤700px), the top-bar view-switch pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) clip into the iOS status bar / Dynamic Island — the top half of each pill is cut off by the device chrome. The hamburger (`#sidebarToggle`) sits correctly below the safe area because it's `position: absolute` with `top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)`, but `#viewSwitcher` is in-flow inside the collapsed (`height: 0`, `overflow: visible`) `#navBar` and has no mobile override, so the pills overflow at `y=0` of the viewport. Fix by adding a mobile rule for `#viewSwitcher` inside the existing `@media (max-width: 700px)` block that mirrors the `#sidebarToggle` floor pattern: `padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)`. Also add `padding-right: 56px` so the pills clear the absolutely-positioned hamburger (44px wide at `right: 12px`) now that they share the same y-band. Pin both pieces of the rule with a new assertion in `tests/mobileTopChromeInsetFloor.test.js` alongside the existing `#sidebarToggle` / `#mobileProjHeader` / `#emptyState.emptyStateNoProjects` ones.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTopChromeInsetFloor.test.js`
-  - Completed: 2026-05-15
+- [ ] **[MEDIUM]** Hide top view-switch pills on mobile and lift bottom sheet above the tab bar
+  - Description: The Dense mobile redesign left two layout bugs visible at ≤700px. First, the top-bar view-switch pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) render across the iOS status bar / Dynamic Island AND duplicate the navigation already provided by the bottom tab bar — two navigators for the same destinations. Second, the bottom sheet's IDLE nub and PEEK strip render below the tab bar instead of above it, so the sheet's top edge and "POMODORO" label peek out at the very bottom of the viewport with the tab bar slicing across the middle. Fix by hiding `#viewSwitcher` entirely on mobile (the bottom tab bar is the sole mobile navigator; the pills are desktop chrome) and by pinning the sheet's IDLE / PEEK `bottom` to `var(--mobile-tab-h, 56px)` so those states sit directly above the tab bar — EXPANDED keeps `bottom: 0` so the panel still covers the tab bar in focus mode per the agreed sheet-coexistence model.
+  - Behavior:
+    1. Inside the existing `@media (max-width: 700px)` block in `style.css`, add `#viewSwitcher { display: none }` so the top-bar pill cluster never paints on mobile. Desktop (≥701px) is unchanged.
+    2. `#bottomSheet[data-state="IDLE"]` and `#bottomSheet[data-state="PEEK"]` get `bottom: var(--mobile-tab-h, 56px)` on mobile so the nub / strip sits directly above the tab bar.
+    3. `#bottomSheet[data-state="EXPANDED"]` keeps `bottom: 0` so the panel still covers the tab bar entirely when the user opens Pomodoro / music — focus-mode behavior per the prior design decision.
+    4. The bottom-edge swipe-up gesture zone (`.sheetSwipeZone`) lifts its 16px hit area to `bottom: var(--mobile-tab-h, 56px)` so swiping up from above the tab bar still triggers the sheet without the tabs intercepting it.
+  - Acceptance criteria:
+    - On mobile, the top-bar pill cluster does not paint anywhere — no clipped pills under the status bar, no redundant top navigator.
+    - On desktop (≥701px), the pill cluster paints in its existing `#navBar` position with no regression.
+    - With Pomodoro or music active, the PEEK strip is visible directly above the tab bar (purple top edge + drag handle + timer/station row), not below or behind it.
+    - With nothing active, the IDLE nub renders just above the tab bar and is tappable / draggable.
+    - Tapping the PEEK strip (or dragging it up) expands the sheet; the EXPANDED panel covers the tab bar entirely. Dismissing returns IDLE/PEEK to the position above the tab bar and the tab bar reappears.
+    - Nothing renders below the tab bar except the `env(safe-area-inset-bottom)` reservation; the "POMODORO" label is never visible below the tab bar.
+  - Implementation notes:
+    - Pure CSS — no `main.js` changes expected since sheet states are toggled via `data-state` and positions are CSS-driven. Verify no inline `style.bottom = ...` write on the sheet in `main.js`; if there is one, that's where the override lives and it needs to read from `--mobile-tab-h` too.
+    - Confirm `--mobile-tab-h` is already defined as a CSS variable (the Dense redesign introduced it for `#mainList / #todayView / #calendarView` `padding-bottom`). If it isn't, declare it once on `#outerContainer` at the mobile breakpoint and reuse.
+    - **Supersedes the earlier "Fix view-switch pills clipping into iOS status bar on mobile" TODO entry** — that entry proposed adding `padding-top` to `#viewSwitcher` to clear the safe area, but hiding the pills on mobile makes that fix unnecessary. Drop that entry when this lands.
+    - `tests/stackBottomSheet.test.js` likely pins `bottom: 0` for IDLE/PEEK states; update those assertions to `bottom: var(--mobile-tab-h, 56px)` in the same commit so the suite stays green. EXPANDED's `bottom: 0` assertion stays.
+    - Add a new assertion in `tests/mobileNavBarCollapse.test.js` (alongside the existing `#navBar` / `#sidebarToggle` / `#mobileProjHeader` rules) pinning `#viewSwitcher { display: none }` inside the mobile media query so a future refactor can't silently un-hide the pills.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`, `toDoList_main/tests/mobileNavBarCollapse.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
