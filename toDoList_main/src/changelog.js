@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-15',
         fixed: [
             'Top-bar view-switch pills no longer clip into the iOS status bar / Dynamic Island on mobile.',
+            'Top-bar view-switch pills are now hidden on mobile, and the bottom sheet\'s idle nub and peek strip sit directly above the bottom tab bar instead of being intercepted by it.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-14',
         fixed: [
-            'Top-bar view-switch pills reordered to show PROJECTS first, followed by TODAY and CALENDAR.',
             'Default landing view for first-time or cleared-storage visits switched from TODAY to PROJECTS.',
             'Header arrow-key navigation now walks through the PROJECTS, TODAY, and CALENDAR pills between the hamburger and the right-side icons.',
             'Mobile gets a persistent bottom tab bar for Projects, Today, and Calendar, plus a denser project header with inline open/done count pills.',

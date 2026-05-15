@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Hide top view-switch pills on mobile and lift bottom sheet above the tab bar
+- [x] **[MEDIUM]** Hide top view-switch pills on mobile and lift bottom sheet above the tab bar
   - Description: The Dense mobile redesign left two layout bugs visible at ≤700px. First, the top-bar view-switch pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) render across the iOS status bar / Dynamic Island AND duplicate the navigation already provided by the bottom tab bar — two navigators for the same destinations. Second, the bottom sheet's IDLE nub and PEEK strip render below the tab bar instead of above it, so the sheet's top edge and "POMODORO" label peek out at the very bottom of the viewport with the tab bar slicing across the middle. Fix by hiding `#viewSwitcher` entirely on mobile (the bottom tab bar is the sole mobile navigator; the pills are desktop chrome) and by pinning the sheet's IDLE / PEEK `bottom` to `var(--mobile-tab-h, 56px)` so those states sit directly above the tab bar — EXPANDED keeps `bottom: 0` so the panel still covers the tab bar in focus mode per the agreed sheet-coexistence model.
   - Behavior:
     1. Inside the existing `@media (max-width: 700px)` block in `style.css`, add `#viewSwitcher { display: none }` so the top-bar pill cluster never paints on mobile. Desktop (≥701px) is unchanged.
@@ -23,7 +23,7 @@
     - `tests/stackBottomSheet.test.js` likely pins `bottom: 0` for IDLE/PEEK states; update those assertions to `bottom: var(--mobile-tab-h, 56px)` in the same commit so the suite stays green. EXPANDED's `bottom: 0` assertion stays.
     - Add a new assertion in `tests/mobileNavBarCollapse.test.js` (alongside the existing `#navBar` / `#sidebarToggle` / `#mobileProjHeader` rules) pinning `#viewSwitcher { display: none }` inside the mobile media query so a future refactor can't silently un-hide the pills.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`, `toDoList_main/tests/mobileNavBarCollapse.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-15
 
 ## Features
 

@@ -86,6 +86,15 @@ describe('STACK mobile nav-bar collapse', () => {
         expect(rule).toMatch(/height:\s*44px/);
     });
 
+    it('#viewSwitcher is display:none on mobile (bottom tab bar is the sole navigator)', () => {
+        // The view-switch pill cluster duplicates the bottom tab bar's
+        // destinations and would clip into the status bar / Dynamic Island
+        // on the collapsed mobile nav. Pin display:none inside the mobile
+        // media query so a future refactor can't silently un-hide it.
+        const rule = extractMobileRule('#viewSwitcher');
+        expect(rule).toMatch(/display:\s*none/);
+    });
+
     it('#mobileProjHeader absorbs env(safe-area-inset-top) into its padding', () => {
         // The safe-area-inset-top moved off #navBar (now collapsed) onto
         // the project header so the iOS notch / Dynamic Island clearance
