@@ -2809,15 +2809,13 @@ body.row-dragging * { cursor: grabbing !important; }
     z-index: 20;
   }
 
-  /* On mobile #navBar collapses to height:0 and the view-switch pills
-     would otherwise render at y=0 of the viewport, clipping into the
-     iOS status bar / Dynamic Island. Mirror the #sidebarToggle floor
-     so the pills sit in the same y-band as the hamburger, and reserve
-     56px on the right (44px hamburger + 12px right inset) so the last
-     pill never tucks under the absolutely-positioned hamburger. */
+  /* The view-switch pill cluster duplicates the destinations offered
+     by the persistent bottom tab bar (Projects · Today · Calendar) and
+     would otherwise clip into the iOS status bar / Dynamic Island on
+     the collapsed mobile nav. Hide it entirely on mobile — the bottom
+     tab bar is the sole navigator at this breakpoint. */
   #viewSwitcher {
-    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px);
-    padding-right: 56px;
+    display: none;
   }
 
   #footBar {
@@ -4937,6 +4935,19 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #bottomSheet.hidden-by-drawer,
   #bottomSheet.hidden-by-empty { display: none; }
 
+  /* State-driven `bottom` lifts the IDLE nub and PEEK strip above the
+     persistent bottom tab bar so they sit directly on top of the tabs
+     instead of being intercepted by them. EXPANDED returns to `bottom: 0`
+     so the open dialog covers the tab bar entirely (focus-mode behavior
+     per the sheet-coexistence model). */
+  #bottomSheet[data-state="IDLE"],
+  #bottomSheet[data-state="PEEK"] {
+    bottom: var(--mobile-tab-h, 56px);
+  }
+  #bottomSheet[data-state="EXPANDED"] {
+    bottom: 0;
+  }
+
   /* Backdrop only paints when expanded — dims the page above the sheet
      and absorbs taps for the dismiss vocabulary. */
   #bottomSheetBackdrop {
@@ -4953,13 +4964,12 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   }
 
   /* IDLE nub — 12px visible bar with ≥44px tap surface above it.
-     Stacks above the persistent bottom tab bar (which itself stacks
-     above the existing #footBar version-label row); the EXPANDED dialog
-     stays anchored at `bottom: 0` (see #bottomSheetExpanded below) so
-     it covers both tab bar and footer when active. */
+     Sits at the bottom of #bottomSheet, which itself is lifted by
+     `var(--mobile-tab-h, 56px)` in IDLE state so the nub stacks
+     directly above the persistent bottom tab bar. */
   #bottomSheetNub {
     position: absolute;
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--foot-h, 36px) + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%);
     width: 96px;
@@ -4998,10 +5008,10 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     position: absolute;
     left: 0;
     right: 0;
-    /* Lifted above the persistent tab bar (which itself sits above the
-       existing #footBar) so the bottom-edge swipe-up gesture catches at
-       the tabs' top edge instead of being intercepted by the tabs. */
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--foot-h, 36px) + env(safe-area-inset-bottom, 0px));
+    /* Lifted above the persistent tab bar so the bottom-edge swipe-up
+       gesture catches at the tabs' top edge instead of being
+       intercepted by the tabs. */
+    bottom: var(--mobile-tab-h, 56px);
     height: 16px;
     background: transparent;
     pointer-events: none;
@@ -5010,12 +5020,13 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #bottomSheet[data-state="EXPANDED"] .sheetSwipeZone { display: none; }
 
   /* PEEK strip — 48px, two equal columns + chevron. The two columns mean
-     stopping/starting one segment doesn't shift the other. Floats above
-     the persistent bottom tab bar (which itself sits above #footBar) so
-     the timer + station readout sits visible directly above the tabs. */
+     stopping/starting one segment doesn't shift the other. Sits at the
+     bottom of #bottomSheet, which itself is lifted by
+     `var(--mobile-tab-h, 56px)` in PEEK state so the timer + station
+     readout floats directly above the persistent bottom tab bar. */
   #bottomSheetPeek {
     position: absolute;
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--foot-h, 36px) + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 0;
     right: 0;
     height: 48px;
