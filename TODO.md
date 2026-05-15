@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix view-switch pills clipping into iOS status bar on mobile
+- [x] **[MEDIUM]** Fix view-switch pills clipping into iOS status bar on mobile
   - Description: On mobile (≤700px), the top-bar view-switch pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) clip into the iOS status bar / Dynamic Island — the top half of each pill is cut off by the device chrome. The hamburger (`#sidebarToggle`) sits correctly below the safe area because it's `position: absolute` with `top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)`, but `#viewSwitcher` is in-flow inside the collapsed (`height: 0`, `overflow: visible`) `#navBar` and has no mobile override, so the pills overflow at `y=0` of the viewport. Fix by adding a mobile rule for `#viewSwitcher` inside the existing `@media (max-width: 700px)` block that mirrors the `#sidebarToggle` floor pattern: `padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px)`. Also add `padding-right: 56px` so the pills clear the absolutely-positioned hamburger (44px wide at `right: 12px`) now that they share the same y-band. Pin both pieces of the rule with a new assertion in `tests/mobileTopChromeInsetFloor.test.js` alongside the existing `#sidebarToggle` / `#mobileProjHeader` / `#emptyState.emptyStateNoProjects` ones.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTopChromeInsetFloor.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-15
 
 ## Features
 

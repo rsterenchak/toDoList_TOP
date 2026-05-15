@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-15',
+        fixed: [
+            'Top-bar view-switch pills no longer clip into the iOS status bar / Dynamic Island on mobile.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-14',
         fixed: [
-            'Removed the redundant project-name bar above the todo list; the EXPAND ALL toggle now sits at the right end of the add-task row.',
             'Top-bar view-switch pills reordered to show PROJECTS first, followed by TODAY and CALENDAR.',
             'Default landing view for first-time or cleared-storage visits switched from TODAY to PROJECTS.',
             'Header arrow-key navigation now walks through the PROJECTS, TODAY, and CALENDAR pills between the hamburger and the right-side icons.',

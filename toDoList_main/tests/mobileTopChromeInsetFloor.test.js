@@ -62,4 +62,12 @@ describe('Mobile top chrome max() inset floor', () => {
             /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*48px\s*\)\s+16px\s+40px/
         );
     });
+
+    it('#viewSwitcher floors the safe-area inset at 24px in its top padding and reserves 56px on the right to clear the hamburger', () => {
+        const rule = extractMobileRule('#viewSwitcher');
+        expect(rule).toMatch(
+            /padding-top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/
+        );
+        expect(rule).toMatch(/padding-right:\s*56px/);
+    });
 });
