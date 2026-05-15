@@ -1241,6 +1241,81 @@ describe('listLogic — getCalendarMonth', () => {
 });
 
 
+// ── DUE-ON-DATE QUERY ─────────────────────────────────────────────
+describe('listLogic — getAllTodosDueOn', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('returns an empty array when no projects exist', () => {
+        expect(listLogic.getAllTodosDueOn('2026-05-13')).toEqual([]);
+    });
+
+    it('returns an empty array when no todos are due on the given date', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Tomorrow');
+        listLogic.listItems('P').find(i => i.tit === 'Tomorrow').due = '5-14-2026';
+        expect(listLogic.getAllTodosDueOn('2026-05-13')).toEqual([]);
+    });
+
+    it('returns the matching todo from a single project', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Today thing');
+        listLogic.listItems('P').find(i => i.tit === 'Today thing').due = '5-13-2026';
+        const result = listLogic.getAllTodosDueOn('2026-05-13');
+        expect(result.length).toBe(1);
+        expect(result[0].item.tit).toBe('Today thing');
+        expect(result[0].project).toBe('P');
+    });
+
+    it('returns todos from multiple projects sorted by project name', () => {
+        listLogic.addProject('Work');
+        listLogic.addProject('Home');
+        listLogic.addToDo('Work', 'Standup');
+        listLogic.addToDo('Home', 'Trash');
+        listLogic.listItems('Work').find(i => i.tit === 'Standup').due = '5-13-2026';
+        listLogic.listItems('Home').find(i => i.tit === 'Trash').due   = '5-13-2026';
+
+        const result = listLogic.getAllTodosDueOn('2026-05-13');
+        expect(result.map(e => e.project)).toEqual(['Home', 'Work']);
+    });
+
+    it('excludes completed todos', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Done');
+        const item = listLogic.listItems('P').find(i => i.tit === 'Done');
+        item.due = '5-13-2026';
+        item.completed = true;
+        expect(listLogic.getAllTodosDueOn('2026-05-13')).toEqual([]);
+    });
+
+    it('excludes todos with no due date', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Floating');
+        expect(listLogic.getAllTodosDueOn('2026-05-13')).toEqual([]);
+    });
+
+    it('matches the local-time date even when the due timestamp lands at midnight', () => {
+        // The aggregator compares on the calendar key from formatCalendarKey,
+        // which uses local-field accessors — no UTC offset drift.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Midnight');
+        listLogic.listItems('P').find(i => i.tit === 'Midnight').due = '5-13-2026';
+        const result = listLogic.getAllTodosDueOn('2026-05-13');
+        expect(result.length).toBe(1);
+    });
+
+    it('returns an empty array on an invalid date string', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Anything');
+        listLogic.listItems('P').find(i => i.tit === 'Anything').due = '5-13-2026';
+        expect(listLogic.getAllTodosDueOn('not-a-date')).toEqual([]);
+        expect(listLogic.getAllTodosDueOn('')).toEqual([]);
+        expect(listLogic.getAllTodosDueOn(null)).toEqual([]);
+    });
+});
+
+
 describe('listLogic — sanitizeRecurrence', () => {
     it('clamps an unknown pattern to "daily"', () => {
         const result = sanitizeRecurrence({ pattern: 'made-up' });

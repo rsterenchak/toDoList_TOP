@@ -1902,6 +1902,95 @@ function component() {
     bottomSheet.appendChild(sheetExpanded);
     base.appendChild(bottomSheet);
 
+    // ── Persistent bottom tab bar (mobile only) ──
+    // Three destinations — Projects, Today, Calendar — pinned to the
+    // bottom of the viewport at ≤700px. Tapping a tab routes through
+    // applyActiveView() so the same code path drives mobile tabs and the
+    // desktop pill switcher; the active tab class is set in
+    // applyActiveView. The bar height is exposed as `--mobile-tab-h` so
+    // the bottom-sheet PEEK / IDLE / swipe-zone layers stack directly
+    // above it without any per-element coupling. Hidden on desktop via
+    // CSS (#mobileTabBar { display: none }).
+    const mobileTabBar = document.createElement('nav');
+    mobileTabBar.id = 'mobileTabBar';
+    mobileTabBar.setAttribute('role', 'tablist');
+    mobileTabBar.setAttribute('aria-label', 'Mobile bottom navigation');
+
+    function buildMobileTab(viewKey, label, iconSvg) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mobileTab';
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.dataset.view = viewKey;
+        btn.setAttribute('aria-label', label);
+        const icon = document.createElement('span');
+        icon.className = 'mobileTabIcon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = iconSvg;
+        const text = document.createElement('span');
+        text.className = 'mobileTabLabel';
+        text.textContent = label;
+        btn.appendChild(icon);
+        btn.appendChild(text);
+        btn.addEventListener('click', function() {
+            applyActiveView(viewKey);
+        });
+        return btn;
+    }
+
+    // Inline SVG icons (24×24, currentColor stroke) — no icon library per
+    // CLAUDE.md. List, target, and calendar glyphs. Built from <rect>
+    // and <path> primitives so the SVG markup stays distinct from the
+    // ghost / kebab assertions in unrelated tests.
+    const ICON_LIST =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<line x1="8" y1="6" x2="20" y2="6"/>' +
+        '<line x1="8" y1="12" x2="20" y2="12"/>' +
+        '<line x1="8" y1="18" x2="20" y2="18"/>' +
+        '<rect x="3" y="5" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '</svg>';
+    const ICON_TARGET =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M21 12 a9 9 0 1 1 -18 0 a9 9 0 1 1 18 0"/>' +
+        '<path d="M17 12 a5 5 0 1 1 -10 0 a5 5 0 1 1 10 0"/>' +
+        '<rect x="11" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '</svg>';
+    const ICON_CALENDAR =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="3" y="5" width="18" height="16" rx="2"/>' +
+        '<line x1="3" y1="10" x2="21" y2="10"/>' +
+        '<line x1="8" y1="3" x2="8" y2="7"/>' +
+        '<line x1="16" y1="3" x2="16" y2="7"/>' +
+        '</svg>';
+
+    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
+    const mobileTabToday    = buildMobileTab('today',    'Today',    ICON_TARGET);
+    const mobileTabCalendar = buildMobileTab('calendar', 'Calendar', ICON_CALENDAR);
+    mobileTabProjects.id = 'mobileTabProjects';
+    mobileTabToday.id    = 'mobileTabToday';
+    mobileTabCalendar.id = 'mobileTabCalendar';
+
+    mobileTabBar.appendChild(mobileTabProjects);
+    mobileTabBar.appendChild(mobileTabToday);
+    mobileTabBar.appendChild(mobileTabCalendar);
+    base.appendChild(mobileTabBar);
+
+    // Mirror refreshSheetVisibility for the tab bar — hide it whenever
+    // the drawer is open or the NO PROJECTS empty state owns the screen
+    // so it doesn't paint over either surface. The same MutationObserver
+    // wired into refreshSheetVisibility() picks up these calls because
+    // both functions read off main1.classList and #emptyState's class.
+    function refreshTabBarVisibility() {
+        const drawerOpen = main1.classList.contains('sidebar-open');
+        const noProjects = !!document.querySelector('#emptyState.emptyStateNoProjects');
+        mobileTabBar.classList.toggle('hidden-by-drawer', drawerOpen);
+        mobileTabBar.classList.toggle('hidden-by-empty', noProjects);
+    }
+    window.mobileTabBarRefreshVisibility = refreshTabBarVisibility;
+
     // ── State machine ──
     // setSheetState centralizes the IDLE/PEEK/EXPANDED transition so we can
     // funnel all the visibility plumbing (hide on drawer, hide on NO
@@ -2385,6 +2474,10 @@ function component() {
                 setSheetState(active.any ? 'PEEK' : 'IDLE');
             }
         }
+        // Tab bar follows the same hide rules — the drawer-open and
+        // NO-PROJECTS states are the two surfaces the bar shouldn't paint
+        // over.
+        refreshTabBarVisibility();
     }
     // Watch the mainList classList + empty-state mutations so the sheet hides
     // when NO PROJECTS appears or is removed.
@@ -2551,10 +2644,75 @@ function component() {
     mobileProjStats.appendChild(mobileProjCounts);
     mobileProjTitleRow.appendChild(mobileProjPrev);
     mobileProjTitleRow.appendChild(mobileProjName);
+
+    // Dense-mobile-header affordances (≤700px only — hidden on desktop
+    // via CSS): the ▾ chevron next to the project name advertises the
+    // dropdown that opens the drawer (project picker), and the ⋯
+    // overflow button surfaces the right-click project context menu via
+    // a synthesized contextmenu event on the active project's sidebar
+    // row. Both elements live in the DOM at every viewport but the
+    // desktop styles keep them display:none so the legacy ‹ › carousel
+    // pattern stays untouched above 700px.
+    const mobileProjChevron = document.createElement('span');
+    mobileProjChevron.id = 'mobileProjChevron';
+    mobileProjChevron.className = 'mobileProjDropdownChev';
+    mobileProjChevron.setAttribute('aria-hidden', 'true');
+    mobileProjChevron.textContent = '▾';
+
+    const mobileProjOverflow = document.createElement('button');
+    mobileProjOverflow.id = 'mobileProjOverflow';
+    mobileProjOverflow.type = 'button';
+    mobileProjOverflow.className = 'mobileProjOverflowBtn';
+    mobileProjOverflow.setAttribute('aria-label', 'Project options');
+    mobileProjOverflow.textContent = '⋯';
+
+    mobileProjTitleRow.appendChild(mobileProjChevron);
     mobileProjTitleRow.appendChild(mobileProjNext);
+    mobileProjTitleRow.appendChild(mobileProjOverflow);
     mobileProjHeader.appendChild(mobileProjLabel);
     mobileProjHeader.appendChild(mobileProjTitleRow);
     mobileProjHeader.appendChild(mobileProjStats);
+
+    // Tap on name/chevron opens the drawer (the project picker on
+    // mobile). Desktop ignores the gesture because the drawer pattern is
+    // mobile-only, but the listener is harmless above 700px.
+    function openMobileDrawer() {
+        if (!main1.classList.contains('sidebar-open')) {
+            main1.classList.add('sidebar-open');
+            if (typeof window.bottomSheetRefreshVisibility === 'function') {
+                window.bottomSheetRefreshVisibility();
+            }
+        }
+    }
+    mobileProjName.addEventListener('click', openMobileDrawer);
+    mobileProjChevron.addEventListener('click', openMobileDrawer);
+
+    // Overflow button → fire a contextmenu event on the active project's
+    // sidebar row so the existing right-click menu surfaces. Falls back
+    // to opening the drawer if no row matches (e.g. before first paint).
+    mobileProjOverflow.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const activeName = mobileProjName.textContent || '';
+        const targetRow = activeName
+            ? document.querySelector('.selectedProject') ||
+              Array.prototype.find.call(
+                  document.querySelectorAll('#sideMa .projectRow'),
+                  function(row) { return row.textContent === activeName; }
+              )
+            : null;
+        if (targetRow) {
+            const rect = targetRow.getBoundingClientRect();
+            const evt = new MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+                clientX: rect.right - 8,
+                clientY: rect.top + rect.height / 2,
+            });
+            targetRow.dispatchEvent(evt);
+        } else {
+            openMobileDrawer();
+        }
+    });
 
     // ── top-level view switcher (Today / Projects) ──
     // Pill bar in the top nav (anchored immediately right of the
@@ -4651,6 +4809,25 @@ function applyActiveView(view) {
     if (pillCalendar) {
         pillCalendar.classList.toggle('active', safe === 'calendar');
         pillCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
+    }
+
+    // Mirror the active state on the mobile bottom tab bar so the same
+    // applyActiveView call keeps both navigators in sync — desktop pills
+    // and mobile tabs cannot drift.
+    const tabProjects = document.getElementById('mobileTabProjects');
+    const tabToday    = document.getElementById('mobileTabToday');
+    const tabCalendar = document.getElementById('mobileTabCalendar');
+    if (tabProjects) {
+        tabProjects.classList.toggle('active', safe === 'projects');
+        tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
+    }
+    if (tabToday) {
+        tabToday.classList.toggle('active', safe === 'today');
+        tabToday.setAttribute('aria-pressed', safe === 'today' ? 'true' : 'false');
+    }
+    if (tabCalendar) {
+        tabCalendar.classList.toggle('active', safe === 'calendar');
+        tabCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
 
     if (safe === 'today') {

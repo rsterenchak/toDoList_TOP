@@ -34,11 +34,15 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
 
     it('renders the swipe hit zone only on touch devices at the mobile breakpoint', () => {
         // Inside the mobile media block the strip is positioned along the
-        // bottom edge with pointer-events disabled by default.
+        // bottom edge with pointer-events disabled by default. The
+        // `bottom` offset lifts the strip above the persistent
+        // #mobileTabBar (and the existing #footBar beneath it) so the
+        // bottom-edge swipe-up gesture catches at the tabs' top edge
+        // instead of being intercepted by the tabs themselves.
         const block = css.match(/\.sheetSwipeZone\s*\{[^}]*\}/);
         expect(block).toBeTruthy();
         expect(block[0]).toMatch(/position:\s*absolute/);
-        expect(block[0]).toMatch(/bottom:\s*0/);
+        expect(block[0]).toMatch(/bottom:\s*calc\([^)]*var\(--mobile-tab-h/);
         expect(block[0]).toMatch(/pointer-events:\s*none/);
         // Pointer-events flip to auto only when both the mobile width AND
         // a coarse pointer apply — desktop with a fine pointer leaves the

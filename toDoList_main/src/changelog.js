@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-14',
         fixed: [
-            'Sidebar project rows now show a small pill with each project\'s incomplete todo count.',
             'Removed the redundant project-name bar above the todo list; the EXPAND ALL toggle now sits at the right end of the add-task row.',
             'Top-bar view-switch pills reordered to show PROJECTS first, followed by TODAY and CALENDAR.',
             'Default landing view for first-time or cleared-storage visits switched from TODAY to PROJECTS.',
             'Header arrow-key navigation now walks through the PROJECTS, TODAY, and CALENDAR pills between the hamburger and the right-side icons.',
+            'Mobile gets a persistent bottom tab bar for Projects, Today, and Calendar, plus a denser project header with inline open/done count pills.',
         ],
     },
 ];

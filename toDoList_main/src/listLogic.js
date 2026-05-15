@@ -688,6 +688,43 @@ export const listLogic = (function () {
     }
 
 
+    // ── DUE-ON-DATE QUERY ──────────────────────────────────────────
+    // Returns every incomplete todo whose due date matches the supplied
+    // date. The argument is the ISO `YYYY-MM-DD` calendar key used by the
+    // Calendar grid (formatCalendarKey). Returns an array of
+    // `{ item, project }` entries sorted by project name (then position
+    // within the project) so the mobile Today tab renders a stable order
+    // across re-paints. Items with no due date and completed items are
+    // excluded; the bottom-tab Today destination shows only what is
+    // strictly due today, not the broader overdue/upcoming buckets.
+    function getAllTodosDueOn(dateISO) {
+        if (typeof dateISO !== 'string') return [];
+        const parts = dateISO.split('-');
+        if (parts.length !== 3) return [];
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        if (isNaN(y) || isNaN(m) || isNaN(d)) return [];
+        const targetKey = formatCalendarKey(new Date(y, m - 1, d));
+
+        const out = [];
+        const projectNames = Object.keys(allProjects).sort();
+        projectNames.forEach(function(projectName) {
+            const entry = allProjects[projectName];
+            if (!entry || !Array.isArray(entry.items)) return;
+            entry.items.forEach(function(item) {
+                if (!item || !item.tit) return;
+                if (item.completed) return;
+                const dueDate = parseDueParts(item.due);
+                if (!dueDate) return;
+                if (formatCalendarKey(dueDate) !== targetKey) return;
+                out.push({ item: item, project: projectName });
+            });
+        });
+        return out;
+    }
+
+
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -797,6 +834,7 @@ export const listLogic = (function () {
         advanceRecurringTodo,
         getTodayAggregation,
         getCalendarMonth,
+        getAllTodosDueOn,
         _reset
     };
 
