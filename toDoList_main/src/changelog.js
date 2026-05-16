@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-16',
         fixed: [
-            'Mobile bottom-sheet expanded panel no longer bleeds past the bottom of the viewport into the home-indicator zone when idle or peeking.',
             'Mobile project header no longer shows the redundant ⋯ overflow button, and the idle bottom-sheet nub is hidden so no stray gray bar floats above the tab bar.',
             'Mobile idle and peek states no longer show a stray gray drag-handle bar between the bottom tab bar and the footer.',
             'Bottom-sheet idle nub no longer paints above the mobile tab bar in any state.',
             'Mobile project header now paints reliably on the Projects view instead of staying hidden after first load.',
+            'Mobile project header no longer disappears after switching to Today or Calendar and back to Projects.',
         ],
     },
 ];

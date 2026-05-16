@@ -4803,25 +4803,19 @@ function applyActiveView(view) {
     }
 
     if (safe === 'today') {
-        // No project should appear selected while TODAY owns the main
-        // panel — the sidebar selection only makes sense once PROJECTS
-        // is the active view.
-        const selected = document.querySelector('.selectedProject');
-        if (selected) {
-            selected.classList.remove('selectedProject');
-            selected.classList.add('unselectedProject');
-        }
+        // The sidebar selection persists across view switches. Sidebar
+        // and #mobileProjHeader are hidden on TODAY anyway, so the
+        // lingering .selectedProject has zero visual effect — and on the
+        // return trip to PROJECTS, updateMobileProjHeader re-paints from
+        // the still-selected row instead of being stuck with
+        // data-empty="true".
         refreshTodayDateHeader();
         renderTodayDashboard();
     } else if (safe === 'calendar') {
-        // CALENDAR owns the main panel the same way TODAY does — drop
-        // any sidebar project selection on entry and rebuild the grid +
-        // day-detail panel against the current month.
-        const selected = document.querySelector('.selectedProject');
-        if (selected) {
-            selected.classList.remove('selectedProject');
-            selected.classList.add('unselectedProject');
-        }
+        // Same reasoning as TODAY — keep .selectedProject set so PROJECTS
+        // returns to a populated mobile header. CALENDAR owns the main
+        // panel; the sidebar is hidden so the lingering class is
+        // invisible until PROJECTS reactivates.
         resetCalendarStateToToday();
         renderCalendarView();
     }

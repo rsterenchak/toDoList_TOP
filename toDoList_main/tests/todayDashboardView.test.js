@@ -161,11 +161,23 @@ describe('Today dashboard view + view switcher', () => {
             expect(body).toMatch(/aria-pressed/);
         });
 
-        it('clears any .selectedProject when switching to TODAY', () => {
-            // Today owns the main panel — the sidebar selection only makes
-            // sense once PROJECTS is active again.
-            expect(body).toMatch(
+        it('does NOT clear .selectedProject when switching to TODAY', () => {
+            // The sidebar selection persists across view switches so that
+            // returning to PROJECTS re-paints the mobile header off the
+            // still-selected sidebar row. Clearing on TODAY left
+            // #mobileProjHeader stuck with data-empty="true" on the return
+            // trip — see TODO bug entry.
+            expect(body).not.toMatch(
                 /['"]today['"][\s\S]{0,400}querySelector\(\s*['"]\.selectedProject['"][\s\S]{0,300}classList\.remove\(\s*['"]selectedProject['"]/
+            );
+        });
+
+        it('does NOT clear .selectedProject when switching to CALENDAR', () => {
+            // Same reasoning as TODAY — the sidebar selection persists so
+            // PROJECTS returns to a populated mobile header instead of an
+            // empty one.
+            expect(body).not.toMatch(
+                /['"]calendar['"][\s\S]{0,400}querySelector\(\s*['"]\.selectedProject['"][\s\S]{0,300}classList\.remove\(\s*['"]selectedProject['"]/
             );
         });
 
