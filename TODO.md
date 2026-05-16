@@ -2,28 +2,30 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Hide top view-switch pills on mobile and lift bottom sheet above the tab bar
-  - Description: The Dense mobile redesign left two layout bugs visible at ≤700px. First, the top-bar view-switch pills (`#viewPillProjects`, `#viewPillToday`, `#viewPillCalendar`) render across the iOS status bar / Dynamic Island AND duplicate the navigation already provided by the bottom tab bar — two navigators for the same destinations. Second, the bottom sheet's IDLE nub and PEEK strip render below the tab bar instead of above it, so the sheet's top edge and "POMODORO" label peek out at the very bottom of the viewport with the tab bar slicing across the middle. Fix by hiding `#viewSwitcher` entirely on mobile (the bottom tab bar is the sole mobile navigator; the pills are desktop chrome) and by pinning the sheet's IDLE / PEEK `bottom` to `var(--mobile-tab-h, 56px)` so those states sit directly above the tab bar — EXPANDED keeps `bottom: 0` so the panel still covers the tab bar in focus mode per the agreed sheet-coexistence model.
+- [ ] **[MEDIUM]** Fix EXPANDED bottom-sheet panel bleed-through at bottom of mobile viewport
+  - Description: On mobile (≤700px), the EXPANDED bottom-sheet panel (`#bottomSheetExpanded` — the purple-bordered dialog housing Pomodoro + music controls) remains partially visible at the bottom edge of the viewport even when the sheet is in IDLE or PEEK state. Its top border (1px solid `var(--accent)`), `.sheetDragHandle` glyph, and first section header ("POMODORO") peek out below the tab bar. The console confirms `data-state="IDLE"` and neither controller is active, so this isn't a stuck-state bug — the panel is genuinely being painted off-screen but iOS Safari isn't clipping it against `#outerContainer`'s `overflow: hidden`. Root cause is a known iOS Safari quirk where `transform: translateY(100%)` on an absolutely-positioned child inside a `height: 100dvh` container doesn't fully clip against the container's overflow rectangle — the bottom slice of the translated element leaks past the dvh boundary into the home-indicator zone. Fix by adding `visibility: hidden` to the resting (non-EXPANDED) state with a delayed visibility transition, so the panel doesn't paint at all when off-screen and the slide-down close animation still plays.
   - Behavior:
-    1. Inside the existing `@media (max-width: 700px)` block in `style.css`, add `#viewSwitcher { display: none }` so the top-bar pill cluster never paints on mobile. Desktop (≥701px) is unchanged.
-    2. `#bottomSheet[data-state="IDLE"]` and `#bottomSheet[data-state="PEEK"]` get `bottom: var(--mobile-tab-h, 56px)` on mobile so the nub / strip sits directly above the tab bar.
-    3. `#bottomSheet[data-state="EXPANDED"]` keeps `bottom: 0` so the panel still covers the tab bar entirely when the user opens Pomodoro / music — focus-mode behavior per the prior design decision.
-    4. The bottom-edge swipe-up gesture zone (`.sheetSwipeZone`) lifts its 16px hit area to `bottom: var(--mobile-tab-h, 56px)` so swiping up from above the tab bar still triggers the sheet without the tabs intercepting it.
+    1. `#bottomSheetExpanded` in its resting state (no `data-state="EXPANDED"` on the parent) gets `visibility: hidden`. The existing `transform: translateY(100%)` and `bottom: 0; height: min(50dvh, 320px)` rules stay unchanged — the panel still slides physically off-screen; the visibility hide is belt-and-suspenders against the iOS Safari clip-overflow miss.
+    2. The transition declaration extends to two properties: `transition: transform 0.22s ease, visibility 0s linear 0.22s`. The `0s linear 0.22s` means visibility flips to `hidden` AFTER the 0.22s slide-down finishes, so the close animation still plays in full.
+    3. When `#bottomSheet[data-state="EXPANDED"]` is set, the existing rule that toggles `transform: translateY(0)` also sets `visibility: visible`, and the visibility transition delay drops to `0s` so the panel is paintable from the first frame of the slide-up.
   - Acceptance criteria:
-    - On mobile, the top-bar pill cluster does not paint anywhere — no clipped pills under the status bar, no redundant top navigator.
-    - On desktop (≥701px), the pill cluster paints in its existing `#navBar` position with no regression.
-    - With Pomodoro or music active, the PEEK strip is visible directly above the tab bar (purple top edge + drag handle + timer/station row), not below or behind it.
-    - With nothing active, the IDLE nub renders just above the tab bar and is tappable / draggable.
-    - Tapping the PEEK strip (or dragging it up) expands the sheet; the EXPANDED panel covers the tab bar entirely. Dismissing returns IDLE/PEEK to the position above the tab bar and the tab bar reappears.
-    - Nothing renders below the tab bar except the `env(safe-area-inset-bottom)` reservation; the "POMODORO" label is never visible below the tab bar.
+    - In IDLE state on mobile, no part of `#bottomSheetExpanded` is visible anywhere in the viewport — no purple border line, no `.sheetDragHandle` glyph, no "POMODORO" header text peeking out at the bottom edge or in the home-indicator zone.
+    - In PEEK state on mobile, same as IDLE — only the PEEK strip itself (above the tab bar) is visible; the EXPANDED panel is fully hidden.
+    - In EXPANDED state on mobile, the panel renders normally with its slide-up animation intact, full controls visible, and the backdrop dimming the page above it.
+    - Closing the sheet (drag-down past 30%, Escape key, backdrop tap) still plays the full 0.22s slide-down animation — the panel doesn't disappear instantly, it animates away.
+    - Verified on iOS Safari (the platform where the bleed-through reproduces) AND on a desktop browser narrowed to ≤700px to confirm the fix is cross-engine.
   - Implementation notes:
-    - Pure CSS — no `main.js` changes expected since sheet states are toggled via `data-state` and positions are CSS-driven. Verify no inline `style.bottom = ...` write on the sheet in `main.js`; if there is one, that's where the override lives and it needs to read from `--mobile-tab-h` too.
-    - Confirm `--mobile-tab-h` is already defined as a CSS variable (the Dense redesign introduced it for `#mainList / #todayView / #calendarView` `padding-bottom`). If it isn't, declare it once on `#outerContainer` at the mobile breakpoint and reuse.
-    - **Supersedes the earlier "Fix view-switch pills clipping into iOS status bar on mobile" TODO entry** — that entry proposed adding `padding-top` to `#viewSwitcher` to clear the safe area, but hiding the pills on mobile makes that fix unnecessary. Drop that entry when this lands.
-    - `tests/stackBottomSheet.test.js` likely pins `bottom: 0` for IDLE/PEEK states; update those assertions to `bottom: var(--mobile-tab-h, 56px)` in the same commit so the suite stays green. EXPANDED's `bottom: 0` assertion stays.
-    - Add a new assertion in `tests/mobileNavBarCollapse.test.js` (alongside the existing `#navBar` / `#sidebarToggle` / `#mobileProjHeader` rules) pinning `#viewSwitcher { display: none }` inside the mobile media query so a future refactor can't silently un-hide the pills.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`, `toDoList_main/tests/mobileNavBarCollapse.test.js`
-  - Completed: 2026-05-15
+    - Pure CSS — no `main.js` changes. Edit the two existing rules for `#bottomSheetExpanded` inside the `@media (max-width: 700px)` block.
+    - The two-property transition value matters: separate `transform` and `visibility` declarations, each with their own duration and delay. Don't collapse them into a single `transition: all`.
+    - Don't switch to `display: none` for the hidden state — that kills the slide-down animation entirely (the element is removed from the layout tree before transitioning).
+    - Don't switch to `opacity: 0` alone — opacity doesn't prevent paint or hit-testing, so the off-screen panel could still steal taps from the tab bar or the underlying footer.
+    - `pointer-events: none` is already implied by the off-screen position but is harmless to add explicitly to the resting state as additional defense.
+  - Out of scope:
+    - `#viewSwitcher { display: none }` mobile rule — already in `style.css`; the earlier UI showing pills was a stale-cache issue resolved by hard-refresh.
+    - Surfacing the Pomodoro / music controllers on `window` for easier debugging (the diagnostic returned `undefined` because the controllers are module-scoped, which is correct — `data-state` is the canonical source of truth for sheet state).
+    - The IDLE-state purple bar + handle visible above the tab bar — that's the `#bottomSheetNub` rendering at its expected position; it's not a bug, just the IDLE affordance.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
