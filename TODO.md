@@ -2,33 +2,29 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Force-hide bottom-sheet nub on mobile and restore missing #mobileProjHeader
-  - Description: Two regressions from the previous "Hide IDLE nub + remove overflow button" pass that didn't fully land. First, `#bottomSheetNub` (the 56×4 gray bar inside a 96×44 button) is still painting above the bottom tab bar on mobile despite the prior `#bottomSheet #bottomSheetNub { display: none }` rule — something with higher specificity or later source order (the original state-driven `#bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex }` rule, or an inline `style.display = 'flex'` set in `main.js` during state transitions) is winning the cascade. Use `!important` placed at the end of the mobile media block to settle it definitively. Second, the entire `#mobileProjHeader` no longer paints on mobile — no hamburger, no purple project name + `▾` chevron, no `N OPEN / N DONE` count pills row. The task input row sits flush at the top of the viewport. Root cause needs a console probe to disambiguate three possible failure modes (element not created in JS, element created but hidden by orphaned CSS, or element created but children missing); the fix differs depending on which fails.
+- [ ] **[HIGH]** Sync #mainBar data-view with the active mobile tab so #mobileProjHeader paints on Projects view
+  - Description: On mobile, `#mobileProjHeader` (hamburger + project name + count pills) doesn't render even though the element is built correctly and all three children are appended. The console probe confirmed `exists: true`, `display: none`, `children: 3`. The hiding rules are these two top-level (not media-scoped) selectors in `style.css`: `#mainBar[data-view="today"] #mobileProjHeader { display: none; }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none; }`. Their intent is correct — the project header is meaningless on Today and Calendar views since those aggregate across all projects. The bug is that `#mainBar[data-view]` is stuck on `"today"` or `"calendar"` even when the Projects tab is active in the bottom tab bar. `applyActiveView()` (or its initial-mount path) updates the `.mobileTab.active` class but doesn't write `mainBar.dataset.view = viewKey` in lockstep, so the visual active-tab state and the CSS routing attribute drift apart on first load.
   - Behavior:
-    1. Add `#bottomSheet #bottomSheetNub { display: none !important; }` placed at the END of the `@media (max-width: 700px)` block in `style.css` so it wins source order against earlier state-driven `display: flex` toggles and against any JS inline style. `!important` is justified because non-`!important` specificity attempts have already failed in two prior passes.
-    2. Diagnose the missing `#mobileProjHeader` via console probe before patching:
-       - Run `const h = document.getElementById('mobileProjHeader'); console.log('exists:', !!h, 'display:', h && getComputedStyle(h).display, 'children:', h && h.children.length);` in Safari Web Inspector.
-       - **If `exists: false`** → the element isn't being created in `main.js`. The previous overflow-button removal pass yanked the wrong code. Restore the `mobileProjHeader.appendChild(...)` calls for `mobileProjLabel`, `mobileProjTitleRow`, `mobileProjCounts`, and the `main2.appendChild(mobileProjHeader)` line. The `⋯` overflow button creation stays removed.
-       - **If `exists: true, display: 'none'`** → an orphaned CSS rule is hiding it. Likely a leftover selector from the overflow-button removal pass (e.g., a `.mobileProjOverflow-hidden #mobileProjHeader { display: none }` or similar) or a state class that's now permanently applied. Find and remove the orphan rule from `style.css`.
-       - **If `exists: true, display: flex/grid/block` but `children: 0`** → the container element is created and visible, but its children were not appended. Find which child append calls were dropped (look for `mobileProjLabel.appendChild`, `mobileProjTitleRow.appendChild`, `mobileProjCountsOpen.appendChild`, etc.) and restore them.
-    3. Once `#mobileProjHeader` paints again, verify all three rows of its Dense layout are intact: hamburger absolute-positioned top-right (`#sidebarToggle`, unchanged), purple project name + `▾` chevron in `#mobileProjTitleRow`, count pills row beneath. No `⋯` overflow button anywhere — that stays removed.
+    1. `applyActiveView(viewKey)` is the single code path that toggles the active view across mobile tabs AND desktop view-switch pills AND the `#mainBar[data-view]` attribute. Confirm it sets all three on every call, including the initial mount.
+    2. Specifically, every code path that ends in changing the active view writes `mainBar.dataset.view = viewKey` (or equivalent `setAttribute('data-view', viewKey)`) BEFORE the tab class toggles, so layout reflows in one frame.
+    3. Initial mount path: when the app first builds the DOM, `#mainBar` defaults to `data-view="projects"` (set at element creation in `main.js`, not deferred to the first `applyActiveView` call). If `applyActiveView('projects')` is called explicitly during init, that's fine too — the goal is no window where `data-view` is unset or holds a stale value.
   - Acceptance criteria:
-    - On mobile (≤700px), `#bottomSheetNub` does not render in any state — no 56×4 gray bar above the tab bar. Verified via `getComputedStyle(document.getElementById('bottomSheetNub')).display === 'none'` in IDLE, PEEK, and EXPANDED states.
-    - PEEK strip still appears above the tab bar when Pomodoro or music is active; EXPANDED panel still slides up correctly.
-    - On mobile, the project name "Project ▾", the hamburger top-right, and the `N OPEN / N DONE` count pills row are all visible at the top of the viewport — the input "+ Add a task — press Enter" sits BELOW them, not at the very top.
-    - The `⋯` overflow button remains absent (the previous removal sticks).
-    - Existing `stackBottomSheet.test.js > IDLE nub touch target is at least 44px tall` still passes — the source `height: 44px` declaration on `#bottomSheetNub` stays; only the `display` is forced off on mobile.
+    - On fresh page load with the Projects tab active, `document.getElementById('mainBar').getAttribute('data-view')` returns `"projects"`.
+    - With the Projects tab active, `getComputedStyle(document.getElementById('mobileProjHeader')).display` returns a non-`"none"` value (whatever the mobile-block declaration sets — likely `flex` or `grid`).
+    - Tapping the TODAY mobile tab sets `data-view="today"`, hides `#mobileProjHeader`, and shows `#todayView` content. Tapping CALENDAR does the same with `"calendar"` and `#calendarView`. Tapping back to PROJECTS restores `data-view="projects"` and `#mobileProjHeader` paints again.
+    - Desktop pill switcher (when visible) stays in sync with `#mainBar[data-view]` the same way.
+    - The hiding rules `#mainBar[data-view="today"] #mobileProjHeader { display: none }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none }` stay in source — they're correctly suppressing the header on aggregate views.
   - Implementation notes:
-    - The `!important` rule is the price of admission here — two prior passes attempted plain specificity overrides and both lost. If a future cleanup wants to remove `!important`, it needs to first remove the original state-driven `display: flex/none` toggles for `#bottomSheetNub` inside the mobile block AND audit `main.js` for any inline style writes to `sheetNub.style.display`.
-    - `main.js` is over 25k tokens — grep for `mobileProjHeader`, `mobileProjTitleRow`, `mobileProjCountsOpen`, `mobileProjCountsDone`, and `mobileProjLabel` to find the build sites. Compare against the previous commit's diff for the overflow-button removal pass to spot the over-zealous deletion.
-    - Also grep `main.js` for `sheetNub.style` and `bottomSheetNub.style` to verify no inline display writes interfere with the `!important` rule. If found, leave them — the `!important` wins anyway, but flag the dead code for a future cleanup pass.
-    - Pin both fixes with test assertions: extract the `#bottomSheet #bottomSheetNub` rule from the mobile media block and assert `display: none !important`; assert the existence of `#mobileProjHeader.appendChild(mobileProjTitleRow)` and `main2.appendChild(mobileProjHeader)` in `main.js`.
+    - `main.js` is over 25k tokens — grep for `applyActiveView`, `mainBar.dataset`, `setAttribute('data-view'`, and `dataset.view` to find every write site. There should be exactly one canonical writer (inside `applyActiveView`) and one initial-mount setter.
+    - The element creation site for `#mainBar` is the right place to set `data-view="projects"` as the default — `const mainBar = document.createElement('section'); mainBar.id = 'mainBar'; mainBar.dataset.view = 'projects';`
+    - If `applyActiveView` is the only writer and it's not being called on mount, calling it explicitly at the end of the DOM build for the Projects view is the fix.
+    - Add a test assertion in `tests/main.js` or a new `mobileTabBarSync.test.js` pinning that the `#mainBar[data-view]` write happens inside the `applyActiveView` function body, and that the element is created with `dataset.view = 'projects'` at the DOM build site.
   - Out of scope:
-    - The EXPANDED panel bleed-through (drag handle gray bar between tab bar and footer) — handled by the separate `display: none` for `#bottomSheetExpanded` TODO already in the queue.
-    - Reinstating the `⋯` overflow button — it stays gone; long-press on a sidebar project row remains the canonical Edit / color / Delete path.
-    - Cleaning up the state-driven `display: flex/none` toggles for `#bottomSheetNub` — that audit is deferred so this entry stays surgical.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: 2026-05-16
+    - The hiding rules themselves — leave them as-is; the intent of hiding the per-project header on Today/Calendar is correct.
+    - Renaming `data-view` to something else for clarity — the attribute name is fine.
+    - The bottom-sheet nub `!important` rule and the EXPANDED panel bleed-through — both handled in their own entries.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/mobileTabBarSync.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
