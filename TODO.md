@@ -2,57 +2,23 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Re-select the active project when switching back to PROJECTS so #mobileProjHeader clears its data-empty flag
-  - Description: On mobile, switching TODAY → PROJECTS (or CALENDAR → PROJECTS) leaves `#mobileProjHeader` hidden with `display: none`. The cause is NOT a stale `#mainBar[data-view]` — that attribute is now correctly written symmetrically by `applyActiveView()` for all three views (pinned by tests in `tests/mobileTabBarSync.test.js`). The actual culprit is a different hiding rule: `#mobileProjHeader[data-empty="true"] { display: none }`. When `applyActiveView('today')` or `applyActiveView('calendar')` runs, it removes the `.selectedProject` class from the sidebar row (see lines around 4805-4824 in `main.js`). The `footObserver` MutationObserver picks this up, fires `updateFooterCounts()`, which calls `updateMobileProjHeader('', 0, 0)`. With no active name, the function sets `mobileProjHeader.setAttribute('data-empty', 'true')`. When the user then taps the PROJECTS pill or mobile tab, `applyActiveView('projects')` runs — but it never re-adds `.selectedProject` to any row. No mutation fires on `sideMain`, so `updateFooterCounts()` is not re-invoked, and `data-empty="true"` stays stuck. The CSS rule keeps firing and the header stays hidden until the user manually clicks a project row in the sidebar.
+- [ ] **[HIGH]** Restore sidebar project selection when switching back to Projects view so #mobileProjHeader re-paints
+  - Description: On mobile, tapping TODAY (or CALENDAR) and then tapping PROJECTS leaves `#mobileProjHeader` hidden — `data-view` is correctly `"projects"`, but `data-empty="true"` is set on the header element, and a CSS rule `#mobileProjHeader[data-empty="true"] { display: none }` hides it. Root cause is in `applyActiveView()`: the `'today'` branch explicitly clears `.selectedProject` from every sidebar row (per the existing comment: *"Today owns the main panel — the sidebar selection only makes sense once PROJECTS is active again"*). When `updateMobileProjHeader()` fires off the mutation observer with no active project name, it sets `data-empty="true"` on the header. The `'projects'` return trip flips `data-view` but never re-applies `.selectedProject` to the previously-active sidebar row, so `data-empty` stays `"true"` and the header stays hidden. Fix by either (a) NOT clearing `.selectedProject` on TODAY/CALENDAR transitions in the first place — the selection is cosmetic to the hidden sidebar so persisting it is harmless — or (b) re-applying the selection on the `'projects'` return trip by reading the active project from `getActiveProject()` (or whatever persistence helper exists) and finding the matching sidebar row. Option (a) is simpler and addresses the root cause.
   - Behavior:
-    1. When `applyActiveView('projects')` runs, restore the previously-active sidebar selection so the `.selectedProject` class is re-added to a row. Easiest source of truth: the last project clicked, or — as a fallback — the last project in `listLogic.listProjectsArray()` (matches the `restoreFromStorage` boot-time default at line 4720). The re-selection triggers the existing observer pipeline, which clears `data-empty` and re-paints the header.
-    2. Alternative if re-selection is undesirable: in `applyActiveView('projects')`, directly call (or schedule via setTimeout 0) the existing `updateFooterCounts()` pipeline so the header's `data-empty` attribute is recomputed against the current sidebar state. Re-selection is the cleaner fix because it also restores the sidebar visual.
+    1. Remove the `.selectedProject` clearing block from the `'today'` branch (and `'calendar'` if it has one) inside `applyActiveView()`. The selection class persists across view switches.
+    2. On TODAY/CALENDAR views the sidebar is hidden anyway, so the lingering `.selectedProject` class on a non-visible row has zero visual effect.
+    3. When the user taps PROJECTS, `data-view="projects"` un-hides the sidebar AND the header simultaneously. Because `.selectedProject` was never cleared, `updateMobileProjHeader` reads a valid active project name on its next mutation observer fire and removes `data-empty="true"`.
+    4. The `refreshTodayDateHeader()` call stays — that part of the `'today'` branch is fine; only the `.selectedProject` clearing comes out.
   - Acceptance criteria:
-    - Initial load → header visible (already works).
-    - Tap TODAY → header hidden (already works).
-    - Tap PROJECTS → header visible again with the previously-active project name (currently broken).
-    - Tap CALENDAR → header hidden (already works).
-    - Tap PROJECTS → header visible again with the previously-active project name (currently broken).
-    - The restored selection should be the most recent project the user actively chose; on first switch-back after boot, fall back to the project that `restoreFromStorage` auto-selected (array tail).
+    - On mobile, tapping TODAY → tapping PROJECTS leaves `#mobileProjHeader` visible with the correct project name, count pills, and chevrons.
+    - `document.getElementById('mobileProjHeader').getAttribute('data-empty')` returns `null` (or no value) after the round-trip, NOT `"true"`.
+    - Tapping CALENDAR → tapping PROJECTS does the same.
+    - Tapping back-and-forth rapidly between all three tabs doesn't lose the header.
+    - The sidebar's project rows still show the active project highlighted (purple left accent) when PROJECTS is active — the `.selectedProject` class is now persistent, but only visible on the PROJECTS view because the sidebar itself is hidden on TODAY/CALENDAR.
+    - Switching to a different project (via long-press → Edit, or via the sidebar drawer) still correctly transfers `.selectedProject` to the new row — the change is "stop clearing on view switch," not "freeze selection forever."
+    - The existing test `applyActiveView clears any .selectedProject when switching to TODAY` (in `tests/todayDashboardView.test.js`) flips polarity — it should now assert that `.selectedProject` is NOT cleared. Update that assertion in the same commit.
   - Implementation notes:
-    - `main.js` is over 25k tokens — grep for `selectedProject`, `applyActiveView`, and `updateMobileProjHeader` to find the relevant edit sites.
-    - Track the last-active project name in a module-scope variable (or read it from the sidebar before the TODAY/CALENDAR switch wipes it). Restore it as the selected row when `safe === 'projects'`.
-    - Existing tests pin: `clears any .selectedProject when switching to TODAY` (`tests/todayDashboardView.test.js:164`). Adding a re-select on switch-back to PROJECTS doesn't conflict — the TODAY clear-on-entry still runs.
-    - Add a regression test that asserts the round-trip PROJECTS → TODAY → PROJECTS restores `.selectedProject` to a sidebar row.
-  - Out of scope:
-    - The `#mainBar[data-view]` write itself — that part is correct and pinned by tests.
-    - The CSS hiding rules (`[data-view="today"] #mobileProjHeader { display: none }` and `[data-empty="true"] { display: none }`) — both are correct in intent.
-    - Adjusting the mutation observer's filter or scope — the observer is fine; the problem is no class change happens to drive it on return-to-projects.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
-
-- [x] **[HIGH]** Restore #mainBar[data-view] write on the return trip to Projects so #mobileProjHeader re-paints — Completed: 2026-05-16
-  - Description: On mobile, `#mobileProjHeader` paints correctly on initial load with the Projects tab active, but disappears after tapping the TODAY or CALENDAR tab and then tapping back to PROJECTS. The header element stays built (DOM children intact) but `getComputedStyle(...).display` returns `none`. The hiding rules in `style.css` are correct in intent: `#mainBar[data-view="today"] #mobileProjHeader { display: none }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none }`. The bug is in `applyActiveView()` — the function writes `mainBar.dataset.view = 'today'` (or `'calendar'`) on the outbound trip but doesn't write `mainBar.dataset.view = 'projects'` on the return. The attribute stays stuck on the last non-Projects value, the CSS rule keeps firing, and the header stays hidden. Confirmed by the diagnostic flow: initial load shows `#mobileProjHeader` at 390×100 dimensions; after TODAY → PROJECTS round-trip, computed display is `none` even though the active-tab class and the visible content area both indicate Projects is active.
-  - Behavior:
-    1. Find `applyActiveView()` in `main.js`. Verify the `mainBar.dataset.view = viewKey` (or `setAttribute('data-view', viewKey)`) write is unconditional — it runs on EVERY call, regardless of `viewKey` value. The current bug pattern is likely either an `if (viewKey !== 'projects')` early branch, a switch statement missing the `'projects'` case, or a guard that only writes the attribute when transitioning AWAY from Projects.
-    2. After the fix, every call to `applyActiveView('projects')` results in `#mainBar` having `data-view="projects"` regardless of what the attribute was before.
-    3. Same fix covers any other future view value — the write is symmetric across all three tabs (and any future tabs).
-  - Acceptance criteria:
-    - Fresh load → Projects tab active → `document.getElementById('mainBar').getAttribute('data-view')` returns `"projects"`, `#mobileProjHeader` visible.
-    - Tap TODAY → `data-view="today"`, `#mobileProjHeader` hidden, `#todayView` content shown.
-    - Tap PROJECTS → `data-view="projects"`, `#mobileProjHeader` visible again, `#mainList` content shown.
-    - Tap CALENDAR → `data-view="calendar"`, `#mobileProjHeader` hidden, `#calendarView` content shown.
-    - Tap PROJECTS → `data-view="projects"`, `#mobileProjHeader` visible again.
-    - Tap rapidly between all three tabs in any order — the attribute always tracks the active tab; the header always paints when (and only when) Projects is active.
-    - The desktop view-switch pill cluster (when visible at ≥701px) stays in sync the same way.
-  - Implementation notes:
-    - `main.js` is over 25k tokens — grep for `applyActiveView`, `mainBar.dataset`, and `setAttribute('data-view'` to find the function body and every write site.
-    - The fix is one line in the most common case: ensure the `mainBar.dataset.view = viewKey` assignment lives unconditionally at the top of the function body, before any view-specific branching. If the current code has it inside an `if/else` branch, move it out.
-    - Also verify there are no OTHER writers to `mainBar.dataset.view` outside of `applyActiveView` — if there are, they should be removed or refactored to go through the function.
-    - Add a test assertion in a new `tests/mobileTabBarSync.test.js` (or extend an existing test) that pins: the function `applyActiveView` exists, contains an unconditional write to `mainBar.dataset.view` or `mainBar.setAttribute('data-view', …)`, and the write uses the `viewKey` parameter (not a hardcoded value).
-  - Out of scope:
-    - The hiding CSS rules — they're correct, don't touch them.
-    - Renaming `data-view` or `applyActiveView` — the names are fine.
-    - The bottom-sheet nub `!important` rule and the EXPANDED panel `display: none` fix — both handled in their own entries.
-    - Investigating whether other elements (`#bulkDescActions`, `#mainList`) are also affected by stale `data-view` — they're listed in the same selector, so they get fixed together, but verifying them is just a side-effect of the acceptance criteria above.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/mobileTabBarSync.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
-
+    - `main.js`: grep for the line inside `applyActiveView()` that does `querySelector('.selectedProject')` followed by `classList.remove('selectedProject')`
 ## Features
 
 - [x] **[MEDIUM]** Add Calendar view shell with month grid and right-side day detail panel
