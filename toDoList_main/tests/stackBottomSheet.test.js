@@ -196,27 +196,26 @@ describe('STACK mobile bottom sheet utility surface', () => {
     // translateY(100%)` on an absolutely-positioned child inside a
     // `height: 100dvh` container doesn't fully clip against the container's
     // overflow rectangle — the bottom slice of the translated panel leaks
-    // past the dvh boundary into the home-indicator zone. The resting
-    // (non-EXPANDED) state hides the panel via `visibility: hidden` with a
-    // delayed visibility transition so the close animation still plays in
-    // full.
-    it('hides the resting EXPANDED panel via visibility:hidden to block iOS Safari overflow bleed', () => {
+    // past the dvh boundary into the home-indicator zone. A prior
+    // visibility-based fix left the drag handle painting because
+    // descendants can override `visibility: hidden`. The resting
+    // (non-EXPANDED) state now hides the panel via `display: none` so the
+    // panel and every descendant are removed from the render tree.
+    it('hides the resting EXPANDED panel via display:none to block iOS Safari overflow bleed', () => {
         const block = css.match(/#bottomSheetExpanded\s*\{[^}]*\}/);
         expect(block).toBeTruthy();
-        expect(block[0]).toMatch(/visibility:\s*hidden/);
-        // The transition must animate transform AND visibility, with the
-        // visibility flip delayed until after the 0.22s slide-down so the
-        // close animation plays in full.
-        expect(block[0]).toMatch(/transition:\s*transform\s+0\.22s\s+ease\s*,\s*visibility\s+0s\s+linear\s+0\.22s/);
+        expect(block[0]).toMatch(/display:\s*none/);
+        // The superseded visibility-based hide is removed from source.
+        expect(block[0]).not.toMatch(/visibility:\s*hidden/);
     });
 
-    it('reveals the EXPANDED panel immediately on open with visibility:visible and 0s delay', () => {
+    it('reveals the EXPANDED panel on open with display:flex for the column layout', () => {
         const expandedBlock = css.match(/#bottomSheet\[data-state="EXPANDED"\]\s*#bottomSheetExpanded\s*\{[^}]*\}/);
         expect(expandedBlock).toBeTruthy();
-        expect(expandedBlock[0]).toMatch(/visibility:\s*visible/);
-        // The visibility transition delay drops to 0s so the panel paints
-        // from the first frame of the slide-up animation.
-        expect(expandedBlock[0]).toMatch(/transition:\s*transform\s+0\.22s\s+ease\s*,\s*visibility\s+0s\s+linear\s+0s/);
+        expect(expandedBlock[0]).toMatch(/display:\s*flex/);
+        // The transform animates from translateY(100%) to translateY(0) so
+        // the slide-UP open animation is preserved.
+        expect(expandedBlock[0]).toMatch(/transform:\s*translateY\(0\)/);
     });
 
     it('uses position: absolute inside #outerContainer (respects existing overflow rules)', () => {

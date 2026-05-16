@@ -5152,22 +5152,23 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     pointer-events: none;
     transform: translateY(100%);
     /* iOS Safari doesn't fully clip translateY(100%) children against a
-       100dvh container's overflow rect — the bottom slice bleeds into the
-       home-indicator zone. Flip visibility off after the slide-down so the
-       panel can't paint when off-screen; the delay preserves the close
-       animation. */
-    visibility: hidden;
-    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+       100dvh container's overflow rect, and descendants like the drag
+       handle could keep painting under a parent-level visibility hide.
+       display:none removes the panel and every descendant from the
+       render tree so nothing leaks past the bottom tab bar. Trade-off:
+       the slide-DOWN close animation no longer plays — close is
+       instant. The slide-UP open animation still plays via the
+       transform transition below. */
+    transition: transform 0.22s ease;
     overflow: hidden;
-    display: flex;
+    display: none;
     flex-direction: column;
     gap: 10px;
   }
   #bottomSheet[data-state="EXPANDED"] #bottomSheetExpanded {
     transform: translateY(0);
-    visibility: visible;
+    display: flex;
     pointer-events: auto;
-    transition: transform 0.22s ease, visibility 0s linear 0s;
   }
 
   .sheetDragHandle {
