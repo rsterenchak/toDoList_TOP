@@ -2,27 +2,30 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Sync #mainBar data-view with the active mobile tab so #mobileProjHeader paints on Projects view
-  - Description: On mobile, `#mobileProjHeader` (hamburger + project name + count pills) doesn't render even though the element is built correctly and all three children are appended. The console probe confirmed `exists: true`, `display: none`, `children: 3`. The hiding rules are these two top-level (not media-scoped) selectors in `style.css`: `#mainBar[data-view="today"] #mobileProjHeader { display: none; }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none; }`. Their intent is correct — the project header is meaningless on Today and Calendar views since those aggregate across all projects. The bug is that `#mainBar[data-view]` is stuck on `"today"` or `"calendar"` even when the Projects tab is active in the bottom tab bar. `applyActiveView()` (or its initial-mount path) updates the `.mobileTab.active` class but doesn't write `mainBar.dataset.view = viewKey` in lockstep, so the visual active-tab state and the CSS routing attribute drift apart on first load.
+- [ ] **[HIGH]** Restore #mainBar[data-view] write on the return trip to Projects so #mobileProjHeader re-paints
+  - Description: On mobile, `#mobileProjHeader` paints correctly on initial load with the Projects tab active, but disappears after tapping the TODAY or CALENDAR tab and then tapping back to PROJECTS. The header element stays built (DOM children intact) but `getComputedStyle(...).display` returns `none`. The hiding rules in `style.css` are correct in intent: `#mainBar[data-view="today"] #mobileProjHeader { display: none }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none }`. The bug is in `applyActiveView()` — the function writes `mainBar.dataset.view = 'today'` (or `'calendar'`) on the outbound trip but doesn't write `mainBar.dataset.view = 'projects'` on the return. The attribute stays stuck on the last non-Projects value, the CSS rule keeps firing, and the header stays hidden. Confirmed by the diagnostic flow: initial load shows `#mobileProjHeader` at 390×100 dimensions; after TODAY → PROJECTS round-trip, computed display is `none` even though the active-tab class and the visible content area both indicate Projects is active.
   - Behavior:
-    1. `applyActiveView(viewKey)` is the single code path that toggles the active view across mobile tabs AND desktop view-switch pills AND the `#mainBar[data-view]` attribute. Confirm it sets all three on every call, including the initial mount.
-    2. Specifically, every code path that ends in changing the active view writes `mainBar.dataset.view = viewKey` (or equivalent `setAttribute('data-view', viewKey)`) BEFORE the tab class toggles, so layout reflows in one frame.
-    3. Initial mount path: when the app first builds the DOM, `#mainBar` defaults to `data-view="projects"` (set at element creation in `main.js`, not deferred to the first `applyActiveView` call). If `applyActiveView('projects')` is called explicitly during init, that's fine too — the goal is no window where `data-view` is unset or holds a stale value.
+    1. Find `applyActiveView()` in `main.js`. Verify the `mainBar.dataset.view = viewKey` (or `setAttribute('data-view', viewKey)`) write is unconditional — it runs on EVERY call, regardless of `viewKey` value. The current bug pattern is likely either an `if (viewKey !== 'projects')` early branch, a switch statement missing the `'projects'` case, or a guard that only writes the attribute when transitioning AWAY from Projects.
+    2. After the fix, every call to `applyActiveView('projects')` results in `#mainBar` having `data-view="projects"` regardless of what the attribute was before.
+    3. Same fix covers any other future view value — the write is symmetric across all three tabs (and any future tabs).
   - Acceptance criteria:
-    - On fresh page load with the Projects tab active, `document.getElementById('mainBar').getAttribute('data-view')` returns `"projects"`.
-    - With the Projects tab active, `getComputedStyle(document.getElementById('mobileProjHeader')).display` returns a non-`"none"` value (whatever the mobile-block declaration sets — likely `flex` or `grid`).
-    - Tapping the TODAY mobile tab sets `data-view="today"`, hides `#mobileProjHeader`, and shows `#todayView` content. Tapping CALENDAR does the same with `"calendar"` and `#calendarView`. Tapping back to PROJECTS restores `data-view="projects"` and `#mobileProjHeader` paints again.
-    - Desktop pill switcher (when visible) stays in sync with `#mainBar[data-view]` the same way.
-    - The hiding rules `#mainBar[data-view="today"] #mobileProjHeader { display: none }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none }` stay in source — they're correctly suppressing the header on aggregate views.
+    - Fresh load → Projects tab active → `document.getElementById('mainBar').getAttribute('data-view')` returns `"projects"`, `#mobileProjHeader` visible.
+    - Tap TODAY → `data-view="today"`, `#mobileProjHeader` hidden, `#todayView` content shown.
+    - Tap PROJECTS → `data-view="projects"`, `#mobileProjHeader` visible again, `#mainList` content shown.
+    - Tap CALENDAR → `data-view="calendar"`, `#mobileProjHeader` hidden, `#calendarView` content shown.
+    - Tap PROJECTS → `data-view="projects"`, `#mobileProjHeader` visible again.
+    - Tap rapidly between all three tabs in any order — the attribute always tracks the active tab; the header always paints when (and only when) Projects is active.
+    - The desktop view-switch pill cluster (when visible at ≥701px) stays in sync the same way.
   - Implementation notes:
-    - `main.js` is over 25k tokens — grep for `applyActiveView`, `mainBar.dataset`, `setAttribute('data-view'`, and `dataset.view` to find every write site. There should be exactly one canonical writer (inside `applyActiveView`) and one initial-mount setter.
-    - The element creation site for `#mainBar` is the right place to set `data-view="projects"` as the default — `const mainBar = document.createElement('section'); mainBar.id = 'mainBar'; mainBar.dataset.view = 'projects';`
-    - If `applyActiveView` is the only writer and it's not being called on mount, calling it explicitly at the end of the DOM build for the Projects view is the fix.
-    - Add a test assertion in `tests/main.js` or a new `mobileTabBarSync.test.js` pinning that the `#mainBar[data-view]` write happens inside the `applyActiveView` function body, and that the element is created with `dataset.view = 'projects'` at the DOM build site.
+    - `main.js` is over 25k tokens — grep for `applyActiveView`, `mainBar.dataset`, and `setAttribute('data-view'` to find the function body and every write site.
+    - The fix is one line in the most common case: ensure the `mainBar.dataset.view = viewKey` assignment lives unconditionally at the top of the function body, before any view-specific branching. If the current code has it inside an `if/else` branch, move it out.
+    - Also verify there are no OTHER writers to `mainBar.dataset.view` outside of `applyActiveView` — if there are, they should be removed or refactored to go through the function.
+    - Add a test assertion in a new `tests/mobileTabBarSync.test.js` (or extend an existing test) that pins: the function `applyActiveView` exists, contains an unconditional write to `mainBar.dataset.view` or `mainBar.setAttribute('data-view', …)`, and the write uses the `viewKey` parameter (not a hardcoded value).
   - Out of scope:
-    - The hiding rules themselves — leave them as-is; the intent of hiding the per-project header on Today/Calendar is correct.
-    - Renaming `data-view` to something else for clarity — the attribute name is fine.
-    - The bottom-sheet nub `!important` rule and the EXPANDED panel bleed-through — both handled in their own entries.
+    - The hiding CSS rules — they're correct, don't touch them.
+    - Renaming `data-view` or `applyActiveView` — the names are fine.
+    - The bottom-sheet nub `!important` rule and the EXPANDED panel `display: none` fix — both handled in their own entries.
+    - Investigating whether other elements (`#bulkDescActions`, `#mainList`) are also affected by stale `data-view` — they're listed in the same selector, so they get fixed together, but verifying them is just a side-effect of the acceptance criteria above.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/mobileTabBarSync.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
