@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix EXPANDED bottom-sheet panel bleed-through at bottom of mobile viewport
+- [x] **[MEDIUM]** Fix EXPANDED bottom-sheet panel bleed-through at bottom of mobile viewport
   - Description: On mobile (≤700px), the EXPANDED bottom-sheet panel (`#bottomSheetExpanded` — the purple-bordered dialog housing Pomodoro + music controls) remains partially visible at the bottom edge of the viewport even when the sheet is in IDLE or PEEK state. Its top border (1px solid `var(--accent)`), `.sheetDragHandle` glyph, and first section header ("POMODORO") peek out below the tab bar. The console confirms `data-state="IDLE"` and neither controller is active, so this isn't a stuck-state bug — the panel is genuinely being painted off-screen but iOS Safari isn't clipping it against `#outerContainer`'s `overflow: hidden`. Root cause is a known iOS Safari quirk where `transform: translateY(100%)` on an absolutely-positioned child inside a `height: 100dvh` container doesn't fully clip against the container's overflow rectangle — the bottom slice of the translated element leaks past the dvh boundary into the home-indicator zone. Fix by adding `visibility: hidden` to the resting (non-EXPANDED) state with a delayed visibility transition, so the panel doesn't paint at all when off-screen and the slide-down close animation still plays.
   - Behavior:
     1. `#bottomSheetExpanded` in its resting state (no `data-state="EXPANDED"` on the parent) gets `visibility: hidden`. The existing `transform: translateY(100%)` and `bottom: 0; height: min(50dvh, 320px)` rules stay unchanged — the panel still slides physically off-screen; the visibility hide is belt-and-suspenders against the iOS Safari clip-overflow miss.
@@ -25,7 +25,7 @@
     - Surfacing the Pomodoro / music controllers on `window` for easier debugging (the diagnostic returned `undefined` because the controllers are module-scoped, which is correct — `data-state` is the canonical source of truth for sheet state).
     - The IDLE-state purple bar + handle visible above the tab bar — that's the `#bottomSheetNub` rendering at its expected position; it's not a bug, just the IDLE affordance.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-16
 
 ## Features
 
