@@ -142,6 +142,16 @@ function component() {
 
     main1.id = 'sideBar';
     main2.id = 'mainBar';
+    // Seed the CSS routing attribute at creation so #mainBar never sits in
+    // the DOM without a data-view value. Without this seed, there is a
+    // window between component() returning and applyActiveView() running
+    // where the attribute is unset; if any later code path checks the
+    // attribute during that window, the mobile tab bar's .active class
+    // and the data-view attribute can drift out of sync, leaving
+    // #mobileProjHeader hidden by the [data-view="today"] / "calendar"
+    // rules even when the Projects tab is the active mobile tab.
+    // applyActiveView() remains the canonical writer for subsequent flips.
+    main2.dataset.view = 'projects';
 
     sideTitle.id = 'sideTit';
     sideMain.id = 'sideMa';

@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Sync #mainBar data-view with the active mobile tab so #mobileProjHeader paints on Projects view
+- [x] **[HIGH]** Sync #mainBar data-view with the active mobile tab so #mobileProjHeader paints on Projects view
   - Description: On mobile, `#mobileProjHeader` (hamburger + project name + count pills) doesn't render even though the element is built correctly and all three children are appended. The console probe confirmed `exists: true`, `display: none`, `children: 3`. The hiding rules are these two top-level (not media-scoped) selectors in `style.css`: `#mainBar[data-view="today"] #mobileProjHeader { display: none; }` and `#mainBar[data-view="calendar"] #mobileProjHeader { display: none; }`. Their intent is correct — the project header is meaningless on Today and Calendar views since those aggregate across all projects. The bug is that `#mainBar[data-view]` is stuck on `"today"` or `"calendar"` even when the Projects tab is active in the bottom tab bar. `applyActiveView()` (or its initial-mount path) updates the `.mobileTab.active` class but doesn't write `mainBar.dataset.view = viewKey` in lockstep, so the visual active-tab state and the CSS routing attribute drift apart on first load.
   - Behavior:
     1. `applyActiveView(viewKey)` is the single code path that toggles the active view across mobile tabs AND desktop view-switch pills AND the `#mainBar[data-view]` attribute. Confirm it sets all three on every call, including the initial mount.
