@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Force-hide bottom-sheet nub on mobile and restore missing #mobileProjHeader
+- [x] **[HIGH]** Force-hide bottom-sheet nub on mobile and restore missing #mobileProjHeader
   - Description: Two regressions from the previous "Hide IDLE nub + remove overflow button" pass that didn't fully land. First, `#bottomSheetNub` (the 56×4 gray bar inside a 96×44 button) is still painting above the bottom tab bar on mobile despite the prior `#bottomSheet #bottomSheetNub { display: none }` rule — something with higher specificity or later source order (the original state-driven `#bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex }` rule, or an inline `style.display = 'flex'` set in `main.js` during state transitions) is winning the cascade. Use `!important` placed at the end of the mobile media block to settle it definitively. Second, the entire `#mobileProjHeader` no longer paints on mobile — no hamburger, no purple project name + `▾` chevron, no `N OPEN / N DONE` count pills row. The task input row sits flush at the top of the viewport. Root cause needs a console probe to disambiguate three possible failure modes (element not created in JS, element created but hidden by orphaned CSS, or element created but children missing); the fix differs depending on which fails.
   - Behavior:
     1. Add `#bottomSheet #bottomSheetNub { display: none !important; }` placed at the END of the `@media (max-width: 700px)` block in `style.css` so it wins source order against earlier state-driven `display: flex` toggles and against any JS inline style. `!important` is justified because non-`!important` specificity attempts have already failed in two prior passes.
@@ -28,7 +28,7 @@
     - Reinstating the `⋯` overflow button — it stays gone; long-press on a sidebar project row remains the canonical Edit / color / Delete path.
     - Cleaning up the state-driven `display: flex/none` toggles for `#bottomSheetNub` — that audit is deferred so this entry stays surgical.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-16
 
 ## Features
 
