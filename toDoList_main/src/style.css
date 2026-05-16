@@ -5140,9 +5140,15 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
     padding: 16px;
-    pointer-events: auto;
+    pointer-events: none;
     transform: translateY(100%);
-    transition: transform 0.22s ease;
+    /* iOS Safari doesn't fully clip translateY(100%) children against a
+       100dvh container's overflow rect — the bottom slice bleeds into the
+       home-indicator zone. Flip visibility off after the slide-down so the
+       panel can't paint when off-screen; the delay preserves the close
+       animation. */
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -5150,6 +5156,9 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   }
   #bottomSheet[data-state="EXPANDED"] #bottomSheetExpanded {
     transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform 0.22s ease, visibility 0s linear 0s;
   }
 
   .sheetDragHandle {
