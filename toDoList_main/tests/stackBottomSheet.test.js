@@ -170,9 +170,20 @@ describe('STACK mobile bottom sheet utility surface', () => {
 
     it('IDLE nub touch target is at least 44px tall (accessibility floor)', () => {
         // The visible bar is small but the surrounding button is sized up.
+        // The button element retains its 44px height in source so the
+        // touch-target contract still holds at the desktop breakpoint;
+        // only the mobile `display: none` rule below hides it visually.
         const nubBlock = css.match(/#bottomSheetNub\s*\{[^}]*\}/);
         expect(nubBlock).toBeTruthy();
         expect(nubBlock[0]).toMatch(/height:\s*44px/);
+    });
+
+    it('hides the IDLE nub chrome at the mobile breakpoint so no decoration floats above the tab bar', () => {
+        // The bottom tab bar is the visual bottom-of-screen anchor on
+        // mobile, and .sheetSwipeZone already covers the bottom-edge
+        // swipe-up gesture, so the 56×4 nub bar is dropped from paint.
+        const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s+#bottomSheetNub\s*\{\s*display:\s*none/);
+        expect(mobileBlock).toBeTruthy();
     });
 
     it('expanded sheet height is capped at min(50dvh, 320px) for iOS Safari 100dvh quirks', () => {

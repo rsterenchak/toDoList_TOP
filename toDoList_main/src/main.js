@@ -2645,30 +2645,19 @@ function component() {
     mobileProjTitleRow.appendChild(mobileProjPrev);
     mobileProjTitleRow.appendChild(mobileProjName);
 
-    // Dense-mobile-header affordances (≤700px only — hidden on desktop
+    // Dense-mobile-header affordance (≤700px only — hidden on desktop
     // via CSS): the ▾ chevron next to the project name advertises the
-    // dropdown that opens the drawer (project picker), and the ⋯
-    // overflow button surfaces the right-click project context menu via
-    // a synthesized contextmenu event on the active project's sidebar
-    // row. Both elements live in the DOM at every viewport but the
-    // desktop styles keep them display:none so the legacy ‹ › carousel
-    // pattern stays untouched above 700px.
+    // dropdown that opens the drawer (project picker). It lives in the
+    // DOM at every viewport but the desktop styles keep it display:none
+    // so the legacy ‹ › carousel pattern stays untouched above 700px.
     const mobileProjChevron = document.createElement('span');
     mobileProjChevron.id = 'mobileProjChevron';
     mobileProjChevron.className = 'mobileProjDropdownChev';
     mobileProjChevron.setAttribute('aria-hidden', 'true');
     mobileProjChevron.textContent = '▾';
 
-    const mobileProjOverflow = document.createElement('button');
-    mobileProjOverflow.id = 'mobileProjOverflow';
-    mobileProjOverflow.type = 'button';
-    mobileProjOverflow.className = 'mobileProjOverflowBtn';
-    mobileProjOverflow.setAttribute('aria-label', 'Project options');
-    mobileProjOverflow.textContent = '⋯';
-
     mobileProjTitleRow.appendChild(mobileProjChevron);
     mobileProjTitleRow.appendChild(mobileProjNext);
-    mobileProjTitleRow.appendChild(mobileProjOverflow);
     mobileProjHeader.appendChild(mobileProjLabel);
     mobileProjHeader.appendChild(mobileProjTitleRow);
     mobileProjHeader.appendChild(mobileProjStats);
@@ -2686,33 +2675,6 @@ function component() {
     }
     mobileProjName.addEventListener('click', openMobileDrawer);
     mobileProjChevron.addEventListener('click', openMobileDrawer);
-
-    // Overflow button → fire a contextmenu event on the active project's
-    // sidebar row so the existing right-click menu surfaces. Falls back
-    // to opening the drawer if no row matches (e.g. before first paint).
-    mobileProjOverflow.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const activeName = mobileProjName.textContent || '';
-        const targetRow = activeName
-            ? document.querySelector('.selectedProject') ||
-              Array.prototype.find.call(
-                  document.querySelectorAll('#sideMa .projectRow'),
-                  function(row) { return row.textContent === activeName; }
-              )
-            : null;
-        if (targetRow) {
-            const rect = targetRow.getBoundingClientRect();
-            const evt = new MouseEvent('contextmenu', {
-                bubbles: true,
-                cancelable: true,
-                clientX: rect.right - 8,
-                clientY: rect.top + rect.height / 2,
-            });
-            targetRow.dispatchEvent(evt);
-        } else {
-            openMobileDrawer();
-        }
-    });
 
     // ── top-level view switcher (Today / Projects) ──
     // Pill bar in the top nav (anchored immediately right of the
