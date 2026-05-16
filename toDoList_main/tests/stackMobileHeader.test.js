@@ -151,4 +151,16 @@ describe('STACK mobile project header', () => {
         expect(desktop).toBeTruthy();
     });
 
+    it('assembles the title row into the header and mounts the header into main2', () => {
+        // Regression pin against the "header not painting" failure mode
+        // where an over-zealous overflow-button removal yanked the wrong
+        // append calls. Two prior passes around the same area scared
+        // the wiring, so anchor the three appends that together prove
+        // the header tree is intact: TitleRow into header, Stats into
+        // header, and header into main2.
+        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjTitleRow\)/);
+        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjStats\)/);
+        expect(main).toMatch(/main2\.appendChild\(mobileProjHeader\)/);
+    });
+
 });

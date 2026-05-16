@@ -182,7 +182,12 @@ describe('STACK mobile bottom sheet utility surface', () => {
         // The bottom tab bar is the visual bottom-of-screen anchor on
         // mobile, and .sheetSwipeZone already covers the bottom-edge
         // swipe-up gesture, so the 56×4 nub bar is dropped from paint.
-        const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s+#bottomSheetNub\s*\{\s*display:\s*none/);
+        // !important is required: the earlier state-driven
+        // `#bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex }`
+        // rule has higher specificity (attribute selector) than a plain
+        // `#bottomSheet #bottomSheetNub` override, so prior non-!important
+        // attempts lost the cascade in both directions.
+        const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s+#bottomSheetNub\s*\{\s*display:\s*none\s*!important\s*;?\s*\}/);
         expect(mobileBlock).toBeTruthy();
     });
 
