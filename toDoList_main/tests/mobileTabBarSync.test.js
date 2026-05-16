@@ -125,4 +125,147 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(sites.length).toBe(1);
         });
     });
+
+    describe('data-view write is symmetric across all three views', () => {
+        // The bug pattern this guards against: a future refactor that
+        // hardcodes the second argument to setAttribute (e.g. always
+        // writes 'today' or always writes a non-projects value), or
+        // moves the write inside an `if (viewKey !== 'projects')` guard
+        // so the projects case never re-asserts the attribute. The
+        // header CSS rules key off `data-view="today" / "calendar"` —
+        // if 'projects' is never written back on the return trip, the
+        // attribute stays stuck on the last non-Projects value and
+        // #mobileProjHeader stays hidden by the [data-view="today"] /
+        // "calendar" rule even when the Projects tab is active.
+        function extractApplyActiveView() {
+            const idx = main.indexOf('function applyActiveView');
+            expect(idx).toBeGreaterThan(-1);
+            const braceStart = main.indexOf('{', idx);
+            let depth = 0;
+            for (let i = braceStart; i < main.length; i++) {
+                if (main[i] === '{') depth++;
+                else if (main[i] === '}') {
+                    depth--;
+                    if (depth === 0) return main.slice(braceStart, i + 1);
+                }
+            }
+            throw new Error('unterminated applyActiveView body');
+        }
+        const body = extractApplyActiveView();
+
+        it('writes data-view using a variable, not a hardcoded string literal', () => {
+            // The setAttribute call must pass an identifier as the
+            // second argument, never a string literal. A regression that
+            // replaces the variable with e.g. 'today' would still
+            // technically be "an unconditional write" but would defeat
+            // the symmetry — that's the exact bug pattern the user
+            // diagnosis in TODO.md called out.
+            const m = body.match(
+                /setAttribute\(\s*['"]data-view['"]\s*,\s*([^)]+)\)/
+            );
+            expect(m).not.toBeNull();
+            const secondArg = m[1].trim();
+            // Identifier-only (no quotes) — rules out the 'projects' /
+            // 'today' / 'calendar' literal regressions.
+            expect(secondArg).not.toMatch(/^['"`]/);
+            expect(secondArg).toMatch(/^[A-Za-z_$][A-Za-z0-9_$]*$/);
+        });
+
+        it('maps view === "projects" to the same normalized value', () => {
+            // The normalization step must preserve 'projects' as
+            // 'projects'. If a future edit drops this branch (or
+            // renames the constant), the projects return trip would
+            // silently fall through to the 'today' default and stick
+            // the header in its hidden state.
+            expect(body).toMatch(
+                /if\s*\(\s*view\s*===\s*['"]projects['"]\s*\)\s*safe\s*=\s*['"]projects['"]/
+            );
+        });
+
+        it('maps view === "calendar" to the same normalized value', () => {
+            expect(body).toMatch(
+                /view\s*===\s*['"]calendar['"]\s*\)\s*safe\s*=\s*['"]calendar['"]/
+            );
+        });
+
+        it('preserves the today default for unknown view values', () => {
+            // Defensive default keeps `safe` a known value when called
+            // before getActiveView has resolved (e.g. boot before
+            // localStorage reads).
+            expect(body).toMatch(/let\s+safe\s*=\s*['"]today['"]/);
+        });
+
+        it('writes data-view before the view-specific render branches', () => {
+            // The attribute must be set before any branch that depends
+            // on view-specific work (refreshTodayDateHeader,
+            // renderCalendarView, etc.) so a thrown exception in those
+            // branches still leaves the CSS routing attribute in a
+            // consistent state.
+            const dataViewWriteIdx = body.search(
+                /setAttribute\(\s*['"]data-view['"]/
+            );
+            const todayBranchIdx = body.search(
+                /if\s*\(\s*safe\s*===\s*['"]today['"]\s*\)/
+            );
+            const calendarBranchIdx = body.search(
+                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]calendar['"]\s*\)/
+            );
+            expect(dataViewWriteIdx).toBeGreaterThan(-1);
+            expect(todayBranchIdx).toBeGreaterThan(-1);
+            expect(calendarBranchIdx).toBeGreaterThan(-1);
+            expect(dataViewWriteIdx).toBeLessThan(todayBranchIdx);
+            expect(dataViewWriteIdx).toBeLessThan(calendarBranchIdx);
+        });
+
+        it('produces the correct data-view attribute for every view on round-trip (runtime)', () => {
+            // Source patterns above pin the shape; this test pins the
+            // BEHAVIOR by lifting the normalization-and-write slice from
+            // applyActiveView and executing it against a real DOM. This
+            // is the assertion that would have caught the round-trip
+            // bug the TODO entry describes — initial → today →
+            // projects → calendar → projects must each leave data-view
+            // correctly synced. Extracting just the data-view slice
+            // avoids depending on the rest of main.js (pill/tab
+            // toggles, renderTodayDashboard, etc.), which can't load
+            // standalone.
+            const sliceStart = body.search(/let\s+safe\s*=/);
+            const writeMatch = body.match(
+                /mainBar\.setAttribute\(\s*['"]data-view['"]\s*,\s*[^)]+\)\s*;?/
+            );
+            expect(sliceStart).toBeGreaterThan(-1);
+            expect(writeMatch).not.toBeNull();
+            const sliceEnd = body.indexOf(writeMatch[0]) + writeMatch[0].length;
+            const slice = body.slice(sliceStart, sliceEnd);
+
+            document.body.innerHTML =
+                '<div id="mainBar" data-view="projects"></div>';
+            let stored = 'projects';
+            const factory = new Function(
+                'document',
+                'getActiveView',
+                'setActiveView',
+                'view',
+                `${slice}`
+            );
+            const applyActiveView = function (view) {
+                factory(
+                    document,
+                    function () { return stored; },
+                    function (v) { stored = v; },
+                    view
+                );
+            };
+
+            const mainBar = document.getElementById('mainBar');
+            expect(mainBar.getAttribute('data-view')).toBe('projects');
+            applyActiveView('today');
+            expect(mainBar.getAttribute('data-view')).toBe('today');
+            applyActiveView('projects');
+            expect(mainBar.getAttribute('data-view')).toBe('projects');
+            applyActiveView('calendar');
+            expect(mainBar.getAttribute('data-view')).toBe('calendar');
+            applyActiveView('projects');
+            expect(mainBar.getAttribute('data-view')).toBe('projects');
+        });
+    });
 });
