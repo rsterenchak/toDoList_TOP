@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-16',
         fixed: [
             'Mobile bottom-sheet expanded panel no longer bleeds past the bottom of the viewport into the home-indicator zone when idle or peeking.',
+            'Mobile project header no longer shows the redundant ⋯ overflow button, and the idle bottom-sheet nub is hidden so no stray gray bar floats above the tab bar.',
         ],
     },
     {
@@ -22,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-14',
         fixed: [
-            'Header arrow-key navigation now walks through the PROJECTS, TODAY, and CALENDAR pills between the hamburger and the right-side icons.',
             'Mobile gets a persistent bottom tab bar for Projects, Today, and Calendar, plus a denser project header with inline open/done count pills.',
         ],
     },

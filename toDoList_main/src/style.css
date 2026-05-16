@@ -4996,6 +4996,15 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   #bottomSheetNub:focus-visible .sheetNubBar { background: var(--accent); }
   #bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex; }
   #bottomSheet:not([data-state="IDLE"]) #bottomSheetNub { display: none; }
+  /* Hide the IDLE nub chrome on mobile — the bottom tab bar is the
+     visual bottom-of-screen anchor and `.sheetSwipeZone` already
+     covers the bottom-edge swipe-up gesture, so the 56×4 bar floating
+     above the tabs reads as decoration with nothing to anchor it.
+     Higher specificity than the state-driven IDLE rule above so no
+     !important is needed; the button element keeps its 44px touch
+     surface in source for the desktop breakpoint where this rule
+     doesn't apply. */
+  #bottomSheet #bottomSheetNub { display: none; }
 
   /* Bottom-edge swipe hit zone — invisible 16px strip that catches
      swipe-up gestures starting from the screen border so the user
@@ -5747,31 +5756,6 @@ body:has(#musicPopover.open) #helpFab { display: none; }
        the inline flow. */
     padding: 8px 6px;
     user-select: none;
-  }
-
-  .mobileProjOverflowBtn {
-    flex: 0 0 auto;
-    margin-left: auto;
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobileProjOverflowBtn:hover,
-  .mobileProjOverflowBtn:focus-visible {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-    outline: none;
   }
 
   /* Count pills row — small inline pills with the spec colors:

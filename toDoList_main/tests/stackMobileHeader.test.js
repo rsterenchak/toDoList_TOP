@@ -134,6 +134,15 @@ describe('STACK mobile project header', () => {
         expect(css).not.toMatch(/\.mobileProjDot\b/);
     });
 
+    it('drops the #mobileProjOverflow ⋯ button (functionality covered by the long-press project context menu)', () => {
+        // The overflow button surfaced the same Edit / recolor / Delete
+        // actions already reachable via long-press on any project row in
+        // the sidebar drawer — removing it deletes redundant mobile
+        // chrome. No DOM creation, no listeners, no CSS left behind.
+        expect(main).not.toMatch(/mobileProjOverflow/);
+        expect(css).not.toMatch(/mobileProjOverflow/);
+    });
+
     it('exposes only the mobile header at the ≤700px breakpoint', () => {
         // The mobile header is in the DOM at all viewports so the JS path
         // is single-branch; CSS hides it at ≥701px to keep the desktop
