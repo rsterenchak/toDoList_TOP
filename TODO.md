@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Hide IDLE bottom-sheet nub on mobile and remove redundant project overflow button
+- [x] **[LOW]** Hide IDLE bottom-sheet nub on mobile and remove redundant project overflow button
   - Description: Two pieces of redundant mobile chrome surfaced after the Dense redesign. First, `#bottomSheetNub` (the 56×4px IDLE-state handle bar inside a 96×44 tap target) renders just above the bottom tab bar — its position calc `bottom: calc(var(--mobile-tab-h) + var(--foot-h) + env(safe-area-inset-bottom))` correctly stacks it above the tabs by spec, but visually it reads as a stray gray decoration floating above the tab bar with nothing to anchor it. The tab bar is the visual bottom-of-screen anchor on mobile, the swipe-up zone (`.sheetSwipeZone`) provides the gesture path, and the PEEK strip paints its own visible chrome above the tabs when Pomodoro or music is actually active. Hide `#bottomSheetNub` entirely on mobile — IDLE state still functions as the resting state machine value, but no visible chrome paints. Second, `#mobileProjOverflow` (the `⋯` button next to the project name in the mobile header) opens a popover containing Edit, a color-picker strip, and Delete — exactly the same three actions surfaced by the existing `projectMenu.js` long-press context menu on any project row in the sidebar drawer (confirmed in the Help modal's Projects section: "Right-click (long-press on touch) a project row to rename, recolor, or delete it."). Remove the overflow button and its popover.
   - Behavior:
     1. `#bottomSheetNub` gets `display: none` inside the `@media (max-width: 700px)` block. Override the state-driven `#bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex; }` rule with higher specificity (`#bottomSheet #bottomSheetNub { display: none; }`) so no `!important` is needed.
@@ -28,7 +28,7 @@
     - Migrating the `projectMenu.js` long-press context menu functionality — it already covers all the actions the overflow button exposed.
     - Removing the IDLE state from the state machine — it's still meaningful as the resting value, just visually silent on mobile.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-16
 
 ## Features
 
