@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Replace visibility-hide with display-none on EXPANDED sheet to fully suppress drag-handle bleed-through
+- [x] **[HIGH]** Replace visibility-hide with display-none on EXPANDED sheet to fully suppress drag-handle bleed-through
   - Description: After the previous "visibility: hidden on resting state" TODO landed, the EXPANDED panel's background, border-top, padding, and content text (e.g., "POMODORO" header) are no longer visible at the bottom of the mobile viewport in IDLE/PEEK states — that part of the fix worked. But the `.sheetDragHandle` element inside `#bottomSheetExpanded` is still rendering, appearing as a small ~40×4 gray bar between the bottom tab bar and the `#footBar` "TASK MANAGEMENT V1.1" row. Root cause is that visibility cascades from parent to child but children can override it; `.sheetDragHandle` likely carries an explicit `visibility: visible` (or implicit override via a transform/opacity rule) so it keeps painting even when its parent is hidden. Combined with iOS Safari's loose enforcement of `overflow: hidden` against translated descendants, the handle escapes the clip. Fix by switching from `visibility: hidden` to `display: none` for the resting state — `display: none` removes the element and all descendants from the render tree entirely, so no child can opt back in.
   - Behavior:
     1. `#bottomSheetExpanded` in its resting state (no `data-state="EXPANDED"` on the parent) gets `display: none`. The `visibility: hidden` rule from the previous TODO is removed.

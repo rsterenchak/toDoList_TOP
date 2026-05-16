@@ -9,6 +9,7 @@ export const changelog = [
         fixed: [
             'Mobile bottom-sheet expanded panel no longer bleeds past the bottom of the viewport into the home-indicator zone when idle or peeking.',
             'Mobile project header no longer shows the redundant ⋯ overflow button, and the idle bottom-sheet nub is hidden so no stray gray bar floats above the tab bar.',
+            'Mobile idle and peek states no longer show a stray gray drag-handle bar between the bottom tab bar and the footer.',
         ],
     },
     {
@@ -17,13 +18,6 @@ export const changelog = [
         fixed: [
             'Top-bar view-switch pills no longer clip into the iOS status bar / Dynamic Island on mobile.',
             'Top-bar view-switch pills are now hidden on mobile, and the bottom sheet\'s idle nub and peek strip sit directly above the bottom tab bar instead of being intercepted by it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-14',
-        fixed: [
-            'Mobile gets a persistent bottom tab bar for Projects, Today, and Calendar, plus a denser project header with inline open/done count pills.',
         ],
     },
 ];
