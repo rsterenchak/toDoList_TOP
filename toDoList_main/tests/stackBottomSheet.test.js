@@ -181,6 +181,33 @@ describe('STACK mobile bottom sheet utility surface', () => {
         expect(block[0]).toMatch(/height:\s*min\(\s*50dvh\s*,\s*320px\s*\)/);
     });
 
+    // Belt-and-suspenders fix for an iOS Safari quirk where `transform:
+    // translateY(100%)` on an absolutely-positioned child inside a
+    // `height: 100dvh` container doesn't fully clip against the container's
+    // overflow rectangle — the bottom slice of the translated panel leaks
+    // past the dvh boundary into the home-indicator zone. The resting
+    // (non-EXPANDED) state hides the panel via `visibility: hidden` with a
+    // delayed visibility transition so the close animation still plays in
+    // full.
+    it('hides the resting EXPANDED panel via visibility:hidden to block iOS Safari overflow bleed', () => {
+        const block = css.match(/#bottomSheetExpanded\s*\{[^}]*\}/);
+        expect(block).toBeTruthy();
+        expect(block[0]).toMatch(/visibility:\s*hidden/);
+        // The transition must animate transform AND visibility, with the
+        // visibility flip delayed until after the 0.22s slide-down so the
+        // close animation plays in full.
+        expect(block[0]).toMatch(/transition:\s*transform\s+0\.22s\s+ease\s*,\s*visibility\s+0s\s+linear\s+0\.22s/);
+    });
+
+    it('reveals the EXPANDED panel immediately on open with visibility:visible and 0s delay', () => {
+        const expandedBlock = css.match(/#bottomSheet\[data-state="EXPANDED"\]\s*#bottomSheetExpanded\s*\{[^}]*\}/);
+        expect(expandedBlock).toBeTruthy();
+        expect(expandedBlock[0]).toMatch(/visibility:\s*visible/);
+        // The visibility transition delay drops to 0s so the panel paints
+        // from the first frame of the slide-up animation.
+        expect(expandedBlock[0]).toMatch(/transition:\s*transform\s+0\.22s\s+ease\s*,\s*visibility\s+0s\s+linear\s+0s/);
+    });
+
     it('uses position: absolute inside #outerContainer (respects existing overflow rules)', () => {
         const block = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s*\{[^}]*\}/);
         expect(block).toBeTruthy();
