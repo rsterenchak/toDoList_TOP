@@ -11,13 +11,7 @@ export const changelog = [
             'Mobile project header no longer shows the redundant ⋯ overflow button, and the idle bottom-sheet nub is hidden so no stray gray bar floats above the tab bar.',
             'Mobile idle and peek states no longer show a stray gray drag-handle bar between the bottom tab bar and the footer.',
             'Bottom-sheet idle nub no longer paints above the mobile tab bar in any state.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-15',
-        fixed: [
-            'Top-bar view-switch pills are now hidden on mobile, and the bottom sheet\'s idle nub and peek strip sit directly above the bottom tab bar instead of being intercepted by it.',
+            'Mobile project header now paints reliably on the Projects view instead of staying hidden after first load.',
         ],
     },
 ];
