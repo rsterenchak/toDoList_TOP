@@ -2,33 +2,31 @@
 
 ## Bugs
 
-- [x] **[LOW]** Hide IDLE bottom-sheet nub on mobile and remove redundant project overflow button
-  - Description: Two pieces of redundant mobile chrome surfaced after the Dense redesign. First, `#bottomSheetNub` (the 56×4px IDLE-state handle bar inside a 96×44 tap target) renders just above the bottom tab bar — its position calc `bottom: calc(var(--mobile-tab-h) + var(--foot-h) + env(safe-area-inset-bottom))` correctly stacks it above the tabs by spec, but visually it reads as a stray gray decoration floating above the tab bar with nothing to anchor it. The tab bar is the visual bottom-of-screen anchor on mobile, the swipe-up zone (`.sheetSwipeZone`) provides the gesture path, and the PEEK strip paints its own visible chrome above the tabs when Pomodoro or music is actually active. Hide `#bottomSheetNub` entirely on mobile — IDLE state still functions as the resting state machine value, but no visible chrome paints. Second, `#mobileProjOverflow` (the `⋯` button next to the project name in the mobile header) opens a popover containing Edit, a color-picker strip, and Delete — exactly the same three actions surfaced by the existing `projectMenu.js` long-press context menu on any project row in the sidebar drawer (confirmed in the Help modal's Projects section: "Right-click (long-press on touch) a project row to rename, recolor, or delete it."). Remove the overflow button and its popover.
+- [ ] **[HIGH]** Replace visibility-hide with display-none on EXPANDED sheet to fully suppress drag-handle bleed-through
+  - Description: After the previous "visibility: hidden on resting state" TODO landed, the EXPANDED panel's background, border-top, padding, and content text (e.g., "POMODORO" header) are no longer visible at the bottom of the mobile viewport in IDLE/PEEK states — that part of the fix worked. But the `.sheetDragHandle` element inside `#bottomSheetExpanded` is still rendering, appearing as a small ~40×4 gray bar between the bottom tab bar and the `#footBar` "TASK MANAGEMENT V1.1" row. Root cause is that visibility cascades from parent to child but children can override it; `.sheetDragHandle` likely carries an explicit `visibility: visible` (or implicit override via a transform/opacity rule) so it keeps painting even when its parent is hidden. Combined with iOS Safari's loose enforcement of `overflow: hidden` against translated descendants, the handle escapes the clip. Fix by switching from `visibility: hidden` to `display: none` for the resting state — `display: none` removes the element and all descendants from the render tree entirely, so no child can opt back in.
   - Behavior:
-    1. `#bottomSheetNub` gets `display: none` inside the `@media (max-width: 700px)` block. Override the state-driven `#bottomSheet[data-state="IDLE"] #bottomSheetNub { display: flex; }` rule with higher specificity (`#bottomSheet #bottomSheetNub { display: none; }`) so no `!important` is needed.
-    2. The state machine still cycles `IDLE → PEEK → EXPANDED` unchanged — `data-state="IDLE"` remains the resting state; only the visible chrome is suppressed.
-    3. PEEK strip continues to render above the tab bar when a controller is active. EXPANDED panel continues to render normally. The `.sheetSwipeZone` invisible swipe-up hit zone stays in place.
-    4. `#mobileProjOverflow` (and its `mobileProjOverflowPopover` / associated popover element, event listeners, and outside-click handlers) is removed from the `main.js` build path entirely — no DOM element created, no event wiring.
-    5. The `.mobileProjTitleRow` flex layout collapses cleanly without the overflow button — the row holds just the project name + `▾` chevron on the left, with nothing on the right.
+    1. `#bottomSheetExpanded` in its resting state (no `data-state="EXPANDED"` on the parent) gets `display: none`. The `visibility: hidden` rule from the previous TODO is removed.
+    2. `#bottomSheet[data-state="EXPANDED"] #bottomSheetExpanded` sets `display: flex` (matching the previous resting `display: flex` value that the panel needs for its column layout + drag handle + content stack).
+    3. The `transform: translateY(100%)` declaration and its EXPANDED-state override (`transform: translateY(0)`) remain in source for the open animation — the slide-up still plays when the panel transitions to EXPANDED because `display: flex` lets the panel paint before the transform kicks in.
+    4. Trade-off: the slide-DOWN close animation no longer plays — the panel disappears instantly on close instead of sliding away over 0.22s. This is acceptable because (a) the bleed-through bug is high-priority correctness, and (b) the close case is brief and not core to the UX. If the close animation matters later, it can be reintroduced via a `transitionend` listener that defers `display: none` until after the slide finishes (out of scope here).
   - Acceptance criteria:
-    - On mobile (≤700px) in IDLE state, no 56×4 gray bar renders anywhere — the space between the last visible todo row and the top of the tab bar is empty.
-    - PEEK strip still appears above the tab bar when Pomodoro or music is active.
-    - EXPANDED panel still slides up and renders correctly when triggered via the swipe-up gesture, by long-pressing on a row, or programmatically.
-    - The `.sheetSwipeZone` continues to intercept bottom-edge swipe-up touches and expand the sheet.
-    - The mobile project header row shows only the project name + `▾` chevron on the left — no `⋯` icon, no overflow popover.
-    - Long-pressing a project row in the sidebar drawer still opens the `projContextMenu` with Edit / color swatches / Delete — verifying the removed functionality stays reachable.
-    - Existing test `stackBottomSheet.test.js > IDLE nub touch target is at least 44px tall` still passes (the button element retains its 44px height in source — only the mobile `display: none` rule hides it; the touch-target contract continues to hold at the desktop breakpoint where the rule doesn't apply).
+    - In IDLE state on mobile, no part of `#bottomSheetExpanded` renders — no drag handle gray bar visible between tab bar and footer, no purple border-top, no content text peeking out anywhere in the viewport.
+    - In PEEK state on mobile, same as IDLE — only the PEEK strip itself paints above the tab bar; nothing from EXPANDED is visible.
+    - In EXPANDED state on mobile, the panel renders normally with the slide-UP animation playing (transform animates from `translateY(100%)` to `translateY(0)`), full controls visible, backdrop dimming the page above.
+    - Closing the sheet (drag-down past 30%, Escape key, backdrop tap) hides the panel — the close happens without a slide-down animation, which is acceptable.
+    - `getComputedStyle(document.getElementById('bottomSheetExpanded')).display` returns `"none"` when `data-state` is `"IDLE"` or `"PEEK"`, and `"flex"` when `data-state` is `"EXPANDED"`.
   - Implementation notes:
-    - `main.js` is over 25k tokens — grep for `mobileProjOverflow` to find the button creation, the popover construction, the event handlers, and the popover dismiss wiring. Pull them out together in one pass so no orphan listeners remain.
-    - Pure CSS handles the nub hide; no `main.js` changes needed for that half. The button element and listeners stay in source but the element is non-painting on mobile.
-    - If a test pins the existence of `#mobileProjOverflow` in the DOM, update it to assert the element is NOT created at any breakpoint after this change.
-    - Verify no remaining call sites reference `mobileProjOverflow` after removal (grep across `main.js`, `modals.js`, and any helper files).
+    - Pure CSS — no `main.js` changes. Edit the two existing rules for `#bottomSheetExpanded` inside the `@media (max-width: 700px)` block.
+    - Remove (don't comment out) the previous `visibility: hidden` + delayed-visibility-transition declarations from the resting state and the EXPANDED state — they're superseded by `display`.
+    - Don't keep `visibility: hidden` alongside `display: none` — redundant and adds noise to the cascade.
+    - Verify in dev tools on iOS Safari (the original bleed-through platform) that no descendant of `#bottomSheetExpanded` has a computed `display` other than `none` while in IDLE/PEEK states.
+    - Update `tests/stackBottomSheet.test.js` if it pins the `visibility: hidden` rule from the previous TODO — swap the assertion to pin `display: none` in resting state and `display: flex` (or whatever value EXPANDED needs) in EXPANDED state.
   - Out of scope:
-    - Repositioning the nub anywhere visible — the design choice here is to drop it on mobile, not relocate it. (Alternative: if Robert wants a visible bottom-edge affordance instead, swap the `display: none` rule for `bottom: env(safe-area-inset-bottom, 0px)` which puts the nub in the home-indicator zone below the tab bar. Not recommended — iOS HIG discourages interactive elements there, and the swipe zone already covers the discoverability gap.)
-    - Migrating the `projectMenu.js` long-press context menu functionality — it already covers all the actions the overflow button exposed.
-    - Removing the IDLE state from the state machine — it's still meaningful as the resting value, just visually silent on mobile.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: 2026-05-16
+    - Preserving the slide-DOWN close animation — explicitly traded away for correctness. A `transitionend`-based deferred `display: none` is the future enhancement if the close animation comes up again.
+    - The IDLE-state nub hide (separate previous TODO) and the mobile project overflow button removal — both stay as-is.
+    - Investigating why `.sheetDragHandle` was overriding visibility — `display: none` makes that irrelevant.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/stackBottomSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
