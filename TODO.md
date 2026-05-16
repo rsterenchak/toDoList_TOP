@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Restore sidebar project selection when switching back to Projects view so #mobileProjHeader re-paints
+- [x] **[HIGH]** Restore sidebar project selection when switching back to Projects view so #mobileProjHeader re-paints — Completed: 2026-05-16
   - Description: On mobile, tapping TODAY (or CALENDAR) and then tapping PROJECTS leaves `#mobileProjHeader` hidden — `data-view` is correctly `"projects"`, but `data-empty="true"` is set on the header element, and a CSS rule `#mobileProjHeader[data-empty="true"] { display: none }` hides it. Root cause is in `applyActiveView()`: the `'today'` branch explicitly clears `.selectedProject` from every sidebar row (per the existing comment: *"Today owns the main panel — the sidebar selection only makes sense once PROJECTS is active again"*). When `updateMobileProjHeader()` fires off the mutation observer with no active project name, it sets `data-empty="true"` on the header. The `'projects'` return trip flips `data-view` but never re-applies `.selectedProject` to the previously-active sidebar row, so `data-empty` stays `"true"` and the header stays hidden. Fix by either (a) NOT clearing `.selectedProject` on TODAY/CALENDAR transitions in the first place — the selection is cosmetic to the hidden sidebar so persisting it is harmless — or (b) re-applying the selection on the `'projects'` return trip by reading the active project from `getActiveProject()` (or whatever persistence helper exists) and finding the matching sidebar row. Option (a) is simpler and addresses the root cause.
   - Behavior:
     1. Remove the `.selectedProject` clearing block from the `'today'` branch (and `'calendar'` if it has one) inside `applyActiveView()`. The selection class persists across view switches.
