@@ -12,6 +12,20 @@ import { toDo } from './toDo.js';
 const RECURRENCE_PATTERNS = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly', 'custom'];
 const RECURRENCE_UNITS    = ['day', 'week', 'month', 'year'];
 
+// Used by summarizeRecurringMissPattern. Hoisted above the IIFE for the
+// same Babel-transpilation reason as RECURRENCE_PATTERNS above — the
+// helper inside the closure reaches for these constants at runtime, and
+// declaring them next to the pure helpers (further down the file) would
+// leave the binding undefined during the IIFE's evaluation pass.
+const WEEKDAY_NAMES = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+    'Thursday', 'Friday', 'Saturday'
+];
+const MISS_MONTH_SHORT = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
 
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
@@ -716,6 +730,224 @@ export const listLogic = (function () {
     }
 
 
+    // ── RECURRING MISS PATTERN SUMMARY ──────────────────────────────
+    // Derive a single sentence the stats drawer renders above the
+    // missed-dates list. Surfaces the most informative pattern hiding in
+    // the miss set so a long pile of dates collapses into one signal the
+    // user can act on. Returns `null` when there are no misses (the
+    // drawer suppresses the callout entirely in that case). Otherwise
+    // returns `{ kind, text }` where `kind` is one of:
+    //
+    //   'abandoned'  — a long contiguous miss run ending at yesterday
+    //   'weekday'    — one or two weekdays absorb the bulk of the misses
+    //   'recentSlip' — strong first half of the window, weak second half
+    //   'fallback'   — many misses but no clear pattern
+    //   'lowCount'   — 1–2 misses; phrasing names the dates directly
+    //
+    // Priority order: abandoned → weekday → recentSlip → fallback. The
+    // 1–2 miss case short-circuits to `lowCount` before the pattern
+    // checks run, since a long stat sentence would feel out of scale
+    // when there are barely any misses to summarise. Pure function: no
+    // DOM, no localStorage, no Date.now() — pass `now` for testability.
+    function summarizeRecurringMissPattern(stats, now) {
+        if (!stats || !Array.isArray(stats.misses) || stats.misses.length === 0) {
+            return null;
+        }
+
+        const missCount = stats.misses.length;
+        const referenceNow = now instanceof Date ? now : new Date();
+        const today = new Date(
+            referenceNow.getFullYear(),
+            referenceNow.getMonth(),
+            referenceNow.getDate()
+        );
+        const yesterday = addDays(today, -1);
+
+        // Misses arrive newest-last from getRecurringTaskStats (the
+        // expected-dates walk is forward in time). Sort defensively so
+        // any caller-supplied ordering can't drift the pattern math.
+        const sortedMisses = stats.misses.slice().sort(function(a, b) {
+            return a.getTime() - b.getTime();
+        });
+
+        // ── lowCount: 1–2 misses get explicit-date phrasing ──
+        if (missCount <= 2) {
+            const formatted = sortedMisses.map(formatMissShortDate);
+            let text;
+            if (missCount === 1) {
+                text = 'Missed ' + formatted[0];
+            } else {
+                const sameWeekday =
+                    sortedMisses[0].getDay() === sortedMisses[1].getDay();
+                text = 'Missed ' + formatted[0] + ' and ' + formatted[1];
+                if (sameWeekday) {
+                    const dowName = sortedMisses[0].toLocaleString(
+                        undefined,
+                        { weekday: 'long' }
+                    );
+                    text += ' — both ' + dowName + 's';
+                }
+            }
+            return { kind: 'lowCount', text: text };
+        }
+
+        // Convenience: missed-date YYYY-MM-DD key set so the abandoned
+        // run scan can compare against the expected sequence without
+        // re-running the formatter on every iteration.
+        const missKeySet = new Set(sortedMisses.map(function(d) {
+            return formatCalendarKey(d);
+        }));
+
+        // ── abandoned: longest contiguous miss run ending at yesterday
+        // is ≥ 7 AND ≥ 50% of the window's misses fall inside the run.
+        // Walks the expected sequence backwards from yesterday — only
+        // expected-occurrence days count toward the run, so a daily
+        // cadence and a weekdays cadence both yield a clean run length. ──
+        const expectedBeforeToday = (stats.expectedDates || []).filter(function(d) {
+            return d.getTime() < today.getTime();
+        }).sort(function(a, b) { return a.getTime() - b.getTime(); });
+
+        let runLength = 0;
+        let runEndsAtYesterday = false;
+        if (expectedBeforeToday.length > 0) {
+            const last = expectedBeforeToday[expectedBeforeToday.length - 1];
+            if (last.getTime() === yesterday.getTime()
+                && missKeySet.has(formatCalendarKey(last))) {
+                runEndsAtYesterday = true;
+                for (let i = expectedBeforeToday.length - 1; i >= 0; i--) {
+                    if (missKeySet.has(formatCalendarKey(expectedBeforeToday[i]))) {
+                        runLength++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (runEndsAtYesterday && runLength >= 7 && runLength >= missCount * 0.5) {
+            // Last hit = newest expected date strictly before today whose
+            // key sits in the hit set. May be absent when the user has
+            // never satisfied the recurrence inside the window — the
+            // phrasing branches on that case.
+            let lastHit = null;
+            const hits = stats.hits instanceof Set ? stats.hits : new Set();
+            for (let i = expectedBeforeToday.length - 1; i >= 0; i--) {
+                if (hits.has(formatCalendarKey(expectedBeforeToday[i]))) {
+                    lastHit = expectedBeforeToday[i];
+                    break;
+                }
+            }
+            const text = lastHit
+                ? 'Last hit was ' + formatMissShortDate(lastHit)
+                    + ' — ' + runLength + ' consecutive misses since.'
+                : runLength + ' consecutive misses, no completions in this window.';
+            return { kind: 'abandoned', text: text };
+        }
+
+        // ── weekday concentration: one or two weekdays account for the
+        // bulk of the misses. Requires the expected sequence to span
+        // ≥ 4 distinct weekdays so weekly/biweekly cadences (which only
+        // ever land on one weekday) don't trip the rule. ──
+        const weekdayBuckets = [0, 0, 0, 0, 0, 0, 0];
+        const expectedByDOW = [0, 0, 0, 0, 0, 0, 0];
+        expectedBeforeToday.forEach(function(d) {
+            expectedByDOW[d.getDay()]++;
+        });
+        sortedMisses.forEach(function(d) {
+            weekdayBuckets[d.getDay()]++;
+        });
+
+        const expectedWeekdays = expectedByDOW.filter(function(c) {
+            return c > 0;
+        }).length;
+
+        if (expectedWeekdays >= 4) {
+            const dowRates = [];
+            for (let i = 0; i < 7; i++) {
+                if (expectedByDOW[i] === 0) continue;
+                dowRates.push({
+                    dow: i,
+                    rate: weekdayBuckets[i] / expectedByDOW[i],
+                    misses: weekdayBuckets[i],
+                    expected: expectedByDOW[i],
+                });
+            }
+            const high = dowRates.filter(function(r) {
+                return r.rate >= 0.6;
+            });
+            if (high.length === 1 || high.length === 2) {
+                const highSet = {};
+                high.forEach(function(r) { highSet[r.dow] = true; });
+                const others = dowRates.filter(function(r) {
+                    return !highSet[r.dow];
+                });
+                const othersAvg = others.length
+                    ? others.reduce(function(sum, r) { return sum + r.rate; }, 0) / others.length
+                    : 0;
+                const highAvg = high.reduce(function(sum, r) {
+                    return sum + r.rate;
+                }, 0) / high.length;
+                if (highAvg >= othersAvg * 1.5) {
+                    // Sort so the bigger contributor reads first.
+                    high.sort(function(a, b) { return b.misses - a.misses; });
+                    let text;
+                    if (high.length === 1) {
+                        const wd = WEEKDAY_NAMES[high[0].dow];
+                        const pct = Math.round(high[0].rate * 100);
+                        text = pct + '% of your ' + wd + ' occurrences are missed';
+                    } else {
+                        const totalHighMisses = high[0].misses + high[1].misses;
+                        const pct = Math.round((totalHighMisses / missCount) * 100);
+                        const wd1 = WEEKDAY_NAMES[high[0].dow];
+                        const wd2 = WEEKDAY_NAMES[high[1].dow];
+                        text = wd1 + 's and ' + wd2 + 's account for '
+                            + pct + '% of your misses';
+                    }
+                    return { kind: 'weekday', text: text };
+                }
+            }
+        }
+
+        // ── recentSlip: strong first half, weak second half. Only fires
+        // when the window has ≥ 14 expected occurrences so a small
+        // window can't read into noise as a slip. ──
+        if (expectedBeforeToday.length >= 14) {
+            const midIdx = Math.floor(expectedBeforeToday.length / 2);
+            const firstHalf = expectedBeforeToday.slice(0, midIdx);
+            const secondHalf = expectedBeforeToday.slice(midIdx);
+            const hitSet = stats.hits instanceof Set ? stats.hits : new Set();
+            const firstHits = firstHalf.filter(function(d) {
+                return hitSet.has(formatCalendarKey(d));
+            }).length;
+            const secondHits = secondHalf.filter(function(d) {
+                return hitSet.has(formatCalendarKey(d));
+            }).length;
+            const firstRate = firstHits / firstHalf.length;
+            const secondRate = secondHits / secondHalf.length;
+            if (firstRate >= 0.7 && secondRate <= 0.3) {
+                const midDate = formatMissShortDate(secondHalf[0]);
+                const firstPct = Math.round(firstRate * 100);
+                const secondPct = Math.round(secondRate * 100);
+                const text = 'Strong start (' + firstPct + '% hits through '
+                    + midDate + ') but slipped recently ('
+                    + secondPct + '% since).';
+                return { kind: 'recentSlip', text: text };
+            }
+        }
+
+        // ── fallback: misses with no clear pattern. Fires for any
+        // count ≥ 3 (since the 1–2 case is already handled by
+        // lowCount above) so the drawer is never left without a
+        // callout when there are misses to summarise — the
+        // acceptance criteria require a callout for every non-zero
+        // miss count. ──
+        const expectedCount = expectedBeforeToday.length || missCount;
+        const text = 'Missed ' + missCount + ' of ' + expectedCount
+            + ' occurrences. No clear pattern.';
+        return { kind: 'fallback', text: text };
+    }
+
+
     // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────
     // Walk every project's items once and bucket non-completed todos with
     // due dates into overdue / today / upcoming relative to the start of
@@ -988,6 +1220,7 @@ export const listLogic = (function () {
         setRecurrence,
         advanceRecurringTodo,
         getRecurringTaskStats,
+        summarizeRecurringMissPattern,
         getTodayAggregation,
         getCalendarMonth,
         getAllTodosDueOn,
@@ -995,6 +1228,14 @@ export const listLogic = (function () {
     };
 
 })();
+
+
+// Short "Mon DD" formatter for miss-pattern callouts. Mirrors toDoRow's
+// own formatShortDate but lives here so the listLogic helpers stay
+// importable without reaching into the row module.
+function formatMissShortDate(d) {
+    return MISS_MONTH_SHORT[d.getMonth()] + ' ' + d.getDate();
+}
 
 
 // ── RECURRENCE PURE HELPERS ─────────────────────────────────────────

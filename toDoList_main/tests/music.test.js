@@ -289,7 +289,7 @@ describe('music — main.js wiring', () => {
     it('isAnyModalOrPopoverOpen recognises the music popover', () => {
         const fnIdx = modals.indexOf('function isAnyModalOrPopoverOpen');
         expect(fnIdx).toBeGreaterThan(-1);
-        const body = modals.slice(fnIdx, fnIdx + 800);
+        const body = modals.slice(fnIdx, fnIdx + 1200);
         expect(body).toContain('musicPopover');
     });
 

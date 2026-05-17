@@ -562,6 +562,183 @@ export function showHelpModal() {
 }
 
 
+// ── MISSED DATES MODAL ──
+// Surfaces the full list of missed recurring-task dates, grouped by
+// month newest-first. The stats drawer hosts a `+ N more` chip beside
+// its 5-pill preview; clicking it opens this modal. Shell mirrors
+// showChangelogModal / showHelpModal — backdrop + dialog, header with
+// an X, scrollable body, footer Close, and the trio of close
+// affordances (X / backdrop / Escape) per CLAUDE.md.
+export function showMissedDatesModal(taskTitle, misses) {
+    const prior = document.getElementById('missedDatesModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'missedDatesModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'missedDatesModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'missedDatesModalTitle');
+
+    const header = document.createElement('div');
+    header.id = 'missedDatesModalHeader';
+
+    const titleEl = document.createElement('div');
+    titleEl.id = 'missedDatesModalTitle';
+    titleEl.textContent = 'Missed: ' + (taskTitle || '');
+
+    const closeX = document.createElement('button');
+    closeX.id = 'missedDatesModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close missed dates');
+    closeX.textContent = '×';
+
+    header.appendChild(titleEl);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'missedDatesModalBody';
+
+    // Sort misses newest-first so the modal header and month groups line up
+    // visually. Defensive: the caller already passes a sorted slice, but
+    // re-sorting here lets the modal trust its own ordering invariants.
+    const sortedMisses = (Array.isArray(misses) ? misses.slice() : []).sort(function(a, b) {
+        return b.getTime() - a.getTime();
+    });
+
+    const overview = document.createElement('div');
+    overview.className = 'missedDatesOverview';
+    if (sortedMisses.length > 0) {
+        const newest = sortedMisses[0];
+        const oldest = sortedMisses[sortedMisses.length - 1];
+        const newestKey = newest.getFullYear() + '-' + newest.getMonth();
+        const oldestKey = oldest.getFullYear() + '-' + oldest.getMonth();
+        const newestLabel = formatMonthYear(newest);
+        if (newestKey === oldestKey) {
+            overview.textContent = sortedMisses.length
+                + ' missed dates in ' + newestLabel;
+        } else {
+            overview.textContent = sortedMisses.length
+                + ' missed dates across ' + formatMonthYear(oldest)
+                + ' – ' + newestLabel;
+        }
+    } else {
+        overview.textContent = 'No missed dates.';
+    }
+    body.appendChild(overview);
+
+    // Bucket misses by ${year}-${month}. Walking the already-sorted array
+    // keeps the buckets newest-first in iteration order, so the renderer
+    // can append groups in encounter order without a second sort.
+    const groups = [];
+    const bucketByKey = {};
+    sortedMisses.forEach(function(d) {
+        const k = d.getFullYear() + '-' + d.getMonth();
+        if (!bucketByKey[k]) {
+            const bucket = {
+                key: k,
+                year: d.getFullYear(),
+                month: d.getMonth(),
+                dates: [],
+            };
+            bucketByKey[k] = bucket;
+            groups.push(bucket);
+        }
+        bucketByKey[k].dates.push(d);
+    });
+
+    groups.forEach(function(group) {
+        const section = document.createElement('section');
+        section.className = 'missedDatesMonthGroup';
+
+        const heading = document.createElement('div');
+        heading.className = 'missedDatesMonthHeading';
+        const monthName = new Date(group.year, group.month, 1)
+            .toLocaleString(undefined, { month: 'long' });
+        heading.textContent = monthName + ' ' + group.year
+            + ' · ' + group.dates.length + ' missed';
+        section.appendChild(heading);
+
+        const pillRow = document.createElement('div');
+        pillRow.className = 'statsMissedList';
+        // Newest first within the month.
+        const monthDates = group.dates.slice().sort(function(a, b) {
+            return b.getTime() - a.getTime();
+        });
+        monthDates.forEach(function(d) {
+            const pill = document.createElement('span');
+            pill.className = 'statsMissedPill';
+            pill.textContent = formatMissShortDate(d);
+            pillRow.appendChild(pill);
+        });
+        section.appendChild(pillRow);
+
+        body.appendChild(section);
+    });
+
+    const actions = document.createElement('div');
+    actions.id = 'missedDatesModalActions';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'missedDatesModalCloseBtn';
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Close';
+
+    actions.appendChild(closeBtn);
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    // Capture focus before the modal hijacks it so close() can hand it
+    // back to whichever `+ N more` button opened the modal.
+    const previouslyFocused = document.activeElement;
+    closeBtn.focus();
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        if (previouslyFocused &&
+            typeof previouslyFocused.focus === 'function' &&
+            document.contains(previouslyFocused)) {
+            previouslyFocused.focus();
+        }
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    closeX.addEventListener('click', close);
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+}
+
+const MISSED_MODAL_MONTH_SHORT = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+function formatMissShortDate(d) {
+    return MISSED_MODAL_MONTH_SHORT[d.getMonth()] + ' ' + d.getDate();
+}
+function formatMonthYear(d) {
+    const monthName = d.toLocaleString(undefined, { month: 'long' });
+    return monthName + ' ' + d.getFullYear();
+}
+
+
 // ── HELP FAB ──
 // The floating circular `?` button sits at the bottom-right of the viewport
 // on desktop and pointer-fine devices. CSS handles both visibility rules:
@@ -582,6 +759,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('changelogModalBackdrop') ||
         document.getElementById('helpModalBackdrop')      ||
         document.getElementById('settingsModalBackdrop')  ||
+        document.getElementById('missedDatesModalBackdrop') ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||

@@ -103,6 +103,7 @@ describe('floating help button + help modal', () => {
         ['confirmModalBackdrop',
          'changelogModalBackdrop',
          'helpModalBackdrop',
+         'missedDatesModalBackdrop',
          'dueDatePopover',
          'projContextMenu'].forEach(function(id) {
             expect(body).toContain(id);

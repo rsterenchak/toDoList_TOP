@@ -1163,6 +1163,7 @@ body {
 body:has(#confirmModalBackdrop) #helpFab,
 body:has(#changelogModalBackdrop) #helpFab,
 body:has(#helpModalBackdrop) #helpFab,
+body:has(#missedDatesModalBackdrop) #helpFab,
 body:has(#dueDatePopover) #helpFab,
 body:has(#projContextMenu) #helpFab,
 body:has(#settingsMenu) #helpFab {
@@ -2768,6 +2769,178 @@ body.row-dragging * { cursor: grabbing !important; }
   border-radius: 10px;
   padding: 2px 8px;
   white-space: nowrap;
+}
+
+/* Pattern callout — one-sentence summary of the miss set, rendered
+   immediately below the contributions grid. Mirrors the .statsApproximateNote
+   band but with a 2px accent-tinted left edge and an info glyph prefix so
+   it reads as a derived insight, not a parenthetical disclaimer. */
+.statsMissCallout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.15);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 6px 10px;
+  line-height: 1.35;
+}
+.statsMissCalloutIcon {
+  flex: 0 0 auto;
+  color: var(--accent-text);
+}
+.statsMissCalloutText {
+  flex: 1 1 auto;
+  color: var(--text-primary);
+}
+
+/* `+ N more` chip — opens the missed-dates modal. Same chip rhythm as
+   .statsMissedPill so the row stays visually coherent, but the accent-text
+   colour and tinted border read as an action rather than a static date. */
+.statsMissedMoreBtn {
+  font: inherit;
+  font-size: 10px;
+  color: var(--accent-text);
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.4);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.statsMissedMoreBtn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-text);
+}
+.statsMissedMoreBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* MISSED DATES MODAL — opened by the `+ N more` chip in the stats
+   drawer. Mirrors the help / changelog modal chrome (header, scrollable
+   body, footer Close) so the three share visual vocabulary. The body
+   stacks month-grouped pill rows newest-first; pills reuse the
+   .statsMissedPill styling. */
+#missedDatesModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+#missedDatesModal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+#missedDatesModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#missedDatesModalTitle {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#missedDatesModalClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+#missedDatesModalClose:hover { color: var(--text-primary); }
+#missedDatesModalClose:focus { outline: none; color: var(--accent-text); }
+#missedDatesModalBody {
+  padding: 8px 16px 4px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.missedDatesOverview {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  padding: 6px 0 10px;
+  border-bottom: 0.5px solid var(--border-dim);
+  margin-bottom: 6px;
+}
+.missedDatesMonthGroup {
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+.missedDatesMonthGroup:last-child { border-bottom: none; }
+.missedDatesMonthHeading {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+}
+#missedDatesModalActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+#missedDatesModalCloseBtn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+#missedDatesModalCloseBtn:hover { background: var(--bg-hover); }
+#missedDatesModalCloseBtn:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-dim); }
+@media (max-width: 480px) {
+  #missedDatesModal {
+    font-size: 14px;
+    max-height: 86vh;
+  }
+  #missedDatesModalCloseBtn {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
 }
 
 /* When the completed section is collapsed, hide any stats drawer that
