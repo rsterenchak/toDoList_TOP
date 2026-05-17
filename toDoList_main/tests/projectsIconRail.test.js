@@ -96,8 +96,13 @@ describe('projects sidebar — 54px icon rail', () => {
         expect(css).toMatch(/--rail-chip:\s*34px/);
         expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#projChild[\s\S]*width:\s*var\(--rail-chip\)[\s\S]*height:\s*var\(--rail-chip\)/);
         expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#projChild::after[\s\S]*content:\s*attr\(data-initial\)/);
-        // The selected chip wears the purple accent on bg + border + text.
-        expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#projChild\.selectedProject[\s\S]*background:\s*var\(--proj-accent[\s\S]*color:\s*#ffffff/);
+        // The selected chip uses a ghost/outlined treatment — semi-transparent
+        // purple fill, a brighter 1.5px accent border, and accent-colored
+        // text so it reads as the selection without mimicking the dark
+        // unselected chip. A dot indicator below the chip (via ::before)
+        // reinforces selection without relying on fill alone.
+        expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#projChild\.selectedProject\s*\{[\s\S]*background:\s*rgba\(108,\s*93,\s*245,\s*0\.18\)[\s\S]*border:\s*1\.5px\s+solid\s+var\(--proj-accent[\s\S]*color:\s*var\(--proj-accent/);
+        expect(css).toMatch(/html\[data-sidebar-rail="on"\]\s+#projChild\.selectedProject::before\s*\{[\s\S]*content:\s*['"]●['"][\s\S]*bottom:\s*-9px[\s\S]*font-size:\s*5px/);
     });
 
     it('gives the rail-mode add-project button a dashed border', () => {

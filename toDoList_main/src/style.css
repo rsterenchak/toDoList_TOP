@@ -4265,16 +4265,49 @@ body.row-dragging * { cursor: grabbing !important; }
     border-color: var(--accent-text);
     color: var(--text-primary);
   }
-  /* Active project: purple accent fills the chip — background, border,
-     and text together so the chip reads as the selection at a glance. */
+  /* Active project: ghost/outlined treatment — semi-transparent purple
+     fill, brighter 1.5px accent border, and accent-colored letter so the
+     chip reads as the selection without looking like an unselected dark
+     square. Per-project accent colors flow through via --proj-accent. */
   html[data-sidebar-rail="on"] #projChild.selectedProject {
-    background: var(--proj-accent, var(--accent)) !important;
-    border: 0.5px solid var(--proj-accent, var(--accent)) !important;
-    color: #ffffff !important;
-    border-left: 0.5px solid var(--proj-accent, var(--accent)) !important;
+    background: rgba(108, 93, 245, 0.18) !important;
+    border: 1.5px solid var(--proj-accent, #9D93EE) !important;
+    color: var(--proj-accent, #9D93EE) !important;
+    border-left: 1.5px solid var(--proj-accent, #9D93EE) !important;
   }
   html[data-sidebar-rail="on"] #projChild.selectedProject::after {
-    color: #ffffff;
+    color: var(--proj-accent, #9D93EE);
+  }
+  /* Dot indicator below the selected chip — reinforces selection without
+     relying on fill alone. Repurposes ::before (which carries the hover
+     tooltip for unselected chips); the selected chip's ghost styling
+     already identifies the active project, so the tooltip is suppressed
+     here in favor of the dot. */
+  html[data-sidebar-rail="on"] #projChild.selectedProject::before {
+    content: '●';
+    position: absolute;
+    left: 50%;
+    top: auto;
+    bottom: -9px;
+    transform: translateX(-50%);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    font-size: 5px;
+    line-height: 1;
+    color: var(--proj-accent, #9D93EE);
+    opacity: 1;
+    box-shadow: none;
+    z-index: 12;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: none;
+  }
+  html[data-sidebar-rail="on"] #projChild.selectedProject:hover::before {
+    opacity: 1;
+    transform: translateX(-50%);
+    transition-delay: 0s;
   }
 
   /* Add-project chip mirrors the rail chip footprint and gets a dashed
