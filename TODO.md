@@ -24,7 +24,7 @@
 
 ## Features
 
-- [ ] **[LOW]** React ghost companion to Pomodoro timer state with studying and wandering behaviors
+- [x] **[LOW]** React ghost companion to Pomodoro timer state with studying and wandering behaviors
   - Description: When the Pomodoro timer is RUNNING, the ghost companion should stop wandering, hold position, and display a new "studying" sprite variant showing a small pixel book held to the right side of the body. When the timer is PAUSED or STOPPED, the ghost resumes its normal wander behavior. When the timer session completes, the existing `cheer()` call fires as usual, then wander resumes. The idle bob animation (`companionIdle`) continues during the studying state — only the wander timer and position lerp are suspended.
   - Behavior:
     1. Add a new `STUDYING` state to `companion.js` alongside `IDLE`, `WALKING`, `CHEERING`. `setState('STUDYING')` suspends the wander `timerId` and `rafId`, applies `.studying` class, keeps the idle bob running.
@@ -42,7 +42,7 @@
     - No new dependencies. SVG is inline-authored, no library needed.
   - Out of scope: per-session study pose variations, book title text, reading page-turn animation.
   - File: `toDoList_main/src/companion.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/assets/companion-ghost-study.svg`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## In Progress
 
