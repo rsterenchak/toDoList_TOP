@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix recurring-task stats drawer being clipped to 54px by #mainList's grid track sizing
+- [x] **[HIGH]** Fix recurring-task stats drawer being clipped to 54px by #mainList's grid track sizing
   - Description: When the stats drawer is opened from the chart icon on a recurring task row, only the top ~54px paints — the stat-card strip renders fully, the window-toggle row clips through the middle, and the contributions grid + missed-dates list are entirely hidden beneath the next todo row. The root cause is in `style.css`: `#mainList` is a CSS grid declared as `grid-template-rows: repeat(auto-fit, minmax(54px, 54px))`, which locks every implicit row track — including the one the new `#statsSibling` lands in — to exactly 54px. The drawer's own CSS (`display: flex; flex-direction: column; padding: 10px 14px 12px; gap: 8px`) renders correctly inside the cell, but the cell itself caps the height. `#descSibling` masks the same limitation because its content rarely exceeds 34px, so it fits inside the 54px clamp by accident. Fix by replacing the hardcoded `minmax(54px, 54px)` with `grid-auto-rows: minmax(54px, auto)` (and dropping the now-redundant `grid-template-rows` line) so rows preserve their 54px minimum for normal todo rows but grow to fit their content for drawers. Confirm `#toDoChild` heights are unaffected (they're already `var(--item-h)` plus margin, comfortably under 54px) and that the existing `dragDrop.js` `computeDropIndex` math still works — it operates on `getBoundingClientRect()` per row, so auto-sized rows don't change the logic.
   - Acceptance criteria:
     - Opening the stats drawer reveals the full content stack: stat strip, optional approximate-dates note, window toggle, contributions grid (or fallback strip), and missed-dates pill list.
@@ -10,7 +10,7 @@
     - Description panels (`#descSibling`) continue to render at their existing height.
     - Drag-and-drop reorder still places the drop indicator at correct positions.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 
