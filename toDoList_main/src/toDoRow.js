@@ -826,6 +826,16 @@ export function buildToDoRow(item, toDoName) {
     // tab order). Enter on a focused row hands focus to the input.
     toDoChild.setAttribute("tabindex", "-1");
 
+    // Marker for rows built as blank placeholders. The keyup persistence
+    // block consults this flag so typing into a blank doesn't bake a
+    // partial title into the data model — a project switch before Enter
+    // would otherwise leave the typed text behind and reveal the row's
+    // chrome as though it were a committed todo. The Enter commit handler
+    // strips the marker once the row becomes a real item.
+    if (!item.tit) {
+        toDoChild.dataset.originalBlank = "true";
+    }
+
     duePill.id       = "duePill";
     duePill.type     = "button";
     duePill.setAttribute('aria-haspopup', 'dialog');
@@ -1015,6 +1025,10 @@ export function buildToDoRow(item, toDoName) {
         toDoInput.title = val;
         item.tit = val;
         item.pri = 2;
+        // Row is no longer a blank placeholder — clear the marker so the
+        // keyup persistence block resumes saving keystroke edits to this
+        // now-committed row's title.
+        delete toDoChild.dataset.originalBlank;
         // STACK mobile inline-expand: if the user picked Today / Tomorrow
         // from the chip row (or left the default Today), stamp that date
         // before the desktop fallback. The chip module no-ops on Custom
@@ -1073,8 +1087,14 @@ export function buildToDoRow(item, toDoName) {
         }
     });
 
-    // toDoInput keyup — save on every keystroke
+    // toDoInput keyup — save on every keystroke. Skip the persistence write
+    // entirely for rows still flagged as blank placeholders: a partial title
+    // baked into item.tit would re-render as a committed row (chrome and all)
+    // after a project switch, since buildToDoRow keys its placeholder branches
+    // off `!item.tit`. The Enter commit handler clears the flag, so chained
+    // edits after commit keystroke-save like any other committed row.
     toDoInput.addEventListener("keyup", function() {
+        if (toDoChild.dataset.originalBlank === "true") return;
         const val = toDoInput.value.trim();
         if (val.length > 0) {
             item.tit = val;
