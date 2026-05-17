@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-17',
+        added: [
+            'Recurring tasks now expose a stats drawer with hit-rate cards, a contributions grid, a window selector, and a missed-dates list.',
+        ],
         fixed: [
             'Nav, sidebar, todo rows, and view-switcher pills now share a unified purple-tinted border and pill style.',
         ],
@@ -14,7 +17,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-16',
         fixed: [
-            'Bottom-sheet idle nub no longer paints above the mobile tab bar in any state.',
             'Mobile project header now paints reliably on the Projects view instead of staying hidden after first load.',
             'Mobile project header no longer disappears after switching to Today or Calendar and back to Projects.',
             'Selected project in the collapsed sidebar rail now stands out with a ghost outline and a dot indicator beneath the chip.',
