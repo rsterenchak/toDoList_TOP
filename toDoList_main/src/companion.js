@@ -55,6 +55,11 @@ export function createCompanion(doc) {
     // the wander cadence.
     let blinkId   = null;
     let state     = 'IDLE';
+    // Tracks the user-facing study request independent of `state`. When a
+    // cheer is in flight, setStudying(true) defers — this flag holds the
+    // intent so cheer's tail-end can transition into STUDYING rather than
+    // back to IDLE.
+    let studyPending = false;
     let curX      = 0;
     let curY      = 0;
     let tgtX      = 0;
@@ -88,6 +93,13 @@ export function createCompanion(doc) {
         if (el && el.parentNode) el.parentNode.removeChild(el);
         el = null;
         state = 'IDLE';
+        studyPending = false;
+    }
+
+    // Right-edge footprint accounting — STUDYING widens the sprite to 64px to
+    // accommodate the held book; every other state uses the base 48px body.
+    function rightMargin() {
+        return state === 'STUDYING' ? 64 : 48;
     }
 
     function placeInitial() {
@@ -113,10 +125,11 @@ export function createCompanion(doc) {
         // Short hops from the current X — up to ~30% of the viewport width
         // in either direction — so the ghost meanders back and forth rather
         // than crossing the screen in one straight shot. Clamped to the
-        // safe margin either way.
+        // safe margin either way. The right margin grows for STUDYING so the
+        // wider footprint doesn't clip past the viewport edge.
         const range    = vw * 0.3;
         const proposed = curX + (Math.random() * 2 - 1) * range;
-        tgtX = Math.max(MARGIN_X, Math.min(vw - MARGIN_X, proposed));
+        tgtX = Math.max(MARGIN_X, Math.min(vw - rightMargin(), proposed));
         tgtY = STRIP_TOP + Math.random() * (STRIP_BOT - STRIP_TOP);
         // Re-roll pace per walk: 1.5–3 px/frame at 60fps gives a brisk-but-
         // not-frantic stroll, with enough variation to read as natural rhythm.
@@ -132,7 +145,9 @@ export function createCompanion(doc) {
         timerId = setTimeout(function() {
             timerId = null;
             if (!el) return;
-            if (state === 'CHEERING') { scheduleWanderTick(); return; }
+            // STUDYING holds position — the wander loop must not pick a new
+            // target until the user-facing state leaves STUDYING.
+            if (state === 'CHEERING' || state === 'STUDYING') { scheduleWanderTick(); return; }
             startWalking();
         }, delay);
     }
@@ -179,6 +194,13 @@ export function createCompanion(doc) {
             cheerId = null;
             if (!el) return;
             el.classList.remove('big-cheer');
+            // A study request received mid-cheer is deferred until now so the
+            // cheer animation completes uninterrupted. Land in STUDYING (which
+            // suspends wander itself) instead of IDLE when it's pending.
+            if (studyPending) {
+                setState('STUDYING');
+                return;
+            }
             setState('IDLE');
             scheduleWanderTick();
         }, dur);
@@ -187,13 +209,43 @@ export function createCompanion(doc) {
     function setState(next) {
         state = next;
         if (!el) return;
-        el.classList.remove('idle', 'walking', 'cheering');
+        el.classList.remove('idle', 'walking', 'cheering', 'studying');
         el.classList.add(next.toLowerCase());
         // Blinks run through IDLE and WALKING (the 120ms transform squish
-        // doesn't conflict with the position lerp). Only CHEERING blocks
-        // them — its scale/translate keyframes would fight the blink frame.
-        if (next === 'CHEERING') cancelBlink();
-        else                     scheduleBlink();
+        // doesn't conflict with the position lerp). CHEERING blocks them
+        // because its scale/translate keyframes would fight the blink frame.
+        // STUDYING also blocks them so the focused-study read stays clean.
+        if (next === 'CHEERING' || next === 'STUDYING') cancelBlink();
+        else                                             scheduleBlink();
+    }
+
+    // Public study toggle — drives the visual focus state when the host
+    // pomodoro timer is RUNNING. STUDYING suspends wander timers but keeps
+    // the idle bob (no `.idle` class, but the same `companionIdle` keyframe
+    // is layered onto `.studying` in CSS). Calling while a cheer is in
+    // flight defers the transition until the cheer resolves.
+    function setStudying(active) {
+        const want = !!active;
+        if (!el) { studyPending = want; return; }
+        if (state === 'CHEERING') {
+            // Don't disrupt an in-progress cheer — defer the request and let
+            // the cheer's tail-end pick it up.
+            studyPending = want;
+            return;
+        }
+        studyPending = want;
+        if (want) {
+            if (state === 'STUDYING') return;
+            // Suspend wander timers — the ghost holds position while studying.
+            if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
+            if (timerId) { clearTimeout(timerId); timerId = null; }
+            setState('STUDYING');
+            return;
+        }
+        // Leaving STUDYING — resume wander from the current resting spot.
+        if (state !== 'STUDYING') return;
+        setState('IDLE');
+        scheduleWanderTick();
     }
 
     // Random ~3–6s gap between blinks with a brief ~120ms closed-eye frame.
@@ -232,10 +284,11 @@ export function createCompanion(doc) {
     if (isCompanionEnabled()) mount();
 
     return {
-        cheer:      cheer,
-        setEnabled: setEnabled,
-        isEnabled:  isCompanionEnabled,
-        destroy:    destroy,
+        cheer:       cheer,
+        setStudying: setStudying,
+        setEnabled:  setEnabled,
+        isEnabled:   isCompanionEnabled,
+        destroy:     destroy,
     };
 }
 

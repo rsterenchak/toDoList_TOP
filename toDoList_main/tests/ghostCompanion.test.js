@@ -173,6 +173,160 @@ describe('ghost companion — CSS gates', () => {
     });
 });
 
+describe('ghost companion — pomodoro studying state', () => {
+    const js  = read('companion.js');
+    const css = read('style.css');
+    const main = read('main.js');
+
+    it('exposes setStudying on the controller alongside cheer/setEnabled/destroy', () => {
+        localStorage.setItem('todoapp_companion_enabled', 'false');
+        const c = createCompanion(document);
+        expect(typeof c.setStudying).toBe('function');
+        c.destroy();
+    });
+
+    it('setStudying is a safe no-op when the companion never mounted', () => {
+        // jsdom: desktop gate fails, sprite never enters the DOM. The call
+        // must remain safe so the pomodoro sync subscriber doesn't crash on
+        // mobile-class viewports.
+        localStorage.setItem('todoapp_companion_enabled', 'true');
+        const c = createCompanion(document);
+        expect(() => c.setStudying(true)).not.toThrow();
+        expect(() => c.setStudying(false)).not.toThrow();
+        c.destroy();
+    });
+
+    it('ships the book-holding sprite at src/assets/companion-ghost-study.svg', () => {
+        const svgPath = resolve(srcDir, 'assets/companion-ghost-study.svg');
+        expect(existsSync(svgPath)).toBe(true);
+        const svg = readFileSync(svgPath, 'utf8');
+        expect(svg).toMatch(/<svg[\s\S]*<\/svg>/);
+    });
+
+    it('style.css swaps to the study sprite and widens the box on .companion.studying', () => {
+        expect(css).toMatch(/\.companion\.studying\s*\{[^}]*background-image:\s*url\(\s*['"]?\.\/assets\/companion-ghost-study\.svg/);
+        expect(css).toMatch(/\.companion\.studying\s*\{[^}]*width:\s*64px/);
+    });
+
+    it('keeps the idle bob running while studying — the focus state is held position, not held breath', () => {
+        // .studying keeps the same companionIdle keyframe so the ghost still
+        // reads as alive while the pomodoro session is running.
+        expect(css).toMatch(/\.companion\.studying\s*\{[^}]*animation:\s*companionIdle/);
+    });
+
+    it('silences the studying bob under prefers-reduced-motion alongside idle/cheer', () => {
+        const blocks = css.match(/@media\s+\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/g) || [];
+        const companionBlock = blocks.find(function (b) { return /\.companion\.cheering/.test(b); });
+        expect(companionBlock).toBeTruthy();
+        expect(companionBlock).toMatch(/\.companion\.studying/);
+    });
+
+    it('STUDYING blocks blinks the same way CHEERING does', () => {
+        // setState routes both CHEERING and STUDYING through cancelBlink so
+        // the closed-eye frame never fires during a focus session.
+        expect(js).toMatch(/next\s*===\s*['"]CHEERING['"]\s*\|\|\s*next\s*===\s*['"]STUDYING['"]/);
+    });
+
+    it('wander tick re-schedules without picking a new target while studying', () => {
+        // The wander timer guard now matches CHEERING and STUDYING — both
+        // hold the ghost in place.
+        expect(js).toMatch(/state\s*===\s*['"]CHEERING['"]\s*\|\|\s*state\s*===\s*['"]STUDYING['"]/);
+    });
+
+    it('right-edge clamping accounts for the wider study footprint', () => {
+        // pickTarget uses a per-state right margin so the wider 64px box
+        // doesn't clip past the viewport when studying near the right edge.
+        expect(js).toMatch(/function\s+rightMargin\s*\(/);
+        expect(js).toMatch(/state\s*===\s*['"]STUDYING['"]\s*\?\s*64\s*:\s*48/);
+    });
+
+    it('defers a study request received mid-cheer until the cheer resolves', () => {
+        // The cheer tail-end checks studyPending and lands in STUDYING when
+        // the user-facing intent flipped during the animation.
+        expect(js).toMatch(/studyPending/);
+        // setStudying short-circuits when state is CHEERING so the cheer
+        // animation isn't yanked mid-frame.
+        const setStudyingStart = js.indexOf('function setStudying(');
+        expect(setStudyingStart).toBeGreaterThan(-1);
+        let depth = 0;
+        let end = -1;
+        for (let i = js.indexOf('{', setStudyingStart); i < js.length; i++) {
+            const c = js[i];
+            if (c === '{') depth++;
+            else if (c === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+        }
+        const body = js.slice(setStudyingStart, end);
+        expect(body).toMatch(/state\s*===\s*['"]CHEERING['"]/);
+    });
+
+    it('main.js mirrors pomodoro RUNNING status onto companion.setStudying', () => {
+        // syncPomodoroIcon is the single sink that already runs on every
+        // controller subscribe — wiring setStudying here keeps the call sites
+        // aligned with the icon's data-pomo-status writes.
+        expect(main).toMatch(/setStudying\s*\(\s*snap\.status\s*===\s*['"]RUNNING['"]\s*\)/);
+    });
+});
+
+describe('ghost companion — STUDYING runtime behavior', () => {
+    // Force the desktop gate to pass so the sprite actually mounts and we
+    // can assert against the live DOM element.
+    const originalMatchMedia = window.matchMedia;
+    beforeEach(() => {
+        window.matchMedia = function (query) {
+            return {
+                matches: query.indexOf('min-width: 1024px') !== -1,
+                media: query,
+                addEventListener: function () {},
+                removeEventListener: function () {},
+                addListener: function () {},
+                removeListener: function () {},
+                onchange: null,
+                dispatchEvent: function () { return false; },
+            };
+        };
+    });
+    afterEach(() => {
+        window.matchMedia = originalMatchMedia;
+    });
+
+    it('setStudying(true) adds the .studying class and removes idle/walking', () => {
+        localStorage.setItem('todoapp_companion_enabled', 'true');
+        const c = createCompanion(document);
+        const el = document.getElementById('companion');
+        expect(el).not.toBeNull();
+        c.setStudying(true);
+        expect(el.classList.contains('studying')).toBe(true);
+        expect(el.classList.contains('idle')).toBe(false);
+        expect(el.classList.contains('walking')).toBe(false);
+        c.destroy();
+    });
+
+    it('setStudying(false) restores idle when leaving the study state', () => {
+        localStorage.setItem('todoapp_companion_enabled', 'true');
+        const c = createCompanion(document);
+        const el = document.getElementById('companion');
+        c.setStudying(true);
+        expect(el.classList.contains('studying')).toBe(true);
+        c.setStudying(false);
+        expect(el.classList.contains('studying')).toBe(false);
+        expect(el.classList.contains('idle')).toBe(true);
+        c.destroy();
+    });
+
+    it('setStudying(true) called twice does not stack class manipulations', () => {
+        localStorage.setItem('todoapp_companion_enabled', 'true');
+        const c = createCompanion(document);
+        const el = document.getElementById('companion');
+        c.setStudying(true);
+        c.setStudying(true);
+        // Exactly one .studying class on the element regardless of repeat calls.
+        const classes = (el.className || '').split(/\s+/).filter(Boolean);
+        const studyingCount = classes.filter(function (cls) { return cls === 'studying'; }).length;
+        expect(studyingCount).toBe(1);
+        c.destroy();
+    });
+});
+
 describe('ghost companion — periodic blink', () => {
     const js  = read('companion.js');
     const css = read('style.css');

@@ -263,6 +263,14 @@ function component() {
         progress = Math.max(0, Math.min(1, progress));
         const hand = pomodoroToggle.querySelector('.clockIconHand');
         if (hand) hand.setAttribute('transform', 'rotate(' + (progress * 360).toFixed(2) + ' 12 14)');
+        // Mirror the focus state onto the ghost companion. Returns null on
+        // viewports where the companion never mounts (mobile, coarse pointer)
+        // or when the user has disabled the floating ghost — either way,
+        // skip silently.
+        const companion = ensureCompanion();
+        if (companion && typeof companion.setStudying === 'function') {
+            companion.setStudying(snap.status === 'RUNNING');
+        }
     }
 
     function hidePomodoroPopover() {

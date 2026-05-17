@@ -3987,6 +3987,16 @@ body.row-dragging * { cursor: grabbing !important; }
   animation: companionIdle 2.2s ease-in-out infinite;
 }
 
+/* Studying — pomodoro-driven focus state. Swaps to the book-holding sprite
+   and widens the box to ~64px to accommodate the book at the ghost's side.
+   The idle bob continues so the ghost still reads as alive; the wander
+   timer is suspended in JS so the position stays put. */
+.companion.studying {
+  width: 64px;
+  background-image: url('./assets/companion-ghost-study.svg');
+  animation: companionIdle 2.2s ease-in-out infinite;
+}
+
 .companion.cheering {
   animation: companionCheer 0.7s ease-out 1;
 }
@@ -4041,6 +4051,7 @@ body.row-dragging * { cursor: grabbing !important; }
 @media (prefers-reduced-motion: reduce) {
   .companion,
   .companion.idle,
+  .companion.studying,
   .companion.cheering,
   .companion.cheering.big-cheer {
     animation: none;
