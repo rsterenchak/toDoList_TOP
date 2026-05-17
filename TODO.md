@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add weekday and month labels to the recurring-task stats contributions grid
+- [x] **[MEDIUM]** Add weekday and month labels to the recurring-task stats contributions grid
   - Description: The shipped stats drawer renders the contributions-grid cells correctly but is missing the axis labels the agreed mockup carried: weekday letters running down the left edge (S M T W T F S, Sunday-first to match the existing Sun-first cell math in `buildContributionsGrid`) and month abbreviations (Jan, Feb, …) floating above the first column of each month spanned by the visible window. Without these, a user looking at the grid can't tell which row represents which weekday — the original goal of "seeing when I tend to slip" is undermined because the spatial signal is unlabeled. Update `buildContributionsGrid` in `toDoRow.js` to add a left gutter (~14px) hosting seven `<text>` weekday labels positioned at each row's vertical center, and a top gutter (~14px) hosting one `<text>` month label per column whose week starts in a new calendar month. The first column always gets a month label regardless. Expand the SVG `width` and `height` and the `viewBox` to absorb the gutters, and shift every cell's `x` and `y` by the gutter offsets so cells visually align under their column's month label and beside their row's weekday letter. The fallback strip (`buildFallbackStrip`) is unaffected — it's a single row of last-12 occurrences with no weekday axis to label.
   - Behavior:
     1. Left gutter is 14px wide, with seven `<text>` elements at `x=0`, `y = row * (cellSize + gap) + cellSize/2 + gutterOffsetY`, `dominant-baseline="middle"`, text content `S M T W T F S` in row order (matches the existing `row = d.getDay()` math where Sunday is index 0).
@@ -24,7 +24,7 @@
     - The drawer's overall height grows by ~14px to absorb the top gutter; `#mainList`'s row sizing (now `grid-auto-rows: minmax(54px, auto)` after the clipping fix) accommodates this without additional changes.
   - Out of scope: vertical alignment of the month labels with the *exact* first cell of that month within the column (the label sits at the column root, not the cell — matches the GitHub contributions-graph convention); locale-specific weekday letters (sticking with English single letters for now).
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 
