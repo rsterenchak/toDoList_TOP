@@ -1751,7 +1751,11 @@ body:has(#settingsMenu) #helpFab {
 /* TODO LIST */
 #mainList {
   display: grid;
-  grid-template-rows: repeat(auto-fit, minmax(54px, 54px));
+  /* `minmax(54px, auto)` preserves the 54px minimum for normal todo rows
+     while letting drawer rows (#descSibling, #statsSibling) grow to fit
+     their content. A fixed clamp here previously cropped the stats drawer's
+     stat strip + grid + missed-dates list to the top ~54px. */
+  grid-auto-rows: minmax(54px, auto);
   align-content: start;
   background: var(--bg-base);
   overflow-y: auto;

@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             'Nav, sidebar, todo rows, and view-switcher pills now share a unified purple-tinted border and pill style.',
+            'Recurring-task stats drawer now expands fully to show the stat cards, contributions grid, and missed-dates list instead of clipping after the first row.',
         ],
     },
     {
         version: '1.1',
         date: '2026-05-16',
         fixed: [
-            'Mobile project header now paints reliably on the Projects view instead of staying hidden after first load.',
             'Mobile project header no longer disappears after switching to Today or Calendar and back to Projects.',
             'Selected project in the collapsed sidebar rail now stands out with a ghost outline and a dot indicator beneath the chip.',
         ],
