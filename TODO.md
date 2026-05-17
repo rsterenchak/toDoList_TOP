@@ -2,23 +2,21 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Restore sidebar project selection when switching back to Projects view so #mobileProjHeader re-paints — Completed: 2026-05-16
-  - Description: On mobile, tapping TODAY (or CALENDAR) and then tapping PROJECTS leaves `#mobileProjHeader` hidden — `data-view` is correctly `"projects"`, but `data-empty="true"` is set on the header element, and a CSS rule `#mobileProjHeader[data-empty="true"] { display: none }` hides it. Root cause is in `applyActiveView()`: the `'today'` branch explicitly clears `.selectedProject` from every sidebar row (per the existing comment: *"Today owns the main panel — the sidebar selection only makes sense once PROJECTS is active again"*). When `updateMobileProjHeader()` fires off the mutation observer with no active project name, it sets `data-empty="true"` on the header. The `'projects'` return trip flips `data-view` but never re-applies `.selectedProject` to the previously-active sidebar row, so `data-empty` stays `"true"` and the header stays hidden. Fix by either (a) NOT clearing `.selectedProject` on TODAY/CALENDAR transitions in the first place — the selection is cosmetic to the hidden sidebar so persisting it is harmless — or (b) re-applying the selection on the `'projects'` return trip by reading the active project from `getActiveProject()` (or whatever persistence helper exists) and finding the matching sidebar row. Option (a) is simpler and addresses the root cause.
+- [ ] **[LOW]** Improve selected-project chip indicator in desktop rail mode
+  - Description: When the sidebar is collapsed to the 54px icon rail, the selected project chip is hard to distinguish from unselected chips — both read as small dark squares with a letter. Replace the current solid-fill treatment (`background: var(--proj-accent)`) with a ghost/outlined style: semi-transparent accent fill (`rgba(108,93,245,0.18)`), a brighter `1.5px solid #9D93EE` border, and matching `#9D93EE` letter color. Add a small dot indicator (via `::after`, positioned below the chip) to reinforce which chip is active without relying on fill alone. Unselected chips keep their existing `--bg-surface` + `--border-bright` + `--text-secondary` treatment.
   - Behavior:
-    1. Remove the `.selectedProject` clearing block from the `'today'` branch (and `'calendar'` if it has one) inside `applyActiveView()`. The selection class persists across view switches.
-    2. On TODAY/CALENDAR views the sidebar is hidden anyway, so the lingering `.selectedProject` class on a non-visible row has zero visual effect.
-    3. When the user taps PROJECTS, `data-view="projects"` un-hides the sidebar AND the header simultaneously. Because `.selectedProject` was never cleared, `updateMobileProjHeader` reads a valid active project name on its next mutation observer fire and removes `data-empty="true"`.
-    4. The `refreshTodayDateHeader()` call stays — that part of the `'today'` branch is fine; only the `.selectedProject` clearing comes out.
-  - Acceptance criteria:
-    - On mobile, tapping TODAY → tapping PROJECTS leaves `#mobileProjHeader` visible with the correct project name, count pills, and chevrons.
-    - `document.getElementById('mobileProjHeader').getAttribute('data-empty')` returns `null` (or no value) after the round-trip, NOT `"true"`.
-    - Tapping CALENDAR → tapping PROJECTS does the same.
-    - Tapping back-and-forth rapidly between all three tabs doesn't lose the header.
-    - The sidebar's project rows still show the active project highlighted (purple left accent) when PROJECTS is active — the `.selectedProject` class is now persistent, but only visible on the PROJECTS view because the sidebar itself is hidden on TODAY/CALENDAR.
-    - Switching to a different project (via long-press → Edit, or via the sidebar drawer) still correctly transfers `.selectedProject` to the new row — the change is "stop clearing on view switch," not "freeze selection forever."
-    - The existing test `applyActiveView clears any .selectedProject when switching to TODAY` (in `tests/todayDashboardView.test.js`) flips polarity — it should now assert that `.selectedProject` is NOT cleared. Update that assertion in the same commit.
+    1. Selected chip: `background: rgba(108,93,245,0.18)`, `border: 1.5px solid #9D93EE`, `color: #9D93EE`
+    2. Dot indicator: `::after` pseudo-element, `content: '●'`, `font-size: 5px`, centered below the chip (`bottom: -9px`), `color: #9D93EE`
+    3. Selected chip `::after` (the letter label) must not conflict — the dot lives on the outer `#projChild` pseudo-element stack. Confirm `::after` is already used for the letter; use `::before` for the dot if needed, or restructure.
+    4. Unselected chips: no change.
   - Implementation notes:
-    - `main.js`: grep for the line inside `applyActiveView()` that does `querySelector('.selectedProject')` followed by `classList.remove('selectedProject')`
+    - All changes are CSS-only inside the `html[data-sidebar-rail="on"] #projChild.selectedProject` block in `style.css`. No JS changes.
+    - The existing rule sets `background: var(--proj-accent, var(--accent)) !important` and `border: 0.5px solid var(--proj-accent, var(--accent)) !important` — override both with the new values using `!important` to match the existing specificity pattern.
+    - The `::after` pseudo on `#projChild` already renders the chip letter (`content: attr(data-initial)`). The dot indicator must use `::before` (currently unused in rail mode for selected chips) or a separate positioned element to avoid conflict.
+    - Verify that per-project accent colors (non-default `--proj-accent`) still look reasonable with the ghost treatment — the border and text will adopt the custom accent, which should remain readable.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 ## Features
 
 - [x] **[MEDIUM]** Add Calendar view shell with month grid and right-side day detail panel
