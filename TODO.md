@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Improve selected-project chip indicator in desktop rail mode
+- [x] **[LOW]** Improve selected-project chip indicator in desktop rail mode
   - Description: When the sidebar is collapsed to the 54px icon rail, the selected project chip is hard to distinguish from unselected chips — both read as small dark squares with a letter. Replace the current solid-fill treatment (`background: var(--proj-accent)`) with a ghost/outlined style: semi-transparent accent fill (`rgba(108,93,245,0.18)`), a brighter `1.5px solid #9D93EE` border, and matching `#9D93EE` letter color. Add a small dot indicator (via `::after`, positioned below the chip) to reinforce which chip is active without relying on fill alone. Unselected chips keep their existing `--bg-surface` + `--border-bright` + `--text-secondary` treatment.
   - Behavior:
     1. Selected chip: `background: rgba(108,93,245,0.18)`, `border: 1.5px solid #9D93EE`, `color: #9D93EE`
