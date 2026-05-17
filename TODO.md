@@ -2,19 +2,24 @@
 
 ## Bugs
 
-- [x] **[LOW]** Improve selected-project chip indicator in desktop rail mode
-  - Description: When the sidebar is collapsed to the 54px icon rail, the selected project chip is hard to distinguish from unselected chips — both read as small dark squares with a letter. Replace the current solid-fill treatment (`background: var(--proj-accent)`) with a ghost/outlined style: semi-transparent accent fill (`rgba(108,93,245,0.18)`), a brighter `1.5px solid #9D93EE` border, and matching `#9D93EE` letter color. Add a small dot indicator (via `::after`, positioned below the chip) to reinforce which chip is active without relying on fill alone. Unselected chips keep their existing `--bg-surface` + `--border-bright` + `--text-secondary` treatment.
+- [ ] **[MEDIUM]** Unify nav, sidebar, and todo row visual language with accent-tinted borders
+  - Description: The current UI has inconsistent border and background treatments across the three major surfaces — the nav bar uses neutral `--border-dim` separators, the sidebar uses `--bg-elevated` with neutral borders, and todo rows are flat with neutral hairlines. Shift all dividing lines (nav bottom border, sidebar right border, project row separators, todo row separators, completed header border) to a consistent low-opacity purple (`rgba(108,93,245,0.10–0.15)`) so every section reads as part of one accent-tinted system. Also update the view-switcher pills (PROJECTS / TODAY / CALENDAR) from a fully solid fill to a semi-transparent accent fill on active (`rgba(108,93,245,0.20)` bg + `#6C5DF5` border + `#9D93EE` text) and a subtle accent-tinted border on inactive (`rgba(108,93,245,0.35)` border, `--text-muted` text). Checkboxes on todo rows should adopt `border-color: rgba(108,93,245,0.4)` to match. The base background tone and elevation model stay the same — this is purely a border/separator color pass.
   - Behavior:
-    1. Selected chip: `background: rgba(108,93,245,0.18)`, `border: 1.5px solid #9D93EE`, `color: #9D93EE`
-    2. Dot indicator: `::after` pseudo-element, `content: '●'`, `font-size: 5px`, centered below the chip (`bottom: -9px`), `color: #9D93EE`
-    3. Selected chip `::after` (the letter label) must not conflict — the dot lives on the outer `#projChild` pseudo-element stack. Confirm `::after` is already used for the letter; use `::before` for the dot if needed, or restructure.
-    4. Unselected chips: no change.
+    1. Nav bottom border: `border-bottom: 0.5px solid rgba(108,93,245,0.20)`
+    2. Sidebar right border: `border-right: 0.5px solid rgba(108,93,245,0.15)`
+    3. Project row separators: `border-bottom: 0.5px solid rgba(108,93,245,0.10)`
+    4. Todo row separators (`#toDoChild` border-bottom): `0.5px solid rgba(108,93,245,0.10)`
+    5. Completed header border-top: same `rgba(108,93,245,0.10)`
+    6. Active view pill: `background: rgba(108,93,245,0.20)`, `border: 0.5px solid #6C5DF5`, `color: #9D93EE`, `border-radius: 6px` (square-ish, not fully round)
+    7. Inactive view pill: `background: transparent`, `border: 0.5px solid rgba(108,93,245,0.35)`, `color: var(--text-muted)`, same border-radius
+    8. Todo row checkbox border: `rgba(108,93,245,0.4)` to match the purple family
   - Implementation notes:
-    - All changes are CSS-only inside the `html[data-sidebar-rail="on"] #projChild.selectedProject` block in `style.css`. No JS changes.
-    - The existing rule sets `background: var(--proj-accent, var(--accent)) !important` and `border: 0.5px solid var(--proj-accent, var(--accent)) !important` — override both with the new values using `!important` to match the existing specificity pattern.
-    - The `::after` pseudo on `#projChild` already renders the chip letter (`content: attr(data-initial)`). The dot indicator must use `::before` (currently unused in rail mode for selected chips) or a separate positioned element to avoid conflict.
-    - Verify that per-project accent colors (non-default `--proj-accent`) still look reasonable with the ghost treatment — the border and text will adopt the custom accent, which should remain readable.
-  - File: `toDoList_main/src/style.css`
+    - All changes are CSS-only in `style.css`. No JS changes required.
+    - Todo row borders are currently set via inline JS styles in `main.js` — grep for `border` assignments on `#toDoChild` and verify which are CSS-driven vs inline. Inline styles will override the CSS change and must be updated in `main.js` too.
+    - The view-switcher pills (`#tabProjects`, `#tabToday`, `#tabCalendar`) currently use a solid `--accent` fill for the active state — switch to the semi-transparent treatment above.
+    - Neutral `--border-dim` / `--border-bright` replacements should only target the structural dividers listed above — don't touch component-internal borders (context menus, popovers, modals, drag indicators).
+    - Verify dark theme: `rgba(108,93,245,0.10–0.20)` is light enough not to create visual noise on `--bg-elevated` but should remain visible. Spot-check against the light theme if it exists.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
