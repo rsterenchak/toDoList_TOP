@@ -322,7 +322,6 @@ export function buildToDoRow(item, toDoName) {
 
     // set IDs and initial styles
     toDoChild.id           = "toDoChild";
-    toDoChild.style.border = "0.5px solid black";
     // tabindex="-1" lets the global Up/Down arrow handler programmatically
     // focus the row in keyboard-navigation mode (without putting it in the
     // tab order). Enter on a focused row hands focus to the input.
