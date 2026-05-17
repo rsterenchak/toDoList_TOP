@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Replace recurring-task missed-dates pill wall with pattern callout + modal for full list
+- [x] **[MEDIUM]** Replace recurring-task missed-dates pill wall with pattern callout + modal for full list
   - Description: The stats drawer's missed-dates pill list grows linearly with miss count, and at high miss counts (e.g. a daily task abandoned 4 months ago) it produces 100+ wrapping pills that visually dominate the drawer and bury the actual signal — the stat strip and contributions grid. Restructure the missed section in the drawer into two stacked pieces: (1) a pattern callout that surfaces one insight derived from the misses, and (2) a "Most recent misses:" pill row showing the 5 newest miss dates followed by a `+ N more` button. The button opens a new modal listing every missed date, grouped by month with a count summary at the top — keeping the drawer compact while still giving the user a path to the full history. Below the existing 7-miss threshold (default), keep the current full pill list behavior in the drawer — small miss counts genuinely benefit from showing every date inline. The callout always renders when there is at least one miss, even at low counts, with phrasing that adapts to the count.
   - Behavior:
     1. Add `listLogic.summarizeRecurringMissPattern(stats, now)` returning `{ kind, text }` where `kind ∈ ['abandoned' | 'weekday' | 'recentSlip' | 'fallback' | 'lowCount']` and `text` is the rendered callout sentence. Priority order: abandoned → weekday → recentSlip → fallback. For miss counts of 1–2, return `lowCount` with text like `Missed Apr 17` or `Missed Apr 17 and Apr 24` (plus a weekday observation when both fall on the same DOW: `— both Thursdays`).
@@ -34,7 +34,7 @@
     - No callout renders when miss count is zero.
   - Out of scope: a "Mark all caught up" bulk action; export of missed dates as CSV/text; configurable thresholds via settings (the 7-miss cutoff stays hardcoded); inline editing or backfilling missed dates from the modal.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 
