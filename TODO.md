@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Unify nav, sidebar, and todo row visual language with accent-tinted borders
+- [x] **[MEDIUM]** Unify nav, sidebar, and todo row visual language with accent-tinted borders
   - Description: The current UI has inconsistent border and background treatments across the three major surfaces — the nav bar uses neutral `--border-dim` separators, the sidebar uses `--bg-elevated` with neutral borders, and todo rows are flat with neutral hairlines. Shift all dividing lines (nav bottom border, sidebar right border, project row separators, todo row separators, completed header border) to a consistent low-opacity purple (`rgba(108,93,245,0.10–0.15)`) so every section reads as part of one accent-tinted system. Also update the view-switcher pills (PROJECTS / TODAY / CALENDAR) from a fully solid fill to a semi-transparent accent fill on active (`rgba(108,93,245,0.20)` bg + `#6C5DF5` border + `#9D93EE` text) and a subtle accent-tinted border on inactive (`rgba(108,93,245,0.35)` border, `--text-muted` text). Checkboxes on todo rows should adopt `border-color: rgba(108,93,245,0.4)` to match. The base background tone and elevation model stay the same — this is purely a border/separator color pass.
   - Behavior:
     1. Nav bottom border: `border-bottom: 0.5px solid rgba(108,93,245,0.20)`
@@ -20,7 +20,7 @@
     - Neutral `--border-dim` / `--border-bright` replacements should only target the structural dividers listed above — don't touch component-internal borders (context menus, popovers, modals, drag indicators).
     - Verify dark theme: `rgba(108,93,245,0.10–0.20)` is light enough not to create visual noise on `--bg-elevated` but should remain visible. Spot-check against the light theme if it exists.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 

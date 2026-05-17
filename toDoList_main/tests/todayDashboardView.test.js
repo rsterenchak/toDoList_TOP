@@ -248,11 +248,11 @@ describe('Today dashboard view + view switcher', () => {
             expect(rule).toMatch(/padding:\s*4px\s+12px/);
         });
 
-        it('uses the accent variable for the active pill (honors theme)', () => {
+        it('fills the active pill with a semi-transparent accent tint', () => {
             const idx = css.indexOf('.viewPill.active');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/background:\s*var\(--accent-text\)/);
+            expect(rule).toMatch(/background:\s*rgba\(\s*108\s*,\s*93\s*,\s*245\s*,\s*0?\.20?\s*\)/);
         });
 
         it('hides #todayView by default and shows it via #mainBar[data-view="today"]', () => {

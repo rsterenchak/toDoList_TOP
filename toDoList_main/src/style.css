@@ -135,7 +135,7 @@ body {
 /* NAV BAR */
 #navBar {
   background: var(--bg-elevated);
-  border-bottom: 0.5px solid var(--border-dim);
+  border-bottom: 0.5px solid rgba(108, 93, 245, 0.20);
   display: flex;
   align-items: center;
   padding: 0 12px;
@@ -367,7 +367,7 @@ body {
 #sideBar {
   display: flex;
   flex-direction: column;
-  border-right: 0.5px solid var(--border-dim);
+  border-right: 0.5px solid rgba(108, 93, 245, 0.15);
   background: var(--bg-elevated);
   overflow: hidden;
   transition: border-color 0.25s ease;
@@ -511,7 +511,7 @@ body {
   height: auto;
   padding: 10px 14px 10px 15px;
   transition: background 0.12s ease;
-  border-bottom: 0.5px solid var(--border-dim);
+  border-bottom: 0.5px solid rgba(108, 93, 245, 0.10);
   border-left: 4px solid transparent;
   white-space: nowrap;
   overflow: hidden;
@@ -541,14 +541,14 @@ body {
   border-left: 4px solid transparent;
   border-top: none;
   border-right: none;
-  border-bottom: 0.5px solid var(--border-dim);
+  border-bottom: 0.5px solid rgba(108, 93, 245, 0.10);
 }
 
 .selectedProject {
   border-left: 4px solid var(--proj-accent, var(--accent)) !important;
   border-top: none;
   border-right: none;
-  border-bottom: 0.5px solid var(--border-dim) !important;
+  border-bottom: 0.5px solid rgba(108, 93, 245, 0.10) !important;
   background: var(--bg-active) !important;
 }
 
@@ -1209,8 +1209,8 @@ body:has(#settingsMenu) #helpFab {
   text-transform: uppercase;
   background: transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border-bright);
-  border-radius: 999px;
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 6px;
   padding: 4px 12px;
   line-height: 1;
   cursor: pointer;
@@ -1228,9 +1228,9 @@ body:has(#settingsMenu) #helpFab {
 }
 
 .viewPill.active {
-  background: var(--accent-text);
-  color: #ffffff;
-  border-color: var(--accent-text);
+  background: rgba(108, 93, 245, 0.20);
+  color: #9D93EE;
+  border-color: #6C5DF5;
 }
 
 /* ── TODAY DASHBOARD SHELL ──
@@ -1770,7 +1770,7 @@ body:has(#settingsMenu) #helpFab {
   background: var(--bg-row);
   height: var(--item-h);
   padding: 0 10px 0 12px;
-  border: 0.5px solid var(--border-bright);
+  border: 0.5px solid rgba(108, 93, 245, 0.10);
   border-radius: 6px;
   margin: 5px 8px;
   transition: background 0.10s ease, border-color 0.12s ease, box-shadow 0.12s ease;
@@ -2094,7 +2094,7 @@ body.row-dragging * { cursor: grabbing !important; }
   margin: 0;
   cursor: pointer;
   background: var(--bg-base);
-  border: 1px solid var(--border-bright);
+  border: 1px solid rgba(108, 93, 245, 0.4);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -2640,7 +2640,7 @@ body.row-dragging * { cursor: grabbing !important; }
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  border-top: 0.5px solid var(--border-dim);
+  border-top: 0.5px solid rgba(108, 93, 245, 0.10);
   border-radius: var(--radius-sm);
   transition: color 0.12s ease, background 0.12s ease;
 }

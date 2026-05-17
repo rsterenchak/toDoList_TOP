@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-17',
+        fixed: [
+            'Nav, sidebar, todo rows, and view-switcher pills now share a unified purple-tinted border and pill style.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-16',
         fixed: [
-            'Mobile idle and peek states no longer show a stray gray drag-handle bar between the bottom tab bar and the footer.',
             'Bottom-sheet idle nub no longer paints above the mobile tab bar in any state.',
             'Mobile project header now paints reliably on the Projects view instead of staying hidden after first load.',
             'Mobile project header no longer disappears after switching to Today or Calendar and back to Projects.',
