@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix uncommitted blank-placeholder text persisting after project switch
+- [x] **[HIGH]** Fix uncommitted blank-placeholder text persisting after project switch
   - Description: After clicking the blank "Add a task" placeholder row and typing one or more characters without pressing Enter, switching to another project and switching back leaves the placeholder displaying the previously-typed text — and the row's chrome (close ×, due pill rendering as "Set date", checkbox, expand caret) all become visible as though the row were a real committed todo. The root cause is in `toDoRow.js`'s `toDoInput` `keyup` handler: `if (val.length > 0) { item.tit = val; listLogic.saveToStorage(); }` mutates `item.tit` on every keystroke and persists it, so a partial title gets baked into the project's items array even though the user never committed. On re-render, `buildToDoRow` keys all of its placeholder-vs-committed branches off `!item.tit`, so a non-empty `tit` is interpreted as a committed row and all the chrome reveals. The existing `sortCompletedToBottom` regression guard (pinned by a test in `listLogic.test.js`) only repairs this on the Enter commit path — project switches bypass it. Fix by scoping the keystroke-save behavior so it does NOT mutate `item.tit` for rows that were built as blank placeholders. Stamp `toDoChild.dataset.originalBlank = "true"` in `buildToDoRow` when `!item.tit` at build time, and in the `keyup` handler, skip the `item.tit = val; saveToStorage()` writes while that marker is present. The Enter commit path is unchanged — when the user actually commits, the existing handler sets `item.tit`, persists, removes the `originalBlank` flag (since the row is no longer a blank), and the chrome-reveal logic runs as it does today. Committed rows (`!item.tit` was false at build) continue to keystroke-save their edits, preserving the live-editing-safety property that exists for rename flows.
   - Behavior:
     1. Typing into a blank placeholder no longer writes to `item.tit` or `localStorage`; the typed text lives only in the input's own `value` until Enter commits.
@@ -22,7 +22,7 @@
     - The `sortCompletedToBottom` invariant test in `listLogic.test.js` still passes — the regression guard there described the symptom from the original commit path; this fix removes the upstream cause but doesn't change the safety-net behavior.
   - Out of scope: a "draft" indicator that surfaces unsaved typing across sessions; toast-on-discard when leaving a project with uncommitted text (could be a follow-up entry if the discard ever feels surprising in practice); broader audit of other places `item.tit` may be mutated before commit (none observed, but worth a grep during implementation).
   - File: `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 
