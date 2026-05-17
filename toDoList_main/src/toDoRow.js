@@ -451,6 +451,12 @@ function buildContributionsGrid(stats) {
 
     const cellSize = 14;
     const gap = 4;
+    // Gutters host weekday letters down the left edge and month
+    // abbreviations along the top. Cells are shifted by these offsets so
+    // they visually align under their column's month label and beside
+    // their row's weekday letter.
+    const labelGutterX = 14;
+    const labelGutterY = 14;
     const expected = stats.expectedDates;
     if (expected.length === 0) {
         wrapper.classList.add('statsGridEmpty');
@@ -476,8 +482,10 @@ function buildContributionsGrid(stats) {
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
-    const width  = totalCols * cellSize + (totalCols - 1) * gap;
-    const height = 7 * cellSize + 6 * gap;
+    const gridWidth  = totalCols * cellSize + (totalCols - 1) * gap;
+    const gridHeight = 7 * cellSize + 6 * gap;
+    const width  = labelGutterX + gridWidth;
+    const height = labelGutterY + gridHeight;
     svg.setAttribute('width',  width);
     svg.setAttribute('height', height);
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
@@ -485,12 +493,44 @@ function buildContributionsGrid(stats) {
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', 'Recurring task hit grid');
 
+    // Weekday letters down the left gutter, Sunday-first to match the
+    // `row = d.getDay()` math used for cell placement.
+    const weekdayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    for (let row = 0; row < 7; row++) {
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', 0);
+        label.setAttribute('y', labelGutterY + row * (cellSize + gap) + cellSize / 2);
+        label.setAttribute('dominant-baseline', 'middle');
+        label.setAttribute('class', 'statsGridLabel');
+        label.textContent = weekdayLetters[row];
+        svg.appendChild(label);
+    }
+
+    // Month abbreviations along the top gutter. First column is always
+    // labeled; subsequent columns are labeled only when their first
+    // day-of-week falls in a different calendar month than the previous
+    // column's, so consecutive same-month columns don't repeat.
+    let lastLabeledMonth = -1;
+    for (let col = 0; col < totalCols; col++) {
+        const colStart = new Date(alignedStart.getTime() + col * 7 * msPerDay);
+        const monthIdx = colStart.getMonth();
+        if (col === 0 || monthIdx !== lastLabeledMonth) {
+            const label = document.createElementNS(svgNS, 'text');
+            label.setAttribute('x', labelGutterX + col * (cellSize + gap));
+            label.setAttribute('y', 10);
+            label.setAttribute('class', 'statsGridLabel');
+            label.textContent = colStart.toLocaleString(undefined, { month: 'short' });
+            svg.appendChild(label);
+            lastLabeledMonth = monthIdx;
+        }
+    }
+
     expected.forEach(function(d) {
         const dayIdx = Math.floor((d.getTime() - alignedStart.getTime()) / msPerDay);
         const col = Math.floor(dayIdx / 7);
         const row = d.getDay();
-        const x = col * (cellSize + gap);
-        const y = row * (cellSize + gap);
+        const x = labelGutterX + col * (cellSize + gap);
+        const y = labelGutterY + row * (cellSize + gap);
 
         const rect = document.createElementNS(svgNS, 'rect');
         rect.setAttribute('x', x);
