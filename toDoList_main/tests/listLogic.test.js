@@ -1135,6 +1135,274 @@ describe('listLogic — getRecurringTaskStats', () => {
 });
 
 
+// ── RECURRING MISS PATTERN SUMMARY ──────────────────────────────────
+// Pure function: builds a `{ kind, text }` callout from a stats object.
+// All inputs are constructed by hand here so the assertions read against
+// a deterministic miss/expected set, not the live walk in
+// getRecurringTaskStats.
+describe('listLogic — summarizeRecurringMissPattern', () => {
+    // Thursday 2026-04-30 noon. Yesterday = Wed 2026-04-29.
+    const now = new Date(2026, 3, 30, 12, 0, 0);
+
+    function mkExpected(start, count) {
+        const out = [];
+        for (let i = 0; i < count; i++) {
+            const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+            out.push(d);
+        }
+        return out;
+    }
+
+    function key(d) {
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const dd = d.getDate();
+        return y + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (dd < 10 ? '0' + dd : '' + dd);
+    }
+
+    it('returns null when there are no misses', () => {
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: [],
+            expectedDates: [],
+            hits: new Set(),
+        }, now);
+        expect(result).toBeNull();
+    });
+
+    it('returns null when stats is null or missing the misses array', () => {
+        expect(listLogic.summarizeRecurringMissPattern(null, now)).toBeNull();
+        expect(listLogic.summarizeRecurringMissPattern({}, now)).toBeNull();
+    });
+
+    it('1 miss returns lowCount naming the date', () => {
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: [new Date(2026, 3, 17)], // Apr 17
+            expectedDates: [new Date(2026, 3, 17)],
+            hits: new Set(),
+        }, now);
+        expect(result.kind).toBe('lowCount');
+        expect(result.text).toBe('Missed Apr 17');
+    });
+
+    it('2 misses on the same weekday returns lowCount with a weekday note', () => {
+        // Apr 16, 2026 = Thursday; Apr 23, 2026 = Thursday.
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: [new Date(2026, 3, 16), new Date(2026, 3, 23)],
+            expectedDates: [new Date(2026, 3, 16), new Date(2026, 3, 23)],
+            hits: new Set(),
+        }, now);
+        expect(result.kind).toBe('lowCount');
+        expect(result.text).toBe('Missed Apr 16 and Apr 23 — both Thursdays');
+    });
+
+    it('2 misses on different weekdays returns lowCount without a weekday note', () => {
+        // Apr 17, 2026 = Friday; Apr 22, 2026 = Wednesday.
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: [new Date(2026, 3, 17), new Date(2026, 3, 22)],
+            expectedDates: [new Date(2026, 3, 17), new Date(2026, 3, 22)],
+            hits: new Set(),
+        }, now);
+        expect(result.kind).toBe('lowCount');
+        expect(result.text).toBe('Missed Apr 17 and Apr 22');
+        expect(result.text).not.toMatch(/both/);
+    });
+
+    it('abandoned: 7-miss run ending at yesterday with a prior hit phrases as "Last hit was…"', () => {
+        // 14 expected daily dates Apr 16..Apr 29. Hits = first 7 (Apr 16..22);
+        // misses = last 7 (Apr 23..29). Apr 29 is yesterday.
+        const expected = mkExpected(new Date(2026, 3, 16), 14);
+        const hits = new Set();
+        for (let i = 0; i < 7; i++) hits.add(key(expected[i]));
+        const misses = expected.slice(7);
+
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result.kind).toBe('abandoned');
+        // Last hit before today = Apr 22. 7 consecutive misses since.
+        expect(result.text).toBe('Last hit was Apr 22 — 7 consecutive misses since.');
+    });
+
+    it('abandoned with no prior hits in the window phrases as "X consecutive misses, no completions…"', () => {
+        const expected = mkExpected(new Date(2026, 3, 23), 7); // Apr 23..29
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: expected.slice(),
+            expectedDates: expected,
+            hits: new Set(),
+        }, now);
+        expect(result.kind).toBe('abandoned');
+        expect(result.text).toBe('7 consecutive misses, no completions in this window.');
+    });
+
+    it('weekday concentration: single-weekday cluster phrases with the percentage of that weekday', () => {
+        // Expected sequence spans 4 weekdays (Mon/Tue/Wed/Thu) over 4 weeks.
+        // Make every Wednesday a miss; other weekdays all hit. 4 Weds expected
+        // → 4 misses, 100%; other weekdays 0%.
+        const expected = [];
+        const hits = new Set();
+        const misses = [];
+        // 4 weeks ending Apr 30 (Thursday). Start at Mon 2026-04-06.
+        const monStart = new Date(2026, 3, 6);
+        for (let wk = 0; wk < 4; wk++) {
+            for (let offset = 0; offset < 4; offset++) {
+                const d = new Date(monStart.getFullYear(), monStart.getMonth(),
+                    monStart.getDate() + wk * 7 + offset);
+                expected.push(d);
+                if (d.getDay() === 3) {
+                    misses.push(d);
+                } else {
+                    hits.add(key(d));
+                }
+            }
+        }
+        // Sanity: 4 misses on Wednesdays.
+        expect(misses.length).toBe(4);
+
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result.kind).toBe('weekday');
+        expect(result.text).toBe('100% of your Wednesday occurrences are missed');
+    });
+
+    it('weekday concentration: two-weekday cluster phrases with the combined share', () => {
+        // 4 weeks of M/T/W/Th expected. Miss every Wed + every Thu (8 misses).
+        // 8 of 16 = 50%; both weekdays at 100% rate; M & T at 0%. 1.5× rule met.
+        const expected = [];
+        const hits = new Set();
+        const misses = [];
+        const monStart = new Date(2026, 3, 6);
+        for (let wk = 0; wk < 4; wk++) {
+            for (let offset = 0; offset < 4; offset++) {
+                const d = new Date(monStart.getFullYear(), monStart.getMonth(),
+                    monStart.getDate() + wk * 7 + offset);
+                expected.push(d);
+                if (d.getDay() === 3 || d.getDay() === 4) {
+                    misses.push(d);
+                } else {
+                    hits.add(key(d));
+                }
+            }
+        }
+        expect(misses.length).toBe(8);
+
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result.kind).toBe('weekday');
+        // 8 of 8 high-weekday misses / 8 total = 100%.
+        expect(result.text).toContain('Wednesdays');
+        expect(result.text).toContain('Thursdays');
+        expect(result.text).toContain('100%');
+    });
+
+    it('weekday detection skips weekly recurrences (single expected weekday)', () => {
+        // Weekly cadence — every expected date is a Thursday. Even at 100%
+        // miss rate the rule shouldn't fire because expectedWeekdays = 1.
+        const expected = [];
+        const misses = [];
+        for (let i = 0; i < 4; i++) {
+            const d = new Date(2026, 3, 9 + i * 7); // Apr 9, 16, 23 — Thursdays
+            expected.push(d);
+            misses.push(d);
+        }
+        // Pad with extra misses so the count clears lowCount but no
+        // additional weekdays appear in the expected sequence.
+        misses.push(new Date(2026, 3, 2)); // Thu — same weekday
+        expected.push(new Date(2026, 3, 2));
+
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: new Set(),
+        }, now);
+        // No weekday cluster phrasing — falls through to abandoned (run of
+        // misses) or fallback. The point is `kind` is NOT 'weekday'.
+        expect(result).not.toBeNull();
+        expect(result.kind).not.toBe('weekday');
+    });
+
+    it('recent slip fires at the 14-occurrence boundary with strong-then-weak split', () => {
+        // 20 expected daily dates Apr 11..Apr 30; expectedBeforeToday = 19
+        // (Apr 11..Apr 29), comfortably above the 14-occurrence threshold.
+        // First 10 (Apr 11..20) all hit; second half (Apr 20..29) has 7
+        // misses spread across 7 different weekdays and skips Apr 28..29 so
+        // the run can't end at yesterday — abandonment is forced off and
+        // recentSlip wins. Apr 20 is the midDate the phrasing references.
+        const expected = mkExpected(new Date(2026, 3, 11), 20);
+        const hits = new Set();
+        const misses = [];
+        // Apr 11..19 (indices 0..8) all hit.
+        for (let i = 0; i <= 8; i++) hits.add(key(expected[i]));
+        // Apr 20..26 missed (indices 9..15); Apr 27, 28, 29 hit again so the
+        // most recent date before today (Apr 29) is NOT a miss.
+        for (let i = 9; i <= 15; i++) misses.push(expected[i]);
+        for (let i = 16; i <= 18; i++) hits.add(key(expected[i]));
+
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result.kind).toBe('recentSlip');
+        expect(result.text).toMatch(/^Strong start \(100% hits through Apr 20\) but slipped recently/);
+    });
+
+    it('fallback: misses with no specific pattern returns the generic phrasing', () => {
+        // 21 expected dates Apr 1..Apr 21 (3 full weeks). Misses every
+        // third day → 7 misses spread one-per-weekday at exactly 33% rate
+        // each, so weekday concentration can't fire (no weekday clears
+        // 60%). The most recent miss is Apr 19 (>1 day before yesterday)
+        // so abandonment can't fire either, and the first-half hit rate
+        // is 60% so recentSlip stays under the 70% gate.
+        const expected = mkExpected(new Date(2026, 3, 1), 21);
+        const missIdx = [0, 3, 6, 9, 12, 15, 18];
+        const misses = missIdx.map(i => expected[i]);
+        const hits = new Set();
+        expected.forEach((d, i) => {
+            if (missIdx.indexOf(i) === -1) hits.add(key(d));
+        });
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result.kind).toBe('fallback');
+        expect(result.text).toContain('Missed 7 of');
+        expect(result.text).toContain('No clear pattern.');
+    });
+
+    it('fallback: 3–6 misses with no pattern still produces a callout', () => {
+        // Acceptance criteria require a callout for every non-zero miss
+        // count. With only 4 misses spread across 4 different weekdays
+        // (each at 50% miss rate, below the 60% gate), none of the
+        // specific patterns fire; the fallback bullet still renders so
+        // the drawer never sits empty above the pill list.
+        const expected = mkExpected(new Date(2026, 3, 10), 14);
+        const missIdx = [0, 5, 8, 11];
+        const misses = missIdx.map(i => expected[i]);
+        const hits = new Set();
+        expected.forEach((d, i) => {
+            if (missIdx.indexOf(i) === -1) hits.add(key(d));
+        });
+        const result = listLogic.summarizeRecurringMissPattern({
+            misses: misses,
+            expectedDates: expected,
+            hits: hits,
+        }, now);
+        expect(result).not.toBeNull();
+        expect(result.kind).toBe('fallback');
+        expect(result.text).toContain('Missed 4 of');
+    });
+});
+
+
 // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────────
 describe('listLogic — getTodayAggregation', () => {
     // Fix "now" to noon local on 2026-05-13 so the day boundary is

@@ -27,7 +27,7 @@ import {
     hideDueDatePopover,
     updateRecurringGlyph,
 } from './dueDate.js';
-import { showConfirmModal } from './modals.js';
+import { showConfirmModal, showMissedDatesModal } from './modals.js';
 import { showUndoToast } from './undoToast.js';
 import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
@@ -264,6 +264,14 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
 }
 
 
+// Number of missed dates a recurring task may accumulate inside the
+// stats window before the drawer swaps the inline pill list for a
+// 5-pill preview + a `+ N more` chip that opens the full-list modal.
+// One-line tunable so the cutoff can be revisited without hunting the
+// render logic. The pattern callout above the list always renders,
+// regardless of count.
+const MISS_PILL_THRESHOLD = 7;
+
 // ── HELPER: wire the chart-icon toggle that opens/closes the recurring-task stats drawer ──
 // Parallels wireDescToggle in behavior: opens a new `#statsSibling` panel
 // directly beneath the row (after `#descSibling` if that one is also open),
@@ -353,20 +361,80 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
             useFallback ? buildFallbackStrip(stats) : buildContributionsGrid(stats)
         );
 
-        // Missed-dates pill list.
+        // Pattern callout — a one-sentence summary of the miss set,
+        // priority-ordered (abandoned → weekday → recentSlip →
+        // fallback) so a long pile of dates collapses into one signal
+        // the user can act on. Always renders when there are misses,
+        // regardless of count.
+        const summary = listLogic.summarizeRecurringMissPattern(stats);
+        if (summary && summary.text) {
+            const callout = document.createElement('div');
+            callout.className = 'statsMissCallout';
+            callout.setAttribute('data-kind', summary.kind);
+
+            const icon = buildInfoGlyph();
+            const text = document.createElement('span');
+            text.className = 'statsMissCalloutText';
+            text.textContent = summary.text;
+
+            callout.appendChild(icon);
+            callout.appendChild(text);
+            drawer.appendChild(callout);
+        }
+
+        // Missed-dates list. Up to MISS_PILL_THRESHOLD misses render
+        // inline — the user can scan every date without taking a
+        // second action. Beyond the threshold the inline list shrinks
+        // to the 5 newest dates plus a `+ N more` chip that opens the
+        // full-history modal, so the drawer stays compact even after a
+        // long abandonment.
         if (stats.misses.length > 0) {
             const missed = document.createElement('div');
             missed.className = 'statsMissedList';
-            const label = document.createElement('span');
-            label.className = 'statsMissedLabel';
-            label.textContent = 'Missed:';
-            missed.appendChild(label);
-            stats.misses.forEach(function(d) {
-                const pill = document.createElement('span');
-                pill.className = 'statsMissedPill';
-                pill.textContent = formatShortDate(d);
-                missed.appendChild(pill);
+
+            const newestFirst = stats.misses.slice().sort(function(a, b) {
+                return b.getTime() - a.getTime();
             });
+
+            if (stats.misses.length <= MISS_PILL_THRESHOLD) {
+                const label = document.createElement('span');
+                label.className = 'statsMissedLabel';
+                label.textContent = 'Missed:';
+                missed.appendChild(label);
+                // Preserve the prior chronological order when the inline
+                // list is short enough to scan — the existing
+                // expected-order rendering reads naturally for ≤ 7.
+                stats.misses.forEach(function(d) {
+                    const pill = document.createElement('span');
+                    pill.className = 'statsMissedPill';
+                    pill.textContent = formatShortDate(d);
+                    missed.appendChild(pill);
+                });
+            } else {
+                const label = document.createElement('span');
+                label.className = 'statsMissedLabel';
+                label.textContent = 'Most recent misses:';
+                missed.appendChild(label);
+                newestFirst.slice(0, 5).forEach(function(d) {
+                    const pill = document.createElement('span');
+                    pill.className = 'statsMissedPill';
+                    pill.textContent = formatShortDate(d);
+                    missed.appendChild(pill);
+                });
+                const remaining = stats.misses.length - 5;
+                const moreBtn = document.createElement('button');
+                moreBtn.type = 'button';
+                moreBtn.className = 'statsMissedMoreBtn';
+                moreBtn.textContent = '+ ' + remaining + ' more';
+                moreBtn.setAttribute('aria-label',
+                    'Show all ' + stats.misses.length + ' missed dates');
+                moreBtn.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    showMissedDatesModal(item.tit, newestFirst);
+                });
+                missed.appendChild(moreBtn);
+            }
+
             drawer.appendChild(missed);
         }
 
@@ -646,6 +714,49 @@ function isoKey(date) {
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function formatShortDate(d) {
     return MONTH_SHORT[d.getMonth()] + ' ' + d.getDate();
+}
+
+// Inline-SVG info glyph (circle with a dot above a vertical line) for
+// the miss-pattern callout. Sized 14×14 to match the stroke / size
+// rhythm of `.recurringGlyph` in style.css so the meta strip and the
+// drawer's accent visuals read as the same family.
+function buildInfoGlyph() {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'statsMissCalloutIcon');
+    svg.setAttribute('width', 14);
+    svg.setAttribute('height', 14);
+    svg.setAttribute('viewBox', '0 0 14 14');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('cx', 7);
+    circle.setAttribute('cy', 7);
+    circle.setAttribute('r', 6);
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', 'currentColor');
+    circle.setAttribute('stroke-width', 1.2);
+    svg.appendChild(circle);
+
+    const dot = document.createElementNS(svgNS, 'circle');
+    dot.setAttribute('cx', 7);
+    dot.setAttribute('cy', 4);
+    dot.setAttribute('r', 0.9);
+    dot.setAttribute('fill', 'currentColor');
+    svg.appendChild(dot);
+
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', 7);
+    line.setAttribute('y1', 6.2);
+    line.setAttribute('x2', 7);
+    line.setAttribute('y2', 10.5);
+    line.setAttribute('stroke', 'currentColor');
+    line.setAttribute('stroke-width', 1.2);
+    line.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(line);
+
+    return svg;
 }
 
 

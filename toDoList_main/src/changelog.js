@@ -13,13 +13,7 @@ export const changelog = [
             'Nav, sidebar, todo rows, and view-switcher pills now share a unified purple-tinted border and pill style.',
             'Recurring-task stats drawer now expands fully to show the stat cards, contributions grid, and missed-dates list instead of clipping after the first row.',
             'Recurring-task stats grid now shows weekday letters down the left edge and month abbreviations along the top.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-16',
-        fixed: [
-            'Selected project in the collapsed sidebar rail now stands out with a ghost outline and a dot indicator beneath the chip.',
+            'Recurring-task stats drawer now summarises miss patterns in one sentence and tucks long miss lists behind a + N more modal grouped by month.',
         ],
     },
 ];
