@@ -2,15 +2,29 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Fix recurring-task stats drawer being clipped to 54px by #mainList's grid track sizing
-  - Description: When the stats drawer is opened from the chart icon on a recurring task row, only the top ~54px paints — the stat-card strip renders fully, the window-toggle row clips through the middle, and the contributions grid + missed-dates list are entirely hidden beneath the next todo row. The root cause is in `style.css`: `#mainList` is a CSS grid declared as `grid-template-rows: repeat(auto-fit, minmax(54px, 54px))`, which locks every implicit row track — including the one the new `#statsSibling` lands in — to exactly 54px. The drawer's own CSS (`display: flex; flex-direction: column; padding: 10px 14px 12px; gap: 8px`) renders correctly inside the cell, but the cell itself caps the height. `#descSibling` masks the same limitation because its content rarely exceeds 34px, so it fits inside the 54px clamp by accident. Fix by replacing the hardcoded `minmax(54px, 54px)` with `grid-auto-rows: minmax(54px, auto)` (and dropping the now-redundant `grid-template-rows` line) so rows preserve their 54px minimum for normal todo rows but grow to fit their content for drawers. Confirm `#toDoChild` heights are unaffected (they're already `var(--item-h)` plus margin, comfortably under 54px) and that the existing `dragDrop.js` `computeDropIndex` math still works — it operates on `getBoundingClientRect()` per row, so auto-sized rows don't change the logic.
+- [ ] **[MEDIUM]** Add weekday and month labels to the recurring-task stats contributions grid
+  - Description: The shipped stats drawer renders the contributions-grid cells correctly but is missing the axis labels the agreed mockup carried: weekday letters running down the left edge (S M T W T F S, Sunday-first to match the existing Sun-first cell math in `buildContributionsGrid`) and month abbreviations (Jan, Feb, …) floating above the first column of each month spanned by the visible window. Without these, a user looking at the grid can't tell which row represents which weekday — the original goal of "seeing when I tend to slip" is undermined because the spatial signal is unlabeled. Update `buildContributionsGrid` in `toDoRow.js` to add a left gutter (~14px) hosting seven `<text>` weekday labels positioned at each row's vertical center, and a top gutter (~14px) hosting one `<text>` month label per column whose week starts in a new calendar month. The first column always gets a month label regardless. Expand the SVG `width` and `height` and the `viewBox` to absorb the gutters, and shift every cell's `x` and `y` by the gutter offsets so cells visually align under their column's month label and beside their row's weekday letter. The fallback strip (`buildFallbackStrip`) is unaffected — it's a single row of last-12 occurrences with no weekday axis to label.
+  - Behavior:
+    1. Left gutter is 14px wide, with seven `<text>` elements at `x=0`, `y = row * (cellSize + gap) + cellSize/2 + gutterOffsetY`, `dominant-baseline="middle"`, text content `S M T W T F S` in row order (matches the existing `row = d.getDay()` math where Sunday is index 0).
+    2. Top gutter is 14px tall. For each column index, derive the first day-of-week date in that column (`alignedStart + col * 7 days`) and emit a `<text>` label at `x = gutterX + col * (cellSize + gap)`, `y = 10`, when (a) `col === 0`, or (b) that column's first day's month differs from the previous column's first day's month. Label text uses the locale-short month name (e.g. `Date.toLocaleString(undefined, { month: 'short' })`).
+    3. Label fill comes from `var(--text-muted)`; font is inherited from the SVG's parent (the drawer's `font-size: 12px` already cascades). Add a small inline `font-size: 9px` on labels to match the compact mockup density.
+    4. Existing cell rendering, hit/miss/today/future class logic, and per-cell `<title>` tooltips remain unchanged — only their `x` / `y` offsets shift by the gutter width / height.
+  - Implementation notes:
+    - Introduce two local constants near the top of `buildContributionsGrid`: `const labelGutterX = 14;` and `const labelGutterY = 14;`. Use them in the SVG `width` / `height` calc, the `viewBox`, and every cell's coordinate computation. This makes future tuning a one-line change.
+    - Use `document.createElementNS(svgNS, 'text')` for labels (same namespace as the existing `<rect>` calls). Set `class="statsGridLabel"` so styling lives in `style.css` next to the existing `.statsGrid` rules.
+    - Add a `.statsGridLabel` CSS rule alongside `.statsGrid .statsCell*` in `style.css`: `fill: var(--text-muted); font-size: 9px; font-family: inherit;`. No need for separate `Hit`/`Miss` variants — labels are static chrome.
+    - For the month-change detection, store `let lastLabeledMonth = -1;` outside the column loop and update it after each label emission so consecutive same-month columns don't repeat the abbreviation.
+    - The 14d window may produce only 2–3 columns; the first-column-always rule guarantees at least one month label is visible in every window. Verify this on the All window too, which can span multiple months — labels should appear at each transition.
   - Acceptance criteria:
-    - Opening the stats drawer reveals the full content stack: stat strip, optional approximate-dates note, window toggle, contributions grid (or fallback strip), and missed-dates pill list.
-    - Closing the drawer returns `#mainList` to its prior visual layout; surrounding todo rows still sit at their normal heights.
-    - Description panels (`#descSibling`) continue to render at their existing height.
-    - Drag-and-drop reorder still places the drop indicator at correct positions.
-  - File: `toDoList_main/src/style.css`
-  - Completed: 2026-05-17
+    - Opening the stats drawer on a daily-recurrence task shows S M T W T F S running down the left edge of the grid, each letter vertically centered against its row.
+    - At least one month abbreviation appears above the grid, with additional abbreviations at every column where a new calendar month begins.
+    - Cells remain aligned under their column's month label (no horizontal drift introduced by the gutter shift).
+    - Switching window (14d / 30d / 90d / All) re-renders the grid with correctly recomputed month labels for the new span.
+    - Fallback strip for monthly / yearly / custom-month / custom-year recurrences is unchanged.
+    - The drawer's overall height grows by ~14px to absorb the top gutter; `#mainList`'s row sizing (now `grid-auto-rows: minmax(54px, auto)` after the clipping fix) accommodates this without additional changes.
+  - Out of scope: vertical alignment of the month labels with the *exact* first cell of that month within the column (the label sits at the column root, not the cell — matches the GitHub contributions-graph convention); locale-specific weekday letters (sticking with English single letters for now).
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
