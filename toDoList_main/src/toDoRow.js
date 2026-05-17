@@ -194,9 +194,11 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
         if (e.target.id === 'checkToDo'      ||
             e.target.id === 'closeButtonToDo' ||
             e.target.id === 'descToggle'      ||
+            e.target.closest('#statsToggle')  ||
             e.target.closest('#duePill')      ||
             e.target.closest('#dueDatePopover') ||
-            e.target.closest('#descSibling')) return;
+            e.target.closest('#descSibling')  ||
+            e.target.closest('#statsSibling')) return;
 
         // Blank rows: focus immediately (user intends to type a new item)
         if (!toDoInput.value.trim()) {
@@ -262,6 +264,351 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
 }
 
 
+// ── HELPER: wire the chart-icon toggle that opens/closes the recurring-task stats drawer ──
+// Parallels wireDescToggle in behavior: opens a new `#statsSibling` panel
+// directly beneath the row (after `#descSibling` if that one is also open),
+// closes on a second click, and supports Enter activation when focused.
+// The drawer renders a stat-card strip, a window selector (14d / 30d / 90d
+// / All — default 30d), a contributions grid (or a fallback strip for
+// month-/year-cadence recurrences), and a missed-dates pill list.
+function wireStatsToggle(statsToggle, toDoChild, item) {
+
+    let currentWindow = '30d';
+
+    function renderDrawer() {
+        const projectName = toDoChild.dataset.value;
+        if (!projectName || !item.recurrence) return null;
+
+        const drawer = document.createElement('div');
+        drawer.id = 'statsSibling';
+
+        const stats = listLogic.getRecurringTaskStats(projectName, item, currentWindow);
+
+        // Stat-card strip: streak / hit rate / best / completions in window.
+        const strip = document.createElement('div');
+        strip.className = 'statsCardStrip';
+        const cards = [
+            { label: 'Streak',      value: stats.currentStreak + '' },
+            { label: 'Hit rate',    value: Math.round(stats.hitRate * 100) + '%' },
+            { label: 'Best',        value: stats.bestStreak + '' },
+            { label: 'Done',        value: stats.completedCount + '' },
+        ];
+        cards.forEach(function(c) {
+            const card = document.createElement('div');
+            card.className = 'statsCard';
+            const v = document.createElement('div');
+            v.className = 'statsCardValue';
+            v.textContent = c.value;
+            const l = document.createElement('div');
+            l.className = 'statsCardLabel';
+            l.textContent = c.label;
+            card.appendChild(v);
+            card.appendChild(l);
+            strip.appendChild(card);
+        });
+        drawer.appendChild(strip);
+
+        // Approximate-dates note for completion-basis recurrences — the
+        // expected sequence is reconstructed from `nextDueDate`, not from
+        // authoritative per-occurrence records.
+        if (item.recurrence.basis === 'completionDate') {
+            const note = document.createElement('div');
+            note.className = 'statsApproximateNote';
+            note.textContent = 'completion-based — dates approximate';
+            drawer.appendChild(note);
+        }
+
+        // Window toggle row.
+        const toggleRow = document.createElement('div');
+        toggleRow.className = 'statsWindowToggle';
+        const windows = [
+            { key: '14d', label: '14d' },
+            { key: '30d', label: '30d' },
+            { key: '90d', label: '90d' },
+            { key: 'all', label: 'All' },
+        ];
+        windows.forEach(function(w) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'statsWindowBtn' + (w.key === currentWindow ? ' selected' : '');
+            btn.textContent = w.label;
+            btn.setAttribute('aria-pressed', w.key === currentWindow ? 'true' : 'false');
+            btn.addEventListener('click', function(ev) {
+                ev.stopPropagation();
+                if (currentWindow === w.key) return;
+                currentWindow = w.key;
+                replaceDrawerInPlace();
+            });
+            toggleRow.appendChild(btn);
+        });
+        drawer.appendChild(toggleRow);
+
+        // Grid (or fallback strip for month/year cadences).
+        const useFallback =
+            item.recurrence.pattern === 'monthly' ||
+            item.recurrence.pattern === 'yearly' ||
+            item.recurrence.intervalUnit === 'month' ||
+            item.recurrence.intervalUnit === 'year';
+        drawer.appendChild(
+            useFallback ? buildFallbackStrip(stats) : buildContributionsGrid(stats)
+        );
+
+        // Missed-dates pill list.
+        if (stats.misses.length > 0) {
+            const missed = document.createElement('div');
+            missed.className = 'statsMissedList';
+            const label = document.createElement('span');
+            label.className = 'statsMissedLabel';
+            label.textContent = 'Missed:';
+            missed.appendChild(label);
+            stats.misses.forEach(function(d) {
+                const pill = document.createElement('span');
+                pill.className = 'statsMissedPill';
+                pill.textContent = formatShortDate(d);
+                missed.appendChild(pill);
+            });
+            drawer.appendChild(missed);
+        }
+
+        return drawer;
+    }
+
+    // Replace the open drawer in place without closing the description
+    // panel — used by the window-toggle buttons so a click on `14d` /
+    // `30d` etc. re-derives stats and re-renders the grid while leaving
+    // the drawer (and any sibling descSibling) intact.
+    function replaceDrawerInPlace() {
+        const mainList = toDoChild.parentElement;
+        if (!mainList) return;
+        let existing = toDoChild.nextSibling;
+        while (existing && existing.id !== 'statsSibling') existing = existing.nextSibling;
+        if (!existing) return;
+        const fresh = renderDrawer();
+        if (!fresh) return;
+        mainList.replaceChild(fresh, existing);
+    }
+
+    statsToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        // Defensive: button is CSS-hidden when no recurrence, but if a
+        // keyboard activation slips through, no-op rather than render an
+        // empty drawer.
+        if (!item.recurrence) return;
+        const mainList = toDoChild.parentElement;
+        if (!mainList) return;
+
+        // Check if a stats drawer for this row is already open. The
+        // drawer lives directly after the row OR after descSibling if
+        // both are open.
+        let existing = toDoChild.nextSibling;
+        while (existing && existing.id !== 'statsSibling') {
+            if (existing.id !== 'descSibling') {
+                existing = null;
+                break;
+            }
+            existing = existing.nextSibling;
+        }
+
+        if (existing && existing.id === 'statsSibling') {
+            mainList.removeChild(existing);
+            statsToggle.classList.remove('open');
+            statsToggle.setAttribute('aria-expanded', 'false');
+            statsToggle.setAttribute('aria-label', 'Show stats');
+            return;
+        }
+
+        const drawer = renderDrawer();
+        if (!drawer) return;
+        // Slot after descSibling when it's open so both panels stack
+        // beneath the row in a deterministic order. Otherwise slot
+        // directly under the row.
+        const descBelow = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling')
+            ? toDoChild.nextSibling
+            : null;
+        const anchor = descBelow || toDoChild;
+        mainList.insertBefore(drawer, anchor.nextSibling);
+        statsToggle.classList.add('open');
+        statsToggle.setAttribute('aria-expanded', 'true');
+        statsToggle.setAttribute('aria-label', 'Hide stats');
+    });
+
+    statsToggle.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        statsToggle.click();
+    });
+}
+
+
+// Build the contributions-grid SVG for daily / weekdays / weekly /
+// custom-day / custom-week recurrences. Layout is weeks-as-columns,
+// weekday-as-rows (Sun..Sat). Cells are 14×14 with 4px gaps. Only
+// expected-occurrence dates are filled — non-expected days in the window
+// remain blank so the grid surfaces the cadence visually.
+function buildContributionsGrid(stats) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'statsGridWrapper';
+
+    const cellSize = 14;
+    const gap = 4;
+    const expected = stats.expectedDates;
+    if (expected.length === 0) {
+        wrapper.classList.add('statsGridEmpty');
+        wrapper.textContent = 'No expected occurrences in this window yet.';
+        return wrapper;
+    }
+
+    // Back-align the first expected date to Sunday so weekday rows stay
+    // visually consistent across windows.
+    const first = expected[0];
+    const dowOffset = first.getDay();
+    const alignedStart = new Date(first.getFullYear(), first.getMonth(), first.getDate());
+    alignedStart.setDate(alignedStart.getDate() - dowOffset);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = isoKey(today);
+
+    // Total columns = weeks from alignedStart through today inclusive.
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysSpan = Math.floor((today.getTime() - alignedStart.getTime()) / msPerDay) + 1;
+    const totalCols = Math.max(1, Math.ceil(daysSpan / 7));
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    const width  = totalCols * cellSize + (totalCols - 1) * gap;
+    const height = 7 * cellSize + 6 * gap;
+    svg.setAttribute('width',  width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('class', 'statsGrid');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Recurring task hit grid');
+
+    expected.forEach(function(d) {
+        const dayIdx = Math.floor((d.getTime() - alignedStart.getTime()) / msPerDay);
+        const col = Math.floor(dayIdx / 7);
+        const row = d.getDay();
+        const x = col * (cellSize + gap);
+        const y = row * (cellSize + gap);
+
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', cellSize);
+        rect.setAttribute('height', cellSize);
+        rect.setAttribute('rx', 2);
+        rect.setAttribute('ry', 2);
+
+        const key = isoKey(d);
+        let cls = 'statsCell';
+        if (key === todayKey) {
+            cls += ' statsCellToday';
+        } else if (d.getTime() > today.getTime()) {
+            cls += ' statsCellFuture';
+        } else if (stats.hits.has(key)) {
+            cls += ' statsCellHit';
+        } else {
+            cls += ' statsCellMiss';
+        }
+        rect.setAttribute('class', cls);
+
+        const titleEl = document.createElementNS(svgNS, 'title');
+        titleEl.textContent = formatShortDate(d) +
+            ' — ' + cellTitleLabel(key, d, today, stats);
+        rect.appendChild(titleEl);
+        svg.appendChild(rect);
+    });
+
+    wrapper.appendChild(svg);
+    return wrapper;
+}
+
+// Fallback horizontal strip for monthly / yearly / custom-month /
+// custom-year cadences — a weekday grid would be too sparse to read at
+// those intervals, so the last 12 expected occurrences are rendered as
+// a single row of 18×18 cells.
+function buildFallbackStrip(stats) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'statsGridWrapper statsFallbackStrip';
+
+    const cellSize = 18;
+    const gap = 4;
+    const expected = stats.expectedDates.slice(-12);
+    if (expected.length === 0) {
+        wrapper.classList.add('statsGridEmpty');
+        wrapper.textContent = 'No expected occurrences in this window yet.';
+        return wrapper;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = isoKey(today);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    const width  = expected.length * cellSize + (expected.length - 1) * gap;
+    const height = cellSize;
+    svg.setAttribute('width',  width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('class', 'statsGrid');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Recurring task occurrence strip');
+
+    expected.forEach(function(d, idx) {
+        const x = idx * (cellSize + gap);
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', 0);
+        rect.setAttribute('width', cellSize);
+        rect.setAttribute('height', cellSize);
+        rect.setAttribute('rx', 2);
+        rect.setAttribute('ry', 2);
+
+        const key = isoKey(d);
+        let cls = 'statsCell';
+        if (key === todayKey) cls += ' statsCellToday';
+        else if (d.getTime() > today.getTime()) cls += ' statsCellFuture';
+        else if (stats.hits.has(key)) cls += ' statsCellHit';
+        else cls += ' statsCellMiss';
+        rect.setAttribute('class', cls);
+
+        const titleEl = document.createElementNS(svgNS, 'title');
+        titleEl.textContent = formatShortDate(d) +
+            ' — ' + cellTitleLabel(key, d, today, stats);
+        rect.appendChild(titleEl);
+        svg.appendChild(rect);
+    });
+
+    wrapper.appendChild(svg);
+    return wrapper;
+}
+
+// Tooltip label for a grid cell — read aloud via title text on hover.
+function cellTitleLabel(key, d, today, stats) {
+    if (key === isoKey(today)) return 'today';
+    if (d.getTime() > today.getTime()) return 'upcoming';
+    if (stats.hits.has(key)) return 'hit';
+    return 'missed';
+}
+
+// Local-time ISO key (YYYY-MM-DD). Mirrors listLogic.formatCalendarKey
+// so cell hits compare against the same keys produced by the stats
+// helper, without an import cycle through the module's internal helper.
+function isoKey(date) {
+    const y = date.getFullYear();
+    const m = date.getMonth() + 1;
+    const d = date.getDate();
+    return y + '-' + (m < 10 ? '0' + m : '' + m) + '-' + (d < 10 ? '0' + d : '' + d);
+}
+
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatShortDate(d) {
+    return MONTH_SHORT[d.getMonth()] + ' ' + d.getDate();
+}
+
+
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
 function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
@@ -314,6 +661,7 @@ export function buildToDoRow(item, toDoName) {
     const duePill         = document.createElement("button");
     const closeButtonToDo = document.createElement("div");
     const descToggle      = document.createElement("div");
+    const statsToggle     = document.createElement("div");
     const spacer          = document.createElement("div");
     const descSibling     = document.createElement("div");
     const descSpacer1     = document.createElement("div");
@@ -391,6 +739,19 @@ export function buildToDoRow(item, toDoName) {
     descToggle.setAttribute("role", "button");
     descToggle.setAttribute("aria-label", "Toggle description");
 
+    // Stats toggle — chart-icon button that opens the recurring-task
+    // stats drawer. Always present in the DOM but CSS-hidden unless the
+    // row carries `data-has-recurrence` (set by updateRecurringGlyph), so
+    // non-recurring rows never surface the icon.
+    statsToggle.id = "statsToggle";
+    statsToggle.className = "statsToggle";
+    statsToggle.setAttribute("tabindex", "0");
+    statsToggle.setAttribute("role", "button");
+    statsToggle.setAttribute("aria-label", "Show stats");
+    statsToggle.setAttribute("aria-expanded", "false");
+    statsToggle.title = "Show recurring-task stats";
+    statsToggle.innerHTML = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="12" x2="12" y2="12"/><rect x="3" y="7" width="1.8" height="4"/><rect x="6.1" y="4" width="1.8" height="7"/><rect x="9.2" y="2" width="1.8" height="9"/></svg>';
+
     descSibling.id  = "descSibling";
     descSpacer1.id  = "descSpacer1";
     descInput.id    = "descInput";
@@ -430,6 +791,7 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(toDoInput);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
+    toDoChild.appendChild(statsToggle);
     toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
 
@@ -456,6 +818,7 @@ export function buildToDoRow(item, toDoName) {
 
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+    wireStatsToggle(statsToggle, toDoChild, item);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
@@ -783,10 +1146,17 @@ export function reorderToDoDOM(projectName) {
     items.forEach(function(item) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
-        const descSibling = (row.nextSibling && row.nextSibling.id === 'descSibling')
-            ? row.nextSibling : null;
+        // Collect any auxiliary panels that belong to this row (the
+        // description panel and the recurring-task stats drawer can both
+        // be open). They sit as consecutive siblings beneath the row.
+        const auxiliary = [];
+        let next = row.nextSibling;
+        while (next && (next.id === 'descSibling' || next.id === 'statsSibling')) {
+            auxiliary.push(next);
+            next = next.nextSibling;
+        }
         mainDiv.appendChild(row);
-        if (descSibling) mainDiv.appendChild(descSibling);
+        auxiliary.forEach(function(node) { mainDiv.appendChild(node); });
     });
 
     updateCompletedSection(mainDiv);

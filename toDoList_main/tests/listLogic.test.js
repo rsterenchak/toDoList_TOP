@@ -947,6 +947,194 @@ describe('listLogic — recurrence persistence', () => {
 });
 
 
+// ── RECURRING TASK STATS ────────────────────────────────────────────
+// Pinned by the recurring-task stats drawer: walks the project's completed
+// clones to derive expected occurrences from the anchor forward, then
+// computes hit/miss/streak/hit-rate stats clipped to a rolling window.
+describe('listLogic — getRecurringTaskStats', () => {
+    // Thursday 2026-04-30 noon — anchors the test calendar so day-of-week
+    // assertions (weekdays pattern) read deterministically.
+    const now = new Date(2026, 3, 30, 12, 0, 0);
+
+    function addClones(projectName, title, dues) {
+        const items = listLogic.listItems(projectName);
+        dues.forEach(function(due) {
+            items.push({
+                tit: title,
+                desc: '',
+                due: due,
+                pri: 1,
+                pos: 0,
+                completed: true,
+                recurrence: null,
+            });
+        });
+        listLogic.sortCompletedToBottom(projectName);
+    }
+
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('R');
+        listLogic.addToDo('R', 'Brush teeth');
+    });
+
+    it('daily with all hits — full streak, no misses, hit rate 1', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        addClones('R', 'Brush teeth', [
+            '4-25-2026', '4-26-2026', '4-27-2026', '4-28-2026', '4-29-2026',
+        ]);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        expect(stats.misses).toEqual([]);
+        expect(stats.completedCount).toBe(5);
+        expect(stats.currentStreak).toBe(5);
+        expect(stats.bestStreak).toBe(5);
+        expect(stats.hitRate).toBe(1);
+    });
+
+    it('daily with two misses — streak resets at the most recent miss', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        // Expected over 4-25..4-29 (5 days before today); hits skip 4-26 and 4-28.
+        addClones('R', 'Brush teeth', ['4-25-2026', '4-27-2026', '4-29-2026']);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        const missKeys = stats.misses.map(d => (d.getMonth() + 1) + '-' + d.getDate());
+        expect(missKeys).toEqual(['4-26', '4-28']);
+        expect(stats.completedCount).toBe(3);
+        // Last hit before today is 4-29 → streak = 1 (4-28 was a miss)
+        expect(stats.currentStreak).toBe(1);
+        // Best run of consecutive hits anywhere in history is 1 (every
+        // hit sits between two misses or the boundary).
+        expect(stats.bestStreak).toBe(1);
+        expect(stats.hitRate).toBeCloseTo(3 / 5);
+    });
+
+    it('weekdays pattern skips weekend dates in the expected sequence', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '4-30-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'weekdays' });
+        // Anchor on Friday 4-24-2026 so the walk crosses a weekend
+        // (Sat 4-25, Sun 4-26) before resuming Mon 4-27.
+        addClones('R', 'Brush teeth', ['4-24-2026']);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        const expectedKeys = stats.expectedDates.map(d =>
+            (d.getMonth() + 1) + '-' + d.getDate()
+        );
+        // Fri 4-24, Mon 4-27, Tue 4-28, Wed 4-29, Thu 4-30 — weekends skipped.
+        expect(expectedKeys).toEqual(['4-24', '4-27', '4-28', '4-29', '4-30']);
+        expect(expectedKeys).not.toContain('4-25');
+        expect(expectedKeys).not.toContain('4-26');
+    });
+
+    it('completion-basis recurrence still reconstructs the expected sequence', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily', basis: 'completionDate' });
+        addClones('R', 'Brush teeth', [
+            '4-27-2026', '4-28-2026', '4-29-2026',
+        ]);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        // Even with completionDate basis, the walk advances one day per
+        // step so the expected sequence covers each calendar day from the
+        // anchor through today inclusive.
+        const expectedKeys = stats.expectedDates.map(d =>
+            (d.getMonth() + 1) + '-' + d.getDate()
+        );
+        expect(expectedKeys).toEqual(['4-27', '4-28', '4-29', '4-30']);
+        expect(stats.completedCount).toBe(3);
+        expect(stats.currentStreak).toBe(3);
+    });
+
+    it('current streak runs up to yesterday and excludes today', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        // Hits include today (4-30) plus a 3-day run ending yesterday (4-29).
+        addClones('R', 'Brush teeth', [
+            '4-27-2026', '4-28-2026', '4-29-2026', '4-30-2026',
+        ]);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        // Today's hit must NOT inflate the streak — only the consecutive
+        // run ending at yesterday counts.
+        expect(stats.currentStreak).toBe(3);
+    });
+
+    it('best streak surfaces the longest run anywhere in history', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        // 4-day run (4-20..4-23), gap, 4-25, gap, 4-28, 4-29.
+        addClones('R', 'Brush teeth', [
+            '4-20-2026', '4-21-2026', '4-22-2026', '4-23-2026',
+            '4-25-2026',
+            '4-28-2026', '4-29-2026',
+        ]);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, 'all', now);
+
+        expect(stats.bestStreak).toBe(4);
+        // Most recent run before today is 4-28, 4-29 → current streak 2.
+        expect(stats.currentStreak).toBe(2);
+    });
+
+    it('empty history (no clones, future-due original) returns zero stats without throwing', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-10-2026'; // future
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '30d', now);
+
+        expect(stats.expectedDates).toEqual([]);
+        expect(stats.misses).toEqual([]);
+        expect(stats.completedCount).toBe(0);
+        expect(stats.currentStreak).toBe(0);
+        expect(stats.bestStreak).toBe(0);
+        expect(stats.hitRate).toBe(0);
+    });
+
+    it('returns zero stats when the item has no recurrence', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '4-29-2026';
+        // No setRecurrence call — item.recurrence stays null.
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '30d', now);
+        expect(stats.expectedDates).toEqual([]);
+        expect(stats.currentStreak).toBe(0);
+    });
+
+    it('windows clip the expected sequence and miss list', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '5-1-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        addClones('R', 'Brush teeth', [
+            '3-1-2026', '3-2-2026', '3-3-2026',
+        ]);
+
+        const widest = listLogic.getRecurringTaskStats('R', item, 'all', now);
+        const narrow = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        // 14d cutoff is 4-17..4-30 → no clones land in window, every cell
+        // before today is a miss.
+        expect(narrow.expectedDates.length).toBeLessThan(widest.expectedDates.length);
+        narrow.misses.forEach(d => {
+            expect(d.getTime()).toBeLessThan(now.getTime());
+        });
+    });
+});
+
+
 // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────────
 describe('listLogic — getTodayAggregation', () => {
     // Fix "now" to noon local on 2026-05-13 so the day boundary is

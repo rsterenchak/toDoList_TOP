@@ -2594,6 +2594,183 @@ body.row-dragging * { cursor: grabbing !important; }
 #closeButtonToDo::after { content: '×'; display: block; }
 #closeButtonToDo:hover { color: var(--text-primary); background: var(--bg-hover); }
 
+/* STATS TOGGLE — chart-icon button that opens the recurring-task stats
+   drawer. Visually mirrors descToggle's footprint (24×24 hit area) and
+   hover treatment so the meta cluster reads as one unified strip. The
+   button is always in the DOM but only paints when the row has a
+   `data-has-recurrence` flag (set by updateRecurringGlyph), so
+   non-recurring rows never see the icon. */
+#toDoChild:not([data-has-recurrence]) #statsToggle {
+  display: none;
+}
+#statsToggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  color: var(--text-secondary);
+  user-select: none;
+}
+#statsToggle:hover { color: var(--text-primary); background: var(--bg-hover); }
+#statsToggle.open  { color: var(--accent-text); background: var(--bg-hover); }
+#statsToggle:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* STATS DRAWER — inserted below the row by wireStatsToggle. Borrows the
+   accent left-edge + surface fill from descSibling so the two drawers
+   read as a matched pair when both are open simultaneously. */
+#statsSibling {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  margin: -9px 8px 8px;
+  padding: 10px 14px 12px;
+  border-left: 2px solid var(--accent-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.statsCardStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.statsCard {
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.15);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 38px;
+}
+.statsCardValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.statsCardLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.statsApproximateNote {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.statsWindowToggle {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.statsWindowBtn {
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  color: var(--text-muted);
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.statsWindowBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.statsWindowBtn.selected {
+  background: rgba(108, 93, 245, 0.20);
+  border-color: #6C5DF5;
+  color: var(--accent-text);
+}
+.statsWindowBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.statsGridWrapper {
+  display: block;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+.statsGridEmpty {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted);
+  padding: 6px 0;
+}
+.statsGrid .statsCell {
+  stroke: transparent;
+  stroke-width: 1;
+}
+.statsGrid .statsCellHit    { fill: var(--accent); }
+.statsGrid .statsCellMiss   { fill: var(--bg-active); }
+.statsGrid .statsCellFuture {
+  fill: var(--bg-base);
+  stroke: var(--border-mid);
+}
+.statsGrid .statsCellToday {
+  fill: var(--bg-base);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.statsMissedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.statsMissedLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.statsMissedPill {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.20);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* When the completed section is collapsed, hide any stats drawer that
+   ends up under a completed row so it doesn't float orphaned. Stats
+   drawers attach to the still-recurring original (which is never
+   completed) so this rarely triggers, but a row whose recurrence ended
+   via endDate can still flip to completed below an open drawer. */
+#mainList.completedCollapsed #toDoChild.completed + #statsSibling,
+#mainList.completedCollapsed #toDoChild.completed + #descSibling + #statsSibling {
+  display: none;
+}
+
 /* DESCRIPTION ROW */
 #descSibling {
   display: grid;

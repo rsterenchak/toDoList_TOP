@@ -561,6 +561,161 @@ export const listLogic = (function () {
     }
 
 
+    // ── RECURRING TASK STATS ─────────────────────────────────────────
+    // Compute hit/miss/streak stats for a recurring task within a rolling
+    // window. Walks the project's completed clones (pushed by
+    // advanceRecurringTodo) plus the original recurring item to derive the
+    // expected occurrence sequence from an anchor forward to today; a hit
+    // is an expected date that matches a clone's `due`, a miss is any
+    // expected date strictly before today with no matching clone. Today
+    // itself is excluded from both buckets so the drawer can render it
+    // as a "ring" cell whether or not the user has already satisfied it.
+    //
+    // Returns `{ expectedDates, hits, misses, currentStreak, bestStreak,
+    // hitRate, completedCount }`. `expectedDates` and `misses` are clipped
+    // to the window; `hits` is the full set of completed-clone YYYY-MM-DD
+    // keys (so the renderer can colour any cell in the grid). Streaks are
+    // computed over the full all-time expected sequence per the task spec,
+    // not the windowed slice.
+    function getRecurringTaskStats(projectName, item, windowKey, now) {
+        const empty = {
+            expectedDates: [],
+            hits: new Set(),
+            misses: [],
+            currentStreak: 0,
+            bestStreak: 0,
+            hitRate: 0,
+            completedCount: 0,
+        };
+
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.items)) return empty;
+        if (!item || !item.recurrence) return empty;
+
+        const recurrence = sanitizeRecurrence(item.recurrence);
+        if (!recurrence) return empty;
+
+        const referenceNow = now instanceof Date ? now : new Date();
+        const today = new Date(
+            referenceNow.getFullYear(),
+            referenceNow.getMonth(),
+            referenceNow.getDate()
+        );
+
+        // Build the hit-key set from every completed sibling sharing the
+        // original's title — these are the frozen clones spawned by
+        // advanceRecurringTodo. Track the earliest one so we can anchor
+        // the expected-occurrence walk.
+        const cloneHitKeys = new Set();
+        let earliestClone = null;
+        entry.items.forEach(function(it) {
+            if (it === item) return;
+            if (!it || !it.completed) return;
+            if (it.tit !== item.tit) return;
+            const d = parseDueParts(it.due);
+            if (!d) return;
+            cloneHitKeys.add(formatCalendarKey(d));
+            if (!earliestClone || d < earliestClone) earliestClone = d;
+        });
+
+        // Anchor preference (per task spec): earliest completed clone's
+        // due, falling back to the original's current due (proxy for
+        // creation since the data model doesn't store a created-at), and
+        // finally today so the function never throws on missing data.
+        let anchor = earliestClone || parseDueParts(item.due) || today;
+        anchor = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+
+        // Walk expected occurrences forward from anchor up to and
+        // including today. The safety cap prevents pathological data
+        // (e.g. a malformed recurrence whose `next` doesn't advance) from
+        // hanging the renderer.
+        const allExpected = [];
+        const MAX_OCCURRENCES = 5000;
+        let current = anchor;
+        let safety = 0;
+        while (current.getTime() <= today.getTime() && safety < MAX_OCCURRENCES) {
+            allExpected.push(current);
+            const next = nextDueDate(formatDueParts(current), recurrence, current);
+            if (!next || next.getTime() <= current.getTime()) break;
+            current = next;
+            safety++;
+        }
+
+        // Window cutoff: trailing N days including today. 'all' returns
+        // the unfiltered sequence; any unrecognised value defaults to 30d
+        // to match the drawer's default selection.
+        let windowStart = null;
+        if (windowKey === '14d') {
+            windowStart = addDays(today, -13);
+        } else if (windowKey === '90d') {
+            windowStart = addDays(today, -89);
+        } else if (windowKey === 'all') {
+            windowStart = null;
+        } else {
+            windowStart = addDays(today, -29);
+        }
+
+        const expectedDates = windowStart
+            ? allExpected.filter(function(d) {
+                return d.getTime() >= windowStart.getTime();
+            })
+            : allExpected.slice();
+
+        const misses = expectedDates.filter(function(d) {
+            if (d.getTime() >= today.getTime()) return false;
+            return !cloneHitKeys.has(formatCalendarKey(d));
+        });
+
+        const inWindowBeforeToday = expectedDates.filter(function(d) {
+            return d.getTime() < today.getTime();
+        });
+        const hitsInWindow = inWindowBeforeToday.filter(function(d) {
+            return cloneHitKeys.has(formatCalendarKey(d));
+        });
+        const hitRate = inWindowBeforeToday.length > 0
+            ? hitsInWindow.length / inWindowBeforeToday.length
+            : 0;
+        const completedCount = hitsInWindow.length;
+
+        // Streaks: all-time, computed over expected dates strictly before
+        // today. Current streak walks backwards from yesterday; best
+        // streak is the longest run anywhere in the history.
+        const allBeforeToday = allExpected.filter(function(d) {
+            return d.getTime() < today.getTime();
+        });
+
+        let currentStreak = 0;
+        for (let i = allBeforeToday.length - 1; i >= 0; i--) {
+            if (cloneHitKeys.has(formatCalendarKey(allBeforeToday[i]))) {
+                currentStreak++;
+            } else {
+                break;
+            }
+        }
+
+        let bestStreak = 0;
+        let run = 0;
+        for (let i = 0; i < allBeforeToday.length; i++) {
+            if (cloneHitKeys.has(formatCalendarKey(allBeforeToday[i]))) {
+                run++;
+                if (run > bestStreak) bestStreak = run;
+            } else {
+                run = 0;
+            }
+        }
+
+        return {
+            expectedDates: expectedDates,
+            hits: cloneHitKeys,
+            misses: misses,
+            currentStreak: currentStreak,
+            bestStreak: bestStreak,
+            hitRate: hitRate,
+            completedCount: completedCount,
+        };
+    }
+
+
     // ── TODAY DASHBOARD AGGREGATION ─────────────────────────────────
     // Walk every project's items once and bucket non-completed todos with
     // due dates into overdue / today / upcoming relative to the start of
@@ -832,6 +987,7 @@ export const listLogic = (function () {
         snapshotProjects,
         setRecurrence,
         advanceRecurringTodo,
+        getRecurringTaskStats,
         getTodayAggregation,
         getCalendarMonth,
         getAllTodosDueOn,

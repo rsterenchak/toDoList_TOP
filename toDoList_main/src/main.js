@@ -3255,12 +3255,13 @@ function component() {
     document.addEventListener('click', function(e) {
         const insideRow = e.target.closest('#toDoChild');
         const insideDesc = e.target.closest('#descSibling');
-        if (!insideRow) {
+        const insideStats = e.target.closest('#statsSibling');
+        if (!insideRow && !insideStats) {
             document.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
                 el.classList.remove('todo-active');
             });
         }
-        if (!insideRow && !insideDesc) {
+        if (!insideRow && !insideDesc && !insideStats) {
             document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(function(el) {
                 const dt = el.querySelector('#descToggle');
                 if (dt && dt.classList.contains('open')) {

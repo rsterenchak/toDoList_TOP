@@ -360,13 +360,30 @@ function commitRecurrenceFromPopover(popover) {
 // Update the recurring-row glyph next to the title input. Keeps the DOM
 // in sync after the popover commits a recurrence config without needing
 // a full row rebuild. Exported so toDoRow.js can call it on row build.
+// Also flips `data-has-recurrence` on the row so CSS-keyed siblings (the
+// stats-drawer chart button) can show/hide in lockstep with the glyph.
 export function updateRecurringGlyph(toDoChild, item) {
     if (!toDoChild) return;
     const existing = toDoChild.querySelector('#recurringGlyph');
     if (!item || !item.recurrence) {
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        toDoChild.removeAttribute('data-has-recurrence');
+        // If the user removed recurrence while the stats drawer was open,
+        // tear the drawer down so it doesn't strand below the row.
+        const mainList = toDoChild.parentElement;
+        if (mainList) {
+            let next = toDoChild.nextSibling;
+            while (next && (next.id === 'descSibling' || next.id === 'statsSibling')) {
+                const after = next.nextSibling;
+                if (next.id === 'statsSibling') mainList.removeChild(next);
+                next = after;
+            }
+        }
+        const statsToggle = toDoChild.querySelector('#statsToggle');
+        if (statsToggle) statsToggle.classList.remove('open');
         return;
     }
+    toDoChild.setAttribute('data-has-recurrence', 'true');
     if (existing) return; // already present
     const glyph = document.createElement('span');
     glyph.id = 'recurringGlyph';
