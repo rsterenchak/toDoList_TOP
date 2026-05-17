@@ -24,24 +24,28 @@
 
 ## Features
 
-- [ ] **[LOW]** React ghost companion to Pomodoro timer state with studying and wandering behaviors
-  - Description: When the Pomodoro timer is RUNNING, the ghost companion should stop wandering, hold position, and display a new "studying" sprite variant showing a small pixel book held to the right side of the body. When the timer is PAUSED or STOPPED, the ghost resumes its normal wander behavior. When the timer session completes, the existing `cheer()` call fires as usual, then wander resumes. The idle bob animation (`companionIdle`) continues during the studying state — only the wander timer and position lerp are suspended.
+- [ ] **[MEDIUM]** Add recurring-task stats drawer with hit-rate grid
+  - Description: Recurring tasks currently push a frozen completed clone into the project's `items` array every time `advanceRecurringTodo` fires, but the user has no UI to see how consistently they hit their cadence. Add a stats drawer that opens below a recurring task row — mirroring how `descSibling` is inserted under `toDoChild` by the existing description toggle — and surfaces, for the focused task, a 4-card stat strip (current streak / hit rate / best streak / completions in window), a GitHub-style contributions grid showing each expected occurrence as a cell (intense purple = hit, dim = missed, ring = today, unstyled = future), a window toggle (14d / 30d / 90d / All — default 30d), and a missed-dates pill list beneath the grid. Open via a new chart-icon button in the meta cluster that renders only when `item.recurrence` is non-null; the drawer and the description panel can be open simultaneously.
   - Behavior:
-    1. Add a new `STUDYING` state to `companion.js` alongside `IDLE`, `WALKING`, `CHEERING`. `setState('STUDYING')` suspends the wander `timerId` and `rafId`, applies `.studying` class, keeps the idle bob running.
-    2. Add `setStudying(active)` to the companion's public API. Call with `true` when pomodoro status becomes `RUNNING`, `false` when it becomes `PAUSED`, `STOPPED`, or `COMPLETE`.
-    3. Wire `setStudying` in `main.js` (or `pomodoro.js`) wherever `data-pomo-status` is written to `#pomodoroToggle` — mirror the same call sites that already update the icon color and border.
-    4. New sprite: `companion-ghost-study.svg` — same 48×56px pixel ghost body, small amber/gold pixel book held to the right (occupying roughly the bottom-right quadrant, ~6×5px book block at the ghost's side). Book spine faces left, pages open rightward.
-    5. `.companion.studying` CSS rule: `background-image: url('./assets/companion-ghost-study.svg')`. Width expands to accommodate the book (~64px wide), `background-size: 100% 100%`.
-    6. Studying state also suppresses blinks (same guard as `CHEERING`) — the focused-study read is cleaner without the distraction.
-    7. Transition into/out of `STUDYING` must not disrupt an in-progress `CHEERING` — if `setStudying(true)` is called while cheering, defer until the cheer timer resolves.
+    1. Add `listLogic.getRecurringTaskStats(project, item, window)` that walks the project's `items` array, finds the original recurring item plus all completed clones sharing its title, derives the expected occurrence sequence by walking `nextDueDate` from a start anchor (earliest completed clone's `due`, or the original's creation if no clones yet) forward to today, and returns `{ expectedDates: [], hits: Set<string>, misses: [], currentStreak, bestStreak, hitRate, completedCount }`. Window argument is one of `'14d' | '30d' | '90d' | 'all'`; expected dates are clipped to that window before counting.
+    2. A hit is an expected date whose YYYY-MM-DD key matches a completed clone's `due`. A miss is any expected date strictly before today with no matching clone. Today is neither — it renders as a ring whether or not it's already satisfied.
+    3. Streak math walks expected dates backwards from yesterday: longest unbroken run ending at yesterday is the current streak; best streak is the longest unbroken run anywhere in the all-time expected sequence.
+    4. The drawer's chart-icon button is keyboard-reachable and Enter-activates the toggle, mirroring `descToggle`.
+    5. When the original task's `recurrence.basis === 'completionDate'`, the drawer shows a small "completion-based — dates approximate" label under the stat strip so the user knows the expected sequence is reconstructed, not authoritative.
   - Implementation notes:
-    - `companion.js` owns all state logic. `main.js`/`pomodoro.js` only calls `setStudying()` — no inline style writes or class manipulations outside the module.
-    - `data-pomo-status` is already set on `#pomodoroToggle` by the pomodoro wiring in `main.js`; grep for `data-pomo-status` to find all write sites and add `setStudying` calls alongside them.
-    - The sprite is a new SVG asset in `src/assets/` — same pixel style and color palette as `companion-ghost.svg` (`#7B6FE8` body, `#1a1828` eyes). Book uses `#d4a843` / `#f0c050` / `#ba7517` (amber ramp) for cover/pages/spine to match the due-date pill amber.
-    - Width expansion for the book means the right-edge clamping in `pickTarget` / `placeInitial` should account for the wider footprint — use 64px instead of 48px for the right-margin calculation when in `STUDYING` state.
-    - No new dependencies. SVG is inline-authored, no library needed.
-  - Out of scope: per-session study pose variations, book title text, reading page-turn animation.
-  - File: `toDoList_main/src/companion.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/assets/companion-ghost-study.svg`
+    - The drawer lives in a new `#statsSibling` element inserted/removed by a new `wireStatsToggle` helper in `toDoRow.js`, paralleling `wireDescToggle`. Both can co-exist as siblings under the same `toDoChild`.
+    - Cell rendering is SVG — `<rect>` per expected date, sized 14x14 with 4px gaps, weeks-as-columns and weekday-as-row layout. Colors come from `--accent` (hit), `--bg-elevated` slightly darkened (miss), `--bg-base` with `--border-mid` stroke (future), and `--accent-light` stroke (today).
+    - Grid degrades for monthly / yearly / custom-month / custom-year cadences — fall back to a single horizontal strip of the last 12 expected occurrences as 18x18 cells, no weekday rows. Detect by `recurrence.pattern in ['monthly','yearly']` or `recurrence.intervalUnit in ['month','year']`.
+    - Add `getRecurringTaskStats` unit tests covering: daily with all hits, daily with two misses, weekdays skipping weekends in expected sequence, completion-basis approximate expected sequence, current streak ending at today, best streak in the middle of history, empty history (no clones yet).
+    - The chart-icon button uses an inline SVG (no new dependency) sized 14x14 to match the recurring glyph; `aria-label="Show stats"` / `"Hide stats"`.
+  - Acceptance criteria:
+    - Drawer opens on chart-icon click for recurring tasks only; non-recurring rows do not render the icon.
+    - Window toggle re-derives stats and re-renders the grid without closing the drawer.
+    - Drawer survives a project switch (i.e., closing the drawer when the row unmounts is fine; the stats themselves persist via the data model).
+    - Existing `descSibling` behavior is unchanged — opening stats does not close the description panel and vice versa.
+    - Monthly / yearly recurrences render the fallback strip instead of an empty or sparse grid.
+  - Out of scope: aggregate stats across all recurring tasks (a separate top-level "Stats" view is a future entry); editing or backfilling missed dates; export of the underlying hit/miss history; a "pattern detected" insight callout.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## In Progress
