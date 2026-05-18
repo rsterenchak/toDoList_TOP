@@ -34,12 +34,13 @@ function extractTopLevelRule(css, selector) {
     throw new Error(`Top-level rule for "${selector}" not found`);
 }
 
-// Locks in the calendar-view layout fix: previously #calendarView used
-// flex-direction: row with a fixed 300px right-hand day panel, which
-// squished the calendar grid against the right edge on wide viewports and
-// left a large empty area below. The view now stacks column-wise on every
-// breakpoint, the calendar grid is capped to ~700px wide and centered, and
-// the day-detail panel matches that cap and fills the remaining height.
+// Locks in the calendar-view layout fixes: (1) the view stacks column-wise
+// on every breakpoint — previously #calendarView used flex-direction: row
+// with a fixed 300px right-hand day panel that squished the grid against
+// the right edge on wide viewports; (2) the calendar grid and day-detail
+// panel both fill 100% of the content area without a max-width cap, and
+// each day cell is square via aspect-ratio: 1 / 1 so the grid scales
+// proportionally with available width on every viewport.
 describe('#calendarView stacks calendar grid above the day-detail panel', () => {
     const css = read('style.css');
 
@@ -49,31 +50,28 @@ describe('#calendarView stacks calendar grid above the day-detail panel', () => 
         expect(rule).not.toMatch(/flex-direction:\s*row\s*;/);
     });
 
-    it('centers the stacked children horizontally so the max-width cap reads as centered', () => {
-        const rule = extractTopLevelRule(css, '#calendarView');
-        expect(rule).toMatch(/align-items:\s*center\s*;/);
-    });
-
-    it('caps the calendar grid side at ~700px wide with width:100%', () => {
+    it('lets the calendar grid wrapper fill the content area at 100% width with no max-width cap', () => {
         const rule = extractTopLevelRule(css, '#calendarGridSide');
         expect(rule).toMatch(/width:\s*100%\s*;/);
-        const maxWidthMatch = rule.match(/max-width:\s*(\d+)px\s*;/);
-        expect(maxWidthMatch).not.toBeNull();
-        const px = Number(maxWidthMatch[1]);
-        expect(px).toBeGreaterThanOrEqual(640);
-        expect(px).toBeLessThanOrEqual(760);
+        expect(rule).not.toMatch(/max-width\s*:/);
     });
 
-    it('drops the fixed 300px basis on the day panel so it fills remaining space below the grid', () => {
+    it('drops the fixed 300px basis on the day panel so it fills remaining space below the grid at full width', () => {
         const rule = extractTopLevelRule(css, '#calendarDayPanel');
         expect(rule).not.toMatch(/flex:\s*0\s+0\s+300px\s*;/);
         expect(rule).toMatch(/flex:\s*1\s+1\s+auto\s*;/);
         expect(rule).toMatch(/width:\s*100%\s*;/);
-        const maxWidthMatch = rule.match(/max-width:\s*(\d+)px\s*;/);
-        expect(maxWidthMatch).not.toBeNull();
-        const px = Number(maxWidthMatch[1]);
-        expect(px).toBeGreaterThanOrEqual(640);
-        expect(px).toBeLessThanOrEqual(760);
+        expect(rule).not.toMatch(/max-width\s*:/);
+    });
+
+    it('constrains each day cell to a 1:1 aspect ratio so cells grow proportionally with the grid width', () => {
+        const rule = extractTopLevelRule(css, '.calendarCell');
+        expect(rule).toMatch(/aspect-ratio:\s*1\s*\/\s*1\s*;/);
+    });
+
+    it('uses repeat(7, 1fr) for the calendar grid columns so all seven weekday slots share the row width', () => {
+        const rule = extractTopLevelRule(css, '#calendarGrid');
+        expect(rule).toMatch(/grid-template-columns:\s*repeat\(\s*7\s*,\s*1fr\s*\)\s*;/);
     });
 
     it('does not double-apply flex-direction: column inside the @media (max-width: 700px) block', () => {
