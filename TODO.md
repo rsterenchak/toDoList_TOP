@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Switch #calendarView to flex-direction column with calendar above todos
+- [x] **[MEDIUM]** Switch #calendarView to flex-direction column with calendar above todos
   - Description: When the calendar view is open, the calendar grid and the selected-day todo list currently sit side-by-side via `flex-direction: row` on `#calendarView`, which leaves the calendar squished against the right-hand todo column and leaves a large empty area below. Change `#calendarView` to `flex-direction: column` and reorder the children so the calendar grid renders on top (taking roughly 55% of the available height) and the selected-day todo list renders below it, filling the remaining space. Cap the calendar's max-width (~700px, centered) so day cells don't blow up on wide viewports, and confirm the layout still behaves on touch/`pointer: coarse` breakpoints where the view may already be column-stacked — avoid double-applying the change. Inline styles set from `main.js` (if any are written onto `#calendarView` or its children) will override the stylesheet, so check both files.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-18
 
 ## Features
 

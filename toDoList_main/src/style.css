@@ -1497,7 +1497,15 @@ body:has(#settingsMenu) #helpFab {
   grid-row: 1 / -1;
   grid-column: 1;
   display: none;
-  flex-direction: row;
+  /* Stack the calendar grid above the day-detail panel on every viewport.
+     Previously the layout was `flex-direction: row` with a 300px right-hand
+     panel, which squished the grid against the right edge on wide screens
+     and left a large empty area below. Column flow lets the grid breathe at
+     its natural intrinsic height and the panel fill the remainder. The
+     mobile @media block below relies on this default rather than re-setting
+     `flex-direction: column`. */
+  flex-direction: column;
+  align-items: center;
   gap: 20px;
   padding: 24px 16px;
   background: var(--bg-base);
@@ -1518,7 +1526,12 @@ body:has(#settingsMenu) #helpFab {
 }
 
 #calendarGridSide {
-  flex: 1 1 auto;
+  /* Sized to its intrinsic content height (header + dow row + 6 week rows
+     at minmax(64px, 1fr)). Capped at 700px wide and centered by the parent's
+     align-items so day cells don't blow up on ultra-wide viewports. */
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 700px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1657,12 +1670,16 @@ body:has(#settingsMenu) #helpFab {
   display: inline-block;
 }
 
-/* Right-side day-detail panel — fixed 300px wide on desktop, full-width
-   below the grid on mobile. The list reuses the .todayRow card style so
-   the row layout matches what users see in the Today view, minus the
-   due pill (the date is implied by the selected cell). */
+/* Day-detail panel — stacks beneath the calendar grid on every viewport
+   (the parent uses flex-direction: column). Fills the remaining vertical
+   space below the grid on desktop and matches the grid's 700px max width
+   so both surfaces share a centered column. The list reuses the .todayRow
+   card style so the row layout matches what users see in the Today view,
+   minus the due pill (the date is implied by the selected cell). */
 #calendarDayPanel {
-  flex: 0 0 300px;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 700px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3841,17 +3858,16 @@ body.row-dragging * { cursor: grabbing !important; }
     #navBar { padding: 0 8px; gap: 6px; }
   }
 
-  /* Calendar view stacks the day-detail panel beneath the grid on
-     mobile so the grid keeps its full-width layout and the panel
-     remains a thumb-reachable target without a horizontal scroll. */
+  /* Calendar view already stacks column-wise at every viewport now;
+     mobile only needs the tighter padding/gap. The day panel is sized
+     to its content here so the whole view scrolls as one column on
+     short screens, rather than fighting the grid for flex space. */
   #calendarView {
-    flex-direction: column;
     padding: 16px 12px;
     gap: 14px;
   }
   #calendarDayPanel {
     flex: 0 0 auto;
-    width: 100%;
   }
 
   /* The mobile header's #mobileProjCounts already shows open/done
