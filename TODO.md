@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Style page scrollbars to match Void dark aesthetic
+- [x] **[LOW]** Style page scrollbars to match Void dark aesthetic
   - Description: The default browser scrollbar (bright white thumb and track on near-black background) clashes hard with the dark Void aesthetic and is the most visually jarring element on long scrollable views like the expanded calendar. Style scrollbars globally via the `*` selector so every scrollable surface (page, projects sidebar, todo lists, modals, popovers) is covered: 8px width, dark track matching the app surface color, purple `#6C5DF5` thumb with rounded corners (~4px radius), and a slightly lighter `#9D93EE` thumb on `:hover` for a subtle lift. Use the WebKit pseudo-elements (`::-webkit-scrollbar`, `::-webkit-scrollbar-track`, `::-webkit-scrollbar-thumb`, `::-webkit-scrollbar-thumb:hover`) for Chromium/Safari, and pair with `scrollbar-width: thin` + `scrollbar-color: #6C5DF5 <track-color>` for Firefox. Pure CSS — no JS or new dependencies.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-18
 
 ## Features
 
