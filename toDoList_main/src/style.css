@@ -1507,7 +1507,12 @@ body:has(#settingsMenu) #helpFab {
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  padding: 24px 16px;
+  /* Horizontal gutter (~48px each side) keeps the grid and day-detail panel
+     off the content-area edges on wide viewports so the 1:1 cells shrink
+     proportionally instead of stranding the day numbers in oversized boxes.
+     The mobile @media block further down narrows the gutter so small
+     viewports still use near-full width. */
+  padding: 24px 48px;
   background: var(--bg-base);
   overflow-y: auto;
   overflow-x: hidden;
