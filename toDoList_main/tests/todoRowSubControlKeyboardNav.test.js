@@ -187,4 +187,189 @@ describe('todo row sub-control keyboard navigation', () => {
         // browser's default behavior.
         expect(fn).toMatch(/if\s*\(\s*!popover\s*\)\s*return/);
     });
+
+    // ── Backspace-as-exit on row sub-controls ──
+    // Keyboard users who Tab into a row's chrome (checkbox, due pill,
+    // expand caret, stats caret, delete X) get a one-key bounce back to
+    // the row's title input — mirroring the Backspace-closes-popover
+    // convention shared by the due-date, pomodoro, and music popovers.
+    describe('Backspace-as-exit on row sub-controls', () => {
+        it('defines a shared wireSubControlBackspaceExit helper', () => {
+            // A single helper keeps the contract uniform across all five
+            // sub-controls — any future tweak to the bounce-back behavior
+            // (e.g. select-all on focus) applies everywhere at once.
+            expect(toDoRow).toMatch(
+                /function\s+wireSubControlBackspaceExit\s*\(\s*subControl\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/
+            );
+        });
+
+        it('the helper fires only on unmodified Backspace and bounces focus to toDoInput', () => {
+            // Ctrl/Cmd/Alt/Shift+Backspace must fall through so the global
+            // Ctrl+Backspace sidebar shortcut still works from a focused
+            // sub-control. The handler calls preventDefault to suppress
+            // the browser's default "go back" navigation, then focuses the
+            // row's title input.
+            const fn = extractFunction(toDoRow, 'function wireSubControlBackspaceExit(');
+            expect(fn).toMatch(/addEventListener\(\s*['"]keydown['"]/);
+            expect(fn).toMatch(/event\.key\s*!==\s*['"]Backspace['"]/);
+            expect(fn).toMatch(/event\.ctrlKey\s*\|\|\s*event\.metaKey\s*\|\|\s*event\.altKey\s*\|\|\s*event\.shiftKey/);
+            expect(fn).toMatch(/event\.preventDefault\(\s*\)/);
+            expect(fn).toMatch(/toDoInput\.focus\(\s*\)/);
+        });
+
+        it('the helper bails on duePill when the date popover is open so the capture-phase handler owns the keystroke', () => {
+            // Belt-and-suspenders: the popover's capture-phase handler calls
+            // stopPropagation on Backspace, so this bubble-phase listener
+            // never sees the keystroke while the popover is open. The
+            // popover-element re-check guards against a future change in
+            // listener ordering bouncing focus away mid-edit in the
+            // calendar.
+            const fn = extractFunction(toDoRow, 'function wireSubControlBackspaceExit(');
+            expect(fn).toMatch(/subControl\.id\s*===\s*['"]duePill['"]/);
+            expect(fn).toMatch(/document\.getElementById\(\s*['"]dueDatePopover['"]\s*\)/);
+        });
+
+        it('the helper skips wiring on blank placeholder rows so we do not pay for unreachable listeners', () => {
+            // Chrome is display:none on blank rows (the `!item.tit` branches
+            // in buildToDoRow), so the listener could never fire there.
+            // The wire-time guard avoids the addEventListener call entirely.
+            const fn = extractFunction(toDoRow, 'function wireSubControlBackspaceExit(');
+            expect(fn).toMatch(/toDoChild\.dataset\.originalBlank\s*===\s*['"]true['"]/);
+            // The guard must be an early return before the addEventListener
+            // call — otherwise the listener still attaches.
+            const guardIdx = fn.indexOf("toDoChild.dataset.originalBlank === 'true'");
+            const addListenerIdx = fn.indexOf('addEventListener');
+            expect(guardIdx).toBeGreaterThan(-1);
+            expect(addListenerIdx).toBeGreaterThan(guardIdx);
+        });
+
+        it('buildToDoRow wires the helper for every sub-control: checkToDo, duePill, descToggle, statsToggle, closeButtonToDo', () => {
+            // All five chrome controls share the same one-key exit. The
+            // title input itself is NOT wired — its native Backspace must
+            // still delete characters.
+            const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*checkToDo\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*duePill\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*descToggle\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*statsToggle\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*closeButtonToDo\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            // toDoInput is never the first argument — wiring Backspace on
+            // the title input would steal character-deletion from the
+            // user's typing.
+            expect(fn).not.toMatch(/wireSubControlBackspaceExit\(\s*toDoInput\s*,/);
+        });
+
+        // ── Runtime smoke tests ──
+        // Source-grep covers the static contract; these exercise the helper
+        // against real DOM nodes to confirm focus actually moves on
+        // Backspace and stays put when modifiers or the open popover are
+        // present.
+        describe('runtime focus behavior', () => {
+            let helper;
+
+            beforeAll(async () => {
+                // Spin up an in-memory ES module that re-exports the helper.
+                // We can't import toDoRow.js directly — it pulls in the full
+                // app surface (listLogic, dueDate, modals, companion, …) —
+                // so re-derive the helper from source via Function. The
+                // source-grep tests above pin the exact body shape, so this
+                // mirror can't drift silently.
+                const src = read('toDoRow.js');
+                const fnStart = src.indexOf('function wireSubControlBackspaceExit(');
+                const bodyStart = src.indexOf('{', fnStart);
+                let depth = 0;
+                let end = -1;
+                for (let i = bodyStart; i < src.length; i++) {
+                    if (src[i] === '{') depth++;
+                    else if (src[i] === '}') {
+                        depth--;
+                        if (depth === 0) { end = i + 1; break; }
+                    }
+                }
+                const body = src.slice(fnStart, end);
+                helper = new Function('document', body + '; return wireSubControlBackspaceExit;')(document);
+            });
+
+            beforeEach(() => {
+                document.body.innerHTML = '';
+                const pop = document.getElementById('dueDatePopover');
+                if (pop) pop.remove();
+            });
+
+            function buildRow({ blank = false, subId = 'checkToDo' } = {}) {
+                const row = document.createElement('div');
+                if (blank) row.dataset.originalBlank = 'true';
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'toDoInput';
+                const sub = subId === 'checkToDo'
+                    ? Object.assign(document.createElement('input'), { type: 'checkbox', id: subId })
+                    : Object.assign(document.createElement('div'), { id: subId });
+                if (sub.tagName === 'DIV') sub.setAttribute('tabindex', '0');
+                row.appendChild(input);
+                row.appendChild(sub);
+                document.body.appendChild(row);
+                return { row, input, sub };
+            }
+
+            it('moves focus from a focused sub-control back to the title input on Backspace', () => {
+                const { input, sub, row } = buildRow({ subId: 'closeButtonToDo' });
+                helper(sub, input, row);
+                sub.focus();
+                expect(document.activeElement).toBe(sub);
+                const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+                sub.dispatchEvent(ev);
+                expect(document.activeElement).toBe(input);
+                expect(ev.defaultPrevented).toBe(true);
+            });
+
+            it('leaves focus alone on Ctrl+Backspace so the global sidebar shortcut still wins', () => {
+                const { input, sub, row } = buildRow({ subId: 'descToggle' });
+                helper(sub, input, row);
+                sub.focus();
+                const ev = new KeyboardEvent('keydown', {
+                    key: 'Backspace', ctrlKey: true, bubbles: true, cancelable: true,
+                });
+                sub.dispatchEvent(ev);
+                expect(document.activeElement).toBe(sub);
+                expect(ev.defaultPrevented).toBe(false);
+            });
+
+            it('leaves focus alone on duePill while the date popover is open', () => {
+                const { input, sub, row } = buildRow({ subId: 'duePill' });
+                helper(sub, input, row);
+                const popover = document.createElement('div');
+                popover.id = 'dueDatePopover';
+                document.body.appendChild(popover);
+                sub.focus();
+                const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+                sub.dispatchEvent(ev);
+                expect(document.activeElement).toBe(sub);
+                expect(ev.defaultPrevented).toBe(false);
+            });
+
+            it('still bounces focus from duePill when the popover is NOT open', () => {
+                const { input, sub, row } = buildRow({ subId: 'duePill' });
+                helper(sub, input, row);
+                sub.focus();
+                const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+                sub.dispatchEvent(ev);
+                expect(document.activeElement).toBe(input);
+                expect(ev.defaultPrevented).toBe(true);
+            });
+
+            it('attaches no listener on blank placeholder rows (wire-time guard)', () => {
+                const { input, sub, row } = buildRow({ blank: true, subId: 'statsToggle' });
+                helper(sub, input, row);
+                sub.focus();
+                const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+                sub.dispatchEvent(ev);
+                // Focus stays on the sub-control — the wire-time guard
+                // skipped the addEventListener call, so the handler never
+                // ran to bounce focus.
+                expect(document.activeElement).toBe(sub);
+                expect(ev.defaultPrevented).toBe(false);
+            });
+        });
+    });
 });

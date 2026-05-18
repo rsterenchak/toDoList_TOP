@@ -66,6 +66,36 @@ function updateDescIndicator(toDoChild, item) {
 }
 
 
+// ── HELPER: install Backspace-as-exit on a todo-row sub-control ──
+// Keyboard users who Tab into a row's sub-controls (checkbox, due pill,
+// expand caret, stats caret, delete X) get a one-key way to bounce focus
+// back to the row's title input — mirrors the Backspace-closes-popover
+// convention already used by the due-date, pomodoro, and music popovers.
+// Modified Backspace (Ctrl / Cmd / Alt / Shift) falls through so the global
+// Ctrl+Backspace sidebar shortcut still works from a focused sub-control.
+function wireSubControlBackspaceExit(subControl, toDoInput, toDoChild) {
+    // Blank placeholder rows hide every sub-control via display:none until
+    // the row commits, so the listener could never fire there — skip the
+    // wire-up entirely. The Enter commit path rebuilds the row on the next
+    // render, at which point the marker is gone and the listener attaches.
+    if (toDoChild.dataset.originalBlank === 'true') return;
+
+    subControl.addEventListener('keydown', function(event) {
+        if (event.key !== 'Backspace') return;
+        if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+        // Belt-and-suspenders: the popover's capture-phase keydown handler
+        // calls stopPropagation on Backspace, so this bubble-phase listener
+        // never sees the keystroke while the popover is open. Re-check the
+        // popover element here so a future change in listener ordering can't
+        // bounce focus to the input while the user is still inside the
+        // calendar.
+        if (subControl.id === 'duePill' && document.getElementById('dueDatePopover')) return;
+        event.preventDefault();
+        toDoInput.focus();
+    });
+}
+
+
 // ── HELPER: build and wire the check-off checkbox for a todo row ──
 // Inserts the checkbox as the left-most child of toDoChild, reflects the item's
 // stored completed state, and persists changes. Blank placeholder rows pass the
@@ -987,10 +1017,13 @@ export function buildToDoRow(item, toDoName) {
             showDueDatePopover(duePill, item, toDoChild);
         }
     });
+    wireSubControlBackspaceExit(duePill, toDoInput, toDoChild);
 
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+    wireSubControlBackspaceExit(descToggle, toDoInput, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
+    wireSubControlBackspaceExit(statsToggle, toDoInput, toDoChild);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
@@ -1009,6 +1042,7 @@ export function buildToDoRow(item, toDoName) {
         checkToDo.checked = !checkToDo.checked;
         checkToDo.dispatchEvent(new Event("change"));
     });
+    wireSubControlBackspaceExit(checkToDo, toDoInput, toDoChild);
 
     toDoChild.setAttribute("data-value", toDoName);
     // Anchor the DOM row to its data-model item so reorderToDoDOM can match
@@ -1254,6 +1288,7 @@ export function buildToDoRow(item, toDoName) {
         event.preventDefault();
         closeButtonToDo.click();
     });
+    wireSubControlBackspaceExit(closeButtonToDo, toDoInput, toDoChild);
 
     closeButtonToDo.addEventListener("mouseenter", function() {
         this.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
