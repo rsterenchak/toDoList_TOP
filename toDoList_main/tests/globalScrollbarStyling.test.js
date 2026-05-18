@@ -13,8 +13,8 @@ function read(relative) {
 // scrollbar (bright thumb on a near-black background) clashed with the
 // dark aesthetic — especially on long calendar/expanded views — so a
 // single * rule paints every scrollable surface (page, projects sidebar,
-// todo lists, modals, popovers) with a slim purple thumb on a dark track,
-// covering both WebKit and Firefox.
+// todo lists, modals, popovers) with an ultra-thin neutral gray thumb on
+// an invisible track, covering both WebKit and Firefox.
 describe('Global scrollbar styling matches the Void aesthetic', () => {
     const css = read('style.css');
 
@@ -32,32 +32,36 @@ describe('Global scrollbar styling matches the Void aesthetic', () => {
         return match[1];
     }
 
-    it('declares scrollbar-width: thin and a purple-on-dark scrollbar-color for Firefox', () => {
+    it('declares scrollbar-width: thin and a neutral-gray-on-transparent scrollbar-color for Firefox', () => {
         const rule = topLevelRule('*');
         expect(rule).toMatch(/scrollbar-width:\s*thin/);
-        expect(rule).toMatch(/scrollbar-color:\s*#6C5DF5\s+var\(--bg-elevated\)/);
+        expect(rule).toMatch(/scrollbar-color:\s*#3a3a48\s+transparent/i);
     });
 
-    it('sizes the WebKit scrollbar at 8px in both axes', () => {
+    it('sizes the WebKit scrollbar at 4px in both axes', () => {
         const rule = topLevelRule('*::-webkit-scrollbar');
-        expect(rule).toMatch(/width:\s*8px/);
-        expect(rule).toMatch(/height:\s*8px/);
+        expect(rule).toMatch(/width:\s*4px/);
+        expect(rule).toMatch(/height:\s*4px/);
     });
 
-    it('paints the WebKit scrollbar track with the elevated surface color', () => {
+    it('leaves the WebKit scrollbar track transparent so no rail is visible', () => {
         const rule = topLevelRule('*::-webkit-scrollbar-track');
-        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(rule).toMatch(/background:\s*transparent/);
     });
 
-    it('paints the WebKit thumb purple #6C5DF5 with a ~4px border radius', () => {
+    it('paints the WebKit thumb muted gray #3a3a48 with a ~2px border radius', () => {
         const rule = topLevelRule('*::-webkit-scrollbar-thumb');
-        expect(rule).toMatch(/background:\s*#6C5DF5/);
-        expect(rule).toMatch(/border-radius:\s*4px/);
+        expect(rule).toMatch(/background:\s*#3a3a48/i);
+        expect(rule).toMatch(/border-radius:\s*2px/);
     });
 
-    it('lifts the thumb to a lighter purple #9D93EE on hover', () => {
+    it('lifts the thumb to a slightly lighter gray on hover', () => {
         const rule = topLevelRule('*::-webkit-scrollbar-thumb:hover');
-        expect(rule).toMatch(/background:\s*#9D93EE/);
+        // Hover shade must be a hex color distinct from the resting #3a3a48
+        // thumb so the lift is visible.
+        const match = rule.match(/background:\s*(#[0-9a-f]{3,8})/i);
+        expect(match).not.toBeNull();
+        expect(match[1].toLowerCase()).not.toBe('#3a3a48');
     });
 
     it('drops the old per-element 3px scrollbar override on #sideMa / #mainList in favor of the global rule', () => {
