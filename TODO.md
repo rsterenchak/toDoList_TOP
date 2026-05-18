@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Backspace on focused todo-row sub-controls should exit to nav mode (focus the row itself), not edit mode
+- [x] **[MEDIUM]** Backspace on focused todo-row sub-controls should exit to nav mode (focus the row itself), not edit mode
   - Description: The shipped Backspace-exit affordance on the row's sub-controls (`#checkToDo`, `#duePill`, `#descToggle`, `#statsToggle`, `#closeButtonToDo`) currently moves focus to `#toDoInput`, which drops the user straight into title-editing mode. The intent was a true "back out" gesture — leave the row's inner chrome and return to row-level nav mode so the user can keep moving between rows with ArrowUp/ArrowDown without first having to escape the input. Update `wireSubControlBackspaceExit` in `toDoRow.js` to mirror the existing arrow-nav handler's "focus the row in nav mode" contract: focus `toDoChild` itself (it already carries `tabindex="-1"` for exactly this purpose), add `.todo-active` to this row, and strip `.todo-active` from every other row in `#mainList`. This makes the next ArrowDown / ArrowUp resolve to "current row = this row" via the focus-based path in the global keydown handler, so the user transitions cleanly from sub-control focus → row nav mode → arrow-key traversal.
   - Behavior:
     1. With focus on any of the five wired sub-controls, pressing Backspace (no modifiers) moves focus to the parent `#toDoChild`, adds `.todo-active` to it, removes `.todo-active` from any other `#toDoChild` in `#mainList`, and prevents the browser's default "go back" navigation.
@@ -25,7 +25,7 @@
     - The existing `todoRowSubControlKeyboardNav.test.js` Backspace assertions update to expect `toDoChild.focus()` and the `.todo-active` add/remove, replacing the prior `toDoInput.focus()` expectation.
   - Out of scope: extending the same exit affordance to controls outside the row (navbar buttons, project rail icons); adding a visible hint or tooltip surfacing the shortcut; updating the in-app help modal's keyboard-shortcuts section (worth a follow-up if this lands and proves discoverable).
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/todoRowSubControlKeyboardNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-17
 
 ## Features
 
