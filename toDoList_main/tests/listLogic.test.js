@@ -978,20 +978,23 @@ describe('listLogic — getRecurringTaskStats', () => {
         listLogic.addToDo('R', 'Brush teeth');
     });
 
-    it('daily with all hits — full streak, no misses, hit rate 1', () => {
+    it('daily with all hits — full streak including today, no misses, hit rate 1', () => {
         const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
         item.due = '5-1-2026';
         listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        // Clones cover 4-25..4-30 inclusive (today is 4-30) so every
+        // expected occurrence — including today — has a hit.
         addClones('R', 'Brush teeth', [
             '4-25-2026', '4-26-2026', '4-27-2026', '4-28-2026', '4-29-2026',
+            '4-30-2026',
         ]);
 
         const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
 
         expect(stats.misses).toEqual([]);
-        expect(stats.completedCount).toBe(5);
-        expect(stats.currentStreak).toBe(5);
-        expect(stats.bestStreak).toBe(5);
+        expect(stats.completedCount).toBe(6);
+        expect(stats.currentStreak).toBe(6);
+        expect(stats.bestStreak).toBe(6);
         expect(stats.hitRate).toBe(1);
     });
 
@@ -999,7 +1002,9 @@ describe('listLogic — getRecurringTaskStats', () => {
         const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
         item.due = '5-1-2026';
         listLogic.setRecurrence('R', item, { pattern: 'daily' });
-        // Expected over 4-25..4-29 (5 days before today); hits skip 4-26 and 4-28.
+        // Expected over 4-25..4-30 (today is 4-30); hits skip 4-26, 4-28,
+        // and today. Today is in-flight (neither hit nor miss) so the
+        // miss list is exactly the two skipped past dates.
         addClones('R', 'Brush teeth', ['4-25-2026', '4-27-2026', '4-29-2026']);
 
         const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
@@ -1007,12 +1012,15 @@ describe('listLogic — getRecurringTaskStats', () => {
         const missKeys = stats.misses.map(d => (d.getMonth() + 1) + '-' + d.getDate());
         expect(missKeys).toEqual(['4-26', '4-28']);
         expect(stats.completedCount).toBe(3);
-        // Last hit before today is 4-29 → streak = 1 (4-28 was a miss)
+        // Today is not a hit, so the streak walker skips today and
+        // starts at yesterday (4-29 → hit, 4-28 → miss → stop).
         expect(stats.currentStreak).toBe(1);
         // Best run of consecutive hits anywhere in history is 1 (every
         // hit sits between two misses or the boundary).
         expect(stats.bestStreak).toBe(1);
-        expect(stats.hitRate).toBeCloseTo(3 / 5);
+        // Today is included in the denominator (6 expected dates) but
+        // not the numerator (no clone for today).
+        expect(stats.hitRate).toBeCloseTo(3 / 6);
     });
 
     it('weekdays pattern skips weekend dates in the expected sequence', () => {
@@ -1055,7 +1063,7 @@ describe('listLogic — getRecurringTaskStats', () => {
         expect(stats.currentStreak).toBe(3);
     });
 
-    it('current streak runs up to yesterday and excludes today', () => {
+    it('current streak includes today when today is a hit', () => {
         const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
         item.due = '5-1-2026';
         listLogic.setRecurrence('R', item, { pattern: 'daily' });
@@ -1066,9 +1074,45 @@ describe('listLogic — getRecurringTaskStats', () => {
 
         const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
 
-        // Today's hit must NOT inflate the streak — only the consecutive
-        // run ending at yesterday counts.
-        expect(stats.currentStreak).toBe(3);
+        // Today is now part of the streak — completing the task today
+        // extends the run by one immediately rather than waiting for
+        // midnight.
+        expect(stats.currentStreak).toBe(4);
+        expect(stats.hits.has('2026-04-30')).toBe(true);
+    });
+
+    it('today is a hit when only today is expected and today is completed', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '4-30-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        addClones('R', 'Brush teeth', ['4-30-2026']);
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        expect(stats.misses).toEqual([]);
+        expect(stats.completedCount).toBe(1);
+        expect(stats.currentStreak).toBe(1);
+        expect(stats.bestStreak).toBe(1);
+        expect(stats.hitRate).toBe(1);
+    });
+
+    it('today-only expected with no clone yet — streak 0, no misses, hit rate 0', () => {
+        const item = listLogic.listItems('R').find(i => i.tit === 'Brush teeth' && !i.completed);
+        item.due = '4-30-2026';
+        listLogic.setRecurrence('R', item, { pattern: 'daily' });
+        // No clones — today is the only expected date and it's still in-flight.
+
+        const stats = listLogic.getRecurringTaskStats('R', item, '14d', now);
+
+        expect(stats.misses).toEqual([]);
+        expect(stats.completedCount).toBe(0);
+        expect(stats.currentStreak).toBe(0);
+        expect(stats.bestStreak).toBe(0);
+        expect(stats.hitRate).toBe(0);
+        // Today must still appear in the expected sequence so the grid
+        // can render it as a ring cell.
+        const keys = stats.expectedDates.map(d => (d.getMonth() + 1) + '-' + d.getDate());
+        expect(keys).toContain('4-30');
     });
 
     it('best streak surfaces the longest run anywhere in history', () => {

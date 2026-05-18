@@ -2742,6 +2742,10 @@ body.row-dragging * { cursor: grabbing !important; }
   stroke: var(--accent);
   stroke-width: 1.5;
 }
+.statsGrid .statsCellTodayHit {
+  stroke: var(--bg-base);
+  stroke-width: 1.5;
+}
 .statsGrid .statsGridLabel {
   fill: var(--text-muted);
   font-size: 9px;

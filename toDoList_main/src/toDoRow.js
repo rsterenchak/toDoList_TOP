@@ -609,17 +609,7 @@ function buildContributionsGrid(stats) {
         rect.setAttribute('ry', 2);
 
         const key = isoKey(d);
-        let cls = 'statsCell';
-        if (key === todayKey) {
-            cls += ' statsCellToday';
-        } else if (d.getTime() > today.getTime()) {
-            cls += ' statsCellFuture';
-        } else if (stats.hits.has(key)) {
-            cls += ' statsCellHit';
-        } else {
-            cls += ' statsCellMiss';
-        }
-        rect.setAttribute('class', cls);
+        rect.setAttribute('class', cellClasses(key, d, today, todayKey, stats));
 
         const titleEl = document.createElementNS(svgNS, 'title');
         titleEl.textContent = formatShortDate(d) +
@@ -675,12 +665,7 @@ function buildFallbackStrip(stats) {
         rect.setAttribute('ry', 2);
 
         const key = isoKey(d);
-        let cls = 'statsCell';
-        if (key === todayKey) cls += ' statsCellToday';
-        else if (d.getTime() > today.getTime()) cls += ' statsCellFuture';
-        else if (stats.hits.has(key)) cls += ' statsCellHit';
-        else cls += ' statsCellMiss';
-        rect.setAttribute('class', cls);
+        rect.setAttribute('class', cellClasses(key, d, today, todayKey, stats));
 
         const titleEl = document.createElementNS(svgNS, 'title');
         titleEl.textContent = formatShortDate(d) +
@@ -693,9 +678,31 @@ function buildFallbackStrip(stats) {
     return wrapper;
 }
 
+// Class string for a grid cell. Today's cell gets the hit fill AND the
+// today stroke when a clone for today exists in the project's items — so
+// the user can see "I did the thing today" as a filled cell with the
+// today ring overlaid on top. When today has no matching clone yet, the
+// cell falls back to the ring-only treatment.
+function cellClasses(key, d, today, todayKey, stats) {
+    let cls = 'statsCell';
+    if (key === todayKey) {
+        if (stats.hits.has(key)) cls += ' statsCellHit statsCellTodayHit';
+        else cls += ' statsCellToday';
+    } else if (d.getTime() > today.getTime()) {
+        cls += ' statsCellFuture';
+    } else if (stats.hits.has(key)) {
+        cls += ' statsCellHit';
+    } else {
+        cls += ' statsCellMiss';
+    }
+    return cls;
+}
+
 // Tooltip label for a grid cell — read aloud via title text on hover.
 function cellTitleLabel(key, d, today, stats) {
-    if (key === isoKey(today)) return 'today';
+    if (key === isoKey(today)) {
+        return stats.hits.has(key) ? 'today, completed' : 'today';
+    }
     if (d.getTime() > today.getTime()) return 'upcoming';
     if (stats.hits.has(key)) return 'hit';
     return 'missed';

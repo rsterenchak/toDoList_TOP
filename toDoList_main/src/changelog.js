@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-18',
+        fixed: [
+            "Completing a recurring task today now counts toward the streak, hit rate, and contributions grid immediately instead of waiting for midnight.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-17',
         fixed: [
-            'Nav, sidebar, todo rows, and view-switcher pills now share a unified purple-tinted border and pill style.',
             'Recurring-task stats drawer now expands fully to show the stat cards, contributions grid, and missed-dates list instead of clipping after the first row.',
             'Recurring-task stats grid now shows weekday letters down the left edge and month abbreviations along the top.',
             'Recurring-task stats drawer now summarises miss patterns in one sentence and tucks long miss lists behind a + N more modal grouped by month.',

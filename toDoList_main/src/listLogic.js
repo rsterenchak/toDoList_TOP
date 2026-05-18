@@ -582,8 +582,9 @@ export const listLogic = (function () {
     // expected occurrence sequence from an anchor forward to today; a hit
     // is an expected date that matches a clone's `due`, a miss is any
     // expected date strictly before today with no matching clone. Today
-    // itself is excluded from both buckets so the drawer can render it
-    // as a "ring" cell whether or not the user has already satisfied it.
+    // can be a hit (when a clone for today exists) but is never a miss —
+    // the day isn't over, so it stays "in-flight" for miss purposes until
+    // midnight rolls over.
     //
     // Returns `{ expectedDates, hits, misses, currentStreak, bestStreak,
     // hitRate, completedCount }`. `expectedDates` and `misses` are clipped
@@ -680,27 +681,37 @@ export const listLogic = (function () {
             return !cloneHitKeys.has(formatCalendarKey(d));
         });
 
-        const inWindowBeforeToday = expectedDates.filter(function(d) {
-            return d.getTime() < today.getTime();
-        });
-        const hitsInWindow = inWindowBeforeToday.filter(function(d) {
+        // Hit rate / completedCount: today now counts in both numerator
+        // (when a clone for today exists) and denominator (whenever today
+        // is an expected occurrence). Future dates never appear in
+        // expectedDates because the walker stops at today, so we can use
+        // expectedDates directly without re-filtering.
+        const hitsInWindow = expectedDates.filter(function(d) {
             return cloneHitKeys.has(formatCalendarKey(d));
         });
-        const hitRate = inWindowBeforeToday.length > 0
-            ? hitsInWindow.length / inWindowBeforeToday.length
+        const hitRate = expectedDates.length > 0
+            ? hitsInWindow.length / expectedDates.length
             : 0;
         const completedCount = hitsInWindow.length;
 
-        // Streaks: all-time, computed over expected dates strictly before
-        // today. Current streak walks backwards from yesterday; best
-        // streak is the longest run anywhere in the history.
-        const allBeforeToday = allExpected.filter(function(d) {
-            return d.getTime() < today.getTime();
-        });
-
+        // Streaks: all-time. The walker walks expected dates backwards
+        // from today's index. When today is a hit, today starts the run
+        // and we continue back through yesterday and earlier. When today
+        // is expected but not yet a hit, we skip today (it's still
+        // in-flight, neither hit nor miss) and start at yesterday — a
+        // long historic run isn't broken just because the user hasn't
+        // checked today off yet. Best streak is the longest run anywhere
+        // in the all-time expected sequence (today included).
+        const todayKey = formatCalendarKey(today);
+        let streakStart = allExpected.length - 1;
+        if (streakStart >= 0
+            && allExpected[streakStart].getTime() === today.getTime()
+            && !cloneHitKeys.has(todayKey)) {
+            streakStart--;
+        }
         let currentStreak = 0;
-        for (let i = allBeforeToday.length - 1; i >= 0; i--) {
-            if (cloneHitKeys.has(formatCalendarKey(allBeforeToday[i]))) {
+        for (let i = streakStart; i >= 0; i--) {
+            if (cloneHitKeys.has(formatCalendarKey(allExpected[i]))) {
                 currentStreak++;
             } else {
                 break;
@@ -709,8 +720,8 @@ export const listLogic = (function () {
 
         let bestStreak = 0;
         let run = 0;
-        for (let i = 0; i < allBeforeToday.length; i++) {
-            if (cloneHitKeys.has(formatCalendarKey(allBeforeToday[i]))) {
+        for (let i = 0; i < allExpected.length; i++) {
+            if (cloneHitKeys.has(formatCalendarKey(allExpected[i]))) {
                 run++;
                 if (run > bestStreak) bestStreak = run;
             } else {
