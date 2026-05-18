@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Recurring-task stats: today's completion should count as a hit in the grid and the streak
+- [x] **[HIGH]** Recurring-task stats: today's completion should count as a hit in the grid and the streak
   - Description: When a recurring task is completed today, `advanceRecurringTodo` pushes a frozen completed clone into the project's items array with `due` set to today's date — but the stats drawer renders today's cell as an unfilled ring regardless of whether that clone exists, and the streak / hit-rate stats stay at zero because today is excluded from the expected-date sequence. The original spec called for today to be "neither hit nor miss — render as a ring whether or not it's already satisfied," but that was the wrong call: excluding today from misses is correct (the day isn't over, you haven't missed it yet) but excluding it from *hits* hides successful work the moment it lands and contradicts the user's mental model of "I just did the thing, the chart should reflect that." Fix by treating today as eligible for hit detection in `getRecurringTaskStats` and by rendering today as a filled cell with a ring outline overlay when a hit exists for today. When no hit exists for today, the cell remains a hollow ring (today is still "in-flight" for miss purposes — it can become a hit later in the day, but it never becomes a miss until midnight rolls over).
   - Behavior:
     1. `getRecurringTaskStats` extends its expected-date walk to *include* today (currently stops at yesterday). Today is added to `expectedDates` if today matches the recurrence sequence.
