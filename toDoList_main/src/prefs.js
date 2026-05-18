@@ -15,6 +15,7 @@ export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
 export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
+export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -140,5 +141,28 @@ export function readLastExportedAt() {
 export function writeLastExportedAt(isoString) {
     try {
         localStorage.setItem(LAST_EXPORTED_AT_KEY, isoString);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── first-run coachmark tour flag ──
+// The spotlight tour runs once on the first load when no projects exist.
+// Setting this flag prevents it from auto-running again; the settings menu
+// exposes a "Replay welcome tour" entry that clears the flag and restarts
+// the tour on demand.
+export function isOnboardingComplete() {
+    try {
+        return localStorage.getItem(ONBOARDING_COMPLETE_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setOnboardingComplete(complete) {
+    try {
+        if (complete) {
+            localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+        } else {
+            localStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+        }
     } catch (e) { /* ignore quota/private-mode */ }
 }

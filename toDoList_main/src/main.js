@@ -72,6 +72,7 @@ import {
     refreshFooterExportLabel,
 } from './exportImport.js';
 import { readLastExportedAt } from './prefs.js';
+import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import button from './addProj_button.svg';
 
 
@@ -1382,6 +1383,17 @@ function component() {
             'settingsMenuItem--ghost'
         );
         menu.appendChild(ghostItem);
+
+        // Replay welcome tour — manually re-triggers the first-run
+        // coachmark walkthrough. The tour normally auto-runs only for users
+        // with no saved projects on a fresh install; this entry gives
+        // returning users a way back into it from inside the settings menu.
+        const replayTourItem = buildSettingsMenuItem(
+            'Replay welcome tour',
+            '',
+            function() { startCoachmarkTour(); }
+        );
+        menu.appendChild(replayTourItem);
 
         // Help — opens the same help modal as the floating `?` button and
         // the global `?` keypress. Sits at the bottom of the menu so the
@@ -4475,6 +4487,11 @@ function restoreFromStorage() {
         // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
         // when applyActiveView's view-change guard would otherwise skip it.
         applyViewDefaultSidebar(getActiveView());
+        // First-run coachmark tour — fires once on a fresh install with no
+        // saved projects so brand-new users get a guided pass over the
+        // main affordances instead of a cold Void screen. Defers internally
+        // to the persisted flag and the mobile breakpoint.
+        maybeStartFirstRunTour();
         return;
     }
 
