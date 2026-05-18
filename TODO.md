@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[LOW]** Add horizontal padding to #calendarView to constrain calendar cell size
+- [x] **[LOW]** Add horizontal padding to #calendarView to constrain calendar cell size
   - Description: After expanding the calendar to fill the content area with square 1:1 day cells, the cells grow too large on wide viewports — the day numbers and dot indicators look stranded in oversized boxes. Add horizontal padding (~48px on each side) to `#calendarView` so the calendar grid (and the selected-day todo list below it, since both are children of the same column-flex container) sit within a gutter rather than spanning edge-to-edge. The square aspect-ratio on cells stays, so cells shrink proportionally with the reduced inner width. Verify the padding scales down or is removed at the existing mobile/touch breakpoint so narrow viewports still use the full width. If `main.js` writes any inline padding or width onto `#calendarView`, update or remove those writes — inline styles override the stylesheet.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-18
 
 ## Features
 
