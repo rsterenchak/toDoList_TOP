@@ -2,26 +2,29 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Fix contributions-grid month label clipped at the right edge of the SVG
-  - Description: When the recurring-task stats drawer opens on a small window (e.g. 14d) and the contributions grid has only one or two columns starting in a single calendar month, the top-gutter month label (`May`, `Sept`, etc.) is clipped to just the first one or two letters. The root cause is in `buildContributionsGrid` in `toDoRow.js`: month labels are positioned at `x = labelGutterX + col * (cellSize + gap)` with the default `text-anchor: start`, so the glyph grows rightward from the column's left edge. For a single-column grid the SVG's total width is `labelGutterX + cellSize` = 28px, but the rendered "May" glyph at 9px font extends to roughly 33-34px — past the SVG's right edge, where the SVG's UA-default `overflow: hidden` clips it. The `.statsGridWrapper`'s `overflow-x: auto` doesn't surface a scrollbar because the SVG's own bounds are the constraint, not the wrapper's. Fix by introducing a `labelGutterRight` constant (24px — enough for the widest 3-letter month abbreviation plus a couple px of slack) and folding it into the SVG `width` calculation so there's always room for a label that starts at the last column to extend past the last cell. The viewBox absorbs the new width; cells and weekday labels keep their existing positions because both are keyed off `labelGutterX`, not the new right gutter. The fallback strip (`buildFallbackStrip`) is unaffected — it has no month labels.
+- [ ] **[MEDIUM]** Backspace on focused todo-row sub-controls exits back to the row's title input
+  - Description: Keyboard users who Tab into a todo row's sub-controls (`#checkToDo`, `#duePill`, `#descToggle`, `#statsToggle`, `#closeButtonToDo`) currently have no one-key way to back out of the row's chrome short of Shift+Tabbing through every preceding control or reaching for the mouse. Add a Backspace handler on each sub-control that moves focus back to the row's `#toDoInput` (the row's anchor element), mirroring the existing Backspace-as-exit convention already established by the due-date popover (`onDuePopoverKeydown`), pomodoro popover (`onPomodoroKeydown`), and music popover (`onMusicKeydown`). When the due-date popover is already open from a focused `#duePill`, the existing capture-phase `onDuePopoverKeydown` handler closes the popover first — the new row-level Backspace handler must not double-fire in that case.
   - Behavior:
-    1. Single-column grid (14d on a Sunday, etc.) renders the full month label (`May`, `Jun`, `Sep`, etc.) above the column without clipping.
-    2. Multi-column grids look identical to today — the right gutter is only visible when the rightmost column has a month label, and in normal cases the extra space sits unused.
-    3. Weekday labels on the left and cell positions are unchanged.
+    1. With focus on `#checkToDo`, `#descToggle`, `#statsToggle`, or `#closeButtonToDo`, pressing Backspace (no modifiers) moves focus to the same row's `#toDoInput` and prevents the browser's default "go back" navigation.
+    2. With focus on `#duePill` and the date popover NOT open, Backspace moves focus to the same row's `#toDoInput`.
+    3. With focus on `#duePill` and the date popover open, Backspace falls through to the existing `onDuePopoverKeydown` capture-phase handler, which closes the popover and returns focus to the pill — the row-level handler does not also bounce focus to the input.
+    4. Modified Backspace (Ctrl/Cmd/Alt/Shift+Backspace) is not consumed by the row-level handler so the existing global Ctrl+Backspace sidebar shortcut still works when invoked from a focused sub-control.
+    5. Backspace inside `#toDoInput` itself retains its native character-deletion behavior — the row-level handler does not bind to the input.
   - Implementation notes:
-    - Add `const labelGutterRight = 24;` next to the existing `labelGutterX` and `labelGutterY` declarations near the top of `buildContributionsGrid` so future tuning is one-line.
-    - Update the SVG `width` calc: `const width = labelGutterX + gridWidth + labelGutterRight;`. Keep `height` unchanged.
-    - The `viewBox` derives from `width` and `height` already, so no separate change is needed there.
-    - No change to month-label `x` positioning — labels still grow rightward from their column's left edge; the new right gutter just gives them room.
+    - Add a single shared helper `wireSubControlBackspaceExit(subControl, toDoInput, toDoChild)` in `toDoRow.js`, called from each sub-control's wire-up site after the existing keydown listeners are attached. The helper installs a `keydown` listener on the sub-control that fires when `event.key === 'Backspace'` AND no modifier keys are held, calls `event.preventDefault()`, and calls `toDoInput.focus()`.
+    - For `#duePill` specifically, the helper additionally checks `document.getElementById('dueDatePopover')` at the top of the handler — when the popover element exists, return early (no preventDefault, no focus change) so the capture-phase popover handler owns the keystroke.
+    - The handler attaches in the bubble phase (default), so the capture-phase `onDuePopoverKeydown` runs first when the popover is open. The popover handler calls `stopPropagation`, so this listener never fires in that case. The popover-element check above is a belt-and-suspenders guard against future ordering changes.
+    - Skip the helper entirely on blank placeholder rows: the chrome is hidden on those rows (`#duePill`, `#checkToDo`, `#descToggle`, `#statsToggle`, `#closeButtonToDo` all use `display: none` for `!item.tit`) so they're not focusable anyway, but a wire-time guard (`if (!item.tit) return;`) avoids paying for listeners that can never fire.
+    - The placeholder row's own `#toDoInput` Backspace behavior — including the existing `data-original-blank` keystroke-save bypass from the recently-shipped bug fix — is unaffected; the input itself is never wired by this helper.
   - Acceptance criteria:
-    - Opening the stats drawer with a 14d window where the grid spans a single column renders the full month abbreviation (e.g. `May`) above that column with no clipping.
-    - Opening with a 30d / 90d / All window continues to render correctly; multi-month label transitions render at their column boundaries without overlap.
-    - The grid's cells and weekday gutter remain aligned with the column headers — no horizontal drift from the new constant.
-    - The fallback strip renders unchanged.
-    - `statsGridAxisLabels.test.js` continues to pass; consider adding an assertion that the SVG width includes a right-side gutter so this regression doesn't return.
-  - Out of scope: switching to center-anchored month labels (a more principled but more invasive refactor); a separate fix for labels that would clip *left* into the weekday gutter (none observed, but worth a follow-up entry if a locale produces a wider month abbreviation).
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/statsGridAxisLabels.test.js`
-  - Completed: 2026-05-18
+    - Tabbing into a committed row and pressing Backspace from each of `#checkToDo`, `#duePill`, `#descToggle`, `#statsToggle`, and `#closeButtonToDo` returns focus to the row's `#toDoInput`.
+    - Pressing Backspace on `#duePill` while the date popover is open closes the popover and returns focus to the pill (no input bounce); pressing Backspace again then exits to `#toDoInput`.
+    - Pressing Ctrl+Backspace (or Cmd+Backspace) on any focused sub-control still toggles the sidebar, matching the existing global shortcut.
+    - Backspace inside `#toDoInput` still deletes characters; the row's title editing is unaffected.
+    - Blank placeholder rows still hide their chrome and are not focusable via the new path.
+  - Out of scope: extending the same Backspace-to-exit affordance to non-row controls (e.g. navbar buttons); a visual hint or tooltip that surfaces the new shortcut; updating the in-app help modal's keyboard-shortcuts section (worth a follow-up entry if this lands and proves discoverable).
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/todoRowSubControlKeyboardNav.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
