@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Backspace on focused todo-row sub-controls exits back to the row's title input
+- [x] **[MEDIUM]** Backspace on focused todo-row sub-controls exits back to the row's title input
   - Description: Keyboard users who Tab into a todo row's sub-controls (`#checkToDo`, `#duePill`, `#descToggle`, `#statsToggle`, `#closeButtonToDo`) currently have no one-key way to back out of the row's chrome short of Shift+Tabbing through every preceding control or reaching for the mouse. Add a Backspace handler on each sub-control that moves focus back to the row's `#toDoInput` (the row's anchor element), mirroring the existing Backspace-as-exit convention already established by the due-date popover (`onDuePopoverKeydown`), pomodoro popover (`onPomodoroKeydown`), and music popover (`onMusicKeydown`). When the due-date popover is already open from a focused `#duePill`, the existing capture-phase `onDuePopoverKeydown` handler closes the popover first — the new row-level Backspace handler must not double-fire in that case.
   - Behavior:
     1. With focus on `#checkToDo`, `#descToggle`, `#statsToggle`, or `#closeButtonToDo`, pressing Backspace (no modifiers) moves focus to the same row's `#toDoInput` and prevents the browser's default "go back" navigation.
@@ -24,7 +24,7 @@
     - Blank placeholder rows still hide their chrome and are not focusable via the new path.
   - Out of scope: extending the same Backspace-to-exit affordance to non-row controls (e.g. navbar buttons); a visual hint or tooltip that surfaces the new shortcut; updating the in-app help modal's keyboard-shortcuts section (worth a follow-up entry if this lands and proves discoverable).
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/todoRowSubControlKeyboardNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-18
 
 ## Features
 
