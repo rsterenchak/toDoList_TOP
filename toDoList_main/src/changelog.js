@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-18',
         fixed: [
             "Completing a recurring task today now counts toward the streak, hit rate, and contributions grid immediately instead of waiting for midnight.",
+            "Recurring-task stats grid no longer clips the month abbreviation above a single-column window.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-17',
         fixed: [
-            'Recurring-task stats drawer now expands fully to show the stat cards, contributions grid, and missed-dates list instead of clipping after the first row.',
             'Recurring-task stats grid now shows weekday letters down the left edge and month abbreviations along the top.',
             'Recurring-task stats drawer now summarises miss patterns in one sentence and tucks long miss lists behind a + N more modal grouped by month.',
             'Switching projects after typing into the blank task placeholder no longer leaves the partial text behind or reveals the row controls on return.',
