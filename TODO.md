@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix contributions-grid month label clipped at the right edge of the SVG
+- [x] **[MEDIUM]** Fix contributions-grid month label clipped at the right edge of the SVG
   - Description: When the recurring-task stats drawer opens on a small window (e.g. 14d) and the contributions grid has only one or two columns starting in a single calendar month, the top-gutter month label (`May`, `Sept`, etc.) is clipped to just the first one or two letters. The root cause is in `buildContributionsGrid` in `toDoRow.js`: month labels are positioned at `x = labelGutterX + col * (cellSize + gap)` with the default `text-anchor: start`, so the glyph grows rightward from the column's left edge. For a single-column grid the SVG's total width is `labelGutterX + cellSize` = 28px, but the rendered "May" glyph at 9px font extends to roughly 33-34px — past the SVG's right edge, where the SVG's UA-default `overflow: hidden` clips it. The `.statsGridWrapper`'s `overflow-x: auto` doesn't surface a scrollbar because the SVG's own bounds are the constraint, not the wrapper's. Fix by introducing a `labelGutterRight` constant (24px — enough for the widest 3-letter month abbreviation plus a couple px of slack) and folding it into the SVG `width` calculation so there's always room for a label that starts at the last column to extend past the last cell. The viewBox absorbs the new width; cells and weekday labels keep their existing positions because both are keyed off `labelGutterX`, not the new right gutter. The fallback strip (`buildFallbackStrip`) is unaffected — it has no month labels.
   - Behavior:
     1. Single-column grid (14d on a Sunday, etc.) renders the full month label (`May`, `Jun`, `Sep`, etc.) above the column without clipping.
@@ -21,7 +21,7 @@
     - `statsGridAxisLabels.test.js` continues to pass; consider adding an assertion that the SVG width includes a right-side gutter so this regression doesn't return.
   - Out of scope: switching to center-anchored month labels (a more principled but more invasive refactor); a separate fix for labels that would clip *left* into the weekday gutter (none observed, but worth a follow-up entry if a locale produces a wider month abbreviation).
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/statsGridAxisLabels.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-18
 
 ## Features
 
