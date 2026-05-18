@@ -9,7 +9,7 @@ export const changelog = [
         fixed: [
             "Completing a recurring task today now counts toward the streak, hit rate, and contributions grid immediately instead of waiting for midnight.",
             "Recurring-task stats grid no longer clips the month abbreviation above a single-column window.",
-            "Backspace on a focused todo row control (checkbox, date, expand caret, stats, delete) now jumps focus back to the row's title input.",
+            "Backspace on a focused todo row control (checkbox, date, expand caret, stats, delete) now backs out to row navigation mode instead of jumping into title editing.",
         ],
     },
     {
