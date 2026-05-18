@@ -764,6 +764,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||
         document.getElementById('pomodoroPopover')        ||
+        document.getElementById('coachmarkOverlay')       ||
         document.querySelector('#musicPopover.open')      ||
         document.querySelector('#bottomSheet[data-state="EXPANDED"]')
     );
