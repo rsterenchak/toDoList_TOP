@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Expand calendar grid to fill content area with square day cells
-  - Description: In the calendar view, the calendar grid currently occupies only ~50–55% of the available content width, leaving substantial empty horizontal space on either side. Expand the calendar wrapper to fill 100% of the content area (no max-width cap) and constrain each day cell to a 1:1 aspect ratio (`aspect-ratio: 1 / 1` on the cell, with `grid-template-columns: repeat(7, 1fr)`) so the cells grow proportionally with the available width while remaining square. Supersedes the ~700px max-width cap noted in the prior `#calendarView` column-layout entry — drop that cap entirely. Verify day-number positioning, the today-highlight ring, the dot indicators, and the selected-day outline all still sit correctly at the larger cell size. If `main.js` writes any inline width or max-width onto `#calendarView` or its grid children, remove or update those writes — inline styles override the stylesheet.
+- [ ] **[LOW]** Add horizontal padding to #calendarView to constrain calendar cell size
+  - Description: After expanding the calendar to fill the content area with square 1:1 day cells, the cells grow too large on wide viewports — the day numbers and dot indicators look stranded in oversized boxes. Add horizontal padding (~48px on each side) to `#calendarView` so the calendar grid (and the selected-day todo list below it, since both are children of the same column-flex container) sit within a gutter rather than spanning edge-to-edge. The square aspect-ratio on cells stays, so cells shrink proportionally with the reduced inner width. Verify the padding scales down or is removed at the existing mobile/touch breakpoint so narrow viewports still use the full width. If `main.js` writes any inline padding or width onto `#calendarView`, update or remove those writes — inline styles override the stylesheet.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: 2026-05-18 (PR #183)
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
