@@ -3087,10 +3087,28 @@ body.row-dragging * { cursor: grabbing !important; }
   z-index: 3;
 }
 
-/* SCROLLBARS */
-#sideMa::-webkit-scrollbar, #mainList::-webkit-scrollbar { width: 3px; }
-#sideMa::-webkit-scrollbar-track, #mainList::-webkit-scrollbar-track { background: transparent; }
-#sideMa::-webkit-scrollbar-thumb, #mainList::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+/* SCROLLBARS — global Void styling. Purple thumb on a dark track covers
+   every scrollable surface (page, sidebar, todo lists, modals, popovers)
+   via *. The more specific #viewSwitcher rule below the breakpoint still
+   hides its bar via display:none / scrollbar-width:none. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6C5DF5 var(--bg-elevated);
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--bg-elevated);
+}
+*::-webkit-scrollbar-thumb {
+  background: #6C5DF5;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #9D93EE;
+}
 
 /* OVERLAY — only used on touch/mobile */
 #sidebarOverlay {

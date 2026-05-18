@@ -85,16 +85,20 @@ describe('Mobile sidebar — projects list overflows internally', () => {
         });
     });
 
-    describe('existing scrollbar styling already covers #sideMa', () => {
-        it('a thin custom-styled scrollbar applies to #sideMa via the shared rule', () => {
-            // Base (non-media) rule pairs #sideMa with #mainList on the
-            // same selector list, sharing thumb / track / width values.
+    describe('global scrollbar styling covers #sideMa', () => {
+        it('the global * rule paints every scrollable surface (including #sideMa) with the Void purple thumb', () => {
+            // Scrollbar styling now lives on a single global * rule that
+            // covers the page, sidebar, todo lists, modals, and popovers.
+            // No per-element override exists for #sideMa anymore — it
+            // inherits the same 8px purple-on-dark scrollbar as the rest
+            // of the app.
             expect(css).toMatch(
-                /#sideMa::-webkit-scrollbar[^{]*\{[^}]*width:\s*3px/
+                /\*::-webkit-scrollbar[^{]*\{[^}]*width:\s*8px/
             );
             expect(css).toMatch(
-                /#sideMa::-webkit-scrollbar-thumb[^{]*\{[^}]*var\(--border-bright\)/
+                /\*::-webkit-scrollbar-thumb[^{]*\{[^}]*#6C5DF5/
             );
+            expect(css).not.toMatch(/#sideMa::-webkit-scrollbar/);
         });
     });
 });
