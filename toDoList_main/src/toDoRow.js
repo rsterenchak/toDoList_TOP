@@ -525,6 +525,10 @@ function buildContributionsGrid(stats) {
     // their row's weekday letter.
     const labelGutterX = 14;
     const labelGutterY = 14;
+    // Right gutter gives a month label that starts at the last column room
+    // to extend past the last cell's right edge; without it, a single-column
+    // grid clips "May"/"Sept"/etc. to one or two letters.
+    const labelGutterRight = 24;
     const expected = stats.expectedDates;
     if (expected.length === 0) {
         wrapper.classList.add('statsGridEmpty');
@@ -552,7 +556,7 @@ function buildContributionsGrid(stats) {
     const svg = document.createElementNS(svgNS, 'svg');
     const gridWidth  = totalCols * cellSize + (totalCols - 1) * gap;
     const gridHeight = 7 * cellSize + 6 * gap;
-    const width  = labelGutterX + gridWidth;
+    const width  = labelGutterX + gridWidth + labelGutterRight;
     const height = labelGutterY + gridHeight;
     svg.setAttribute('width',  width);
     svg.setAttribute('height', height);

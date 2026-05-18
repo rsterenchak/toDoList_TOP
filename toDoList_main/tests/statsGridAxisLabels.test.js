@@ -48,6 +48,15 @@ describe('contributions grid renders weekday and month axis labels', () => {
         expect(fn).toMatch(/const\s+height\s*=\s*labelGutterY\s*\+/);
     });
 
+    it('reserves a right-side gutter in the SVG width so the last column\'s month label is not clipped', () => {
+        // A month label drawn at the last column's left edge extends past
+        // the cell's right edge — without a right gutter folded into the
+        // SVG width, the UA-default overflow:hidden on <svg> clips it to
+        // the first letter or two on single-column 14d grids.
+        expect(fn).toMatch(/const\s+labelGutterRight\s*=\s*\d+\s*;/);
+        expect(fn).toMatch(/const\s+width\s*=\s*labelGutterX\s*\+\s*gridWidth\s*\+\s*labelGutterRight\s*;/);
+    });
+
     it('shifts every cell by the gutter offsets so cells stay aligned to their column header', () => {
         // Looking for `labelGutterX + col * (cellSize + gap)` and
         // `labelGutterY + row * (cellSize + gap)` in the cell-placement
