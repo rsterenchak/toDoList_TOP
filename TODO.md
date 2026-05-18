@@ -5,7 +5,7 @@
 - [x] **[MEDIUM]** Expand calendar grid to fill content area with square day cells
   - Description: In the calendar view, the calendar grid currently occupies only ~50–55% of the available content width, leaving substantial empty horizontal space on either side. Expand the calendar wrapper to fill 100% of the content area (no max-width cap) and constrain each day cell to a 1:1 aspect ratio (`aspect-ratio: 1 / 1` on the cell, with `grid-template-columns: repeat(7, 1fr)`) so the cells grow proportionally with the available width while remaining square. Supersedes the ~700px max-width cap noted in the prior `#calendarView` column-layout entry — drop that cap entirely. Verify day-number positioning, the today-highlight ring, the dot indicators, and the selected-day outline all still sit correctly at the larger cell size. If `main.js` writes any inline width or max-width onto `#calendarView` or its grid children, remove or update those writes — inline styles override the stylesheet.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: 2026-05-18
+  - Completed: 2026-05-18 (PR #183)
 
 ## Features
 
