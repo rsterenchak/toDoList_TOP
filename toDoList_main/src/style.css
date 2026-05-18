@@ -1526,12 +1526,12 @@ body:has(#settingsMenu) #helpFab {
 }
 
 #calendarGridSide {
-  /* Sized to its intrinsic content height (header + dow row + 6 week rows
-     at minmax(64px, 1fr)). Capped at 700px wide and centered by the parent's
-     align-items so day cells don't blow up on ultra-wide viewports. */
+  /* Fills 100% of the content area so day cells scale up on wide viewports
+     rather than sitting in a narrow centered column. Cell size is governed
+     by aspect-ratio: 1/1 on .calendarCell + grid-template-columns:
+     repeat(7, 1fr), so the grid grows proportionally with available width. */
   flex: 0 0 auto;
   width: 100%;
-  max-width: 700px;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -1603,7 +1603,10 @@ body:has(#settingsMenu) #helpFab {
 #calendarGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: minmax(64px, 1fr);
+  /* Row height is driven by each cell's aspect-ratio: 1/1, so the track
+     sizes to the cell's intrinsic square height — no minmax floor that
+     would overrule the aspect ratio on narrow viewports. */
+  grid-auto-rows: auto;
   gap: 4px;
 }
 
@@ -1623,6 +1626,10 @@ body:has(#settingsMenu) #helpFab {
   justify-content: flex-start;
   gap: 4px;
   min-width: 0;
+  /* Square cells so the grid scales proportionally with available width.
+     Combined with grid-template-columns: repeat(7, 1fr), each cell's height
+     equals its computed 1/7 column width on every viewport. */
+  aspect-ratio: 1 / 1;
   transition: background 0.10s ease, border-color 0.12s ease;
 }
 
@@ -1679,7 +1686,6 @@ body:has(#settingsMenu) #helpFab {
 #calendarDayPanel {
   flex: 1 1 auto;
   width: 100%;
-  max-width: 700px;
   display: flex;
   flex-direction: column;
   gap: 10px;

@@ -11,13 +11,7 @@ export const changelog = [
             "Recurring-task stats grid no longer clips the month abbreviation above a single-column window.",
             "Backspace on a focused todo row control (checkbox, date, expand caret, stats, delete) now backs out to row navigation mode instead of jumping into title editing.",
             "Calendar view now stacks the day-detail panel below the calendar grid on wide screens, with the grid capped at 700px and centered so day cells stay readable.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-17',
-        fixed: [
-            'Switching projects after typing into the blank task placeholder no longer leaves the partial text behind or reveals the row controls on return.',
+            "Calendar grid now fills the full content width with square day cells instead of sitting in a narrow centered column.",
         ],
     },
 ];
