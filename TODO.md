@@ -2,30 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Backspace on focused todo-row sub-controls should exit to nav mode (focus the row itself), not edit mode
-  - Description: The shipped Backspace-exit affordance on the row's sub-controls (`#checkToDo`, `#duePill`, `#descToggle`, `#statsToggle`, `#closeButtonToDo`) currently moves focus to `#toDoInput`, which drops the user straight into title-editing mode. The intent was a true "back out" gesture — leave the row's inner chrome and return to row-level nav mode so the user can keep moving between rows with ArrowUp/ArrowDown without first having to escape the input. Update `wireSubControlBackspaceExit` in `toDoRow.js` to mirror the existing arrow-nav handler's "focus the row in nav mode" contract: focus `toDoChild` itself (it already carries `tabindex="-1"` for exactly this purpose), add `.todo-active` to this row, and strip `.todo-active` from every other row in `#mainList`. This makes the next ArrowDown / ArrowUp resolve to "current row = this row" via the focus-based path in the global keydown handler, so the user transitions cleanly from sub-control focus → row nav mode → arrow-key traversal.
-  - Behavior:
-    1. With focus on any of the five wired sub-controls, pressing Backspace (no modifiers) moves focus to the parent `#toDoChild`, adds `.todo-active` to it, removes `.todo-active` from any other `#toDoChild` in `#mainList`, and prevents the browser's default "go back" navigation.
-    2. The next ArrowUp / ArrowDown after the Backspace navigates between rows normally — the focus-based "currentRow = ae.closest('#toDoChild')" resolution in the global arrow-nav handler picks up the newly focused row.
-    3. With focus on `#duePill` and the date popover open, the existing capture-phase `onDuePopoverKeydown` handler still owns the keystroke — it closes the popover and returns focus to the pill — and the row-level handler does not also bounce focus to the row.
-    4. Modified Backspace (Ctrl/Cmd/Alt/Shift+Backspace) is unchanged: the row-level handler does not consume it, so the global Ctrl+Backspace sidebar shortcut still works from a focused sub-control.
-    5. Backspace inside `#toDoInput` itself retains native character-deletion behavior — the row-level handler is not bound to the input.
-  - Implementation notes:
-    - Update `wireSubControlBackspaceExit(subControl, toDoInput, toDoChild)` in `toDoRow.js`: instead of `toDoInput.focus()`, do (a) `const mainList = toDoChild.parentElement; if (mainList) mainList.querySelectorAll('#toDoChild.todo-active').forEach(function(el) { if (el !== toDoChild) el.classList.remove('todo-active'); });`, (b) `toDoChild.classList.add('todo-active')`, (c) `toDoChild.focus()`. Keep the `event.preventDefault()` and the existing `#dueDatePopover` early-return guard.
-    - The `toDoInput` parameter is no longer used by the helper. Either drop it from the signature (and update all five call sites) or keep it for backward-compat and add a JSDoc note that it's reserved. Dropping is cleaner and shorter — preferred.
-    - The arrow-nav handler in `main.js` does not need changes. Its first resolution path is `ae.closest('#toDoChild')`, which already finds the now-focused row.
-    - The `.todo-active` cleanup mirrors the same forEach pattern used in the arrow-nav handler and in the post-deletion focus logic in `wireCloseButton` — keep the comparison `el !== toDoChild` so a redundant Backspace on a row that's already active doesn't strip and re-add the class needlessly (a no-op in practice but avoids a flash if the class transitions ever get an animation in the future).
-  - Acceptance criteria:
-    - Tabbing into a committed row's sub-control and pressing Backspace focuses the `#toDoChild` element itself (the `:focus-within` outline shifts to the row), adds `.todo-active` to that row, and removes `.todo-active` from any other row.
-    - Pressing ArrowDown / ArrowUp immediately after the Backspace moves focus to the next / previous committed row, matching the arrow-nav contract.
-    - Pressing Backspace on `#duePill` while the date popover is open still closes the popover and returns focus to the pill (no row focus, no `.todo-active` reshuffle).
-    - Pressing Ctrl/Cmd+Backspace on any focused sub-control still toggles the sidebar.
-    - Backspace inside `#toDoInput` still deletes characters; title editing is unaffected.
-    - The blank placeholder row continues to skip the wire-up — its chrome is hidden and never focusable.
-    - The existing `todoRowSubControlKeyboardNav.test.js` Backspace assertions update to expect `toDoChild.focus()` and the `.todo-active` add/remove, replacing the prior `toDoInput.focus()` expectation.
-  - Out of scope: extending the same exit affordance to controls outside the row (navbar buttons, project rail icons); adding a visible hint or tooltip surfacing the shortcut; updating the in-app help modal's keyboard-shortcuts section (worth a follow-up if this lands and proves discoverable).
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/todoRowSubControlKeyboardNav.test.js`
-  - Completed: 2026-05-17
+- [ ] **[MEDIUM]** Switch #calendarView to flex-direction column with calendar above todos
+  - Description: When the calendar view is open, the calendar grid and the selected-day todo list currently sit side-by-side via `flex-direction: row` on `#calendarView`, which leaves the calendar squished against the right-hand todo column and leaves a large empty area below. Change `#calendarView` to `flex-direction: column` and reorder the children so the calendar grid renders on top (taking roughly 55% of the available height) and the selected-day todo list renders below it, filling the remaining space. Cap the calendar's max-width (~700px, centered) so day cells don't blow up on wide viewports, and confirm the layout still behaves on touch/`pointer: coarse` breakpoints where the view may already be column-stacked — avoid double-applying the change. Inline styles set from `main.js` (if any are written onto `#calendarView` or its children) will override the stylesheet, so check both files.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
