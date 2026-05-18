@@ -190,31 +190,46 @@ describe('todo row sub-control keyboard navigation', () => {
 
     // ── Backspace-as-exit on row sub-controls ──
     // Keyboard users who Tab into a row's chrome (checkbox, due pill,
-    // expand caret, stats caret, delete X) get a one-key bounce back to
-    // the row's title input — mirroring the Backspace-closes-popover
-    // convention shared by the due-date, pomodoro, and music popovers.
+    // expand caret, stats caret, delete X) get a one-key way to back out
+    // of inner chrome and return to row-level nav mode (focus on the row
+    // itself, .todo-active set) — so the next ArrowUp/ArrowDown moves
+    // between rows without first dropping into title-editing mode.
     describe('Backspace-as-exit on row sub-controls', () => {
         it('defines a shared wireSubControlBackspaceExit helper', () => {
             // A single helper keeps the contract uniform across all five
-            // sub-controls — any future tweak to the bounce-back behavior
-            // (e.g. select-all on focus) applies everywhere at once.
+            // sub-controls — any future tweak to the exit behavior
+            // applies everywhere at once. The toDoInput parameter was
+            // dropped when the contract changed from focus-input to
+            // focus-row, so the signature is (subControl, toDoChild).
             expect(toDoRow).toMatch(
-                /function\s+wireSubControlBackspaceExit\s*\(\s*subControl\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/
+                /function\s+wireSubControlBackspaceExit\s*\(\s*subControl\s*,\s*toDoChild\s*\)/
             );
         });
 
-        it('the helper fires only on unmodified Backspace and bounces focus to toDoInput', () => {
+        it('the helper fires only on unmodified Backspace and bounces focus to the row itself in nav mode', () => {
             // Ctrl/Cmd/Alt/Shift+Backspace must fall through so the global
             // Ctrl+Backspace sidebar shortcut still works from a focused
             // sub-control. The handler calls preventDefault to suppress
-            // the browser's default "go back" navigation, then focuses the
-            // row's title input.
+            // the browser's default "go back" navigation, then focuses
+            // the row element (tabindex="-1") and marks it .todo-active
+            // so the next ArrowUp/ArrowDown resolves "current row = this
+            // row" via the focus-based path in main.js's arrow-nav
+            // handler. The title input is NOT focused — the user is in
+            // nav mode, not edit mode.
             const fn = extractFunction(toDoRow, 'function wireSubControlBackspaceExit(');
             expect(fn).toMatch(/addEventListener\(\s*['"]keydown['"]/);
             expect(fn).toMatch(/event\.key\s*!==\s*['"]Backspace['"]/);
             expect(fn).toMatch(/event\.ctrlKey\s*\|\|\s*event\.metaKey\s*\|\|\s*event\.altKey\s*\|\|\s*event\.shiftKey/);
             expect(fn).toMatch(/event\.preventDefault\(\s*\)/);
-            expect(fn).toMatch(/toDoInput\.focus\(\s*\)/);
+            expect(fn).toMatch(/toDoChild\.focus\(\s*\)/);
+            expect(fn).toMatch(/toDoChild\.classList\.add\(\s*['"]todo-active['"]\s*\)/);
+            // Strip .todo-active from any other row so the arrow-nav
+            // handler's fallback can't resolve to a stale row.
+            expect(fn).toMatch(/classList\.remove\(\s*['"]todo-active['"]\s*\)/);
+            // The title input is never the focus target — that would
+            // drop the user into edit mode, which is the bug this
+            // change fixes.
+            expect(fn).not.toMatch(/toDoInput\.focus\(\s*\)/);
         });
 
         it('the helper bails on duePill when the date popover is open so the capture-phase handler owns the keystroke', () => {
@@ -248,11 +263,11 @@ describe('todo row sub-control keyboard navigation', () => {
             // title input itself is NOT wired — its native Backspace must
             // still delete characters.
             const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*checkToDo\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*duePill\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*descToggle\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*statsToggle\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*closeButtonToDo\s*,\s*toDoInput\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*checkToDo\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*duePill\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*descToggle\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*statsToggle\s*,\s*toDoChild\s*\)/);
+            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*closeButtonToDo\s*,\s*toDoChild\s*\)/);
             // toDoInput is never the first argument — wiring Backspace on
             // the title input would steal character-deletion from the
             // user's typing.
@@ -296,8 +311,21 @@ describe('todo row sub-control keyboard navigation', () => {
                 if (pop) pop.remove();
             });
 
-            function buildRow({ blank = false, subId = 'checkToDo' } = {}) {
+            function buildRow({ blank = false, subId = 'checkToDo', inList = true } = {}) {
+                // Real rows live inside #mainList — the helper queries the
+                // row's parent to strip stale .todo-active markers from
+                // siblings, so we mirror that structure here.
+                const mainList = inList ? document.createElement('div') : null;
+                if (mainList) {
+                    mainList.id = 'mainList';
+                    document.body.appendChild(mainList);
+                }
                 const row = document.createElement('div');
+                row.id = 'toDoChild';
+                // tabindex="-1" so the row can receive programmatic focus
+                // for nav mode — matches the real attribute set in
+                // buildToDoRow.
+                row.setAttribute('tabindex', '-1');
                 if (blank) row.dataset.originalBlank = 'true';
                 const input = document.createElement('input');
                 input.type = 'text';
@@ -308,24 +336,47 @@ describe('todo row sub-control keyboard navigation', () => {
                 if (sub.tagName === 'DIV') sub.setAttribute('tabindex', '0');
                 row.appendChild(input);
                 row.appendChild(sub);
-                document.body.appendChild(row);
-                return { row, input, sub };
+                (mainList || document.body).appendChild(row);
+                return { row, input, sub, mainList };
             }
 
-            it('moves focus from a focused sub-control back to the title input on Backspace', () => {
-                const { input, sub, row } = buildRow({ subId: 'closeButtonToDo' });
-                helper(sub, input, row);
+            it('moves focus from a focused sub-control to the row itself in nav mode on Backspace', () => {
+                const { sub, row } = buildRow({ subId: 'closeButtonToDo' });
+                helper(sub, row);
                 sub.focus();
                 expect(document.activeElement).toBe(sub);
                 const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
                 sub.dispatchEvent(ev);
-                expect(document.activeElement).toBe(input);
+                // The row element itself receives focus — not the input —
+                // so the user is in row-level nav mode, ready for
+                // ArrowUp / ArrowDown traversal without first having to
+                // escape edit mode.
+                expect(document.activeElement).toBe(row);
+                expect(row.classList.contains('todo-active')).toBe(true);
                 expect(ev.defaultPrevented).toBe(true);
             });
 
+            it('strips .todo-active from any other row in the main list before marking this row active', () => {
+                // The cleanup pattern mirrors the arrow-nav handler in
+                // main.js — leaving a stale .todo-active marker on a
+                // different row would let the focus-fallback path resolve
+                // the next ArrowDown to the wrong starting position.
+                const { sub, row, mainList } = buildRow({ subId: 'descToggle' });
+                const stale = document.createElement('div');
+                stale.id = 'toDoChild';
+                stale.classList.add('todo-active');
+                mainList.appendChild(stale);
+                helper(sub, row);
+                sub.focus();
+                const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+                sub.dispatchEvent(ev);
+                expect(stale.classList.contains('todo-active')).toBe(false);
+                expect(row.classList.contains('todo-active')).toBe(true);
+            });
+
             it('leaves focus alone on Ctrl+Backspace so the global sidebar shortcut still wins', () => {
-                const { input, sub, row } = buildRow({ subId: 'descToggle' });
-                helper(sub, input, row);
+                const { sub, row } = buildRow({ subId: 'descToggle' });
+                helper(sub, row);
                 sub.focus();
                 const ev = new KeyboardEvent('keydown', {
                     key: 'Backspace', ctrlKey: true, bubbles: true, cancelable: true,
@@ -333,11 +384,14 @@ describe('todo row sub-control keyboard navigation', () => {
                 sub.dispatchEvent(ev);
                 expect(document.activeElement).toBe(sub);
                 expect(ev.defaultPrevented).toBe(false);
+                // The row is NOT marked active when the handler bails —
+                // Ctrl+Backspace must look identical to no Backspace at all.
+                expect(row.classList.contains('todo-active')).toBe(false);
             });
 
             it('leaves focus alone on duePill while the date popover is open', () => {
-                const { input, sub, row } = buildRow({ subId: 'duePill' });
-                helper(sub, input, row);
+                const { sub, row } = buildRow({ subId: 'duePill' });
+                helper(sub, row);
                 const popover = document.createElement('div');
                 popover.id = 'dueDatePopover';
                 document.body.appendChild(popover);
@@ -346,21 +400,25 @@ describe('todo row sub-control keyboard navigation', () => {
                 sub.dispatchEvent(ev);
                 expect(document.activeElement).toBe(sub);
                 expect(ev.defaultPrevented).toBe(false);
+                // No reshuffle of .todo-active either — the capture-phase
+                // popover handler owns the keystroke end-to-end.
+                expect(row.classList.contains('todo-active')).toBe(false);
             });
 
-            it('still bounces focus from duePill when the popover is NOT open', () => {
-                const { input, sub, row } = buildRow({ subId: 'duePill' });
-                helper(sub, input, row);
+            it('still bounces focus from duePill to the row when the popover is NOT open', () => {
+                const { sub, row } = buildRow({ subId: 'duePill' });
+                helper(sub, row);
                 sub.focus();
                 const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
                 sub.dispatchEvent(ev);
-                expect(document.activeElement).toBe(input);
+                expect(document.activeElement).toBe(row);
+                expect(row.classList.contains('todo-active')).toBe(true);
                 expect(ev.defaultPrevented).toBe(true);
             });
 
             it('attaches no listener on blank placeholder rows (wire-time guard)', () => {
-                const { input, sub, row } = buildRow({ blank: true, subId: 'statsToggle' });
-                helper(sub, input, row);
+                const { sub, row } = buildRow({ blank: true, subId: 'statsToggle' });
+                helper(sub, row);
                 sub.focus();
                 const ev = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
                 sub.dispatchEvent(ev);
@@ -369,6 +427,7 @@ describe('todo row sub-control keyboard navigation', () => {
                 // ran to bounce focus.
                 expect(document.activeElement).toBe(sub);
                 expect(ev.defaultPrevented).toBe(false);
+                expect(row.classList.contains('todo-active')).toBe(false);
             });
         });
     });
