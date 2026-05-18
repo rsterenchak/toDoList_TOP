@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [x] **[LOW]** Add horizontal padding to #calendarView to constrain calendar cell size
-  - Description: After expanding the calendar to fill the content area with square 1:1 day cells, the cells grow too large on wide viewports — the day numbers and dot indicators look stranded in oversized boxes. Add horizontal padding (~48px on each side) to `#calendarView` so the calendar grid (and the selected-day todo list below it, since both are children of the same column-flex container) sit within a gutter rather than spanning edge-to-edge. The square aspect-ratio on cells stays, so cells shrink proportionally with the reduced inner width. Verify the padding scales down or is removed at the existing mobile/touch breakpoint so narrow viewports still use the full width. If `main.js` writes any inline padding or width onto `#calendarView`, update or remove those writes — inline styles override the stylesheet.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: 2026-05-18
+- [ ] **[LOW]** Style page scrollbars to match Void dark aesthetic
+  - Description: The default browser scrollbar (bright white thumb and track on near-black background) clashes hard with the dark Void aesthetic and is the most visually jarring element on long scrollable views like the expanded calendar. Style scrollbars globally via the `*` selector so every scrollable surface (page, projects sidebar, todo lists, modals, popovers) is covered: 8px width, dark track matching the app surface color, purple `#6C5DF5` thumb with rounded corners (~4px radius), and a slightly lighter `#9D93EE` thumb on `:hover` for a subtle lift. Use the WebKit pseudo-elements (`::-webkit-scrollbar`, `::-webkit-scrollbar-track`, `::-webkit-scrollbar-thumb`, `::-webkit-scrollbar-thumb:hover`) for Chromium/Safari, and pair with `scrollbar-width: thin` + `scrollbar-color: #6C5DF5 <track-color>` for Firefox. Pure CSS — no JS or new dependencies.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
