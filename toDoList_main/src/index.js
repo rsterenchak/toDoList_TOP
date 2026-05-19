@@ -4,6 +4,7 @@ import './manifest.webmanifest';
 import './favicon.svg';
 import { component, restoreFromStorage, notifyUpdateAvailable } from './main.js';
 import { listLogic } from './listLogic.js';
+import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
@@ -11,6 +12,14 @@ import button from './addProj_button.svg';
 document.body.appendChild(component()); // build and attach DOM
 
 restoreFromStorage();                   // now that DOM is live, restore saved projects
+
+// First-run welcome carousel for mobile new users. The flag check and
+// (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
+// so callers don't need to know the gating rules; runs after restoreFromStorage
+// so the seeded sample project is already on screen when the closer card lands.
+// Desktop falls through to the existing coachmark tour started inside
+// restoreFromStorage.
+maybeStartFirstRunCarousel();
 
 
 // ── SERVICE WORKER ──
