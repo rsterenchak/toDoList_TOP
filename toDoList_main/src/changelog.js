@@ -11,13 +11,7 @@ export const changelog = [
             "First-run welcome tour now walks through the focus-music and settings buttons on their own steps so every navbar control gets a proper introduction.",
             "Mobile first-run flow now opens a four-card welcome carousel introducing projects, the slide-out menu, music, and settings; replay it any time from settings.",
             "Replay welcome tour now lives in a dedicated Help section in both the desktop and mobile settings popovers, opening the right intro for the current viewport.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-18',
-        fixed: [
-            "Page scrollbars now blend into the Void aesthetic — an ultra-thin neutral gray thumb on a transparent track, lifting slightly on hover, across every scrollable surface.",
+            "Pressing ArrowDown on the Today or Calendar header buttons now drops keyboard focus into the visible items list, and ArrowUp from the new-task input returns to the active view pill.",
         ],
     },
 ];
