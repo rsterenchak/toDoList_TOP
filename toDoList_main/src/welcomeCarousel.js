@@ -69,7 +69,11 @@ export function getWelcomeCarouselCardCount() { return CARDS.length; }
 // width check on environments without matchMedia (older jsdom, exotic
 // embedded webviews) so test runs without a stubbed matchMedia still
 // resolve a sensible result rather than throwing.
-function isMobileCarouselViewport() {
+//
+// Also exported so the Replay row in the settings popovers can dispatch
+// to the carousel or the desktop spotlight tour using the exact same
+// detection the auto-trigger uses, keeping the two paths in lockstep.
+export function isMobileCarouselViewport() {
     if (typeof window === 'undefined') return false;
     if (window.innerWidth >= MOBILE_MAX_WIDTH) return false;
     if (!window.matchMedia) return true;
