@@ -1833,3 +1833,66 @@ describe('listLogic — sanitizeRecurrence', () => {
         expect(sanitizeRecurrence('daily')).toBeNull();
     });
 });
+
+
+// ── SEED SAMPLE PROJECT ───────────────────────────────────────────────
+// First-run welcome flow seeds a "Getting started" project so the
+// coachmark tour has live DOM targets to anchor to. Gating is the heart
+// of the test surface here — the seed must run exactly once across the
+// app's lifetime so a user who deletes the sample doesn't get it back.
+describe('listLogic — seedSampleProject', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('seeds a "Getting started" project on first call', () => {
+        const seeded = listLogic.seedSampleProject();
+        expect(seeded).toBe(true);
+        expect(listLogic.listProjectsArray()).toContain('Getting started');
+    });
+
+    it('seeded project includes the blank placeholder plus starter todos', () => {
+        listLogic.seedSampleProject();
+        const items = listLogic.listItems('Getting started');
+        // 1 placeholder + 4 starter todos = 5 entries; the placeholder
+        // sits at index 0 per the data-model invariant.
+        expect(items).toHaveLength(5);
+        expect(items[0].tit).toBe('');
+        const realTitles = items.filter(i => i.tit !== '').map(i => i.tit);
+        expect(realTitles).toHaveLength(4);
+    });
+
+    it('at least one seeded todo has a description so the chevron step has substance', () => {
+        listLogic.seedSampleProject();
+        const items = listLogic.listItems('Getting started');
+        const withDesc = items.filter(i => i.desc && i.desc.length > 0);
+        expect(withDesc.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('persists the todoapp_sampleSeeded flag', () => {
+        listLogic.seedSampleProject();
+        expect(localStorage.getItem('todoapp_sampleSeeded')).toBe('true');
+    });
+
+    it('is a no-op on a second call (seeded flag set)', () => {
+        listLogic.seedSampleProject();
+        const second = listLogic.seedSampleProject();
+        expect(second).toBe(false);
+        expect(listLogic.listProjectsArray()).toEqual(['Getting started']);
+    });
+
+    it('does not re-seed when the user deleted the sample but the flag is still set', () => {
+        listLogic.seedSampleProject();
+        listLogic.removeProject('Getting started');
+        const seeded = listLogic.seedSampleProject();
+        expect(seeded).toBe(false);
+        expect(listLogic.listProjectsArray()).toEqual([]);
+    });
+
+    it('bails when projects already exist (no sample-seeded flag yet)', () => {
+        listLogic.addProject('Real work');
+        const seeded = listLogic.seedSampleProject();
+        expect(seeded).toBe(false);
+        expect(listLogic.listProjectsArray()).not.toContain('Getting started');
+    });
+});

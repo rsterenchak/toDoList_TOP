@@ -1,5 +1,6 @@
 import './style.css';
 import { toDo } from './toDo.js';
+import { isSampleSeeded, setSampleSeeded } from './prefs.js';
 
 
 // Recurrence vocabulary used by `sanitizeRecurrence`. Declared above the
@@ -1130,6 +1131,65 @@ export const listLogic = (function () {
     }
 
 
+    // ── FIRST-RUN SAMPLE PROJECT ──────────────────────────────────────
+    // Seed a "Getting started" sample project with a handful of starter
+    // todos so the welcome coachmark tour has live DOM targets to anchor
+    // to. Gated on a separate todoapp_sampleSeeded flag (independent of
+    // the onboarding-complete flag) so a user who deletes the sample
+    // doesn't get it back on the next load, and a manual tour replay
+    // can't re-seed it either. Returns true when a seed was written.
+    //
+    // No-op when the flag is set OR when any project already exists —
+    // the second guard protects against an imported-file install where a
+    // user has projects but never went through onboarding, so the seed
+    // can't clobber real data.
+    function seedSampleProject() {
+        if (isSampleSeeded()) return false;
+        if (Object.keys(allProjects).length > 0) return false;
+
+        const name = 'Getting started';
+        const blank = toDo('', '', '', 1, 0);
+        const sampleItems = [
+            blank,
+            toDo(
+                'Welcome — check the box to mark a task complete',
+                '',
+                '',
+                1,
+                0
+            ),
+            toDo(
+                'Click the date pill to set a due date',
+                '',
+                '',
+                1,
+                0
+            ),
+            toDo(
+                'Click the chevron to add notes here',
+                'Descriptions live in this panel — great for links, references, or longer thoughts. Press Ctrl/Cmd + Enter to expand every row at once.',
+                '',
+                1,
+                0
+            ),
+            toDo(
+                'Rename or delete this project when you\'re ready',
+                '',
+                '',
+                1,
+                0
+            ),
+        ];
+
+        allProjects[name] = { items: sampleItems, color: null };
+        allProjectsTotal = Object.keys(allProjects).length;
+
+        saveToStorage();
+        setSampleSeeded(true);
+        return true;
+    }
+
+
     // Wipe all in-memory + persisted project state and replace it with the
     // given list. Used by the JSON import flow (validation lives next to the
     // import handler; once the file is accepted the entire project tree is
@@ -1235,6 +1295,7 @@ export const listLogic = (function () {
         getTodayAggregation,
         getCalendarMonth,
         getAllTodosDueOn,
+        seedSampleProject,
         _reset
     };
 
