@@ -2776,6 +2776,36 @@ function component() {
         applyActiveView('calendar');
     });
 
+    // ArrowDown drop-in from any of the three view pills into the visible
+    // main pane. Mirrors the sidebarToggle → first project row transition
+    // for the spatially-adjacent content directly beneath the pills. The
+    // destination depends on the currently active view so the keystroke
+    // lands on rendered items rather than a hidden node:
+    //   • PROJECTS — the blank-placeholder #toDoInput in #mainList (or
+    //     #emptyStateInput when the project is empty, or the first
+    //     committed #toDoChild row as a last resort).
+    //   • TODAY    — the first .todayRowTitle button in #todaySections.
+    //   • CALENDAR — the selected (or first) .calendarCell in
+    //     #calendarGrid.
+    // Without these handlers the document-level todo arrow-nav handler at
+    // best lands focus on a stale .todo-active row and at worst silently
+    // no-ops — leaving the rendered items unreachable from the header
+    // chrome. stopPropagation keeps that document handler from also firing
+    // and clobbering the focus we just placed.
+    function dropFocusIntoMainView(e) {
+        if (e.key !== 'ArrowDown') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const target = firstFocusableInActiveMainView();
+        if (!target) return;
+        e.preventDefault();
+        e.stopPropagation();
+        target.focus();
+    }
+    viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
+    viewPillToday.addEventListener('keydown', dropFocusIntoMainView);
+    viewPillCalendar.addEventListener('keydown', dropFocusIntoMainView);
+
     // ── Today dashboard shell ──
     // Date header, count summary, overdue/today/upcoming sections, and
     // an empty state that only shows when every bucket is empty. The
@@ -3571,7 +3601,36 @@ function component() {
 
         const ae = document.activeElement;
         const isToDoInput = !!(ae && ae.id === 'toDoInput' && mainList.contains(ae));
+        const isEmptyStateInput = !!(ae && ae.id === 'emptyStateInput' && mainList.contains(ae));
         const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+
+        // ArrowUp escape from the blank-placeholder #toDoInput (or
+        // #emptyStateInput when the project is empty) back up to the
+        // active view pill. Mirrors the ArrowDown drop-in wired on each
+        // pill so the entry and exit paths are symmetric. Handled BEFORE
+        // the isInputLike bail-out below so the #emptyStateInput branch
+        // isn't filtered out by it. Without this escape, ArrowUp from
+        // the placeholder falls through to the committed-list logic and
+        // jumps to the last committed row — the wrong direction for a
+        // user trying to return to the header chrome.
+        if (isArrowUp && (isToDoInput || isEmptyStateInput)) {
+            let onPlaceholderInput = false;
+            if (isToDoInput && ae.closest) {
+                const placeholderRow = ae.closest('#toDoChild');
+                if (placeholderRow && placeholderRow.querySelector('#addGlyph')) {
+                    onPlaceholderInput = true;
+                }
+            }
+            if (onPlaceholderInput || isEmptyStateInput) {
+                const pill = document.querySelector('#viewSwitcher .viewPill.active');
+                if (pill) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pill.focus();
+                    return;
+                }
+            }
+        }
 
         if (isArrow) {
             if (isInputLike && !isToDoInput) return;
@@ -4844,6 +4903,53 @@ function restoreFromStorage() {
         maybeStartFirstRunTour();
     }
 
+}
+
+// Resolves the first focusable element of whichever main-pane view is
+// currently active. Used by the ArrowDown drop-in handler wired on each
+// view pill so the keystroke lands on rendered items rather than on a
+// hidden node when the user is on a different view than the pill they
+// pressed from. Returns null when no suitable target is found (e.g.,
+// before component() finishes wiring).
+function firstFocusableInActiveMainView() {
+    const view = getActiveView();
+    if (view === 'today') {
+        const sections = document.getElementById('todaySections');
+        if (sections) {
+            const title = sections.querySelector('.todayRowTitle');
+            if (title) return title;
+            const focusable = sections.querySelector('button, input, [tabindex]:not([tabindex="-1"])');
+            if (focusable) return focusable;
+        }
+        return null;
+    }
+    if (view === 'calendar') {
+        const grid = document.getElementById('calendarGrid');
+        if (grid) {
+            const selected = grid.querySelector('.calendarCell.isSelected');
+            if (selected) return selected;
+            const first = grid.querySelector('.calendarCell');
+            if (first) return first;
+        }
+        return null;
+    }
+    // PROJECTS view (default) — prefer the empty-state input when the
+    // project has no todos, then the blank-placeholder row's #toDoInput,
+    // then the first committed row's tabindex="-1" focus target.
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return null;
+    const esInput = mainListDiv.querySelector('#emptyStateInput');
+    if (esInput) return esInput;
+    const allRows = mainListDiv.querySelectorAll('#toDoChild');
+    for (let i = 0; i < allRows.length; i++) {
+        const row = allRows[i];
+        if (row.querySelector('#addGlyph')) {
+            const input = row.querySelector('#toDoInput');
+            if (input) return input;
+        }
+    }
+    if (allRows.length > 0) return allRows[0];
+    return null;
 }
 
 // Apply the top-level Today / Projects view. Module-scope so both the
