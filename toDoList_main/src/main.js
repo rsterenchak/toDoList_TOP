@@ -74,7 +74,7 @@ import {
 } from './exportImport.js';
 import { readLastExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
-import { startWelcomeCarousel } from './welcomeCarousel.js';
+import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
 
 
@@ -1386,33 +1386,40 @@ function component() {
         );
         menu.appendChild(ghostItem);
 
-        // Replay welcome tour — manually re-triggers the first-run
-        // coachmark walkthrough. The tour normally auto-runs only for users
-        // with no saved projects on a fresh install; this entry gives
-        // returning users a way back into it from inside the settings menu.
+        // HELP section — groups the replay-tour entry alongside the
+        // existing Help modal entry so the global utilities sit under a
+        // labelled cluster. Mirrors the View / Appearance / Help section
+        // layout the mobile settings modal already uses; here a divider +
+        // small heading stands in for the section chrome since the
+        // popover is a flat list and not a sectioned modal.
+        menu.appendChild(buildSettingsMenuDivider());
+        const helpHeading = document.createElement('div');
+        helpHeading.className = 'settingsMenuSectionHeading';
+        helpHeading.textContent = 'Help';
+        helpHeading.setAttribute('role', 'presentation');
+        menu.appendChild(helpHeading);
+
+        // Replay welcome tour — single entry on every viewport that
+        // dispatches by viewport: the mobile carousel on coarse-pointer
+        // narrow viewports, the desktop coachmark tour everywhere else.
+        // The chevron in the state slot (in place of an ON/OFF pill)
+        // signals "tap to start a flow" rather than "toggle a setting".
+        // Seeding is once-per-install (todoapp_sampleSeeded), so a manual
+        // replay never re-seeds the sample project.
         const replayTourItem = buildSettingsMenuItem(
             'Replay welcome tour',
-            '',
-            function() { startCoachmarkTour(); }
+            '›',
+            function() {
+                if (isMobileCarouselViewport()) startWelcomeCarousel();
+                else startCoachmarkTour();
+            },
+            'settingsMenuItem--chevron'
         );
         menu.appendChild(replayTourItem);
 
-        // Replay welcome carousel — mobile counterpart to the spotlight
-        // tour above. Re-runs the four-card mobile intro without
-        // re-seeding the sample project (seeding is once-per-install,
-        // gated by todoapp_sampleSeeded). Surfaced on every viewport so
-        // tablet / desktop users can preview the mobile flow, even though
-        // the carousel only auto-runs on coarse-pointer touch viewports.
-        const replayCarouselItem = buildSettingsMenuItem(
-            'Replay welcome carousel',
-            '',
-            function() { startWelcomeCarousel(); }
-        );
-        menu.appendChild(replayCarouselItem);
-
         // Help — opens the same help modal as the floating `?` button and
-        // the global `?` keypress. Sits at the bottom of the menu so the
-        // global utilities cluster (Theme, Ghost, Help) reads as one group.
+        // the global `?` keypress. Lives under the HELP heading alongside
+        // the replay-tour entry so the two help-adjacent actions cluster.
         const helpItem = buildSettingsMenuItem(
             'Help',
             '',
@@ -2967,6 +2974,28 @@ function component() {
         return { row: row, refresh: refresh };
     }
 
+    // Drawer-styled row that triggers a one-shot flow instead of toggling
+    // a setting. Same 44px tap target and label typography as
+    // createDrawerToggleRow, but the right-aligned slot holds a static
+    // chevron glyph instead of an ON/OFF pill — the chevron tells the
+    // user "tap me to go somewhere" while the pill says "tap me to flip".
+    function createDrawerActionRow(labelText, onActivate) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'drawerActionRow';
+        const labelEl = document.createElement('span');
+        labelEl.className = 'drawerToggleLabel';
+        labelEl.textContent = labelText;
+        const chev = document.createElement('span');
+        chev.className = 'drawerActionChevron';
+        chev.setAttribute('aria-hidden', 'true');
+        chev.textContent = '›';
+        row.appendChild(labelEl);
+        row.appendChild(chev);
+        row.addEventListener('click', onActivate);
+        return row;
+    }
+
     // Show completed — mirrors the in-list #completedHeader caret. When the
     // caret is mounted (project has at least one completed row) we route
     // through its click so its own caret/aria-expanded flip in lockstep;
@@ -3131,8 +3160,28 @@ function component() {
         appearanceSection.appendChild(buildDarkThemeToggle().row);
         appearanceSection.appendChild(buildCompanionToggle().row);
 
+        // HELP section — single Replay welcome tour entry that dispatches
+        // by viewport. On touch / narrow viewports the carousel runs; on
+        // mouse / wide viewports the desktop spotlight tour runs. Tapping
+        // closes the settings modal first so the flow lands on a clean
+        // surface. Replay never re-seeds the sample project.
+        const helpSection = document.createElement('section');
+        helpSection.id = 'settingsHelpSection';
+        helpSection.className = 'settingsSection';
+        const helpHeading = document.createElement('div');
+        helpHeading.className = 'settingsSectionHeading';
+        helpHeading.textContent = 'Help';
+        helpSection.appendChild(helpHeading);
+        const replayRow = createDrawerActionRow('Replay welcome tour', function() {
+            close();
+            if (isMobileCarouselViewport()) startWelcomeCarousel();
+            else startCoachmarkTour();
+        });
+        helpSection.appendChild(replayRow);
+
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
+        body.appendChild(helpSection);
 
         dialog.appendChild(header);
         dialog.appendChild(body);

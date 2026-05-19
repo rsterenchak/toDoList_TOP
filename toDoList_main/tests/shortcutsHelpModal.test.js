@@ -78,8 +78,11 @@ describe('floating help button + help modal', () => {
     it('exposes Help as an item in the ghost menu that opens the same modal', () => {
         // Third trigger — alongside the FAB and the `?` keystroke. Touch
         // users (where the FAB is hidden) reach the modal through here.
+        // Anchor on the 'Help', literal inside the buildSettingsMenuItem
+        // call (the trailing comma disambiguates from the HELP section
+        // heading which also writes 'Help' as a literal).
         expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
-        const idx = main.indexOf("'Help'");
+        const idx = main.indexOf("'Help',");
         expect(idx).toBeGreaterThan(-1);
         const slice = main.slice(idx, idx + 400);
         expect(slice).toMatch(/showHelpModal\s*\(\s*\)/);

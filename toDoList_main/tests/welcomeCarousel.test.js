@@ -304,12 +304,65 @@ describe('welcome carousel — wired into the app', () => {
         expect(main).toMatch(/startWelcomeCarousel/);
     });
 
-    it('settings menu exposes a Replay welcome carousel entry', () => {
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome carousel['"]/);
-        const idx = main.indexOf("'Replay welcome carousel'");
+    it('settings menu Replay welcome tour row dispatches to the carousel on mobile viewports', () => {
+        // The desktop popover and the mobile settings modal both surface a
+        // single "Replay welcome tour" row that dispatches by viewport: the
+        // mobile carousel on coarse-pointer narrow viewports, the desktop
+        // coachmark tour everywhere else. Pin the row label and the
+        // carousel reference inside the row's activation handler so a
+        // future refactor can't silently drop one half of the dispatch.
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
+        const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 400);
+        const slice = main.slice(idx, idx + 600);
         expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
+        expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
+    });
+
+    it('settings menu groups the Replay entry under a HELP section heading', () => {
+        // Both popovers expose the Replay row inside a labelled HELP
+        // section so the global utilities cluster reads as one group.
+        // The desktop popover uses a presentational heading element
+        // (settingsMenuSectionHeading); the mobile modal uses the same
+        // settingsSectionHeading class the View / Appearance sections use,
+        // wrapped in a section with id #settingsHelpSection.
+        expect(main).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
+        expect(main).toMatch(/settingsHelpSection/);
+        // The desktop popover heading carries the literal label.
+        const headingIdx = main.indexOf("'settingsMenuSectionHeading'");
+        expect(headingIdx).toBeGreaterThan(-1);
+        const headingSlice = main.slice(headingIdx, headingIdx + 200);
+        expect(headingSlice).toMatch(/textContent\s*=\s*['"]Help['"]/);
+    });
+
+    it('mobile settings modal Replay row dispatches by viewport and closes the modal', () => {
+        // The mobile drawer's Settings modal renders the Replay row via
+        // createDrawerActionRow (chevron state, not ON/OFF pill). Tapping
+        // closes the modal before starting the chosen flow so the carousel
+        // / coachmark land on a clean surface, not on top of an open modal.
+        const fnIdx = main.indexOf('function showSettingsModal');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 6000);
+        expect(slice).toMatch(/createDrawerActionRow\(\s*['"]Replay welcome tour['"]/);
+        expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
+        expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
+        expect(slice).toMatch(/startCoachmarkTour\s*\(\s*\)/);
+        // The close() call must precede the dispatch so the modal is gone
+        // before the next flow mounts.
+        const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
+        expect(replayIdx).toBeGreaterThan(-1);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 400);
+        expect(handlerSlice.indexOf('close()')).toBeGreaterThan(-1);
+        expect(handlerSlice.indexOf('close()'))
+            .toBeLessThan(handlerSlice.indexOf('startWelcomeCarousel'));
+    });
+
+    it('exports isMobileCarouselViewport for the shared dispatch helper', () => {
+        // The Replay row in both popovers calls into this helper so the
+        // auto-trigger detection and the manual replay use the exact
+        // same coarse-pointer / 768px gate.
+        const welcome = read('welcomeCarousel.js');
+        expect(welcome).toMatch(/export\s+function\s+isMobileCarouselViewport\s*\(/);
     });
 
     it('isAnyModalOrPopoverOpen treats the carousel backdrop as a modal', () => {
