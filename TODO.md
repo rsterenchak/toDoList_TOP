@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Allow keyboard navigation from 'Today' and 'Calendar' down into `#mainList` items
+- [x] **[MEDIUM]** Allow keyboard navigation from 'Today' and 'Calendar' down into `#mainList` items
   - Description: Keyboard users can focus the 'Today' and 'Calendar' header buttons via Tab, but ArrowDown from those buttons doesn't move focus into the todo rows rendered inside `#mainList` — focus either stays put or skips past the list entirely, leaving the rendered items unreachable without a mouse. Expected behavior: ArrowDown from 'Today' or 'Calendar' moves focus to the first focusable element inside `#mainList` (the first todo row, or its title/checkbox depending on the row's focus target), and ArrowUp from the first row returns focus to the originating header button. Likely cause is that the header buttons don't have a `keydown` handler that intercepts ArrowDown to redirect focus into `#mainList`, and/or `#mainList` children aren't in the tab order (missing `tabindex="0"` on the row or its focus target). Investigate the wiring for the 'Today' and 'Calendar' buttons in `main.js` (grep for their handlers), and confirm the todo-row builder assigns a focusable element to receive focus. Also verify ArrowUp/ArrowDown continue to traverse between rows once focus is inside the list — if that intra-list navigation isn't already wired, this fix should add it alongside the entry hop.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-19
 
 ## Features
 
