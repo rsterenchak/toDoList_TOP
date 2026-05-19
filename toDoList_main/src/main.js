@@ -74,6 +74,7 @@ import {
 } from './exportImport.js';
 import { readLastExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
+import { startWelcomeCarousel } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
 
 
@@ -1395,6 +1396,19 @@ function component() {
             function() { startCoachmarkTour(); }
         );
         menu.appendChild(replayTourItem);
+
+        // Replay welcome carousel — mobile counterpart to the spotlight
+        // tour above. Re-runs the four-card mobile intro without
+        // re-seeding the sample project (seeding is once-per-install,
+        // gated by todoapp_sampleSeeded). Surfaced on every viewport so
+        // tablet / desktop users can preview the mobile flow, even though
+        // the carousel only auto-runs on coarse-pointer touch viewports.
+        const replayCarouselItem = buildSettingsMenuItem(
+            'Replay welcome carousel',
+            '',
+            function() { startWelcomeCarousel(); }
+        );
+        menu.appendChild(replayCarouselItem);
 
         // Help — opens the same help modal as the floating `?` button and
         // the global `?` keypress. Sits at the bottom of the menu so the
@@ -4479,12 +4493,12 @@ function collapseAllDescriptions() {
 // so that getElementById calls resolve against the live DOM.
 function restoreFromStorage() {
 
-    // First-run seeding: give the welcome tour real DOM targets to
-    // anchor to. listLogic.seedSampleProject gates on todoapp_sampleSeeded
-    // and on the data model being empty; the outer guards keep the
-    // sample off mobile and off users who already finished onboarding.
+    // First-run seeding: both the desktop spotlight tour and the mobile
+    // welcome carousel anchor against the seeded sample project, so seed
+    // on every viewport when onboarding hasn't completed. The seed itself
+    // is idempotent — todoapp_sampleSeeded keeps it once-per-install.
     let sampleJustSeeded = false;
-    if (!isOnboardingComplete() && window.innerWidth > 700) {
+    if (!isOnboardingComplete()) {
         sampleJustSeeded = listLogic.seedSampleProject();
     }
 
