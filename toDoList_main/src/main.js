@@ -31,6 +31,7 @@ import {
     setCompletedSectionOpen,
     getActiveView,
     setActiveView,
+    isOnboardingComplete,
 } from './prefs.js';
 import {
     applyTheme,
@@ -4478,6 +4479,15 @@ function collapseAllDescriptions() {
 // so that getElementById calls resolve against the live DOM.
 function restoreFromStorage() {
 
+    // First-run seeding: give the welcome tour real DOM targets to
+    // anchor to. listLogic.seedSampleProject gates on todoapp_sampleSeeded
+    // and on the data model being empty; the outer guards keep the
+    // sample off mobile and off users who already finished onboarding.
+    let sampleJustSeeded = false;
+    if (!isOnboardingComplete() && window.innerWidth > 700) {
+        sampleJustSeeded = listLogic.seedSampleProject();
+    }
+
     const savedProjects = listLogic.listProjectsArray();
 
     if (savedProjects.length === 0) {
@@ -4487,10 +4497,9 @@ function restoreFromStorage() {
         // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
         // when applyActiveView's view-change guard would otherwise skip it.
         applyViewDefaultSidebar(getActiveView());
-        // First-run coachmark tour — fires once on a fresh install with no
-        // saved projects so brand-new users get a guided pass over the
-        // main affordances instead of a cold Void screen. Defers internally
-        // to the persisted flag and the mobile breakpoint.
+        // First-run tour — reaches here only when seeding was skipped
+        // (mobile, already-seeded, or onboarding done); the function
+        // itself gates on the persisted onboarding flag.
         maybeStartFirstRunTour();
         return;
     }
@@ -4763,6 +4772,14 @@ function restoreFromStorage() {
     // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
     // when applyActiveView's view-change guard would otherwise skip it.
     applyViewDefaultSidebar(getActiveView());
+
+    // First-run welcome tour — fires once when the just-seeded sample
+    // project has produced live DOM targets (sidebar row, due pill,
+    // description chevron). Returning users whose projects already
+    // existed before this load skip this path entirely.
+    if (sampleJustSeeded) {
+        maybeStartFirstRunTour();
+    }
 
 }
 

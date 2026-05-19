@@ -1,12 +1,12 @@
 // First-run spotlight coachmark tour for new desktop users.
 //
-// The empty-state landing screen ("Welcome." ghost + "+ New project") tells
-// new users where to start but says nothing about the rest of the app. This
-// module dims the page with a full-viewport overlay, cuts a hole around one
-// target element at a time via a clip-path, and anchors a small callout
-// next to the spotlight that walks through the projects "+", the todo
-// input row, the due-date pill, the description chevron, and the Pomodoro
-// surface.
+// On a fresh install the welcome flow seeds a "Getting started" sample
+// project (via listLogic.seedSampleProject) so every step has a real DOM
+// node to anchor against. This module dims the page with a full-viewport
+// overlay, cuts a hole around one target element at a time via a four-
+// rect mask, and anchors a callout next to the spotlight that walks
+// through the sample project row, a due-date pill, the description
+// chevron, the sidebar "+" project button, and the Pomodoro surface.
 //
 // State is local to the module — only the persisted flag in prefs.js
 // (`todoapp_onboardingComplete`) survives between sessions. Calling
@@ -33,27 +33,29 @@ const CALLOUT_MARGIN = 8;
 // events on the target that should trigger a forward step in addition to
 // the explicit Next button; the listener is attached at spotlight time and
 // removed when the step changes.
+//
+// Step 1 anchors against the seeded sample project in the sidebar — the
+// first-run flow writes a "Getting started" project into the data model
+// before the tour mounts so the target always exists. Steps 2 and 3 point
+// at seeded todo rows for the same reason. The replay path (no re-seed)
+// falls back gracefully if the user deleted the sample: the layout helper
+// renders a centered callout when target() returns null.
 const STEPS = [
     {
-        id: 'addProject',
-        title: 'Create a project',
-        body: 'Projects are the buckets your todos live in. Click the + to start your first one.',
-        target: function() { return document.getElementById('projButton'); },
+        id: 'sampleProject',
+        title: 'This is a project',
+        body: "Projects group your todos. We seeded \"Getting started\" so you can poke around — rename or delete it any time.",
+        target: function() {
+            const sideMa = document.getElementById('sideMa');
+            if (!sideMa) return null;
+            // Prefer the currently-selected row; on first run that's the
+            // sample project. Falls back to the first project row so a
+            // replay tour with a different selection still has a target.
+            return sideMa.querySelector('.selectedProject')
+                || sideMa.querySelector('#projChild');
+        },
         advanceOn: ['click'],
         placement: 'right',
-    },
-    {
-        id: 'todoInput',
-        title: 'Add a task',
-        body: 'Type here and press Enter to create todos in the selected project.',
-        target: function() {
-            const main = document.getElementById('mainList');
-            if (!main) return null;
-            const row = main.querySelector('#toDoChild');
-            return row ? row.querySelector('#toDoInput') : null;
-        },
-        advanceOn: ['focus', 'input'],
-        placement: 'top',
     },
     {
         id: 'duePill',
@@ -88,6 +90,14 @@ const STEPS = [
         },
         advanceOn: ['click'],
         placement: 'bottom',
+    },
+    {
+        id: 'addProject',
+        title: 'Create a project',
+        body: 'Use the + in the sidebar to start a project of your own. Each project keeps its own list of todos.',
+        target: function() { return document.getElementById('projButton'); },
+        advanceOn: ['click'],
+        placement: 'right',
     },
     {
         id: 'pomodoro',
@@ -358,11 +368,8 @@ function layoutStep() {
     placeCallout(callout, { top, left, right, bottom }, step.placement || 'bottom');
 }
 
-function placeCallout(callout, cutout, placement) {
-    const cw = callout.offsetWidth || 280;
-    const ch = callout.offsetHeight || 160;
+function computePlacement(placement, cutout, cw, ch) {
     let top, left;
-
     switch (placement) {
         case 'right':
             top = cutout.top + (cutout.bottom - cutout.top - ch) / 2;
@@ -382,9 +389,37 @@ function placeCallout(callout, cutout, placement) {
             left = cutout.left + (cutout.right - cutout.left - cw) / 2;
             break;
     }
+    return { top: top, left: left };
+}
 
-    // Clamp to viewport so the callout never renders off-screen on narrow
-    // desktops or when the target sits near an edge.
+function fitsInViewport(pos, cw, ch) {
+    return pos.left >= CALLOUT_MARGIN
+        && pos.top >= CALLOUT_MARGIN
+        && pos.left + cw <= window.innerWidth - CALLOUT_MARGIN
+        && pos.top + ch <= window.innerHeight - CALLOUT_MARGIN;
+}
+
+// Collision-aware placement: try the preferred side first; if it would
+// clip the viewport, flip to the opposite side. Whichever side wins, a
+// final clamp catches edge cases (a callout taller than the viewport,
+// a target right against the edge) by pinning the callout inside the
+// margins. Recentering on missing-target is handled separately in
+// layoutStep before this helper is even called.
+function placeCallout(callout, cutout, placement) {
+    const cw = callout.offsetWidth || 280;
+    const ch = callout.offsetHeight || 160;
+
+    const opposite = { right: 'left', left: 'right', top: 'bottom', bottom: 'top' };
+    const primary = computePlacement(placement, cutout, cw, ch);
+    let chosen = primary;
+    if (!fitsInViewport(primary, cw, ch) && opposite[placement]) {
+        const flipped = computePlacement(opposite[placement], cutout, cw, ch);
+        if (fitsInViewport(flipped, cw, ch)) chosen = flipped;
+    }
+
+    let top = chosen.top;
+    let left = chosen.left;
+
     if (left + cw > window.innerWidth - CALLOUT_MARGIN) {
         left = window.innerWidth - CALLOUT_MARGIN - cw;
     }

@@ -16,6 +16,7 @@ export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
 export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
 export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
+export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -163,6 +164,29 @@ export function setOnboardingComplete(complete) {
             localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
         } else {
             localStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+        }
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── sample-project seeded flag ──
+// Tracks whether the first-run "Getting started" sample project has been
+// seeded for this install. Gates the seeding side of the welcome flow so a
+// user who deletes the sample project doesn't get it back on the next load;
+// the tour's replay path also reads this so a manual replay can't re-seed.
+export function isSampleSeeded() {
+    try {
+        return localStorage.getItem(SAMPLE_SEEDED_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setSampleSeeded(seeded) {
+    try {
+        if (seeded) {
+            localStorage.setItem(SAMPLE_SEEDED_KEY, 'true');
+        } else {
+            localStorage.removeItem(SAMPLE_SEEDED_KEY);
         }
     } catch (e) { /* ignore quota/private-mode */ }
 }

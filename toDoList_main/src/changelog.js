@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-05-18',
-        added: [
-            "First-run welcome tour walks new users through projects, the task input, due dates, descriptions, and the Pomodoro timer; replay it any time from the ghost menu.",
+        date: '2026-05-19',
+        fixed: [
+            "First-run welcome tour now seeds a \"Getting started\" sample project so every step has a real row to anchor against — rename or delete the sample whenever you're done with it.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-05-18',
         fixed: [
             "Calendar view now stacks the day-detail panel below the calendar grid on wide screens, with the grid capped at 700px and centered so day cells stay readable.",
             "Calendar grid now fills the full content width with square day cells instead of sitting in a narrow centered column.",

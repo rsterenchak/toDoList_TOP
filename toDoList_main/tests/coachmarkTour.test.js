@@ -33,6 +33,16 @@ function read(relative) {
 function buildSkeletonDOM() {
     document.body.innerHTML = '';
     // Targets that STEPS look up by id / selector inside the module.
+    // sideMa carries the project rows; step 1 anchors against a selected
+    // project entry inside it (the seeded sample on first run).
+    const sideMa = document.createElement('div');
+    sideMa.id = 'sideMa';
+    const projChild = document.createElement('div');
+    projChild.id = 'projChild';
+    projChild.className = 'selectedProject';
+    sideMa.appendChild(projChild);
+    document.body.appendChild(sideMa);
+
     const projButton = document.createElement('div');
     projButton.id = 'projButton';
     document.body.appendChild(projButton);
@@ -56,7 +66,7 @@ function buildSkeletonDOM() {
     row.appendChild(descToggle);
     mainList.appendChild(row);
     document.body.appendChild(mainList);
-    return { projButton, pomodoroToggle, mainList, row, input, duePill, descToggle };
+    return { sideMa, projChild, projButton, pomodoroToggle, mainList, row, input, duePill, descToggle };
 }
 
 function ensureDesktopViewport() {
@@ -185,8 +195,10 @@ describe('coachmark tour — module', () => {
 
     it('clicking the highlighted target advances the step', () => {
         startCoachmarkTour();
-        const projButton = document.getElementById('projButton');
-        projButton.click();
+        // Step 1's target is the selected sidebar project row (the
+        // seeded sample on first run). Click it to verify the advance.
+        const projChild = document.querySelector('.selectedProject');
+        projChild.click();
         // The advance handler defers by one tick so the underlying click
         // can settle before the next target() resolves.
         return new Promise(function(done) {
@@ -234,8 +246,10 @@ describe('coachmark tour — module', () => {
     });
 
     it('positions the cutout over the target via fixed coordinates', () => {
-        const { projButton } = buildSkeletonDOM();
-        projButton.getBoundingClientRect = function() {
+        const { projChild } = buildSkeletonDOM();
+        // Step 1's target is the selected sidebar project row, so the
+        // cutout should track its bounding rect (plus the 6px padding).
+        projChild.getBoundingClientRect = function() {
             return { top: 100, left: 50, right: 150, bottom: 140, width: 100, height: 40, x: 50, y: 100 };
         };
         startCoachmarkTour();
@@ -315,5 +329,25 @@ describe('coachmark tour — wired into the app', () => {
 
     it('styles the callout dots so the active step is accent-coloured', () => {
         expect(css).toMatch(/\.coachmarkDot\.active\s*\{[^}]*background:\s*var\(--accent\)/);
+    });
+
+    it('restoreFromStorage seeds the sample project before reading projects', () => {
+        // The seed call has to land before listLogic.listProjectsArray()
+        // so the rendered branch picks up the freshly-seeded sample and
+        // the tour has live DOM targets to anchor against.
+        const fnIdx = main.indexOf('function restoreFromStorage');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 1500);
+        const seedIdx = slice.indexOf('seedSampleProject');
+        const readIdx = slice.indexOf('listProjectsArray');
+        expect(seedIdx).toBeGreaterThan(-1);
+        expect(readIdx).toBeGreaterThan(-1);
+        expect(seedIdx).toBeLessThan(readIdx);
+    });
+
+    it('persists the sample-seeded flag under the documented key', () => {
+        expect(prefs).toMatch(/SAMPLE_SEEDED_KEY\s*=\s*['"]todoapp_sampleSeeded['"]/);
+        expect(prefs).toMatch(/export\s+function\s+isSampleSeeded\s*\(/);
+        expect(prefs).toMatch(/export\s+function\s+setSampleSeeded\s*\(/);
     });
 });
