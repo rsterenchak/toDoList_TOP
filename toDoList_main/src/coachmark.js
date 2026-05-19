@@ -6,7 +6,8 @@
 // overlay, cuts a hole around one target element at a time via a four-
 // rect mask, and anchors a callout next to the spotlight that walks
 // through the sample project row, a due-date pill, the description
-// chevron, the sidebar "+" project button, and the Pomodoro surface.
+// chevron, the sidebar "+" project button, the Pomodoro toggle, the
+// music toggle, and the settings toggle in the navbar.
 //
 // State is local to the module — only the persisted flag in prefs.js
 // (`todoapp_onboardingComplete`) survives between sessions. Calling
@@ -102,8 +103,24 @@ const STEPS = [
     {
         id: 'pomodoro',
         title: 'Stay focused',
-        body: 'The clock opens a Pomodoro timer; the note icon plays focus stations alongside it.',
+        body: 'The clock opens a Pomodoro timer to keep work and break intervals on track.',
         target: function() { return document.getElementById('pomodoroToggle'); },
+        advanceOn: ['click'],
+        placement: 'bottom',
+    },
+    {
+        id: 'music',
+        title: 'Focus music',
+        body: 'The note icon plays ambient focus stations you can run alongside the timer.',
+        target: function() { return document.getElementById('musicToggle'); },
+        advanceOn: ['click'],
+        placement: 'bottom',
+    },
+    {
+        id: 'settings',
+        title: 'Settings and more',
+        body: 'The menu hides theme, import / export, and the option to replay this welcome tour whenever you want.',
+        target: function() { return document.getElementById('settingsToggle'); },
         advanceOn: ['click'],
         placement: 'bottom',
     },

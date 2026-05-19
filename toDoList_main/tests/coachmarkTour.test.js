@@ -51,6 +51,14 @@ function buildSkeletonDOM() {
     pomodoroToggle.id = 'pomodoroToggle';
     document.body.appendChild(pomodoroToggle);
 
+    const musicToggle = document.createElement('button');
+    musicToggle.id = 'musicToggle';
+    document.body.appendChild(musicToggle);
+
+    const settingsToggle = document.createElement('button');
+    settingsToggle.id = 'settingsToggle';
+    document.body.appendChild(settingsToggle);
+
     const mainList = document.createElement('div');
     mainList.id = 'mainList';
     const row = document.createElement('div');
@@ -66,7 +74,7 @@ function buildSkeletonDOM() {
     row.appendChild(descToggle);
     mainList.appendChild(row);
     document.body.appendChild(mainList);
-    return { sideMa, projChild, projButton, pomodoroToggle, mainList, row, input, duePill, descToggle };
+    return { sideMa, projChild, projButton, pomodoroToggle, musicToggle, settingsToggle, mainList, row, input, duePill, descToggle };
 }
 
 function ensureDesktopViewport() {
@@ -98,8 +106,8 @@ describe('coachmark tour — module', () => {
         }
     });
 
-    it('exposes five steps and stable ids', () => {
-        expect(getCoachmarkStepCount()).toBe(5);
+    it('exposes seven steps and stable ids', () => {
+        expect(getCoachmarkStepCount()).toBe(7);
         expect(COACHMARK_OVERLAY_ID).toBe('coachmarkOverlay');
         expect(COACHMARK_CALLOUT_ID).toBe('coachmarkCallout');
         expect(COACHMARK_CUTOUT_ID).toBe('coachmarkCutout');
@@ -124,13 +132,13 @@ describe('coachmark tour — module', () => {
         startCoachmarkTour();
         const label = document.querySelector('.coachmarkStepLabel');
         expect(label).not.toBeNull();
-        expect(label.textContent).toBe('STEP 1 OF 5');
+        expect(label.textContent).toBe('STEP 1 OF 7');
     });
 
     it('renders pagination dots, Skip / Next buttons, and a dialog role', () => {
         startCoachmarkTour();
         const dots = document.querySelectorAll('.coachmarkDot');
-        expect(dots.length).toBe(5);
+        expect(dots.length).toBe(7);
         expect(dots[0].classList.contains('active')).toBe(true);
         expect(document.querySelector('.coachmarkSkip')).not.toBeNull();
         const next = document.querySelector('.coachmarkNext');
@@ -146,12 +154,12 @@ describe('coachmark tour — module', () => {
         const next = document.querySelector('.coachmarkNext');
         next.click();
         const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 2 OF 5');
+        expect(label.textContent).toBe('STEP 2 OF 7');
     });
 
     it('switches the Next button to "You\'re set" on the final step', () => {
         startCoachmarkTour();
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 6; i++) {
             document.querySelector('.coachmarkNext').click();
         }
         const next = document.querySelector('.coachmarkNext');
@@ -162,7 +170,7 @@ describe('coachmark tour — module', () => {
 
     it('clicking "You\'re set" finishes the tour and persists the completion flag', () => {
         startCoachmarkTour();
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 7; i++) {
             document.querySelector('.coachmarkNext').click();
         }
         expect(document.getElementById(COACHMARK_OVERLAY_ID)).toBeNull();
@@ -204,7 +212,7 @@ describe('coachmark tour — module', () => {
         return new Promise(function(done) {
             setTimeout(function() {
                 const label = document.querySelector('.coachmarkStepLabel');
-                expect(label.textContent).toBe('STEP 2 OF 5');
+                expect(label.textContent).toBe('STEP 2 OF 7');
                 done();
             }, 0);
         });
@@ -243,6 +251,31 @@ describe('coachmark tour — module', () => {
         startCoachmarkTour();
         // While the tour is mid-flight the flag is false; only finish() sets it.
         expect(isOnboardingComplete()).toBe(false);
+    });
+
+    it('walks through the music toggle on step 6 and the settings toggle on step 7', () => {
+        const { musicToggle, settingsToggle } = buildSkeletonDOM();
+        musicToggle.getBoundingClientRect = function() {
+            return { top: 20, left: 600, right: 640, bottom: 60, width: 40, height: 40, x: 600, y: 20 };
+        };
+        settingsToggle.getBoundingClientRect = function() {
+            return { top: 20, left: 660, right: 700, bottom: 60, width: 40, height: 40, x: 660, y: 20 };
+        };
+        startCoachmarkTour();
+        // Advance to step 6 (music) and verify the cutout tracks #musicToggle.
+        for (let i = 0; i < 5; i++) {
+            document.querySelector('.coachmarkNext').click();
+        }
+        let label = document.querySelector('.coachmarkStepLabel');
+        expect(label.textContent).toBe('STEP 6 OF 7');
+        let cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.left, 10)).toBe(594);
+        // Advance to step 7 (settings) and verify the cutout tracks #settingsToggle.
+        document.querySelector('.coachmarkNext').click();
+        label = document.querySelector('.coachmarkStepLabel');
+        expect(label.textContent).toBe('STEP 7 OF 7');
+        cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.left, 10)).toBe(654);
     });
 
     it('positions the cutout over the target via fixed coordinates', () => {
