@@ -2029,6 +2029,14 @@ body:has(#settingsMenu) #helpFab {
   display: none;
 }
 
+/* Mobile-only empty-state ghost spacer that anchors the Today and Projects
+   views when the content list is short — see the .viewGhostSpacer rule
+   inside the mobile breakpoint further down in this file for the painted
+   variant. Hidden on every viewport by default. */
+.viewGhostSpacer {
+  display: none;
+}
+
 /* Title and CTA-button text variants — desktop shows the existing copy,
    mobile swaps in the STACK-tuned wording ("Welcome." / "+ New project").
    Both spans live in the DOM at all times; CSS swaps which is rendered
@@ -3904,12 +3912,89 @@ body.row-dragging * { cursor: grabbing !important; }
   #todayView {
     padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
   }
+  /* +64px content offset (vs Today's +24px) lifts the prev/next/month-label
+     row below the absolutely-positioned #sidebarToggle. The hamburger sits
+     at `max(env(...), 24px) + 8px` and is 44px tall, so its bottom edge is
+     `max(env(...), 24px) + 52px` from the viewport top — the +64px floor
+     keeps the calendar header on its own row beneath the hamburger with a
+     12px breathing gap, preventing the next-month `›` from colliding with
+     the hamburger on narrow viewports. The safe-area inset floor itself
+     stays unchanged at 24px so the hamburger keeps clearing the iOS status
+     bar / Dynamic Island. */
   #calendarView {
-    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px) 12px 0;
+    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 64px) 12px 0;
     gap: 14px;
   }
   #calendarDayPanel {
     flex: 0 0 auto;
+  }
+
+  /* ── Empty-state ghost spacer ──
+     Flex-anchored slab below the Today / Projects content list. Reuses the
+     purple ghost from the no-projects welcome screen, dimmed to 50%, so
+     short item lists no longer leave a large unanchored void above the
+     bottom tab bar. flex:1 1 auto lets the spacer fill remaining column
+     space inside #todayView; min-height carves out reserved space inside
+     #mainList's grid context where flex-grow doesn't apply. When the list
+     grows enough to fill the viewport, the spacer scrolls naturally below
+     the visible area — no extra logic is needed to hide it. */
+  .viewGhostSpacer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-height: 200px;
+    padding: 24px 16px;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  /* #mainList is display:grid on mobile (its desktop rule sticks). Span
+     the full row width so the spacer slots into a single grid row rather
+     than landing in column 1 only. */
+  #mainList > #projectsGhostSpacer {
+    grid-column: 1 / -1;
+  }
+
+  .viewGhostMascot {
+    width: 112px;
+    height: 130px;
+    background-image: url('./ghost_purple.svg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.5;
+  }
+
+  .viewGhostCaption {
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  /* When the existing welcome / no-todos / all-caught-up empty state is
+     active, the projects spacer would stack a second ghost on the same
+     screen. Hide it so the existing empty state carries the visual weight
+     alone. The Today view keeps the spacer visible alongside #todayEmpty
+     since that empty-state is just a single line of text and the slab
+     below it would otherwise be unanchored. */
+  #mainList.emptyStatePresent #projectsGhostSpacer {
+    display: none;
+  }
+
+  /* Companion ghost preference toggled off: hide the mascot and caption
+     but keep the spacer's flex space so the layout doesn't shift when the
+     user flips the switch. The body class is applied in main.js wherever
+     the existing companion-enabled flag is read or updated. */
+  body.companion-ghost-off .viewGhostMascot,
+  body.companion-ghost-off .viewGhostCaption {
+    visibility: hidden;
   }
 
   /* The mobile header's #mobileProjCounts already shows open/done

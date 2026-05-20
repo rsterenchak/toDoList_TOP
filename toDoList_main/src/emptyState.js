@@ -19,6 +19,37 @@
 import { isCompletedSectionOpen, setCompletedSectionOpen } from './prefs.js';
 
 
+// Mobile-only ghost spacer that fills the vertical void below the todo rows
+// when a project has only a few items. Painted via the .viewGhostSpacer CSS
+// rule (purple ghost SVG + caption, dimmed to 50% opacity) which only fires
+// inside the @media (max-width: 700px) block, so on desktop this element is
+// inert. Idempotent — every call ensures the spacer exists and is the last
+// child of #mainList so subsequent row appends don't leave it stranded mid-
+// list. The companion-ghost preference is enforced via the body class set
+// in main.js, not by toggling the spacer itself, so flipping the toggle
+// doesn't disturb the layout.
+function ensureMainListGhostSpacer(mainListDiv) {
+    if (!mainListDiv) return;
+    let spacer = mainListDiv.querySelector('#projectsGhostSpacer');
+    if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'projectsGhostSpacer';
+        spacer.className = 'viewGhostSpacer';
+        spacer.setAttribute('aria-hidden', 'true');
+        const mascot = document.createElement('div');
+        mascot.className = 'viewGhostMascot';
+        const caption = document.createElement('div');
+        caption.className = 'viewGhostCaption';
+        caption.textContent = "That's all for this project";
+        spacer.appendChild(mascot);
+        spacer.appendChild(caption);
+    }
+    if (mainListDiv.lastChild !== spacer) {
+        mainListDiv.appendChild(spacer);
+    }
+}
+
+
 // One-time install of a document-wide click handler that re-focuses the
 // empty-state Create button after any click on a non-interactive region
 // of the page. The empty state's whole UX is "press Enter to create" —
@@ -239,6 +270,7 @@ export function updateEmptyState(mainListDiv) {
         if (!document.activeElement || document.activeElement === document.body) {
             createBtn.focus();
         }
+        ensureMainListGhostSpacer(mainListDiv);
         return;
     }
 
@@ -253,6 +285,7 @@ export function updateEmptyState(mainListDiv) {
 
     if (open > 0) {
         mainListDiv.classList.remove('emptyStatePresent');
+        ensureMainListGhostSpacer(mainListDiv);
         return;
     }
 
@@ -378,4 +411,5 @@ export function updateEmptyState(mainListDiv) {
             try { input.setSelectionRange(priorSelStart, priorSelEnd); } catch (e) { /* ignore */ }
         }
     }
+    ensureMainListGhostSpacer(mainListDiv);
 }
