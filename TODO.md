@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Fix calendar hamburger overlap and add empty-state ghost to Today and Projects views on mobile
+- [x] **[MEDIUM]** Fix calendar hamburger overlap and add empty-state ghost to Today and Projects views on mobile
   - Description: Two related mobile layout fixes. (1) On the Calendar view, the hamburger sidebar toggle is positioned at the same vertical level as the month-navigation row, causing it to overlap the right-side next-month `>` arrow on narrow viewports. Lift the hamburger to its own row above the calendar header inside the mobile `@media (max-width: 700px)` block so the prev/next arrows and "May 2026" label sit on a dedicated row below it with no overlap; the existing safe-area-inset-top padding floor stays in place under the hamburger. (2) On the Today and Projects views, when the page has few items the content sits in the top ~30% of the viewport and leaves a large empty void above the tab bar that reads as poorly anchored. Add an empty-state ghost companion that fills the remaining vertical space below the content list — reuse the existing ghost mascot SVG already used on the no-projects welcome state, dimmed to ~50% opacity, with a short caption underneath ("Nothing else due" for Today, "That's all for this project" for Projects). Anchor it via a flex spacer so it centers in whatever vertical space remains after the content list — when the list grows enough to fill the viewport, the ghost is pushed offscreen naturally with no extra logic. Honor the existing companion-ghost preference toggle in settings: when the user has turned the ghost off, the spacer remains empty so the layout doesn't shift.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-20
 
 ## Features
 

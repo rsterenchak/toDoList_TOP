@@ -52,13 +52,19 @@ function extractAllMobileRules(css, selector) {
 // the Calendar view's prev-month chevron / "Month YYYY" label collided with
 // the status bar / Dynamic Island because their mobile top padding was a flat
 // 16-24px rather than reserving env(safe-area-inset-top). Both views now
-// follow the same `calc(max(env(safe-area-inset-top, 0px), 24px) + 24px)`
+// follow the same `calc(max(env(safe-area-inset-top, 0px), 24px) + Npx)`
 // pattern already used by #emptyState.emptyStateNoProjects and #mobileProjHeader
-// elsewhere in the mobile @media block.
+// elsewhere in the mobile @media block. Today's content offset stays at +24px;
+// Calendar's was bumped to +64px so the prev/next/month-label row clears the
+// absolute-positioned #sidebarToggle on a dedicated row beneath it.
 describe('Today + Calendar mobile top padding reserves safe-area-inset-top', () => {
     const css = read('style.css');
     const safeAreaPaddingTopRe =
         /calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*24px\s*\)/;
+    // Calendar's offset is intentionally larger than Today's so the
+    // calendar header row sits beneath the hamburger button.
+    const safeAreaCalendarPaddingTopRe =
+        /calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*(\d+)px\s*\)/;
 
     it('#todayView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px)', () => {
         const rules = extractAllMobileRules(css, '#todayView');
@@ -71,27 +77,36 @@ describe('Today + Calendar mobile top padding reserves safe-area-inset-top', () 
         expect(hasPaddingTop).toBe(true);
     });
 
-    it('#calendarView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px)', () => {
+    it('#calendarView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px), with enough offset to clear the hamburger', () => {
         const rules = extractAllMobileRules(css, '#calendarView');
         expect(rules.length).toBeGreaterThan(0);
-        const hasPaddingTop = rules.some(rule => {
+        let matchedOffset = null;
+        rules.forEach(rule => {
             // Accept either an explicit `padding-top:` declaration or a
             // padding shorthand whose first value is the safe-area calc().
-            if (
+            const explicit = rule.match(
                 new RegExp(
-                    'padding-top\\s*:\\s*' + safeAreaPaddingTopRe.source
-                ).test(rule)
-            ) {
-                return true;
+                    'padding-top\\s*:\\s*' + safeAreaCalendarPaddingTopRe.source
+                )
+            );
+            if (explicit) {
+                matchedOffset = parseInt(explicit[1], 10);
+                return;
             }
-            // Match the shorthand directly: `padding: calc(...) ...` where the
-            // first token is the safe-area expression. The safeAreaPaddingTopRe
-            // pattern matches anywhere in the declaration value.
-            return new RegExp(
-                'padding\\s*:\\s*' + safeAreaPaddingTopRe.source
-            ).test(rule);
+            const shorthand = rule.match(
+                new RegExp(
+                    'padding\\s*:\\s*' + safeAreaCalendarPaddingTopRe.source
+                )
+            );
+            if (shorthand) {
+                matchedOffset = parseInt(shorthand[1], 10);
+            }
         });
-        expect(hasPaddingTop).toBe(true);
+        expect(matchedOffset).not.toBeNull();
+        // 24px floor + 8px hamburger top offset + 44px hamburger height = 52px;
+        // require at least 60px so the calendar header sits beneath the
+        // hamburger on its own row instead of overlapping the next-month arrow.
+        expect(matchedOffset).toBeGreaterThanOrEqual(60);
     });
 });
 

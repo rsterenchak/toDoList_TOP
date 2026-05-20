@@ -1381,6 +1381,7 @@ function component() {
                 setCompanionEnabled(next);
                 if (next) ensureCompanion();
                 else      destroyCompanion();
+                applyCompanionGhostPreference();
             },
             'settingsMenuItem--ghost'
         );
@@ -2828,10 +2829,33 @@ function component() {
     todayEmpty.id = 'todayEmpty';
     todayEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
 
+    // Mobile-only ghost spacer that anchors the Today view when the bucket
+    // counts are short. The .viewGhostSpacer rule is gated to ≤700px in
+    // style.css, so the element is inert on desktop. flex:1 fills the
+    // remaining vertical column inside #todayView (which is already
+    // flex-direction: column), centering the ghost + caption in whatever
+    // space is left below the date header / counts / sections. The
+    // companion-ghost preference applies via the body class set in
+    // applyCompanionGhostPreference — it hides the painted ghost while
+    // leaving the spacer's reserved space intact so the layout doesn't
+    // shift when the user toggles it.
+    const todayGhostSpacer = document.createElement('div');
+    todayGhostSpacer.id = 'todayGhostSpacer';
+    todayGhostSpacer.className = 'viewGhostSpacer';
+    todayGhostSpacer.setAttribute('aria-hidden', 'true');
+    const todayGhostMascot = document.createElement('div');
+    todayGhostMascot.className = 'viewGhostMascot';
+    const todayGhostCaption = document.createElement('div');
+    todayGhostCaption.className = 'viewGhostCaption';
+    todayGhostCaption.textContent = 'Nothing else due';
+    todayGhostSpacer.appendChild(todayGhostMascot);
+    todayGhostSpacer.appendChild(todayGhostCaption);
+
     todayView.appendChild(todayDateHeader);
     todayView.appendChild(todayCountSummary);
     todayView.appendChild(todaySections);
     todayView.appendChild(todayEmpty);
+    todayView.appendChild(todayGhostSpacer);
 
     // ── Calendar view shell ──
     // Month grid on the left + day-detail panel on the right. The grid
@@ -3089,6 +3113,7 @@ function component() {
                 setCompanionEnabled(next);
                 if (next) ensureCompanion();
                 else      destroyCompanion();
+                applyCompanionGhostPreference();
             }
         );
     }
@@ -4535,6 +4560,13 @@ function component() {
     // (index.js appends the component right after component() returns).
     setTimeout(ensureCompanion, 0);
 
+    // Mirror the desktop companion-enabled flag onto a body class so the
+    // mobile empty-state ghost spacer (Today + Projects views) can hide its
+    // ghost when the user has turned the floating companion off. Deferred
+    // for the same reason as ensureCompanion above — document.body has to
+    // exist before the class can be toggled.
+    setTimeout(applyCompanionGhostPreference, 0);
+
     // Wire the desktop drag-and-drop import path. Mobile (pointer: coarse)
     // is bailed out inside attachDragDropImport — the file picker covers
     // mobile. Deferred so window listeners attach against the live DOM.
@@ -5074,6 +5106,18 @@ function refreshTodayDateHeader() {
     }
     header.textContent = text;
 }
+
+// Mirror the desktop companion-enabled flag onto body.companion-ghost-off so
+// the mobile empty-state ghost spacers on Today and Projects can hide their
+// painted ghost when the user has the floating companion turned off. The
+// spacer's reserved flex space stays in place (visibility:hidden, not
+// display:none) so the layout doesn't shift on toggle. Idempotent — called
+// from initial setup and from every flip of the companion toggle.
+function applyCompanionGhostPreference() {
+    if (!document.body) return;
+    document.body.classList.toggle('companion-ghost-off', !isCompanionEnabled());
+}
+
 
 // ── Today dashboard renderer ──
 // Pulls the aggregated overdue / today / upcoming buckets from
