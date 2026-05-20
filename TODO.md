@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add safe-area-inset-top padding to Today and Calendar views on mobile
+- [x] **[MEDIUM]** Add safe-area-inset-top padding to Today and Calendar views on mobile
   - Description: On mobile (iOS Safari and notched devices), the Today view's date header ("Tuesday, May 19") and the Calendar view's prev-month arrow / "May 2026" label collide with the iOS status bar / Dynamic Island because `#todayView` and `#calendarView` use flat `padding: 24px 16px` / `padding: 24px 48px` and don't fold in `env(safe-area-inset-top)` the way `#mobileProjHeader`, `#emptyState.emptyStateNoProjects`, and `#sidebarToggle` already do. Fix inside the `@media (max-width: 700px)` block by replacing each view's top padding with `calc(max(env(safe-area-inset-top, 0px), 24px) + Npx)` so the inset is honored on notched devices and a 24px floor (matching the hamburger pattern) keeps regular-browser-tab contexts from hugging the viewport top. Pick `N` so the resulting title position visually matches the existing 24px content gap inside each view (likely keep the current 24px content offset on top of the inset reservation). Also tighten the small gap at the bottom of `#calendarView` on mobile — `padding-bottom: 24px` is stacking on top of the `padding-bottom: var(--mobile-tab-h, 56px)` override, so the day-detail panel sits ~24px above the tab bar instead of flush; collapse the override so only the tab-bar reservation applies.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-19
 
 ## Features
 

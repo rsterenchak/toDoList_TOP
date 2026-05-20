@@ -3888,12 +3888,24 @@ body.row-dragging * { cursor: grabbing !important; }
     #navBar { padding: 0 8px; gap: 6px; }
   }
 
-  /* Calendar view already stacks column-wise at every viewport now;
-     mobile only needs the tighter padding/gap. The day panel is sized
-     to its content here so the whole view scrolls as one column on
-     short screens, rather than fighting the grid for flex space. */
+  /* Today + Calendar view top padding on mobile: reserve the device's
+     safe-area inset (so the date header / "Month YYYY" label / prev-
+     month chevron clear the iOS status bar and Dynamic Island on
+     notched devices and standalone PWAs) with a 24px floor so regular
+     browser-tab contexts that report a 0 inset don't hug the viewport
+     top. The +24px content offset matches the existing visible gap
+     inside each view. Calendar additionally tightens the horizontal
+     gutter from the desktop 48px down to 12px and explicitly sets
+     padding-bottom to 0 so the later `padding-bottom: var(--mobile-tab-h)`
+     rule near the end of this @media stack is the sole source of bottom
+     padding — without that, the mobile shorthand re-asserted a 16px
+     bottom that left the day-detail panel sitting above the tab bar
+     instead of flush. */
+  #todayView {
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
+  }
   #calendarView {
-    padding: 16px 12px;
+    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px) 12px 0;
     gap: 14px;
   }
   #calendarDayPanel {

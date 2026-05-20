@@ -61,9 +61,24 @@ function extractMobileRule(css, selector) {
 
 // Parses a CSS `padding: ...` shorthand into a {top, right, bottom, left}
 // object using the standard CSS expansion rules. Values keep their original
-// unit string so tests can assert on raw declarations.
+// unit string so tests can assert on raw declarations. Splitting tracks
+// parenthesis depth so a calc()/max()/env() expression with internal
+// whitespace is treated as a single value (e.g. the mobile #calendarView
+// rule's `calc(max(env(safe-area-inset-top, 0px), 24px) + 24px) 12px 0`).
 function parsePaddingShorthand(value) {
-    const parts = value.trim().split(/\s+/);
+    const parts = [];
+    let current = '';
+    let depth = 0;
+    for (const ch of value.trim()) {
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        if (depth === 0 && /\s/.test(ch)) {
+            if (current.length) { parts.push(current); current = ''; }
+        } else {
+            current += ch;
+        }
+    }
+    if (current.length) parts.push(current);
     if (parts.length === 1) {
         return { top: parts[0], right: parts[0], bottom: parts[0], left: parts[0] };
     }

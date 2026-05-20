@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-19',
         fixed: [
-            "First-run welcome tour now seeds a \"Getting started\" sample project so every step has a real row to anchor against — rename or delete the sample whenever you're done with it.",
             "First-run welcome tour now walks through the focus-music and settings buttons on their own steps so every navbar control gets a proper introduction.",
             "Mobile first-run flow now opens a four-card welcome carousel introducing projects, the slide-out menu, music, and settings; replay it any time from settings.",
             "Replay welcome tour now lives in a dedicated Help section in both the desktop and mobile settings popovers, opening the right intro for the current viewport.",
             "Pressing ArrowDown on the Today or Calendar header buttons now drops keyboard focus into the visible items list, and ArrowUp from the new-task input returns to the active view pill.",
+            "Today and Calendar views on mobile now reserve the iOS status bar / Dynamic Island inset so their titles no longer collide with device chrome, and the Calendar day-detail panel sits flush against the bottom tab bar instead of stranded above it.",
         ],
     },
 ];
