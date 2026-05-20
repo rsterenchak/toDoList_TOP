@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Preserve keyboard focus on the selected calendar cell after Enter/click re-renders the grid
+- [x] **[MEDIUM]** Preserve keyboard focus on the selected calendar cell after Enter/click re-renders the grid
   - Description: Pressing Enter on a focused `.calendarCell` natively fires the cell's click handler, which assigns `calendarSelectedKey = key` and calls `renderCalendarView()`. That function tears down `#calendarGrid` with `while (grid.firstChild) grid.removeChild(grid.firstChild)` and rebuilds every cell as a fresh `<button>`, so the DOM node that previously held focus is gone and focus falls back to `<body>`. Once focus is on `<body>`, the Calendar arrow-nav, Enter-to-select, and Backspace-to-escape handlers all bail because none of them resolve "current cell" without an active cell as a starting point — the user is stranded inside the day-detail panel below with no way back into the grid. Fix in `renderCalendarView`: after the grid is rebuilt, query the freshly-rendered `.calendarCell` whose `data-date` matches `calendarSelectedKey` and call `.focus()` on it, but only when a cell in the previous grid had focus (use a `document.activeElement.closest('.calendarCell')` check captured before the teardown so non-keyboard interactions — actual mouse clicks — don't trigger a focus jump that would summon the on-screen keyboard on touch devices). After the fix: pressing Enter on a calendar day selects the date, updates the day-detail panel, and keeps focus on the same (now `.isSelected`) cell so ArrowLeft/ArrowRight/ArrowUp/ArrowDown continue navigating the grid and Backspace (or whatever escape contract the Calendar arrow-nav has) still works without an extra click. Same fix applies to mouse-driven re-renders if focus was already on a cell — focus simply stays on the cell that was clicked. Regression test in `todoRowKeyboardNav.test.js` (or a dedicated `calendarKeyboardNav.test.js` if cleaner): with the Calendar view active and a `.calendarCell` focused, dispatch an Enter keydown and assert `document.activeElement` is still a `.calendarCell` with matching `data-date` after the re-render; dispatch with focus elsewhere and assert no focus change.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/todoRowKeyboardNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-20
 
 ## Features
 
