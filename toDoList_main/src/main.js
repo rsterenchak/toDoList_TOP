@@ -3497,6 +3497,12 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
+        // Gated to the Projects view so the Calendar view can claim
+        // ArrowLeft / ArrowRight for grid traversal without conflict.
+        // The Today view does not need these cross-pane shortcuts — the
+        // sidebar is the same projects column either way, but the right
+        // side has no new-task input to receive ArrowRight.
+        if (getActiveView() !== 'projects') return;
         const ae = document.activeElement;
         const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
 
@@ -3620,6 +3626,11 @@ function component() {
         if (!isArrow && !isEnter && !isDelete) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (isAnyModalOrPopoverOpen()) return;
+        // Gated to the Projects view. Today and Calendar have their own
+        // arrow-nav handler that walks their own surfaces; firing this one
+        // on those views would yank focus to a stale .todo-active row in
+        // the hidden #mainList.
+        if (getActiveView() !== 'projects') return;
 
         const mainList = document.getElementById('mainList');
         if (!mainList) return;
@@ -3772,6 +3783,136 @@ function component() {
             if (closeBtn) closeBtn.click();
             e.preventDefault();
         }
+    });
+
+    // ── Today / Calendar view arrow-key navigation ──
+    // Mirrors the Projects-view arrow-nav contract for the two dashboard
+    // views so each surface has the same "press Down, focus the next item"
+    // affordance. Branches off #mainBar's data-view attribute so a single
+    // global listener covers both views without duplicating guards.
+    //
+    //   • TODAY    — ArrowUp / ArrowDown walk between .todayRow.todoRowCard
+    //                rows inside #todaySections in DOM order, clamping at
+    //                the top and bottom (no wrap). Enter on a focused row
+    //                fires the row's click handler (jump to the parent
+    //                project) — when focus is on the title button instead,
+    //                native Enter on the button bubbles to the row's click
+    //                so the existing keyboard path keeps working.
+    //   • CALENDAR — .calendarCell elements inside #calendarGrid form a
+    //                7-column grid. ArrowLeft / ArrowRight move ±1 cell,
+    //                ArrowUp / ArrowDown move ±7 cells, all clamped to the
+    //                rendered range (no auto-advance to prev/next month).
+    //                Enter fires the cell's existing click so the day-
+    //                detail panel updates. Calendar cells are <button>s,
+    //                so native Enter already activates them; we still
+    //                handle Enter here to keep the contract uniform.
+    //
+    // Guards mirror the Projects-view handler: skip when any modal/popover
+    // is open, when modifier keys are held, and when focus is in an editable
+    // input/textarea/contentEditable outside the navigable surface.
+    document.addEventListener('keydown', function(e) {
+        const isUp    = e.key === 'ArrowUp';
+        const isDown  = e.key === 'ArrowDown';
+        const isLeft  = e.key === 'ArrowLeft';
+        const isRight = e.key === 'ArrowRight';
+        const isEnter = e.key === 'Enter';
+        if (!isUp && !isDown && !isLeft && !isRight && !isEnter) return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+
+        const mainBar = document.getElementById('mainBar');
+        if (!mainBar) return;
+        const view = mainBar.getAttribute('data-view');
+        if (view !== 'today' && view !== 'calendar') return;
+
+        const ae = document.activeElement;
+        const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
+
+        if (view === 'today') {
+            // ArrowLeft / ArrowRight are unused on Today — let them fall
+            // through so caret movement in any focused input still works.
+            if (isLeft || isRight) return;
+
+            const sections = document.getElementById('todaySections');
+            if (!sections) return;
+            const rows = Array.prototype.slice.call(sections.querySelectorAll('.todayRow.todoRowCard'));
+            if (rows.length === 0) return;
+
+            // Focus may be on the row itself, on a descendant control
+            // (e.g. .todayRowTitle button when the user just dropped in
+            // from the view pill), or elsewhere on the page.
+            let currentRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
+            if (currentRow && !sections.contains(currentRow)) currentRow = null;
+
+            // Skip when typing in an input outside the navigable surface;
+            // descendant <button>s (the title) are fine — buttons aren't
+            // editable so isInputLike is false there.
+            if (isInputLike && !currentRow) return;
+
+            if (isUp || isDown) {
+                const idx = currentRow ? rows.indexOf(currentRow) : -1;
+                let nextIdx;
+                if (isDown) {
+                    nextIdx = idx === -1 ? 0 : Math.min(idx + 1, rows.length - 1);
+                } else {
+                    nextIdx = idx === -1 ? rows.length - 1 : Math.max(idx - 1, 0);
+                }
+                const target = rows[nextIdx];
+                if (!target) return;
+                target.focus();
+                e.preventDefault();
+                return;
+            }
+
+            if (isEnter) {
+                // Only fire row.click() when focus is on the row container
+                // itself. When focus is on the title <button>, native Enter
+                // already dispatches a click that bubbles up to the row's
+                // own click handler — handling it here too would double-fire.
+                if (!currentRow || ae !== currentRow) return;
+                currentRow.click();
+                e.preventDefault();
+            }
+            return;
+        }
+
+        // view === 'calendar'
+        const grid = document.getElementById('calendarGrid');
+        if (!grid) return;
+        const cells = Array.prototype.slice.call(grid.querySelectorAll('.calendarCell'));
+        if (cells.length === 0) return;
+
+        let currentCell = ae && ae.closest ? ae.closest('.calendarCell') : null;
+        if (currentCell && !grid.contains(currentCell)) currentCell = null;
+
+        if (isInputLike && !currentCell) return;
+
+        if (isEnter) {
+            // Cells are <button>s, so native Enter already activates them.
+            // Only handle the explicit-focus case to preserve the contract
+            // with Today; skip otherwise to avoid double-fire.
+            if (!currentCell || ae !== currentCell) return;
+            currentCell.click();
+            e.preventDefault();
+            return;
+        }
+
+        if (!currentCell) return;
+        const idx = cells.indexOf(currentCell);
+        if (idx === -1) return;
+
+        // ±1 for left/right, ±7 for up/down (7-column grid). Clamp to the
+        // rendered range — no auto-advance to prev/next month.
+        let nextIdx = idx;
+        if (isLeft)       nextIdx = Math.max(idx - 1, 0);
+        else if (isRight) nextIdx = Math.min(idx + 1, cells.length - 1);
+        else if (isUp)    nextIdx = (idx - 7) >= 0 ? idx - 7 : idx;
+        else if (isDown)  nextIdx = (idx + 7) < cells.length ? idx + 7 : idx;
+
+        e.preventDefault();
+        if (nextIdx === idx) return;
+        const target = cells[nextIdx];
+        if (target) target.focus();
     });
 
     // ── sidebar resize logic ──
@@ -5231,6 +5372,11 @@ function buildTodayRow(entry, bucket, options) {
     const row = document.createElement('div');
     row.className = 'todayRow todoRowCard';
     row.setAttribute('data-bucket', bucket);
+    // tabindex="-1" lets the view-aware arrow-nav handler programmatically
+    // focus the row container without putting it in the browser tab order.
+    // Tab still walks the checkbox / title button per their natural order;
+    // ArrowUp/ArrowDown walk row containers via the global handler.
+    row.setAttribute('tabindex', '-1');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
