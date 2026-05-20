@@ -5614,6 +5614,16 @@ function renderCalendarView() {
 
     monthLabel.textContent = CALENDAR_MONTH_NAMES[calendarVisibleMonth] + ' ' + calendarVisibleYear;
 
+    // Capture whether focus is inside the current grid before the
+    // teardown discards every cell node. The Calendar arrow-nav, Enter,
+    // and Backspace handlers all key off a focused .calendarCell, so
+    // without a re-focus pass the user is stranded on <body> after the
+    // rebuild. grid.contains() restricts the gate to the live grid so
+    // mobile taps — where the <button> never receives focus — don't
+    // auto-focus a cell and summon the on-screen keyboard.
+    const ae = document.activeElement;
+    const hadFocusedCell = !!(ae && ae.closest && ae.closest('.calendarCell') && grid.contains(ae));
+
     while (grid.firstChild) grid.removeChild(grid.firstChild);
 
     const monthMap = listLogic.getCalendarMonth(calendarVisibleYear, calendarVisibleMonth);
@@ -5665,6 +5675,11 @@ function renderCalendarView() {
 
         grid.appendChild(cell);
     });
+
+    if (hadFocusedCell && calendarSelectedKey) {
+        const refocus = grid.querySelector('.calendarCell[data-date="' + calendarSelectedKey + '"]');
+        if (refocus) refocus.focus();
+    }
 
     renderCalendarDayPanel(monthMap);
 }
