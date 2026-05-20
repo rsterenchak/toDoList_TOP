@@ -183,4 +183,73 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/altKey/);
         expect(body).toMatch(/shiftKey/);
     });
+
+    // Reaches into the view-aware Today / Calendar keydown handler —
+    // identified by referencing both #todaySections and #calendarGrid.
+    // Distinct from the Projects-view handler.
+    function extractViewArrowHandler() {
+        const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
+        let match;
+        while ((match = re.exec(main)) !== null) {
+            const bodyStart = match.index + match[0].length - 1;
+            let depth = 0;
+            for (let i = bodyStart; i < main.length; i++) {
+                const c = main[i];
+                if (c === '{') depth++;
+                else if (c === '}') {
+                    depth--;
+                    if (depth === 0) {
+                        const body = main.slice(bodyStart + 1, i);
+                        if (/todaySections/.test(body) && /calendarGrid/.test(body)) {
+                            return body;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        throw new Error('view-aware arrow-nav keydown handler not found in main.js');
+    }
+
+    it('Today: ArrowUp on the first row escapes up to #viewPillToday', () => {
+        // Spatial inverse of dropFocusIntoMainView: the TODAY pill sits
+        // directly above the today list, so ArrowUp out of the first row
+        // must escape back into the header chrome. Without this exit,
+        // keyboard users on mobile (where the sidebar is collapsed and
+        // the sideMain → sidebarToggle ladder isn't available) have no
+        // upward escape from the today list.
+        const body = extractViewArrowHandler();
+        expect(body).toMatch(/getElementById\(\s*['"]viewPillToday['"]\s*\)/);
+    });
+
+    it('Today: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
+        const body = extractViewArrowHandler();
+        const idx = body.indexOf("getElementById('viewPillToday')");
+        expect(idx).toBeGreaterThan(-1);
+        // Search forward from the lookup site for the guards that gate
+        // the focus call — without stopPropagation the cross-pane
+        // ArrowLeft/ArrowRight handler would also fire and clobber the
+        // pill focus we just placed.
+        const window = body.slice(idx, idx + 400);
+        expect(window).toMatch(/stopPropagation\(\s*\)/);
+        expect(window).toMatch(/preventDefault\(\s*\)/);
+    });
+
+    it('Calendar: ArrowUp on a top-row cell escapes up to #viewPillCalendar', () => {
+        // Same boundary as the Today branch — the CALENDAR pill sits
+        // directly above the grid, so ArrowUp from a top-row cell
+        // (idx < 7 in the 7-column grid) must escape into the header
+        // chrome rather than clamping at the current cell.
+        const body = extractViewArrowHandler();
+        expect(body).toMatch(/getElementById\(\s*['"]viewPillCalendar['"]\s*\)/);
+    });
+
+    it('Calendar: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
+        const body = extractViewArrowHandler();
+        const idx = body.indexOf("getElementById('viewPillCalendar')");
+        expect(idx).toBeGreaterThan(-1);
+        const window = body.slice(idx, idx + 400);
+        expect(window).toMatch(/stopPropagation\(\s*\)/);
+        expect(window).toMatch(/preventDefault\(\s*\)/);
+    });
 });

@@ -3850,6 +3850,34 @@ function component() {
             if (isInputLike && !currentRow) return;
 
             if (isUp || isDown) {
+                // Anchor focus to the row container when the user is on a
+                // descendant (e.g. .todayRowTitle button). The next keystroke
+                // moves between rows; the title button remains reachable via
+                // Enter or Tab. Mirrors the .todo-active nav-mode behavior
+                // committed Projects-view rows have.
+                if (currentRow && ae !== currentRow) {
+                    sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
+                        if (el !== currentRow) el.classList.remove('todo-active');
+                    });
+                    currentRow.classList.add('todo-active');
+                    currentRow.focus();
+                    e.preventDefault();
+                    return;
+                }
+                // ArrowUp boundary: escape the first row up to the TODAY pill
+                // so keyboard users can walk into the header chrome without
+                // reaching for the mouse. stopPropagation keeps the cross-pane
+                // ArrowLeft/ArrowRight handler from also firing.
+                if (isUp && currentRow && currentRow === rows[0]) {
+                    const pill = document.getElementById('viewPillToday');
+                    if (pill) {
+                        currentRow.classList.remove('todo-active');
+                        pill.focus();
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                }
                 const idx = currentRow ? rows.indexOf(currentRow) : -1;
                 let nextIdx;
                 if (isDown) {
@@ -3859,6 +3887,10 @@ function component() {
                 }
                 const target = rows[nextIdx];
                 if (!target) return;
+                sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
+                    if (el !== target) el.classList.remove('todo-active');
+                });
+                target.classList.add('todo-active');
                 target.focus();
                 e.preventDefault();
                 return;
@@ -3900,6 +3932,21 @@ function component() {
         if (!currentCell) return;
         const idx = cells.indexOf(currentCell);
         if (idx === -1) return;
+
+        // ArrowUp boundary: escape the top row of cells (idx < 7 in the
+        // 7-column grid) up to the CALENDAR pill so keyboard users can
+        // walk into the header chrome without reaching for the mouse.
+        // stopPropagation keeps the cross-pane ArrowLeft/ArrowRight
+        // handler from also firing.
+        if (isUp && idx < 7) {
+            const pill = document.getElementById('viewPillCalendar');
+            if (pill) {
+                pill.focus();
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+        }
 
         // ±1 for left/right, ±7 for up/down (7-column grid). Clamp to the
         // rendered range — no auto-advance to prev/next month.
