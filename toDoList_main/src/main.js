@@ -3947,7 +3947,38 @@ function component() {
             return;
         }
 
-        if (!currentCell) return;
+        if (!currentCell) {
+            // Panel→grid boundary: ArrowUp from the first .todayRow.todoRowCard
+            // inside #calendarDayList lifts focus back into the grid, mirroring
+            // the grid→panel ArrowDown boundary below. Resolves the landing
+            // cell via the same fallback chain as renderCalendarView's
+            // post-rebuild re-focus: calendarSelectedKey → today → last cell.
+            if (isUp) {
+                const dayList = document.getElementById('calendarDayList');
+                const panelRows = dayList
+                    ? Array.prototype.slice.call(dayList.querySelectorAll('.todayRow.todoRowCard'))
+                    : [];
+                const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
+                if (panelRows.length > 0 && panelRow === panelRows[0]) {
+                    let target = null;
+                    if (calendarSelectedKey) {
+                        target = grid.querySelector('.calendarCell[data-date="' + calendarSelectedKey + '"]');
+                    }
+                    if (!target) {
+                        const todayKey = formatCalendarKeyForDate(new Date());
+                        target = grid.querySelector('.calendarCell[data-date="' + todayKey + '"]');
+                    }
+                    if (!target) target = cells[cells.length - 1];
+                    if (target) {
+                        target.focus();
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                }
+            }
+            return;
+        }
         const idx = cells.indexOf(currentCell);
         if (idx === -1) return;
 
@@ -3963,6 +3994,27 @@ function component() {
                 e.preventDefault();
                 e.stopPropagation();
                 return;
+            }
+        }
+
+        // Grid→panel boundary: ArrowDown from a cell in the last rendered
+        // grid row (idx >= totalCells - 7) drops focus into the first
+        // .todayRow.todoRowCard inside #calendarDayList when at least one
+        // is present, instead of clamping. "Last row" reads off grid child
+        // count so the rule works whether the month renders 5 rows or 6,
+        // and treats in-month and outOfMonth cells in that trailing row
+        // identically (the visual difference is opacity, not navigability).
+        if (isDown) {
+            const totalCells = grid.children.length;
+            if (idx >= totalCells - 7) {
+                const dayList = document.getElementById('calendarDayList');
+                const firstPanelRow = dayList ? dayList.querySelector('.todayRow.todoRowCard') : null;
+                if (firstPanelRow) {
+                    firstPanelRow.focus();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
             }
         }
 
