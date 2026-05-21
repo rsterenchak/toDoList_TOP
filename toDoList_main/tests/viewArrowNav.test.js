@@ -145,6 +145,48 @@ describe('view-aware arrow-key navigation — Today and Calendar', () => {
         expect(body).toMatch(/currentCell\.click\(\s*\)/);
     });
 
+    it('Calendar day-detail panel: ArrowUp/Down walk .todayRow.todoRowCard rows inside #calendarDayList', () => {
+        // Mirrors the Today view's row-walk branch but scoped to the
+        // day-detail panel. Without this branch, ArrowDown on a focused
+        // panel row was a no-op — the handler only knew the panel→grid
+        // ArrowUp boundary, so users were stranded on the first row.
+        const body = extractViewArrowHandler();
+        expect(body).toMatch(/getElementById\(\s*['"]calendarDayList['"]\s*\)/);
+        // The walk operates on the full list of panel rows, not just the
+        // first one, so the indexed step works for any current row.
+        expect(body).toMatch(/querySelectorAll\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
+    });
+
+    it('Calendar day-detail panel: row walk clamps at the ends (no wrap)', () => {
+        const body = extractViewArrowHandler();
+        // Down clamps at panelRows.length - 1, Up clamps at 0. Pinning the
+        // panelRows reference keeps a future variable rename from silently
+        // changing the clamp target.
+        expect(body).toMatch(/Math\.min\(\s*idx\s*\+\s*1\s*,\s*panelRows\.length\s*-\s*1\s*\)/);
+        expect(body).toMatch(/Math\.max\(\s*idx\s*-\s*1\s*,\s*0\s*\)/);
+    });
+
+    it('Calendar day-detail panel: Enter on a focused row fires the row click (jump to project)', () => {
+        const body = extractViewArrowHandler();
+        // Same contract as Today's Enter: the row click handler is the
+        // jump-to-project path the mouse uses, so reusing it keeps the
+        // keyboard and pointer flows in lockstep.
+        expect(body).toMatch(/panelRow\.click\(\s*\)/);
+    });
+
+    it('Calendar day-detail panel: descendant focus anchors to the row container with .todo-active', () => {
+        // When focus is on a sub-control of a panel row (e.g., the
+        // .todayRowTitle button), the next ArrowUp/Down anchors to the
+        // row div with .todo-active before walking — the same nav-mode
+        // contract Today's row branch provides.
+        const body = extractViewArrowHandler();
+        // The anchor branch lives in the day-detail block (panelRow + dayList).
+        expect(body).toMatch(/ae\s*!==\s*panelRow/);
+        // The same .todo-active class committed Projects/Today rows use.
+        expect(body).toMatch(/classList\.add\(\s*['"]todo-active['"]\s*\)/);
+        expect(body).toMatch(/panelRow\.focus\(\s*\)/);
+    });
+
     it('preventDefault is called so the arrow keys do not also scroll the page', () => {
         const body = extractViewArrowHandler();
         const matches = body.match(/preventDefault\(\s*\)/g) || [];
