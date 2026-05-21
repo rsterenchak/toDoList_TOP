@@ -2976,8 +2976,13 @@ function component() {
     // Arrow-key navigation for the calendar month-nav pair. The buttons
     // form an isolated horizontal pair reached vertically via ArrowDown
     // from #viewPillCalendar: ArrowLeft/ArrowRight traverse between
-    // calendarPrev and calendarNext but clamp at the boundary so focus
-    // never leaves the pair horizontally; ArrowUp returns to
+    // calendarPrev and calendarNext as the inter-arrow path; on the
+    // matching-direction edge (ArrowLeft on calendarPrev, ArrowRight on
+    // calendarNext) the keystroke activates the button instead of
+    // clamping, advancing or retreating the visible month via the
+    // existing click handler. Focus stays on the same arrow afterward
+    // because renderCalendarView() only rebuilds #calendarGrid, not
+    // the header that owns these buttons. ArrowUp returns to
     // #viewPillCalendar; ArrowDown drops into the grid using the same
     // fallback chain as firstFocusableInActiveMainView's calendar branch.
     // The buttons live inside #calendarView (not #nav), so their keydown
@@ -3015,12 +3020,14 @@ function component() {
             e.preventDefault();
             e.stopPropagation();
             if (e.target === calendarPrevBtn) calendarNextBtn.focus();
+            else if (e.target === calendarNextBtn) calendarNextBtn.click();
             return;
         }
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
             e.stopPropagation();
             if (e.target === calendarNextBtn) calendarPrevBtn.focus();
+            else if (e.target === calendarPrevBtn) calendarPrevBtn.click();
             return;
         }
     }

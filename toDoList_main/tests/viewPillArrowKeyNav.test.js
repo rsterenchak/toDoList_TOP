@@ -351,19 +351,57 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         expect(body).toMatch(/firstFocusableInActiveMainView\(\s*\)/);
     });
 
-    it('the calendar month-nav keydown handler clamps ArrowLeft on calendarPrev and ArrowRight on calendarNext', () => {
+    it('the calendar month-nav keydown handler shifts focus between calendarPrev and calendarNext on inter-arrow ArrowLeft / ArrowRight', () => {
         const body = extractCalendarNavArrowKeyHandler();
         // The arrows form an isolated pair: ArrowRight from
-        // calendarPrev moves to calendarNext, and ArrowLeft from
-        // calendarNext moves to calendarPrev, but neither escapes
-        // horizontally to viewPillCalendar or pomodoroToggle. Escape
-        // is vertical-only (ArrowUp to pill, ArrowDown to grid).
+        // calendarPrev moves focus to calendarNext, and ArrowLeft from
+        // calendarNext moves focus to calendarPrev. Neither escapes
+        // horizontally to viewPillCalendar or pomodoroToggle — escape
+        // is vertical-only (ArrowUp to pill, ArrowDown to grid). The
+        // matching-direction edges (ArrowLeft on calendarPrev,
+        // ArrowRight on calendarNext) activate the button instead and
+        // are covered separately below.
         const rightBranch = body.match(/===\s*['"]ArrowRight['"][\s\S]{0,400}/);
         expect(rightBranch).toBeTruthy();
         expect(rightBranch[0]).toMatch(/calendarPrevBtn[\s\S]{0,120}calendarNextBtn\.focus\(\s*\)/);
         const leftBranch = body.match(/===\s*['"]ArrowLeft['"][\s\S]{0,400}/);
         expect(leftBranch).toBeTruthy();
         expect(leftBranch[0]).toMatch(/calendarNextBtn[\s\S]{0,120}calendarPrevBtn\.focus\(\s*\)/);
+    });
+
+    it('the calendar month-nav keydown handler activates calendarPrev on ArrowLeft and calendarNext on ArrowRight (matching-direction activation)', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // Pressing the arrow that visually matches the button (Left on
+        // ‹ / Right on ›) advances or retreats the visible month via
+        // the existing click handler so keyboard users get the same
+        // "press the direction to step that direction" affordance as a
+        // mouse click. Focus stays on the same arrow afterward —
+        // renderCalendarView() only rebuilds #calendarGrid, leaving
+        // the header buttons (and thus document.activeElement) intact.
+        const rightBranch = body.match(/===\s*['"]ArrowRight['"][\s\S]{0,400}/);
+        expect(rightBranch).toBeTruthy();
+        expect(rightBranch[0]).toMatch(/calendarNextBtn[\s\S]{0,120}calendarNextBtn\.click\(\s*\)/);
+        const leftBranch = body.match(/===\s*['"]ArrowLeft['"][\s\S]{0,400}/);
+        expect(leftBranch).toBeTruthy();
+        expect(leftBranch[0]).toMatch(/calendarPrevBtn[\s\S]{0,120}calendarPrevBtn\.click\(\s*\)/);
+    });
+
+    it('the calendar month-nav matching-direction activation does NOT manually re-focus the same arrow', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // The header (#calendarHeader) is not re-rendered by
+        // renderCalendarView() — only #calendarGrid is torn down and
+        // rebuilt — so document.activeElement naturally stays on the
+        // arrow that fired the keystroke. A redundant explicit
+        // calendarPrevBtn.focus() / calendarNextBtn.focus() after the
+        // matching-direction .click() would risk shadowing future
+        // behavior changes and is unnecessary. The ArrowLeft branch
+        // must not contain `calendarPrevBtn.focus()` and the
+        // ArrowRight branch must not contain `calendarNextBtn.focus()`
+        // — those focus calls belong only to the inter-arrow paths.
+        const rightBranch = body.match(/===\s*['"]ArrowRight['"][\s\S]{0,400}/);
+        expect(rightBranch[0]).not.toMatch(/calendarNextBtn[\s\S]{0,120}calendarNextBtn\.focus\(\s*\)/);
+        const leftBranch = body.match(/===\s*['"]ArrowLeft['"][\s\S]{0,400}/);
+        expect(leftBranch[0]).not.toMatch(/calendarPrevBtn[\s\S]{0,120}calendarPrevBtn\.focus\(\s*\)/);
     });
 
     // Side-aware top-row escape: ArrowUp from a .calendarCell in the
