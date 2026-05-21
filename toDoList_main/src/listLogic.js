@@ -1136,15 +1136,18 @@ export const listLogic = (function () {
     // todos so the welcome coachmark tour has live DOM targets to anchor
     // to. Gated on a separate todoapp_sampleSeeded flag (independent of
     // the onboarding-complete flag) so a user who deletes the sample
-    // doesn't get it back on the next load, and a manual tour replay
-    // can't re-seed it either. Returns true when a seed was written.
+    // doesn't get it back on the next load. Returns true when a seed
+    // was written.
     //
-    // No-op when the flag is set OR when any project already exists —
-    // the second guard protects against an imported-file install where a
-    // user has projects but never went through onboarding, so the seed
-    // can't clobber real data.
-    function seedSampleProject() {
-        if (isSampleSeeded()) return false;
+    // Pass `{ force: true }` to bypass the once-per-install flag — the
+    // replay-tour path uses this so the tour always has real targets to
+    // anchor to. The "don't clobber real data" guard (projects already
+    // exist) still applies in force mode; the caller is responsible for
+    // skipping the call when the user has their own projects so a sample
+    // can't surprise-appear.
+    function seedSampleProject(options) {
+        const force = options && options.force === true;
+        if (!force && isSampleSeeded()) return false;
         if (Object.keys(allProjects).length > 0) return false;
 
         const name = 'Getting started';
