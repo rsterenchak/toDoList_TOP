@@ -365,4 +365,73 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         expect(leftBranch).toBeTruthy();
         expect(leftBranch[0]).toMatch(/calendarNextBtn[\s\S]{0,120}calendarPrevBtn\.focus\(\s*\)/);
     });
+
+    // Side-aware top-row escape: ArrowUp from a .calendarCell in the
+    // first grid row (idx < 7) must land on the month-nav arrow that
+    // sits spatially nearest the column, not on #viewPillCalendar.
+    // Cells in columns 0–2 (Sun/Mon/Tue) escape up to #calendarPrev;
+    // cells in columns 3–6 (Wed/Thu/Fri/Sat) escape up to
+    // #calendarNext. The Wednesday tie goes right because reading
+    // order is already moving rightward when focus hits the middle
+    // column. outOfMonth cells in the top row follow the same rule —
+    // they're focusable and the visual leading-day distinction
+    // shouldn't affect the return path.
+    function extractCalendarTopRowEscape() {
+        // Locate the top-row ArrowUp branch in the document-level
+        // grid arrow-nav handler. The branch is uniquely identified
+        // by the `idx < 7` predicate paired with the `isUp` flag.
+        const re = /if\s*\(\s*isUp\s*&&\s*idx\s*<\s*7\s*\)\s*\{[\s\S]*?\n\s*\}\s*\n/;
+        const match = main.match(re);
+        if (!match) throw new Error('top-row ArrowUp branch not found in main.js');
+        return match[0];
+    }
+
+    it('the top-row ArrowUp branch routes left-half cells (cols 0–2) up to #calendarPrev', () => {
+        const branch = extractCalendarTopRowEscape();
+        // The branch must mention calendarPrev as a focus target so
+        // cells in Sun/Mon/Tue columns escape into the prev arrow.
+        expect(branch).toMatch(/['"]calendarPrev['"]|calendarPrevBtn/);
+        // The branch must consult the column index via idx % 7 with
+        // the ≤ 2 threshold. Without this split, every cell in the
+        // top row falls into the same target regardless of column.
+        expect(branch).toMatch(/idx\s*%\s*7\s*\)?\s*<=?\s*2|idx\s*%\s*7\s*\)?\s*<\s*3/);
+    });
+
+    it('the top-row ArrowUp branch routes right-half cells (cols 3–6) up to #calendarNext', () => {
+        const branch = extractCalendarTopRowEscape();
+        // The branch must also mention calendarNext as a focus target
+        // so cells in Wed/Thu/Fri/Sat columns escape into the next
+        // arrow rather than the pill.
+        expect(branch).toMatch(/['"]calendarNext['"]|calendarNextBtn/);
+    });
+
+    it('the top-row ArrowUp branch no longer routes straight back to #viewPillCalendar', () => {
+        const branch = extractCalendarTopRowEscape();
+        // The old behavior (focus the pill from any top-row cell)
+        // bypassed the month-nav arrows entirely, leaving them
+        // unreachable from the grid. The new branch must not focus
+        // viewPillCalendar — that path now belongs to the arrows'
+        // own ArrowUp handler.
+        expect(branch).not.toMatch(/viewPillCalendar/);
+    });
+
+    it('the top-row ArrowUp branch preventDefaults and stops propagation', () => {
+        const branch = extractCalendarTopRowEscape();
+        // Same gates as the original branch: without preventDefault
+        // the keystroke would still scroll the page; without
+        // stopPropagation the cross-pane ArrowLeft/ArrowRight handler
+        // could also fire and yank focus.
+        expect(branch).toMatch(/preventDefault\(\s*\)/);
+        expect(branch).toMatch(/stopPropagation\(\s*\)/);
+    });
+
+    it('the top-row ArrowUp branch does not special-case outOfMonth cells', () => {
+        const branch = extractCalendarTopRowEscape();
+        // The visual leading-day distinction is opacity, not
+        // navigability. Adding an outOfMonth gate here would create
+        // a hole in the keyboard contract — outOfMonth cells in the
+        // top row would route somewhere other than the side-nearest
+        // arrow. The branch must remain index-only.
+        expect(branch).not.toMatch(/outOfMonth/);
+    });
 });

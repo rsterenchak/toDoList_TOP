@@ -4114,14 +4114,19 @@ function component() {
         if (idx === -1) return;
 
         // ArrowUp boundary: escape the top row of cells (idx < 7 in the
-        // 7-column grid) up to the CALENDAR pill so keyboard users can
-        // walk into the header chrome without reaching for the mouse.
-        // stopPropagation keeps the cross-pane ArrowLeft/ArrowRight
-        // handler from also firing.
+        // 7-column grid) up to the side-nearest month-nav arrow so the
+        // arrow pair is reachable from the grid without Tab. Columns 0-2
+        // (Sun/Mon/Tue) escape to #calendarPrev; columns 3-6
+        // (Wed/Thu/Fri/Sat) escape to #calendarNext — the Wednesday tie
+        // goes right because reading order is already moving rightward
+        // when focus hits the middle column. outOfMonth cells in the top
+        // row follow the same rule (the visual leading-day distinction
+        // doesn't affect the return path). stopPropagation keeps the
+        // cross-pane ArrowLeft/ArrowRight handler from also firing.
         if (isUp && idx < 7) {
-            const pill = document.getElementById('viewPillCalendar');
-            if (pill) {
-                pill.focus();
+            const target = document.getElementById((idx % 7) <= 2 ? 'calendarPrev' : 'calendarNext');
+            if (target) {
+                target.focus();
                 e.preventDefault();
                 e.stopPropagation();
                 return;
