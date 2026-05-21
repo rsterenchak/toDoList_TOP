@@ -1469,21 +1469,28 @@ function component() {
     nav.appendChild(importFileInput);
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
-    // across the seven header controls (sidebarToggle → viewPillProjects
+    // across the header controls (sidebarToggle → viewPillProjects
     // → viewPillToday → viewPillCalendar → pomodoroToggle → musicToggle
     // → settingsToggle) so keyboard users can flow across the chrome
-    // without tabbing. The pill references resolve at handler execution
-    // time, by which point component() has finished initialising them.
-    // Bails when any popover/modal is open so the in-popover focus
-    // management owns the keystrokes; bails on any modifier so OS-level
-    // chords pass through. stopPropagation keeps the document-level
-    // cross-pane handler from also re-routing focus to a project row or
-    // new-task input.
+    // without tabbing. When the Calendar view is active, the walk also
+    // includes calendarPrevBtn and calendarNextBtn between
+    // viewPillCalendar and pomodoroToggle so the month-nav buttons stay
+    // reachable; on other views they're hidden and skipped. The pill
+    // references resolve at handler execution time, by which point
+    // component() has finished initialising them. Bails when any
+    // popover/modal is open so the in-popover focus management owns the
+    // keystrokes; bails on any modifier so OS-level chords pass through.
+    // stopPropagation keeps the document-level cross-pane handler from
+    // also re-routing focus to a project row or new-task input.
     nav.addEventListener('keydown', function(e) {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar, pomodoroToggle, musicToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar];
+        if (getActiveView() === 'calendar') {
+            order.push(calendarPrevBtn, calendarNextBtn);
+        }
+        order.push(pomodoroToggle, musicToggle, settingsToggle);
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
@@ -2954,6 +2961,30 @@ function component() {
     calendarNextBtn.addEventListener('click', function() {
         shiftCalendarMonth(1);
     });
+
+    // ArrowLeft / ArrowRight on the calendar month-nav buttons continues
+    // the header walk: ArrowLeft from calendarPrev returns to
+    // viewPillCalendar, ArrowRight from calendarNext steps into
+    // pomodoroToggle, and the prev↔next pair traverses between
+    // themselves. The buttons live inside #calendarView (not #nav), so
+    // their keydown never bubbles to the nav listener — they need their
+    // own handler that mirrors the same order, gates, and focus moves.
+    function calendarNavArrowKey(e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar, calendarPrevBtn, calendarNextBtn, pomodoroToggle, musicToggle, settingsToggle];
+        const idx = order.indexOf(e.target);
+        if (idx === -1) return;
+        const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+        const nextBtn = order[nextIdx];
+        if (!nextBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        nextBtn.focus();
+    }
+    calendarPrevBtn.addEventListener('keydown', calendarNavArrowKey);
+    calendarNextBtn.addEventListener('keydown', calendarNavArrowKey);
 
     nav.insertBefore(viewSwitcher, pomodoroToggle);
     main2.appendChild(todayView);

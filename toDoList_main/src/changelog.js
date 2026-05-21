@@ -10,13 +10,13 @@ export const changelog = [
             "ArrowDown from the TODAY and CALENDAR view pills now lands on the first row card or selected day cell so the next keystroke advances without an extra press.",
             "ArrowDown off the bottom row of the Calendar grid now drops focus into the day-detail list below, and ArrowUp from the first day-detail row returns to the calendar.",
             "ArrowUp / ArrowDown now walk between rows in the Calendar day-detail list, and Enter on a focused row jumps to its parent project.",
+            "ArrowLeft / ArrowRight header walk now includes the Calendar month prev / next buttons when the Calendar view is active.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-20',
         fixed: [
-            "ArrowUp from the first Today row or top-row Calendar cell now jumps back to the matching view pill, and ArrowDown anchors focus on the row card before stepping between rows.",
             "Pressing Enter on a Calendar day no longer strands keyboard focus on the page body — focus stays on the selected cell so arrow-key navigation keeps working without an extra click.",
         ],
     },
