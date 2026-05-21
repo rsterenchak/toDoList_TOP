@@ -235,22 +235,35 @@ describe('header / footer arrow-key navigation', () => {
         expect(window).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('Calendar: ArrowUp on a top-row cell escapes up to #viewPillCalendar', () => {
-        // Same boundary as the Today branch — the CALENDAR pill sits
-        // directly above the grid, so ArrowUp from a top-row cell
-        // (idx < 7 in the 7-column grid) must escape into the header
-        // chrome rather than clamping at the current cell.
+    it('Calendar: ArrowUp on a top-row cell escapes to the side-nearest month-nav arrow', () => {
+        // Boundary is side-aware rather than always-pill: the month-nav
+        // arrow pair (#calendarPrev / #calendarNext) sits between the
+        // pill and the grid, so ArrowUp from a top-row cell must land
+        // on whichever arrow is spatially nearer. Cells in columns 0–2
+        // (Sun/Mon/Tue) escape up to #calendarPrev; cells in columns
+        // 3–6 (Wed/Thu/Fri/Sat) escape up to #calendarNext. The pill
+        // itself is reached via a second ArrowUp from the arrows.
         const body = extractViewArrowHandler();
-        expect(body).toMatch(/getElementById\(\s*['"]viewPillCalendar['"]\s*\)/);
+        // Locate the top-row ArrowUp branch by its `idx < 7` predicate
+        // so the assertions only consider that branch (not, for example,
+        // arrow strings that might appear in unrelated handler logic).
+        const branchMatch = body.match(/if\s*\(\s*isUp\s*&&\s*idx\s*<\s*7\s*\)\s*\{[\s\S]*?\n\s*\}/);
+        expect(branchMatch).toBeTruthy();
+        expect(branchMatch[0]).toMatch(/['"]calendarPrev['"]|calendarPrevBtn/);
+        expect(branchMatch[0]).toMatch(/['"]calendarNext['"]|calendarNextBtn/);
     });
 
     it('Calendar: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
         const body = extractViewArrowHandler();
-        const idx = body.indexOf("getElementById('viewPillCalendar')");
-        expect(idx).toBeGreaterThan(-1);
-        const window = body.slice(idx, idx + 400);
-        expect(window).toMatch(/stopPropagation\(\s*\)/);
-        expect(window).toMatch(/preventDefault\(\s*\)/);
+        // Locate the top-row ArrowUp branch by its `idx < 7` predicate.
+        const branchMatch = body.match(/if\s*\(\s*isUp\s*&&\s*idx\s*<\s*7\s*\)\s*\{[\s\S]*?\n\s*\}/);
+        expect(branchMatch).toBeTruthy();
+        // Without stopPropagation, the cross-pane ArrowLeft/ArrowRight
+        // handler would also fire and could yank focus into the
+        // projects list or new-task input. Without preventDefault, the
+        // keystroke would still scroll the page.
+        expect(branchMatch[0]).toMatch(/stopPropagation\(\s*\)/);
+        expect(branchMatch[0]).toMatch(/preventDefault\(\s*\)/);
     });
 
     // Pins the ArrowDown drop-in target for each pill: TODAY must land on
