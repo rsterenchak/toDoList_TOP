@@ -182,4 +182,106 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         expect(window).toMatch(/preventDefault\(\s*\)/);
         expect(window).toMatch(/stopPropagation\(\s*\)/);
     });
+
+    // Pins the contract for the ArrowLeft / ArrowRight header walk
+    // extension that splices the Calendar month-nav buttons
+    // (#calendarPrev / #calendarNext) between #viewPillCalendar and
+    // #pomodoroToggle when the active view is `calendar`. Without this,
+    // the month-nav buttons are only reachable via Tab or mouse despite
+    // sitting directly under the Calendar pill. On non-calendar views,
+    // the walk must skip them so focus does not land on hidden controls.
+    function extractNavKeydown() {
+        const start = main.indexOf("nav.addEventListener('keydown'");
+        if (start === -1) throw new Error("nav.addEventListener('keydown' not found");
+        const bodyStart = main.indexOf('{', start);
+        let depth = 0;
+        for (let i = bodyStart; i < main.length; i++) {
+            const c = main[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) return main.slice(bodyStart, i + 1);
+            }
+        }
+        throw new Error('unterminated nav keydown block');
+    }
+
+    function extractCalendarNavArrowKeyHandler() {
+        const start = main.indexOf('function calendarNavArrowKey');
+        if (start === -1) throw new Error('calendarNavArrowKey handler not found');
+        const bodyStart = main.indexOf('{', start);
+        let depth = 0;
+        for (let i = bodyStart; i < main.length; i++) {
+            const c = main[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) return main.slice(bodyStart, i + 1);
+            }
+        }
+        throw new Error('unterminated calendarNavArrowKey block');
+    }
+
+    it('nav handler splices calendarPrev / calendarNext into the walk only when the active view is calendar', () => {
+        const body = extractNavKeydown();
+        // The gate must consult the active view — a static order that
+        // always included the month-nav buttons would trap keyboard
+        // focus on hidden controls when Projects or Today is active.
+        expect(body).toMatch(/getActiveView\(\s*\)\s*===\s*['"]calendar['"]/);
+        // Both buttons must be appended; appending only one breaks the
+        // prev↔next traversal the TODO calls out.
+        expect(body).toMatch(/calendarPrevBtn[\s\S]{0,80}calendarNextBtn|calendarNextBtn[\s\S]{0,80}calendarPrevBtn/);
+    });
+
+    it('nav handler keeps calendarPrev / calendarNext between viewPillCalendar and pomodoroToggle in the order', () => {
+        const body = extractNavKeydown();
+        // The walk must visit calendarPrev right after viewPillCalendar
+        // and calendarNext immediately before pomodoroToggle so the
+        // spatial reading of ArrowRight matches what's on screen.
+        const seq = body.match(/viewPillCalendar[\s\S]*?calendarPrevBtn[\s\S]*?calendarNextBtn[\s\S]*?pomodoroToggle/);
+        expect(seq).toBeTruthy();
+    });
+
+    it('calendarPrevBtn and calendarNextBtn both have a keydown listener wired', () => {
+        // calendarPrev / calendarNext live outside #nav, so a nav-only
+        // listener never sees their keystrokes once focus has stepped
+        // onto them. Each button needs its own keydown wiring to keep
+        // the walk continuing in both directions from those buttons.
+        expect(main).toMatch(/calendarPrevBtn\.addEventListener\(\s*['"]keydown['"]/);
+        expect(main).toMatch(/calendarNextBtn\.addEventListener\(\s*['"]keydown['"]/);
+    });
+
+    it('the calendar month-nav keydown handler walks the same nine-control order', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // The full order must be identical to the nav walk extended
+        // with the two month-nav buttons; otherwise ArrowLeft from
+        // calendarPrev would not land on viewPillCalendar and
+        // ArrowRight from calendarNext would not land on pomodoroToggle.
+        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillToday[\s\S]*?viewPillCalendar[\s\S]*?calendarPrevBtn[\s\S]*?calendarNextBtn[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
+        expect(seq).toBeTruthy();
+    });
+
+    it('the calendar month-nav keydown handler ignores modifier chords and bails when a modal is open', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // Same gates as the nav handler — Shift/Ctrl/Meta/Alt+Arrow are
+        // reserved for native selection and OS-level chords; in-popover
+        // focus management owns the keystrokes while a modal is open.
+        expect(body).toMatch(/['"]ArrowLeft['"]/);
+        expect(body).toMatch(/['"]ArrowRight['"]/);
+        expect(body).toMatch(/ctrlKey/);
+        expect(body).toMatch(/metaKey/);
+        expect(body).toMatch(/altKey/);
+        expect(body).toMatch(/shiftKey/);
+        expect(body).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
+    });
+
+    it('the calendar month-nav keydown handler stops propagation so the cross-pane handler does not also fire', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // Without stopPropagation, the document-level ArrowLeft /
+        // ArrowRight cross-pane handler would also fire and could yank
+        // focus into the projects list or new-task input, clobbering
+        // the focus we just placed on the next header control.
+        expect(body).toMatch(/preventDefault\(\s*\)/);
+        expect(body).toMatch(/stopPropagation\(\s*\)/);
+    });
 });
