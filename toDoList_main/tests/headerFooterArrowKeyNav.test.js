@@ -252,4 +252,55 @@ describe('header / footer arrow-key navigation', () => {
         expect(window).toMatch(/stopPropagation\(\s*\)/);
         expect(window).toMatch(/preventDefault\(\s*\)/);
     });
+
+    // Pins the ArrowDown drop-in target for each pill: TODAY must land on
+    // the row container (the tabindex="-1" .todayRow.todoRowCard div), not
+    // on the inner .todayRowTitle button. Landing on the button burns the
+    // next ArrowDown keystroke on the document-level "anchor focus to the
+    // row container" branch instead of advancing rows — the user has to
+    // press ArrowDown twice for the first row step. CALENDAR must fall
+    // back to the first in-month cell when no .isSelected cell exists so
+    // the cold-start case (no prior selection) lands inside the visible
+    // month rather than on a dimmed leading day from the prior month.
+    function extractFirstFocusableHelper() {
+        return extractBlock("function firstFocusableInActiveMainView");
+    }
+
+    function extractDropFocusHandler() {
+        return extractBlock("function dropFocusIntoMainView");
+    }
+
+    it("TODAY: pill ArrowDown target is the .todayRow.todoRowCard div, not the .todayRowTitle button", () => {
+        const body = extractFirstFocusableHelper();
+        // The today branch must query for the row container, not the inner
+        // title button. The title button as the target would re-trigger the
+        // document handler's "anchor focus to row" branch and waste the
+        // first keystroke after the pill drop-in.
+        const todayBranch = body.match(/view === ['"]today['"][\s\S]*?return null;/);
+        expect(todayBranch).toBeTruthy();
+        expect(todayBranch[0]).toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
+        expect(todayBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRowTitle['"]\s*\)/);
+    });
+
+    it("TODAY: pill ArrowDown marks the row .todo-active so the next ArrowDown advances rows", () => {
+        const body = extractDropFocusHandler();
+        // Without the .todo-active marker, the document-level Today nav
+        // handler treats the row as "not the current row" on the next
+        // ArrowDown (because the row sees focus at the row level but no
+        // active marker) and re-anchors instead of stepping forward.
+        expect(body).toMatch(/classList\.add\(\s*['"]todo-active['"]\s*\)/);
+        expect(body).toMatch(/todayRow/);
+    });
+
+    it("CALENDAR: pill ArrowDown falls back to the first in-month cell when no .isSelected cell exists", () => {
+        const body = extractFirstFocusableHelper();
+        // The cold-start case (no prior selection) must skip the leading
+        // days from the prior month so focus lands on a cell the user can
+        // actually interact with in the visible month. .outOfMonth cells
+        // are dimmed and feel like a dead target on first keystroke.
+        const calendarBranch = body.match(/view === ['"]calendar['"][\s\S]*?return null;/);
+        expect(calendarBranch).toBeTruthy();
+        expect(calendarBranch[0]).toMatch(/\.calendarCell\.isSelected/);
+        expect(calendarBranch[0]).toMatch(/\.calendarCell:not\(\.outOfMonth\)/);
+    });
 });
