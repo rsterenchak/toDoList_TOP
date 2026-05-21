@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Wire ArrowDown on view-switcher pills to descend into the row div, not the row's title button
+- [x] **[MEDIUM]** Wire ArrowDown on view-switcher pills to descend into the row div, not the row's title button
   - Description: Pressing ArrowDown from the focused `#viewPillToday` pill lands on the first `.todayRowTitle` button rather than on the enclosing `.todayRow.todoRowCard` row div, because no per-pill ArrowDown handler exists for the Today/Calendar views and the document-level Today arrow-nav handler resolves "no current row → first row" by focusing the natural focus target, which is the native `<button class="todayRowTitle">` inside row 0. Mirror the existing `sidebarToggle.addEventListener('keydown', …)` contract that already handles the analogous boundary on the Projects view (ArrowDown from `#sidebarToggle` → first `#projChild`). Add an ArrowDown keydown handler on `#viewPillToday` that, when the today list container has at least one `.todayRow.todoRowCard`, calls `.focus()` on the row div itself (the one with `tabindex="-1"` from the row-nav extension entry) and applies `.todo-active`, preventDefault + stopPropagation so the document-level handler does not also fire and re-route focus. Add the symmetric handler on `#viewPillCalendar` that focuses the currently `.isSelected` `.calendarCell` if one exists, falling back to the first in-month cell — this also resolves the cold-start case where focus enters the Calendar view with no prior selection. Both handlers honor the same guards as the existing pill row's ArrowLeft/ArrowRight nav handler: bail on modifier chords and when any modal/popover is open. After the fix, ArrowDown from TODAY lands on the row div (so the subsequent ArrowDown advances rows as expected), and ArrowDown from CALENDAR lands on the selected day cell (so grid traversal works on first keystroke). Tests pin both per-pill handlers and assert the focused element after each ArrowDown is the row div / cell, not a descendant button.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/headerFooterArrowKeyNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-21
 
 ## Features
 

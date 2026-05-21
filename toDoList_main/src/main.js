@@ -2785,9 +2785,15 @@ function component() {
     //   • PROJECTS — the blank-placeholder #toDoInput in #mainList (or
     //     #emptyStateInput when the project is empty, or the first
     //     committed #toDoChild row as a last resort).
-    //   • TODAY    — the first .todayRowTitle button in #todaySections.
-    //   • CALENDAR — the selected (or first) .calendarCell in
-    //     #calendarGrid.
+    //   • TODAY    — the first .todayRow.todoRowCard div in #todaySections.
+    //     Lands on the row container (tabindex="-1"), not the inner
+    //     .todayRowTitle button, so the subsequent ArrowDown advances rows
+    //     via the document-level Today nav handler instead of being eaten
+    //     by the "anchor focus to the row container" branch.
+    //   • CALENDAR — the selected (.isSelected) .calendarCell, falling
+    //     back to the first in-month cell (.calendarCell:not(.outOfMonth))
+    //     so the cold-start case (no prior selection) lands inside the
+    //     visible month rather than on a leading day from the prior month.
     // Without these handlers the document-level todo arrow-nav handler at
     // best lands focus on a stale .todo-active row and at worst silently
     // no-ops — leaving the rendered items unreachable from the header
@@ -2801,6 +2807,18 @@ function component() {
         if (!target) return;
         e.preventDefault();
         e.stopPropagation();
+        // For TODAY, mark the row .todo-active so the document-level Today
+        // nav handler treats it as the current row on the next keystroke
+        // instead of re-anchoring from "no current row → first row".
+        if (target.classList && target.classList.contains('todayRow')) {
+            const sections = document.getElementById('todaySections');
+            if (sections) {
+                sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
+                    if (el !== target) el.classList.remove('todo-active');
+                });
+            }
+            target.classList.add('todo-active');
+        }
         target.focus();
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
@@ -5136,8 +5154,14 @@ function firstFocusableInActiveMainView() {
     if (view === 'today') {
         const sections = document.getElementById('todaySections');
         if (sections) {
-            const title = sections.querySelector('.todayRowTitle');
-            if (title) return title;
+            // Target the row container (tabindex="-1") rather than the inner
+            // .todayRowTitle button. Landing on the row div lets the
+            // document-level Today arrow-nav handler advance to the next row
+            // on the subsequent ArrowDown; landing on the title button
+            // triggers its "anchor focus to the row container" branch and
+            // burns the keystroke without moving.
+            const row = sections.querySelector('.todayRow.todoRowCard');
+            if (row) return row;
             const focusable = sections.querySelector('button, input, [tabindex]:not([tabindex="-1"])');
             if (focusable) return focusable;
         }
@@ -5148,6 +5172,11 @@ function firstFocusableInActiveMainView() {
         if (grid) {
             const selected = grid.querySelector('.calendarCell.isSelected');
             if (selected) return selected;
+            // Skip leading days from the prior month so the cold-start case
+            // (no prior selection) lands inside the visible month instead
+            // of on a dimmed outOfMonth cell.
+            const firstInMonth = grid.querySelector('.calendarCell:not(.outOfMonth)');
+            if (firstInMonth) return firstInMonth;
             const first = grid.querySelector('.calendarCell');
             if (first) return first;
         }
