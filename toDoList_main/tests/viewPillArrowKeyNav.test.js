@@ -284,4 +284,85 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         expect(body).toMatch(/preventDefault\(\s*\)/);
         expect(body).toMatch(/stopPropagation\(\s*\)/);
     });
+
+    // Vertical-nav contract for the Calendar pill ↔ month-nav arrow
+    // pair. The pill drops focus onto #calendarPrev (not the grid)
+    // when the active view is `calendar`; the arrows form an isolated
+    // horizontal pair (clamped both ends) reachable only by ArrowDown
+    // from the pill, and they expose ArrowUp (back to the pill) and
+    // ArrowDown (into the grid using the same fallback chain as the
+    // pill→grid handler) as the only escape paths.
+
+    function extractDropFocusIntoMainView() {
+        const start = main.indexOf('function dropFocusIntoMainView');
+        if (start === -1) throw new Error('dropFocusIntoMainView not found');
+        const bodyStart = main.indexOf('{', start);
+        let depth = 0;
+        for (let i = bodyStart; i < main.length; i++) {
+            const c = main[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) return main.slice(bodyStart, i + 1);
+            }
+        }
+        throw new Error('unterminated dropFocusIntoMainView block');
+    }
+
+    it('the pill drop-in handler routes Calendar ArrowDown onto #calendarPrev when the active view is calendar', () => {
+        const body = extractDropFocusIntoMainView();
+        // The Calendar pill must not skip over the month-nav arrows
+        // straight into the grid. The branch is gated on both the
+        // event target (the pill) and the active view so Today and
+        // Projects pills are unaffected.
+        expect(body).toMatch(/viewPillCalendar/);
+        expect(body).toMatch(/getActiveView\(\s*\)\s*===\s*['"]calendar['"]/);
+        expect(body).toMatch(/calendarPrevBtn\.focus\(\s*\)/);
+    });
+
+    it('the calendar month-nav keydown handler bails when the active view is not calendar', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // When the user has switched to Today or Projects, the arrow
+        // buttons are hidden (the entire #calendarView is hidden via
+        // #mainBar[data-view]). The handler must no-op so focus on
+        // a stale-focused arrow doesn't move into hidden controls or
+        // back to the pill in a view it shouldn't.
+        expect(body).toMatch(/getActiveView\(\s*\)\s*!==\s*['"]calendar['"]/);
+    });
+
+    it('the calendar month-nav keydown handler handles ArrowUp by focusing #viewPillCalendar', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // ArrowUp from either arrow returns focus to the Calendar
+        // pill — the symmetric inverse of the pill→arrow ArrowDown
+        // drop-in. Without this, keyboard users have no way back up
+        // to the pill from the arrows without Tab/Shift+Tab.
+        expect(body).toMatch(/['"]ArrowUp['"]/);
+        expect(body).toMatch(/viewPillCalendar\.focus\(\s*\)/);
+    });
+
+    it('the calendar month-nav keydown handler handles ArrowDown by dropping focus into the grid', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // ArrowDown from either arrow steps into the grid using the
+        // same fallback chain as the pill→grid handler
+        // (calendarSelectedKey → today key → first in-month cell),
+        // delegated to firstFocusableInActiveMainView so the two
+        // entry paths stay aligned.
+        expect(body).toMatch(/['"]ArrowDown['"]/);
+        expect(body).toMatch(/firstFocusableInActiveMainView\(\s*\)/);
+    });
+
+    it('the calendar month-nav keydown handler clamps ArrowLeft on calendarPrev and ArrowRight on calendarNext', () => {
+        const body = extractCalendarNavArrowKeyHandler();
+        // The arrows form an isolated pair: ArrowRight from
+        // calendarPrev moves to calendarNext, and ArrowLeft from
+        // calendarNext moves to calendarPrev, but neither escapes
+        // horizontally to viewPillCalendar or pomodoroToggle. Escape
+        // is vertical-only (ArrowUp to pill, ArrowDown to grid).
+        const rightBranch = body.match(/===\s*['"]ArrowRight['"][\s\S]{0,400}/);
+        expect(rightBranch).toBeTruthy();
+        expect(rightBranch[0]).toMatch(/calendarPrevBtn[\s\S]{0,120}calendarNextBtn\.focus\(\s*\)/);
+        const leftBranch = body.match(/===\s*['"]ArrowLeft['"][\s\S]{0,400}/);
+        expect(leftBranch).toBeTruthy();
+        expect(leftBranch[0]).toMatch(/calendarNextBtn[\s\S]{0,120}calendarPrevBtn\.focus\(\s*\)/);
+    });
 });

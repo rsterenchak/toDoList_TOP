@@ -2810,6 +2810,17 @@ function component() {
         if (e.key !== 'ArrowDown') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
+        // Calendar pill drops focus onto the month-nav arrow pair
+        // first rather than straight into the grid, so the arrows are
+        // reachable from the keyboard. The arrows then own their own
+        // ArrowDown drop-in into the grid using the same fallback chain
+        // as firstFocusableInActiveMainView's calendar branch.
+        if (e.target === viewPillCalendar && getActiveView() === 'calendar') {
+            e.preventDefault();
+            e.stopPropagation();
+            calendarPrevBtn.focus();
+            return;
+        }
         const target = firstFocusableInActiveMainView();
         if (!target) return;
         e.preventDefault();
@@ -2962,26 +2973,56 @@ function component() {
         shiftCalendarMonth(1);
     });
 
-    // ArrowLeft / ArrowRight on the calendar month-nav buttons continues
-    // the header walk: ArrowLeft from calendarPrev returns to
-    // viewPillCalendar, ArrowRight from calendarNext steps into
-    // pomodoroToggle, and the prev↔next pair traverses between
-    // themselves. The buttons live inside #calendarView (not #nav), so
-    // their keydown never bubbles to the nav listener — they need their
-    // own handler that mirrors the same order, gates, and focus moves.
+    // Arrow-key navigation for the calendar month-nav pair. The buttons
+    // form an isolated horizontal pair reached vertically via ArrowDown
+    // from #viewPillCalendar: ArrowLeft/ArrowRight traverse between
+    // calendarPrev and calendarNext but clamp at the boundary so focus
+    // never leaves the pair horizontally; ArrowUp returns to
+    // #viewPillCalendar; ArrowDown drops into the grid using the same
+    // fallback chain as firstFocusableInActiveMainView's calendar branch.
+    // The buttons live inside #calendarView (not #nav), so their keydown
+    // never bubbles to the nav listener — they need their own handler.
+    // The nine-control walk order documented here mirrors the nav
+    // handler's extended order when the active view is calendar.
+    // Bails on modifier chords and while any modal/popover is open;
+    // bails entirely when the active view is not calendar so the
+    // listeners no-op for views where the buttons are hidden.
+    // preventDefault + stopPropagation keep the document-level
+    // cross-pane handler from also firing.
     function calendarNavArrowKey(e) {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' &&
+            e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
+        if (getActiveView() !== 'calendar') return;
         const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar, calendarPrevBtn, calendarNextBtn, pomodoroToggle, musicToggle, settingsToggle];
-        const idx = order.indexOf(e.target);
-        if (idx === -1) return;
-        const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
-        const nextBtn = order[nextIdx];
-        if (!nextBtn) return;
-        e.preventDefault();
-        e.stopPropagation();
-        nextBtn.focus();
+        if (order.indexOf(e.target) === -1) return;
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            viewPillCalendar.focus();
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            const target = firstFocusableInActiveMainView();
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+            target.focus();
+            return;
+        }
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.target === calendarPrevBtn) calendarNextBtn.focus();
+            return;
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.target === calendarNextBtn) calendarPrevBtn.focus();
+            return;
+        }
     }
     calendarPrevBtn.addEventListener('keydown', calendarNavArrowKey);
     calendarNextBtn.addEventListener('keydown', calendarNavArrowKey);
