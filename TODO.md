@@ -24,6 +24,24 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/todoCompletionAnimation.test.js` (new)
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[MEDIUM]** Add "Export to Google Drive" option to ghost menu
+  - Description: Add a new "Export to Drive" menu item directly below the existing "Export JSON" row in the ghost popover menu. Clicking it triggers a Google OAuth 2.0 flow (via Google Identity Services, using PKCE) prompting the user to sign in and authorize the app with the non-sensitive `drive.file` scope, then uploads the same JSON payload that the existing Export JSON produces to the user's Drive root via a multipart POST to `https://www.googleapis.com/upload/drive/v3/files`. On success, show a toast matching the existing toast styling with an "Open in Drive" link to the uploaded file's `webViewLink`. Re-prompt OAuth on each session — do not persist the access token to `localStorage`. Reuse the existing export filename pattern (`todoapp-export-YYYY-MM-DD.json`) and the same JSON serialization path so both export methods produce byte-identical files.
+  - Behavior:
+    1. User opens ghost popover menu, sees "Export to Drive" as a new row below "Export JSON".
+    2. First click in a session opens Google sign-in popup; subsequent clicks in the same session reuse the in-memory token until it expires (~1 hour), at which point re-auth runs silently if possible, otherwise re-prompts.
+    3. While the upload is in flight, the menu row shows a subtle loading state (text dim + spinner) and is disabled to prevent double-uploads.
+    4. On success: toast "Exported to Drive" with "Open in Drive" link (opens `webViewLink` in a new tab).
+    5. On failure (denied consent, network error, API error): toast with a clear error message; no partial state left behind.
+  - Implementation notes:
+    - Requires a Google Cloud project with an OAuth 2.0 Client ID configured for the GitHub Pages origin. Document the setup steps in a comment block at the top of the new driveExport module so a fresh fork knows what to provision.
+    - Use the Google Identity Services library loaded lazily on first click via a `<script>` tag injection (mirrors the lazy-load pattern from the music player's YouTube IFrame API), not bundled with Webpack — avoids a hard dependency on a Google CDN at build time.
+    - Use the `drive.file` scope only (not `drive`) so the app stays in the non-sensitive scope tier and avoids Google's security review process.
+    - Extract the JSON serialization logic from the existing Export JSON handler into a shared helper so both code paths produce identical output.
+    - Build the OAuth client ID into a module-level constant; do not hardcode in `main.js`.
+  - Out of scope: folder picker (always dumps to Drive root), token persistence across sessions, two-way sync, import-from-Drive (separate future entry), accounts/multi-user.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/driveExport.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 ## In Progress
 
 - [x] Fix API rate limiting issue
