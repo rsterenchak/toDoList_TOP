@@ -314,7 +314,7 @@ describe('welcome carousel — wired into the app', () => {
         expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 600);
+        const slice = main.slice(idx, idx + 1000);
         expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
         expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
     });
@@ -351,7 +351,7 @@ describe('welcome carousel — wired into the app', () => {
         // before the next flow mounts.
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
-        const handlerSlice = slice.slice(replayIdx, replayIdx + 400);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 1000);
         expect(handlerSlice.indexOf('close()')).toBeGreaterThan(-1);
         expect(handlerSlice.indexOf('close()'))
             .toBeLessThan(handlerSlice.indexOf('startWelcomeCarousel'));
@@ -402,5 +402,47 @@ describe('welcome carousel — wired into the app', () => {
         expect(rule).toBeTruthy();
         expect(rule[1]).toMatch(/position:\s*fixed/);
         expect(rule[1]).toMatch(/inset:\s*0/);
+    });
+
+    it('mobile modal Replay handler switches to Projects view before starting the carousel', () => {
+        // The mobile carousel itself isn't DOM-anchored, but it shares
+        // the prep flow with the desktop tour so the same view-switch +
+        // seed-when-empty fix lands symmetrically. Replaying from Today
+        // or Calendar would otherwise leave the project sidebar hidden
+        // behind the carousel backdrop.
+        const fnIdx = main.indexOf('function showSettingsModal');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
+        expect(replayIdx).toBeGreaterThan(-1);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        expect(handlerSlice).toMatch(/applyActiveView\(\s*['"]projects['"]\s*\)/);
+        const applyIdx = handlerSlice.indexOf("applyActiveView('projects')");
+        const startIdx = handlerSlice.indexOf('startWelcomeCarousel');
+        expect(applyIdx).toBeLessThan(startIdx);
+    });
+
+    it('mobile modal Replay handler force-seeds the sample project when the user has none', () => {
+        const fnIdx = main.indexOf('function showSettingsModal');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
+        expect(replayIdx).toBeGreaterThan(-1);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        expect(handlerSlice).toMatch(/listProjectsArray\(\s*\)\.length\s*===\s*0/);
+        expect(handlerSlice).toMatch(/seedSampleProject\(\s*\{\s*force:\s*true\s*\}\s*\)/);
+    });
+
+    it('mobile modal Replay handler defers the tour kickoff so layout settles first', () => {
+        const fnIdx = main.indexOf('function showSettingsModal');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
+        expect(replayIdx).toBeGreaterThan(-1);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        expect(handlerSlice).toMatch(/requestAnimationFrame/);
+        const rafIdx = handlerSlice.indexOf('requestAnimationFrame');
+        const startIdx = handlerSlice.indexOf('startWelcomeCarousel');
+        expect(rafIdx).toBeLessThan(startIdx);
     });
 });

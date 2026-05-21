@@ -1405,14 +1405,26 @@ function component() {
         // narrow viewports, the desktop coachmark tour everywhere else.
         // The chevron in the state slot (in place of an ON/OFF pill)
         // signals "tap to start a flow" rather than "toggle a setting".
-        // Seeding is once-per-install (todoapp_sampleSeeded), so a manual
-        // replay never re-seeds the sample project.
+        // The handler switches to the Projects view and force-seeds the
+        // sample project when the user has none so the tour's callouts
+        // always have real targets. Re-seeding is skipped when the user
+        // already has projects so a sample can't surprise-appear.
         const replayTourItem = buildSettingsMenuItem(
             'Replay welcome tour',
             '›',
             function() {
-                if (isMobileCarouselViewport()) startWelcomeCarousel();
-                else startCoachmarkTour();
+                applyActiveView('projects');
+                if (listLogic.listProjectsArray().length === 0) {
+                    listLogic.seedSampleProject({ force: true });
+                    rebuildAfterImport();
+                }
+                // rAF defer so the data-view flip and any re-render have
+                // a layout pass before the tour reads bounding rects for
+                // the spotlight cut-out.
+                requestAnimationFrame(function() {
+                    if (isMobileCarouselViewport()) startWelcomeCarousel();
+                    else startCoachmarkTour();
+                });
             },
             'settingsMenuItem--chevron'
         );
@@ -3326,8 +3338,18 @@ function component() {
         helpSection.appendChild(helpHeading);
         const replayRow = createDrawerActionRow('Replay welcome tour', function() {
             close();
-            if (isMobileCarouselViewport()) startWelcomeCarousel();
-            else startCoachmarkTour();
+            applyActiveView('projects');
+            if (listLogic.listProjectsArray().length === 0) {
+                listLogic.seedSampleProject({ force: true });
+                rebuildAfterImport();
+            }
+            // rAF defer so the data-view flip and any re-render have a
+            // layout pass before the tour reads bounding rects for the
+            // spotlight cut-out.
+            requestAnimationFrame(function() {
+                if (isMobileCarouselViewport()) startWelcomeCarousel();
+                else startCoachmarkTour();
+            });
         });
         helpSection.appendChild(replayRow);
 

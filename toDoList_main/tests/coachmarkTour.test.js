@@ -321,7 +321,7 @@ describe('coachmark tour — wired into the app', () => {
         expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 400);
+        const slice = main.slice(idx, idx + 1000);
         expect(slice).toMatch(/startCoachmarkTour\s*\(\s*\)/);
     });
 
@@ -382,5 +382,48 @@ describe('coachmark tour — wired into the app', () => {
         expect(prefs).toMatch(/SAMPLE_SEEDED_KEY\s*=\s*['"]todoapp_sampleSeeded['"]/);
         expect(prefs).toMatch(/export\s+function\s+isSampleSeeded\s*\(/);
         expect(prefs).toMatch(/export\s+function\s+setSampleSeeded\s*\(/);
+    });
+
+    it('Replay handler switches to Projects view before starting the tour', () => {
+        // The desktop tour anchors against the project sidebar row, the
+        // todo-row chrome, and the right-side icon cluster. Replaying
+        // from Today or Calendar would leave those targets hidden, so
+        // the handler flips to PROJECTS first.
+        const idx = main.indexOf("'Replay welcome tour'");
+        expect(idx).toBeGreaterThan(-1);
+        const slice = main.slice(idx, idx + 800);
+        expect(slice).toMatch(/applyActiveView\(\s*['"]projects['"]\s*\)/);
+        const applyIdx = slice.indexOf("applyActiveView('projects')");
+        const startIdx = slice.indexOf('startCoachmarkTour');
+        expect(applyIdx).toBeGreaterThan(-1);
+        expect(startIdx).toBeGreaterThan(-1);
+        expect(applyIdx).toBeLessThan(startIdx);
+    });
+
+    it('Replay handler force-seeds the sample project when the user has none', () => {
+        // When the user deleted the seeded sample, the once-per-install
+        // flag would otherwise keep seedSampleProject from re-seeding —
+        // so the replay path passes { force: true } to bypass that gate.
+        // The seed is skipped when the user already has projects so a
+        // sample can't surprise-appear on a populated install.
+        const idx = main.indexOf("'Replay welcome tour'");
+        expect(idx).toBeGreaterThan(-1);
+        const slice = main.slice(idx, idx + 800);
+        expect(slice).toMatch(/listProjectsArray\(\s*\)\.length\s*===\s*0/);
+        expect(slice).toMatch(/seedSampleProject\(\s*\{\s*force:\s*true\s*\}\s*\)/);
+    });
+
+    it('Replay handler defers the tour kickoff so layout settles first', () => {
+        // After flipping the active view (and possibly re-rendering the
+        // project sidebar / main list), the tour needs a frame to let
+        // the now-visible targets compute their bounding rects before
+        // the spotlight cut-out reads them.
+        const idx = main.indexOf("'Replay welcome tour'");
+        expect(idx).toBeGreaterThan(-1);
+        const slice = main.slice(idx, idx + 800);
+        expect(slice).toMatch(/requestAnimationFrame/);
+        const rafIdx = slice.indexOf('requestAnimationFrame');
+        const startIdx = slice.indexOf('startCoachmarkTour');
+        expect(rafIdx).toBeLessThan(startIdx);
     });
 });

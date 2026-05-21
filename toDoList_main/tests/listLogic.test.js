@@ -1895,4 +1895,25 @@ describe('listLogic — seedSampleProject', () => {
         expect(seeded).toBe(false);
         expect(listLogic.listProjectsArray()).not.toContain('Getting started');
     });
+
+    it('force: true bypasses the sample-seeded flag so a replay can re-seed', () => {
+        // First seed sets todoapp_sampleSeeded=true; subsequent calls bail.
+        // The replay-welcome-tour path needs to re-seed when the user has
+        // since deleted the sample so the tour has live DOM targets.
+        listLogic.seedSampleProject();
+        listLogic.removeProject('Getting started');
+        const reseeded = listLogic.seedSampleProject({ force: true });
+        expect(reseeded).toBe(true);
+        expect(listLogic.listProjectsArray()).toContain('Getting started');
+    });
+
+    it('force: true still bails when the user has real projects', () => {
+        // The "don't clobber real data" guard applies even in force mode;
+        // the caller is responsible for skipping the call when projects
+        // already exist so a sample can't surprise-appear.
+        listLogic.addProject('Real work');
+        const seeded = listLogic.seedSampleProject({ force: true });
+        expect(seeded).toBe(false);
+        expect(listLogic.listProjectsArray()).not.toContain('Getting started');
+    });
 });
