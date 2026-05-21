@@ -3941,25 +3941,61 @@ function component() {
             // Cells are <button>s, so native Enter already activates them.
             // Only handle the explicit-focus case to preserve the contract
             // with Today; skip otherwise to avoid double-fire.
-            if (!currentCell || ae !== currentCell) return;
-            currentCell.click();
-            e.preventDefault();
+            if (currentCell && ae === currentCell) {
+                currentCell.click();
+                e.preventDefault();
+                return;
+            }
+            // Enter on a focused day-detail row fires the row's click
+            // handler (jump to the parent project) — mirrors the Today
+            // view's contract so keyboard users get the same affordance
+            // as a mouse click on the row.
+            const dayList = document.getElementById('calendarDayList');
+            const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
+            if (dayList && panelRow && dayList.contains(panelRow) && ae === panelRow) {
+                panelRow.click();
+                e.preventDefault();
+            }
             return;
         }
 
         if (!currentCell) {
-            // Panel→grid boundary: ArrowUp from the first .todayRow.todoRowCard
-            // inside #calendarDayList lifts focus back into the grid, mirroring
-            // the grid→panel ArrowDown boundary below. Resolves the landing
-            // cell via the same fallback chain as renderCalendarView's
-            // post-rebuild re-focus: calendarSelectedKey → today → last cell.
-            if (isUp) {
-                const dayList = document.getElementById('calendarDayList');
-                const panelRows = dayList
-                    ? Array.prototype.slice.call(dayList.querySelectorAll('.todayRow.todoRowCard'))
-                    : [];
-                const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
-                if (panelRows.length > 0 && panelRow === panelRows[0]) {
+            // Day-detail panel branch: ArrowUp/ArrowDown walk
+            // .todayRow.todoRowCard rows inside #calendarDayList in DOM
+            // order, clamping at the ends (no wrap). Mirrors the Today
+            // view's row-walk so the two views feel uniform. Descendant
+            // focus (e.g. .todayRowTitle button) anchors to the row
+            // container with .todo-active applied before the next
+            // keystroke walks rows — same contract committed Projects-
+            // view rows have.
+            const dayList = document.getElementById('calendarDayList');
+            const panelRows = dayList
+                ? Array.prototype.slice.call(dayList.querySelectorAll('.todayRow.todoRowCard'))
+                : [];
+            const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
+            const inPanel = !!(dayList && panelRow && dayList.contains(panelRow));
+
+            if ((isUp || isDown) && inPanel && panelRows.length > 0) {
+                // Anchor to the row container when focus is on a descendant.
+                // Mirrors the Today branch above and the committed-row
+                // .todo-active nav mode.
+                if (ae !== panelRow) {
+                    dayList.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
+                        if (el !== panelRow) el.classList.remove('todo-active');
+                    });
+                    panelRow.classList.add('todo-active');
+                    panelRow.focus();
+                    e.preventDefault();
+                    return;
+                }
+
+                // Panel→grid boundary: ArrowUp from the first
+                // .todayRow.todoRowCard lifts focus back into the grid,
+                // mirroring the grid→panel ArrowDown boundary below.
+                // Resolves the landing cell via the same fallback chain
+                // as renderCalendarView's post-rebuild re-focus:
+                // calendarSelectedKey → today → last cell.
+                if (isUp && panelRow === panelRows[0]) {
                     let target = null;
                     if (calendarSelectedKey) {
                         target = grid.querySelector('.calendarCell[data-date="' + calendarSelectedKey + '"]');
@@ -3970,12 +4006,35 @@ function component() {
                     }
                     if (!target) target = cells[cells.length - 1];
                     if (target) {
+                        panelRow.classList.remove('todo-active');
                         target.focus();
                         e.preventDefault();
                         e.stopPropagation();
                         return;
                     }
                 }
+
+                // In-panel row walk: ArrowUp/ArrowDown step by one row,
+                // clamping at the ends. The first-row ArrowUp escape
+                // above runs before this branch, so the clamp here only
+                // bites at the bottom edge (ArrowDown on the last row).
+                const idx = panelRows.indexOf(panelRow);
+                if (idx === -1) return;
+                const nextIdx = isDown
+                    ? Math.min(idx + 1, panelRows.length - 1)
+                    : Math.max(idx - 1, 0);
+                if (nextIdx === idx) {
+                    e.preventDefault();
+                    return;
+                }
+                const targetRow = panelRows[nextIdx];
+                dayList.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
+                    if (el !== targetRow) el.classList.remove('todo-active');
+                });
+                targetRow.classList.add('todo-active');
+                targetRow.focus();
+                e.preventDefault();
+                return;
             }
             return;
         }
