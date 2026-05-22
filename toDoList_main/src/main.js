@@ -72,6 +72,7 @@ import {
     focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
+import { prefersReducedMotion } from './dragDrop.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
@@ -5864,8 +5865,34 @@ function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
 
     item.completed = checkbox.checked;
     listLogic.sortCompletedToBottom(project);
-    if (typeof onAfter === 'function') onAfter();
-    else renderTodayDashboard();
+
+    const reRender = function() {
+        if (typeof onAfter === 'function') onAfter();
+        else renderTodayDashboard();
+    };
+
+    // Slide-out fade — only on the open → done edge, only when reduced
+    // motion isn't requested. Defer the re-render until the keyframes
+    // finish so the animation plays on the existing row before the
+    // dashboard rebuilds. Data mutation above already ran synchronously,
+    // so persisted state stays in sync even if the user navigates away.
+    if (checkbox.checked && !wasCompleted && !prefersReducedMotion()) {
+        const row = checkbox.closest('.todayRow.todoRowCard');
+        if (row) {
+            row.classList.add('todoCompleting');
+            const onSlideEnd = function(e) {
+                if (e.target !== row) return;
+                if (e.animationName !== 'todoSlideOutFade') return;
+                row.classList.remove('todoCompleting');
+                row.removeEventListener('animationend', onSlideEnd);
+                reRender();
+            };
+            row.addEventListener('animationend', onSlideEnd);
+            return;
+        }
+    }
+
+    reRender();
 }
 
 // Switch to PROJECTS, select the named project (delegating to its

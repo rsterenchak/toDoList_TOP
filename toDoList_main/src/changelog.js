@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-22',
+        added: [
+            "Marking a todo complete now plays a brief slide-out fade so the completion lands with a beat instead of snapping in place.",
+        ],
         fixed: [
             "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
         ],
@@ -14,7 +17,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-21',
         fixed: [
-            "Calendar month prev / next buttons are now reachable from the keyboard via ArrowDown from the Calendar pill, with ArrowUp returning to the pill and ArrowDown stepping into the grid.",
             "ArrowUp from a top-row Calendar cell now lands on the side-nearest month prev / next arrow instead of jumping straight to the Calendar pill.",
             "Pressing ArrowLeft on the focused Calendar prev arrow now retreats one month, and ArrowRight on the focused next arrow advances one month.",
             "Replaying the welcome tour now jumps to the Projects view and seeds a sample project when needed, so callouts always line up with real targets.",

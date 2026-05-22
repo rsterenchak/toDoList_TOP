@@ -202,6 +202,21 @@ function wireCheckbox(toDoChild, toDoInput, item) {
                 }).length;
                 companionInstance.cheer(remainingOpen === 0);
             }
+            // Slide-out fade — row briefly translates right then settles back
+            // to its final position while the .completed styling lands.
+            // Cleanup via animationend so a future reorder of this same row
+            // doesn't re-fire the keyframes. Reduced-motion users skip both
+            // the class add and the listener register.
+            if (!prefersReducedMotion()) {
+                toDoChild.classList.add('todoCompleting');
+                const onSlideEnd = function(e) {
+                    if (e.target !== toDoChild) return;
+                    if (e.animationName !== 'todoSlideOutFade') return;
+                    toDoChild.classList.remove('todoCompleting');
+                    toDoChild.removeEventListener('animationend', onSlideEnd);
+                };
+                toDoChild.addEventListener('animationend', onSlideEnd);
+            }
         }
 
         applyDueUrgency(toDoChild, item);

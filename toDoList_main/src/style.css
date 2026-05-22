@@ -2194,6 +2194,29 @@ body.row-dragging * { cursor: grabbing !important; }
   to   { background-size: 100% 1px; }
 }
 
+/* Slide-out fade — transient `.todoCompleting` class added on the
+   unchecked → checked edge by both wireCheckbox (projects view) and
+   handleTodayCheckboxToggle (Today + Calendar day-detail). The row
+   briefly translates ~40px to the right while fading to ~40% opacity,
+   then settles back to its final position as the .completed styling
+   lands. Gated by prefers-reduced-motion: the entire block lives inside
+   a `no-preference` media query so users who've opted out of motion get
+   the row snapping straight to its done state. The JS gate
+   (prefersReducedMotion()) skips adding the class for the same users,
+   so the keyframes never fire and the animationend listener never
+   queues for them either. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes todoSlideOutFade {
+    0%   { transform: translateX(0);    opacity: 1; }
+    50%  { transform: translateX(40px); opacity: 0.4; }
+    100% { transform: translateX(0);    opacity: 1; }
+  }
+  #toDoChild.todoCompleting,
+  .todayRow.todoRowCard.todoCompleting {
+    animation: todoSlideOutFade 280ms ease-in-out;
+  }
+}
+
 #toDoInput {
   font-size: 13px;
   font-family: inherit;
