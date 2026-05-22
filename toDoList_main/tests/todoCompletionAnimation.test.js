@@ -180,3 +180,120 @@ describe('todo completion slide-out fade animation — Today / Calendar wiring',
         expect(body).toMatch(/listLogic\.sortCompletedToBottom\(\s*project\s*\)/);
     });
 });
+
+
+// Pins the recurring-task flash bug fix: same root cause as the slide-out
+// fade above (a re-parenting reorder cancelled the in-flight CSS keyframe)
+// but on a different class (`.recurring-flash`) and a different code path
+// (the recurring branch inside `wireCheckbox`). The fix defers
+// `sortCompletedToBottom` + `reorderToDoDOM` until the flash's setTimeout
+// fires so the keyframe is allowed to play. Under prefers-reduced-motion
+// there is no animation to protect and the reorder stays synchronous.
+describe('recurring-task flash animation — reorder defer keeps the CSS animation alive', () => {
+    const toDoRow = read('toDoRow.js');
+
+    function wireCheckboxBody() {
+        const start = toDoRow.indexOf('function wireCheckbox(');
+        expect(start).toBeGreaterThan(-1);
+        let depth = 0;
+        let end = -1;
+        for (let i = toDoRow.indexOf('{', start); i < toDoRow.length; i++) {
+            const c = toDoRow[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(start);
+        return toDoRow.slice(start, end);
+    }
+
+    // Narrow to the `if (advanced) { ... }` block so assertions can't
+    // false-positive off the standard completion path lower in the handler.
+    function advancedBlock() {
+        const body = wireCheckboxBody();
+        const advancedIdx = body.indexOf('if (advanced)');
+        expect(advancedIdx).toBeGreaterThan(-1);
+        const braceStart = body.indexOf('{', advancedIdx);
+        let depth = 0;
+        let end = -1;
+        for (let i = braceStart; i < body.length; i++) {
+            const c = body[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(braceStart);
+        return body.slice(advancedIdx, end);
+    }
+
+    it('runs sortCompletedToBottom + reorderToDoDOM inside the recurring-flash setTimeout, not on the click tick', () => {
+        // A synchronous reorderToDoDOM re-parents the row via appendChild,
+        // which cancels the .recurring-flash keyframe before any frames
+        // paint. The reorder has to live inside the same setTimeout that
+        // strips the flash class and resets the checkbox.
+        const block = advancedBlock();
+        const flashIdx = block.indexOf("'recurring-flash'");
+        expect(flashIdx).toBeGreaterThan(-1);
+        const stMatch = block.slice(flashIdx).match(
+            /setTimeout\(\s*function\s*\(\s*\)\s*\{([\s\S]*?)\}\s*,\s*250\s*\)/
+        );
+        expect(stMatch).not.toBeNull();
+        const cbBody = stMatch[1];
+        expect(cbBody).toMatch(/classList\.remove\(\s*['"]recurring-flash['"]\s*\)/);
+        expect(cbBody).toMatch(/checkToDo\.checked\s*=\s*false/);
+        expect(cbBody).toMatch(/listLogic\.sortCompletedToBottom\(\s*projectName\s*\)/);
+        expect(cbBody).toMatch(/reorderToDoDOM\(\s*projectName\s*\)/);
+    });
+
+    it('reorders synchronously under prefers-reduced-motion (no flash to protect)', () => {
+        // The reduced-motion branch skips the flash entirely, so there is
+        // no in-flight animation a synchronous reorderToDoDOM could
+        // cancel — the reorder fires on the same tick as the click.
+        const block = advancedBlock();
+        const reducedMatch = block.match(
+            /if\s*\(\s*!\s*prefersReducedMotion\s*\(\s*\)\s*\)\s*\{[\s\S]*?\}\s*else\s*\{([\s\S]*?)\}/
+        );
+        expect(reducedMatch).not.toBeNull();
+        const elseBody = reducedMatch[1];
+        expect(elseBody).toMatch(/checkToDo\.checked\s*=\s*false/);
+        expect(elseBody).toMatch(/listLogic\.sortCompletedToBottom\(\s*projectName\s*\)/);
+        expect(elseBody).toMatch(/reorderToDoDOM\(\s*projectName\s*\)/);
+    });
+
+    it('does NOT call sortCompletedToBottom or reorderToDoDOM synchronously after applyDueUrgency in the recurring branch', () => {
+        // Pin the regression: before this fix the calls sat between the
+        // vibrate fallback and the trailing `return`, firing on the same
+        // tick as the click and cancelling the flash. They must not exist
+        // as bare statements at that position any more.
+        const block = advancedBlock();
+        const applyIdx = block.indexOf('applyDueUrgency(');
+        expect(applyIdx).toBeGreaterThan(-1);
+        const returnIdx = block.lastIndexOf('return;');
+        expect(returnIdx).toBeGreaterThan(applyIdx);
+        // Elide any setTimeout bodies in the tail before asserting, so a
+        // future defer using a different setTimeout doesn't trip the pin.
+        const tail = block.slice(applyIdx, returnIdx).replace(
+            /setTimeout\(\s*function\s*\(\s*\)\s*\{[\s\S]*?\}\s*,\s*\d+\s*\)/g,
+            'setTimeoutElided'
+        );
+        expect(tail).not.toMatch(/listLogic\.sortCompletedToBottom\(/);
+        expect(tail).not.toMatch(/reorderToDoDOM\(/);
+    });
+
+    it('calls advanceRecurringTodo synchronously, before any recurring-flash setTimeout', () => {
+        // The completed clone advanceRecurringTodo spawns is the persisted
+        // record of the user's click. It must land on the data model on
+        // the same tick as the click so a navigate-away or reload
+        // mid-animation can't lose it. The advance call sits OUTSIDE the
+        // flash setTimeout — pin its position relative to the flash class.
+        const body = wireCheckboxBody();
+        const advanceIdx = body.indexOf('listLogic.advanceRecurringTodo(');
+        expect(advanceIdx).toBeGreaterThan(-1);
+        const flashIdx = body.indexOf("'recurring-flash'");
+        expect(flashIdx).toBeGreaterThan(advanceIdx);
+    });
+});

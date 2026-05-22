@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
+            "Checking off a recurring task now plays its feedback flash through to the end instead of being cut short when the row reorders.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-21',
         fixed: [
-            "ArrowUp from a top-row Calendar cell now lands on the side-nearest month prev / next arrow instead of jumping straight to the Calendar pill.",
             "Pressing ArrowLeft on the focused Calendar prev arrow now retreats one month, and ArrowRight on the focused next arrow advances one month.",
             "Replaying the welcome tour now jumps to the Projects view and seeds a sample project when needed, so callouts always line up with real targets.",
         ],
