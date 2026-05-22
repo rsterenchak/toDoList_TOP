@@ -41,7 +41,7 @@ import { buildExportPayload, buildBaseExportFilename } from './exportImport.js';
 // Empty default — set this to your own OAuth Client ID in a fork. When
 // empty, the menu item shows a "not configured" toast instead of opening
 // the OAuth popup, so the rest of the app keeps working out of the box.
-export const OAUTH_CLIENT_ID = '';
+export const OAUTH_CLIENT_ID = '1043519992483-sqp29t948863msorco9i9vpkuv71o2jf.apps.googleusercontent.com';
 
 const GIS_SCRIPT_ID = 'gisClientScript';
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
