@@ -86,7 +86,7 @@ import {
 } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive } from './driveImport.js';
-import { readLastExportedAt } from './prefs.js';
+import { readLastExportedAt, readLastDriveExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
@@ -1423,9 +1423,14 @@ function component() {
         // the user's Google Drive via OAuth (drive.file scope). The
         // `settingsMenuItem--driveExport` class is the CSS anchor for the
         // dim/disabled loading state surfaced via `body.driveExportInProgress`.
+        // The state pill mirrors the Export JSON row's relative label, reading
+        // the device-local `lastDriveExportedAt` marker so the user sees how
+        // stale their last Drive backup is at the moment of action. Before
+        // the first Drive export the marker is null and the pill stays empty
+        // (matching the Export JSON row's behavior on a fresh install).
         const driveExportItem = buildSettingsMenuItem(
             'Export to Drive',
-            '',
+            readLastDriveExportedAt() ? formatRelativeExportedAt(readLastDriveExportedAt()) : '',
             function() { exportTodosToDrive(); },
             'settingsMenuItem--driveExport'
         );

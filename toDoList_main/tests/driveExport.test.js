@@ -22,6 +22,11 @@ import {
 } from '../src/driveExport.js';
 import { listLogic } from '../src/listLogic.js';
 import { buildBaseExportFilename, buildExportPayload } from '../src/exportImport.js';
+import {
+    LAST_DRIVE_EXPORTED_AT_KEY,
+    readLastDriveExportedAt,
+    writeLastDriveExportedAt,
+} from '../src/prefs.js';
 
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -291,6 +296,82 @@ describe('driveExport — payload reuses the existing export serialization', () 
 describe('driveExport — in-progress guard', () => {
     it('reports false at rest', () => {
         expect(isDriveExportInProgress()).toBe(false);
+    });
+});
+
+
+describe('driveExport — last-exported-to-Drive marker', () => {
+    beforeEach(() => {
+        try { localStorage.removeItem(LAST_DRIVE_EXPORTED_AT_KEY); } catch (_) {}
+    });
+
+    it('readLastDriveExportedAt returns null when nothing has been stored', () => {
+        expect(readLastDriveExportedAt()).toBe(null);
+    });
+
+    it('writeLastDriveExportedAt persists under the todoapp_lastDriveExportedAt key', () => {
+        writeLastDriveExportedAt('2026-05-22T10:00:00.000Z');
+        expect(localStorage.getItem(LAST_DRIVE_EXPORTED_AT_KEY))
+            .toBe('2026-05-22T10:00:00.000Z');
+        expect(readLastDriveExportedAt()).toBe('2026-05-22T10:00:00.000Z');
+    });
+
+    it('uses a top-level key (not nested inside the todos payload)', () => {
+        // The marker is a per-device sync-state fact, not part of the user's
+        // data — importing a JSON backup must not overwrite it. The key
+        // sits at the localStorage root with the todoapp_ prefix.
+        expect(LAST_DRIVE_EXPORTED_AT_KEY).toBe('todoapp_lastDriveExportedAt');
+    });
+});
+
+
+describe('driveExport — source-level: timestamp write on success only', () => {
+    const src = read('driveExport.js');
+
+    it('imports writeLastDriveExportedAt from prefs.js', () => {
+        expect(src).toMatch(
+            /import\s*\{\s*writeLastDriveExportedAt\s*\}\s*from\s*['"]\.\/prefs\.js['"]/
+        );
+    });
+
+    it('writes the timestamp inside the upload-success then-handler', () => {
+        // The write must sit in the post-uploadToDrive .then() block — that
+        // runs only on a 2xx Drive response. A failed upload routes through
+        // the .catch() and leaves the prior timestamp untouched.
+        expect(src).toMatch(
+            /\.then\(function\(file\)\s*\{[\s\S]*?writeLastDriveExportedAt\(/
+        );
+    });
+
+    it('does not write the timestamp from the catch handler', () => {
+        const catchIdx = src.indexOf('.catch(function(err)');
+        expect(catchIdx).toBeGreaterThan(-1);
+        // Walk to the end of the catch block (until the next .then) and
+        // make sure writeLastDriveExportedAt is not called inside it.
+        const tail = src.slice(catchIdx, src.indexOf('.then(function(result)', catchIdx));
+        expect(tail).not.toMatch(/writeLastDriveExportedAt/);
+    });
+});
+
+
+describe('settings menu — Export to Drive last-exported label', () => {
+    const main = read('main.js');
+
+    it('imports readLastDriveExportedAt alongside readLastExportedAt', () => {
+        expect(main).toMatch(
+            /import\s*\{[^}]*readLastDriveExportedAt[^}]*\}\s*from\s*['"]\.\/prefs\.js['"]/
+        );
+    });
+
+    it('passes the relative label into the Export to Drive state pill', () => {
+        // Mirror of the Export JSON pin in lastExportedFooter.test.js — the
+        // second arg to buildSettingsMenuItem('Export to Drive', …) must be
+        // the formatted relative label so the user sees how stale their
+        // last Drive backup is at the moment of action.
+        const driveIdx = main.indexOf("'Export to Drive'");
+        expect(driveIdx).toBeGreaterThan(-1);
+        const slice = main.slice(driveIdx, driveIdx + 400);
+        expect(slice).toMatch(/formatRelativeExportedAt\s*\(\s*readLastDriveExportedAt\(\)\s*\)/);
     });
 });
 
