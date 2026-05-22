@@ -2194,6 +2194,26 @@ body.row-dragging * { cursor: grabbing !important; }
   to   { background-size: 100% 1px; }
 }
 
+/* Slide-out fade completion animation — transient `.todoCompleting` class
+   added on the unchecked → checked edge of any row (project view, Today
+   view, Calendar day-detail panel — all three surfaces share the row
+   markup). The row briefly translates right while fading, then settles
+   back to its final position in the standard `.completed` appearance.
+   Total duration ~280ms. Removed via animationend in JS so subsequent
+   renders don't re-fire. Done → open does NOT add the class — see the
+   wireCheckbox / handleTodayCheckboxToggle guards. */
+@media (prefers-reduced-motion: no-preference) {
+  #toDoChild.todoCompleting,
+  .todayRow.todoRowCard.todoCompleting {
+    animation: todoCompletingSlideFade 280ms ease-in-out forwards;
+  }
+  @keyframes todoCompletingSlideFade {
+    0%   { transform: translateX(0);     opacity: 1; }
+    50%  { transform: translateX(40px);  opacity: 0.4; }
+    100% { transform: translateX(0);     opacity: 1; }
+  }
+}
+
 #toDoInput {
   font-size: 13px;
   font-family: inherit;

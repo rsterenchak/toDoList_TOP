@@ -202,6 +202,14 @@ function wireCheckbox(toDoChild, toDoInput, item) {
                 }).length;
                 companionInstance.cheer(remainingOpen === 0);
             }
+            if (!prefersReducedMotion()) {
+                toDoChild.classList.add('todoCompleting');
+                toDoChild.addEventListener('animationend', function onSlideEnd(e) {
+                    if (e.animationName !== 'todoCompletingSlideFade') return;
+                    toDoChild.classList.remove('todoCompleting');
+                    toDoChild.removeEventListener('animationend', onSlideEnd);
+                });
+            }
         }
 
         applyDueUrgency(toDoChild, item);

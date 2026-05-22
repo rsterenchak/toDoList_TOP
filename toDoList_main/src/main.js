@@ -73,6 +73,7 @@ import {
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
+import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
     exportTodosToFile,
@@ -5864,6 +5865,26 @@ function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
 
     item.completed = checkbox.checked;
     listLogic.sortCompletedToBottom(project);
+
+    // Open → done plays the slide-out fade on the row before the view
+    // re-renders. Without the deferred re-render the row would be
+    // unmounted before the animation could play. Done → open and
+    // reduced-motion users re-render immediately, matching prior behavior.
+    const animate = checkbox.checked && !wasCompleted && item.tit
+        && !prefersReducedMotion();
+    const row = checkbox.closest && checkbox.closest('.todayRow.todoRowCard');
+    if (animate && row) {
+        row.classList.add('completed', 'todoCompleting');
+        row.addEventListener('animationend', function onSlideEnd(e) {
+            if (e.animationName !== 'todoCompletingSlideFade') return;
+            row.classList.remove('todoCompleting');
+            row.removeEventListener('animationend', onSlideEnd);
+            if (typeof onAfter === 'function') onAfter();
+            else renderTodayDashboard();
+        });
+        return;
+    }
+
     if (typeof onAfter === 'function') onAfter();
     else renderTodayDashboard();
 }
