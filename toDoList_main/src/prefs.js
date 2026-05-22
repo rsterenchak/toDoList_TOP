@@ -13,6 +13,7 @@ export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
+export const LAST_DRIVE_EXPORTED_AT_KEY = 'todoapp_lastDriveExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
 export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
 export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
@@ -144,6 +145,26 @@ export function readLastExportedAt() {
 export function writeLastExportedAt(isoString) {
     try {
         localStorage.setItem(LAST_EXPORTED_AT_KEY, isoString);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── last-exported-to-Drive marker ──
+// Per-device fact about when this device last successfully uploaded a backup
+// to Google Drive. Stored as a top-level localStorage key (not inside the
+// todos JSON payload) so it stays device-local and is not round-tripped
+// through export/import. Importing a JSON backup does not overwrite this
+// value — it is a sync-state marker, not user data.
+export function readLastDriveExportedAt() {
+    try {
+        return localStorage.getItem(LAST_DRIVE_EXPORTED_AT_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function writeLastDriveExportedAt(isoString) {
+    try {
+        localStorage.setItem(LAST_DRIVE_EXPORTED_AT_KEY, isoString);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
