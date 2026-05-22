@@ -2,30 +2,32 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Inject OAuth Client ID at build time via Webpack DefinePlugin — Completed: 2026-05-22
-  - Description: The `OAUTH_CLIENT_ID` constant in `driveExport.js` is currently hardcoded to a personal Google OAuth client ID, which (a) breaks the `tests/driveExport.test.js` "fresh fork" invariant that asserts `OAUTH_CLIENT_ID === ''` at the source level, and (b) means anyone forking the repo inherits the personal client ID rather than provisioning their own. Restore the source-level empty string and inject the real value at build time via Webpack `DefinePlugin`, reading from `process.env.GOOGLE_OAUTH_CLIENT_ID`. Wire the env var into the GitHub Actions deploy workflow via a repository secret so production builds get the real ID, while tests, fresh clones, and forks see `''` and surface the existing "Drive export not configured for this build" toast.
+- [ ] **[HIGH]** Wire OAuth Client ID through build-time env var to unblock CI
+  - Description: The `driveExport.js` module still hardcodes a personal Google OAuth Client ID, causing the `tests/driveExport.test.js` "OAUTH_CLIENT_ID is empty" assertion to fail in CI and blocking deploys. A `GOOGLE_OAUTH_CLIENT_ID` repository secret has already been added in GitHub Settings → Secrets and variables → Actions, but the source code, Webpack config, and deploy workflow have not yet been wired to consume it. Replace the hardcoded literal with `process.env.GOOGLE_OAUTH_CLIENT_ID || ''`, add a Webpack `DefinePlugin` entry that substitutes the value at build time, and expose the secret to the build step in `deploy.yml`. The test step must NOT see the env var so the fallback to `''` keeps the "fresh fork" invariant passing.
   - Behavior:
-    1. `driveExport.js` reads `OAUTH_CLIENT_ID` from `process.env.GOOGLE_OAUTH_CLIENT_ID`, falling back to `''` when undefined.
-    2. `tests/driveExport.test.js` "OAUTH_CLIENT_ID is empty" assertion passes because the test environment has no env var set and the fallback kicks in.
-    3. Production GitHub Pages builds receive the real client ID via a `GOOGLE_OAUTH_CLIENT_ID` repository secret and Drive export works end-to-end.
-    4. Local dev (`npm start`) without the env var set behaves like a fresh fork — the menu item appears but the toast reports the missing configuration. With the env var exported in the shell, local dev hits the real OAuth flow.
-    5. A fresh fork that clones the repo and runs `npm install && npm run build` with no env var set produces a working build where Drive export gracefully degrades to the not-configured toast.
+    1. `grep -n "OAUTH_CLIENT_ID" toDoList_main/src/driveExport.js` shows `process.env.GOOGLE_OAUTH_CLIENT_ID || ''` on the constant's RHS, with no literal client ID anywhere in source.
+    2. Running `npm run test:run` locally (with no `GOOGLE_OAUTH_CLIENT_ID` exported in the shell) passes all 1042 tests, including the previously failing "toasts a configuration error when OAUTH_CLIENT_ID is empty".
+    3. GitHub Actions "Tests" workflow on the next push to `main` passes — the env var is not exposed to the test step, so the source resolves `OAUTH_CLIENT_ID` to `''`.
+    4. GitHub Actions "Deploy to GitHub Pages" workflow builds the bundle with `DefinePlugin` substituting the real client ID from the secret, and the deployed site at `https://rsterenchak.github.io` performs the real OAuth flow when the user clicks Export to Drive.
+    5. A user with `GOOGLE_OAUTH_CLIENT_ID` unset in their shell runs `npm start` and sees the "Drive export not configured for this build" toast — the menu item still renders, the failure mode is graceful.
   - Implementation notes:
-    - In `webpack.config.js`, add `new webpack.DefinePlugin({ 'process.env.GOOGLE_OAUTH_CLIENT_ID': JSON.stringify(process.env.GOOGLE_OAUTH_CLIENT_ID || '') })`. Confirm `webpack` is imported at the top of the config.
-    - In `driveExport.js`, change `const OAUTH_CLIENT_ID = '<hardcoded value>';` to `const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || '';`. Update the top-of-module comment block to document that the value comes from the build-time env var, not source.
-    - Add `GOOGLE_OAUTH_CLIENT_ID` as a repository secret in GitHub Settings → Secrets and variables → Actions.
-    - In `.github/workflows/deploy.yml`, expose the secret to the build step:
-  - run: npm run build
-    env:
-      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-      Make sure this is on the build step that produces the artifact deployed to Pages, not just on a test step.
-    - **Rotate the existing OAuth Client ID before merging.** The current hardcoded value has been exposed in public CI logs (Tests #585). Delete the existing OAuth 2.0 Client ID in Google Cloud Console (APIs & Services → Credentials), create a fresh one with the same authorized JavaScript origin (`https://rsterenchak.github.io`), and use the new ID as the repository secret value. The old one keeps working until deleted, so create-then-swap-then-delete to avoid a deploy gap.
-    - For local development convenience, document in `README.md` (or a new `SETUP.md`) that the Drive feature requires `export GOOGLE_OAUTH_CLIENT_ID=...` in the shell before `npm start`, or it falls back to the not-configured toast.
-    - Do not commit a `.env` file. If `dotenv-webpack` is added later for convenience, ensure `.env` is in `.gitignore`.
-  - Out of scope: `dotenv-webpack` integration, encrypted env var checked into the repo, runtime configuration via localStorage, multi-environment configs (dev/staging/prod).
-  - File: `toDoList_main/webpack.config.js`, `toDoList_main/src/driveExport.js`, `.github/workflows/deploy.yml`, `toDoList_main/README.md`
+    - In `toDoList_main/src/driveExport.js`, change the constant declaration from the hardcoded literal to `const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || '';`. Update the top-of-module comment block to state that the value is injected at build time via Webpack `DefinePlugin` reading from `process.env.GOOGLE_OAUTH_CLIENT_ID`, and that a fresh fork must set this env var (locally for dev, as a repository secret for CI) before Drive export will work.
+    - In `toDoList_main/webpack.config.js`, ensure `const webpack = require('webpack');` is at the top, then add to the `plugins` array:
+  new webpack.DefinePlugin({
+    'process.env.GOOGLE_OAUTH_CLIENT_ID': JSON.stringify(
+      process.env.GOOGLE_OAUTH_CLIENT_ID || ''
+    ),
+  })
+    - In `.github/workflows/deploy.yml`, locate the step that runs `npm run build` (NOT the test step, NOT the job-level or workflow-level `env:` block) and add:
+  env:
+    GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      directly under that step. If tests and build are in separate workflows (`tests.yml` and `deploy.yml`), only the deploy workflow's build step should reference the secret; the tests workflow must not.
+    - **Rotate the exposed OAuth Client ID before merging.** The previously hardcoded value (`1043519992483-sqp29t948863msorco9i9vpkuv71o2jf.apps.googleusercontent.com`) was logged in public CI output on Tests #585. In Google Cloud Console → APIs & Services → Credentials, create a new OAuth 2.0 Client ID of type "Web application" with `https://rsterenchak.github.io` as an Authorized JavaScript origin. Update the GitHub `GOOGLE_OAUTH_CLIENT_ID` repository secret value to the new ID. Delete the old client ID only after confirming the new one works in a successful deploy, to avoid a deploy gap.
+    - Do not commit a `.env` file. If `dotenv-webpack` or similar is added later, ensure `.env` is listed in `.gitignore`.
+  - Out of scope: `dotenv-webpack` integration, multi-environment configs (dev/staging/prod), runtime configuration via localStorage, README/SETUP.md updates (covered by a separate docs entry if desired).
+  - File: `toDoList_main/src/driveExport.js`, `toDoList_main/webpack.config.js`, `.github/workflows/deploy.yml`
   - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM)
-  - Completed: 2026-05-22
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
