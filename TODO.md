@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add "Import from Drive" option to ghost menu
+- [x] **[MEDIUM]** Add "Import from Drive" option to ghost menu — Completed: 2026-05-22
   - Description: Add a new "Import from Drive" menu item directly below the existing "Import JSON" row in the ghost popover menu. Clicking it triggers the same OAuth 2.0 flow used by Export to Drive (via Google Identity Services with PKCE and the `drive.file` scope), queries the user's Drive for files this app created, picks the most recently modified one, downloads its content, and feeds the JSON payload into the existing local import pipeline so the same validation, confirmation prompt, and state-replacement behavior apply. If no app-created file exists in the user's Drive, surface a clear "No Drive backups found" toast instead of triggering the import. Reuse the existing access token from the same session if Export to Drive has already authorized; otherwise prompt for OAuth.
   - Behavior:
     1. User opens ghost popover menu, sees "Import from Drive" as a new row directly below "Import JSON".

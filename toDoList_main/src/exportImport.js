@@ -300,12 +300,14 @@ function showImportError(message) {
 }
 
 
-function handleValidatedImport(projects, onAfterReplace) {
+function handleValidatedImport(projects, onAfterReplace, sourceLabel) {
 
     const before = describeCurrentState();
     const projectWord = before.projectCount === 1 ? 'project' : 'projects';
     const todoWord = before.todoCount === 1 ? 'todo' : 'todos';
-    const msg = 'Replace all current todos with this file? Your existing '
+    const prefix = sourceLabel ? sourceLabel + '\n\n' : '';
+    const msg = prefix
+        + 'Replace all current todos with this file? Your existing '
         + before.todoCount + ' ' + todoWord + ' across '
         + before.projectCount + ' ' + projectWord + ' will be permanently overwritten.';
 
@@ -321,18 +323,39 @@ function handleValidatedImport(projects, onAfterReplace) {
 }
 
 
+// Shared parse → validate → confirm → apply pipeline. Both the local file
+// picker (importFromFile) and the Drive import path route their raw JSON
+// strings through here so the same validation, confirmation prompt, and
+// state-replacement behavior apply to both surfaces. Callers may pass
+// `options.sourceLabel` to prepend a "this is the backup you're about to
+// restore" line to the confirm prompt (Drive uses this to show the
+// discovered filename + modifiedTime); the local file picker leaves it
+// blank.
+//
+// Errors are reported via the existing inline error toast unless the
+// caller opts out with `options.silentError: true`, in which case the
+// returned descriptor lets the caller surface the message in its own
+// toast (Drive uses this so the failure lands in the unified Drive
+// toast alongside the success message styling).
+export function importTodosFromString(jsonString, onAfterReplace, options) {
+    const opts = options || {};
+    const result = parseAndValidateExport(jsonString);
+    if (!result.ok) {
+        if (!opts.silentError) showImportError(result.error);
+        return { ok: false, error: result.error };
+    }
+    handleValidatedImport(result.projects, onAfterReplace, opts.sourceLabel);
+    return { ok: true };
+}
+
+
 export function importFromFile(file, onAfterReplace) {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function() {
         const text = typeof reader.result === 'string' ? reader.result : '';
-        const result = parseAndValidateExport(text);
-        if (!result.ok) {
-            showImportError(result.error);
-            return;
-        }
-        handleValidatedImport(result.projects, onAfterReplace);
+        importTodosFromString(text, onAfterReplace);
     };
     reader.onerror = function() {
         showImportError("Couldn't read that file — expected a todos export.");

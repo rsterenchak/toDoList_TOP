@@ -85,6 +85,7 @@ import {
     refreshFooterExportLabel,
 } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
+import { importTodosFromDrive } from './driveImport.js';
 import { readLastExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
@@ -1439,6 +1440,21 @@ function component() {
             function() { importFileInput.click(); }
         );
         menu.appendChild(importItem);
+
+        // Import from Drive — fetches the most recently modified backup
+        // this app uploaded to the user's Drive (drive.file scope's
+        // implicit filter handles "files this app created"). Reuses the
+        // shared OAuth token cache from driveAuth so importing right
+        // after exporting in the same session is silent. The
+        // `settingsMenuItem--driveImport` class is the CSS anchor for the
+        // dim/disabled loading state driven by `body.driveImportInProgress`.
+        const driveImportItem = buildSettingsMenuItem(
+            'Import from Drive',
+            '',
+            function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
+            'settingsMenuItem--driveImport'
+        );
+        menu.appendChild(driveImportItem);
 
         menu.appendChild(buildSettingsMenuDivider());
 
