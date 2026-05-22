@@ -43,7 +43,7 @@
   - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM, above)
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[LOW]** Group ghost menu export/import rows under LOCAL and DRIVE section headers
+- [x] **[LOW]** Group ghost menu export/import rows under LOCAL and DRIVE section headers — Completed: 2026-05-22
   - Description: Once Export to Drive and Import from Drive land in the ghost popover menu, the four data-transfer rows (Export JSON, Export to Drive, Import JSON, Import from Drive) read as redundant when stacked flat. Reorganize them into two labeled sections — LOCAL and DRIVE — using the same dim-uppercase section-header styling already used by the HELP section further down the menu. Within each section, Export comes before Import. The row labels themselves shorten to "Export" and "Import" since the section header now provides the local/Drive context, eliminating the "Export JSON / Export to Drive" naming redundancy.
   - Behavior:
     1. Ghost popover menu opens. From top to bottom: LOCAL section header, Export row, Import row, divider, DRIVE section header, Export row, Import row, divider, Theme, Toggle floating ghost, HELP section header, Replay welcome tour, Help.
