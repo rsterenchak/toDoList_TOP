@@ -2,10 +2,30 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Fix slide-out fade completion animation playing on the wrong row in the project view
-  - Description: The slide-out fade completion animation (`.todoCompleting` / `todoCompletingSlideFade` keyframes) currently appears to play on the bottom-most completed row instead of the row whose checkbox was just clicked. Root cause is in `wireCheckbox`'s standard completion path in `toDoRow.js`: after adding `.todoCompleting` to `toDoChild`, the handler synchronously calls `listLogic.sortCompletedToBottom(projectName)` + `reorderToDoDOM(projectName)`, which re-parents `toDoChild` via `appendChild` to move it into the completed section. Per the CSS spec, calling `appendChild` on an element with a running CSS animation restarts the animation from frame 0 in its new DOM position — so the animation does play, but only after the row has already been moved to the bottom of the list. The user sees the row vanish from its original slot instantly, and the slide-fade plays at the bottom on what looks like a different row. Fix by deferring the `sortCompletedToBottom` + `reorderToDoDOM` calls until the slide-fade's `animationend` fires (matching the pattern already used in `handleTodayCheckboxToggle` for the Today / Calendar surfaces, and in the recurring-flash branch of this same handler after a related earlier fix). Concretely: snapshot whether `.todoCompleting` was added (i.e. the open → done edge with motion allowed), extract the existing trailing `if (projectName) { sortCompletedToBottom + reorderToDoDOM } else { saveToStorage }` block into a local `commitReorder` function, and either attach a new `animationend` listener that runs `commitReorder` after the `todoCompletingSlideFade` animation finishes, or call `commitReorder()` synchronously when no animation is in flight (done → open, blank rows, reduced-motion users, recurring branch that already returned). The existing class-removal `animationend` listener stays unchanged — both listeners fire independently on the same event. Persistence is unaffected: `item.completed` is already assigned and `.completed` is already on the row before the animation starts, so the data layer and visual "done" state are in sync from the click tick onward; only the DOM-side row reorder is deferred. Test pins: clicking an open row's checkbox in the project view adds `.todoCompleting` AND defers `reorderToDoDOM(projectName)` until `animationend` (regex the wireCheckbox body for `reorderToDoDOM(` appearing inside an `animationend` callback whose name check is `todoCompletingSlideFade`); clicking a done row's checkbox calls `reorderToDoDOM` synchronously; with `prefersReducedMotion()` truthy the reorder also fires synchronously; the `item.completed = checkToDo.checked` assignment still sits ABOVE the reorder branch so persistence is never gated on animation timing.
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/todoCompletionAnimation.test.js`
-  - Completed: 2026-05-22
+- [ ] **[HIGH]** Inject OAuth Client ID at build time via Webpack DefinePlugin
+  - Description: The `OAUTH_CLIENT_ID` constant in `driveExport.js` is currently hardcoded to a personal Google OAuth client ID, which (a) breaks the `tests/driveExport.test.js` "fresh fork" invariant that asserts `OAUTH_CLIENT_ID === ''` at the source level, and (b) means anyone forking the repo inherits the personal client ID rather than provisioning their own. Restore the source-level empty string and inject the real value at build time via Webpack `DefinePlugin`, reading from `process.env.GOOGLE_OAUTH_CLIENT_ID`. Wire the env var into the GitHub Actions deploy workflow via a repository secret so production builds get the real ID, while tests, fresh clones, and forks see `''` and surface the existing "Drive export not configured for this build" toast.
+  - Behavior:
+    1. `driveExport.js` reads `OAUTH_CLIENT_ID` from `process.env.GOOGLE_OAUTH_CLIENT_ID`, falling back to `''` when undefined.
+    2. `tests/driveExport.test.js` "OAUTH_CLIENT_ID is empty" assertion passes because the test environment has no env var set and the fallback kicks in.
+    3. Production GitHub Pages builds receive the real client ID via a `GOOGLE_OAUTH_CLIENT_ID` repository secret and Drive export works end-to-end.
+    4. Local dev (`npm start`) without the env var set behaves like a fresh fork — the menu item appears but the toast reports the missing configuration. With the env var exported in the shell, local dev hits the real OAuth flow.
+    5. A fresh fork that clones the repo and runs `npm install && npm run build` with no env var set produces a working build where Drive export gracefully degrades to the not-configured toast.
+  - Implementation notes:
+    - In `webpack.config.js`, add `new webpack.DefinePlugin({ 'process.env.GOOGLE_OAUTH_CLIENT_ID': JSON.stringify(process.env.GOOGLE_OAUTH_CLIENT_ID || '') })`. Confirm `webpack` is imported at the top of the config.
+    - In `driveExport.js`, change `const OAUTH_CLIENT_ID = '<hardcoded value>';` to `const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || '';`. Update the top-of-module comment block to document that the value comes from the build-time env var, not source.
+    - Add `GOOGLE_OAUTH_CLIENT_ID` as a repository secret in GitHub Settings → Secrets and variables → Actions.
+    - In `.github/workflows/deploy.yml`, expose the secret to the build step:
+  - run: npm run build
+    env:
+      GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      Make sure this is on the build step that produces the artifact deployed to Pages, not just on a test step.
+    - **Rotate the existing OAuth Client ID before merging.** The current hardcoded value has been exposed in public CI logs (Tests #585). Delete the existing OAuth 2.0 Client ID in Google Cloud Console (APIs & Services → Credentials), create a fresh one with the same authorized JavaScript origin (`https://rsterenchak.github.io`), and use the new ID as the repository secret value. The old one keeps working until deleted, so create-then-swap-then-delete to avoid a deploy gap.
+    - For local development convenience, document in `README.md` (or a new `SETUP.md`) that the Drive feature requires `export GOOGLE_OAUTH_CLIENT_ID=...` in the shell before `npm start`, or it falls back to the not-configured toast.
+    - Do not commit a `.env` file. If `dotenv-webpack` is added later for convenience, ensure `.env` is in `.gitignore`.
+  - Out of scope: `dotenv-webpack` integration, encrypted env var checked into the repo, runtime configuration via localStorage, multi-environment configs (dev/staging/prod).
+  - File: `toDoList_main/webpack.config.js`, `toDoList_main/src/driveExport.js`, `.github/workflows/deploy.yml`, `toDoList_main/README.md`
+  - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM)
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
