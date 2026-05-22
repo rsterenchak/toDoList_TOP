@@ -18,9 +18,16 @@
 //    the origins this app is served from (e.g.,
 //    https://<github-username>.github.io for a GitHub Pages deploy and
 //    http://localhost:8080 for local development).
-// 4. Copy the Client ID and assign it to OAUTH_CLIENT_ID below. Do NOT
-//    check in a Client ID that belongs to a private project — each fork
-//    owns its own credential.
+// 4. Expose the Client ID to the build as the `GOOGLE_OAUTH_CLIENT_ID`
+//    environment variable. Webpack's DefinePlugin substitutes it into
+//    OAUTH_CLIENT_ID below at compile time. The value is never checked
+//    into source — each fork owns its own credential.
+//      • Production (GitHub Pages): add `GOOGLE_OAUTH_CLIENT_ID` as a
+//        repository secret and wire it into the deploy workflow's build
+//        step.
+//      • Local development: `export GOOGLE_OAUTH_CLIENT_ID=…` in the
+//        shell before `npm start`. Without it, the menu item surfaces a
+//        "not configured" toast and the rest of the app keeps working.
 //
 // ── DESIGN NOTES ──
 //
@@ -38,10 +45,12 @@
 
 import { buildExportPayload, buildBaseExportFilename } from './exportImport.js';
 
-// Empty default — set this to your own OAuth Client ID in a fork. When
-// empty, the menu item shows a "not configured" toast instead of opening
-// the OAuth popup, so the rest of the app keeps working out of the box.
-export const OAUTH_CLIENT_ID = '1043519992483-sqp29t948863msorco9i9vpkuv71o2jf.apps.googleusercontent.com';
+// Injected at build time from the `GOOGLE_OAUTH_CLIENT_ID` environment
+// variable via Webpack's DefinePlugin. Empty by default — when empty, the
+// menu item shows a "not configured" toast instead of opening the OAuth
+// popup, so a fresh clone, a fork without the env var, and the test suite
+// all keep working out of the box.
+export const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || '';
 
 const GIS_SCRIPT_ID = 'gisClientScript';
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';

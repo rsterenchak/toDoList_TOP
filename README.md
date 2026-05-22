@@ -59,6 +59,20 @@ Each task is created using the `toDo` factory function, which ensures all task o
 
 ---
 
+## Google Drive Export Setup
+
+The "Export to Drive" menu item requires an OAuth 2.0 Client ID provisioned in the Google Cloud Console (see the comment block at the top of `toDoList_main/src/driveExport.js` for step-by-step instructions). The Client ID is injected at build time from the `GOOGLE_OAUTH_CLIENT_ID` environment variable — it is **never** committed to source.
+
+* **Production (GitHub Pages):** add `GOOGLE_OAUTH_CLIENT_ID` as a repository secret under *Settings → Secrets and variables → Actions*. The deploy workflow forwards it to the build step automatically.
+* **Local development:** export it in your shell before `npm start`:
+  ```
+  export GOOGLE_OAUTH_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
+  npm start
+  ```
+  Without the env var, the menu item appears but surfaces a "Drive export not configured for this build" toast — the rest of the app works normally.
+
+---
+
 ## Testing
 
 Testing was performed manually by interacting with the application. This included:

@@ -25,6 +25,8 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: toDoList_main
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
