@@ -415,7 +415,7 @@ describe('welcome carousel — wired into the app', () => {
         const slice = main.slice(fnIdx, fnIdx + 7000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
-        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
         expect(handlerSlice).toMatch(/applyActiveView\(\s*['"]projects['"]\s*\)/);
         const applyIdx = handlerSlice.indexOf("applyActiveView('projects')");
         const startIdx = handlerSlice.indexOf('startWelcomeCarousel');
@@ -428,7 +428,7 @@ describe('welcome carousel — wired into the app', () => {
         const slice = main.slice(fnIdx, fnIdx + 7000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
-        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
         expect(handlerSlice).toMatch(/listProjectsArray\(\s*\)\.length\s*===\s*0/);
         expect(handlerSlice).toMatch(/seedSampleProject\(\s*\{\s*force:\s*true\s*\}\s*\)/);
     });
@@ -439,7 +439,7 @@ describe('welcome carousel — wired into the app', () => {
         const slice = main.slice(fnIdx, fnIdx + 7000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
-        const handlerSlice = slice.slice(replayIdx, replayIdx + 800);
+        const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
         expect(handlerSlice).toMatch(/requestAnimationFrame/);
         const rafIdx = handlerSlice.indexOf('requestAnimationFrame');
         const startIdx = handlerSlice.indexOf('startWelcomeCarousel');

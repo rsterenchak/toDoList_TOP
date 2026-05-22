@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-05-21',
-        added: [
-            "Focus music popover now has an optional ambient visualizer that fills the player area when YouTube video is blocked, with five styles to pick from.",
+        date: '2026-05-22',
+        fixed: [
+            "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-05-21',
         fixed: [
             "Calendar month prev / next buttons are now reachable from the keyboard via ArrowDown from the Calendar pill, with ArrowUp returning to the pill and ArrowDown stepping into the grid.",
             "ArrowUp from a top-row Calendar cell now lands on the side-nearest month prev / next arrow instead of jumping straight to the Calendar pill.",

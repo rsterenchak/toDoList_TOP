@@ -1193,6 +1193,46 @@ export const listLogic = (function () {
     }
 
 
+    // Append the same four starter todos seedSampleProject ships into an
+    // existing project that currently has zero real (titled) items. Backs
+    // the replay-tour path: when the user has a project of their own but
+    // hasn't added any todos yet, the desktop coachmark steps that anchor
+    // against per-row chrome (#duePill, #descToggle) need a real titled
+    // row to point at. Reuses the existing addToDo path so the
+    // single-blank-placeholder invariant is preserved; the chevron row
+    // then has its description backfilled so step 3 has substance to
+    // open. Returns true when seeding ran, false when the project is
+    // missing or already has any titled item.
+    function seedSampleTodos(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.items)) return false;
+        if (entry.items.some(function(it) { return it && it.tit !== ''; })) {
+            return false;
+        }
+
+        const chevronTitle = 'Click the chevron to add notes here';
+        const titles = [
+            'Welcome — check the box to mark a task complete',
+            'Click the date pill to set a due date',
+            chevronTitle,
+            'Rename or delete this project when you\'re ready',
+        ];
+        titles.forEach(function(t) {
+            addToDo(projectName, t);
+        });
+
+        const items = entry.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].tit === chevronTitle) {
+                items[i].desc = 'Descriptions live in this panel — great for links, references, or longer thoughts. Press Ctrl/Cmd + Enter to expand every row at once.';
+                break;
+            }
+        }
+        saveToStorage();
+        return true;
+    }
+
+
     // Wipe all in-memory + persisted project state and replace it with the
     // given list. Used by the JSON import flow (validation lives next to the
     // import handler; once the file is accepted the entire project tree is
@@ -1299,6 +1339,7 @@ export const listLogic = (function () {
         getCalendarMonth,
         getAllTodosDueOn,
         seedSampleProject,
+        seedSampleTodos,
         _reset
     };
 

@@ -1917,3 +1917,64 @@ describe('listLogic — seedSampleProject', () => {
         expect(listLogic.listProjectsArray()).not.toContain('Getting started');
     });
 });
+
+
+// ── SEED SAMPLE TODOS ─────────────────────────────────────────────────
+// Backs the replay-tour path when the user has a project but it holds
+// only the blank placeholder — the coachmark steps that anchor against
+// per-row chrome (#duePill, #descToggle) need a real titled row.
+describe('listLogic — seedSampleTodos', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('adds four real titled items to a named project', () => {
+        listLogic.addProject('Work');
+        const seeded = listLogic.seedSampleTodos('Work');
+        expect(seeded).toBe(true);
+        const items = listLogic.listItems('Work');
+        // 1 blank placeholder + 4 starter todos = 5 entries.
+        expect(items).toHaveLength(5);
+        const real = items.filter(i => i.tit !== '');
+        expect(real).toHaveLength(4);
+    });
+
+    it('at least one seeded todo has a description so the chevron step has substance', () => {
+        listLogic.addProject('Work');
+        listLogic.seedSampleTodos('Work');
+        const items = listLogic.listItems('Work');
+        const withDesc = items.filter(i => i.desc && i.desc.length > 0);
+        expect(withDesc.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('keeps a single blank placeholder pinned as the sole blank entry', () => {
+        listLogic.addProject('Work');
+        listLogic.seedSampleTodos('Work');
+        const items = listLogic.listItems('Work');
+        expect(items[0].tit).toBe('');
+        const blanks = items.filter(i => i.tit === '');
+        expect(blanks).toHaveLength(1);
+    });
+
+    it('is a no-op when the project already has real todos', () => {
+        listLogic.addProject('Work');
+        listLogic.addToDo('Work', 'A real task');
+        const beforeLen = listLogic.listItems('Work').length;
+        const seeded = listLogic.seedSampleTodos('Work');
+        expect(seeded).toBe(false);
+        expect(listLogic.listItems('Work').length).toBe(beforeLen);
+    });
+
+    it('returns false when the project does not exist', () => {
+        const seeded = listLogic.seedSampleTodos('NoSuchProject');
+        expect(seeded).toBe(false);
+    });
+
+    it('persists the seeded todos to storage', () => {
+        listLogic.addProject('Work');
+        listLogic.seedSampleTodos('Work');
+        const raw = localStorage.getItem('allProjects');
+        const parsed = JSON.parse(raw);
+        expect(parsed.Work.items.filter(i => i.tit !== '')).toHaveLength(4);
+    });
+});
