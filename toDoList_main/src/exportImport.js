@@ -41,6 +41,15 @@ function localDateStamp(date) {
     return y + '-' + m + '-' + day;
 }
 
+// Pure, side-effect-free date-stamped name shared between the local
+// download path and the Drive upload path so both export methods land on
+// the same base filename for the same calendar day. The local download
+// layers a same-day collision suffix on top via buildExportFilename below;
+// Drive uploads use the bare base name since Drive assigns its own ids.
+export function buildBaseExportFilename(date) {
+    return 'todos-' + localDateStamp(date) + '.json';
+}
+
 function buildExportFilename(date) {
     const stamp = localDateStamp(date);
     const seen = sessionFilenameCounts[stamp] || 0;
