@@ -26,7 +26,7 @@
   - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM), "Wire OAuth Client ID through build-time env var to unblock CI" entry (HIGH)
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[LOW]** Show "last exported to Drive" timestamp on Export to Drive menu row
+- [x] **[LOW]** Show "last exported to Drive" timestamp on Export to Drive menu row — Completed: 2026-05-22
   - Description: Mirror the existing "EXPORTED N HOURS AGO" relative-time label on the Export JSON row, but for the new Export to Drive row. After a successful Drive upload, persist a `lastDriveExportAt` ISO timestamp to localStorage, and render it on the right side of the Export to Drive menu row using the same dimmed-uppercase styling as the existing Export JSON timestamp. Use the same relative-time formatter that powers the Export JSON label so the two rows stay visually consistent (e.g., "JUST NOW", "5 MINUTES AGO", "2 HOURS AGO", "YESTERDAY", "3 DAYS AGO").
   - Behavior:
     1. Before the user has ever exported to Drive, the right side of the row is empty (no "NEVER" placeholder — match how Export JSON behaves on a fresh install).
