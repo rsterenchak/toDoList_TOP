@@ -147,14 +147,23 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         if (checkToDo.checked && !wasCompleted && item.tit && item.recurrence && projectName) {
             const advanced = listLogic.advanceRecurringTodo(projectName, item, new Date());
             if (advanced) {
+                // reorderToDoDOM re-parents each row via appendChild, which
+                // cancels any in-flight CSS animation on it. Defer the
+                // reorder inside the flash's setTimeout so the keyframe
+                // gets to play; under reduced-motion there's no animation
+                // to protect and the reorder fires synchronously.
                 if (!prefersReducedMotion()) {
                     toDoChild.classList.add('recurring-flash');
                     setTimeout(function() {
                         toDoChild.classList.remove('recurring-flash');
                         checkToDo.checked = false;
+                        listLogic.sortCompletedToBottom(projectName);
+                        reorderToDoDOM(projectName);
                     }, 250);
                 } else {
                     checkToDo.checked = false;
+                    listLogic.sortCompletedToBottom(projectName);
+                    reorderToDoDOM(projectName);
                 }
                 applyDueUrgency(toDoChild, item);
                 const pill = toDoChild.querySelector('#duePill');
@@ -162,10 +171,6 @@ function wireCheckbox(toDoChild, toDoInput, item) {
                 if (isCoarsePointer() && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
                     try { navigator.vibrate(10); } catch (_) { /* noop */ }
                 }
-                // advanceRecurringTodo spawned a completed clone in the model;
-                // re-render so it lands in the Completed section immediately.
-                listLogic.sortCompletedToBottom(projectName);
-                reorderToDoDOM(projectName);
                 return;
             }
         }

@@ -133,9 +133,23 @@ describe('ghost companion — main.js wiring', () => {
 
     it('passes a truthy "big" flag to cheer() when no open items remain in the project', () => {
         // The project-complete variant triggers a louder animation. Guard
-        // against the wiring degrading to always-small cheers.
+        // against the wiring degrading to always-small cheers. Isolate the
+        // wireCheckbox body via brace-matching so the search window doesn't
+        // depend on a fragile fixed byte count.
         const start = toDoRow.indexOf('function wireCheckbox(');
-        const body = toDoRow.slice(start, start + 4000);
+        expect(start).toBeGreaterThan(-1);
+        let depth = 0;
+        let end = -1;
+        for (let i = toDoRow.indexOf('{', start); i < toDoRow.length; i++) {
+            const c = toDoRow[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(start);
+        const body = toDoRow.slice(start, end);
         expect(body).toMatch(/remainingOpen\s*===\s*0/);
     });
 
