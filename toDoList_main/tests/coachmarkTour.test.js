@@ -321,7 +321,7 @@ describe('coachmark tour — wired into the app', () => {
         expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1000);
+        const slice = main.slice(idx, idx + 1500);
         expect(slice).toMatch(/startCoachmarkTour\s*\(\s*\)/);
     });
 
@@ -391,7 +391,7 @@ describe('coachmark tour — wired into the app', () => {
         // the handler flips to PROJECTS first.
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 800);
+        const slice = main.slice(idx, idx + 1500);
         expect(slice).toMatch(/applyActiveView\(\s*['"]projects['"]\s*\)/);
         const applyIdx = slice.indexOf("applyActiveView('projects')");
         const startIdx = slice.indexOf('startCoachmarkTour');
@@ -408,9 +408,36 @@ describe('coachmark tour — wired into the app', () => {
         // sample can't surprise-appear on a populated install.
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 800);
+        const slice = main.slice(idx, idx + 1500);
         expect(slice).toMatch(/listProjectsArray\(\s*\)\.length\s*===\s*0/);
         expect(slice).toMatch(/seedSampleProject\(\s*\{\s*force:\s*true\s*\}\s*\)/);
+    });
+
+    it('Replay handler seeds sample todos when the active project is empty', () => {
+        // When projects already exist but the currently-active one holds
+        // only the blank placeholder, the per-row coachmark steps for
+        // #duePill and #descToggle would otherwise anchor against
+        // nothing. The handler invokes the in-between seeder so the
+        // tour always has live row chrome to point at.
+        const idx = main.indexOf("'Replay welcome tour'");
+        expect(idx).toBeGreaterThan(-1);
+        const slice = main.slice(idx, idx + 1500);
+        expect(slice).toMatch(/seedSampleTodosIntoActiveProjectIfEmpty\s*\(/);
+    });
+
+    it('main.js wires a helper that seeds sample todos into the empty active project', () => {
+        // The replay handler delegates to a module-level helper that
+        // reads the currently-selected project from the DOM, inspects
+        // its items, and calls listLogic.seedSampleTodos when no titled
+        // row exists. The helper re-renders the main list in place so
+        // the new rows appear without rebuilding the sidebar selection.
+        expect(main).toMatch(/function\s+seedSampleTodosIntoActiveProjectIfEmpty\s*\(/);
+        const fnIdx = main.indexOf('function seedSampleTodosIntoActiveProjectIfEmpty');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const body = main.slice(fnIdx, fnIdx + 1200);
+        expect(body).toMatch(/\.selectedProject/);
+        expect(body).toMatch(/listLogic\.seedSampleTodos\s*\(/);
+        expect(body).toMatch(/addToDos_restore\s*\(/);
     });
 
     it('Replay handler defers the tour kickoff so layout settles first', () => {
@@ -420,7 +447,7 @@ describe('coachmark tour — wired into the app', () => {
         // the spotlight cut-out reads them.
         const idx = main.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 800);
+        const slice = main.slice(idx, idx + 1500);
         expect(slice).toMatch(/requestAnimationFrame/);
         const rafIdx = slice.indexOf('requestAnimationFrame');
         const startIdx = slice.indexOf('startCoachmarkTour');

@@ -1496,6 +1496,12 @@ function component() {
                 if (listLogic.listProjectsArray().length === 0) {
                     listLogic.seedSampleProject({ force: true });
                     rebuildAfterImport();
+                } else {
+                    // Active project may hold only the blank placeholder.
+                    // The desktop coachmark steps for #duePill and
+                    // #descToggle need a real titled row to anchor
+                    // against, so seed starter todos into it.
+                    seedSampleTodosIntoActiveProjectIfEmpty();
                 }
                 // rAF defer so the data-view flip and any re-render have
                 // a layout pass before the tour reads bounding rects for
@@ -3421,6 +3427,12 @@ function component() {
             if (listLogic.listProjectsArray().length === 0) {
                 listLogic.seedSampleProject({ force: true });
                 rebuildAfterImport();
+            } else {
+                // Active project may hold only the blank placeholder.
+                // The desktop coachmark steps for #duePill and
+                // #descToggle need a real titled row to anchor against,
+                // so seed starter todos into it.
+                seedSampleTodosIntoActiveProjectIfEmpty();
             }
             // rAF defer so the data-view flip and any re-render have a
             // layout pass before the tour reads bounding rects for the
@@ -5103,6 +5115,35 @@ function rebuildAfterImport() {
 
     restoreFromStorage();
     refreshStaleHint();
+}
+
+
+// Replay-tour helper: when the user has projects but the currently
+// selected one holds only the blank placeholder, push the same starter
+// todos seedSampleProject ships so the desktop coachmark steps that
+// anchor against per-row chrome (#duePill, #descToggle) have a real
+// titled row to point at. A no-op when no project is selected, when the
+// active project already has any titled item, or when the seed itself
+// declines (listLogic.seedSampleTodos returns false). Re-renders the
+// main list in place so the new rows appear without touching the
+// sidebar selection.
+function seedSampleTodosIntoActiveProjectIfEmpty() {
+    const selected = document.querySelector('.selectedProject');
+    if (!selected) return;
+    const projInput = selected.querySelector('#projInput');
+    const activeName = projInput ? projInput.value.trim() : '';
+    if (!activeName) return;
+
+    const items = listLogic.listItems(activeName) || [];
+    const hasReal = items.some(function(it) { return it && it.tit !== ''; });
+    if (hasReal) return;
+
+    if (!listLogic.seedSampleTodos(activeName)) return;
+
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+    while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
+    addToDos_restore(listLogic.listItems(activeName), activeName);
 }
 
 
