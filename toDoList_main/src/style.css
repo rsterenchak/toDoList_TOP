@@ -5656,6 +5656,7 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   outline: none;
 }
 .musicPlayerWrap {
+  position: relative;
   display: flex;
   justify-content: center;
   background: #000;
@@ -5807,6 +5808,244 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
 }
 .musicVolume {
   width: 100%;
+}
+
+/* ── Visualizer toggle row (sits between picker and play/volume row) ── */
+.musicVizRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
+  border-top: 1px solid var(--border-mid, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border-mid, rgba(255, 255, 255, 0.08));
+}
+.musicVizCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.musicVizCheckbox {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.musicVizCheckText {
+  font-family: inherit;
+}
+.musicVizStyleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.musicVizStyleText {
+  font-family: 'SpaceMono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+.musicVizStyleSelect {
+  /* font-size: 16px+ on mobile to prevent iOS Safari auto-zoom on focus. */
+  font-family: inherit;
+  font-size: 16px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.musicVizStyleSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Decorative visualizer overlay ──
+   Mounts as a child of .musicPlayerWrap and sits on top of the YouTube
+   iframe via z-index so the iframe (and therefore audio) survives at
+   rest. Explicit height: 100% is required so the BARS style — which
+   uses flex-end alignment on percentage-height children — has something
+   to scale into. (An unsized parent would collapse the bars to zero.) */
+.musicViz {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  /* Deep purple void backdrop so the styles read against a uniform
+     surface regardless of theme. */
+  background: radial-gradient(circle at 50% 50%, #1a0d2e 0%, #0a0518 100%);
+}
+/* Pause animations when music is paused / idle — the controller toggles
+   the `--playing` class so all descendants freeze in place rather than
+   rewinding to their keyframe start. */
+.musicViz *,
+.musicViz {
+  animation-play-state: paused;
+}
+.musicViz--playing,
+.musicViz--playing * {
+  animation-play-state: running;
+}
+
+/* ── STARFIELD — slow horizontal drift ── */
+.musicVizStar {
+  position: absolute;
+  left: -4px;
+  background: #d9c8ff;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(217, 200, 255, 0.6);
+  animation: musicVizStarDrift 12s linear infinite;
+}
+@keyframes musicVizStarDrift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(248px); }
+}
+
+/* ── BLOBS — three drifting blurred lavender blobs ── */
+.musicVizBlob {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  filter: blur(18px);
+  mix-blend-mode: screen;
+  opacity: 0.65;
+}
+.musicVizBlob--1 {
+  background: #7b4ec9;
+  top: 20%; left: 10%;
+  animation: musicVizBlobOne 14s ease-in-out infinite alternate;
+}
+.musicVizBlob--2 {
+  background: #b388ff;
+  top: 40%; left: 60%;
+  animation: musicVizBlobTwo 17s ease-in-out infinite alternate;
+}
+.musicVizBlob--3 {
+  background: #4b2e8f;
+  top: 5%; left: 35%;
+  animation: musicVizBlobThree 20s ease-in-out infinite alternate;
+}
+@keyframes musicVizBlobOne   { 0% { transform: translate(0, 0); } 100% { transform: translate(60px, 20px); } }
+@keyframes musicVizBlobTwo   { 0% { transform: translate(0, 0); } 100% { transform: translate(-80px, 40px); } }
+@keyframes musicVizBlobThree { 0% { transform: translate(0, 0); } 100% { transform: translate(40px, 60px); } }
+
+/* ── RINGS — concentric rings pulsing from center ── */
+.musicVizRing {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1.5px solid #b388ff;
+  border-radius: 50%;
+  opacity: 0;
+  animation: musicVizRingPulse 4s ease-out infinite;
+}
+.musicVizRing--1 { animation-delay: 0s; }
+.musicVizRing--2 { animation-delay: 1.33s; }
+.musicVizRing--3 { animation-delay: 2.66s; }
+@keyframes musicVizRingPulse {
+  0%   { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(4);   opacity: 0; }
+}
+
+/* ── BARS — 16 staggered equalizer bars ── */
+.musicVizBarWrap {
+  position: absolute;
+  inset: 0;
+  /* Wrapper carries the explicit height so the percentage-height bars
+     have something to scale into. Without this their flex-end alignment
+     collapses to zero. */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 6px 8px;
+  gap: 2px;
+  box-sizing: border-box;
+}
+.musicVizBar {
+  flex: 1 1 auto;
+  background: linear-gradient(to top, #4b2e8f, #b388ff);
+  border-radius: 2px;
+  transform-origin: bottom;
+  animation: musicVizBarPulse 1.4s ease-in-out infinite;
+  height: 100%;
+  min-width: 4px;
+}
+.musicVizBar:nth-child(1)  { animation-delay: 0.00s; }
+.musicVizBar:nth-child(2)  { animation-delay: 0.08s; }
+.musicVizBar:nth-child(3)  { animation-delay: 0.16s; }
+.musicVizBar:nth-child(4)  { animation-delay: 0.24s; }
+.musicVizBar:nth-child(5)  { animation-delay: 0.32s; }
+.musicVizBar:nth-child(6)  { animation-delay: 0.40s; }
+.musicVizBar:nth-child(7)  { animation-delay: 0.48s; }
+.musicVizBar:nth-child(8)  { animation-delay: 0.56s; }
+.musicVizBar:nth-child(9)  { animation-delay: 0.64s; }
+.musicVizBar:nth-child(10) { animation-delay: 0.56s; }
+.musicVizBar:nth-child(11) { animation-delay: 0.48s; }
+.musicVizBar:nth-child(12) { animation-delay: 0.40s; }
+.musicVizBar:nth-child(13) { animation-delay: 0.32s; }
+.musicVizBar:nth-child(14) { animation-delay: 0.24s; }
+.musicVizBar:nth-child(15) { animation-delay: 0.16s; }
+.musicVizBar:nth-child(16) { animation-delay: 0.08s; }
+@keyframes musicVizBarPulse {
+  0%, 100% { transform: scaleY(0.15); }
+  50%      { transform: scaleY(1);    }
+}
+
+/* ── GHOST — companion mascot bobs with notes drifting up ── */
+.musicVizGhost {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 40px;
+  height: 50px;
+  margin-left: -20px;
+  background: radial-gradient(circle at 50% 35%, #d9c8ff 0%, #9d7ee8 60%, transparent 100%);
+  border-radius: 50% 50% 35% 35% / 60% 60% 40% 40%;
+  animation: musicVizGhostBob 3.5s ease-in-out infinite;
+}
+.musicVizNote {
+  position: absolute;
+  bottom: 30%;
+  color: #d9c8ff;
+  font-size: 14px;
+  animation: musicVizNoteFloat 4s ease-in infinite;
+}
+.musicVizNote--1 { left: 30%; animation-delay: 0s;    }
+.musicVizNote--2 { left: 50%; animation-delay: 1.33s; }
+.musicVizNote--3 { left: 70%; animation-delay: 2.66s; }
+@keyframes musicVizGhostBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes musicVizNoteFloat {
+  0%   { transform: translateY(0)    rotate(-8deg); opacity: 0; }
+  20%  {                                            opacity: 1; }
+  100% { transform: translateY(-60px) rotate(8deg); opacity: 0; }
+}
+
+/* Honor prefers-reduced-motion — the visualizer is purely decorative and
+   the animations cover a 240×135 area, which is well above the
+   motion-sensitivity threshold the preference is meant to guard against.
+   When reduced motion is requested, freeze every visualizer element at
+   its initial frame so the popover still has a non-empty surface but no
+   movement. */
+@media (prefers-reduced-motion: reduce) {
+  .musicViz,
+  .musicViz * {
+    animation: none !important;
+  }
 }
 
 /* Hide the floating help FAB when the music popover is open. The popover
