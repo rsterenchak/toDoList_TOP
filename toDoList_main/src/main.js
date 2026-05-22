@@ -32,7 +32,18 @@ import {
     getActiveView,
     setActiveView,
     isOnboardingComplete,
+    isMusicVisualizerEnabled,
+    setMusicVisualizerEnabled,
+    getMusicVisualizerStyle,
+    setMusicVisualizerStyle,
 } from './prefs.js';
+import {
+    VISUALIZER_STYLES,
+    ensureVisualizer,
+    destroyVisualizer,
+    setVisualizerStyle,
+    setVisualizerPlaying,
+} from './musicVisualizer.js';
 import {
     applyTheme,
     resolveInitialTheme,
@@ -1068,6 +1079,70 @@ function component() {
             return row;
         }
 
+        // Visualizer toggle + style picker. Sits between the station list
+        // and the play/pause + slider row so the popover's top-down rhythm
+        // reads as: artwork → station list → visualizer prefs → controls.
+        // The checkbox shows / hides the overlay; the dropdown swaps style
+        // without remounting. Both feed prefs.js so the choice persists.
+        const vizRow = document.createElement('div');
+        vizRow.className = 'musicVizRow';
+
+        const vizCheckLabel = document.createElement('label');
+        vizCheckLabel.className = 'musicVizCheckLabel';
+        const vizCheckbox = document.createElement('input');
+        vizCheckbox.type = 'checkbox';
+        vizCheckbox.className = 'musicVizCheckbox';
+        vizCheckbox.checked = isMusicVisualizerEnabled();
+        const vizCheckText = document.createElement('span');
+        vizCheckText.className = 'musicVizCheckText';
+        vizCheckText.textContent = 'Visualizer';
+        vizCheckLabel.appendChild(vizCheckbox);
+        vizCheckLabel.appendChild(vizCheckText);
+
+        const vizStyleLabel = document.createElement('label');
+        vizStyleLabel.className = 'musicVizStyleLabel';
+        const vizStyleText = document.createElement('span');
+        vizStyleText.className = 'musicVizStyleText';
+        vizStyleText.textContent = 'STYLE';
+        const vizStyleSelect = document.createElement('select');
+        vizStyleSelect.className = 'musicVizStyleSelect';
+        VISUALIZER_STYLES.forEach(function(s) {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.label;
+            vizStyleSelect.appendChild(opt);
+        });
+        vizStyleSelect.value = getMusicVisualizerStyle();
+        vizStyleSelect.disabled = !vizCheckbox.checked;
+        vizStyleLabel.appendChild(vizStyleText);
+        vizStyleLabel.appendChild(vizStyleSelect);
+
+        vizRow.appendChild(vizCheckLabel);
+        vizRow.appendChild(vizStyleLabel);
+        pop.appendChild(vizRow);
+
+        function applyVisualizerFromPrefs() {
+            if (isMusicVisualizerEnabled()) {
+                ensureVisualizer(playerWrap, getMusicVisualizerStyle());
+                const status = ctl.getState().status;
+                setVisualizerPlaying(status === 'PLAYING' || status === 'BUFFERING');
+            } else {
+                destroyVisualizer();
+            }
+            vizStyleSelect.disabled = !isMusicVisualizerEnabled();
+        }
+
+        vizCheckbox.addEventListener('change', function() {
+            setMusicVisualizerEnabled(!!vizCheckbox.checked);
+            applyVisualizerFromPrefs();
+        });
+        vizStyleSelect.addEventListener('change', function() {
+            setMusicVisualizerStyle(vizStyleSelect.value);
+            if (isMusicVisualizerEnabled()) {
+                setVisualizerStyle(vizStyleSelect.value);
+            }
+        });
+
         // Primary play/pause + volume row.
         const controls = document.createElement('div');
         controls.className = 'musicControls';
@@ -1106,20 +1181,24 @@ function component() {
         function syncFromState(snap) {
             renderPicker(snap);
             volumeInput.value = String(Math.round((snap.volume || 0) * 100));
-            if (snap.status === 'PLAYING' || snap.status === 'BUFFERING') {
-                primaryBtn.textContent = 'Pause';
-            } else {
-                primaryBtn.textContent = 'Play';
-            }
+            const playing = snap.status === 'PLAYING' || snap.status === 'BUFFERING';
+            primaryBtn.textContent = playing ? 'Pause' : 'Play';
             if (snap.nowPlaying && snap.nowPlaying.title) {
                 nowPlaying.textContent = snap.nowPlaying.title +
                     (snap.nowPlaying.author ? ' — ' + snap.nowPlaying.author : '');
             } else {
                 nowPlaying.textContent = '';
             }
+            // Match the visualizer's animation-play-state to the audio
+            // status so pausing music freezes the overlay in place.
+            if (isMusicVisualizerEnabled()) setVisualizerPlaying(playing);
         }
         musicSyncFromState = syncFromState;
         ctl.subscribe(syncFromState);
+        // Mount the visualizer if the user opted in on a prior session, so
+        // the overlay is up the moment the popover opens rather than after
+        // the first status flip.
+        applyVisualizerFromPrefs();
         syncFromState(ctl.getState());
 
         return pop;

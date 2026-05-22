@@ -17,6 +17,8 @@ export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
 export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
 export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
 export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
+export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
+export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -188,5 +190,45 @@ export function setSampleSeeded(seeded) {
         } else {
             localStorage.removeItem(SAMPLE_SEEDED_KEY);
         }
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── music visualizer (focus-music popover) ──
+// The visualizer is a decorative overlay that covers the YouTube iframe
+// footprint inside the music popover. Useful when YouTube video is
+// blocked (corporate networks) and the embed renders as an inert black
+// rectangle. Defaults are intentionally conservative: disabled by default
+// so first-time users keep the existing iframe-only behavior, with
+// "starfield" pre-selected when they do enable it.
+const VALID_VISUALIZER_STYLES = ['starfield', 'blobs', 'rings', 'bars', 'ghost'];
+
+export function isMusicVisualizerEnabled() {
+    try {
+        return localStorage.getItem(MUSIC_VISUALIZER_ENABLED_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setMusicVisualizerEnabled(enabled) {
+    try {
+        localStorage.setItem(MUSIC_VISUALIZER_ENABLED_KEY, enabled ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+export function getMusicVisualizerStyle() {
+    try {
+        const v = localStorage.getItem(MUSIC_VISUALIZER_STYLE_KEY);
+        if (VALID_VISUALIZER_STYLES.indexOf(v) !== -1) return v;
+        return 'starfield';
+    } catch (e) {
+        return 'starfield';
+    }
+}
+
+export function setMusicVisualizerStyle(style) {
+    try {
+        const stored = VALID_VISUALIZER_STYLES.indexOf(style) !== -1 ? style : 'starfield';
+        localStorage.setItem(MUSIC_VISUALIZER_STYLE_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
