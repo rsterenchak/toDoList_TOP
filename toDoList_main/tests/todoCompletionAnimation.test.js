@@ -297,3 +297,122 @@ describe('recurring-task flash animation — reorder defer keeps the CSS animati
         expect(flashIdx).toBeGreaterThan(advanceIdx);
     });
 });
+
+
+// Pins the slide-out fade animation reorder-defer bug fix (project view).
+// Before this fix, after .todoCompleting was added to the row whose
+// checkbox was just clicked, the handler called sortCompletedToBottom +
+// reorderToDoDOM synchronously on the same tick. reorderToDoDOM re-parents
+// each row via appendChild, which restarts an in-flight CSS animation
+// from frame 0 in the new DOM slot — so the slide-fade visibly played at
+// the bottom of the list on the row that had just been moved there, not
+// on the row the user actually checked off. The fix defers the reorder
+// until the slide-fade's animationend fires, matching the deferral
+// pattern handleTodayCheckboxToggle uses on the Today / Calendar
+// surfaces. Done → open, blank rows (no projectName), and reduced-motion
+// users have no animation to protect and continue to reorder
+// synchronously on the click tick.
+describe('todo completion slide-out fade — project view defers reorder until animationend', () => {
+    const toDoRow = read('toDoRow.js');
+
+    function wireCheckboxBody() {
+        const start = toDoRow.indexOf('function wireCheckbox(');
+        expect(start).toBeGreaterThan(-1);
+        let depth = 0;
+        let end = -1;
+        for (let i = toDoRow.indexOf('{', start); i < toDoRow.length; i++) {
+            const c = toDoRow[i];
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { end = i + 1; break; }
+            }
+        }
+        expect(end).toBeGreaterThan(start);
+        return toDoRow.slice(start, end);
+    }
+
+    // Extract every `addEventListener('animationend', function … { … })`
+    // callback body in the supplied source slice so assertions can scope
+    // matches to "inside an animationend callback" vs "outside one".
+    function animationEndCallbacks(body) {
+        const re = /addEventListener\(\s*['"]animationend['"]\s*,\s*function\s*\w*\s*\([^)]*\)\s*\{/g;
+        const out = [];
+        let m;
+        while ((m = re.exec(body)) !== null) {
+            const braceStart = m.index + m[0].length - 1;
+            let depth = 0;
+            for (let i = braceStart; i < body.length; i++) {
+                const c = body[i];
+                if (c === '{') depth++;
+                else if (c === '}') {
+                    depth--;
+                    if (depth === 0) {
+                        out.push(body.slice(braceStart, i + 1));
+                        break;
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    it('defers the reorder into an animationend callback whose name check is todoCompletingSlideFade', () => {
+        // The reorder lives behind a local commitReorder helper so the
+        // animationend callback and the synchronous fallback share one
+        // body. The reorder is "deferred" iff at least one animationend
+        // callback gated on todoCompletingSlideFade either calls
+        // commitReorder() directly OR inlines reorderToDoDOM(projectName).
+        const body = wireCheckboxBody();
+        const callbacks = animationEndCallbacks(body);
+        const matching = callbacks.filter(function(cb) {
+            if (!/animationName\s*[!=]==?\s*['"]todoCompletingSlideFade['"]/.test(cb)) return false;
+            return /reorderToDoDOM\(\s*projectName\s*\)/.test(cb)
+                || /\bcommitReorder\s*\(\s*\)/.test(cb);
+        });
+        expect(matching.length).toBeGreaterThan(0);
+    });
+
+    it('defines a commitReorder helper that calls sortCompletedToBottom AND reorderToDoDOM so the partition and reorder cannot drift apart', () => {
+        // Extracting both calls into a single helper is what lets the
+        // animationend callback and the synchronous-fallback branch share
+        // one definition without either side forgetting one of the calls.
+        const body = wireCheckboxBody();
+        const fnMatch = body.match(/function\s+commitReorder\s*\(\s*\)\s*\{([\s\S]*?)\n\s*\}/);
+        expect(fnMatch).not.toBeNull();
+        const fnBody = fnMatch[1];
+        expect(fnBody).toMatch(/listLogic\.sortCompletedToBottom\(\s*projectName\s*\)/);
+        expect(fnBody).toMatch(/reorderToDoDOM\(\s*projectName\s*\)/);
+    });
+
+    it('keeps a synchronous reorderToDoDOM(projectName) path for callers that did not add the slide-fade (done→open, reduced-motion, recurring fallthrough)', () => {
+        // After removing every animationend callback body, a
+        // reorderToDoDOM(projectName) call must still remain in the
+        // handler — otherwise reduced-motion users and the done→open
+        // edge would never reorder. The call lives inside a local helper
+        // (or its bare-statement equivalent) outside any animationend
+        // listener.
+        const body = wireCheckboxBody();
+        const callbacks = animationEndCallbacks(body);
+        let outside = body;
+        callbacks.forEach(function(cb) {
+            outside = outside.split(cb).join('');
+        });
+        expect(outside).toMatch(/reorderToDoDOM\(\s*projectName\s*\)/);
+        expect(outside).toMatch(/listLogic\.sortCompletedToBottom\(\s*projectName\s*\)/);
+    });
+
+    it('keeps item.completed = checkToDo.checked above the standard-completion reorder branch so persistence never blocks on animation timing', () => {
+        // The "reorder branch" here is the trailing standard-completion
+        // reorder — NOT the recurring branch's reorder, which lives
+        // earlier in the body and is already covered by the recurring-
+        // flash describe above. Slice the body to everything AFTER the
+        // item.completed assignment so the search ignores the recurring
+        // branch entirely.
+        const body = wireCheckboxBody();
+        const completedIdx = body.indexOf('item.completed = checkToDo.checked');
+        expect(completedIdx).toBeGreaterThan(-1);
+        const tail = body.slice(completedIdx);
+        expect(tail).toMatch(/reorderToDoDOM\(\s*projectName\s*\)/);
+    });
+});
