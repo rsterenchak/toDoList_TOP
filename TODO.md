@@ -43,6 +43,27 @@
   - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM, above)
   - Completed: YYYY-MM-DD (PR #<number>)
 
+- [ ] **[LOW]** Group ghost menu export/import rows under LOCAL and DRIVE section headers
+  - Description: Once Export to Drive and Import from Drive land in the ghost popover menu, the four data-transfer rows (Export JSON, Export to Drive, Import JSON, Import from Drive) read as redundant when stacked flat. Reorganize them into two labeled sections — LOCAL and DRIVE — using the same dim-uppercase section-header styling already used by the HELP section further down the menu. Within each section, Export comes before Import. The row labels themselves shorten to "Export" and "Import" since the section header now provides the local/Drive context, eliminating the "Export JSON / Export to Drive" naming redundancy.
+  - Behavior:
+    1. Ghost popover menu opens. From top to bottom: LOCAL section header, Export row, Import row, divider, DRIVE section header, Export row, Import row, divider, Theme, Toggle floating ghost, HELP section header, Replay welcome tour, Help.
+    2. Section headers (LOCAL, DRIVE) match the styling of the existing HELP header — same dimmed uppercase typography, same vertical spacing, same indentation. They are visual labels only — not clickable, not focusable, skipped by keyboard navigation.
+    3. The Export row under LOCAL still shows the "EXPORTED N HOURS AGO" relative-time label on its right side, same as today.
+    4. The Export row under DRIVE shows its "EXPORTED N HOURS AGO" label (per the separate "Show last exported to Drive timestamp" entry) on its right side.
+    5. Keyboard navigation (arrow keys) moves through actionable rows only, skipping section headers — Export (Local) → Import (Local) → Export (Drive) → Import (Drive) → Theme → ...
+    6. Clicking each row triggers the same handler it did pre-grouping — only the labels and visual grouping change, no behavior changes.
+  - Implementation notes:
+    - Reuse whatever the HELP section header uses today (likely a `<li>` with a `settingsMenuItem--sectionHeader` modifier class or similar). Do not introduce a second section-header style.
+    - Row text changes: "Export JSON" → "Export" (under LOCAL), "Export to Drive" → "Export" (under DRIVE), "Import JSON" → "Import" (under LOCAL), "Import from Drive" → "Import" (under DRIVE). The section header disambiguates.
+    - Update any tests that assert on the exact menu item text strings (likely in `tests/settingsDropdown.test.js`, `tests/driveExport.test.js`, and any import-related tests) — they will break on the label change and need to look up rows by section + position or by a stable selector rather than by literal text.
+    - Update the `Export to Drive sits between Export JSON and Import JSON` assertion in `tests/driveExport.test.js` — the new ordering is Export (Local), Import (Local), Export (Drive), Import (Drive), so that test's structural claim needs to be rewritten to match the section grouping.
+    - Keyboard nav: confirm the existing focus-traversal logic in `main.js` (or wherever arrow-key handling lives for the settings dropdown) already skips elements without an action handler. If it walks every `<li>`, add a `[data-skip-nav]` attribute or equivalent to the section-header elements and respect that in the traversal loop.
+    - Section dividers: a horizontal rule between DRIVE and Theme keeps the existing visual rhythm. Confirm the existing menu CSS already inserts dividers between sections via `border-top` on section headers or similar, and reuse that pattern rather than adding a one-off `<hr>`.
+  - Out of scope: collapsible / accordion sections, reordering Theme and Toggle floating ghost into a new section header (PREFERENCES or similar — could be a follow-up), tooltips on the shortened row labels, icons on each row.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `tests/settingsDropdown.test.js`, `tests/driveExport.test.js`
+  - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM), "Add 'Import from Drive' option to ghost menu" entry (MEDIUM)
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 ## Features
 
 - [x] **[MEDIUM]** Add selectable ambient visualizer to focus music popover for when YouTube video is blocked
