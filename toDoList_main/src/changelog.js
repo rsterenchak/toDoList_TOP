@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-22',
         added: [
             "Completing a todo now plays a brief slide-out fade so the check-off action gives clear visual feedback.",
+            "Export your todos directly to Google Drive from the ghost menu.",
         ],
         fixed: [
             "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-21',
         fixed: [
-            "Pressing ArrowLeft on the focused Calendar prev arrow now retreats one month, and ArrowRight on the focused next arrow advances one month.",
             "Replaying the welcome tour now jumps to the Projects view and seeds a sample project when needed, so callouts always line up with real targets.",
         ],
     },

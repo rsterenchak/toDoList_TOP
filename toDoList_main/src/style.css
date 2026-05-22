@@ -4986,6 +4986,54 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 
+/* ── DRIVE-EXPORT TOAST ──
+   Mirrors the importErrorToast position but defaults to the neutral
+   accent-bordered success styling. The error modifier swaps in the same
+   danger palette as the import error toast. */
+#driveExportToast {
+  position: fixed;
+  top: calc(var(--nav-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--accent);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  max-width: 90vw;
+}
+#driveExportToast.driveExportToast--error {
+  border-color: var(--text-danger);
+  color: var(--text-danger);
+}
+.driveExportToastLink {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.driveExportToastLink:hover,
+.driveExportToastLink:focus-visible {
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* Loading state on the Export to Drive menu row. Surfaced via a class on
+   <body> so the row picks it up if the user re-opens the menu mid-upload.
+   Pointer events are blocked to keep the early-return in
+   exportTodosToDrive from being the only line of defense against a
+   double-click. */
+body.driveExportInProgress .settingsMenuItem--driveExport {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+
 /* ── STALE-EXPORT FOOTER HINT ──
    Sits in the centre of #footBar between the version label and the open/done
    counts. Muted by default; the link element underlines on hover to read as

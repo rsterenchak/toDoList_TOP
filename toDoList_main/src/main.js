@@ -84,6 +84,7 @@ import {
     formatRelativeExportedAt,
     refreshFooterExportLabel,
 } from './exportImport.js';
+import { exportTodosToDrive } from './driveExport.js';
 import { readLastExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
@@ -1416,6 +1417,18 @@ function component() {
             function() { exportTodosToFile(); }
         );
         menu.appendChild(exportItem);
+
+        // Export to Drive — uploads the same JSON payload as Export JSON to
+        // the user's Google Drive via OAuth (drive.file scope). The
+        // `settingsMenuItem--driveExport` class is the CSS anchor for the
+        // dim/disabled loading state surfaced via `body.driveExportInProgress`.
+        const driveExportItem = buildSettingsMenuItem(
+            'Export to Drive',
+            '',
+            function() { exportTodosToDrive(); },
+            'settingsMenuItem--driveExport'
+        );
+        menu.appendChild(driveExportItem);
 
         // Import JSON — proxies to the hidden file input the menu trigger
         // owns. The file's onchange handler runs the validate → confirm →
