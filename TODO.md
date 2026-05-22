@@ -19,7 +19,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/todoCompletionAnimation.test.js` (new)
   - Completed: 2026-05-22
 
-- [ ] **[MEDIUM]** Add "Export to Google Drive" option to ghost menu
+- [x] **[MEDIUM]** Add "Export to Google Drive" option to ghost menu — Completed: 2026-05-22
   - Description: Add a new "Export to Drive" menu item directly below the existing "Export JSON" row in the ghost popover menu. Clicking it triggers a Google OAuth 2.0 flow (via Google Identity Services, using PKCE) prompting the user to sign in and authorize the app with the non-sensitive `drive.file` scope, then uploads the same JSON payload that the existing Export JSON produces to the user's Drive root via a multipart POST to `https://www.googleapis.com/upload/drive/v3/files`. On success, show a toast matching the existing toast styling with an "Open in Drive" link to the uploaded file's `webViewLink`. Re-prompt OAuth on each session — do not persist the access token to `localStorage`. Reuse the existing export filename pattern (`todoapp-export-YYYY-MM-DD.json`) and the same JSON serialization path so both export methods produce byte-identical files.
   - Behavior:
     1. User opens ghost popover menu, sees "Export to Drive" as a new row below "Export JSON".
