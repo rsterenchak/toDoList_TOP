@@ -2,6 +2,30 @@
 
 ## Bugs
 
+- [ ] **[MEDIUM]** Add "Import from Drive" option to ghost menu
+  - Description: Add a new "Import from Drive" menu item directly below the existing "Import JSON" row in the ghost popover menu. Clicking it triggers the same OAuth 2.0 flow used by Export to Drive (via Google Identity Services with PKCE and the `drive.file` scope), queries the user's Drive for files this app created, picks the most recently modified one, downloads its content, and feeds the JSON payload into the existing local import pipeline so the same validation, confirmation prompt, and state-replacement behavior apply. If no app-created file exists in the user's Drive, surface a clear "No Drive backups found" toast instead of triggering the import. Reuse the existing access token from the same session if Export to Drive has already authorized; otherwise prompt for OAuth.
+  - Behavior:
+    1. User opens ghost popover menu, sees "Import from Drive" as a new row directly below "Import JSON".
+    2. Click triggers OAuth if no cached in-memory token exists for the session (same token cache shared with Export to Drive). If a fresh token is needed and the user denies consent, show an error toast and abort.
+    3. App queries `https://www.googleapis.com/drive/v3/files?q=trashed=false&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name,modifiedTime)` to find the most recent file. The `drive.file` scope automatically restricts results to files this app created, so no additional filtering is needed.
+    4. If the query returns zero files, show toast "No Drive backups found" and stop (no confirmation prompt, no state change).
+    5. If a file is found, show the same confirmation prompt the local Import JSON path uses ("This will replace your current data — continue?") with the discovered filename and modifiedTime included in the prompt body so the user knows which backup is about to be restored.
+    6. On confirm, GET `https://www.googleapis.com/drive/v3/files/{fileId}?alt=media` to download the file content, then route the raw JSON string through the existing import-from-string code path used by Import JSON (do not duplicate the parse, validate, and apply logic).
+    7. On success: toast "Imported from Drive" matching the existing import success toast styling.
+    8. On any failure (denied consent, network error, API error, malformed JSON, schema mismatch): toast with a clear error message; no partial state left behind — the existing import pipeline's atomic replace-or-rollback semantics handle this for free.
+    9. The menu row shows a subtle loading state (text dim + spinner) while OAuth + query + download are in flight, and is disabled to prevent double-imports.
+  - Implementation notes:
+    - Extract the OAuth + GIS lazy-load logic from `driveExport.js` into a shared helper module (e.g., `driveAuth.js`) so both export and import code paths share one token cache and one OAuth initialization. The export module should be refactored to consume the helper rather than holding its own copy.
+    - Extract the local Import JSON's parse-validate-apply pipeline into a shared `importTodosFromString(jsonString)` helper (likely in `main.js` or `listLogic.js` depending on where the current logic lives) so both the file-based and Drive-based import paths feed the same function. This mirrors the `buildExportPayload` shared-helper pattern from the Export entry.
+    - The Drive query uses the same `drive.file` scope already granted for export — no consent screen rescope needed.
+    - `orderBy=modifiedTime desc&pageSize=1` returns only the single most recent file in one round trip; no client-side sorting or pagination needed.
+    - Confirmation prompt should reuse whatever modal/confirm primitive the local Import JSON flow uses for consistency (do not introduce a second confirmation style).
+    - If the cached OAuth token has expired between Export and Import calls in the same session, the request will 401 — let the GIS library's silent re-auth flow handle that, falling back to an explicit re-prompt only if silent renewal fails.
+  - Out of scope: file picker / choosing a specific backup (always grabs the latest), preview of file contents before import, merge with current data (this is a replace operation), import history / undo, importing from a Drive file the app did not create (impossible under `drive.file` scope and out of scope by design).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/driveExport.js`, `toDoList_main/src/driveAuth.js` (new), `toDoList_main/src/driveImport.js` (new)
+  - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM), "Wire OAuth Client ID through build-time env var to unblock CI" entry (HIGH)
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [ ] **[LOW]** Show "last exported to Drive" timestamp on Export to Drive menu row
   - Description: Mirror the existing "EXPORTED N HOURS AGO" relative-time label on the Export JSON row, but for the new Export to Drive row. After a successful Drive upload, persist a `lastDriveExportAt` ISO timestamp to localStorage, and render it on the right side of the Export to Drive menu row using the same dimmed-uppercase styling as the existing Export JSON timestamp. Use the same relative-time formatter that powers the Export JSON label so the two rows stay visually consistent (e.g., "JUST NOW", "5 MINUTES AGO", "2 HOURS AGO", "YESTERDAY", "3 DAYS AGO").
   - Behavior:
