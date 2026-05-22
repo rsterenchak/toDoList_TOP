@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const FaviconsWebpackPlugin = require('favicons-webpack-plugin');
 const { InjectManifest } = require('workbox-webpack-plugin');
@@ -12,6 +13,9 @@ module.exports = {
     list: './src/listLogic.js',
   },
   plugins: [
+    new webpack.DefinePlugin({
+      'process.env.GOOGLE_OAUTH_CLIENT_ID': JSON.stringify(process.env.GOOGLE_OAUTH_CLIENT_ID || ''),
+    }),
     new HtmlWebpackPlugin({
       title: 'Task Management',
       template: './src/template.html',

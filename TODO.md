@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Inject OAuth Client ID at build time via Webpack DefinePlugin
+- [x] **[HIGH]** Inject OAuth Client ID at build time via Webpack DefinePlugin — Completed: 2026-05-22
   - Description: The `OAUTH_CLIENT_ID` constant in `driveExport.js` is currently hardcoded to a personal Google OAuth client ID, which (a) breaks the `tests/driveExport.test.js` "fresh fork" invariant that asserts `OAUTH_CLIENT_ID === ''` at the source level, and (b) means anyone forking the repo inherits the personal client ID rather than provisioning their own. Restore the source-level empty string and inject the real value at build time via Webpack `DefinePlugin`, reading from `process.env.GOOGLE_OAUTH_CLIENT_ID`. Wire the env var into the GitHub Actions deploy workflow via a repository secret so production builds get the real ID, while tests, fresh clones, and forks see `''` and surface the existing "Drive export not configured for this build" toast.
   - Behavior:
     1. `driveExport.js` reads `OAUTH_CLIENT_ID` from `process.env.GOOGLE_OAUTH_CLIENT_ID`, falling back to `''` when undefined.
@@ -25,7 +25,7 @@
   - Out of scope: `dotenv-webpack` integration, encrypted env var checked into the repo, runtime configuration via localStorage, multi-environment configs (dev/staging/prod).
   - File: `toDoList_main/webpack.config.js`, `toDoList_main/src/driveExport.js`, `.github/workflows/deploy.yml`, `toDoList_main/README.md`
   - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-22
 
 ## Features
 
