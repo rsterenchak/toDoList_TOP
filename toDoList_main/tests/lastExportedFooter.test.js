@@ -34,13 +34,17 @@ describe('last-exported timestamp — footer + menu wiring', () => {
         expect(main).toMatch(/setTimeout\(\s*refreshFooterExportLabel\s*,\s*0\s*\)/);
     });
 
-    it('passes the relative label into the Export JSON menu item state pill', () => {
-        // The second argument to buildSettingsMenuItem('Export JSON', …) is
-        // the state pill text — it must be the formatted relative label,
-        // not an empty string, so the user sees how stale the last manual
-        // backup is at the moment they consider taking a new one.
+    it('passes the relative label into the local Export menu item state pill', () => {
+        // The second argument to buildSettingsMenuItem('Export', …) for the
+        // LOCAL row is the state pill text — it must be the formatted
+        // relative label, not an empty string, so the user sees how stale
+        // the last manual backup is at the moment they consider taking a
+        // new one. The local Export row is identified by its
+        // `settingsMenuItem--exportLocal` extraClass anchor since the row
+        // label shortens to 'Export' after the LOCAL / DRIVE section
+        // grouping.
         expect(main).toMatch(
-            /buildSettingsMenuItem\(\s*['"]Export JSON['"]\s*,\s*formatRelativeExportedAt\(\s*readLastExportedAt\(\)\s*\)\s*,/
+            /buildSettingsMenuItem\(\s*['"]Export['"]\s*,\s*formatRelativeExportedAt\(\s*readLastExportedAt\(\)\s*\)\s*,[\s\S]{0,200}?['"]settingsMenuItem--exportLocal['"]/
         );
     });
 

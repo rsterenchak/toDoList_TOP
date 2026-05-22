@@ -260,25 +260,38 @@ describe('settings menu — Import from Drive wiring', () => {
     const main = read('main.js');
     const css = read('style.css');
 
-    it('builds an "Import from Drive" menu item via the shared helper', () => {
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import from Drive'\s*,/);
+    it('builds a Drive Import menu item via the shared helper, tagged with the driveImport anchor class', () => {
+        // The visible label shortens to 'Import' since the DRIVE section
+        // header disambiguates against the LOCAL Import row above. The
+        // stable identifier is the `settingsMenuItem--driveImport`
+        // extraClass that CSS and tests pivot on.
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import'\s*,[\s\S]{0,300}?'settingsMenuItem--driveImport'/);
     });
 
-    it('Import from Drive sits directly below Import JSON', () => {
-        const importJsonIdx = main.indexOf("'Import JSON'");
-        const driveImportIdx = main.indexOf("'Import from Drive'");
-        expect(importJsonIdx).toBeGreaterThan(-1);
-        expect(driveImportIdx).toBeGreaterThan(importJsonIdx);
-        // Nothing else sneaks between the two — the rendered order in
-        // showSettingsMenu has no other appendChild between these labels.
-        const between = main.slice(importJsonIdx, driveImportIdx);
-        expect(between).not.toMatch(/buildSettingsMenuItem\(\s*'(?!Import JSON|Import from Drive)/);
+    it('Drive Import sits directly below Drive Export inside the DRIVE section', () => {
+        // After section grouping, the Drive Import row sits directly under
+        // its sibling Drive Export row — not under the local Import row.
+        // The rows are matched by their stable anchor classes. Only the
+        // Drive Import row's own buildSettingsMenuItem call sits between
+        // the two extraClass anchors in source order — no third row may
+        // sneak in.
+        const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
+        const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
+        expect(driveExportIdx).toBeGreaterThan(-1);
+        expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
+        // The buildSettingsMenuItem call between the two anchors must be
+        // exactly one — the Drive Import row itself. Asserting on a
+        // single call in the between-slice catches accidental inserts of
+        // another row in the DRIVE section.
+        const between = main.slice(driveExportIdx, driveImportIdx);
+        const buildMatches = between.match(/buildSettingsMenuItem\(/g) || [];
+        expect(buildMatches.length).toBe(1);
     });
 
-    it('Import from Drive invokes importTodosFromDrive() with the rebuild callback', () => {
-        const idx = main.indexOf("'Import from Drive'");
+    it('Drive Import row invokes importTodosFromDrive() with the rebuild callback', () => {
+        const idx = main.indexOf("'settingsMenuItem--driveImport'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 400);
+        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
         expect(slice).toMatch(/importTodosFromDrive\s*\(/);
         expect(slice).toMatch(/rebuildAfterImport\s*\(/);
     });

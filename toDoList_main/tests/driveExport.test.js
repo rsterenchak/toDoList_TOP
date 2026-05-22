@@ -363,14 +363,16 @@ describe('settings menu — Export to Drive last-exported label', () => {
         );
     });
 
-    it('passes the relative label into the Export to Drive state pill', () => {
-        // Mirror of the Export JSON pin in lastExportedFooter.test.js — the
-        // second arg to buildSettingsMenuItem('Export to Drive', …) must be
-        // the formatted relative label so the user sees how stale their
-        // last Drive backup is at the moment of action.
-        const driveIdx = main.indexOf("'Export to Drive'");
+    it('passes the relative label into the Drive Export state pill', () => {
+        // Mirror of the local Export pin in lastExportedFooter.test.js — the
+        // Drive Export row's state pill must read the formatted relative
+        // label so the user sees how stale their last Drive backup is at
+        // the moment of action. The row is identified by its stable
+        // `settingsMenuItem--driveExport` class anchor since the visible
+        // label is just 'Export' (the DRIVE section header disambiguates).
+        const driveIdx = main.indexOf("'settingsMenuItem--driveExport'");
         expect(driveIdx).toBeGreaterThan(-1);
-        const slice = main.slice(driveIdx, driveIdx + 400);
+        const slice = main.slice(Math.max(0, driveIdx - 400), driveIdx + 100);
         expect(slice).toMatch(/formatRelativeExportedAt\s*\(\s*readLastDriveExportedAt\(\)\s*\)/);
     });
 });
@@ -431,23 +433,32 @@ describe('settings menu — Export to Drive wiring', () => {
     const main = read('main.js');
     const css = read('style.css');
 
-    it('builds an "Export to Drive" menu item via the shared helper', () => {
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export to Drive'\s*,/);
+    it('builds a Drive Export menu item via the shared helper, tagged with the driveExport anchor class', () => {
+        // The visible label shortens to 'Export' since the DRIVE section
+        // header disambiguates against the LOCAL Export row above. The
+        // stable identifier is the `settingsMenuItem--driveExport`
+        // extraClass that CSS and tests pivot on.
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,300}?'settingsMenuItem--driveExport'/);
     });
 
-    it('Export to Drive sits between Export JSON and Import JSON', () => {
-        const exportIdx = main.indexOf("'Export JSON'");
-        const driveIdx  = main.indexOf("'Export to Drive'");
-        const importIdx = main.indexOf("'Import JSON'");
-        expect(exportIdx).toBeGreaterThan(-1);
-        expect(driveIdx).toBeGreaterThan(exportIdx);
-        expect(importIdx).toBeGreaterThan(driveIdx);
+    it('the four data rows render in LOCAL-then-DRIVE order: Export (local), Import (local), Export (Drive), Import (Drive)', () => {
+        // Grouping the rows under section headers reorders them from the
+        // pre-grouping flat layout. Identifiers are the stable anchor
+        // classes (the visible labels are duplicated 'Export'/'Import').
+        const exportLocalIdx = main.indexOf("'settingsMenuItem--exportLocal'");
+        const importLocalIdx = main.indexOf("'settingsMenuItem--importLocal'");
+        const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
+        const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
+        expect(exportLocalIdx).toBeGreaterThan(-1);
+        expect(importLocalIdx).toBeGreaterThan(exportLocalIdx);
+        expect(driveExportIdx).toBeGreaterThan(importLocalIdx);
+        expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
     });
 
-    it('Export to Drive invokes exportTodosToDrive() directly', () => {
-        const idx = main.indexOf("'Export to Drive'");
+    it('Drive Export row invokes exportTodosToDrive() directly', () => {
+        const idx = main.indexOf("'settingsMenuItem--driveExport'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 400);
+        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
         expect(slice).toMatch(/exportTodosToDrive\s*\(\s*\)/);
     });
 

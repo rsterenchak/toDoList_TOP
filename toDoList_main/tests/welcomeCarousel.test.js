@@ -328,11 +328,12 @@ describe('welcome carousel — wired into the app', () => {
         // wrapped in a section with id #settingsHelpSection.
         expect(main).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
         expect(main).toMatch(/settingsHelpSection/);
-        // The desktop popover heading carries the literal label.
-        const headingIdx = main.indexOf("'settingsMenuSectionHeading'");
-        expect(headingIdx).toBeGreaterThan(-1);
-        const headingSlice = main.slice(headingIdx, headingIdx + 200);
-        expect(headingSlice).toMatch(/textContent\s*=\s*['"]Help['"]/);
+        // The desktop popover HELP heading is the one bound to the
+        // `helpHeading` local (LOCAL and DRIVE section headings reuse
+        // the same class but live on different locals). Match against the
+        // helpHeading-specific wiring so this test stays scoped to HELP.
+        expect(main).toMatch(/helpHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
+        expect(main).toMatch(/helpHeading\.textContent\s*=\s*['"]Help['"]/);
     });
 
     it('mobile settings modal Replay row dispatches by viewport and closes the modal', () => {

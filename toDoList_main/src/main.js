@@ -1408,45 +1408,69 @@ function component() {
         menu.id = 'settingsMenu';
         menu.setAttribute('role', 'menu');
 
-        // Export JSON — writes the current snapshot to a downloadable file.
-        // The state pill mirrors the footer's last-exported relative label so
-        // the user sees how stale their last manual backup is at the moment
-        // they're about to take a new one.
+        // LOCAL section — exports/imports that move a JSON file to or from
+        // the device. The section heading provides the local/Drive context
+        // so the row labels themselves shorten to just 'Export' and 'Import'.
+        const localHeading = document.createElement('div');
+        localHeading.className = 'settingsMenuSectionHeading';
+        localHeading.textContent = 'Local';
+        localHeading.setAttribute('role', 'presentation');
+        menu.appendChild(localHeading);
+
+        // Export (local) — writes the current snapshot to a downloadable
+        // file. The state pill mirrors the footer's last-exported relative
+        // label so the user sees how stale their last manual backup is at
+        // the moment they're about to take a new one.
         const exportItem = buildSettingsMenuItem(
-            'Export JSON',
+            'Export',
             formatRelativeExportedAt(readLastExportedAt()),
-            function() { exportTodosToFile(); }
+            function() { exportTodosToFile(); },
+            'settingsMenuItem--exportLocal'
         );
         menu.appendChild(exportItem);
 
-        // Export to Drive — uploads the same JSON payload as Export JSON to
-        // the user's Google Drive via OAuth (drive.file scope). The
+        // Import (local) — proxies to the hidden file input the menu
+        // trigger owns. The file's onchange handler runs the validate →
+        // confirm → overwrite flow inside importFromFile.
+        const importItem = buildSettingsMenuItem(
+            'Import',
+            '',
+            function() { importFileInput.click(); },
+            'settingsMenuItem--importLocal'
+        );
+        menu.appendChild(importItem);
+
+        menu.appendChild(buildSettingsMenuDivider());
+
+        // DRIVE section — exports/imports that round-trip through the
+        // user's Google Drive via OAuth (drive.file scope). Grouped under
+        // a section heading so the shortened 'Export'/'Import' row labels
+        // disambiguate against the LOCAL section above.
+        const driveHeading = document.createElement('div');
+        driveHeading.className = 'settingsMenuSectionHeading';
+        driveHeading.textContent = 'Drive';
+        driveHeading.setAttribute('role', 'presentation');
+        menu.appendChild(driveHeading);
+
+        // Export (Drive) — uploads the same JSON payload as the local
+        // Export row to the user's Google Drive. The
         // `settingsMenuItem--driveExport` class is the CSS anchor for the
         // dim/disabled loading state surfaced via `body.driveExportInProgress`.
-        // The state pill mirrors the Export JSON row's relative label, reading
-        // the device-local `lastDriveExportedAt` marker so the user sees how
-        // stale their last Drive backup is at the moment of action. Before
-        // the first Drive export the marker is null and the pill stays empty
-        // (matching the Export JSON row's behavior on a fresh install).
+        // The state pill mirrors the local Export row's relative label,
+        // reading the device-local `lastDriveExportedAt` marker so the user
+        // sees how stale their last Drive backup is at the moment of action.
+        // Before the first Drive export the marker is null and the pill
+        // stays empty (matching the local Export row's behavior on a fresh
+        // install).
         const driveExportItem = buildSettingsMenuItem(
-            'Export to Drive',
+            'Export',
             readLastDriveExportedAt() ? formatRelativeExportedAt(readLastDriveExportedAt()) : '',
             function() { exportTodosToDrive(); },
             'settingsMenuItem--driveExport'
         );
         menu.appendChild(driveExportItem);
 
-        // Import JSON — proxies to the hidden file input the menu trigger
-        // owns. The file's onchange handler runs the validate → confirm →
-        // overwrite flow inside importFromFile.
-        const importItem = buildSettingsMenuItem(
-            'Import JSON',
-            '',
-            function() { importFileInput.click(); }
-        );
-        menu.appendChild(importItem);
-
-        // Import from Drive — fetches the most recently modified backup
+        // Import (Drive) — fetches the most recently modified backup
         // this app uploaded to the user's Drive (drive.file scope's
         // implicit filter handles "files this app created"). Reuses the
         // shared OAuth token cache from driveAuth so importing right
@@ -1454,7 +1478,7 @@ function component() {
         // `settingsMenuItem--driveImport` class is the CSS anchor for the
         // dim/disabled loading state driven by `body.driveImportInProgress`.
         const driveImportItem = buildSettingsMenuItem(
-            'Import from Drive',
+            'Import',
             '',
             function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
             'settingsMenuItem--driveImport'
