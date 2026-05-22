@@ -182,6 +182,15 @@ function wireCheckbox(toDoChild, toDoInput, item) {
             toDoChild.classList.remove("completed");
         }
 
+        // Snapshot whether the slide-fade was kicked off on this tick.
+        // The reorder below must be deferred until its animationend fires
+        // — reorderToDoDOM re-parents the row via appendChild, which
+        // restarts an in-flight CSS animation from frame 0 in the new DOM
+        // slot, so the user would see the slide-fade play at the bottom
+        // of the list on a row that had just been moved there instead of
+        // on the row they actually clicked.
+        let didAddSlideFade = false;
+
         // Celebratory micro-interaction — only on the unchecked → checked
         // edge, and only on committed rows (blank placeholders hide the
         // checkbox via CSS but guard here too for robustness).
@@ -209,6 +218,7 @@ function wireCheckbox(toDoChild, toDoInput, item) {
             }
             if (!prefersReducedMotion()) {
                 toDoChild.classList.add('todoCompleting');
+                didAddSlideFade = true;
                 toDoChild.addEventListener('animationend', function onSlideEnd(e) {
                     if (e.animationName !== 'todoCompletingSlideFade') return;
                     toDoChild.classList.remove('todoCompleting');
@@ -222,11 +232,23 @@ function wireCheckbox(toDoChild, toDoInput, item) {
         // Partition completed entries to the bottom of this project's list,
         // then slide the row (plus any open description panel) into its new
         // slot in-place so listeners stay attached.
-        if (projectName) {
-            listLogic.sortCompletedToBottom(projectName);
-            reorderToDoDOM(projectName);
+        function commitReorder() {
+            if (projectName) {
+                listLogic.sortCompletedToBottom(projectName);
+                reorderToDoDOM(projectName);
+            } else {
+                listLogic.saveToStorage();
+            }
+        }
+
+        if (didAddSlideFade) {
+            toDoChild.addEventListener('animationend', function onSlideEndReorder(e) {
+                if (e.animationName !== 'todoCompletingSlideFade') return;
+                toDoChild.removeEventListener('animationend', onSlideEndReorder);
+                commitReorder();
+            });
         } else {
-            listLogic.saveToStorage();
+            commitReorder();
         }
     });
 

@@ -13,13 +13,7 @@ export const changelog = [
         fixed: [
             "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
             "Checking off a recurring task now plays its feedback flash through to the end instead of being cut short when the row reorders.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-21',
-        fixed: [
-            "Replaying the welcome tour now jumps to the Projects view and seeds a sample project when needed, so callouts always line up with real targets.",
+            "Completion slide-out fade now plays on the row you actually checked off instead of the row that ends up at the bottom.",
         ],
     },
 ];
