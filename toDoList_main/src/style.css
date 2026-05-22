@@ -5033,6 +5033,15 @@ body.driveExportInProgress .settingsMenuItem--driveExport {
   pointer-events: none;
 }
 
+/* Loading state on the Import from Drive menu row. Same shape as the
+   Export-to-Drive row above so OAuth + query + download (which can take
+   several seconds on the first click of a session) reads as a deliberate
+   in-flight action and not a dead click. */
+body.driveImportInProgress .settingsMenuItem--driveImport {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 
 /* ── STALE-EXPORT FOOTER HINT ──
    Sits in the centre of #footBar between the version label and the open/done

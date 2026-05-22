@@ -297,35 +297,51 @@ describe('driveExport — in-progress guard', () => {
 
 describe('driveExport — source-level contract', () => {
     const src = read('driveExport.js');
+    // The OAuth + GIS lazy-load lives in driveAuth.js so the import flow
+    // can share one token cache and one initialization. The contracts
+    // about scope, lazy-load, provisioning docs, and the module-level
+    // Client ID constant follow the symbols into that shared module.
+    const authSrc = read('driveAuth.js');
 
     it('uses the drive.file scope (not the broad drive scope)', () => {
-        expect(src).toMatch(/drive\.file/);
+        expect(authSrc).toMatch(/drive\.file/);
         // Must NOT request the broader Drive scope — that would push the
         // app into Google's restricted-scope review process.
+        expect(authSrc).not.toMatch(/['"]https:\/\/www\.googleapis\.com\/auth\/drive['"]/);
         expect(src).not.toMatch(/['"]https:\/\/www\.googleapis\.com\/auth\/drive['"]/);
     });
 
     it('loads the GIS client lazily on first call', () => {
-        expect(src).toMatch(/accounts\.google\.com\/gsi\/client/);
-        expect(src).toMatch(/function\s+loadGisLibrary/);
-        expect(src).toMatch(/_gisPromise/);
+        expect(authSrc).toMatch(/accounts\.google\.com\/gsi\/client/);
+        expect(authSrc).toMatch(/function\s+loadGisLibrary/);
+        expect(authSrc).toMatch(/_gisPromise/);
     });
 
     it('documents the OAuth setup steps in a top-of-module comment block', () => {
-        const head = src.slice(0, 2000);
+        const head = authSrc.slice(0, 2000);
         expect(head).toMatch(/PROVISIONING/i);
         expect(head).toMatch(/Client ID/i);
         expect(head).toMatch(/console\.cloud\.google\.com|Google Cloud/i);
     });
 
     it('exposes the OAuth Client ID as a module-level constant (not hardcoded in main.js)', () => {
-        expect(src).toMatch(/export\s+const\s+OAUTH_CLIENT_ID/);
+        expect(authSrc).toMatch(/export\s+const\s+OAUTH_CLIENT_ID/);
         const mainSrc = read('main.js');
         expect(mainSrc).not.toMatch(/OAUTH_CLIENT_ID\s*=/);
     });
 
     it('does not persist the access token to localStorage', () => {
         expect(src).not.toMatch(/localStorage\.[gs]etItem\([^)]*token/i);
+        expect(authSrc).not.toMatch(/localStorage\.[gs]etItem\([^)]*token/i);
+    });
+
+    it('consumes the shared driveAuth helper rather than duplicating OAuth state', () => {
+        expect(src).toMatch(
+            /import\s*\{[^}]*\}\s*from\s*['"]\.\/driveAuth\.js['"]/
+        );
+        // The duplicated copies must be gone from driveExport.js itself.
+        expect(src).not.toMatch(/let\s+_gisPromise\s*=/);
+        expect(src).not.toMatch(/let\s+_cachedToken\s*=/);
     });
 });
 

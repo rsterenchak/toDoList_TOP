@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-22',
         added: [
-            "Completing a todo now plays a brief slide-out fade so the check-off action gives clear visual feedback.",
             "Export your todos directly to Google Drive from the ghost menu.",
         ],
         fixed: [
             "Replaying the welcome tour now seeds starter todos into an empty active project so every step anchors to real row chrome.",
             "Checking off a recurring task now plays its feedback flash through to the end instead of being cut short when the row reorders.",
             "Completion slide-out fade now plays on the row you actually checked off instead of the row that ends up at the bottom.",
+            "Import your todos directly from Google Drive via the ghost menu.",
         ],
     },
 ];
