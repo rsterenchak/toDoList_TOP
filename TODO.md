@@ -2,31 +2,21 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Wire OAuth Client ID through build-time env var to unblock CI
-  - Description: The `driveExport.js` module still hardcodes a personal Google OAuth Client ID, causing the `tests/driveExport.test.js` "OAUTH_CLIENT_ID is empty" assertion to fail in CI and blocking deploys. A `GOOGLE_OAUTH_CLIENT_ID` repository secret has already been added in GitHub Settings → Secrets and variables → Actions, but the source code, Webpack config, and deploy workflow have not yet been wired to consume it. Replace the hardcoded literal with `process.env.GOOGLE_OAUTH_CLIENT_ID || ''`, add a Webpack `DefinePlugin` entry that substitutes the value at build time, and expose the secret to the build step in `deploy.yml`. The test step must NOT see the env var so the fallback to `''` keeps the "fresh fork" invariant passing.
+- [ ] **[LOW]** Show "last exported to Drive" timestamp on Export to Drive menu row
+  - Description: Mirror the existing "EXPORTED N HOURS AGO" relative-time label on the Export JSON row, but for the new Export to Drive row. After a successful Drive upload, persist a `lastDriveExportAt` ISO timestamp to localStorage, and render it on the right side of the Export to Drive menu row using the same dimmed-uppercase styling as the existing Export JSON timestamp. Use the same relative-time formatter that powers the Export JSON label so the two rows stay visually consistent (e.g., "JUST NOW", "5 MINUTES AGO", "2 HOURS AGO", "YESTERDAY", "3 DAYS AGO").
   - Behavior:
-    1. `grep -n "OAUTH_CLIENT_ID" toDoList_main/src/driveExport.js` shows `process.env.GOOGLE_OAUTH_CLIENT_ID || ''` on the constant's RHS, with no literal client ID anywhere in source.
-    2. Running `npm run test:run` locally (with no `GOOGLE_OAUTH_CLIENT_ID` exported in the shell) passes all 1042 tests, including the previously failing "toasts a configuration error when OAUTH_CLIENT_ID is empty".
-    3. GitHub Actions "Tests" workflow on the next push to `main` passes — the env var is not exposed to the test step, so the source resolves `OAUTH_CLIENT_ID` to `''`.
-    4. GitHub Actions "Deploy to GitHub Pages" workflow builds the bundle with `DefinePlugin` substituting the real client ID from the secret, and the deployed site at `https://rsterenchak.github.io` performs the real OAuth flow when the user clicks Export to Drive.
-    5. A user with `GOOGLE_OAUTH_CLIENT_ID` unset in their shell runs `npm start` and sees the "Drive export not configured for this build" toast — the menu item still renders, the failure mode is graceful.
+    1. Before the user has ever exported to Drive, the right side of the row is empty (no "NEVER" placeholder — match how Export JSON behaves on a fresh install).
+    2. On successful Drive upload, write `lastDriveExportAt` to localStorage as an ISO 8601 timestamp.
+    3. Each time the ghost popover menu opens, recompute and re-render both timestamp labels (Export JSON and Export to Drive) from their stored values so they don't stale out across long sessions.
+    4. Failed Drive uploads do not update the timestamp.
+    5. Importing a JSON backup does not overwrite `lastDriveExportAt` (it is a local-device fact about this device's sync state, not part of the user's data).
   - Implementation notes:
-    - In `toDoList_main/src/driveExport.js`, change the constant declaration from the hardcoded literal to `const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || '';`. Update the top-of-module comment block to state that the value is injected at build time via Webpack `DefinePlugin` reading from `process.env.GOOGLE_OAUTH_CLIENT_ID`, and that a fresh fork must set this env var (locally for dev, as a repository secret for CI) before Drive export will work.
-    - In `toDoList_main/webpack.config.js`, ensure `const webpack = require('webpack');` is at the top, then add to the `plugins` array:
-  new webpack.DefinePlugin({
-    'process.env.GOOGLE_OAUTH_CLIENT_ID': JSON.stringify(
-      process.env.GOOGLE_OAUTH_CLIENT_ID || ''
-    ),
-  })
-    - In `.github/workflows/deploy.yml`, locate the step that runs `npm run build` (NOT the test step, NOT the job-level or workflow-level `env:` block) and add:
-  env:
-    GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
-      directly under that step. If tests and build are in separate workflows (`tests.yml` and `deploy.yml`), only the deploy workflow's build step should reference the secret; the tests workflow must not.
-    - **Rotate the exposed OAuth Client ID before merging.** The previously hardcoded value (`1043519992483-sqp29t948863msorco9i9vpkuv71o2jf.apps.googleusercontent.com`) was logged in public CI output on Tests #585. In Google Cloud Console → APIs & Services → Credentials, create a new OAuth 2.0 Client ID of type "Web application" with `https://rsterenchak.github.io` as an Authorized JavaScript origin. Update the GitHub `GOOGLE_OAUTH_CLIENT_ID` repository secret value to the new ID. Delete the old client ID only after confirming the new one works in a successful deploy, to avoid a deploy gap.
-    - Do not commit a `.env` file. If `dotenv-webpack` or similar is added later, ensure `.env` is listed in `.gitignore`.
-  - Out of scope: `dotenv-webpack` integration, multi-environment configs (dev/staging/prod), runtime configuration via localStorage, README/SETUP.md updates (covered by a separate docs entry if desired).
-  - File: `toDoList_main/src/driveExport.js`, `toDoList_main/webpack.config.js`, `.github/workflows/deploy.yml`
-  - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM)
+    - Reuse the existing relative-time formatter rather than duplicating it. Locate it (likely in `main.js` near the Export JSON timestamp rendering) and extract to a small shared helper if it isn't already standalone.
+    - Persist `lastDriveExportAt` as a top-level localStorage key (not nested inside the todo data JSON), so it stays per-device and is not round-tripped through export/import.
+    - The timestamp DOM update should be triggered from the Drive upload success handler in `driveExport.js`, calling a render function exported from `main.js` (or via a small custom event, matching whatever pattern Export JSON already uses).
+  - Out of scope: showing the destination file's Drive URL or filename on the row; "last imported" timestamps; per-day export history.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/driveExport.js`
+  - Depends on: "Add 'Export to Google Drive' option to ghost menu" entry (MEDIUM, above)
   - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
