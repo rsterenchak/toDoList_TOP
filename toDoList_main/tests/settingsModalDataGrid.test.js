@@ -1,11 +1,11 @@
-// Tests for the mobile Settings modal's Data section — the 2x2 button grid
-// that surfaces Local / Drive Export/Import on mobile, where the desktop
-// ghost menu that houses those rows is hidden by the ≤700px breakpoint.
+// Tests for the mobile Settings modal's Data section — the button grid
+// that surfaces Drive Export/Import on mobile, where the desktop ghost
+// menu that houses those rows is hidden by the ≤700px breakpoint.
 // Source-level pins: the section is the FIRST one in the modal body, the
-// four tiles invoke the same handlers the desktop menu rows already wire
+// two tiles invoke the same handlers the desktop menu rows already wire
 // up (no new orchestration), the existing body.driveExportInProgress /
-// driveImportInProgress dim hooks pivot on the new tile anchor classes,
-// and the caption underneath uses formatRelativeExportedAt for the
+// driveImportInProgress dim hooks pivot on the tile anchor classes, and
+// the caption underneath uses formatRelativeExportedAt for the
 // stale-time signal so it stays consistent with the desktop ghost menu.
 
 import { readFileSync } from 'node:fs';
@@ -51,14 +51,14 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             expect(helpAppend).toBeGreaterThan(appearanceAppend);
         });
 
-        it('builds a 2x2 grid wrapper with the settingsModalDataGrid class', () => {
+        it('builds a grid wrapper with the settingsModalDataGrid class', () => {
             const slice = showSettingsModalSlice();
             expect(slice).toMatch(/dataGrid\.className\s*=\s*['"]settingsModalDataGrid['"]/);
             expect(slice).toMatch(/dataSection\.appendChild\(dataGrid\)/);
         });
     });
 
-    describe('tile builder + four-tile layout', () => {
+    describe('tile builder + Drive tile layout', () => {
         it('createDrawerDataTile sits next to createDrawerToggleRow / createDrawerActionRow', () => {
             expect(main).toMatch(/function\s+createDrawerDataTile\s*\(/);
             const tileIdx   = main.indexOf('function createDrawerDataTile');
@@ -84,18 +84,15 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             expect(fn).toMatch(/settingsModalDataTileSub/);
         });
 
-        it('mounts four tiles: row 1 = Local Export / Local Import, row 2 = Drive Export / Drive Import', () => {
+        it('mounts two Drive tiles: Drive Export then Drive Import', () => {
             const slice = showSettingsModalSlice();
-            // Stable anchor classes — the visible labels duplicate
-            // ('Export' / 'Import' appear twice each).
-            const localExportIdx = slice.indexOf("'settingsModalDataTile--localExport'");
-            const localImportIdx = slice.indexOf("'settingsModalDataTile--localImport'");
             const driveExportIdx = slice.indexOf("'settingsModalDataTile--driveExport'");
             const driveImportIdx = slice.indexOf("'settingsModalDataTile--driveImport'");
-            expect(localExportIdx).toBeGreaterThan(-1);
-            expect(localImportIdx).toBeGreaterThan(localExportIdx);
-            expect(driveExportIdx).toBeGreaterThan(localImportIdx);
+            expect(driveExportIdx).toBeGreaterThan(-1);
             expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
+            // LOCAL tile anchors must not appear anywhere in source.
+            expect(main).not.toMatch(/settingsModalDataTile--localExport/);
+            expect(main).not.toMatch(/settingsModalDataTile--localImport/);
         });
     });
 
@@ -106,16 +103,6 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             expect(idx).toBeGreaterThan(-1);
             return slice.slice(Math.max(0, idx - 600), idx + 200);
         }
-
-        it('Local Export tile invokes exportTodosToFile()', () => {
-            const slice = sliceAroundAnchor("'settingsModalDataTile--localExport'");
-            expect(slice).toMatch(/exportTodosToFile\s*\(\s*\)/);
-        });
-
-        it('Local Import tile triggers the hidden importFileInput.click()', () => {
-            const slice = sliceAroundAnchor("'settingsModalDataTile--localImport'");
-            expect(slice).toMatch(/importFileInput\.click\s*\(\s*\)/);
-        });
 
         it('Drive Export tile invokes exportTodosToDrive()', () => {
             const slice = sliceAroundAnchor("'settingsModalDataTile--driveExport'");
@@ -150,23 +137,21 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
     });
 
     describe('caption row stale-time signal', () => {
-        it('caption uses formatRelativeExportedAt for both halves and reads from prefs', () => {
+        it('caption uses formatRelativeExportedAt and reads readLastDriveExportedAt from prefs', () => {
             const slice = showSettingsModalSlice();
             expect(slice).toMatch(/settingsModalDataCaption/);
-            // Both helpers are imported into main.js at the top and called
-            // from the caption refresh — they're the same helpers the
-            // desktop ghost menu's right-side pills use, so the two
-            // surfaces stay in lockstep.
+            // The helper is imported into main.js at the top and called
+            // from the caption refresh — it's the same helper the desktop
+            // ghost menu's Drive Export state pill uses.
             expect(slice).toMatch(/formatRelativeExportedAt\s*\(/);
-            expect(slice).toMatch(/readLastExportedAt\s*\(\s*\)/);
             expect(slice).toMatch(/readLastDriveExportedAt\s*\(\s*\)/);
         });
 
         it('caption falls back to "never" for null timestamps (vs the helper\'s "Never exported")', () => {
             const slice = showSettingsModalSlice();
             // Null timestamps must read "never" in the caption rather than
-            // the helper's longer default, so the two halves stay readable
-            // side-by-side under the grid.
+            // the helper's longer default, so the caption stays terse
+            // beneath the grid.
             expect(slice).toMatch(/formatCaptionPart[\s\S]{0,400}return\s+['"]never['"]/);
         });
 
@@ -175,22 +160,9 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             // The helper sits inside showSettingsModal so it closes over
             // the caption DOM element, and runs once before the modal is
             // attached so the first paint already shows the freshly read
-            // timestamps.
+            // timestamp.
             expect(slice).toMatch(/function\s+refreshDataCaption\s*\(/);
             expect(slice).toMatch(/refreshDataCaption\s*\(\s*\)/);
-        });
-
-        it('caption is re-rendered after a Local Export click (without needing to reopen the modal)', () => {
-            const slice = showSettingsModalSlice();
-            // Spec: stale-time caption must render correctly after a
-            // successful Export without needing the modal to be reopened
-            // twice. exportTodosToFile is synchronous and writes the
-            // timestamp before returning, so a setTimeout(0) refresh is
-            // enough to pick up the new value while the modal stays open.
-            const idx = slice.indexOf("'settingsModalDataTile--localExport'");
-            expect(idx).toBeGreaterThan(-1);
-            const around = slice.slice(Math.max(0, idx - 600), idx + 200);
-            expect(around).toMatch(/setTimeout\s*\(\s*refreshDataCaption\s*,\s*0\s*\)/);
         });
 
         it('caption is re-rendered after a Drive Export promise resolves (without needing to reopen the modal)', () => {
@@ -207,12 +179,13 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
     });
 
     describe('desktop ghost menu is untouched (scope guard)', () => {
-        it('showSettingsMenu still mounts LOCAL and DRIVE section headings', () => {
+        it('showSettingsMenu still mounts a DRIVE section heading', () => {
             // The mobile Data section is purely additive. The desktop
-            // ghost menu's LOCAL / DRIVE grouping (and its right-side
-            // pills) must keep working exactly as before.
-            expect(main).toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
-            expect(main).toMatch(/driveHeading\.textContent\s*=\s*['"]Drive['"]/);
+            // ghost menu's DRIVE section (and its right-side pill) must
+            // keep working exactly as before.
+            expect(main).toMatch(/driveHeadingLabel\.textContent\s*=\s*['"]Drive['"]/);
+            // LOCAL section is gone — the heading no longer exists.
+            expect(main).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
         });
     });
 });

@@ -120,6 +120,16 @@ function tokenStillValid() {
     return !!_cachedToken && Date.now() < _tokenExpiresAt - TOKEN_REFRESH_BUFFER_MS;
 }
 
+// Non-prompting read of the in-memory access token. Returns the cached token
+// when one is still valid for this session; returns null when no cached
+// token exists or the cached one has expired. Used by the Drive sync-state
+// indicator to query Drive on app load without ever popping an OAuth
+// consent screen — if the user hasn't signed in this session yet, the
+// indicator stays in the `unknown` state until they take a Drive action.
+export function getCachedAccessToken() {
+    return tokenStillValid() ? _cachedToken : null;
+}
+
 
 // ── OAUTH ──
 //

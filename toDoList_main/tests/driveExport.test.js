@@ -435,24 +435,23 @@ describe('settings menu — Export to Drive wiring', () => {
 
     it('builds a Drive Export menu item via the shared helper, tagged with the driveExport anchor class', () => {
         // The visible label shortens to 'Export' since the DRIVE section
-        // header disambiguates against the LOCAL Export row above. The
-        // stable identifier is the `settingsMenuItem--driveExport`
-        // extraClass that CSS and tests pivot on.
+        // header disambiguates. The stable identifier is the
+        // `settingsMenuItem--driveExport` extraClass that CSS and tests
+        // pivot on.
         expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,300}?'settingsMenuItem--driveExport'/);
     });
 
-    it('the four data rows render in LOCAL-then-DRIVE order: Export (local), Import (local), Export (Drive), Import (Drive)', () => {
-        // Grouping the rows under section headers reorders them from the
-        // pre-grouping flat layout. Identifiers are the stable anchor
-        // classes (the visible labels are duplicated 'Export'/'Import').
-        const exportLocalIdx = main.indexOf("'settingsMenuItem--exportLocal'");
-        const importLocalIdx = main.indexOf("'settingsMenuItem--importLocal'");
+    it('renders two DRIVE data rows in order: Export (Drive), Import (Drive)', () => {
+        // After the LOCAL JSON paths were removed, the data section is
+        // Drive-only. Identifiers are the stable anchor classes (the
+        // visible labels are 'Export' / 'Import' under the DRIVE header).
         const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
         const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
-        expect(exportLocalIdx).toBeGreaterThan(-1);
-        expect(importLocalIdx).toBeGreaterThan(exportLocalIdx);
-        expect(driveExportIdx).toBeGreaterThan(importLocalIdx);
+        expect(driveExportIdx).toBeGreaterThan(-1);
         expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
+        // LOCAL anchor classes must not appear in source anywhere.
+        expect(main).not.toMatch(/settingsMenuItem--exportLocal/);
+        expect(main).not.toMatch(/settingsMenuItem--importLocal/);
     });
 
     it('Drive Export row invokes exportTodosToDrive() directly', () => {

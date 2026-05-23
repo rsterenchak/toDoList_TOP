@@ -298,7 +298,7 @@ describe('settings menu — Import from Drive wiring', () => {
 
     it('imports importTodosFromDrive from the driveImport module', () => {
         expect(main).toMatch(
-            /import\s*\{\s*importTodosFromDrive\s*\}\s*from\s*['"]\.\/driveImport\.js['"]/
+            /import\s*\{[^}]*\bimportTodosFromDrive\b[^}]*\}\s*from\s*['"]\.\/driveImport\.js['"]/
         );
     });
 
