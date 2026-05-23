@@ -131,9 +131,15 @@ describe('listLogic.saveToStorage — local mutation marker + event', () => {
         // The row checkbox handler mutates item.completed directly and then
         // calls listLogic.sortCompletedToBottom which routes through
         // saveToStorage. Pin that funnel writes the marker, since the
-        // checkbox handler doesn't write it itself.
+        // checkbox handler doesn't write it itself. Mirror the real funnel:
+        // toggle an item's completed flag so the sort actually has to move
+        // it, since sortCompletedToBottom now skips the write when the
+        // array order is unchanged.
         listLogic.addProject('Groceries');
         listLogic.addToDo('Groceries', 'Milk');
+        listLogic.addToDo('Groceries', 'Bread');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        milk.completed = true;
         writeLastLocalMutationAt('1970-01-01T00:00:00.000Z');
         listLogic.sortCompletedToBottom('Groceries');
         const after = Date.parse(readLastLocalMutationAt());
