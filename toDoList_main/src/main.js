@@ -5441,6 +5441,11 @@ function component() {
 // mutation marker past the just-written lastDriveSyncedAt and leave the
 // Drive sync indicator stuck on 'ahead'. Boot-time restoreFromStorage()
 // (no opts) keeps its existing behaviour of stamping the marker.
+//
+// Also passes { deferSave: true } so the per-project sort runs in memory
+// but skips its own storage write — replaceAllProjects already sorted
+// and persisted the imported tree upstream, so the rebuild's re-sort is
+// a defensive no-op and its write is pure duplication.
 function rebuildAfterImport() {
 
     const sideMaDiv = document.getElementById('sideMa');
@@ -5456,7 +5461,7 @@ function rebuildAfterImport() {
         while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
     }
 
-    restoreFromStorage({ fromSync: true });
+    restoreFromStorage({ fromSync: true, deferSave: true });
 }
 
 

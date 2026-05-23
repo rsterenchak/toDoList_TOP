@@ -464,6 +464,105 @@ describe('listLogic — fromSync suppresses lastLocalMutationAt', () => {
 });
 
 
+// The post-Drive-import rebuild path used to write the entire projects
+// blob twice: once inside replaceAllProjects (which already sorts every
+// project before persisting) and again inside the auto-selected project's
+// addToDos_restore -> sortCompletedToBottom pass. The second write was
+// pure duplication. `opts.deferSave: true` runs the in-memory sort but
+// skips the storage write so the rebuild flow collapses to a single
+// persisted write.
+describe('listLogic — deferSave skips redundant storage writes during rebuild', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        try { localStorage.removeItem('todoapp_lastLocalMutationAt'); } catch (_) { /* ignore */ }
+    });
+
+    it('sortCompletedToBottom("P", { deferSave: true }) does not call localStorage.setItem("allProjects", ...)', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Open task');
+        listLogic.addToDo('P', 'Done task');
+        const doneItem = listLogic.listItems('P').find(function(i) { return i.tit === 'Done task'; });
+        if (doneItem) doneItem.completed = true;
+
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        listLogic.sortCompletedToBottom('P', { deferSave: true });
+        const allProjectsWrites = setItemSpy.mock.calls.filter(function(args) {
+            return args[0] === 'allProjects';
+        });
+        setItemSpy.mockRestore();
+
+        expect(allProjectsWrites.length).toBe(0);
+    });
+
+    it('sortCompletedToBottom("P", { deferSave: true }) still sorts items in memory', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Open task');
+        listLogic.addToDo('P', 'Done task');
+        const items = listLogic.listItems('P');
+        const doneItem = items.find(function(i) { return i.tit === 'Done task'; });
+        if (doneItem) doneItem.completed = true;
+
+        listLogic.sortCompletedToBottom('P', { deferSave: true });
+
+        const titles = listLogic.listItems('P').map(function(i) { return i.tit; });
+        // Blank placeholder at 0, open task ahead of done task.
+        expect(titles[0]).toBe('');
+        expect(titles.indexOf('Open task')).toBeLessThan(titles.indexOf('Done task'));
+    });
+
+    it('sortCompletedToBottom() with no opts still writes allProjects to localStorage', () => {
+        // Regression guard: deferSave must be opt-in. Omitted opts keep
+        // the original behaviour so the user-mutation callers
+        // (checkbox toggle, drag-reorder finalisation) still persist.
+        listLogic.addProject('P');
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        listLogic.sortCompletedToBottom('P');
+        const allProjectsWrites = setItemSpy.mock.calls.filter(function(args) {
+            return args[0] === 'allProjects';
+        });
+        setItemSpy.mockRestore();
+
+        expect(allProjectsWrites.length).toBeGreaterThan(0);
+    });
+
+    it('full rebuild flow (replaceAllProjects + per-project sort with deferSave) writes allProjects exactly once', () => {
+        // Build a 10-project import payload that mirrors the shape the
+        // Drive-import path hands to replaceAllProjects.
+        const imported = [];
+        for (let i = 0; i < 10; i++) {
+            imported.push({
+                name: 'Project ' + i,
+                items: [
+                    { tit: 'Open ' + i, completed: false, due: '' },
+                    { tit: 'Done ' + i, completed: true, due: '' },
+                ],
+                color: null,
+            });
+        }
+
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+        // Step 1: the import handler writes the imported tree in one
+        // pass with fromSync (and would-be-deferSave doesn't apply here
+        // because replaceAllProjects IS the write).
+        listLogic.replaceAllProjects(imported, { fromSync: true });
+
+        // Step 2: the rebuild path's auto-selected project re-sorts with
+        // deferSave so the redundant second write is skipped.
+        listLogic.sortCompletedToBottom('Project 9', { fromSync: true, deferSave: true });
+
+        const allProjectsWrites = setItemSpy.mock.calls.filter(function(args) {
+            return args[0] === 'allProjects';
+        });
+        setItemSpy.mockRestore();
+
+        // Exactly one write — from replaceAllProjects. The post-rebuild
+        // sort was redundant work whose storage cost we've now coalesced.
+        expect(allProjectsWrites.length).toBe(1);
+    });
+});
+
+
 // ── PER-PROJECT COLOR ─────────────────────────────────────────────
 describe('listLogic — per-project color', () => {
     beforeEach(() => {
