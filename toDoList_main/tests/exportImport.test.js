@@ -105,39 +105,39 @@ describe('exportImport — formatRelativeExportedAt', () => {
     // backup-reminder over time.
     const now = new Date('2026-05-04T12:00:00Z');
 
-    it('returns "Never exported" when no timestamp is stored', () => {
-        expect(formatRelativeExportedAt(null, now)).toBe('Never exported');
-        expect(formatRelativeExportedAt(undefined, now)).toBe('Never exported');
-        expect(formatRelativeExportedAt('', now)).toBe('Never exported');
+    it('returns "Never synced" when no timestamp is stored', () => {
+        expect(formatRelativeExportedAt(null, now)).toBe('Never synced');
+        expect(formatRelativeExportedAt(undefined, now)).toBe('Never synced');
+        expect(formatRelativeExportedAt('', now)).toBe('Never synced');
     });
 
-    it('returns "Never exported" when the stored value is unparseable', () => {
-        expect(formatRelativeExportedAt('not-a-date', now)).toBe('Never exported');
+    it('returns "Never synced" when the stored value is unparseable', () => {
+        expect(formatRelativeExportedAt('not-a-date', now)).toBe('Never synced');
     });
 
-    it('returns "Exported just now" for sub-minute gaps and future-dated stamps', () => {
-        expect(formatRelativeExportedAt('2026-05-04T11:59:30Z', now)).toBe('Exported just now');
+    it('returns "Synced just now" for sub-minute gaps and future-dated stamps', () => {
+        expect(formatRelativeExportedAt('2026-05-04T11:59:30Z', now)).toBe('Synced just now');
         // Clock skew or future-stamped file — never claim "in the future".
-        expect(formatRelativeExportedAt('2026-05-04T12:30:00Z', now)).toBe('Exported just now');
+        expect(formatRelativeExportedAt('2026-05-04T12:30:00Z', now)).toBe('Synced just now');
     });
 
     it('formats minute, hour, day, month, and year buckets with correct pluralisation', () => {
         // 1 minute → singular.
-        expect(formatRelativeExportedAt('2026-05-04T11:59:00Z', now)).toBe('Exported 1 minute ago');
+        expect(formatRelativeExportedAt('2026-05-04T11:59:00Z', now)).toBe('Synced 1 minute ago');
         // 5 minutes → plural.
-        expect(formatRelativeExportedAt('2026-05-04T11:55:00Z', now)).toBe('Exported 5 minutes ago');
+        expect(formatRelativeExportedAt('2026-05-04T11:55:00Z', now)).toBe('Synced 5 minutes ago');
         // 2 hours.
-        expect(formatRelativeExportedAt('2026-05-04T10:00:00Z', now)).toBe('Exported 2 hours ago');
+        expect(formatRelativeExportedAt('2026-05-04T10:00:00Z', now)).toBe('Synced 2 hours ago');
         // 1 day → singular.
-        expect(formatRelativeExportedAt('2026-05-03T12:00:00Z', now)).toBe('Exported 1 day ago');
+        expect(formatRelativeExportedAt('2026-05-03T12:00:00Z', now)).toBe('Synced 1 day ago');
         // 3 days → plural.
-        expect(formatRelativeExportedAt('2026-05-01T12:00:00Z', now)).toBe('Exported 3 days ago');
+        expect(formatRelativeExportedAt('2026-05-01T12:00:00Z', now)).toBe('Synced 3 days ago');
         // ~2 months (60 days).
-        expect(formatRelativeExportedAt('2026-03-05T12:00:00Z', now)).toBe('Exported 2 months ago');
+        expect(formatRelativeExportedAt('2026-03-05T12:00:00Z', now)).toBe('Synced 2 months ago');
         // ~1 year.
-        expect(formatRelativeExportedAt('2025-05-04T12:00:00Z', now)).toBe('Exported 1 year ago');
+        expect(formatRelativeExportedAt('2025-05-04T12:00:00Z', now)).toBe('Synced 1 year ago');
         // ~2 years.
-        expect(formatRelativeExportedAt('2024-05-04T12:00:00Z', now)).toBe('Exported 2 years ago');
+        expect(formatRelativeExportedAt('2024-05-04T12:00:00Z', now)).toBe('Synced 2 years ago');
     });
 });
 
@@ -156,12 +156,12 @@ describe('exportImport — refreshFooterExportLabel', () => {
 
         // Before any export.
         refreshFooterExportLabel();
-        expect(span.textContent).toBe('Never exported');
+        expect(span.textContent).toBe('Never synced');
 
         // After a recorded export, the label updates on the next refresh.
         writeLastExportedAt(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString());
         refreshFooterExportLabel();
-        expect(span.textContent).toBe('Exported 3 days ago');
+        expect(span.textContent).toBe('Synced 3 days ago');
     });
 
     it('is a no-op when #footExport is not in the DOM', () => {

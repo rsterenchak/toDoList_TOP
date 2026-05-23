@@ -23,9 +23,9 @@ import {
 import { listLogic } from '../src/listLogic.js';
 import { buildBaseExportFilename, buildExportPayload } from '../src/exportImport.js';
 import {
-    LAST_DRIVE_EXPORTED_AT_KEY,
-    readLastDriveExportedAt,
-    writeLastDriveExportedAt,
+    LAST_DRIVE_SYNCED_AT_KEY,
+    readLastDriveSyncedAt,
+    writeLastDriveSyncedAt,
 } from '../src/prefs.js';
 
 
@@ -300,27 +300,27 @@ describe('driveExport — in-progress guard', () => {
 });
 
 
-describe('driveExport — last-exported-to-Drive marker', () => {
+describe('driveExport — last-synced-to-Drive marker', () => {
     beforeEach(() => {
-        try { localStorage.removeItem(LAST_DRIVE_EXPORTED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
     });
 
-    it('readLastDriveExportedAt returns null when nothing has been stored', () => {
-        expect(readLastDriveExportedAt()).toBe(null);
+    it('readLastDriveSyncedAt returns null when nothing has been stored', () => {
+        expect(readLastDriveSyncedAt()).toBe(null);
     });
 
-    it('writeLastDriveExportedAt persists under the todoapp_lastDriveExportedAt key', () => {
-        writeLastDriveExportedAt('2026-05-22T10:00:00.000Z');
-        expect(localStorage.getItem(LAST_DRIVE_EXPORTED_AT_KEY))
+    it('writeLastDriveSyncedAt persists under the todoapp_lastDriveSyncedAt key', () => {
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        expect(localStorage.getItem(LAST_DRIVE_SYNCED_AT_KEY))
             .toBe('2026-05-22T10:00:00.000Z');
-        expect(readLastDriveExportedAt()).toBe('2026-05-22T10:00:00.000Z');
+        expect(readLastDriveSyncedAt()).toBe('2026-05-22T10:00:00.000Z');
     });
 
     it('uses a top-level key (not nested inside the todos payload)', () => {
         // The marker is a per-device sync-state fact, not part of the user's
         // data — importing a JSON backup must not overwrite it. The key
         // sits at the localStorage root with the todoapp_ prefix.
-        expect(LAST_DRIVE_EXPORTED_AT_KEY).toBe('todoapp_lastDriveExportedAt');
+        expect(LAST_DRIVE_SYNCED_AT_KEY).toBe('todoapp_lastDriveSyncedAt');
     });
 });
 
@@ -328,9 +328,9 @@ describe('driveExport — last-exported-to-Drive marker', () => {
 describe('driveExport — source-level: timestamp write on success only', () => {
     const src = read('driveExport.js');
 
-    it('imports writeLastDriveExportedAt from prefs.js', () => {
+    it('imports writeLastDriveSyncedAt from prefs.js', () => {
         expect(src).toMatch(
-            /import\s*\{\s*writeLastDriveExportedAt\s*\}\s*from\s*['"]\.\/prefs\.js['"]/
+            /import\s*\{\s*writeLastDriveSyncedAt\s*\}\s*from\s*['"]\.\/prefs\.js['"]/
         );
     });
 
@@ -339,7 +339,7 @@ describe('driveExport — source-level: timestamp write on success only', () => 
         // runs only on a 2xx Drive response. A failed upload routes through
         // the .catch() and leaves the prior timestamp untouched.
         expect(src).toMatch(
-            /\.then\(function\(file\)\s*\{[\s\S]*?writeLastDriveExportedAt\(/
+            /\.then\(function\(file\)\s*\{[\s\S]*?writeLastDriveSyncedAt\(/
         );
     });
 
@@ -347,33 +347,32 @@ describe('driveExport — source-level: timestamp write on success only', () => 
         const catchIdx = src.indexOf('.catch(function(err)');
         expect(catchIdx).toBeGreaterThan(-1);
         // Walk to the end of the catch block (until the next .then) and
-        // make sure writeLastDriveExportedAt is not called inside it.
+        // make sure writeLastDriveSyncedAt is not called inside it.
         const tail = src.slice(catchIdx, src.indexOf('.then(function(result)', catchIdx));
-        expect(tail).not.toMatch(/writeLastDriveExportedAt/);
+        expect(tail).not.toMatch(/writeLastDriveSyncedAt/);
     });
 });
 
 
-describe('settings menu — Export to Drive last-exported label', () => {
+describe('settings menu — Export to Drive last-synced label', () => {
     const main = read('main.js');
 
-    it('imports readLastDriveExportedAt alongside readLastExportedAt', () => {
+    it('imports readLastDriveSyncedAt alongside readLastExportedAt', () => {
         expect(main).toMatch(
-            /import\s*\{[^}]*readLastDriveExportedAt[^}]*\}\s*from\s*['"]\.\/prefs\.js['"]/
+            /import\s*\{[^}]*readLastDriveSyncedAt[^}]*\}\s*from\s*['"]\.\/prefs\.js['"]/
         );
     });
 
     it('passes the relative label into the Drive Export state pill', () => {
-        // Mirror of the local Export pin in lastExportedFooter.test.js — the
-        // Drive Export row's state pill must read the formatted relative
-        // label so the user sees how stale their last Drive backup is at
-        // the moment of action. The row is identified by its stable
+        // The Drive Export row's state pill must read the formatted
+        // relative label so the user sees how stale their last Drive sync
+        // is at the moment of action. The row is identified by its stable
         // `settingsMenuItem--driveExport` class anchor since the visible
         // label is just 'Export' (the DRIVE section header disambiguates).
         const driveIdx = main.indexOf("'settingsMenuItem--driveExport'");
         expect(driveIdx).toBeGreaterThan(-1);
         const slice = main.slice(Math.max(0, driveIdx - 400), driveIdx + 100);
-        expect(slice).toMatch(/formatRelativeExportedAt\s*\(\s*readLastDriveExportedAt\(\)\s*\)/);
+        expect(slice).toMatch(/formatRelativeExportedAt\s*\(\s*readLastDriveSyncedAt\(\)\s*\)/);
     });
 });
 

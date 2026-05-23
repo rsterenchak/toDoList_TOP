@@ -20,6 +20,13 @@ import {
     OAUTH_CLIENT_ID,
 } from '../src/driveAuth.js';
 import { listLogic } from '../src/listLogic.js';
+import {
+    LAST_DRIVE_SYNCED_AT_KEY,
+    LEGACY_LAST_DRIVE_EXPORTED_AT_KEY,
+    readLastDriveSyncedAt,
+    writeLastDriveSyncedAt,
+    migrateLegacyDriveSyncMarker,
+} from '../src/prefs.js';
 
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -323,5 +330,131 @@ describe('exportImport — importTodosFromString shared pipeline', () => {
         expect(src).toMatch(
             /function\s+importFromFile[\s\S]{0,400}importTodosFromString\s*\(/
         );
+    });
+});
+
+
+describe('driveImport — source-level: writes the sync marker on success', () => {
+    const src = read('driveImport.js');
+
+    it('imports writeLastDriveSyncedAt from prefs.js', () => {
+        // Mirror of the export-side timestamp-write pin in
+        // driveExport.test.js — the import path must record its own
+        // success against the same marker so the "behind" indicator
+        // clears as soon as an import completes.
+        expect(src).toMatch(
+            /import\s*\{\s*writeLastDriveSyncedAt\s*\}\s*from\s*['"]\.\/prefs\.js['"]/
+        );
+    });
+
+    it('writes the timestamp inside the importTodosFromString success callback', () => {
+        // The write must sit in the onAfterReplace callback handed to
+        // importTodosFromString — that callback runs only after the user
+        // confirms the destructive overwrite and listLogic.replaceAllProjects
+        // has applied the new state. A user who declines the confirm leaves
+        // the prior timestamp untouched.
+        expect(src).toMatch(
+            /importTodosFromString\s*\([\s\S]*?writeLastDriveSyncedAt\(/
+        );
+    });
+
+    it('uses the Drive file modifiedTime (not Date.now) to avoid clock skew', () => {
+        // Writing the Drive file's modifiedTime — not the local clock —
+        // guarantees the post-import sync-state comparison reads as
+        // 'synced' regardless of clock skew between this device and
+        // Drive's server.
+        expect(src).toMatch(/writeLastDriveSyncedAt\(\s*file\.modifiedTime/);
+        // And not a Date.now-derived value inside the success callback.
+        const writeIdx = src.indexOf('writeLastDriveSyncedAt(');
+        expect(writeIdx).toBeGreaterThan(-1);
+        const writeSlice = src.slice(writeIdx, writeIdx + 200);
+        expect(writeSlice).not.toMatch(/Date\.now/);
+        expect(writeSlice).not.toMatch(/new\s+Date\s*\(\s*\)\.toISOString/);
+    });
+});
+
+
+describe('driveImport — post-import sync-state reads as "synced"', () => {
+    // Regression test: after a successful import, the sync-state
+    // computation must report 'synced' against the same Drive modifiedTime
+    // the import was sourced from. This is the central bug the rename
+    // fixes — previously the local marker only moved on export, so an
+    // import left the indicator amber.
+    const main = read('main.js');
+
+    function extractFunction(name) {
+        const idx = main.indexOf('function ' + name);
+        expect(idx).toBeGreaterThan(-1);
+        const openBrace = main.indexOf('{', idx);
+        let depth = 0;
+        for (let i = openBrace; i < main.length; i++) {
+            if (main[i] === '{') depth++;
+            else if (main[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    const body = main.slice(openBrace + 1, i);
+                    const sig = main.slice(idx, openBrace);
+                    const params = sig.match(/\(([^)]*)\)/);
+                    return new Function(params[1], body);
+                }
+            }
+        }
+        throw new Error('unbalanced braces in ' + name);
+    }
+
+    const computeDriveSyncState = extractFunction('computeDriveSyncState');
+
+    it('reads as "synced" when the local marker equals the Drive file modifiedTime that was imported', () => {
+        // Simulate the post-import state: writeLastDriveSyncedAt was
+        // called with file.modifiedTime, so the local marker now matches
+        // the Drive file. The next sync-state probe must report 'synced',
+        // not 'behind'.
+        const driveModified = '2026-05-23T14:00:00.000Z';
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        writeLastDriveSyncedAt(driveModified);
+        const localIso = readLastDriveSyncedAt();
+        expect(computeDriveSyncState(localIso, driveModified)).toBe('synced');
+    });
+});
+
+
+describe('prefs — legacy lastDriveExportedAt → lastDriveSyncedAt migration', () => {
+    beforeEach(() => {
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY); } catch (_) {}
+    });
+
+    it('moves the legacy value to the new key when the new key is empty', () => {
+        localStorage.setItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY, '2026-05-22T10:00:00.000Z');
+        migrateLegacyDriveSyncMarker();
+        expect(localStorage.getItem(LAST_DRIVE_SYNCED_AT_KEY))
+            .toBe('2026-05-22T10:00:00.000Z');
+        expect(localStorage.getItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY)).toBe(null);
+    });
+
+    it('preserves a freshly-written new-key value rather than clobbering it with the legacy value', () => {
+        // If both keys somehow exist (e.g. user already synced once on the
+        // new build before the migration ran), the new value wins. The
+        // legacy key is always removed.
+        localStorage.setItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY, '2025-01-01T00:00:00.000Z');
+        localStorage.setItem(LAST_DRIVE_SYNCED_AT_KEY, '2026-05-23T14:00:00.000Z');
+        migrateLegacyDriveSyncMarker();
+        expect(localStorage.getItem(LAST_DRIVE_SYNCED_AT_KEY))
+            .toBe('2026-05-23T14:00:00.000Z');
+        expect(localStorage.getItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY)).toBe(null);
+    });
+
+    it('is a no-op when neither key is set', () => {
+        migrateLegacyDriveSyncMarker();
+        expect(localStorage.getItem(LAST_DRIVE_SYNCED_AT_KEY)).toBe(null);
+        expect(localStorage.getItem(LEGACY_LAST_DRIVE_EXPORTED_AT_KEY)).toBe(null);
+    });
+
+    it('is invoked at app boot from main.js', () => {
+        const main = read('main.js');
+        expect(main).toMatch(
+            /import\s*\{[^}]*\bmigrateLegacyDriveSyncMarker\b[^}]*\}\s*from\s*['"]\.\/prefs\.js['"]/
+        );
+        expect(main).toMatch(/migrateLegacyDriveSyncMarker\s*\(\s*\)/);
     });
 });

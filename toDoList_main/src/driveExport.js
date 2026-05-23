@@ -10,7 +10,7 @@
 // row's dim/disabled styling hangs off of.
 
 import { buildExportPayload, buildBaseExportFilename } from './exportImport.js';
-import { writeLastDriveExportedAt } from './prefs.js';
+import { writeLastDriveSyncedAt } from './prefs.js';
 import {
     OAUTH_CLIENT_ID,
     getAccessToken,
@@ -104,10 +104,10 @@ export function exportTodosToDrive() {
         .then(function(token) { return uploadToDrive(json, filename, token); })
         .then(function(file) {
             // Record the successful upload so the ghost menu's Export to
-            // Drive row can show a relative "exported N hours ago" label
+            // Drive row can show a relative "synced N hours ago" label
             // next time the menu opens. Only writes on success — a failed
             // upload leaves the prior timestamp untouched.
-            writeLastDriveExportedAt(now.toISOString());
+            writeLastDriveSyncedAt(now.toISOString());
             showDriveToast({
                 label: 'Exported to Drive',
                 linkHref: file && file.webViewLink ? file.webViewLink : null,

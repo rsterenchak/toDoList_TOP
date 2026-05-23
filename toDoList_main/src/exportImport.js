@@ -109,18 +109,18 @@ const MS_PER_MONTH = 30 * MS_PER_DAY;
 const MS_PER_YEAR = 365 * MS_PER_DAY;
 
 export function formatRelativeExportedAt(iso, now) {
-    if (!iso) return 'Never exported';
+    if (!iso) return 'Never synced';
     const t = Date.parse(iso);
-    if (isNaN(t)) return 'Never exported';
+    if (isNaN(t)) return 'Never synced';
 
     const ref = (now ? now.getTime() : Date.now());
     const diff = ref - t;
 
     // Clock skew or a future-stamped file — treat as fresh.
-    if (diff < MS_PER_MINUTE) return 'Exported just now';
+    if (diff < MS_PER_MINUTE) return 'Synced just now';
 
     function plural(n, unit) {
-        return 'Exported ' + n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
+        return 'Synced ' + n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
     }
 
     if (diff < MS_PER_HOUR) return plural(Math.floor(diff / MS_PER_MINUTE), 'minute');

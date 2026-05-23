@@ -79,10 +79,18 @@ import { formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
 import { getCachedAccessToken } from './driveAuth.js';
-import { readLastDriveExportedAt } from './prefs.js';
+import { readLastDriveSyncedAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
+
+
+// One-shot migration of the prior `todoapp_lastDriveExportedAt` localStorage
+// key to the new `todoapp_lastDriveSyncedAt` key. Runs once at app boot —
+// the helper is self-cleaning, so subsequent loads short-circuit. Existing
+// users keep the timestamp they had before; the key just changes name to
+// reflect that it now tracks the last sync in either direction.
+migrateLegacyDriveSyncMarker();
 
 
 // Apply the saved theme during import, before component() — sets data-theme
@@ -1274,11 +1282,11 @@ function component() {
 
     // ── Drive sync-state indicator ──
     //
-    // Reflects the local lastDriveExportedAt timestamp against the latest
+    // Reflects the local lastDriveSyncedAt timestamp against the latest
     // Drive backup's modifiedTime in four buckets:
     //   synced   — local timestamp >= Drive modifiedTime
     //   behind   — Drive modifiedTime is newer (another device pushed)
-    //   never    — no lastDriveExportedAt and/or no Drive file
+    //   never    — no lastDriveSyncedAt and/or no Drive file
     //   unknown  — query failed, network offline, or no cached OAuth token
     //
     // Paints two surfaces: the cloud badge overlaid on the ghost icon in
@@ -1301,7 +1309,7 @@ function component() {
     function syncStateTooltip(state, localIso) {
         if (state === 'synced') {
             const rel = formatRelativeExportedAt(localIso);
-            return 'Up to date — last synced ' + rel.replace(/^Exported\s*/, '');
+            return 'Up to date — last synced ' + rel.replace(/^Synced\s*/, '');
         }
         if (state === 'behind') return 'Drive is newer than local — pull to update';
         if (state === 'never')  return 'Not synced to Drive yet';
@@ -1352,7 +1360,7 @@ function component() {
 
     function setDriveSyncState(state, localIso) {
         _driveSyncState = state;
-        _driveSyncTooltip = syncStateTooltip(state, localIso || readLastDriveExportedAt());
+        _driveSyncTooltip = syncStateTooltip(state, localIso || readLastDriveSyncedAt());
         paintAllSyncBadges();
     }
 
@@ -1364,19 +1372,19 @@ function component() {
     function refreshDriveSyncState() {
         const token = getCachedAccessToken();
         if (!token) {
-            const localIso = readLastDriveExportedAt();
+            const localIso = readLastDriveSyncedAt();
             setDriveSyncState(localIso ? 'unknown' : 'never', localIso);
             return Promise.resolve();
         }
         return queryLatestDriveFile(token).then(function(files) {
             const file = files && files.length ? files[0] : null;
-            const localIso = readLastDriveExportedAt();
+            const localIso = readLastDriveSyncedAt();
             setDriveSyncState(
                 computeDriveSyncState(localIso, file && file.modifiedTime),
                 localIso
             );
         }).catch(function() {
-            const localIso = readLastDriveExportedAt();
+            const localIso = readLastDriveSyncedAt();
             setDriveSyncState('unknown', localIso);
         });
     }
@@ -1386,8 +1394,8 @@ function component() {
     // or 'unknown' (local timestamp from a prior session but no cached
     // token to verify Drive against).
     setDriveSyncState(
-        readLastDriveExportedAt() ? 'unknown' : 'never',
-        readLastDriveExportedAt()
+        readLastDriveSyncedAt() ? 'unknown' : 'never',
+        readLastDriveSyncedAt()
     );
 
     // When the no-projects empty state is showing, its Create button is the
@@ -1546,14 +1554,14 @@ function component() {
         // `settingsMenuItem--driveExport` class is the CSS anchor for the
         // dim/disabled loading state surfaced via `body.driveExportInProgress`.
         // The state pill mirrors the local Export row's relative label,
-        // reading the device-local `lastDriveExportedAt` marker so the user
-        // sees how stale their last Drive backup is at the moment of action.
+        // reading the device-local `lastDriveSyncedAt` marker so the user
+        // sees how stale their last Drive sync is at the moment of action.
         // Before the first Drive export the marker is null and the pill
         // stays empty (matching the local Export row's behavior on a fresh
         // install).
         const driveExportItem = buildSettingsMenuItem(
             'Export',
-            readLastDriveExportedAt() ? formatRelativeExportedAt(readLastDriveExportedAt()) : '',
+            readLastDriveSyncedAt() ? formatRelativeExportedAt(readLastDriveSyncedAt()) : '',
             function() { exportTodosToDrive(); },
             'settingsMenuItem--driveExport'
         );
@@ -3626,11 +3634,11 @@ function component() {
 
         function formatCaptionPart(iso) {
             if (!iso) return 'never';
-            return formatRelativeExportedAt(iso).replace(/^Exported /, '');
+            return formatRelativeExportedAt(iso).replace(/^Synced /, '');
         }
         function refreshDataCaption() {
             dataCaption.textContent =
-                'Last Drive: ' + formatCaptionPart(readLastDriveExportedAt());
+                'Last Drive: ' + formatCaptionPart(readLastDriveSyncedAt());
         }
         refreshDataCaption();
 

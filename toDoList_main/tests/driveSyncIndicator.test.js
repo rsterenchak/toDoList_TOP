@@ -1,7 +1,7 @@
 // Tests for the Drive sync-state indicator that overlays the ghost icon
 // in the header and the matching badge next to the DRIVE section header
 // inside the popover menu. Both surfaces share one state machine driven
-// by comparing the local lastDriveExportedAt timestamp against the
+// by comparing the local lastDriveSyncedAt timestamp against the
 // latest Drive file's modifiedTime. State values: 'synced', 'behind',
 // 'never', 'unknown'.
 

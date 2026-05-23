@@ -91,7 +91,7 @@ describe('refreshFooterExportLabel — color state class + glyph', () => {
         // Glyph present alongside the label; SVG has no text content so
         // textContent stays equal to the label string.
         expect(el.querySelector('svg.footExportGlyph')).not.toBeNull();
-        expect(el.textContent).toBe('Never exported');
+        expect(el.textContent).toBe('Never synced');
     });
 
     it('keeps the fresh state unstyled with no glyph for sub-3-day exports', () => {
@@ -103,7 +103,7 @@ describe('refreshFooterExportLabel — color state class + glyph', () => {
         expect(el.classList.contains('footExport--warn')).toBe(false);
         expect(el.classList.contains('footExport--urgent')).toBe(false);
         expect(el.querySelector('svg.footExportGlyph')).toBeNull();
-        expect(el.textContent).toBe('Exported 1 day ago');
+        expect(el.textContent).toBe('Synced 1 day ago');
     });
 
     it('escalates to warn with the glyph at the 3-day boundary', () => {
@@ -114,7 +114,7 @@ describe('refreshFooterExportLabel — color state class + glyph', () => {
         expect(el.classList.contains('footExport--warn')).toBe(true);
         expect(el.classList.contains('footExport--urgent')).toBe(false);
         expect(el.querySelector('svg.footExportGlyph')).not.toBeNull();
-        expect(el.textContent).toBe('Exported 3 days ago');
+        expect(el.textContent).toBe('Synced 3 days ago');
     });
 
     it('escalates to urgent with the glyph past the 7-day boundary', () => {
@@ -125,7 +125,7 @@ describe('refreshFooterExportLabel — color state class + glyph', () => {
         expect(el.classList.contains('footExport--urgent')).toBe(true);
         expect(el.classList.contains('footExport--warn')).toBe(false);
         expect(el.querySelector('svg.footExportGlyph')).not.toBeNull();
-        expect(el.textContent).toBe('Exported 10 days ago');
+        expect(el.textContent).toBe('Synced 10 days ago');
     });
 
     it('does not accumulate glyphs across repeated refreshes', () => {
