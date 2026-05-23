@@ -5216,6 +5216,16 @@ body.driveExportInProgress .settingsMenuItem--driveExport {
   pointer-events: none;
 }
 
+/* Connect to Drive menu row — dedicated auth-only entry that sits above
+   the Export and Import rows in the DRIVE section. Once signed in for the
+   session the row flips to a dimmed, non-clickable status row
+   ("Signed in — auto-sync on") via the --signedIn modifier. */
+.settingsMenuItem--driveConnect--signedIn {
+  opacity: 0.65;
+  pointer-events: none;
+  cursor: default;
+}
+
 /* Loading state on the Import from Drive menu row. Same shape as the
    Export-to-Drive row above so OAuth + query + download (which can take
    several seconds on the first click of a session) reads as a deliberate

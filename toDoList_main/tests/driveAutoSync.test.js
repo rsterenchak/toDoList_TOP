@@ -21,8 +21,13 @@ import {
     _resetAutoSyncForTest,
     AUTO_SYNC_DEBOUNCE_MS,
     performAutoSync,
+    autoSyncOnAppLoad,
     registerAutoSyncRebuild,
 } from '../src/driveAutoSync.js';
+import {
+    _resetCachedToken,
+    _resetGisPromise,
+} from '../src/driveAuth.js';
 import {
     LAST_DRIVE_SYNCED_AT_KEY,
     LAST_LOCAL_MUTATION_AT_KEY,
@@ -349,6 +354,127 @@ describe('driveAutoSync — performAutoSync diverged auto-pause', () => {
         armAutoSync();
         const result = await performAutoSync();
         expect(result).toBe('no-token');
+    });
+});
+
+
+// ── AUTO-SYNC ON APP LOAD — SILENT RE-AUTH ────────────────────────────
+describe('driveAutoSync — autoSyncOnAppLoad silent re-auth', () => {
+    let originalGoogle;
+
+    beforeEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        originalGoogle = window.google;
+    });
+
+    afterEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        if (originalGoogle === undefined) {
+            try { delete window.google; } catch (_) { window.google = undefined; }
+        } else {
+            window.google = originalGoogle;
+        }
+        if ('fetch' in globalThis) {
+            try { delete globalThis.fetch; } catch (_) { globalThis.fetch = undefined; }
+        }
+    });
+
+    function installFakeGisSuccess() {
+        const calls = [];
+        window.google = {
+            accounts: {
+                oauth2: {
+                    initTokenClient(config) {
+                        return {
+                            requestAccessToken(opts) {
+                                calls.push(opts || {});
+                                config.callback({
+                                    access_token: 'silent-token',
+                                    expires_in: 3600,
+                                });
+                            },
+                        };
+                    },
+                },
+            },
+        };
+        return calls;
+    }
+
+    function installFakeGisFailure(errorString) {
+        window.google = {
+            accounts: {
+                oauth2: {
+                    initTokenClient(config) {
+                        return {
+                            requestAccessToken() {
+                                config.callback({ error: errorString || 'access_denied' });
+                            },
+                        };
+                    },
+                },
+            },
+        };
+    }
+
+    function stubQuietDriveQuery() {
+        globalThis.fetch = function() {
+            return Promise.resolve({
+                ok: true,
+                json() { return Promise.resolve({ files: [] }); },
+            });
+        };
+    }
+
+    it('arms _autoSyncArmed after a successful silent refresh on app load', async () => {
+        installFakeGisSuccess();
+        stubQuietDriveQuery();
+        expect(isAutoSyncArmed()).toBe(false);
+        await autoSyncOnAppLoad();
+        expect(isAutoSyncArmed()).toBe(true);
+    });
+
+    it('passes prompt: "none" through to the GIS token client (no popup on silent app-load)', async () => {
+        const calls = installFakeGisSuccess();
+        stubQuietDriveQuery();
+        await autoSyncOnAppLoad();
+        expect(calls).toHaveLength(1);
+        expect(calls[0].prompt).toBe('none');
+    });
+
+    it('does NOT arm _autoSyncArmed when the silent refresh fails', async () => {
+        installFakeGisFailure('access_denied');
+        expect(isAutoSyncArmed()).toBe(false);
+        const result = await autoSyncOnAppLoad();
+        expect(isAutoSyncArmed()).toBe(false);
+        // The failure resolves quietly with a no-token marker — no throw.
+        expect(result).toBe('no-token');
+    });
+
+    it('does NOT throw or surface a toast when the silent refresh fails', async () => {
+        installFakeGisFailure('no_session');
+        // Pre-test cleanup: no existing toast in the DOM.
+        const priorToast = document.getElementById('driveExportToast');
+        if (priorToast && priorToast.parentNode) priorToast.parentNode.removeChild(priorToast);
+
+        let threw = false;
+        try {
+            await autoSyncOnAppLoad();
+        } catch (_) {
+            threw = true;
+        }
+        expect(threw).toBe(false);
+
+        // Auth failure during the silent path must not surface a toast —
+        // it's the normal first-time-user path.
+        const toast = document.getElementById('driveExportToast');
+        expect(toast).toBeFalsy();
     });
 });
 

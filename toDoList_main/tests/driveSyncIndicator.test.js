@@ -83,8 +83,17 @@ describe('Drive sync indicator — source-level wiring in main.js', () => {
         expect(catchSlice).toMatch(/['"]unknown['"]/);
     });
 
-    it('schedules a one-shot silent sync probe on app load via setTimeout(refreshDriveSyncState, 0)', () => {
-        expect(main).toMatch(/setTimeout\s*\(\s*refreshDriveSyncState\s*,\s*0\s*\)/);
+    it('schedules a one-shot silent sync probe on app load — refreshDriveSyncState runs after the boot-time autoSyncOnAppLoad silent re-auth attempt', () => {
+        // Boot now attempts a silent OAuth refresh first (so a returning
+        // user's cached Drive token populates getCachedAccessToken before
+        // the indicator paints), then chains into refreshDriveSyncState
+        // from the same setTimeout. The two calls live in the same boot
+        // block; refreshDriveSyncState appears after autoSyncOnAppLoad
+        // in the source so the chain ordering is verifiable.
+        const autoSyncIdx = main.indexOf('autoSyncOnAppLoad()');
+        expect(autoSyncIdx).toBeGreaterThan(-1);
+        const slice = main.slice(autoSyncIdx, autoSyncIdx + 600);
+        expect(slice).toMatch(/refreshDriveSyncState\s*\(\s*\)/);
     });
 
     it('re-queries Drive whenever the ghost menu opens', () => {
