@@ -185,7 +185,7 @@ export const listLogic = (function () {
         return projectsArray;
     }
 
-    // @user-mutation-only
+    // @category: user-mutation-only
     function addProject(projectName){
 
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri);
@@ -210,7 +210,7 @@ export const listLogic = (function () {
         };
     }
 
-    // @user-mutation-only
+    // @category: user-mutation-only
     function removeProject(projectName){
 
         let before = Object.keys(allProjects).length;
@@ -232,7 +232,7 @@ export const listLogic = (function () {
 
     // FUNCTION (ADD TODO LIST ITEMS)
     // Skips if a blank placeholder already exists (invariant: one blank per project).
-    // @user-mutation-only
+    // @category: user-mutation-only
     function addToDo(projectName, toDoName) {
 
         let projectDes = projectName;
@@ -276,7 +276,7 @@ export const listLogic = (function () {
 
     // FUNCTION (REMOVE TODO LIST ITEMS)
     // Maintains the invariant that a blank placeholder is pinned at index 0.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function removeToDo(project, index, length) {
 
         if (!allProjects[project]) return;
@@ -300,7 +300,7 @@ export const listLogic = (function () {
     // otherwise delete the wrong row. A stale/empty input value also can't
     // misfire and accidentally splice the blank placeholder.
     // Maintains the invariant that a blank placeholder is pinned at index 0.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function removeToDoByItem(project, item) {
 
         if (!allProjects[project]) return;
@@ -329,7 +329,7 @@ export const listLogic = (function () {
     // is completed (re-partitioned to the bottom) or the requested index
     // collides with the pinned blank placeholder at index 0 — both are
     // expected outcomes that preserve the model invariants.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function insertToDoAt(project, item, index) {
 
         if (!allProjects[project] || !item) return;
@@ -349,7 +349,7 @@ export const listLogic = (function () {
     };
 
 
-    // @user-mutation-only
+    // @category: user-mutation-only
     function editProject(currentProperty, newProperty) {
 
         // Reject empty/whitespace renames — a '' key collides with the
@@ -401,7 +401,7 @@ export const listLogic = (function () {
     // Move a project from one index to another.
     // Object keys preserve insertion order in modern JS, so we rebuild
     // the object in the new order to persist the reorder.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function reorderProject(fromIndex, toIndex) {
 
         const keys = Object.keys(allProjects);
@@ -435,7 +435,7 @@ export const listLogic = (function () {
     // have crossed the uncompleted/completed boundary, and the invariant
     // (completed items always sit beneath uncompleted ones) is enforced
     // here so any future reorder caller benefits.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function reorderToDo(project, fromIndex, toIndex) {
 
         if (!allProjects[project]) return;
@@ -517,6 +517,7 @@ export const listLogic = (function () {
     // with data that's already correctly sorted on disk, and the historical
     // unconditional save bumped lastLocalMutationAt and tripped auto-sync
     // even though nothing actually changed.
+    // @category: defensive-normalize
     function sortCompletedToBottom(project, opts) {
         if (!allProjects[project]) return;
         const arr = allProjects[project].items;
@@ -594,7 +595,7 @@ export const listLogic = (function () {
 
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function setProjectColor(projectName, colorKey) {
         const entry = allProjects[projectName];
         if (!entry) return;
@@ -614,7 +615,7 @@ export const listLogic = (function () {
     // downstream date math: missing fields fall back to safe defaults, the
     // pattern is clamped to a known value, and `interval` is forced to a
     // positive integer.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function setRecurrence(project, item, recurrence) {
         if (!allProjects[project]) return;
         if (!item) return;
@@ -641,7 +642,7 @@ export const listLogic = (function () {
     // is cleared so the clone itself doesn't chain. Repeated advances
     // therefore stack one completed entry per occurrence alongside the
     // still-recurring original.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function advanceRecurringTodo(project, item, completionDate) {
         if (!allProjects[project] || !item || !item.recurrence) return false;
 
@@ -1243,7 +1244,7 @@ export const listLogic = (function () {
     // exist) still applies in force mode; the caller is responsible for
     // skipping the call when the user has their own projects so a sample
     // can't surprise-appear.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function seedSampleProject(options) {
         const force = options && options.force === true;
         if (!force && isSampleSeeded()) return false;
@@ -1302,7 +1303,7 @@ export const listLogic = (function () {
     // then has its description backfilled so step 3 has substance to
     // open. Returns true when seeding ran, false when the project is
     // missing or already has any titled item.
-    // @user-mutation-only
+    // @category: user-mutation-only
     function seedSampleTodos(projectName) {
         const entry = allProjects[projectName];
         if (!entry || !Array.isArray(entry.items)) return false;
@@ -1344,6 +1345,7 @@ export const listLogic = (function () {
     // `opts.fromSync: true` forwards the same flag onto saveToStorage so a
     // sync-initiated replace doesn't bump the local mutation marker past
     // lastDriveSyncedAt — see saveToStorage for the rationale.
+    // @category: sync-safe
     function replaceAllProjects(projects, opts) {
 
         if (!Array.isArray(projects)) return 0;
