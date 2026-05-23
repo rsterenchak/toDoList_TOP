@@ -69,3 +69,32 @@ describe('removed DRIVE menu row anchors — static scan', () => {
         });
     });
 });
+
+
+// The mobile Settings modal's Data section consolidated from a 2-tile
+// Drive Export / Drive Import grid + standalone LAST DRIVE caption row
+// into a single state-aware Sync card. The removed tile anchors,
+// caption class, and refresh helper must not appear anywhere in source
+// — a stray reference would mean a parallel UI path survived the
+// collapse and could route around the new single Sync card.
+const REMOVED_MOBILE_DATA_TILE_ANCHORS = [
+    'settingsModalDataTile--driveExport',
+    'settingsModalDataTile--driveImport',
+    'settingsModalDataTile--localExport',
+    'settingsModalDataTile--localImport',
+    'settingsModalDataCaption',
+    'refreshDataCaption',
+];
+
+describe('removed mobile Settings Data section anchors — static scan', () => {
+    ['main.js', 'style.css'].forEach(function(filename) {
+        describe(filename, () => {
+            const src = read(filename);
+            REMOVED_MOBILE_DATA_TILE_ANCHORS.forEach(function(name) {
+                it('does not reference the removed anchor "' + name + '"', () => {
+                    expect(src).not.toMatch(new RegExp(name));
+                });
+            });
+        });
+    });
+});

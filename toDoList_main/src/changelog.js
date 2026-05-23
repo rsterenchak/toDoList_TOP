@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-23',
         fixed: [
-            "Drive sync now reconnects automatically on app load for returning users, and a dedicated Connect to Drive option in the menu lets first-time users sign in without exporting or importing first.",
             "Connect to Drive now arms auto-sync immediately on sign-in, and the sync indicator no longer shows the red failure icon when you simply have unsaved local changes.",
             "The Drive menu is now a single Sync button — auto-sync picks push or pull on its own, and a chooser appears only when there's a real conflict to resolve.",
             "Sync indicator no longer flickers to 'Drive is newer' immediately after a successful sync.",
             "Switching to another project no longer triggers an unnecessary sync to Drive.",
+        ],
+        changed: [
+            "Mobile Settings now uses the same single-button Drive sync as desktop — auto-sync handles push and pull, with manual conflict resolution only when needed.",
         ],
     },
 ];

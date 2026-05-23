@@ -1,12 +1,10 @@
-// Tests for the mobile Settings modal's Data section — the button grid
-// that surfaces Drive Export/Import on mobile, where the desktop ghost
-// menu that houses those rows is hidden by the ≤700px breakpoint.
-// Source-level pins: the section is the FIRST one in the modal body, the
-// two tiles invoke the same handlers the desktop menu rows already wire
-// up (no new orchestration), the existing body.driveExportInProgress /
-// driveImportInProgress dim hooks pivot on the tile anchor classes, and
-// the caption underneath uses formatRelativeExportedAt for the
-// stale-time signal so it stays consistent with the desktop ghost menu.
+// Tests for the mobile Settings modal's Data section — now a single
+// state-aware Sync card that replaced the prior 2-tile Drive Export /
+// Drive Import grid plus the standalone LAST DRIVE timestamp caption.
+// The card reuses the existing .settingsModalDataTile chrome so the
+// section reads as a single-card variant of the prior 2-tile layout,
+// with content driven by getCurrentSyncState — matching the desktop
+// ghost-menu Sync row's contract.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,16 +17,13 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-describe('mobile Settings modal — Data section (2x2 grid)', () => {
+describe('mobile Settings modal — Data section (single Sync card)', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
     function showSettingsModalSlice() {
         const idx = main.indexOf('function showSettingsModal()');
         expect(idx).toBeGreaterThan(-1);
-        // Wide enough to cover the data section + the rest of the modal
-        // body the tests pivot on. Widened to 10000 after the About
-        // section landed between Appearance and Help.
         return main.slice(idx, idx + 10000);
     }
 
@@ -56,135 +51,245 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             expect(slice).toMatch(/dataGrid\.className\s*=\s*['"]settingsModalDataGrid['"]/);
             expect(slice).toMatch(/dataSection\.appendChild\(dataGrid\)/);
         });
+
+        it('grid wrapper is single-column now that only the Sync card lives inside', () => {
+            // The 2x2 layout collapsed to a single column when the Drive
+            // Export / Drive Import tiles consolidated into one Sync card.
+            // Pinning the grid-template-columns value keeps the layout
+            // from accidentally regressing to two columns and rendering
+            // the single card half-width.
+            expect(css).toMatch(
+                /\.settingsModalDataGrid\s*\{[^}]*grid-template-columns:\s*1fr\s*;/
+            );
+        });
     });
 
-    describe('tile builder + Drive tile layout', () => {
-        it('createDrawerDataTile sits next to createDrawerToggleRow / createDrawerActionRow', () => {
-            expect(main).toMatch(/function\s+createDrawerDataTile\s*\(/);
-            const tileIdx   = main.indexOf('function createDrawerDataTile');
-            const toggleIdx = main.indexOf('function createDrawerToggleRow');
-            const actionIdx = main.indexOf('function createDrawerActionRow');
-            expect(toggleIdx).toBeGreaterThan(-1);
-            expect(actionIdx).toBeGreaterThan(-1);
-            // All four drawer-row helpers (Toggle / Data / Info / Action)
-            // cluster in one neighborhood so they're easy to maintain
-            // together. Widened from 4000 → 5000 after createDrawerInfoRow
-            // joined the cluster to back the Settings About section.
-            const lo = Math.min(tileIdx, toggleIdx, actionIdx);
-            const hi = Math.max(tileIdx, toggleIdx, actionIdx);
-            expect(hi - lo).toBeLessThan(5000);
+    describe('Sync card builder', () => {
+        it('declares a buildSettingsModalDriveSyncCard function', () => {
+            expect(main).toMatch(/function\s+buildSettingsModalDriveSyncCard\s*\(/);
         });
 
-        it('tile builder paints icon / verb / sub-label spans', () => {
-            const idx = main.indexOf('function createDrawerDataTile');
+        it('the card carries the settingsModalDataTile chrome plus the --driveSync anchor', () => {
+            const idx = main.indexOf('function buildSettingsModalDriveSyncCard');
             expect(idx).toBeGreaterThan(-1);
-            const fn = main.slice(idx, idx + 1200);
-            expect(fn).toMatch(/settingsModalDataTileIcon/);
-            expect(fn).toMatch(/settingsModalDataTileVerb/);
-            expect(fn).toMatch(/settingsModalDataTileSub/);
+            const body = main.slice(idx, idx + 2400);
+            expect(body).toMatch(
+                /tile\.className\s*=\s*['"]settingsModalDataTile settingsModalDataTile--driveSync['"]/
+            );
         });
 
-        it('mounts two Drive tiles: Drive Export then Drive Import', () => {
-            const slice = showSettingsModalSlice();
-            const driveExportIdx = slice.indexOf("'settingsModalDataTile--driveExport'");
-            const driveImportIdx = slice.indexOf("'settingsModalDataTile--driveImport'");
-            expect(driveExportIdx).toBeGreaterThan(-1);
-            expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
-            // LOCAL tile anchors must not appear anywhere in source.
+        it('the card carries the stable settingsModalDriveSyncCard id so the refresh helper can swap it in place', () => {
+            const idx = main.indexOf('function buildSettingsModalDriveSyncCard');
+            const body = main.slice(idx, idx + 2400);
+            expect(body).toMatch(/tile\.id\s*=\s*['"]settingsModalDriveSyncCard['"]/);
+        });
+
+        it('builder paints icon / verb / sub-label spans using the same chrome classes as the prior tile builder', () => {
+            const idx = main.indexOf('function buildSettingsModalDriveSyncCard');
+            const body = main.slice(idx, idx + 2400);
+            expect(body).toMatch(/settingsModalDataTileIcon/);
+            expect(body).toMatch(/settingsModalDataTileVerb/);
+            expect(body).toMatch(/settingsModalDataTileSub/);
+        });
+
+        it('the prior LOCAL and per-direction Drive tile anchors no longer appear anywhere in source', () => {
+            // Removal scope sanity — the two Drive Export/Import tile class
+            // anchors and the long-gone LOCAL anchors must not creep back
+            // in via a future copy-paste.
+            expect(main).not.toMatch(/settingsModalDataTile--driveExport/);
+            expect(main).not.toMatch(/settingsModalDataTile--driveImport/);
             expect(main).not.toMatch(/settingsModalDataTile--localExport/);
             expect(main).not.toMatch(/settingsModalDataTile--localImport/);
         });
+
+        it('the prior LAST DRIVE caption row is gone (folded into the Sync card sublabel)', () => {
+            // The standalone "Last Drive: …" caption row + its
+            // refreshDataCaption helper were removed when the timestamp
+            // folded into the Sync card's sublabel. Pinning their
+            // absence keeps a future rebuild from re-adding the dual
+            // surface.
+            expect(main).not.toMatch(/settingsModalDataCaption/);
+            expect(main).not.toMatch(/function\s+refreshDataCaption/);
+            expect(main).not.toMatch(/'Last Drive: '/);
+        });
     });
 
-    describe('tile handlers reuse the existing desktop menu wiring', () => {
-        function sliceAroundAnchor(anchor) {
-            const slice = showSettingsModalSlice();
-            const idx = slice.indexOf(anchor);
-            expect(idx).toBeGreaterThan(-1);
-            return slice.slice(Math.max(0, idx - 600), idx + 200);
+    describe('state → verb mapping', () => {
+        function extractFn(name) {
+            const idx = main.indexOf('function ' + name);
+            if (idx === -1) throw new Error(name + ' not found');
+            const after = main.slice(idx);
+            const bodyStart = after.indexOf('{');
+            let depth = 0;
+            for (let i = bodyStart; i < after.length; i++) {
+                const c = after.charAt(i);
+                if (c === '{') depth++;
+                else if (c === '}') {
+                    depth--;
+                    if (depth === 0) return after.slice(0, i + 1);
+                }
+            }
+            throw new Error('unbalanced braces in ' + name);
         }
 
-        it('Drive Export tile invokes exportTodosToDrive()', () => {
-            const slice = sliceAroundAnchor("'settingsModalDataTile--driveExport'");
-            expect(slice).toMatch(/exportTodosToDrive\s*\(\s*\)/);
+        it('never state reads as "Connect" (call-to-action verb)', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncVerb');
+            expect(fn).toMatch(/['"]Connect['"]/);
+            expect(fn).toMatch(/state\s*===\s*['"]never['"]/);
         });
 
-        it('Drive Import tile invokes importTodosFromDrive() with the rebuild callback', () => {
-            const slice = sliceAroundAnchor("'settingsModalDataTile--driveImport'");
-            expect(slice).toMatch(/importTodosFromDrive\s*\(/);
-            expect(slice).toMatch(/rebuildAfterImport\s*\(\s*\)/);
-        });
-    });
-
-    describe('body.driveExportInProgress / driveImportInProgress dim the matching tiles', () => {
-        it('CSS pivots on settingsModalDataTile--driveExport for the in-flight upload', () => {
-            expect(css).toMatch(
-                /body\.driveExportInProgress\s+\.settingsModalDataTile--driveExport\s*\{[^}]*pointer-events:\s*none/
-            );
-            expect(css).toMatch(
-                /body\.driveExportInProgress\s+\.settingsModalDataTile--driveExport\s*\{[^}]*opacity:\s*0\.55/
-            );
+        it('in-flight states (syncing-push / syncing-pull) read as "Syncing…"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncVerb');
+            expect(fn).toMatch(/['"]Syncing…['"]/);
+            expect(fn).toMatch(/['"]syncing-push['"]/);
+            expect(fn).toMatch(/['"]syncing-pull['"]/);
         });
 
-        it('CSS pivots on settingsModalDataTile--driveImport for the in-flight download', () => {
-            expect(css).toMatch(
-                /body\.driveImportInProgress\s+\.settingsModalDataTile--driveImport\s*\{[^}]*pointer-events:\s*none/
-            );
-            expect(css).toMatch(
-                /body\.driveImportInProgress\s+\.settingsModalDataTile--driveImport\s*\{[^}]*opacity:\s*0\.55/
-            );
+        it('default verb is "Sync" (used by synced / ahead / behind / diverged / failed)', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncVerb');
+            expect(fn).toMatch(/return\s*['"]Sync['"]/);
         });
     });
 
-    describe('caption row stale-time signal', () => {
-        it('caption uses formatRelativeExportedAt and reads readLastDriveSyncedAt from prefs', () => {
-            const slice = showSettingsModalSlice();
-            expect(slice).toMatch(/settingsModalDataCaption/);
-            // The helper is imported into main.js at the top and called
-            // from the caption refresh — it's the same helper the desktop
-            // ghost menu's Drive Export state pill uses.
-            expect(slice).toMatch(/formatRelativeExportedAt\s*\(/);
-            expect(slice).toMatch(/readLastDriveSyncedAt\s*\(\s*\)/);
+    describe('state → sublabel mapping', () => {
+        function extractFn(name) {
+            const idx = main.indexOf('function ' + name);
+            if (idx === -1) throw new Error(name + ' not found');
+            const after = main.slice(idx);
+            const bodyStart = after.indexOf('{');
+            let depth = 0;
+            for (let i = bodyStart; i < after.length; i++) {
+                const c = after.charAt(i);
+                if (c === '{') depth++;
+                else if (c === '}') {
+                    depth--;
+                    if (depth === 0) return after.slice(0, i + 1);
+                }
+            }
+            throw new Error('unbalanced braces in ' + name);
+        }
+
+        it('ahead state reads "Local has unsaved changes"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            expect(fn).toMatch(/Local has unsaved changes/);
         });
 
-        it('caption falls back to "never" for null timestamps (vs the helper\'s "Never synced")', () => {
-            const slice = showSettingsModalSlice();
-            // Null timestamps must read "never" in the caption rather than
-            // the helper's longer default, so the caption stays terse
-            // beneath the grid.
-            expect(slice).toMatch(/formatCaptionPart[\s\S]{0,400}return\s+['"]never['"]/);
+        it('behind state reads "Drive is newer"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            expect(fn).toMatch(/Drive is newer/);
         });
 
-        it('caption text is wired to the captured DOM via a refreshDataCaption helper called on modal open', () => {
-            const slice = showSettingsModalSlice();
-            // The helper sits inside showSettingsModal so it closes over
-            // the caption DOM element, and runs once before the modal is
-            // attached so the first paint already shows the freshly read
-            // timestamp.
-            expect(slice).toMatch(/function\s+refreshDataCaption\s*\(/);
-            expect(slice).toMatch(/refreshDataCaption\s*\(\s*\)/);
+        it('diverged state reads "Conflict — tap to resolve"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            expect(fn).toMatch(/Conflict — tap to resolve/);
         });
 
-        it('caption is re-rendered after a Drive Export promise resolves (without needing to reopen the modal)', () => {
+        it('failed state reads "Sync failed — tap to retry"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            expect(fn).toMatch(/Sync failed — tap to retry/);
+        });
+
+        it('never state reads "Sign in to Drive"', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            expect(fn).toMatch(/Sign in to Drive/);
+        });
+
+        it('synced state folds the LAST DRIVE timestamp into the card via formatRelativeExportedAt', () => {
+            const fn = extractFn('computeSettingsModalDriveSyncSubLabel');
+            // The timestamp helper is the same one the desktop ghost menu
+            // uses, so the wording stays consistent ("Synced just now",
+            // "Synced 5 minutes ago").
+            expect(fn).toMatch(/readLastDriveSyncedAt\s*\(\s*\)/);
+            expect(fn).toMatch(/formatRelativeExportedAt\s*\(/);
+        });
+    });
+
+    describe('click handler routes through onDriveSyncClick (the same dispatcher desktop uses)', () => {
+        it('attaches a click listener that calls onDriveSyncClick(state) in the non-in-flight branch', () => {
+            const idx = main.indexOf('function buildSettingsModalDriveSyncCard');
+            const body = main.slice(idx, idx + 2400);
+            expect(body).toMatch(
+                /tile\.addEventListener\(\s*['"]click['"][\s\S]{0,200}onDriveSyncClick\(\s*state\s*\)/
+            );
+        });
+
+        it('in-flight states (syncing-push / syncing-pull) disable the card and skip the click listener', () => {
+            const idx = main.indexOf('function buildSettingsModalDriveSyncCard');
+            const body = main.slice(idx, idx + 2400);
+            expect(body).toMatch(/syncing-push/);
+            expect(body).toMatch(/syncing-pull/);
+            expect(body).toMatch(/tile\.disabled\s*=\s*true/);
+            expect(body).toMatch(/if\s*\(\s*inFlight\s*\)/);
+        });
+    });
+
+    describe('body.driveExportInProgress / driveImportInProgress dim the single Sync card', () => {
+        it('CSS pivots on settingsModalDataTile--driveSync for the in-flight upload', () => {
+            expect(css).toMatch(
+                /body\.driveExportInProgress\s+\.settingsModalDataTile--driveSync\s*\{[^}]*pointer-events:\s*none/
+            );
+            expect(css).toMatch(
+                /body\.driveExportInProgress\s+\.settingsModalDataTile--driveSync\s*\{[^}]*opacity:\s*0\.55/
+            );
+        });
+
+        it('CSS pivots on settingsModalDataTile--driveSync for the in-flight download', () => {
+            expect(css).toMatch(
+                /body\.driveImportInProgress\s+\.settingsModalDataTile--driveSync\s*\{[^}]*pointer-events:\s*none/
+            );
+            expect(css).toMatch(
+                /body\.driveImportInProgress\s+\.settingsModalDataTile--driveSync\s*\{[^}]*opacity:\s*0\.55/
+            );
+        });
+    });
+
+    describe('live re-rendering — driveSyncStateChanged + driveConnectionChanged', () => {
+        it('declares a refreshSettingsModalSyncCard that swaps the card by id', () => {
+            expect(main).toMatch(/function\s+refreshSettingsModalSyncCard\s*\(/);
+            const idx = main.indexOf('function refreshSettingsModalSyncCard');
+            const body = main.slice(idx, idx + 600);
+            expect(body).toMatch(/getElementById\(\s*['"]settingsModalDriveSyncCard['"]/);
+            expect(body).toMatch(/replaceChild\(\s*buildSettingsModalDriveSyncCard\(\s*\)/);
+        });
+
+        it('the modal subscribes to driveSyncStateChanged on mount and unsubscribes on close', () => {
             const slice = showSettingsModalSlice();
-            // exportTodosToDrive returns a promise that resolves after the
-            // upload + timestamp write completes; chaining the caption
-            // refresh keeps the open modal in sync.
-            const idx = slice.indexOf("'settingsModalDataTile--driveExport'");
-            expect(idx).toBeGreaterThan(-1);
-            const around = slice.slice(Math.max(0, idx - 600), idx + 200);
-            expect(around).toMatch(/exportTodosToDrive\s*\(\s*\)/);
-            expect(around).toMatch(/\.then\(\s*refreshDataCaption\s*,\s*refreshDataCaption\s*\)/);
+            expect(slice).toMatch(
+                /addEventListener\(\s*['"]driveSyncStateChanged['"][\s\S]{0,200}onDriveSyncStateChangedForModal/
+            );
+            expect(slice).toMatch(
+                /removeEventListener\(\s*['"]driveSyncStateChanged['"][\s\S]{0,200}onDriveSyncStateChangedForModal/
+            );
+        });
+
+        it('the modal subscribes to driveConnectionChanged on mount and unsubscribes on close', () => {
+            const slice = showSettingsModalSlice();
+            expect(slice).toMatch(
+                /addEventListener\(\s*['"]driveConnectionChanged['"][\s\S]{0,200}onDriveConnectionChangedForModal/
+            );
+            expect(slice).toMatch(
+                /removeEventListener\(\s*['"]driveConnectionChanged['"][\s\S]{0,200}onDriveConnectionChangedForModal/
+            );
+        });
+
+        it('paintAllSyncBadges also nudges the modal card so a desktop-style refreshDriveSyncState tick paints it', () => {
+            // paintAllSyncBadges fires from the same setDriveSyncState
+            // pipeline that drives the desktop ghost-icon overlay; it
+            // should also drive the modal card so the user sees state
+            // flips even before the CustomEvent fan-out lands.
+            const paintIdx = main.indexOf('function paintAllSyncBadges');
+            expect(paintIdx).toBeGreaterThan(-1);
+            const body = main.slice(paintIdx, paintIdx + 1500);
+            expect(body).toMatch(/refreshSettingsModalSyncCard/);
         });
     });
 
     describe('desktop ghost menu is untouched (scope guard)', () => {
-        it('showSettingsMenu still mounts a DRIVE section heading', () => {
-            // The mobile Data section is purely additive. The desktop
-            // ghost menu's DRIVE section (and its right-side pill) must
-            // keep working exactly as before.
+        it('showSettingsMenu still mounts a DRIVE section heading and the single buildDriveSyncRow', () => {
+            // The mobile consolidation must not regress the desktop
+            // ghost menu — the DRIVE heading + single Sync row stay.
             expect(main).toMatch(/driveHeadingLabel\.textContent\s*=\s*['"]Drive['"]/);
-            // LOCAL section is gone — the heading no longer exists.
+            expect(main).toMatch(/menu\.appendChild\(\s*buildDriveSyncRow\(\s*\)\s*\)/);
             expect(main).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
         });
     });
