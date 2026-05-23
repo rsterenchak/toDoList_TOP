@@ -4678,7 +4678,8 @@ body.driveImportInProgress .settingsModalDataTile--driveImport {
   color: var(--text-muted);
 }
 .settingsMenuDriveSyncBadge[data-sync-state="synced"] { color: var(--text-success, #4caf50); }
-.settingsMenuDriveSyncBadge[data-sync-state="behind"] { color: var(--text-warning); }
+.settingsMenuDriveSyncBadge[data-sync-state="behind"],
+.settingsMenuDriveSyncBadge[data-sync-state="ahead"] { color: var(--text-warning); }
 .settingsMenuDriveSyncBadge[data-sync-state="never"],
 .settingsMenuDriveSyncBadge[data-sync-state="unknown"] { color: var(--text-muted); }
 
@@ -4703,7 +4704,8 @@ body.driveImportInProgress .settingsModalDataTile--driveImport {
   color: var(--text-muted);
 }
 .settingsToggleSyncBadge[data-sync-state="synced"] { color: var(--text-success, #4caf50); }
-.settingsToggleSyncBadge[data-sync-state="behind"] { color: var(--text-warning); }
+.settingsToggleSyncBadge[data-sync-state="behind"],
+.settingsToggleSyncBadge[data-sync-state="ahead"] { color: var(--text-warning); }
 .settingsToggleSyncBadge[data-sync-state="never"],
 .settingsToggleSyncBadge[data-sync-state="unknown"] { color: var(--text-muted); }
 
