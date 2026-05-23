@@ -351,6 +351,86 @@ describe('listLogic — storage', () => {
 });
 
 
+// ── SYNC-INITIATED SAVES ────────────────────────────────────────────
+// The Drive import path needs to persist the imported tree without
+// pushing the lastLocalMutationAt marker past lastDriveSyncedAt — a
+// post-import save that bumped the mutation marker would leave the
+// sync indicator stuck on 'ahead' even though the local state had just
+// been pulled from Drive. The { fromSync: true } opt suppresses that
+// write while still committing the JSON payload and dispatching the
+// recompute event.
+describe('listLogic — fromSync suppresses lastLocalMutationAt', () => {
+    const KEY = 'todoapp_lastLocalMutationAt';
+    beforeEach(() => {
+        listLogic._reset();
+        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
+    });
+
+    it('saveToStorage() with no opts writes lastLocalMutationAt', () => {
+        listLogic.addProject('P');
+        expect(localStorage.getItem(KEY)).not.toBeNull();
+        const before = localStorage.getItem(KEY);
+        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
+        expect(localStorage.getItem(KEY)).toBeNull();
+
+        listLogic.saveToStorage();
+        expect(localStorage.getItem(KEY)).not.toBeNull();
+        // Sanity: the new stamp is a parseable ISO date.
+        expect(isNaN(Date.parse(localStorage.getItem(KEY)))).toBe(false);
+        // (Suppress an unused warning on `before`.)
+        expect(typeof before).toBe('string');
+    });
+
+    it('saveToStorage({ fromSync: true }) skips lastLocalMutationAt but still persists allProjects', () => {
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Milk');
+        // Clear the marker so the assertion measures only the next call.
+        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
+        // Drop the persisted snapshot too so the still-persists assertion
+        // is meaningful.
+        try { localStorage.removeItem('allProjects'); } catch (_) { /* ignore */ }
+
+        listLogic.saveToStorage({ fromSync: true });
+
+        expect(localStorage.getItem(KEY)).toBeNull();
+        const raw = localStorage.getItem('allProjects');
+        expect(raw).not.toBeNull();
+        const parsed = JSON.parse(raw);
+        expect(parsed.P.items.map(i => i.tit)).toContain('Milk');
+    });
+
+    it('replaceAllProjects(..., { fromSync: true }) does not bump lastLocalMutationAt', () => {
+        // Seed a mutation marker pinned to a known past timestamp so the
+        // assertion can prove the value was untouched, not just absent.
+        const SEED = '2026-01-01T00:00:00.000Z';
+        localStorage.setItem(KEY, SEED);
+
+        listLogic.replaceAllProjects([
+            { name: 'Imported', items: [{ tit: 'Pulled', completed: false, due: '' }], color: null },
+        ], { fromSync: true });
+
+        // Storage still updated for projects.
+        expect(listLogic.listProjectsArray()).toEqual(['Imported']);
+        // But lastLocalMutationAt is exactly the seeded value — no bump.
+        expect(localStorage.getItem(KEY)).toBe(SEED);
+    });
+
+    it('replaceAllProjects(...) with no opts still bumps lastLocalMutationAt (regression guard)', () => {
+        const SEED = '2026-01-01T00:00:00.000Z';
+        localStorage.setItem(KEY, SEED);
+
+        listLogic.replaceAllProjects([
+            { name: 'Imported', items: [], color: null },
+        ]);
+
+        const after = localStorage.getItem(KEY);
+        expect(after).not.toBeNull();
+        expect(after).not.toBe(SEED);
+        expect(isNaN(Date.parse(after))).toBe(false);
+    });
+});
+
+
 // ── PER-PROJECT COLOR ─────────────────────────────────────────────
 describe('listLogic — per-project color', () => {
     beforeEach(() => {
