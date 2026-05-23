@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-23',
         fixed: [
-            "Removed the empty band below the mobile tab bar; version and project count moved into a new About section in Settings.",
             "Mobile todo rows now have a one-tap copy-title button next to the title and a slimmer due-date pill so the title takes back the space.",
             "Importing from Drive now clears the 'behind' sync indicator instead of leaving it amber.",
             "Editing todos locally now correctly shows the Drive sync indicator as out of sync.",
             "Drive sync indicator now correctly returns to green after a successful import or export.",
+            "Drive import no longer shows a misleading 'try again' error after a successful restore.",
         ],
     },
 ];

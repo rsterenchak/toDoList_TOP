@@ -400,6 +400,77 @@ describe('driveImport — sync-initiated replace suppresses the mutation bump', 
             /onBeforeReplace\s*:\s*function[\s\S]*?writeLastDriveSyncedAt\s*\(\s*file\.modifiedTime/
         );
     });
+
+    it('wraps the onAfterReplace invocation in a try/catch so a host rebuild error cannot propagate', () => {
+        // The host rebuild (rebuildAfterImport in main.js) walks DOM and
+        // can throw. Isolating it keeps the Drive import's promise chain
+        // from rejecting on a UI-side bug, and preserves the sync
+        // indicator's "synced" reading written via onBeforeReplace.
+        expect(src).toMatch(/try\s*\{\s*onAfterReplace\(\)/);
+    });
+});
+
+
+describe('driveImport — host rebuild error does not break the sync invariant', () => {
+    // Regression for the rebuildAfterImport ReferenceError class of bug:
+    // when the host callback throws, the import pipeline must still leave
+    // the data committed AND the Drive sync marker advanced to the file's
+    // modifiedTime. Drives importTodosFromString directly (the same
+    // pipeline driveImport.js's orchestrator hands the JSON to) and pins
+    // the post-confirm state with a stubbed onAfterReplace that throws.
+
+    beforeEach(() => {
+        listLogic._reset();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        clearConfirmModal();
+    });
+
+    afterEach(() => {
+        clearConfirmModal();
+    });
+
+    it('a throwing host callback (wrapped per driveImport orchestrator) leaves lastDriveSyncedAt set', () => {
+        const driveModifiedIso = '2026-05-23T14:00:00.000Z';
+        const payload = JSON.stringify({
+            version: 1,
+            exportedAt: driveModifiedIso,
+            projects: [
+                { name: 'FromDrive', items: [{ tit: 'Pulled', completed: false, due: '' }], color: null },
+            ],
+        });
+
+        // Mirror the orchestrator's try/catch around onAfterReplace.
+        // The host callback throws (simulating the original
+        // rebuildAfterImport ReferenceError); the wrapper suppresses it.
+        const throwingHost = function() {
+            throw new ReferenceError('refreshStaleHint is not defined');
+        };
+        const guardedHost = function() {
+            try { throwingHost(); } catch (_) { /* suppressed */ }
+        };
+
+        const outcome = importTodosFromString(payload, guardedHost, {
+            silentError: true,
+            fromSync: true,
+            onBeforeReplace: function() {
+                writeLastDriveSyncedAt(driveModifiedIso);
+            },
+        });
+        expect(outcome.ok).toBe(true);
+
+        const confirmBtn = document.getElementById('confirmModalConfirm');
+        expect(confirmBtn).toBeTruthy();
+        confirmBtn.click();
+
+        // Data swap committed.
+        expect(listLogic.listProjectsArray()).toEqual(['FromDrive']);
+
+        // Sync marker is the Drive file's modifiedTime — the invariant
+        // the original bug broke by letting the throw cascade past the
+        // marker write.
+        expect(readLastDriveSyncedAt()).toBe(driveModifiedIso);
+    });
 });
 
 

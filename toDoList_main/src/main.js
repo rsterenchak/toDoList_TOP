@@ -5451,7 +5451,6 @@ function rebuildAfterImport() {
     }
 
     restoreFromStorage();
-    refreshStaleHint();
 }
 
 
