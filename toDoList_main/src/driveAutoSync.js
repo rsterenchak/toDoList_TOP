@@ -39,6 +39,16 @@ let _lastFailureMessage = null;
 let _onRebuildAfterImport = null;
 let _inFlight = false;
 
+// Cached Drive `modifiedTime` from the most recent successful query or
+// push/pull. The indicator's local-only recompute path reads this via
+// `getCachedDriveModifiedTime` so it can re-evaluate `driveAhead` without
+// re-issuing a network query on every local edit. The cache is module-
+// private — the single write entry point is `updateCachedDriveModifiedTime`,
+// which also dispatches `driveSyncStateChanged` so any open indicator paints
+// immediately against the fresh value. Direct mutation from outside this
+// module is forbidden so the dispatch-on-write contract holds.
+let _cachedDriveModifiedTime = null;
+
 // Host hook so this module never has to import main.js. main.js calls
 // registerAutoSyncRebuild(rebuildAfterImport) once at boot; the auto-pull
 // branch then routes through that callback to redraw the UI after the
@@ -82,9 +92,33 @@ export function _resetAutoSyncForTest() {
     _lastFailureMessage = null;
     _onRebuildAfterImport = null;
     _inFlight = false;
+    _cachedDriveModifiedTime = null;
     if (_debounceTimer) {
         clearTimeout(_debounceTimer);
         _debounceTimer = null;
+    }
+}
+
+
+// ── DRIVE MODIFIEDTIME CACHE ──
+
+export function getCachedDriveModifiedTime() {
+    return _cachedDriveModifiedTime;
+}
+
+// Single writer for the cached Drive modifiedTime. Updates the module-
+// private cell, then dispatches `driveSyncStateChanged` so the indicator's
+// local-only recompute path repaints immediately against the fresh value.
+// All call sites that learn a fresh Drive modifiedTime — the menu-open
+// Drive query, the post-push handler, the post-pull handler, the auto-sync
+// orchestrator's pre-decision query and pre-push recheck — route through
+// this helper.
+export function updateCachedDriveModifiedTime(iso) {
+    _cachedDriveModifiedTime = iso || null;
+    if (typeof document !== 'undefined' && document.dispatchEvent) {
+        try {
+            document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
+        } catch (_) { /* CustomEvent unsupported — silent */ }
     }
 }
 
@@ -228,6 +262,9 @@ export function performAutoSync() {
     return queryLatestDriveFile(token).then(function(files) {
         const driveFile = files && files[0] ? files[0] : null;
         const driveModifiedIso = driveFile ? driveFile.modifiedTime : null;
+        // Keep the indicator's cache aligned with the freshest server
+        // truth so the local-only recompute path sees the right inputs.
+        updateCachedDriveModifiedTime(driveModifiedIso);
 
         const action = decideAutoSyncAction({
             armed: _armed,
@@ -257,6 +294,7 @@ export function performAutoSync() {
             return queryLatestDriveFile(token).then(function(recheck) {
                 const recheckFile = recheck && recheck[0] ? recheck[0] : null;
                 const recheckIso = recheckFile ? recheckFile.modifiedTime : null;
+                updateCachedDriveModifiedTime(recheckIso);
                 if (isDriveAhead(localSyncedIso, recheckIso)) {
                     _inFlight = false;
                     return performAutoSync();

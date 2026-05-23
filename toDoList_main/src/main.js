@@ -87,6 +87,8 @@ import {
     registerAutoSyncRebuild,
     getAutoSyncState,
     getCurrentSyncState,
+    getCachedDriveModifiedTime,
+    updateCachedDriveModifiedTime,
 } from './driveAutoSync.js';
 import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -1309,11 +1311,10 @@ function component() {
     // header inside the popover menu. Both surfaces share the same state.
     let _driveSyncState = 'unknown';
     let _driveSyncTooltip = 'Sync state unknown';
-    // Cached Drive `modifiedTime` from the most recent successful query,
-    // so the local-edit recompute can re-evaluate `driveAhead` without
-    // re-issuing the Drive query (spec: "Don't run the Drive query on
-    // these local-edit ticks").
-    let _driveModifiedTimeCache = null;
+    // The cached Drive modifiedTime is owned by driveAutoSync.js — read it
+    // through getCachedDriveModifiedTime and write only via
+    // updateCachedDriveModifiedTime. Centralising the cache keeps push and
+    // pull paths from leaving stale data behind after a successful sync.
 
     function computeDriveSyncState(localIso, driveModifiedIso, localMutationIso) {
         if (!driveModifiedIso) {
@@ -1469,9 +1470,9 @@ function component() {
         }
         return queryLatestDriveFile(token).then(function(files) {
             const file = files && files.length ? files[0] : null;
-            _driveModifiedTimeCache = file && file.modifiedTime ? file.modifiedTime : null;
+            updateCachedDriveModifiedTime(file && file.modifiedTime ? file.modifiedTime : null);
             setDriveSyncState(
-                computeDriveSyncState(localIso, _driveModifiedTimeCache, localMutationIso),
+                computeDriveSyncState(localIso, getCachedDriveModifiedTime(), localMutationIso),
                 localIso
             );
         }).catch(function() {
@@ -1500,7 +1501,7 @@ function component() {
         const localIso = readLastDriveSyncedAt();
         const localMutationIso = readLastLocalMutationAt();
         setDriveSyncState(
-            computeDriveSyncState(localIso, _driveModifiedTimeCache, localMutationIso),
+            computeDriveSyncState(localIso, getCachedDriveModifiedTime(), localMutationIso),
             localIso
         );
     }
@@ -1774,7 +1775,7 @@ function component() {
     // class hooks drive the dim styling.
     function buildDriveSyncRow() {
         const state = getCurrentSyncState({
-            driveModifiedIso: _driveModifiedTimeCache,
+            driveModifiedIso: getCachedDriveModifiedTime(),
             hasToken: !!getCachedAccessToken(),
         });
 

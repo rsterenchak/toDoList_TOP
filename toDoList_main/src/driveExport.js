@@ -19,6 +19,7 @@ import {
     _resetGisPromise,
     _resetCachedToken,
 } from './driveAuth.js';
+import { updateCachedDriveModifiedTime } from './driveAutoSync.js';
 
 // Re-exported for back-compat with existing callers/tests that imported
 // these symbols from this module before the driveAuth.js extraction.
@@ -32,7 +33,7 @@ export {
 };
 
 const DRIVE_UPLOAD_URL =
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink';
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink,modifiedTime';
 
 let _activeUpload = false;
 
@@ -106,8 +107,21 @@ export function exportTodosToDrive() {
             // Record the successful upload so the ghost menu's Export to
             // Drive row can show a relative "synced N hours ago" label
             // next time the menu opens. Only writes on success — a failed
-            // upload leaves the prior timestamp untouched.
-            writeLastDriveSyncedAt(now.toISOString());
+            // upload leaves the prior timestamp untouched. Use Drive's
+            // server-set modifiedTime (not the client clock captured at
+            // request start) so the marker exactly equals the response —
+            // otherwise the next Drive query reads modifiedTime slightly
+            // ahead of the local marker and the indicator flickers to
+            // "Drive is newer" right after a successful push.
+            if (file && file.modifiedTime) {
+                writeLastDriveSyncedAt(file.modifiedTime);
+                // Mirror the marker into the in-memory cache the
+                // indicator's local-only recompute path reads, so
+                // post-push local edits re-evaluate driveAhead against
+                // fresh server-truth instead of the pre-push value the
+                // menu-open query last cached.
+                updateCachedDriveModifiedTime(file.modifiedTime);
+            }
             // Signal manual-action success so the Drive auto-sync layer
             // can arm itself for subsequent debounced pushes. Decoupled
             // via CustomEvent so the export module never imports the

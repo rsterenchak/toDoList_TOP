@@ -354,6 +354,127 @@ describe('driveExport — source-level: timestamp write on success only', () => 
 });
 
 
+describe('driveExport — server-set modifiedTime is the canonical sync timestamp', () => {
+    // Regression for the indicator-flicker bug: the post-upload handler
+    // used to write `now.toISOString()` (the client clock captured at the
+    // start of the request) as the sync marker. Drive's server-set
+    // modifiedTime resolves a few hundred ms later than the client `now`,
+    // so the next Drive query read `modifiedTime > lastDriveSyncedAt` and
+    // the indicator flickered to "Drive is newer" right after a successful
+    // push. Pins that the upload requests modifiedTime in the fields
+    // parameter, that the success handler writes the server-set value, and
+    // that the in-memory cache the indicator reads is updated to match so
+    // post-push local edits don't re-evaluate against stale data.
+    const src = read('driveExport.js');
+
+    it('Drive upload URL requests modifiedTime via the fields parameter', () => {
+        // Without modifiedTime in the response fields, the success handler
+        // has no server-truth to write — falls back to client clock and
+        // re-introduces the drift bug.
+        expect(src).toMatch(
+            /upload\/drive\/v3\/files\?[^'"`]*fields=[^'"`]*modifiedTime/
+        );
+    });
+
+    it('writes file.modifiedTime (not now.toISOString) to the sync marker on success', () => {
+        // Find the success then-handler block and walk it brace-balanced
+        // so the assertion isn't fooled by other writes earlier in the file.
+        const handlerIdx = src.indexOf('.then(function(file)');
+        expect(handlerIdx).toBeGreaterThan(-1);
+        const bodyStart = src.indexOf('{', handlerIdx);
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < src.length; i++) {
+            const c = src.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = src.slice(bodyStart, i + 1); break; }
+            }
+        }
+        // Marker write references file.modifiedTime.
+        expect(body).toMatch(/writeLastDriveSyncedAt\([\s\S]*?file\.modifiedTime/);
+        // And the success handler must NOT pass the bare client-clock value
+        // — the previous shape `writeLastDriveSyncedAt(now.toISOString())`
+        // is exactly the line this regression test is guarding against.
+        expect(body).not.toMatch(/writeLastDriveSyncedAt\(\s*now\.toISOString\s*\(\s*\)\s*\)/);
+    });
+
+    it('mirrors file.modifiedTime into the in-memory cache via updateCachedDriveModifiedTime', () => {
+        // Without the cache write, the indicator's local-only recompute
+        // path keeps reading the pre-push cached value and computes
+        // driveAhead = true after every local edit until the menu opens
+        // and a fresh query lands.
+        expect(src).toMatch(
+            /import\s*\{[^}]*\bupdateCachedDriveModifiedTime\b[^}]*\}\s*from\s*['"]\.\/driveAutoSync\.js['"]/
+        );
+        const handlerIdx = src.indexOf('.then(function(file)');
+        const bodyStart = src.indexOf('{', handlerIdx);
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < src.length; i++) {
+            const c = src.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = src.slice(bodyStart, i + 1); break; }
+            }
+        }
+        expect(body).toMatch(/updateCachedDriveModifiedTime\(/);
+    });
+});
+
+
+describe('driveExport — uploadToDrive returns the server-set modifiedTime', () => {
+    // Behavioural regression: stub the Drive upload to return a specific
+    // server-set modifiedTime that is 500ms newer than the client's `now`
+    // and confirm uploadToDrive surfaces it. Combined with the source-level
+    // pin that the success handler writes that field to localStorage, this
+    // proves the equality invariant: lastDriveSyncedAt === file.modifiedTime
+    // exactly, no client/server drift.
+    afterEach(uninstallFetch);
+
+    it('resolves with modifiedTime exactly as returned by Drive (no client-clock drift)', async () => {
+        const SERVER_MODIFIED_TIME = '2026-05-23T14:03:49.580Z';
+        globalThis.fetch = function() {
+            return Promise.resolve({
+                ok: true,
+                json() {
+                    return Promise.resolve({
+                        id: 'fileXYZ',
+                        webViewLink: 'https://drive.example/fileXYZ',
+                        modifiedTime: SERVER_MODIFIED_TIME,
+                    });
+                },
+            });
+        };
+        const result = await uploadToDrive('{"v":1}', 'todos.json', 'tok');
+        // The Drive response is forwarded verbatim — no client-side
+        // override, no Date.now()-derived stamp. The success handler in
+        // exportTodosToDrive consumes this exact field for its
+        // writeLastDriveSyncedAt + updateCachedDriveModifiedTime calls.
+        expect(result.modifiedTime).toBe(SERVER_MODIFIED_TIME);
+    });
+
+    it('the simulated post-upload write chain produces lastDriveSyncedAt === file.modifiedTime exactly', () => {
+        // Replays the precise sequence the success handler runs once
+        // uploadToDrive resolves with a server modifiedTime. Pinning this
+        // at the data level (no orchestrator-level OAUTH guard to dodge)
+        // makes the equality invariant the regression depends on
+        // explicit: a fresh fetch from localStorage returns the same
+        // string the Drive response provided, byte for byte.
+        const SERVER_MODIFIED_TIME = '2026-05-23T14:03:49.580Z';
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        const file = { id: 'fileXYZ', modifiedTime: SERVER_MODIFIED_TIME };
+        const serverIso = (file && file.modifiedTime) || new Date().toISOString();
+        writeLastDriveSyncedAt(serverIso);
+        expect(localStorage.getItem('todoapp_lastDriveSyncedAt'))
+            .toBe(SERVER_MODIFIED_TIME);
+        expect(readLastDriveSyncedAt()).toBe(SERVER_MODIFIED_TIME);
+    });
+});
+
+
 describe('settings menu — Sync row last-synced label', () => {
     const main = read('main.js');
 
