@@ -179,15 +179,20 @@ describe('#calendarView mobile padding-bottom defers to the tab-bar reservation'
         }
     });
 
-    it('the shared #mainList,#todayView,#calendarView rule sets padding-bottom to the tab-bar height', () => {
+    it('the shared #mainList,#todayView,#calendarView rule sets padding-bottom to the tab-bar reservation (height + home-indicator inset)', () => {
         const cleaned = stripCssComments(css);
         // Find the combined rule body for all three selectors.
         const combinedRe =
             /#mainList\s*,\s*#todayView\s*,\s*#calendarView\s*\{([^}]*)\}/;
         const match = cleaned.match(combinedRe);
         expect(match).not.toBeNull();
+        // The tab bar now absorbs env(safe-area-inset-bottom) into its
+        // own height (the #footBar that used to reserve the safe-area
+        // padding is hidden on mobile), so the scroll padding has to
+        // cover both --mobile-tab-h AND the inset to keep the last row
+        // reachable above the bar.
         expect(match[1]).toMatch(
-            /padding-bottom\s*:\s*var\(\s*--mobile-tab-h\s*,\s*56px\s*\)/
+            /padding-bottom\s*:\s*calc\(\s*var\(\s*--mobile-tab-h\s*,\s*56px\s*\)\s*\+\s*env\(safe-area-inset-bottom[^)]*\)\s*\)/
         );
     });
 });

@@ -3195,18 +3195,17 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 0;
     border: none;
     height: 100dvh;
-    /* Grow the nav and footer rows by the safe-area insets so their padded
-       content (see #navBar / #footBar below) stays inside the visible grid
-       track — without this, #outerContainer's overflow:hidden clips the
-       status-bar and home-indicator reservations on notched iOS devices.
-       minmax(0, 1fr) on the middle track prevents the todo list's
-       intrinsic max-content height from inflating that track past its fair
-       share, which would otherwise push the footer row below the viewport
-       and produce the "only top of the text is visible" clipping on iOS. */
+    /* Mobile collapses the nav and footer grid tracks entirely so the
+       middle track owns the full viewport. The persistent #mobileTabBar
+       anchors to the bottom edge (bottom: 0) and absorbs the home-indicator
+       safe-area inset into its own padding-bottom — there is no separate
+       footer row on this breakpoint. minmax(0, 1fr) on the middle track
+       prevents the todo list's intrinsic max-content height from
+       inflating that track past its fair share. */
     grid-template-rows:
       0
       minmax(0, 1fr)
-      calc(var(--foot-h) + env(safe-area-inset-bottom));
+      0;
   }
 
   /* Safe-area insets — with viewport-fit=cover in the document meta,
@@ -3256,11 +3255,12 @@ body.row-dragging * { cursor: grabbing !important; }
     display: none;
   }
 
-  #footBar {
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: max(16px, env(safe-area-inset-left));
-    padding-right: max(16px, env(safe-area-inset-right));
-  }
+  /* No #footBar on mobile — the persistent bottom tab bar now sits flush
+     against the screen edge and absorbs the home-indicator safe-area
+     inset into its own padding-bottom. The desktop footer's
+     version-label / open-done counts move to the Settings modal's About
+     section. */
+  #footBar { display: none; }
 
   #mainSec {
     grid-template-columns: 1fr;
@@ -4123,21 +4123,15 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--bg-hover);
   }
 
+  /* The drawer footer (version label + project count) is hidden on the
+     mobile breakpoint — both pieces of info now live in the Settings
+     modal's About section, leaving the drawer's bottom half to the
+     Settings button alone. The element stays in the DOM for the JS
+     wiring (createDrawerInfoRow refreshes against the live project
+     count getter), but never paints at any viewport per the rule below
+     this @media block. */
   #drawerFooter {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    border-top: 0.5px solid var(--border-dim);
-    background: var(--bg-elevated);
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    flex-shrink: 0;
+    display: none;
   }
 
   #drawerFooterVersion { color: var(--text-muted); }
@@ -4389,6 +4383,38 @@ body.driveImportInProgress .settingsModalDataTile--driveImport {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   border-radius: var(--radius-sm);
+}
+
+/* Info row — same shape as a drawer toggle row but display-only: the
+   right slot carries a muted-pill value (version string, project count)
+   instead of an ON/OFF pill or a chevron. Used by the Settings modal's
+   About section. No cursor / no tap target — the value is read-only. */
+.drawerInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: left;
+}
+
+.drawerInfoLabel { color: var(--text-primary); }
+
+/* Mirrors the OFF state of .drawerTogglePill (muted color, uppercase,
+   spaced) so the read-only About rows visually align with the toggle
+   rows above them without reading as interactive. */
+.settingsInfoPill {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 /* Hide the mobile-only chrome at desktop sizes — these elements live
@@ -6229,12 +6255,14 @@ body:has(#musicPopover.open) #helpFab { display: none; }
 
   /* State-driven `bottom` lifts the IDLE nub and PEEK strip above the
      persistent bottom tab bar so they sit directly on top of the tabs
-     instead of being intercepted by them. EXPANDED returns to `bottom: 0`
-     so the open dialog covers the tab bar entirely (focus-mode behavior
-     per the sheet-coexistence model). */
+     instead of being intercepted by them. The tab bar now anchors to
+     `bottom: 0` and absorbs the home-indicator safe-area inset, so the
+     sheet has to clear both --mobile-tab-h and that inset to land at
+     the tab bar's top edge. EXPANDED returns to `bottom: 0` so the open
+     dialog covers the tab bar entirely. */
   #bottomSheet[data-state="IDLE"],
   #bottomSheet[data-state="PEEK"] {
-    bottom: var(--mobile-tab-h, 56px);
+    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }
   #bottomSheet[data-state="EXPANDED"] {
     bottom: 0;
@@ -6302,8 +6330,9 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     right: 0;
     /* Lifted above the persistent tab bar so the bottom-edge swipe-up
        gesture catches at the tabs' top edge instead of being
-       intercepted by the tabs. */
-    bottom: var(--mobile-tab-h, 56px);
+       intercepted by the tabs. Includes the home-indicator safe-area
+       inset since the tab bar now absorbs it. */
+    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
     height: 16px;
     background: transparent;
     pointer-events: none;
@@ -6920,12 +6949,14 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     position: absolute;
     left: 0;
     right: 0;
-    /* Sits directly above the existing #footBar (version label / export
-       label row) so neither chrome layer paints over the other. The
-       sheet's IDLE/PEEK/swipe-zone layers further offset by
-       --mobile-tab-h so they layer above the tabs. */
-    bottom: calc(var(--foot-h, 36px) + env(safe-area-inset-bottom, 0px));
-    height: var(--mobile-tab-h, 56px);
+    /* Flush against the screen bottom now that #footBar is hidden at
+       this breakpoint. The home-indicator safe-area inset is absorbed
+       into the bar's own padding-bottom so its elevated bg paints over
+       the iOS home pill zone instead of leaving an empty band below
+       the tabs. */
+    bottom: 0;
+    height: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--bg-elevated);
     border-top: 0.5px solid var(--border-mid);
     display: flex;
@@ -7098,14 +7129,15 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   }
 
   /* The persistent tab bar floats above the bottom of the main panel.
-     Reserve scroll padding equal to its height so the last todo row /
-     today section / calendar day cell is reachable instead of being
-     obscured behind the tabs. Applied to every scrollable view inside
-     #mainBar so the offset is uniform across Projects, Today, and
-     Calendar. */
+     Reserve scroll padding equal to its full height — including the
+     home-indicator safe-area inset the bar now absorbs — so the last
+     todo row / today section / calendar day cell is reachable instead
+     of being obscured behind the tabs. Applied to every scrollable view
+     inside #mainBar so the offset is uniform across Projects, Today,
+     and Calendar. */
   #mainList,
   #todayView,
   #calendarView {
-    padding-bottom: var(--mobile-tab-h, 56px);
+    padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }
 }
