@@ -97,27 +97,41 @@ const CHEVRON_SVG = '<svg class="duePillChevron" viewBox="0 0 10 10" width="8" h
 // Urgency classes on #toDoChild color the text via CSS — this function only
 // chooses the string. Calendar icon (left) and chevron (right) are always
 // rendered so the pill reads as a button regardless of state.
+//
+// The pill also exposes a `data-short-label` attribute carrying a condensed
+// version of the same state ("Set date" / "Nd" / "Today" / "Apr 30"). The
+// mobile media query swaps to it via CSS so the pill takes less horizontal
+// room on narrow screens; desktop ignores the attribute and keeps the long
+// label. Both stay in sync because they're written from the same branches.
 export function updateDuePillLabel(pill, item) {
     const parsed = parseItemDue(item);
     let labelText;
+    let shortLabel;
     if (!parsed) {
         pill.setAttribute('data-empty', 'true');
         labelText = 'Set date';
+        shortLabel = 'Set date';
     } else {
         pill.removeAttribute('data-empty');
         const days = daysUntilDue(item.due);
         if (item.completed || days === null) {
             labelText = formatPillAbsolute(parsed.m, parsed.d);
+            shortLabel = labelText;
         } else if (days < 0) {
             labelText = Math.abs(days) + 'd overdue';
+            shortLabel = Math.abs(days) + 'd';
         } else if (days === 0) {
             labelText = 'Due today';
+            shortLabel = 'Today';
         } else if (days <= 3) {
             labelText = 'Due in ' + days + 'd';
+            shortLabel = days + 'd';
         } else {
             labelText = formatPillAbsolute(parsed.m, parsed.d);
+            shortLabel = labelText;
         }
     }
+    pill.setAttribute('data-short-label', shortLabel);
     pill.innerHTML = '';
     pill.insertAdjacentHTML('beforeend', CALENDAR_SVG);
     const label = document.createElement('span');

@@ -9,13 +9,13 @@ export const changelog = [
         fixed: [
             "Export and import — both local file and Google Drive — are now reachable from the mobile Settings modal.",
             "Removed the empty band below the mobile tab bar; version and project count moved into a new About section in Settings.",
+            "Mobile todo rows now have a one-tap copy-title button next to the title and a slimmer due-date pill so the title takes back the space.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-22',
         fixed: [
-            "Import your todos directly from Google Drive via the ghost menu.",
             "Ghost menu's Export to Drive row now shows how long ago you last backed up to Drive.",
             "Ghost menu's export and import rows are now grouped under labeled LOCAL and DRIVE sections.",
         ],

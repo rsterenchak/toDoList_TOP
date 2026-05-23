@@ -2343,6 +2343,36 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #spacer { display: none; }
 
+/* COPY-TITLE BUTTON — purple Tabler-style icon that sits between the title
+   and the due-date pill on mobile rows. Hidden on desktop; the ≤700px
+   media query flips it to inline-flex below. The button only paints on
+   committed rows (blank placeholders set display:none in JS) so the
+   chrome stays out of the way until there's actually a title to copy. */
+.copyTitleBtn {
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #9D93EE;
+  border-radius: 4px;
+  transition: background 0.12s ease, color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.copyTitleBtn:hover { background: var(--bg-hover); }
+.copyTitleBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+.copyTitleBtn[data-copied="true"] { color: var(--accent); }
+.copyTitleBtn .copyTitleIcon { display: block; }
+
 /* DUE DATE POPOVER — anchored month-view calendar. Matches the visual weight
    of #projContextMenu: same shadow, same surface, same radius. Every numeral
    stays SpaceMono so the system font never leaks in. */
@@ -6830,6 +6860,44 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     font-size: 12px;
     line-height: 1;
     opacity: 0.85;
+  }
+
+  /* COPY-TITLE BUTTON — revealed at the mobile breakpoint as inline-flex
+     between the title input and the due-date pill. Sits in the gap that
+     opens up once the slimmed-down pill below releases its border + bg
+     footprint. */
+  .copyTitleBtn {
+    display: inline-flex;
+  }
+
+  /* SLIMMED MOBILE DUE PILL — strip the filled outline / uppercase
+     letter-spacing / wide padding so the pill takes a fraction of the
+     horizontal room it owned on desktop. Color coding (overdue / today /
+     future) cascades from the urgency classes on #toDoChild via the
+     existing rules; here we only undo the chrome that made the desktop
+     pill read as a heavy bordered button. The condensed label is rendered
+     by hiding the long .duePillLabel and surfacing the short one via the
+     attr() pseudo-element, so the JS data path doesn't need a mobile
+     branch — the same updateDuePillLabel call writes both labels and CSS
+     picks the one to show. */
+  #duePill {
+    background: transparent;
+    border: none;
+    padding: 4px 4px;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 11px;
+    font-weight: 500;
+    max-width: none;
+    color: var(--text-secondary);
+  }
+  #duePill:hover,
+  #duePill:focus { background: transparent; color: var(--text-primary); border: none; }
+  #duePill .duePillLabel { display: none; }
+  #duePill .duePillChevron { display: none; }
+  #duePill[data-short-label]::after {
+    content: attr(data-short-label);
+    line-height: 1;
   }
 
   /* Hide the IDLE nub chrome on mobile — the bottom tab bar is the

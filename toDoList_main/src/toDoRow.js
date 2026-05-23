@@ -50,6 +50,75 @@ function defaultDueParts() {
 }
 
 
+// Tabler-style copy SVG and a matching checkmark SVG used to telegraph
+// "copied" feedback on the mobile per-row copy-title button. currentColor
+// lets the purple accent on the button paint the strokes; the checkmark
+// reuses the same dimensions so swapping innerHTML doesn't reflow the row.
+const COPY_GLYPH_SVG = '<svg class="copyTitleIcon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.25" y="3.25" width="7.5" height="9" rx="1.25"/><path d="M5.75 3.25V2.25a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v7"/></svg>';
+const CHECK_GLYPH_SVG = '<svg class="copyTitleIcon copyTitleIcon-done" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.75 7.25L5.75 10.25L11.5 4.25"/></svg>';
+
+// How long the checkmark stays after a successful copy before the button
+// reverts to the copy glyph. Matched to the ~1s the task brief calls for.
+const COPY_FEEDBACK_MS = 1000;
+
+// Swap the copy-title button between its idle (copy glyph) and confirmed
+// (checkmark) states. Centralized so the click path, the timeout restore,
+// and any future re-render reset all reach for the same SVG strings.
+function setCopyBtnGlyph(copyBtn, done) {
+    copyBtn.innerHTML = done ? CHECK_GLYPH_SVG : COPY_GLYPH_SVG;
+    if (done) {
+        copyBtn.setAttribute('data-copied', 'true');
+    } else {
+        copyBtn.removeAttribute('data-copied');
+    }
+}
+
+// Click handler for the mobile per-row copy-title button. Writes the row's
+// title to the clipboard, flips the icon to the checkmark, then restores
+// the copy glyph after COPY_FEEDBACK_MS. The clipboard write goes through
+// navigator.clipboard.writeText when available — the only path that works
+// from a button activation on mobile Safari. The legacy execCommand path
+// is preserved as a fallback for environments without the async API
+// (jsdom in particular). A clipboard-write failure leaves the icon on the
+// idle copy glyph so the user can retry without a stale checkmark sitting.
+function copyTitleToClipboard(item, copyBtn) {
+    const text = (item && typeof item.tit === 'string') ? item.tit : '';
+    if (!text) return;
+
+    function showCopied() {
+        setCopyBtnGlyph(copyBtn, true);
+        // Stash the timer on the button so a fresh click within the window
+        // resets the countdown rather than racing two pending restores.
+        if (copyBtn.__copyResetTimer) {
+            clearTimeout(copyBtn.__copyResetTimer);
+        }
+        copyBtn.__copyResetTimer = setTimeout(function() {
+            setCopyBtnGlyph(copyBtn, false);
+            copyBtn.__copyResetTimer = null;
+        }, COPY_FEEDBACK_MS);
+    }
+
+    if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(text).then(showCopied).catch(function() {});
+        return;
+    }
+
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.style.pointerEvents = 'none';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) showCopied();
+    } catch (e) { /* swallow — no feedback flip, button stays on copy glyph */ }
+}
+
+
 // Mirror `item.desc` onto `data-has-desc` on the row so CSS can surface a
 // small "¶" pilcrow next to the date pill when a collapsed row carries a
 // non-empty description. The data-attribute drives the indicator instead
@@ -278,6 +347,7 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             e.target.id === 'descToggle'      ||
             e.target.closest('#statsToggle')  ||
             e.target.closest('#duePill')      ||
+            e.target.closest('.copyTitleBtn') ||
             e.target.closest('#dueDatePopover') ||
             e.target.closest('#descSibling')  ||
             e.target.closest('#statsSibling')) return;
@@ -902,6 +972,7 @@ export function buildToDoRow(item, toDoName) {
     // create elements
     const toDoChild       = document.createElement("div");
     const toDoInput       = document.createElement("input");
+    const copyBtn         = document.createElement("button");
     const duePill         = document.createElement("button");
     const closeButtonToDo = document.createElement("div");
     const descToggle      = document.createElement("div");
@@ -984,6 +1055,21 @@ export function buildToDoRow(item, toDoName) {
         duePill.style.display = "none";
     }
 
+    // COPY-TITLE BUTTON — mobile-only chrome that lets the user tap to copy
+    // the todo's title to the clipboard. The button is in the DOM for every
+    // committed row but only paints at ≤700px via CSS; desktop rows never
+    // surface it. Blank placeholder rows skip it entirely (display:none)
+    // because there's no title to copy yet. On click the SVG swaps from the
+    // Tabler copy glyph to a checkmark for ~1s as feedback, then restores.
+    copyBtn.id = "copyTitleBtn";
+    copyBtn.type = "button";
+    copyBtn.className = "copyTitleBtn";
+    copyBtn.setAttribute("aria-label", "Copy todo title");
+    copyBtn.setAttribute("tabindex", "0");
+    copyBtn.title = "Copy todo title";
+    if (!item.tit) copyBtn.style.display = "none";
+    setCopyBtnGlyph(copyBtn, false);
+
     descToggle.id            = "descToggle";
     descToggle.style.display = item.tit ? "flex" : "none";
     // tabindex makes the non-button caret focusable so keyboard users can
@@ -1043,6 +1129,7 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(swipePaneRight);
     if (addGlyph) toDoChild.appendChild(addGlyph);
     toDoChild.appendChild(toDoInput);
+    toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(statsToggle);
@@ -1070,6 +1157,17 @@ export function buildToDoRow(item, toDoName) {
         }
     });
     wireSubControlBackspaceExit(duePill, toDoChild);
+
+    // Copy-title button: writes item.tit to the clipboard and briefly swaps
+    // the icon to a checkmark as confirmation. stopPropagation prevents the
+    // row's click-anywhere-to-focus-input handler from stealing focus when
+    // the user taps the icon.
+    copyBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        copyTitleToClipboard(item, copyBtn);
+    });
+    wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
     wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
@@ -1150,6 +1248,7 @@ export function buildToDoRow(item, toDoName) {
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
         duePill.style.display         = "";
+        copyBtn.style.display         = "";
         // Strip the blank-row affordance cue — once committed, this row is a
         // real todo and the leading `+` glyph would be misleading.
         if (addGlyph && addGlyph.parentElement) addGlyph.remove();
