@@ -105,7 +105,15 @@ function describeDriveBackup(file) {
 // document body picks up a `driveImportInProgress` class for the
 // duration of the auth + query + download so the menu item (if the user
 // re-opens the menu) renders its dim/disabled state via CSS.
-export function importTodosFromDrive(onAfterReplace) {
+//
+// `opts.silent: true` skips the destructive-overwrite confirmation modal
+// and replaces local state directly. Only the Drive auto-sync path sets
+// this — the user opted in by enabling auto-sync, so the confirm step is
+// implicit. Manual imports omit the flag and keep the modal.
+export function importTodosFromDrive(onAfterReplace, opts) {
+
+    const flowOpts = opts || {};
+    const silent = flowOpts.silent === true;
 
     if (!OAUTH_CLIENT_ID) {
         showDriveToast({
@@ -147,7 +155,21 @@ export function importTodosFromDrive(onAfterReplace) {
                     const outcome = importTodosFromString(
                         text,
                         function() {
-                            showDriveToast({ label: 'Imported from Drive' });
+                            if (!silent) {
+                                showDriveToast({ label: 'Imported from Drive' });
+                            }
+                            // Signal manual-action success so the auto-sync
+                            // layer arms itself for subsequent debounced
+                            // pushes/pulls. Skipped on the silent path
+                            // since auto-sync is already armed when it's
+                            // driving the import.
+                            if (!silent && typeof document !== 'undefined' && document.dispatchEvent) {
+                                try {
+                                    document.dispatchEvent(new CustomEvent('driveManualActionSuccess', {
+                                        detail: { kind: 'import' },
+                                    }));
+                                } catch (_) { /* silent */ }
+                            }
                             // Guard the host rebuild so a downstream
                             // rendering error can never silently break
                             // the sync invariant. The sync marker is
@@ -168,6 +190,9 @@ export function importTodosFromDrive(onAfterReplace) {
                         {
                             sourceLabel: describeDriveBackup(file),
                             silentError: true,
+                            // Auto-pull skips the destructive-overwrite confirm
+                            // modal; manual pulls keep it.
+                            silent: silent,
                             // Mark the saveToStorage inside
                             // replaceAllProjects as sync-initiated so it
                             // doesn't bump lastLocalMutationAt past the

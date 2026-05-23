@@ -108,6 +108,17 @@ export function exportTodosToDrive() {
             // next time the menu opens. Only writes on success — a failed
             // upload leaves the prior timestamp untouched.
             writeLastDriveSyncedAt(now.toISOString());
+            // Signal manual-action success so the Drive auto-sync layer
+            // can arm itself for subsequent debounced pushes. Decoupled
+            // via CustomEvent so the export module never imports the
+            // auto-sync module (would create a cycle).
+            if (typeof document !== 'undefined' && document.dispatchEvent) {
+                try {
+                    document.dispatchEvent(new CustomEvent('driveManualActionSuccess', {
+                        detail: { kind: 'export' },
+                    }));
+                } catch (_) { /* CustomEvent unsupported — silent */ }
+            }
             showDriveToast({
                 label: 'Exported to Drive',
                 linkHref: file && file.webViewLink ? file.webViewLink : null,

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-23',
+        added: [
+            "Drive auto-sync — after your first manual sign-in of a session, the app pushes and pulls automatically as you edit. Conflicts pause auto-sync and ask you to resolve manually.",
+        ],
         fixed: [
-            "Importing from Drive now clears the 'behind' sync indicator instead of leaving it amber.",
             "Editing todos locally now correctly shows the Drive sync indicator as out of sync.",
             "Drive sync indicator now correctly returns to green after a successful import or export.",
             "Drive import no longer shows a misleading 'try again' error after a successful restore.",

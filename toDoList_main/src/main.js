@@ -79,6 +79,15 @@ import { formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
 import { getCachedAccessToken } from './driveAuth.js';
+import {
+    armAutoSync,
+    scheduleAutoSync,
+    performAutoSync,
+    autoSyncOnAppLoad,
+    registerAutoSyncRebuild,
+    getAutoSyncState,
+    isAutoSyncArmed,
+} from './driveAutoSync.js';
 import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
@@ -1326,11 +1335,18 @@ function component() {
         const driveMs  = Date.parse(driveModifiedIso);
         if (isNaN(syncedMs) || isNaN(driveMs)) return 'unknown';
         const driveAhead = driveMs > syncedMs;
-        if (driveAhead) return 'behind';
+        let localAhead = false;
         if (localMutationIso) {
             const mutationMs = Date.parse(localMutationIso);
-            if (!isNaN(mutationMs) && mutationMs > syncedMs) return 'ahead';
+            if (!isNaN(mutationMs) && mutationMs > syncedMs) localAhead = true;
         }
+        // Auto-sync introduces a fourth state: both sides have moved
+        // since the last sync. The user must resolve manually — the
+        // popover offers explicit overwrite-with-warning buttons in this
+        // state. Surfaces as red ti-cloud-x in the indicator.
+        if (localAhead && driveAhead) return 'diverged';
+        if (driveAhead) return 'behind';
+        if (localAhead) return 'ahead';
         return 'synced';
     }
 
@@ -1341,7 +1357,9 @@ function component() {
         }
         if (state === 'behind') return 'Drive is newer than local — pull to update';
         if (state === 'ahead')  return 'Local has unsaved changes — push to Drive';
-        if (state === 'never')  return 'Not synced to Drive yet';
+        if (state === 'diverged') return 'Drive and this device both changed — open the menu to resolve';
+        if (state === 'failed')   return 'Auto-sync failed — open the menu to try again';
+        if (state === 'never')    return 'Not synced to Drive yet';
         return 'Sync state unknown';
     }
 
@@ -1367,9 +1385,16 @@ function component() {
             '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
             '<line x1="4" y1="4" x2="20" y2="20"/>' +
             '</svg>',
+        diverged:
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
+            '<line x1="9" y1="11" x2="15" y2="17"/>' +
+            '<line x1="15" y1="11" x2="9" y2="17"/>' +
+            '</svg>',
     };
     SYNC_GLYPHS.unknown = SYNC_GLYPHS.never;
     SYNC_GLYPHS.ahead   = SYNC_GLYPHS.behind;
+    SYNC_GLYPHS.failed  = SYNC_GLYPHS.never;
 
     function paintSyncBadge(host, state) {
         if (!host) return;
@@ -1440,6 +1465,15 @@ function component() {
     // ticks — the cached input is the most authoritative thing we have
     // until the next menu open refreshes it.
     function recomputeDriveSyncStateLocal() {
+        // The auto-sync loop owns 'diverged' and 'failed' — both are
+        // module-resident facts that can't be re-derived from
+        // timestamps alone. When the loop is in one of those states,
+        // surface it; otherwise compute from the marker pair as before.
+        const autoSyncState = getAutoSyncState();
+        if (autoSyncState === 'diverged' || autoSyncState === 'failed') {
+            setDriveSyncState(autoSyncState, readLastDriveSyncedAt());
+            return;
+        }
         const localIso = readLastDriveSyncedAt();
         const localMutationIso = readLastLocalMutationAt();
         setDriveSyncState(
@@ -1449,6 +1483,28 @@ function component() {
     }
 
     document.addEventListener('driveSyncStateChanged', recomputeDriveSyncStateLocal);
+
+    // Local mutations schedule a debounced auto-sync attempt. The gate
+    // lives inside scheduleAutoSync — pre-arming mutations are no-ops, so
+    // the trigger can fire unconditionally on every mutation tick.
+    document.addEventListener('driveSyncStateChanged', function() {
+        scheduleAutoSync();
+    });
+
+    // Auto-sync state changes (push/pull complete, diverged, failed)
+    // refresh the indicator without waiting for the next mutation.
+    document.addEventListener('autoSyncStateChanged', function() {
+        recomputeDriveSyncStateLocal();
+    });
+
+    // A successful manual Drive Export or Import arms the auto-sync loop
+    // for the rest of the session. The signal comes via CustomEvent from
+    // driveExport.js / driveImport.js so those modules don't need to
+    // import the auto-sync module (would create a circular dependency).
+    document.addEventListener('driveManualActionSuccess', function() {
+        armAutoSync();
+        refreshDriveSyncState();
+    });
 
     // Initial paint reflects the local-only snapshot — no Drive file
     // information yet, so the state lands on 'never' (no local timestamp)
@@ -1642,6 +1698,51 @@ function component() {
             'settingsMenuItem--driveImport'
         );
         menu.appendChild(driveImportItem);
+
+        // Auto-sync state buttons — surface conditionally based on the
+        // current sync state. 'diverged' offers explicit overwrite buttons
+        // so the user picks a winner; 'failed' offers a Try again button;
+        // 'synced' offers a Sync now button that bypasses the debounce.
+        // These rows sit AFTER the Drive Import row so the
+        // Export-then-Import contract upstream tests assert on stays
+        // unchanged.
+        const autoSyncStateNow = getAutoSyncState();
+        const driveSyncStateNow = _driveSyncState;
+        if (autoSyncStateNow === 'diverged' || driveSyncStateNow === 'diverged') {
+            const pushOverItem = buildSettingsMenuItem(
+                'Push to Drive (overwrite Drive copy)',
+                '',
+                function() { exportTodosToDrive(); },
+                'settingsMenuItem--driveResolvePush'
+            );
+            menu.appendChild(pushOverItem);
+            const pullOverItem = buildSettingsMenuItem(
+                'Pull from Drive (overwrite local)',
+                '',
+                function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
+                'settingsMenuItem--driveResolvePull'
+            );
+            menu.appendChild(pullOverItem);
+        } else if (autoSyncStateNow === 'failed') {
+            const tryAgainItem = buildSettingsMenuItem(
+                'Try again',
+                '',
+                function() {
+                    armAutoSync();
+                    performAutoSync();
+                },
+                'settingsMenuItem--driveTryAgain'
+            );
+            menu.appendChild(tryAgainItem);
+        } else if (isAutoSyncArmed() && driveSyncStateNow === 'synced') {
+            const syncNowItem = buildSettingsMenuItem(
+                'Sync now',
+                '',
+                function() { performAutoSync(); },
+                'settingsMenuItem--driveSyncNow'
+            );
+            menu.appendChild(syncNowItem);
+        }
 
         menu.appendChild(buildSettingsMenuDivider());
 
@@ -5424,6 +5525,14 @@ function component() {
     // the indicator stays in its initial 'never' / 'unknown' state and
     // waits for the next ghost-menu open (or any Drive action) to refresh.
     setTimeout(refreshDriveSyncState, 0);
+
+    // Register the host rebuild hook so the auto-sync module's pull
+    // branch can redraw the UI after the silent import commits. Then
+    // attempt a silent sync on load — autoSyncOnAppLoad is a no-op when
+    // no in-memory OAuth token exists, so a fresh session waits dormant
+    // until the user's first manual Drive click of the session.
+    registerAutoSyncRebuild(rebuildAfterImport);
+    setTimeout(function() { autoSyncOnAppLoad(); }, 0);
 
     return base;
 
