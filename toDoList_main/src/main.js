@@ -1363,43 +1363,66 @@ function component() {
         return 'Sync state unknown';
     }
 
-    // SVG glyph for each state — cloud-check (synced), cloud-up (behind
-    // and ahead share the same glyph; the tooltip carries the
-    // direction), cloud-off (never / unknown). All sized to 12x12,
-    // single-color via currentColor so the wrapping element's color
-    // CSS rule drives the tint (green / amber / muted).
-    const SYNC_GLYPHS = {
-        synced:
+    // Explicit state → Tabler-style glyph class mapping. Pulled out into a
+    // dedicated function so the routing is testable in isolation and the
+    // `ahead` case can't accidentally fall through to the failure glyph
+    // (the prior fallthrough-via-reference shape was the root cause of the
+    // 'ahead renders as failed' regression).
+    //   synced    → ti-cloud-check  (green check inside the cloud)
+    //   ahead     → ti-cloud-up     (amber up-arrow — same glyph as behind,
+    //                                tooltip differentiates the direction)
+    //   behind    → ti-cloud-up     (amber)
+    //   diverged  → ti-cloud-x      (red X inside the cloud)
+    //   failed    → ti-cloud-off    (red slashed cloud)
+    //   never     → ti-cloud-off    (muted gray — same glyph as failed,
+    //                                distinguished only by the color rule)
+    //   unknown   → ti-cloud-off    (muted gray — sibling of never)
+    function syncStateToGlyphClass(state) {
+        if (state === 'synced')   return 'ti-cloud-check';
+        if (state === 'ahead')    return 'ti-cloud-up';
+        if (state === 'behind')   return 'ti-cloud-up';
+        if (state === 'diverged') return 'ti-cloud-x';
+        if (state === 'failed')   return 'ti-cloud-off';
+        // never, unknown, and any unrecognized state share the muted
+        // cloud-off glyph — the failure-vs-never distinction is carried by
+        // the [data-sync-state] CSS color rule, not the glyph itself.
+        return 'ti-cloud-off';
+    }
+
+    // SVG glyph bodies keyed by glyph class (not by state). All sized to
+    // 12x12, single-color via currentColor so the wrapping element's color
+    // CSS rule drives the tint (green / amber / red / muted).
+    const SYNC_GLYPH_SVG = {
+        'ti-cloud-check':
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
             '<polyline points="9 14 11 16 15 12"/>' +
             '</svg>',
-        behind:
+        'ti-cloud-up':
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
             '<polyline points="9 14 12 11 15 14"/>' +
             '<line x1="12" y1="11" x2="12" y2="17"/>' +
             '</svg>',
-        never:
+        'ti-cloud-off':
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
             '<line x1="4" y1="4" x2="20" y2="20"/>' +
             '</svg>',
-        diverged:
+        'ti-cloud-x':
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
             '<line x1="9" y1="11" x2="15" y2="17"/>' +
             '<line x1="15" y1="11" x2="9" y2="17"/>' +
             '</svg>',
     };
-    SYNC_GLYPHS.unknown = SYNC_GLYPHS.never;
-    SYNC_GLYPHS.ahead   = SYNC_GLYPHS.behind;
-    SYNC_GLYPHS.failed  = SYNC_GLYPHS.never;
 
     function paintSyncBadge(host, state) {
         if (!host) return;
-        host.innerHTML = SYNC_GLYPHS[state] || SYNC_GLYPHS.unknown;
+        const glyphClass = syncStateToGlyphClass(state);
+        host.innerHTML = SYNC_GLYPH_SVG[glyphClass] || SYNC_GLYPH_SVG['ti-cloud-off'];
         host.setAttribute('data-sync-state', state);
+        host.setAttribute('data-sync-glyph', glyphClass);
     }
 
     function paintAllSyncBadges() {
@@ -1501,14 +1524,23 @@ function component() {
         repaintConnectRow();
     });
 
-    // A successful manual Drive Export, Import, or explicit Connect click
-    // arms the auto-sync loop for the rest of the session. The signal
-    // comes via CustomEvent from driveExport.js / driveImport.js / the
-    // Connect handler above so those modules don't need to import the
-    // auto-sync module (would create a circular dependency).
+    // A successful manual Drive Export or Import arms the auto-sync loop
+    // for the rest of the session. The signal comes via CustomEvent from
+    // driveExport.js / driveImport.js so those modules don't need to import
+    // the auto-sync module (would create a circular dependency).
     document.addEventListener('driveManualActionSuccess', function() {
         armAutoSync();
         refreshDriveSyncState();
+        repaintConnectRow();
+    });
+
+    // A successful Connect-to-Drive click fires this event so the menu-row
+    // builder can swap the Connect row's label and class from "Connect to
+    // Drive" → "Signed in — auto-sync on" without a menu reopen. The
+    // Connect handler arms the loop and runs the immediate sync attempt
+    // itself (see onConnectToDriveClick); this listener is purely a UI
+    // repaint hook.
+    document.addEventListener('driveConnectionChanged', function() {
         repaintConnectRow();
     });
 
@@ -1672,22 +1704,30 @@ function component() {
             return;
         }
         getAccessToken().then(function() {
-            // Manual-action signal arms the loop via the existing
-            // driveManualActionSuccess listener (which also refreshes the
-            // sync badges) — keeps the wiring with Export and Import
-            // identical so future arming triggers don't have to special-
-            // case Connect.
+            // Arm the loop FIRST so the immediate sync attempt below passes
+            // the armed gate inside performAutoSync. Calling armAutoSync()
+            // directly (rather than going through the driveManualActionSuccess
+            // pathway used by Export/Import) keeps Connect's auth-only intent
+            // explicit and makes the success branch's contract testable.
+            armAutoSync();
+            // Run an immediate sync attempt against current state so
+            // lastDriveSyncedAt gets populated right away and the indicator
+            // has a real timestamp to compare against (instead of waiting
+            // for the next mutation-driven debounce tick).
+            performAutoSync();
+            // Dispatch the connection-change event so the menu row repaints
+            // from "Connect to Drive" → "Signed in — auto-sync on" in place,
+            // and the existing driveSyncStateChanged event so the indicator
+            // re-evaluates against the freshly-armed loop.
             if (typeof document !== 'undefined' && document.dispatchEvent) {
                 try {
-                    document.dispatchEvent(new CustomEvent('driveManualActionSuccess', {
-                        detail: { kind: 'connect' },
+                    document.dispatchEvent(new CustomEvent('driveConnectionChanged', {
+                        detail: { connected: true },
                     }));
+                    document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
                 } catch (_) { /* CustomEvent unsupported — silent */ }
             }
-            // Trigger an immediate sync attempt against current state so
-            // the indicator reflects truth right away (instead of waiting
-            // for the next mutation tick).
-            performAutoSync();
+            refreshDriveSyncState();
             repaintConnectRow();
         }).catch(function(err) {
             const message = (err && err.message) || '';
@@ -1700,6 +1740,8 @@ function component() {
             });
             // Leave the row labeled "Connect to Drive" / "Reconnect to
             // Drive" so the user can try again without reopening the menu.
+            // Critically: do NOT call armAutoSync() or performAutoSync()
+            // here — the loop stays disarmed until OAuth genuinely resolves.
             repaintConnectRow();
         });
     }

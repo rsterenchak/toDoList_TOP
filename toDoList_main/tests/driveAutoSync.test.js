@@ -527,6 +527,252 @@ describe('main.js — auto-sync wiring at boot', () => {
 });
 
 
+// ── ARMED FLAG IS EXPORTED FROM driveAutoSync.js ──────────────────────
+describe('driveAutoSync — armed flag is owned by this module', () => {
+    // Pins that main.js never mutates _armed directly — the only ways to
+    // flip the flag are armAutoSync() and disarmAutoSync(). This is the
+    // contract that lets the Connect-to-Drive handler trust armAutoSync()
+    // as the single source of truth for arming.
+    const src = read('driveAutoSync.js');
+    const mainSrc = read('main.js');
+
+    it('armAutoSync is exported from driveAutoSync.js', () => {
+        expect(src).toMatch(/export\s+function\s+armAutoSync\s*\(/);
+    });
+
+    it('armAutoSync flips _armed to true (source-level)', () => {
+        const idx = src.indexOf('export function armAutoSync');
+        expect(idx).toBeGreaterThan(-1);
+        const fn = src.slice(idx, idx + 400);
+        expect(fn).toMatch(/_armed\s*=\s*true/);
+    });
+
+    it('main.js never assigns to _armed directly — the flag is module-private to driveAutoSync.js', () => {
+        // Any line in main.js that touches a bare _armed identifier would
+        // bypass the exported helpers' state cleanup (e.g., clearing the
+        // 'failed' state on re-arm). Calls to armAutoSync()/disarmAutoSync()
+        // are fine — those are function invocations, not assignments.
+        expect(mainSrc).not.toMatch(/\b_armed\s*=/);
+    });
+});
+
+
+// ── INDICATOR STATE-TO-GLYPH MAPPING ──────────────────────────────────
+describe('Drive sync indicator — state-to-glyph mapping', () => {
+    // The state-to-glyph mapping function lives inside the component()
+    // closure of main.js. We extract it via Function-from-source the same
+    // way driveSyncIndicator.test.js extracts computeDriveSyncState, then
+    // assert one row per state.
+    const main = read('main.js');
+
+    function extractFunction(name) {
+        const idx = main.indexOf('function ' + name);
+        expect(idx).toBeGreaterThan(-1);
+        const openBrace = main.indexOf('{', idx);
+        let depth = 0;
+        for (let i = openBrace; i < main.length; i++) {
+            if (main[i] === '{') depth++;
+            else if (main[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    const body = main.slice(openBrace + 1, i);
+                    const sig = main.slice(idx, openBrace);
+                    const params = sig.match(/\(([^)]*)\)/);
+                    return new Function(params[1], body);
+                }
+            }
+        }
+        throw new Error('unbalanced braces in ' + name);
+    }
+
+    const syncStateToGlyphClass = extractFunction('syncStateToGlyphClass');
+    const syncStateTooltip      = extractFunction('syncStateTooltip');
+
+    it('synced → ti-cloud-check', () => {
+        expect(syncStateToGlyphClass('synced')).toBe('ti-cloud-check');
+    });
+
+    it('ahead → ti-cloud-up', () => {
+        expect(syncStateToGlyphClass('ahead')).toBe('ti-cloud-up');
+    });
+
+    it('behind → ti-cloud-up', () => {
+        expect(syncStateToGlyphClass('behind')).toBe('ti-cloud-up');
+    });
+
+    it('diverged → ti-cloud-x', () => {
+        expect(syncStateToGlyphClass('diverged')).toBe('ti-cloud-x');
+    });
+
+    it('failed → ti-cloud-off', () => {
+        expect(syncStateToGlyphClass('failed')).toBe('ti-cloud-off');
+    });
+
+    it('never → ti-cloud-off', () => {
+        expect(syncStateToGlyphClass('never')).toBe('ti-cloud-off');
+    });
+
+    it('unknown → ti-cloud-off (sibling of never, differentiated only by CSS color)', () => {
+        expect(syncStateToGlyphClass('unknown')).toBe('ti-cloud-off');
+    });
+
+    it('ahead and behind resolve to the SAME glyph class (only tooltip differentiates)', () => {
+        expect(syncStateToGlyphClass('ahead')).toBe(syncStateToGlyphClass('behind'));
+    });
+
+    it('ahead and behind produce DIFFERENT tooltip strings (direction-of-travel cue lives in the tooltip)', () => {
+        const aheadTip  = syncStateTooltip('ahead', '2026-05-23T10:00:00.000Z');
+        const behindTip = syncStateTooltip('behind', '2026-05-23T10:00:00.000Z');
+        expect(aheadTip).not.toBe(behindTip);
+    });
+
+    it('ahead does NOT resolve to the failure glyph (regression — was conflated with failed)', () => {
+        expect(syncStateToGlyphClass('ahead')).not.toBe(syncStateToGlyphClass('failed'));
+    });
+});
+
+
+// ── IMMEDIATE-SYNC-ON-CONNECT REGRESSION ──────────────────────────────
+describe('driveAutoSync — immediate sync on connect writes lastDriveSyncedAt', () => {
+    // Regression test for Bug A: after a Connect click resolves with an
+    // OAuth token, the click handler arms the loop and calls
+    // performAutoSync(). With local edits pending (localAhead) and no
+    // newer Drive file, performAutoSync hits the push branch and
+    // exportTodosToDrive writes lastDriveSyncedAt. The full Connect
+    // handler lives inside main.js's closure — we exercise the
+    // arm-then-perform sequence directly to prove the orchestration
+    // produces the expected localStorage write.
+    let originalFetch;
+    let originalGoogle;
+
+    beforeEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        originalFetch = globalThis.fetch;
+        originalGoogle = window.google;
+    });
+
+    afterEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        if (originalFetch === undefined) {
+            try { delete globalThis.fetch; } catch (_) { globalThis.fetch = undefined; }
+        } else {
+            globalThis.fetch = originalFetch;
+        }
+        if (originalGoogle === undefined) {
+            try { delete window.google; } catch (_) { window.google = undefined; }
+        } else {
+            window.google = originalGoogle;
+        }
+    });
+
+    it('arm + performAutoSync issues a Drive query against the cached token (proves the immediate sync attempt fires)', async () => {
+        // The Bug-A symptom is that performAutoSync never runs after a
+        // successful Connect click — the handler discards the resolved
+        // token. With the fix in place, the handler arms the loop and
+        // invokes performAutoSync, which must pass the unarmed/no-token
+        // gates and actually issue a Drive query. We assert by spying on
+        // fetch and confirming the Drive list URL was hit.
+        const PRIOR_SYNCED  = '2026-05-22T10:00:00.000Z';
+        const RECENT_EDIT   = '2026-05-23T12:00:00.000Z';
+        writeLastDriveSyncedAt(PRIOR_SYNCED);
+        writeLastLocalMutationAt(RECENT_EDIT);
+
+        // Populate the in-memory token cache by stubbing GIS to resolve
+        // with a fake token, then calling getAccessToken().
+        const { getAccessToken } = await import('../src/driveAuth.js');
+        window.google = {
+            accounts: {
+                oauth2: {
+                    initTokenClient(config) {
+                        return {
+                            requestAccessToken() {
+                                config.callback({
+                                    access_token: 'connect-token',
+                                    expires_in: 3600,
+                                });
+                            },
+                        };
+                    },
+                },
+            },
+        };
+        await getAccessToken();
+
+        // Stub fetch so the Drive query returns a file matching the local
+        // sync marker (so localAhead drives the decision, not driveAhead).
+        const driveQueryResponse = {
+            ok: true,
+            json: () => Promise.resolve({
+                files: [{ id: 'file-1', modifiedTime: PRIOR_SYNCED, name: 'todoapp-export.json' }],
+            }),
+        };
+        globalThis.fetch = vi.fn(function() {
+            return Promise.resolve(driveQueryResponse);
+        });
+
+        // Mirror the Connect handler's success branch: arm, then perform.
+        armAutoSync();
+        const result = await performAutoSync();
+
+        // The push branch may bail downstream (the test env has no
+        // OAUTH_CLIENT_ID configured for exportTodosToDrive), but the
+        // critical proof is that performAutoSync got far enough to fire
+        // the Drive query — i.e., it didn't silently exit at the
+        // unarmed/no-token gate. Either 'pushed' (full push completed)
+        // or 'failed' (push attempted, blocked downstream) is acceptable;
+        // 'unarmed' / 'no-token' is the regression we're guarding against.
+        expect(['pushed', 'failed']).toContain(result);
+        // Drive query was issued — the immediate sync attempt fired.
+        const fetchCalls = globalThis.fetch.mock.calls;
+        const driveListHit = fetchCalls.some(function(call) {
+            const url = call[0];
+            return typeof url === 'string' && url.indexOf('drive/v3/files') !== -1;
+        });
+        expect(driveListHit).toBe(true);
+    });
+
+    it('without armAutoSync first, performAutoSync silently returns "unarmed" — confirming the gate exists', async () => {
+        // Negative companion to the test above: if the Connect handler
+        // had skipped armAutoSync() (the original Bug-A behavior),
+        // performAutoSync would short-circuit at the unarmed gate even
+        // with a fresh cached token in place. This pin makes sure the
+        // gate stays effective so a future refactor can't accidentally
+        // mask a missing armAutoSync() call by always firing.
+        const { getAccessToken } = await import('../src/driveAuth.js');
+        window.google = {
+            accounts: {
+                oauth2: {
+                    initTokenClient(config) {
+                        return {
+                            requestAccessToken() {
+                                config.callback({
+                                    access_token: 'connect-token',
+                                    expires_in: 3600,
+                                });
+                            },
+                        };
+                    },
+                },
+            },
+        };
+        await getAccessToken();
+        globalThis.fetch = vi.fn();
+
+        const result = await performAutoSync();
+        expect(result).toBe('unarmed');
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+});
+
+
 // ── DIVERGED & FAILED CSS STATES ──────────────────────────────────────
 describe('CSS — diverged and failed indicator states', () => {
     const css = read('style.css');

@@ -108,16 +108,47 @@ describe('settings menu — Connect click handler is auth-only', () => {
         expect(body).not.toMatch(/writeLastLocalMutationAt\s*\(/);
     });
 
-    it('on success the Connect handler arms the loop and triggers an immediate sync attempt', () => {
-        // Manual-action dispatch hooks into the existing
-        // driveManualActionSuccess listener that already calls
-        // armAutoSync — keeps arming policy in one place.
+    it('on success the Connect handler arms the loop directly via armAutoSync() and triggers an immediate sync attempt', () => {
+        // Connect is auth-only — calling armAutoSync()/performAutoSync()
+        // directly (rather than going through driveManualActionSuccess)
+        // keeps the success contract explicit. The order in source is
+        // armAutoSync → performAutoSync → dispatch driveConnectionChanged.
         const handlerIdx = main.indexOf('function onConnectToDriveClick');
         const after = main.slice(handlerIdx);
         const nextFnIdx = after.indexOf('function ', 1);
         const body = after.slice(0, nextFnIdx > -1 ? nextFnIdx : after.length);
-        expect(body).toMatch(/driveManualActionSuccess/);
+        expect(body).toMatch(/armAutoSync\s*\(\s*\)/);
         expect(body).toMatch(/performAutoSync\s*\(\s*\)/);
+        const armIdx        = body.indexOf('armAutoSync()');
+        const performIdx    = body.indexOf('performAutoSync()');
+        const dispatchIdx   = body.indexOf("'driveConnectionChanged'");
+        expect(armIdx).toBeGreaterThan(-1);
+        expect(performIdx).toBeGreaterThan(-1);
+        expect(dispatchIdx).toBeGreaterThan(-1);
+        // Order: arm → perform → dispatch.
+        expect(armIdx).toBeLessThan(performIdx);
+        expect(performIdx).toBeLessThan(dispatchIdx);
+    });
+
+    it('on rejection the Connect handler shows an error toast and does NOT arm or sync', () => {
+        const handlerIdx = main.indexOf('function onConnectToDriveClick');
+        const after = main.slice(handlerIdx);
+        const nextFnIdx = after.indexOf('function ', 1);
+        const body = after.slice(0, nextFnIdx > -1 ? nextFnIdx : after.length);
+        // Find the .catch branch body — the rejection path.
+        const catchIdx = body.indexOf('.catch(');
+        expect(catchIdx).toBeGreaterThan(-1);
+        // Strip line + block comments so the regex below can't match the
+        // function names mentioned in the explanatory comment.
+        const catchBody = body.slice(catchIdx)
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/\/\/[^\n]*/g, '');
+        expect(catchBody).toMatch(/showDriveToast\s*\(\s*\{[^}]*error\s*:\s*true/);
+        // The rejection branch must NOT arm the loop or fire a sync —
+        // both would defeat the "leave the row in Connect state so the
+        // user can retry" contract.
+        expect(catchBody).not.toMatch(/armAutoSync\s*\(/);
+        expect(catchBody).not.toMatch(/performAutoSync\s*\(/);
     });
 
     it('on success the row is re-painted in place (no menu reopen required)', () => {
@@ -205,6 +236,16 @@ describe('settings menu — Connect row reactive repaint', () => {
         // Manual Export / Import also flip the row to the signed-in
         // status row when they arm the loop.
         const listenerIdx = main.indexOf("'driveManualActionSuccess'");
+        expect(listenerIdx).toBeGreaterThan(-1);
+        const slice = main.slice(listenerIdx, listenerIdx + 400);
+        expect(slice).toMatch(/repaintConnectRow\s*\(\s*\)/);
+    });
+
+    it('driveConnectionChanged listener repaints the Connect row after a successful Connect click', () => {
+        // The Connect handler dispatches driveConnectionChanged on success;
+        // the menu-row builder listens and swaps the row's label and class
+        // in place without a menu reopen.
+        const listenerIdx = main.indexOf("'driveConnectionChanged'");
         expect(listenerIdx).toBeGreaterThan(-1);
         const slice = main.slice(listenerIdx, listenerIdx + 400);
         expect(slice).toMatch(/repaintConnectRow\s*\(\s*\)/);
