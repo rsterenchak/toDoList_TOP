@@ -3281,6 +3281,35 @@ function component() {
         return { row: row, refresh: refresh };
     }
 
+    // Tile-styled button used inside the Settings modal's Data section to
+    // give Local / Drive Export/Import equally-weighted tap targets in a
+    // 2x2 grid. Each tile renders three stacked pieces of copy: an icon
+    // glyph at the top, the verb ('Export' / 'Import') in the middle, and
+    // a sub-label ('to file' / 'to Drive' etc.) underneath. The optional
+    // extraClass is the CSS anchor that body.driveExportInProgress /
+    // body.driveImportInProgress pivot on so the existing dim-loading hooks
+    // dim the matching tile during in-flight Drive uploads / downloads.
+    function createDrawerDataTile(iconText, verb, sub, onActivate, extraClass) {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = 'settingsModalDataTile' + (extraClass ? ' ' + extraClass : '');
+        const icon = document.createElement('span');
+        icon.className = 'settingsModalDataTileIcon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = iconText;
+        const verbEl = document.createElement('span');
+        verbEl.className = 'settingsModalDataTileVerb';
+        verbEl.textContent = verb;
+        const subEl = document.createElement('span');
+        subEl.className = 'settingsModalDataTileSub';
+        subEl.textContent = sub;
+        tile.appendChild(icon);
+        tile.appendChild(verbEl);
+        tile.appendChild(subEl);
+        tile.addEventListener('click', onActivate);
+        return tile;
+    }
+
     // Drawer-styled row that triggers a one-shot flow instead of toggling
     // a setting. Same 44px tap target and label typography as
     // createDrawerToggleRow, but the right-aligned slot holds a static
@@ -3448,6 +3477,73 @@ function component() {
         const body = document.createElement('div');
         body.id = 'settingsModalBody';
 
+        // Data section — first in the modal so the four data-transfer
+        // actions (Local Export / Local Import / Drive Export / Drive
+        // Import) are reachable on mobile, where the desktop ghost menu
+        // that houses them is hidden by the ≤700px breakpoint. The 2x2
+        // grid lays out as row 1 = Local Export / Local Import, row 2 =
+        // Drive Export / Drive Import; each tile invokes the same handler
+        // the corresponding desktop menu row already wires up.
+        const dataSection = document.createElement('section');
+        dataSection.id = 'settingsDataSection';
+        dataSection.className = 'settingsSection';
+        const dataHeading = document.createElement('div');
+        dataHeading.className = 'settingsSectionHeading';
+        dataHeading.textContent = 'Data';
+        dataSection.appendChild(dataHeading);
+
+        const dataGrid = document.createElement('div');
+        dataGrid.className = 'settingsModalDataGrid';
+
+        const localExportTile = createDrawerDataTile(
+            '↓', 'Export', 'to file',
+            function() { exportTodosToFile(); setTimeout(refreshDataCaption, 0); },
+            'settingsModalDataTile--localExport'
+        );
+        const localImportTile = createDrawerDataTile(
+            '↑', 'Import', 'from file',
+            function() { importFileInput.click(); },
+            'settingsModalDataTile--localImport'
+        );
+        const driveExportTile = createDrawerDataTile(
+            '☁↓', 'Export', 'to Drive',
+            function() {
+                const p = exportTodosToDrive();
+                if (p && typeof p.then === 'function') {
+                    p.then(refreshDataCaption, refreshDataCaption);
+                }
+            },
+            'settingsModalDataTile--driveExport'
+        );
+        const driveImportTile = createDrawerDataTile(
+            '☁↑', 'Import', 'from Drive',
+            function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
+            'settingsModalDataTile--driveImport'
+        );
+        dataGrid.appendChild(localExportTile);
+        dataGrid.appendChild(localImportTile);
+        dataGrid.appendChild(driveExportTile);
+        dataGrid.appendChild(driveImportTile);
+        dataSection.appendChild(dataGrid);
+
+        // Caption sits beneath the grid and surfaces the same stale-time
+        // signal the desktop ghost menu shows as right-side pills, so the
+        // user can see how stale each backup is before tapping a tile.
+        const dataCaption = document.createElement('div');
+        dataCaption.className = 'settingsModalDataCaption';
+        dataSection.appendChild(dataCaption);
+
+        function formatCaptionPart(iso) {
+            if (!iso) return 'never';
+            return formatRelativeExportedAt(iso).replace(/^Exported /, '');
+        }
+        function refreshDataCaption() {
+            dataCaption.textContent =
+                'Last local: ' + formatCaptionPart(readLastExportedAt()) +
+                ' · Last Drive: ' + formatCaptionPart(readLastDriveExportedAt());
+        }
+        refreshDataCaption();
+
         const viewSection = document.createElement('section');
         viewSection.id = 'settingsViewSection';
         viewSection.className = 'settingsSection';
@@ -3503,6 +3599,7 @@ function component() {
         });
         helpSection.appendChild(replayRow);
 
+        body.appendChild(dataSection);
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
         body.appendChild(helpSection);

@@ -343,7 +343,7 @@ describe('welcome carousel — wired into the app', () => {
         // / coachmark land on a clean surface, not on top of an open modal.
         const fnIdx = main.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 6000);
+        const slice = main.slice(fnIdx, fnIdx + 10000);
         expect(slice).toMatch(/createDrawerActionRow\(\s*['"]Replay welcome tour['"]/);
         expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
         expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
@@ -413,7 +413,7 @@ describe('welcome carousel — wired into the app', () => {
         // behind the carousel backdrop.
         const fnIdx = main.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const slice = main.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
@@ -426,7 +426,7 @@ describe('welcome carousel — wired into the app', () => {
     it('mobile modal Replay handler force-seeds the sample project when the user has none', () => {
         const fnIdx = main.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const slice = main.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
@@ -437,7 +437,7 @@ describe('welcome carousel — wired into the app', () => {
     it('mobile modal Replay handler defers the tour kickoff so layout settles first', () => {
         const fnIdx = main.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 7000);
+        const slice = main.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
