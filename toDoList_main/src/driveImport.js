@@ -148,7 +148,22 @@ export function importTodosFromDrive(onAfterReplace) {
                         text,
                         function() {
                             showDriveToast({ label: 'Imported from Drive' });
-                            if (typeof onAfterReplace === 'function') onAfterReplace();
+                            // Guard the host rebuild so a downstream
+                            // rendering error can never silently break
+                            // the sync invariant. The sync marker is
+                            // already written via onBeforeReplace before
+                            // this callback runs, but isolating the host
+                            // callback keeps any UI exception out of the
+                            // promise chain.
+                            if (typeof onAfterReplace === 'function') {
+                                try {
+                                    onAfterReplace();
+                                } catch (rebuildErr) {
+                                    if (typeof console !== 'undefined' && console.error) {
+                                        console.error('Drive import: onAfterReplace threw', rebuildErr);
+                                    }
+                                }
+                            }
                         },
                         {
                             sourceLabel: describeDriveBackup(file),

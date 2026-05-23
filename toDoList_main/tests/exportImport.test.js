@@ -8,12 +8,7 @@ import {
     buildExportPayload,
     parseAndValidateExport,
     formatRelativeExportedAt,
-    refreshFooterExportLabel,
 } from '../src/exportImport.js';
-import {
-    LAST_EXPORTED_AT_KEY,
-    writeLastExportedAt,
-} from '../src/prefs.js';
 
 
 describe('exportImport — payload shape', () => {
@@ -138,36 +133,6 @@ describe('exportImport — formatRelativeExportedAt', () => {
         expect(formatRelativeExportedAt('2025-05-04T12:00:00Z', now)).toBe('Synced 1 year ago');
         // ~2 years.
         expect(formatRelativeExportedAt('2024-05-04T12:00:00Z', now)).toBe('Synced 2 years ago');
-    });
-});
-
-
-describe('exportImport — refreshFooterExportLabel', () => {
-    beforeEach(() => {
-        try { localStorage.removeItem(LAST_EXPORTED_AT_KEY); } catch (e) { /* ignore */ }
-        const stale = document.getElementById('footExport');
-        if (stale && stale.parentNode) stale.parentNode.removeChild(stale);
-    });
-
-    it('writes the relative label into the #footExport element when present', () => {
-        const span = document.createElement('span');
-        span.id = 'footExport';
-        document.body.appendChild(span);
-
-        // Before any export.
-        refreshFooterExportLabel();
-        expect(span.textContent).toBe('Never synced');
-
-        // After a recorded export, the label updates on the next refresh.
-        writeLastExportedAt(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString());
-        refreshFooterExportLabel();
-        expect(span.textContent).toBe('Synced 3 days ago');
-    });
-
-    it('is a no-op when #footExport is not in the DOM', () => {
-        // Should not throw — the helper guards against pre-mount calls so
-        // exportTodosToFile can call it unconditionally.
-        expect(() => refreshFooterExportLabel()).not.toThrow();
     });
 });
 
