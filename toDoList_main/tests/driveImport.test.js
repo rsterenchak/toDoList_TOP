@@ -399,6 +399,20 @@ describe('driveImport — sync-initiated replace suppresses the mutation bump', 
         // indicator's "synced" reading written via onBeforeReplace.
         expect(src).toMatch(/try\s*\{\s*onAfterReplace\(\)/);
     });
+
+    it('mirrors file.modifiedTime into the in-memory cache via updateCachedDriveModifiedTime', () => {
+        // Symmetric with the export-side cache write — without the pull
+        // path keeping the cache aligned with the freshly-pulled
+        // modifiedTime, the post-pull local recompute compares the new
+        // sync marker against the pre-pull cached value and reports
+        // 'behind' against stale data.
+        expect(src).toMatch(
+            /import\s*\{[^}]*\bupdateCachedDriveModifiedTime\b[^}]*\}\s*from\s*['"]\.\/driveAutoSync\.js['"]/
+        );
+        expect(src).toMatch(
+            /onBeforeReplace\s*:\s*function[\s\S]*?updateCachedDriveModifiedTime\s*\(\s*file\.modifiedTime/
+        );
+    });
 });
 
 

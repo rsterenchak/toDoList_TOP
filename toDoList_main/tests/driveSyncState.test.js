@@ -272,7 +272,12 @@ describe('Drive sync indicator — live recompute on driveSyncStateChanged', () 
         expect(body).not.toMatch(/getCachedAccessToken/);
     });
 
-    it('reads the cached drive modifiedTime variable rather than re-querying', () => {
+    it('reads the cached drive modifiedTime via getCachedDriveModifiedTime rather than re-querying', () => {
+        // The cache now lives in driveAutoSync.js (single write entry
+        // point: updateCachedDriveModifiedTime, dispatch-on-write). The
+        // recompute path reads through the exported getter so the bare
+        // `_cachedDriveModifiedTime\s*=` static scan stays clean inside
+        // main.js — the cache can only mutate through the helper.
         const idx = main.indexOf('function recomputeDriveSyncStateLocal');
         const openBrace = main.indexOf('{', idx);
         let depth = 0;
@@ -285,15 +290,19 @@ describe('Drive sync indicator — live recompute on driveSyncStateChanged', () 
             }
         }
         const body = main.slice(openBrace, end);
-        expect(body).toMatch(/_driveModifiedTimeCache/);
+        expect(body).toMatch(/getCachedDriveModifiedTime\s*\(/);
         expect(body).toMatch(/readLastLocalMutationAt/);
         expect(body).toMatch(/readLastDriveSyncedAt/);
     });
 
     it('refreshDriveSyncState seeds the cached modifiedTime so the listener has something to compare against', () => {
+        // The seeding write now flows through the
+        // updateCachedDriveModifiedTime helper (which also dispatches
+        // driveSyncStateChanged) instead of a bare assignment to the
+        // old module-local cache.
         const idx = main.indexOf('function refreshDriveSyncState');
         const fn = main.slice(idx, idx + 2000);
-        expect(fn).toMatch(/_driveModifiedTimeCache\s*=/);
+        expect(fn).toMatch(/updateCachedDriveModifiedTime\s*\(/);
     });
 });
 

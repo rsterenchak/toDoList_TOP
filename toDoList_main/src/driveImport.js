@@ -15,6 +15,7 @@ import {
     getAccessToken,
     showDriveToast,
 } from './driveAuth.js';
+import { updateCachedDriveModifiedTime } from './driveAutoSync.js';
 
 const DRIVE_LIST_URL =
     'https://www.googleapis.com/drive/v3/files'
@@ -215,6 +216,14 @@ export function importTodosFromDrive(onAfterReplace, opts) {
                             onBeforeReplace: function() {
                                 if (file && file.modifiedTime) {
                                     writeLastDriveSyncedAt(file.modifiedTime);
+                                    // Mirror the marker into the
+                                    // in-memory cache the indicator reads
+                                    // — otherwise the post-pull local
+                                    // recompute compares the new marker
+                                    // against the pre-pull cache value
+                                    // and reports 'behind' against stale
+                                    // data.
+                                    updateCachedDriveModifiedTime(file.modifiedTime);
                                 }
                             },
                         }

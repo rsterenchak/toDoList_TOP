@@ -4,9 +4,9 @@
 // import pipeline. The OAuth popup and the network calls are stubbed —
 // we're testing the module's orchestration, not the Google CDN.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 
 import {
     decideAutoSyncAction,
@@ -23,6 +23,8 @@ import {
     performAutoSync,
     autoSyncOnAppLoad,
     registerAutoSyncRebuild,
+    getCachedDriveModifiedTime,
+    updateCachedDriveModifiedTime,
 } from '../src/driveAutoSync.js';
 import {
     _resetCachedToken,
@@ -769,6 +771,118 @@ describe('driveAutoSync — immediate sync on connect writes lastDriveSyncedAt',
         const result = await performAutoSync();
         expect(result).toBe('unarmed');
         expect(globalThis.fetch).not.toHaveBeenCalled();
+    });
+});
+
+
+// ── DRIVE MODIFIEDTIME CACHE ──────────────────────────────────────────
+describe('driveAutoSync — updateCachedDriveModifiedTime / getCachedDriveModifiedTime', () => {
+    beforeEach(() => { _resetAutoSyncForTest(); });
+    afterEach(() => { _resetAutoSyncForTest(); });
+
+    it('starts as null until the first write', () => {
+        expect(getCachedDriveModifiedTime()).toBe(null);
+    });
+
+    it('writes the cache and exposes the value via the getter', () => {
+        updateCachedDriveModifiedTime('2026-05-23T14:03:49.580Z');
+        expect(getCachedDriveModifiedTime()).toBe('2026-05-23T14:03:49.580Z');
+    });
+
+    it('coerces nullish/empty inputs to null (single-shape "no Drive file" sentinel)', () => {
+        updateCachedDriveModifiedTime('2026-05-23T14:03:49.580Z');
+        updateCachedDriveModifiedTime(null);
+        expect(getCachedDriveModifiedTime()).toBe(null);
+        updateCachedDriveModifiedTime(undefined);
+        expect(getCachedDriveModifiedTime()).toBe(null);
+        updateCachedDriveModifiedTime('');
+        expect(getCachedDriveModifiedTime()).toBe(null);
+    });
+
+    it('dispatches driveSyncStateChanged on every write so the indicator repaints immediately', () => {
+        let fired = 0;
+        const listener = function() { fired += 1; };
+        document.addEventListener('driveSyncStateChanged', listener);
+        try {
+            updateCachedDriveModifiedTime('2026-05-23T14:03:49.580Z');
+            updateCachedDriveModifiedTime('2026-05-23T15:00:00.000Z');
+            expect(fired).toBe(2);
+        } finally {
+            document.removeEventListener('driveSyncStateChanged', listener);
+        }
+    });
+
+    it('_resetAutoSyncForTest clears the cache back to null', () => {
+        updateCachedDriveModifiedTime('2026-05-23T14:03:49.580Z');
+        expect(getCachedDriveModifiedTime()).toBe('2026-05-23T14:03:49.580Z');
+        _resetAutoSyncForTest();
+        expect(getCachedDriveModifiedTime()).toBe(null);
+    });
+});
+
+
+// ── STATIC SCAN: CACHE MUTATION IS MODULE-PRIVATE ─────────────────────
+describe('driveAutoSync — _cachedDriveModifiedTime assignment is module-private', () => {
+    // Pins the contract that the only file allowed to assign to
+    // `_cachedDriveModifiedTime` is driveAutoSync.js itself. Any other
+    // file that bypasses updateCachedDriveModifiedTime would also bypass
+    // the driveSyncStateChanged dispatch and leave the indicator stale.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const srcDirHere = resolve(here, '../src');
+
+    function readAllSources() {
+        const files = readdirSync(srcDirHere)
+            .filter(function(f) { return f.endsWith('.js'); });
+        return files.map(function(f) {
+            return {
+                name: f,
+                body: readFileSync(join(srcDirHere, f), 'utf8'),
+            };
+        });
+    }
+
+    it('no source file outside driveAutoSync.js contains a _cachedDriveModifiedTime = ... assignment', () => {
+        const ASSIGN_RE = /_cachedDriveModifiedTime\s*=/g;
+        const offenders = readAllSources()
+            .filter(function(f) { return f.name !== 'driveAutoSync.js'; })
+            .filter(function(f) { return ASSIGN_RE.test(f.body); })
+            .map(function(f) { return f.name; });
+        expect(offenders).toEqual([]);
+    });
+});
+
+
+// ── PERFORM AUTO-SYNC UPDATES THE CACHE ───────────────────────────────
+describe('driveAutoSync — performAutoSync keeps the cache aligned with the freshest Drive query', () => {
+    // Audit pin from the bug report: every Drive query inside the
+    // orchestrator must feed its result into updateCachedDriveModifiedTime
+    // so the indicator's local-only recompute path always reads server-
+    // truth between mutations.
+    const src = read('driveAutoSync.js');
+
+    it('calls updateCachedDriveModifiedTime after the initial queryLatestDriveFile', () => {
+        // Pull the performAutoSync function body brace-balanced so the
+        // assertion isn't confused by other queryLatestDriveFile calls
+        // elsewhere in the file (e.g. an export helper).
+        const fnIdx = src.indexOf('export function performAutoSync');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const bodyStart = src.indexOf('{', fnIdx);
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < src.length; i++) {
+            const c = src.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = src.slice(bodyStart, i + 1); break; }
+            }
+        }
+        // At least two cache updates inside performAutoSync: one after
+        // the initial query (drives the decision tree) and one after the
+        // pre-push recheck (catches a remote push that landed during the
+        // debounce window).
+        const matches = body.match(/updateCachedDriveModifiedTime\s*\(/g) || [];
+        expect(matches.length).toBeGreaterThanOrEqual(2);
     });
 });
 
