@@ -12,13 +12,13 @@ function read(relative) {
 // Pins the contract for the ghost menu dropdown that replaced the previous
 // save / import / kebab cluster on the top nav. The cluster is gone — a
 // single 36×36 ghost icon trigger sits flush against the right edge of the
-// nav, and clicking it opens a small dropdown housing a LOCAL section
-// (Export, Import), a DRIVE section (Export, Import), a divider, Theme,
-// and Toggle floating ghost. Row labels are disambiguated by their section
-// header rather than by suffixed text. The trigger itself stays static;
-// the floating-ghost companion (toggled from inside the menu) is the one
-// that drifts. A subtle hover-pulse animation cycles on the trigger while
-// idle for discoverability.
+// nav, and clicking it opens a small dropdown housing a DRIVE section
+// (Export, Import), a divider, Theme, and Toggle floating ghost. Row
+// labels are disambiguated by their section header rather than by
+// suffixed text. The trigger itself stays static; the floating-ghost
+// companion (toggled from inside the menu) is the one that drifts. A
+// subtle hover-pulse animation cycles on the trigger while idle for
+// discoverability.
 describe('ghost menu — top-nav trigger + dropdown', () => {
     const main = read('main.js');
     const modals = read('modals.js');
@@ -69,94 +69,61 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
     });
 
     it('builds Export, Import, Theme, and Toggle floating ghost menu items via a shared helper', () => {
-        // The label text shortens to 'Export' / 'Import' since the LOCAL /
-        // DRIVE section headers disambiguate. Rows are identified by their
-        // stable extraClass anchors rather than literal labels because
-        // 'Export' / 'Import' now appears twice in the menu.
+        // The label text shortens to 'Export' / 'Import' since the DRIVE
+        // section header disambiguates. Rows are identified by their
+        // stable extraClass anchors rather than literal labels.
         expect(main).toMatch(/function\s+buildSettingsMenuItem\s*\(/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,200}?'settingsMenuItem--exportLocal'/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import'\s*,[\s\S]{0,200}?'settingsMenuItem--importLocal'/);
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,200}?'settingsMenuItem--driveExport'/);
+        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import'\s*,[\s\S]{0,200}?'settingsMenuItem--driveImport'/);
         expect(main).toMatch(/buildSettingsMenuItem\(\s*'Theme'\s*,/);
         expect(main).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'\s*,/);
     });
 
-    it('renders a divider between the data actions (Local/Drive) and the toggle group (Theme/floating ghost)', () => {
+    it('renders a divider between the Drive data actions and the toggle group (Theme/floating ghost)', () => {
         // The CSS class is consumed both for visual styling and as the
         // semantic anchor — the divider's render order in showSettingsMenu
         // determines which items sit above and below it.
         expect(main).toMatch(/function\s+buildSettingsMenuDivider\s*\(/);
         expect(main).toMatch(/settingsMenuDivider/);
 
-        // Order in source: exportLocal → importLocal → divider → driveExport
-        // → driveImport → divider → Theme → Toggle floating ghost. The first
-        // divider sits between the LOCAL and DRIVE sections; the second
-        // sits between the data block and the toggle group.
-        const exportLocalIdx = main.indexOf("'settingsMenuItem--exportLocal'");
-        const importLocalIdx = main.indexOf("'settingsMenuItem--importLocal'");
-        const dividerIdx     = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
+        // Order in source: DRIVE heading → driveExport → driveImport →
+        // divider → Theme → Toggle floating ghost. The LOCAL section is
+        // gone; the divider now sits between the Drive data block and the
+        // toggle group.
+        const driveHeadIdx   = main.indexOf("driveHeadingLabel.textContent = 'Drive'");
         const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
         const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
+        const dividerIdx     = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
         const themeIdx       = main.indexOf("'Theme'");
         const ghostIdx       = main.indexOf("'Toggle floating ghost'");
-        expect(exportLocalIdx).toBeGreaterThan(-1);
-        expect(importLocalIdx).toBeGreaterThan(exportLocalIdx);
-        expect(dividerIdx).toBeGreaterThan(importLocalIdx);
-        expect(driveExportIdx).toBeGreaterThan(dividerIdx);
+        expect(driveHeadIdx).toBeGreaterThan(-1);
+        expect(driveExportIdx).toBeGreaterThan(driveHeadIdx);
         expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
-        expect(themeIdx).toBeGreaterThan(driveImportIdx);
+        expect(dividerIdx).toBeGreaterThan(driveImportIdx);
+        expect(themeIdx).toBeGreaterThan(dividerIdx);
         expect(ghostIdx).toBeGreaterThan(themeIdx);
     });
 
-    it('Export (local) item invokes exportTodosToFile() directly', () => {
-        // Locate the local Export row by its stable class anchor since the
-        // label 'Export' now appears twice in the menu (LOCAL and DRIVE).
-        const idx = main.indexOf("'settingsMenuItem--exportLocal'");
-        expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
-        expect(slice).toMatch(/exportTodosToFile\s*\(\s*\)/);
-    });
+    it('groups the Drive rows under a DRIVE section heading reusing the existing settingsMenuSectionHeading class', () => {
+        // The DRIVE header sits at the top of the menu, above the Drive
+        // Export row. It reuses the section-header class that already
+        // styles the HELP heading further down the menu, so the labelled
+        // sections look visually identical.
+        const driveHeadIdx  = main.indexOf("driveHeadingLabel.textContent = 'Drive'");
+        expect(driveHeadIdx).toBeGreaterThan(-1);
 
-    it('Import (local) item triggers a hidden file input wired to importFromFile + rebuildAfterImport', () => {
-        // The trigger creates a hidden <input type="file"> and the menu
-        // item proxies to its click(). The change handler runs the same
-        // validate → confirm → overwrite flow the old icon button used.
-        expect(main).toMatch(/importFileInput\.type\s*=\s*['"]file['"]/);
-        expect(main).toMatch(/importFileInput\.accept\s*=\s*['"]\.json,application\/json['"]/);
-        expect(main).toMatch(/importFromFile\s*\(\s*file\s*,/);
-        expect(main).toMatch(/rebuildAfterImport\s*\(\s*\)/);
-
-        const idx = main.indexOf("'settingsMenuItem--importLocal'");
-        expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
-        expect(slice).toMatch(/importFileInput\.click\s*\(\s*\)/);
-    });
-
-    it('groups the rows under LOCAL and DRIVE section headings reusing the existing settingsMenuSectionHeading class', () => {
-        // The LOCAL header sits at the top of the menu, above the local
-        // Export row. The DRIVE header sits between the first divider and
-        // the Drive Export row. Both reuse the section-header class that
-        // already styles the HELP heading further down the menu, so the
-        // three labelled sections look visually identical.
-        const localHeadIdx  = main.indexOf("localHeading.textContent = 'Local'");
-        const driveHeadIdx  = main.indexOf("driveHeading.textContent = 'Drive'");
-        expect(localHeadIdx).toBeGreaterThan(-1);
-        expect(driveHeadIdx).toBeGreaterThan(localHeadIdx);
-
-        // Headings are non-interactive: not focusable, skipped by keyboard
-        // nav. Reusing role="presentation" matches the existing HELP
-        // heading and keeps the [role="menuitem"] selector in
-        // onSettingsKeydown from picking them up.
-        expect(main).toMatch(/localHeading\.setAttribute\(\s*['"]role['"]\s*,\s*['"]presentation['"]/);
+        // The heading itself is non-interactive: not focusable, skipped
+        // by keyboard nav. Reusing role="presentation" matches the
+        // existing HELP heading and keeps the [role="menuitem"] selector
+        // in onSettingsKeydown from picking it up.
         expect(main).toMatch(/driveHeading\.setAttribute\(\s*['"]role['"]\s*,\s*['"]presentation['"]/);
-        expect(main).toMatch(/localHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
         expect(main).toMatch(/driveHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
 
-        // DRIVE header sits between the first divider and the Drive
-        // Export row in source order.
-        const firstDividerIdx = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
+        // No LOCAL section heading should remain in source.
+        expect(main).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
+
+        // DRIVE header sits above the Drive Export row in source order.
         const driveExportIdx  = main.indexOf("'settingsMenuItem--driveExport'");
-        expect(firstDividerIdx).toBeGreaterThan(localHeadIdx);
-        expect(driveHeadIdx).toBeGreaterThan(firstDividerIdx);
         expect(driveExportIdx).toBeGreaterThan(driveHeadIdx);
     });
 

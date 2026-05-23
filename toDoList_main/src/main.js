@@ -75,18 +75,11 @@ import {
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import {
-    exportTodosToFile,
-    importFromFile,
-    createStaleExportHint,
-    refreshStaleHint,
-    attachDragDropImport,
-    formatRelativeExportedAt,
-    refreshFooterExportLabel,
-} from './exportImport.js';
+import { formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
-import { importTodosFromDrive } from './driveImport.js';
-import { readLastExportedAt, readLastDriveExportedAt } from './prefs.js';
+import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
+import { getCachedAccessToken } from './driveAuth.js';
+import { readLastDriveExportedAt } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
@@ -204,29 +197,20 @@ function component() {
 
     // ── ghost menu trigger (far right of nav) ──
     // Single 36px ghost icon button replaces the previous save/import/kebab
-    // cluster. Clicking it opens a dropdown with Export JSON, Import JSON,
+    // cluster. Clicking it opens a dropdown with Drive Export, Drive Import,
     // (divider), Theme, and Toggle floating ghost. The trigger itself stays
     // anchored to the top-right; the floating-ghost companion (toggled from
     // inside the menu) is the one that drifts around the viewport. A subtle
     // hover-pulse animation on the trigger hints first-time users that it's
     // clickable — see #settingsToggle keyframes in style.css.
     //
-    // The dropdown closes on selection, outside click, or Escape. Drag-and-
-    // drop import remains wired via attachDragDropImport; the menu's Import
-    // JSON item proxies to a hidden file input that runs the same
-    // importFromFile flow the old icon button used.
-    const importFileInput = document.createElement('input');
-    importFileInput.type = 'file';
-    importFileInput.accept = '.json,application/json';
-    importFileInput.id = 'importTodosInput';
-    importFileInput.style.display = 'none';
-    importFileInput.addEventListener('change', function() {
-        const file = importFileInput.files && importFileInput.files[0];
-        if (!file) return;
-        importFromFile(file, function() { rebuildAfterImport(); });
-        // Reset so re-selecting the same file fires change again.
-        importFileInput.value = '';
-    });
+    // The trigger also surfaces a small cloud badge overlaid on the bottom-
+    // right of the ghost icon that reflects the current Drive sync state
+    // ('synced' / 'behind' / 'never' / 'unknown'). See refreshDriveSyncState
+    // below — it runs once on app load (silent — no OAuth popup if the user
+    // hasn't signed in this session) and again whenever the ghost menu
+    // opens. The same state drives the badge next to the DRIVE section
+    // header inside the popover menu.
 
     // ── pomodoro clock icon (sits left of the ghost menu trigger) ──
     // Single 36px clock icon button. Click opens a small popover with mode
@@ -1279,6 +1263,133 @@ function component() {
         '</g>' +
         '</svg>';
 
+    // Drive sync-state badge — sits as a small absolute-positioned overlay
+    // on the bottom-right of the ghost icon. Built as a separate <span>
+    // sibling rather than a child of the SVG so CSS can position it
+    // independently and swap glyphs without rewriting the whole SVG.
+    const settingsToggleSyncBadge = document.createElement('span');
+    settingsToggleSyncBadge.className = 'settingsToggleSyncBadge';
+    settingsToggleSyncBadge.setAttribute('aria-hidden', 'true');
+    settingsToggle.appendChild(settingsToggleSyncBadge);
+
+    // ── Drive sync-state indicator ──
+    //
+    // Reflects the local lastDriveExportedAt timestamp against the latest
+    // Drive backup's modifiedTime in four buckets:
+    //   synced   — local timestamp >= Drive modifiedTime
+    //   behind   — Drive modifiedTime is newer (another device pushed)
+    //   never    — no lastDriveExportedAt and/or no Drive file
+    //   unknown  — query failed, network offline, or no cached OAuth token
+    //
+    // Paints two surfaces: the cloud badge overlaid on the ghost icon in
+    // the header, and the matching cloud icon next to the DRIVE section
+    // header inside the popover menu. Both surfaces share the same state.
+    let _driveSyncState = 'unknown';
+    let _driveSyncTooltip = 'Sync state unknown';
+
+    function computeDriveSyncState(localIso, driveModifiedIso) {
+        if (!driveModifiedIso) {
+            return localIso ? 'synced' : 'never';
+        }
+        if (!localIso) return 'behind';
+        const localMs = Date.parse(localIso);
+        const driveMs = Date.parse(driveModifiedIso);
+        if (isNaN(localMs) || isNaN(driveMs)) return 'unknown';
+        return localMs >= driveMs ? 'synced' : 'behind';
+    }
+
+    function syncStateTooltip(state, localIso) {
+        if (state === 'synced') {
+            const rel = formatRelativeExportedAt(localIso);
+            return 'Up to date — last synced ' + rel.replace(/^Exported\s*/, '');
+        }
+        if (state === 'behind') return 'Drive is newer than local — pull to update';
+        if (state === 'never')  return 'Not synced to Drive yet';
+        return 'Sync state unknown';
+    }
+
+    // SVG glyph for each state — cloud-check (synced), cloud-up (behind),
+    // cloud-off (never / unknown). All three sized to 12x12, single-color
+    // via currentColor so the wrapping element's color CSS rule drives the
+    // tint (green / amber / muted).
+    const SYNC_GLYPHS = {
+        synced:
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
+            '<polyline points="9 14 11 16 15 12"/>' +
+            '</svg>',
+        behind:
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
+            '<polyline points="9 14 12 11 15 14"/>' +
+            '<line x1="12" y1="11" x2="12" y2="17"/>' +
+            '</svg>',
+        never:
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
+            '<line x1="4" y1="4" x2="20" y2="20"/>' +
+            '</svg>',
+    };
+    SYNC_GLYPHS.unknown = SYNC_GLYPHS.never;
+
+    function paintSyncBadge(host, state) {
+        if (!host) return;
+        host.innerHTML = SYNC_GLYPHS[state] || SYNC_GLYPHS.unknown;
+        host.setAttribute('data-sync-state', state);
+    }
+
+    function paintAllSyncBadges() {
+        paintSyncBadge(settingsToggleSyncBadge, _driveSyncState);
+        settingsToggle.setAttribute('data-drive-sync', _driveSyncState);
+        settingsToggle.setAttribute('title',
+            _driveSyncState === 'unknown' ? 'Menu' : 'Menu — ' + _driveSyncTooltip);
+        const menuBadge = document.getElementById('settingsMenuDriveSyncBadge');
+        if (menuBadge) {
+            paintSyncBadge(menuBadge, _driveSyncState);
+            menuBadge.setAttribute('title', _driveSyncTooltip);
+        }
+    }
+
+    function setDriveSyncState(state, localIso) {
+        _driveSyncState = state;
+        _driveSyncTooltip = syncStateTooltip(state, localIso || readLastDriveExportedAt());
+        paintAllSyncBadges();
+    }
+
+    // Silent Drive query — only fires when a valid in-memory OAuth token is
+    // already cached (i.e., the user signed in earlier this session via an
+    // explicit Drive action). Without a cached token, the state stays
+    // 'unknown' rather than popping a consent screen. The query runs on
+    // app load and on every ghost-menu open.
+    function refreshDriveSyncState() {
+        const token = getCachedAccessToken();
+        if (!token) {
+            const localIso = readLastDriveExportedAt();
+            setDriveSyncState(localIso ? 'unknown' : 'never', localIso);
+            return Promise.resolve();
+        }
+        return queryLatestDriveFile(token).then(function(files) {
+            const file = files && files.length ? files[0] : null;
+            const localIso = readLastDriveExportedAt();
+            setDriveSyncState(
+                computeDriveSyncState(localIso, file && file.modifiedTime),
+                localIso
+            );
+        }).catch(function() {
+            const localIso = readLastDriveExportedAt();
+            setDriveSyncState('unknown', localIso);
+        });
+    }
+
+    // Initial paint reflects the local-only snapshot — no Drive file
+    // information yet, so the state lands on 'never' (no local timestamp)
+    // or 'unknown' (local timestamp from a prior session but no cached
+    // token to verify Drive against).
+    setDriveSyncState(
+        readLastDriveExportedAt() ? 'unknown' : 'never',
+        readLastDriveExportedAt()
+    );
+
     // When the no-projects empty state is showing, its Create button is the
     // single keyboard affordance on the page (Enter creates the first
     // project). Returning focus to settingsToggle after the menu closes
@@ -1408,48 +1519,26 @@ function component() {
         menu.id = 'settingsMenu';
         menu.setAttribute('role', 'menu');
 
-        // LOCAL section — exports/imports that move a JSON file to or from
-        // the device. The section heading provides the local/Drive context
-        // so the row labels themselves shorten to just 'Export' and 'Import'.
-        const localHeading = document.createElement('div');
-        localHeading.className = 'settingsMenuSectionHeading';
-        localHeading.textContent = 'Local';
-        localHeading.setAttribute('role', 'presentation');
-        menu.appendChild(localHeading);
-
-        // Export (local) — writes the current snapshot to a downloadable
-        // file. The state pill mirrors the footer's last-exported relative
-        // label so the user sees how stale their last manual backup is at
-        // the moment they're about to take a new one.
-        const exportItem = buildSettingsMenuItem(
-            'Export',
-            formatRelativeExportedAt(readLastExportedAt()),
-            function() { exportTodosToFile(); },
-            'settingsMenuItem--exportLocal'
-        );
-        menu.appendChild(exportItem);
-
-        // Import (local) — proxies to the hidden file input the menu
-        // trigger owns. The file's onchange handler runs the validate →
-        // confirm → overwrite flow inside importFromFile.
-        const importItem = buildSettingsMenuItem(
-            'Import',
-            '',
-            function() { importFileInput.click(); },
-            'settingsMenuItem--importLocal'
-        );
-        menu.appendChild(importItem);
-
-        menu.appendChild(buildSettingsMenuDivider());
-
         // DRIVE section — exports/imports that round-trip through the
-        // user's Google Drive via OAuth (drive.file scope). Grouped under
-        // a section heading so the shortened 'Export'/'Import' row labels
-        // disambiguate against the LOCAL section above.
+        // user's Google Drive via OAuth (drive.file scope). The section
+        // heading carries a small sync-state badge that mirrors the badge
+        // on the ghost icon, so the user can see at a glance whether
+        // their local copy is in sync with Drive at the moment of action.
         const driveHeading = document.createElement('div');
         driveHeading.className = 'settingsMenuSectionHeading';
-        driveHeading.textContent = 'Drive';
         driveHeading.setAttribute('role', 'presentation');
+
+        const driveHeadingLabel = document.createElement('span');
+        driveHeadingLabel.className = 'settingsMenuSectionHeadingLabel';
+        driveHeadingLabel.textContent = 'Drive';
+
+        const driveHeadingBadge = document.createElement('span');
+        driveHeadingBadge.id = 'settingsMenuDriveSyncBadge';
+        driveHeadingBadge.className = 'settingsMenuDriveSyncBadge';
+        driveHeadingBadge.setAttribute('aria-hidden', 'true');
+
+        driveHeading.appendChild(driveHeadingLabel);
+        driveHeading.appendChild(driveHeadingBadge);
         menu.appendChild(driveHeading);
 
         // Export (Drive) — uploads the same JSON payload as the local
@@ -1586,6 +1675,13 @@ function component() {
 
         document.body.appendChild(menu);
 
+        // Paint the DRIVE section header badge to reflect the current
+        // cached sync state. The async refresh below may overwrite it
+        // once Drive responds, but the initial paint keeps the badge from
+        // flashing empty in the gap.
+        paintAllSyncBadges();
+        refreshDriveSyncState();
+
         // Anchor the menu beneath the trigger, right-aligned with it. Clamp
         // to the viewport so the menu always renders fully on-screen.
         const rect = settingsToggle.getBoundingClientRect();
@@ -1622,7 +1718,6 @@ function component() {
     nav.appendChild(pomodoroToggle);
     nav.appendChild(musicToggle);
     nav.appendChild(settingsToggle);
-    nav.appendChild(importFileInput);
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
@@ -2705,7 +2800,6 @@ function component() {
     // hand-wired calls at every mutation site.
     const footVersion = document.createElement('span');
     const footCounts  = document.createElement('div');
-    const footExport  = document.createElement('span');
     const footOpen    = document.createElement('span');
     const footDone    = document.createElement('span');
 
@@ -2739,35 +2833,19 @@ function component() {
     });
 
     footCounts.id = 'footCounts';
-    footExport.id = 'footExport';
     footOpen.id = 'footOpen';
     footDone.id = 'footDone';
-    // Initial copy is the never-exported state; refreshFooterExportLabel
-    // overwrites it on first paint with the current relative timestamp.
-    footExport.textContent = formatRelativeExportedAt(readLastExportedAt());
     footOpen.textContent = '0 OPEN';
     footDone.textContent = '0 DONE';
 
     foot.appendChild(footVersion);
 
-    // ── stale-export reminder ──
-    // Sits between the version label on the left and the open/done counts on
-    // the right. exportImport.js owns the visibility logic (driven off
-    // todoapp_lastExportedAt and a "has any todos" check); refreshStaleHint
-    // is called here on first paint and again whenever the import flow
-    // completes or an export finishes.
-    const staleExportHint = createStaleExportHint();
-    foot.appendChild(staleExportHint);
-
-    footCounts.appendChild(footExport);
     footCounts.appendChild(footOpen);
     footCounts.appendChild(footDone);
     foot.appendChild(footCounts);
 
     // Initial unseen-indicator paint — deferred so the dot element is in the DOM.
     setTimeout(updateChangelogDot, 0);
-    setTimeout(refreshStaleHint, 0);
-    setTimeout(refreshFooterExportLabel, 0);
 
     main.appendChild(main1);
     main.appendChild(sidebarResizer);
@@ -3502,13 +3580,12 @@ function component() {
         const body = document.createElement('div');
         body.id = 'settingsModalBody';
 
-        // Data section — first in the modal so the four data-transfer
-        // actions (Local Export / Local Import / Drive Export / Drive
-        // Import) are reachable on mobile, where the desktop ghost menu
-        // that houses them is hidden by the ≤700px breakpoint. The 2x2
-        // grid lays out as row 1 = Local Export / Local Import, row 2 =
-        // Drive Export / Drive Import; each tile invokes the same handler
-        // the corresponding desktop menu row already wires up.
+        // Data section — first in the modal so the Drive export/import
+        // actions are reachable on mobile, where the desktop ghost menu
+        // that houses them is hidden by the ≤700px breakpoint. The grid
+        // lays out as two side-by-side tiles: Drive Export / Drive
+        // Import; each invokes the same handler the corresponding
+        // desktop menu row already wires up.
         const dataSection = document.createElement('section');
         dataSection.id = 'settingsDataSection';
         dataSection.className = 'settingsSection';
@@ -3520,16 +3597,6 @@ function component() {
         const dataGrid = document.createElement('div');
         dataGrid.className = 'settingsModalDataGrid';
 
-        const localExportTile = createDrawerDataTile(
-            '↓', 'Export', 'to file',
-            function() { exportTodosToFile(); setTimeout(refreshDataCaption, 0); },
-            'settingsModalDataTile--localExport'
-        );
-        const localImportTile = createDrawerDataTile(
-            '↑', 'Import', 'from file',
-            function() { importFileInput.click(); },
-            'settingsModalDataTile--localImport'
-        );
         const driveExportTile = createDrawerDataTile(
             '☁↓', 'Export', 'to Drive',
             function() {
@@ -3545,15 +3612,14 @@ function component() {
             function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
             'settingsModalDataTile--driveImport'
         );
-        dataGrid.appendChild(localExportTile);
-        dataGrid.appendChild(localImportTile);
         dataGrid.appendChild(driveExportTile);
         dataGrid.appendChild(driveImportTile);
         dataSection.appendChild(dataGrid);
 
         // Caption sits beneath the grid and surfaces the same stale-time
-        // signal the desktop ghost menu shows as right-side pills, so the
-        // user can see how stale each backup is before tapping a tile.
+        // signal the desktop ghost menu shows as the Drive Export pill,
+        // so the user can see how stale their Drive backup is before
+        // tapping a tile.
         const dataCaption = document.createElement('div');
         dataCaption.className = 'settingsModalDataCaption';
         dataSection.appendChild(dataCaption);
@@ -3564,8 +3630,7 @@ function component() {
         }
         function refreshDataCaption() {
             dataCaption.textContent =
-                'Last local: ' + formatCaptionPart(readLastExportedAt()) +
-                ' · Last Drive: ' + formatCaptionPart(readLastDriveExportedAt());
+                'Last Drive: ' + formatCaptionPart(readLastDriveExportedAt());
         }
         refreshDataCaption();
 
@@ -5285,12 +5350,11 @@ function component() {
     // exist before the class can be toggled.
     setTimeout(applyCompanionGhostPreference, 0);
 
-    // Wire the desktop drag-and-drop import path. Mobile (pointer: coarse)
-    // is bailed out inside attachDragDropImport — the file picker covers
-    // mobile. Deferred so window listeners attach against the live DOM.
-    setTimeout(function() {
-        attachDragDropImport(function() { rebuildAfterImport(); });
-    }, 0);
+    // One-shot silent Drive sync-state probe. Only fires the Drive list
+    // query when an in-memory OAuth token is already cached; without one,
+    // the indicator stays in its initial 'never' / 'unknown' state and
+    // waits for the next ghost-menu open (or any Drive action) to refresh.
+    setTimeout(refreshDriveSyncState, 0);
 
     return base;
 
