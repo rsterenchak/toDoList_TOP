@@ -147,25 +147,36 @@ export function importTodosFromDrive(onAfterReplace) {
                     const outcome = importTodosFromString(
                         text,
                         function() {
-                            // Mark this device as synced with the Drive
-                            // file we just pulled. Using Drive's
-                            // modifiedTime (not Date.now()) means the
-                            // post-import sync-state comparison reads as
-                            // 'synced' regardless of clock skew between
-                            // this device and Drive's server. Written
-                            // unconditionally on success — even a no-op
-                            // restore should clear the "behind" indicator
-                            // since the local state is by definition in
-                            // sync with that Drive file.
-                            if (file && file.modifiedTime) {
-                                writeLastDriveSyncedAt(file.modifiedTime);
-                            }
                             showDriveToast({ label: 'Imported from Drive' });
                             if (typeof onAfterReplace === 'function') onAfterReplace();
                         },
                         {
                             sourceLabel: describeDriveBackup(file),
                             silentError: true,
+                            // Mark the saveToStorage inside
+                            // replaceAllProjects as sync-initiated so it
+                            // doesn't bump lastLocalMutationAt past the
+                            // sync marker we're about to write and leave
+                            // the indicator stuck on 'ahead'.
+                            fromSync: true,
+                            // Mark this device as synced with the Drive
+                            // file we just pulled BEFORE the replace
+                            // dispatches its driveSyncStateChanged
+                            // recompute, so the live listener never sees
+                            // a state where the data has swapped in but
+                            // the sync marker is still pointing at the
+                            // prior sync. Using Drive's modifiedTime
+                            // (not Date.now()) means the comparison
+                            // reads as 'synced' regardless of clock skew
+                            // between this device and Drive's server.
+                            // Only runs after the user confirms the
+                            // overwrite — a cancelled import leaves the
+                            // prior marker untouched.
+                            onBeforeReplace: function() {
+                                if (file && file.modifiedTime) {
+                                    writeLastDriveSyncedAt(file.modifiedTime);
+                                }
+                            },
                         }
                     );
                     if (!outcome.ok) {

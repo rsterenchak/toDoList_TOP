@@ -20,10 +20,13 @@ import {
     OAUTH_CLIENT_ID,
 } from '../src/driveAuth.js';
 import { listLogic } from '../src/listLogic.js';
+import { importTodosFromString } from '../src/exportImport.js';
 import {
     LAST_DRIVE_SYNCED_AT_KEY,
+    LAST_LOCAL_MUTATION_AT_KEY,
     LEGACY_LAST_DRIVE_EXPORTED_AT_KEY,
     readLastDriveSyncedAt,
+    readLastLocalMutationAt,
     writeLastDriveSyncedAt,
     migrateLegacyDriveSyncMarker,
 } from '../src/prefs.js';
@@ -370,6 +373,126 @@ describe('driveImport — source-level: writes the sync marker on success', () =
         const writeSlice = src.slice(writeIdx, writeIdx + 200);
         expect(writeSlice).not.toMatch(/Date\.now/);
         expect(writeSlice).not.toMatch(/new\s+Date\s*\(\s*\)\.toISOString/);
+    });
+});
+
+
+describe('driveImport — sync-initiated replace suppresses the mutation bump', () => {
+    const src = read('driveImport.js');
+
+    it('passes fromSync: true through importTodosFromString so the post-replace save does not bump lastLocalMutationAt', () => {
+        // Without the flag, saveToStorage stamps Date.now() into
+        // lastLocalMutationAt after replaceAllProjects runs. That bump
+        // lands a few ms AFTER lastDriveSyncedAt is written from the
+        // Drive file's modifiedTime, so the indicator computes 'ahead'
+        // (mutation > sync) even though the import just put the device
+        // in sync.
+        expect(src).toMatch(
+            /importTodosFromString\s*\([\s\S]*?fromSync\s*:\s*true/
+        );
+    });
+
+    it('writes lastDriveSyncedAt in an onBeforeReplace hook so it precedes the driveSyncStateChanged dispatch', () => {
+        // Reordering the write to BEFORE replaceAllProjects guarantees
+        // the live recompute fired from saveToStorage observes the new
+        // sync marker, not the prior one.
+        expect(src).toMatch(
+            /onBeforeReplace\s*:\s*function[\s\S]*?writeLastDriveSyncedAt\s*\(\s*file\.modifiedTime/
+        );
+    });
+});
+
+
+describe('driveImport — end-to-end: confirmed import leaves lastLocalMutationAt <= lastDriveSyncedAt', () => {
+    // Drives the same importTodosFromString pipeline driveImport.js uses,
+    // up to and including the confirm-modal click, and pins the regression:
+    // after a successful import the local mutation marker must not have
+    // been pushed past the just-written Drive sync marker.
+
+    beforeEach(() => {
+        listLogic._reset();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        clearConfirmModal();
+    });
+
+    afterEach(() => {
+        clearConfirmModal();
+    });
+
+    it('does not bump lastLocalMutationAt past the Drive sync marker on confirmed import', () => {
+        // Seed an old local mutation timestamp so the test can prove the
+        // value stays put — not merely that some new value lands above
+        // the sync marker by chance.
+        const OLD_MUTATION = '2026-04-01T00:00:00.000Z';
+        localStorage.setItem(LAST_LOCAL_MUTATION_AT_KEY, OLD_MUTATION);
+
+        // Drive file mtime sits AFTER the local mutation — the realistic
+        // "another device pushed a newer backup" shape that triggered
+        // the original bug report.
+        const driveModifiedIso = '2026-05-23T10:14:28.783Z';
+
+        const payload = JSON.stringify({
+            version: 1,
+            exportedAt: driveModifiedIso,
+            projects: [
+                { name: 'FromDrive', items: [{ tit: 'Pulled', completed: false, due: '' }], color: null },
+            ],
+        });
+
+        const outcome = importTodosFromString(payload, function() { /* onAfterReplace */ }, {
+            sourceLabel: 'Restore from "todos-2026-05-23.json"?',
+            silentError: true,
+            fromSync: true,
+            onBeforeReplace: function() {
+                writeLastDriveSyncedAt(driveModifiedIso);
+            },
+        });
+        expect(outcome.ok).toBe(true);
+
+        // Click the confirm modal's Replace button — the same affordance
+        // a real user would tap to commit the destructive overwrite.
+        const confirmBtn = document.getElementById('confirmModalConfirm');
+        expect(confirmBtn).toBeTruthy();
+        confirmBtn.click();
+
+        // The import committed: project tree was replaced.
+        expect(listLogic.listProjectsArray()).toEqual(['FromDrive']);
+
+        // Mutation marker is untouched by the sync-initiated save.
+        expect(readLastLocalMutationAt()).toBe(OLD_MUTATION);
+
+        // Sync marker is the Drive file's modifiedTime.
+        expect(readLastDriveSyncedAt()).toBe(driveModifiedIso);
+
+        // Acceptance criterion (1): lastLocalMutationAt <= lastDriveSyncedAt.
+        expect(Date.parse(readLastLocalMutationAt()))
+            .toBeLessThanOrEqual(Date.parse(readLastDriveSyncedAt()));
+    });
+
+    it('still bumps lastLocalMutationAt for non-sync (local file picker) imports', () => {
+        // The local file-picker path leaves opts.fromSync unset, so the
+        // mutation marker SHOULD bump — acceptance criterion (3) requires
+        // the flag to suppress only sync-initiated saves.
+        const OLD_MUTATION = '2026-04-01T00:00:00.000Z';
+        localStorage.setItem(LAST_LOCAL_MUTATION_AT_KEY, OLD_MUTATION);
+
+        const payload = JSON.stringify({
+            version: 1,
+            exportedAt: '2026-05-23T00:00:00.000Z',
+            projects: [
+                { name: 'FromFile', items: [], color: null },
+            ],
+        });
+
+        const outcome = importTodosFromString(payload, null, { silentError: true });
+        expect(outcome.ok).toBe(true);
+
+        document.getElementById('confirmModalConfirm').click();
+
+        const after = readLastLocalMutationAt();
+        expect(after).not.toBe(OLD_MUTATION);
+        expect(isNaN(Date.parse(after))).toBe(false);
     });
 });
 

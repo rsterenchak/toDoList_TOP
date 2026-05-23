@@ -65,9 +65,19 @@ export const listLogic = (function () {
     // render loop so it can flip to amber the instant the user edits
     // anything (no network, just two localStorage reads + a Number
     // compare in the listener).
-    function saveToStorage() {
+    //
+    // `opts.fromSync: true` suppresses the lastLocalMutationAt bump. The
+    // Drive import pipeline passes this so a restore — which replaces the
+    // data model as a side effect of syncing FROM Drive — doesn't push
+    // the mutation marker past the just-written lastDriveSyncedAt and
+    // leave the indicator stuck on 'ahead'. Storage still persists and
+    // the recompute event still dispatches; only the mutation timestamp
+    // is held.
+    function saveToStorage(opts) {
         localStorage.setItem('allProjects', JSON.stringify(allProjects));
-        writeLastLocalMutationAt(new Date().toISOString());
+        if (!(opts && opts.fromSync === true)) {
+            writeLastLocalMutationAt(new Date().toISOString());
+        }
         if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
             try {
                 document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
@@ -1255,7 +1265,11 @@ export const listLogic = (function () {
     // spec). Accepts an array of `{ name, items, color }` entries; falls back
     // to safe defaults on missing fields so a slightly-off import file can't
     // brick the app. Returns the count of projects that were written.
-    function replaceAllProjects(projects) {
+    //
+    // `opts.fromSync: true` forwards the same flag onto saveToStorage so a
+    // sync-initiated replace doesn't bump the local mutation marker past
+    // lastDriveSyncedAt — see saveToStorage for the rationale.
+    function replaceAllProjects(projects, opts) {
 
         if (!Array.isArray(projects)) return 0;
 
@@ -1302,7 +1316,7 @@ export const listLogic = (function () {
         });
 
         allProjectsTotal = Object.keys(allProjects).length;
-        saveToStorage();
+        saveToStorage(opts);
 
         return allProjectsTotal;
     }

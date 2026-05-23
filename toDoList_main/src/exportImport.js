@@ -300,7 +300,7 @@ function showImportError(message) {
 }
 
 
-function handleValidatedImport(projects, onAfterReplace, sourceLabel) {
+function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) {
 
     const before = describeCurrentState();
     const projectWord = before.projectCount === 1 ? 'project' : 'projects';
@@ -311,12 +311,22 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel) {
         + before.todoCount + ' ' + todoWord + ' across '
         + before.projectCount + ' ' + projectWord + ' will be permanently overwritten.';
 
+    const opts = flowOpts || {};
+
     showConfirmModal({
         message: msg,
         confirmLabel: 'Replace',
         danger: true,
         onConfirm: function() {
-            listLogic.replaceAllProjects(projects);
+            // onBeforeReplace runs after the user confirms but BEFORE
+            // replaceAllProjects dispatches the driveSyncStateChanged
+            // recompute. The Drive import path uses this hook to write
+            // lastDriveSyncedAt first so the live recompute reads a
+            // consistent state where the sync marker reflects the file
+            // the data was just sourced from, not the previous sync.
+            if (typeof opts.onBeforeReplace === 'function') opts.onBeforeReplace();
+            const replaceOpts = opts.fromSync === true ? { fromSync: true } : undefined;
+            listLogic.replaceAllProjects(projects, replaceOpts);
             if (typeof onAfterReplace === 'function') onAfterReplace();
         },
     });
@@ -337,6 +347,13 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel) {
 // returned descriptor lets the caller surface the message in its own
 // toast (Drive uses this so the failure lands in the unified Drive
 // toast alongside the success message styling).
+//
+// `options.fromSync: true` and `options.onBeforeReplace` are threaded
+// through to the confirm handler so sync-initiated callers (Drive
+// import) can both suppress the lastLocalMutationAt bump and write
+// lastDriveSyncedAt before the replace dispatches its recompute event.
+// Both only fire after the user confirms the destructive overwrite, so
+// a cancelled import leaves every marker untouched.
 export function importTodosFromString(jsonString, onAfterReplace, options) {
     const opts = options || {};
     const result = parseAndValidateExport(jsonString);
@@ -344,7 +361,10 @@ export function importTodosFromString(jsonString, onAfterReplace, options) {
         if (!opts.silentError) showImportError(result.error);
         return { ok: false, error: result.error };
     }
-    handleValidatedImport(result.projects, onAfterReplace, opts.sourceLabel);
+    handleValidatedImport(result.projects, onAfterReplace, opts.sourceLabel, {
+        fromSync: opts.fromSync === true,
+        onBeforeReplace: opts.onBeforeReplace,
+    });
     return { ok: true };
 }
 
