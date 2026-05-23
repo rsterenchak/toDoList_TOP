@@ -1,6 +1,6 @@
 import './style.css';
 import { toDo } from './toDo.js';
-import { isSampleSeeded, setSampleSeeded } from './prefs.js';
+import { isSampleSeeded, setSampleSeeded, writeLastLocalMutationAt } from './prefs.js';
 
 
 // Recurrence vocabulary used by `sanitizeRecurrence`. Declared above the
@@ -55,9 +55,24 @@ export const listLogic = (function () {
 
     // ********************* STORAGE HANDLING ********************* //
 
-    // HELPER: persist current state of allProjects to localStorage
+    // HELPER: persist current state of allProjects to localStorage. This is
+    // the single funnel every mutation routes through — adds, removes,
+    // edits, completion toggles, reorders, recurrence config, project
+    // colors, sort fixups, and the bulk replace path. Stamp the local
+    // mutation marker here so the Drive sync indicator can spot
+    // "local state has drifted ahead of the last sync" without each call
+    // site having to remember to write it, then signal the indicator's
+    // render loop so it can flip to amber the instant the user edits
+    // anything (no network, just two localStorage reads + a Number
+    // compare in the listener).
     function saveToStorage() {
         localStorage.setItem('allProjects', JSON.stringify(allProjects));
+        writeLastLocalMutationAt(new Date().toISOString());
+        if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+            try {
+                document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
+            } catch (e) { /* CustomEvent unsupported — indicator refreshes on next menu open */ }
+        }
     }
 
     // INIT: restore any previously saved projects from localStorage

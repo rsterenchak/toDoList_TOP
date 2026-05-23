@@ -46,7 +46,7 @@ describe('Drive sync indicator — source-level wiring in main.js', () => {
         // 'behind', 'never', or 'unknown'.
         expect(main).toMatch(/function\s+computeDriveSyncState\s*\(/);
         const idx = main.indexOf('function computeDriveSyncState');
-        const fn = main.slice(idx, idx + 800);
+        const fn = main.slice(idx, idx + 2000);
         expect(fn).toMatch(/['"]synced['"]/);
         expect(fn).toMatch(/['"]behind['"]/);
         expect(fn).toMatch(/['"]never['"]/);

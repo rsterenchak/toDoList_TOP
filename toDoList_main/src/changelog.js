@@ -11,9 +11,7 @@ export const changelog = [
             "Removed the empty band below the mobile tab bar; version and project count moved into a new About section in Settings.",
             "Mobile todo rows now have a one-tap copy-title button next to the title and a slimmer due-date pill so the title takes back the space.",
             "Importing from Drive now clears the 'behind' sync indicator instead of leaving it amber.",
-        ],
-        changed: [
-            "Local-file export and import removed from the menus; the ghost icon and Drive section header now show a Drive sync-state badge instead.",
+            "Editing todos locally now correctly shows the Drive sync indicator as out of sync.",
         ],
     },
 ];

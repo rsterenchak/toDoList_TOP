@@ -14,6 +14,7 @@ export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const LAST_EXPORTED_AT_KEY = 'todoapp_lastExportedAt';
 export const LAST_DRIVE_SYNCED_AT_KEY = 'todoapp_lastDriveSyncedAt';
+export const LAST_LOCAL_MUTATION_AT_KEY = 'todoapp_lastLocalMutationAt';
 // One-shot migration source — see migrateLegacyDriveSyncMarker below.
 export const LEGACY_LAST_DRIVE_EXPORTED_AT_KEY = 'todoapp_lastDriveExportedAt';
 export const SIDEBAR_RAIL_KEY = 'todoapp_sidebarRail';
@@ -169,6 +170,27 @@ export function readLastDriveSyncedAt() {
 export function writeLastDriveSyncedAt(isoString) {
     try {
         localStorage.setItem(LAST_DRIVE_SYNCED_AT_KEY, isoString);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── last-local-mutation-at marker ──
+// Wall-clock ISO timestamp of the most recent local data-model mutation
+// (project or todo add/remove/edit, completion toggle, reorder). Written
+// from listLogic.js's saveToStorage funnel, so every persisting change
+// touches it exactly once. The Drive sync-state indicator compares this
+// against lastDriveSyncedAt to decide whether the local state has drifted
+// ahead of the last successful sync — pure localStorage math, no network.
+export function readLastLocalMutationAt() {
+    try {
+        return localStorage.getItem(LAST_LOCAL_MUTATION_AT_KEY);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function writeLastLocalMutationAt(isoString) {
+    try {
+        localStorage.setItem(LAST_LOCAL_MUTATION_AT_KEY, isoString);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

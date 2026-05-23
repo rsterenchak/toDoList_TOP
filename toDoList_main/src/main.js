@@ -79,7 +79,7 @@ import { formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
 import { getCachedAccessToken } from './driveAuth.js';
-import { readLastDriveSyncedAt, migrateLegacyDriveSyncMarker } from './prefs.js';
+import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
@@ -1283,27 +1283,55 @@ function component() {
     // ── Drive sync-state indicator ──
     //
     // Reflects the local lastDriveSyncedAt timestamp against the latest
-    // Drive backup's modifiedTime in four buckets:
-    //   synced   — local timestamp >= Drive modifiedTime
+    // Drive backup's modifiedTime AND the local mutation marker in five
+    // buckets:
+    //   synced   — no drift in either direction
+    //   ahead    — local edits since the last sync (push to Drive)
     //   behind   — Drive modifiedTime is newer (another device pushed)
-    //   never    — no lastDriveSyncedAt and/or no Drive file
+    //   never    — no lastDriveSyncedAt and no Drive file
     //   unknown  — query failed, network offline, or no cached OAuth token
+    //
+    // The diverged case (both local edits AND a newer Drive file) folds
+    // into 'behind' — this app has no conflict-resolution UI yet, so
+    // surfacing "pull first" is the conservative call.
     //
     // Paints two surfaces: the cloud badge overlaid on the ghost icon in
     // the header, and the matching cloud icon next to the DRIVE section
     // header inside the popover menu. Both surfaces share the same state.
     let _driveSyncState = 'unknown';
     let _driveSyncTooltip = 'Sync state unknown';
+    // Cached Drive `modifiedTime` from the most recent successful query,
+    // so the local-edit recompute can re-evaluate `driveAhead` without
+    // re-issuing the Drive query (spec: "Don't run the Drive query on
+    // these local-edit ticks").
+    let _driveModifiedTimeCache = null;
 
-    function computeDriveSyncState(localIso, driveModifiedIso) {
+    function computeDriveSyncState(localIso, driveModifiedIso, localMutationIso) {
         if (!driveModifiedIso) {
-            return localIso ? 'synced' : 'never';
+            // No Drive file in evidence. With no local marker either,
+            // the user has never interacted with Drive — 'never'.
+            // Otherwise apply the localAhead branch against the synced
+            // marker so a local edit after the last sync still surfaces.
+            if (!localIso) return 'never';
+            const syncedMs = Date.parse(localIso);
+            if (isNaN(syncedMs)) return 'unknown';
+            if (localMutationIso) {
+                const mutationMs = Date.parse(localMutationIso);
+                if (!isNaN(mutationMs) && mutationMs > syncedMs) return 'ahead';
+            }
+            return 'synced';
         }
         if (!localIso) return 'behind';
-        const localMs = Date.parse(localIso);
-        const driveMs = Date.parse(driveModifiedIso);
-        if (isNaN(localMs) || isNaN(driveMs)) return 'unknown';
-        return localMs >= driveMs ? 'synced' : 'behind';
+        const syncedMs = Date.parse(localIso);
+        const driveMs  = Date.parse(driveModifiedIso);
+        if (isNaN(syncedMs) || isNaN(driveMs)) return 'unknown';
+        const driveAhead = driveMs > syncedMs;
+        if (driveAhead) return 'behind';
+        if (localMutationIso) {
+            const mutationMs = Date.parse(localMutationIso);
+            if (!isNaN(mutationMs) && mutationMs > syncedMs) return 'ahead';
+        }
+        return 'synced';
     }
 
     function syncStateTooltip(state, localIso) {
@@ -1312,14 +1340,16 @@ function component() {
             return 'Up to date — last synced ' + rel.replace(/^Synced\s*/, '');
         }
         if (state === 'behind') return 'Drive is newer than local — pull to update';
+        if (state === 'ahead')  return 'Local has unsaved changes — push to Drive';
         if (state === 'never')  return 'Not synced to Drive yet';
         return 'Sync state unknown';
     }
 
-    // SVG glyph for each state — cloud-check (synced), cloud-up (behind),
-    // cloud-off (never / unknown). All three sized to 12x12, single-color
-    // via currentColor so the wrapping element's color CSS rule drives the
-    // tint (green / amber / muted).
+    // SVG glyph for each state — cloud-check (synced), cloud-up (behind
+    // and ahead share the same glyph; the tooltip carries the
+    // direction), cloud-off (never / unknown). All sized to 12x12,
+    // single-color via currentColor so the wrapping element's color
+    // CSS rule drives the tint (green / amber / muted).
     const SYNC_GLYPHS = {
         synced:
             '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -1339,6 +1369,7 @@ function component() {
             '</svg>',
     };
     SYNC_GLYPHS.unknown = SYNC_GLYPHS.never;
+    SYNC_GLYPHS.ahead   = SYNC_GLYPHS.behind;
 
     function paintSyncBadge(host, state) {
         if (!host) return;
@@ -1366,28 +1397,58 @@ function component() {
 
     // Silent Drive query — only fires when a valid in-memory OAuth token is
     // already cached (i.e., the user signed in earlier this session via an
-    // explicit Drive action). Without a cached token, the state stays
-    // 'unknown' rather than popping a consent screen. The query runs on
-    // app load and on every ghost-menu open.
+    // explicit Drive action). Without a cached token the local-only branch
+    // can still surface 'ahead' (the user has clearly edited since their
+    // last sync), but we can't tell whether Drive is also newer, so the
+    // 'behind' branch is suppressed — the state lands on 'unknown'
+    // instead. The query runs on app load and on every ghost-menu open.
     function refreshDriveSyncState() {
         const token = getCachedAccessToken();
+        const localIso = readLastDriveSyncedAt();
+        const localMutationIso = readLastLocalMutationAt();
         if (!token) {
-            const localIso = readLastDriveSyncedAt();
-            setDriveSyncState(localIso ? 'unknown' : 'never', localIso);
+            // Local-only signal: with no Drive query, only the localAhead
+            // branch is reliable. Fall through to the historic
+            // 'unknown'/'never' bucket otherwise so we don't
+            // optimistically claim 'synced' without a verification.
+            const localOnly = computeDriveSyncState(localIso, null, localMutationIso);
+            if (localOnly === 'ahead') {
+                setDriveSyncState('ahead', localIso);
+            } else {
+                setDriveSyncState(localIso ? 'unknown' : 'never', localIso);
+            }
             return Promise.resolve();
         }
         return queryLatestDriveFile(token).then(function(files) {
             const file = files && files.length ? files[0] : null;
-            const localIso = readLastDriveSyncedAt();
+            _driveModifiedTimeCache = file && file.modifiedTime ? file.modifiedTime : null;
             setDriveSyncState(
-                computeDriveSyncState(localIso, file && file.modifiedTime),
+                computeDriveSyncState(localIso, _driveModifiedTimeCache, localMutationIso),
                 localIso
             );
         }).catch(function() {
-            const localIso = readLastDriveSyncedAt();
             setDriveSyncState('unknown', localIso);
         });
     }
+
+    // Local-only recompute — fires from the `driveSyncStateChanged`
+    // CustomEvent dispatched by listLogic.saveToStorage after every
+    // mutation. Uses the cached driveModifiedTime from the most recent
+    // app-load/menu-open query, so the indicator flips to amber the
+    // instant the user edits anything without re-issuing the Drive
+    // query. `driveAhead` therefore can't get clobbered by local-edit
+    // ticks — the cached input is the most authoritative thing we have
+    // until the next menu open refreshes it.
+    function recomputeDriveSyncStateLocal() {
+        const localIso = readLastDriveSyncedAt();
+        const localMutationIso = readLastLocalMutationAt();
+        setDriveSyncState(
+            computeDriveSyncState(localIso, _driveModifiedTimeCache, localMutationIso),
+            localIso
+        );
+    }
+
+    document.addEventListener('driveSyncStateChanged', recomputeDriveSyncStateLocal);
 
     // Initial paint reflects the local-only snapshot — no Drive file
     // information yet, so the state lands on 'never' (no local timestamp)
