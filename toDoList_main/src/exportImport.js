@@ -174,6 +174,27 @@ function showImportError(message) {
 
 function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) {
 
+    const opts = flowOpts || {};
+
+    // Shared apply path — the confirmation modal and the silent branch
+    // both land here. onBeforeReplace runs first so any sync-marker write
+    // precedes replaceAllProjects's driveSyncStateChanged dispatch.
+    const applyReplace = function() {
+        if (typeof opts.onBeforeReplace === 'function') opts.onBeforeReplace();
+        const replaceOpts = opts.fromSync === true ? { fromSync: true } : undefined;
+        listLogic.replaceAllProjects(projects, replaceOpts);
+        if (typeof onAfterReplace === 'function') onAfterReplace();
+    };
+
+    // Auto-pull (silent) bypasses the destructive-overwrite confirmation.
+    // Only the Drive auto-sync path sets `silent: true` — the user opted
+    // in by enabling auto-sync, so the confirm step is implicit. All
+    // other callers (manual Drive import, drag-and-drop) keep the modal.
+    if (opts.silent === true) {
+        applyReplace();
+        return;
+    }
+
     const before = describeCurrentState();
     const projectWord = before.projectCount === 1 ? 'project' : 'projects';
     const todoWord = before.todoCount === 1 ? 'todo' : 'todos';
@@ -183,24 +204,11 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) 
         + before.todoCount + ' ' + todoWord + ' across '
         + before.projectCount + ' ' + projectWord + ' will be permanently overwritten.';
 
-    const opts = flowOpts || {};
-
     showConfirmModal({
         message: msg,
         confirmLabel: 'Replace',
         danger: true,
-        onConfirm: function() {
-            // onBeforeReplace runs after the user confirms but BEFORE
-            // replaceAllProjects dispatches the driveSyncStateChanged
-            // recompute. The Drive import path uses this hook to write
-            // lastDriveSyncedAt first so the live recompute reads a
-            // consistent state where the sync marker reflects the file
-            // the data was just sourced from, not the previous sync.
-            if (typeof opts.onBeforeReplace === 'function') opts.onBeforeReplace();
-            const replaceOpts = opts.fromSync === true ? { fromSync: true } : undefined;
-            listLogic.replaceAllProjects(projects, replaceOpts);
-            if (typeof onAfterReplace === 'function') onAfterReplace();
-        },
+        onConfirm: applyReplace,
     });
 }
 
@@ -236,6 +244,7 @@ export function importTodosFromString(jsonString, onAfterReplace, options) {
     handleValidatedImport(result.projects, onAfterReplace, opts.sourceLabel, {
         fromSync: opts.fromSync === true,
         onBeforeReplace: opts.onBeforeReplace,
+        silent: opts.silent === true,
     });
     return { ok: true };
 }

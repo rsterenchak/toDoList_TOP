@@ -208,11 +208,12 @@ describe('Drive sync indicator — computeDriveSyncState with lastLocalMutationA
         expect(computeDriveSyncState(SYNCED, NEWER, SYNCED)).toBe('behind');
     });
 
-    it('folds the diverged case (both ahead) into "behind"', () => {
-        // localAhead = true AND driveAhead = true — spec says pull first,
-        // so the indicator surfaces 'behind' rather than 'ahead' or a
-        // separate diverged state.
-        expect(computeDriveSyncState(SYNCED, NEWER, NEWER)).toBe('behind');
+    it('surfaces the diverged case (both ahead) as "diverged"', () => {
+        // Auto-sync first-slice supersedes the prior fold-to-behind
+        // behavior: when both local and Drive have moved past the sync
+        // marker, the indicator reports 'diverged' so the popover can
+        // offer explicit overwrite-with-warning resolution buttons.
+        expect(computeDriveSyncState(SYNCED, NEWER, NEWER)).toBe('diverged');
     });
 
     it('returns "ahead" against a null Drive modifiedTime when local has drifted', () => {
