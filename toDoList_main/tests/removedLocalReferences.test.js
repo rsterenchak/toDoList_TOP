@@ -42,3 +42,30 @@ describe('removed LOCAL helpers — static scan', () => {
         });
     });
 });
+
+
+// The single Drive Sync row replaced the previous five-row block. The
+// five removed extraClass anchors must not appear anywhere in main.js
+// or style.css — a stray reference would mean a stale row builder or
+// CSS rule survived the collapse and a future contributor could rewire
+// it back into the menu by accident.
+const REMOVED_MENU_ROW_ANCHORS = [
+    'settingsMenuItem--driveConnect',
+    'settingsMenuItem--driveExport',
+    'settingsMenuItem--driveImport',
+    'settingsMenuItem--driveResolvePush',
+    'settingsMenuItem--driveResolvePull',
+];
+
+describe('removed DRIVE menu row anchors — static scan', () => {
+    ['main.js', 'style.css'].forEach(function(filename) {
+        describe(filename, () => {
+            const src = read(filename);
+            REMOVED_MENU_ROW_ANCHORS.forEach(function(name) {
+                it('does not reference the removed anchor "' + name + '"', () => {
+                    expect(src).not.toMatch(new RegExp(name));
+                });
+            });
+        });
+    });
+});

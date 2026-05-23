@@ -5206,33 +5206,87 @@ body.driveImportInProgress .settingsModalDataTile--driveImport {
   outline: none;
 }
 
-/* Loading state on the Export to Drive menu row. Surfaced via a class on
-   <body> so the row picks it up if the user re-opens the menu mid-upload.
-   Pointer events are blocked to keep the early-return in
-   exportTodosToDrive from being the only line of defense against a
-   double-click. */
-body.driveExportInProgress .settingsMenuItem--driveExport {
+/* Single Drive Sync menu row — replaces the previous five-row block
+   (Connect / Export / Import / Push overwrite / Pull overwrite). During
+   any in-flight sync (auto or manual), driveExportInProgress or
+   driveImportInProgress on <body> dims the row and blocks pointer events
+   so the user can't kick off a second sync mid-flight. */
+body.driveExportInProgress .settingsMenuItem--driveSync,
+body.driveImportInProgress .settingsMenuItem--driveSync {
   opacity: 0.55;
   pointer-events: none;
 }
 
-/* Connect to Drive menu row — dedicated auth-only entry that sits above
-   the Export and Import rows in the DRIVE section. Once signed in for the
-   session the row flips to a dimmed, non-clickable status row
-   ("Signed in — auto-sync on") via the --signedIn modifier. */
-.settingsMenuItem--driveConnect--signedIn {
-  opacity: 0.65;
-  pointer-events: none;
-  cursor: default;
+/* Diverged conflict popover. Surfaces only when the user clicks the Sync
+   row in 'diverged' state — offers the two destructive overwrite paths
+   (push or pull) the previous menu rows surfaced permanently. Follows
+   the standard backdrop + dialog vocabulary from showConfirmModal. */
+#driveConflictBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-/* Loading state on the Import from Drive menu row. Same shape as the
-   Export-to-Drive row above so OAuth + query + download (which can take
-   several seconds on the first click of a session) reads as a deliberate
-   in-flight action and not a dead click. */
-body.driveImportInProgress .settingsMenuItem--driveImport {
-  opacity: 0.55;
-  pointer-events: none;
+#driveConflictPopover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 16px 16px 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#driveConflictHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#driveConflictTitle {
+  font-weight: 600;
+  font-size: 14px;
+}
+#driveConflictClose {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+#driveConflictClose:hover { color: var(--text-primary); }
+#driveConflictBody {
+  font-size: 13px;
+  color: var(--text-secondary, var(--text-primary));
+  line-height: 1.4;
+}
+#driveConflictActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.driveConflictAction {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.driveConflictAction:hover { background: var(--bg-hover); }
+.driveConflictAction:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 

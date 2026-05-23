@@ -266,44 +266,35 @@ describe('driveImport — source-level contract', () => {
 });
 
 
-describe('settings menu — Import from Drive wiring', () => {
+describe('settings menu — Import from Drive wiring (via Sync row)', () => {
     const main = read('main.js');
     const css = read('style.css');
 
-    it('builds a Drive Import menu item via the shared helper, tagged with the driveImport anchor class', () => {
-        // The visible label shortens to 'Import' since the DRIVE section
-        // header disambiguates against the LOCAL Import row above. The
-        // stable identifier is the `settingsMenuItem--driveImport`
-        // extraClass that CSS and tests pivot on.
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import'\s*,[\s\S]{0,300}?'settingsMenuItem--driveImport'/);
-    });
-
-    it('Drive Import sits directly below Drive Export inside the DRIVE section', () => {
-        // After section grouping, the Drive Import row sits directly under
-        // its sibling Drive Export row — not under the local Import row.
-        // The rows are matched by their stable anchor classes. Only the
-        // Drive Import row's own buildSettingsMenuItem call sits between
-        // the two extraClass anchors in source order — no third row may
-        // sneak in.
-        const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
-        const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
-        expect(driveExportIdx).toBeGreaterThan(-1);
-        expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
-        // The buildSettingsMenuItem call between the two anchors must be
-        // exactly one — the Drive Import row itself. Asserting on a
-        // single call in the between-slice catches accidental inserts of
-        // another row in the DRIVE section.
-        const between = main.slice(driveExportIdx, driveImportIdx);
-        const buildMatches = between.match(/buildSettingsMenuItem\(/g) || [];
-        expect(buildMatches.length).toBe(1);
-    });
-
-    it('Drive Import row invokes importTodosFromDrive() with the rebuild callback', () => {
-        const idx = main.indexOf("'settingsMenuItem--driveImport'");
-        expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
-        expect(slice).toMatch(/importTodosFromDrive\s*\(/);
-        expect(slice).toMatch(/rebuildAfterImport\s*\(/);
+    it('importTodosFromDrive is still reachable — invoked by the diverged popover pull branch with the rebuild callback', () => {
+        // The previous dedicated "Import" menu row is gone. The pull path
+        // now surfaces in two places: the auto-sync orchestrator's
+        // pull branch and the diverged conflict popover's "Pull from Drive
+        // (overwrite local)" button — both call importTodosFromDrive with
+        // the same rebuild callback the previous menu row passed in.
+        expect(main).toMatch(/importTodosFromDrive\s*\(/);
+        // Use brace-balanced extraction — the popover body contains inner
+        // function declarations that would truncate a naive indexOf scan.
+        const fnIdx = main.indexOf('function openDriveConflictPopover');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const after = main.slice(fnIdx);
+        const bodyStart = after.indexOf('{');
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < after.length; i++) {
+            const c = after.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = after.slice(0, i + 1); break; }
+            }
+        }
+        expect(body).toMatch(/importTodosFromDrive\s*\(/);
+        expect(body).toMatch(/rebuildAfterImport\s*\(/);
     });
 
     it('imports importTodosFromDrive from the driveImport module', () => {
@@ -312,10 +303,10 @@ describe('settings menu — Import from Drive wiring', () => {
         );
     });
 
-    it('tags the menu row with settingsMenuItem--driveImport so CSS can dim it during import', () => {
-        expect(main).toMatch(/settingsMenuItem--driveImport/);
+    it('CSS dims the single Sync row during a Drive import, via the new settingsMenuItem--driveSync anchor', () => {
+        expect(css).toMatch(/settingsMenuItem--driveSync/);
         expect(css).toMatch(
-            /body\.driveImportInProgress\s+\.settingsMenuItem--driveImport\s*\{[^}]*pointer-events:\s*none/
+            /body\.driveImportInProgress\s+\.settingsMenuItem--driveSync[\s\S]{0,200}pointer-events:\s*none/
         );
     });
 });

@@ -86,7 +86,7 @@ import {
     autoSyncOnAppLoad,
     registerAutoSyncRebuild,
     getAutoSyncState,
-    isAutoSyncArmed,
+    getCurrentSyncState,
 } from './driveAutoSync.js';
 import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -1505,7 +1505,12 @@ function component() {
         );
     }
 
+    // Re-render the Sync row inline whenever the state machinery moves so
+    // an already-open menu reflects the latest label without closing.
     document.addEventListener('driveSyncStateChanged', recomputeDriveSyncStateLocal);
+    document.addEventListener('driveSyncStateChanged', function() {
+        driveMenuRowNeedsRefresh();
+    });
 
     // Local mutations schedule a debounced auto-sync attempt. The gate
     // lives inside scheduleAutoSync — pre-arming mutations are no-ops, so
@@ -1516,12 +1521,11 @@ function component() {
 
     // Auto-sync state changes (push/pull complete, diverged, failed)
     // refresh the indicator without waiting for the next mutation, and
-    // re-paint the Connect row so a state flip from 'idle' → 'failed'
-    // mid-session updates the row from 'Signed in — auto-sync on' to
-    // 'Reconnect to Drive' while the menu is open.
+    // re-render the Sync row so the label flips (e.g. "syncing..." →
+    // "synced just now") while the menu is open.
     document.addEventListener('autoSyncStateChanged', function() {
         recomputeDriveSyncStateLocal();
-        repaintConnectRow();
+        driveMenuRowNeedsRefresh();
     });
 
     // A successful manual Drive Export or Import arms the auto-sync loop
@@ -1531,17 +1535,14 @@ function component() {
     document.addEventListener('driveManualActionSuccess', function() {
         armAutoSync();
         refreshDriveSyncState();
-        repaintConnectRow();
+        driveMenuRowNeedsRefresh();
     });
 
-    // A successful Connect-to-Drive click fires this event so the menu-row
-    // builder can swap the Connect row's label and class from "Connect to
-    // Drive" → "Signed in — auto-sync on" without a menu reopen. The
-    // Connect handler arms the loop and runs the immediate sync attempt
-    // itself (see onConnectToDriveClick); this listener is purely a UI
-    // repaint hook.
+    // A successful OAuth grant fires this event so the Sync row's label can
+    // flip out of the 'not connected' wording even before the first sync
+    // attempt resolves.
     document.addEventListener('driveConnectionChanged', function() {
-        repaintConnectRow();
+        driveMenuRowNeedsRefresh();
     });
 
     // Initial paint reflects the local-only snapshot — no Drive file
@@ -1677,91 +1678,116 @@ function component() {
         return divider;
     }
 
-    // Compute the three-way state for the Connect to Drive row label.
-    //  • signed in & armed     → "Signed in — auto-sync on" (dimmed status)
-    //  • armed but no token    → "Reconnect to Drive" (token expired mid-session)
-    //  • auto-sync failed      → "Reconnect to Drive"
-    //  • otherwise             → "Connect to Drive"
-    function computeConnectRowState() {
-        const hasToken = !!getCachedAccessToken();
-        const armed = isAutoSyncArmed();
-        const autoSyncState = getAutoSyncState();
-        if (hasToken && armed) {
-            return { label: 'Signed in — auto-sync on', clickable: false };
+    // Compute the inline label string for the single Sync row, given the
+    // resolved sync-state from getCurrentSyncState. The textual contract
+    // ('synced just now' / '5 minutes ago' / 'local has unsaved changes' /
+    // …) is the public surface the user reads — keep it stable so the
+    // state→label tests pin it.
+    function computeDriveSyncLabel(state) {
+        if (state === 'syncing-push' || state === 'syncing-pull') {
+            return 'Sync • syncing…';
         }
-        if (autoSyncState === 'failed' || (armed && !hasToken)) {
-            return { label: 'Reconnect to Drive', clickable: true };
+        if (state === 'synced') {
+            const iso = readLastDriveSyncedAt();
+            if (!iso) return 'Sync • synced';
+            const rel = formatRelativeExportedAt(iso);
+            // formatRelativeExportedAt returns "Synced just now" / "Synced 5
+            // minutes ago". For the just-now case keep the word ("synced
+            // just now"); for older marks drop the "Synced" prefix so the
+            // pill reads "5 minutes ago".
+            if (rel === 'Synced just now') return 'Sync • synced just now';
+            return 'Sync • ' + rel.replace(/^Synced\s*/, '');
         }
-        return { label: 'Connect to Drive', clickable: true };
+        if (state === 'ahead')    return 'Sync • local has unsaved changes';
+        if (state === 'behind')   return 'Sync • Drive is newer';
+        if (state === 'diverged') return 'Sync • conflict — tap to resolve';
+        if (state === 'failed')   return 'Sync • failed — tap to retry';
+        return 'Sync • not connected';
     }
 
-    function onConnectToDriveClick() {
-        if (!OAUTH_CLIENT_ID) {
-            showDriveToast({
-                label: 'Drive sign-in not configured for this build.',
-                error: true,
+    // Dispatch the click action based on the resolved sync state. The
+    // state→action table is the public contract pinned by driveSyncMenuRow
+    // tests: synced/ahead/behind → performAutoSync; failed → arm + perform;
+    // diverged → conflict popover; never → OAuth + arm + perform; in-flight
+    // → no-op (the row is disabled, this branch is defensive only).
+    function onDriveSyncClick(state) {
+        if (state === 'syncing-push' || state === 'syncing-pull') return;
+
+        if (state === 'diverged') {
+            openDriveConflictPopover();
+            return;
+        }
+
+        if (state === 'never') {
+            if (!OAUTH_CLIENT_ID) {
+                showDriveToast({
+                    label: 'Drive sign-in not configured for this build.',
+                    error: true,
+                });
+                return;
+            }
+            getAccessToken().then(function() {
+                armAutoSync();
+                performAutoSync();
+                if (typeof document !== 'undefined' && document.dispatchEvent) {
+                    try {
+                        document.dispatchEvent(new CustomEvent('driveConnectionChanged', {
+                            detail: { connected: true },
+                        }));
+                        document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
+                    } catch (_) { /* CustomEvent unsupported — silent */ }
+                }
+                refreshDriveSyncState();
+                driveMenuRowNeedsRefresh();
+            }).catch(function(err) {
+                const message = (err && err.message) || '';
+                const cancelled = /denied|cancel|popup_closed/i.test(message);
+                showDriveToast({
+                    label: cancelled
+                        ? 'Drive sign-in cancelled.'
+                        : "Couldn't sign in to Drive — try again.",
+                    error: true,
+                });
+                driveMenuRowNeedsRefresh();
             });
             return;
         }
-        getAccessToken().then(function() {
-            // Arm the loop FIRST so the immediate sync attempt below passes
-            // the armed gate inside performAutoSync. Calling armAutoSync()
-            // directly (rather than going through the driveManualActionSuccess
-            // pathway used by Export/Import) keeps Connect's auth-only intent
-            // explicit and makes the success branch's contract testable.
+
+        if (state === 'failed') {
+            // armAutoSync resets failed → idle so performAutoSync's armed
+            // gate passes on this retry tick.
             armAutoSync();
-            // Run an immediate sync attempt against current state so
-            // lastDriveSyncedAt gets populated right away and the indicator
-            // has a real timestamp to compare against (instead of waiting
-            // for the next mutation-driven debounce tick).
             performAutoSync();
-            // Dispatch the connection-change event so the menu row repaints
-            // from "Connect to Drive" → "Signed in — auto-sync on" in place,
-            // and the existing driveSyncStateChanged event so the indicator
-            // re-evaluates against the freshly-armed loop.
-            if (typeof document !== 'undefined' && document.dispatchEvent) {
-                try {
-                    document.dispatchEvent(new CustomEvent('driveConnectionChanged', {
-                        detail: { connected: true },
-                    }));
-                    document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
-                } catch (_) { /* CustomEvent unsupported — silent */ }
-            }
-            refreshDriveSyncState();
-            repaintConnectRow();
-        }).catch(function(err) {
-            const message = (err && err.message) || '';
-            const cancelled = /denied|cancel|popup_closed/i.test(message);
-            showDriveToast({
-                label: cancelled
-                    ? 'Drive sign-in cancelled.'
-                    : "Couldn't sign in to Drive — try again.",
-                error: true,
-            });
-            // Leave the row labeled "Connect to Drive" / "Reconnect to
-            // Drive" so the user can try again without reopening the menu.
-            // Critically: do NOT call armAutoSync() or performAutoSync()
-            // here — the loop stays disarmed until OAuth genuinely resolves.
-            repaintConnectRow();
-        });
+            return;
+        }
+
+        // synced / ahead / behind all route through the same auto-sync
+        // entry point — the decision tree inside performAutoSync re-queries
+        // Drive and picks push / pull / noop on its own.
+        performAutoSync();
     }
 
-    function buildConnectToDriveRow() {
-        const state = computeConnectRowState();
+    // Build the single Drive Sync row. Reads the resolved sync state and
+    // wires a state-specific label + click handler. In-flight states
+    // produce a dimmed, non-clickable row (no listener attached); the
+    // existing body.driveExportInProgress / body.driveImportInProgress
+    // class hooks drive the dim styling.
+    function buildDriveSyncRow() {
+        const state = getCurrentSyncState({
+            driveModifiedIso: _driveModifiedTimeCache,
+            hasToken: !!getCachedAccessToken(),
+        });
+
         const item = document.createElement('button');
         item.type = 'button';
-        item.id = 'settingsMenuConnectToDrive';
-        item.className = 'settingsMenuItem settingsMenuItem--driveConnect';
-        if (!state.clickable) {
-            item.classList.add('settingsMenuItem--driveConnect--signedIn');
-            item.disabled = true;
-            item.setAttribute('aria-disabled', 'true');
-        }
+        item.id = 'settingsMenuDriveSync';
+        item.className = 'settingsMenuItem settingsMenuItem--driveSync';
         item.setAttribute('role', 'menuitem');
+        item.setAttribute('data-sync-state', state);
 
         const label = document.createElement('span');
         label.className = 'settingsMenuItemLabel';
-        label.textContent = state.label;
+        label.textContent = computeDriveSyncLabel(state);
 
         const stateSpan = document.createElement('span');
         stateSpan.className = 'settingsMenuItemState';
@@ -1770,19 +1796,121 @@ function component() {
         item.appendChild(label);
         item.appendChild(stateSpan);
 
-        if (state.clickable) {
-            item.addEventListener('click', onConnectToDriveClick);
+        const inFlight = state === 'syncing-push' || state === 'syncing-pull';
+        if (inFlight) {
+            item.disabled = true;
+            item.setAttribute('aria-disabled', 'true');
+        } else {
+            item.addEventListener('click', function() {
+                onDriveSyncClick(state);
+            });
         }
         return item;
     }
 
-    // Swap the Connect row's DOM node in place so the label flips from
-    // 'Connect to Drive' → 'Signed in — auto-sync on' without a menu
-    // reopen. Safe to call when the menu is closed (no-op).
-    function repaintConnectRow() {
-        const old = document.getElementById('settingsMenuConnectToDrive');
+    // Swap the Sync row's DOM node in place so the label reflects every
+    // state flip while the menu is open (e.g. the user opens the menu mid-
+    // sync and watches the label change from "syncing..." → "synced just
+    // now"). Safe to call when the menu is closed (no-op).
+    function driveMenuRowNeedsRefresh() {
+        const old = document.getElementById('settingsMenuDriveSync');
         if (!old || !old.parentNode) return;
-        old.parentNode.replaceChild(buildConnectToDriveRow(), old);
+        old.parentNode.replaceChild(buildDriveSyncRow(), old);
+    }
+
+    // Diverged conflict popover. Surfaces only when the Sync row is clicked
+    // in 'diverged' state, offering the two destructive overwrite paths
+    // (push or pull) the previous menu rows surfaced permanently. Follows
+    // the standard 3-way dismissal pattern from CLAUDE.md: an explicit
+    // close button, backdrop click, and Escape.
+    function openDriveConflictPopover() {
+        // Defensive: never stack two backdrops.
+        const prior = document.getElementById('driveConflictBackdrop');
+        if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'driveConflictBackdrop';
+
+        const dialog = document.createElement('div');
+        dialog.id = 'driveConflictPopover';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-labelledby', 'driveConflictTitle');
+
+        const header = document.createElement('div');
+        header.id = 'driveConflictHeader';
+
+        const title = document.createElement('div');
+        title.id = 'driveConflictTitle';
+        title.textContent = 'Drive sync conflict';
+
+        const closeX = document.createElement('button');
+        closeX.id = 'driveConflictClose';
+        closeX.type = 'button';
+        closeX.setAttribute('aria-label', 'Close');
+        closeX.textContent = '×';
+
+        header.appendChild(title);
+        header.appendChild(closeX);
+
+        const body = document.createElement('div');
+        body.id = 'driveConflictBody';
+        body.textContent = 'Drive and this device both changed since the last sync. Pick the version to keep — the other side will be overwritten.';
+
+        const actions = document.createElement('div');
+        actions.id = 'driveConflictActions';
+
+        const pushBtn = document.createElement('button');
+        pushBtn.type = 'button';
+        pushBtn.id = 'driveConflictPush';
+        pushBtn.className = 'driveConflictAction';
+        pushBtn.textContent = 'Push to Drive (overwrite Drive copy)';
+
+        const pullBtn = document.createElement('button');
+        pullBtn.type = 'button';
+        pullBtn.id = 'driveConflictPull';
+        pullBtn.className = 'driveConflictAction';
+        pullBtn.textContent = 'Pull from Drive (overwrite local)';
+
+        actions.appendChild(pushBtn);
+        actions.appendChild(pullBtn);
+
+        dialog.appendChild(header);
+        dialog.appendChild(body);
+        dialog.appendChild(actions);
+        backdrop.appendChild(dialog);
+        document.body.appendChild(backdrop);
+
+        let closed = false;
+        function close() {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKeydown, true);
+            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        }
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                close();
+            }
+        }
+
+        closeX.addEventListener('click', close);
+        backdrop.addEventListener('click', function(event) {
+            if (event.target === backdrop) close();
+        });
+        document.addEventListener('keydown', onKeydown, true);
+
+        pushBtn.addEventListener('click', function() {
+            close();
+            exportTodosToDrive();
+        });
+        pullBtn.addEventListener('click', function() {
+            close();
+            importTodosFromDrive(function() { rebuildAfterImport(); });
+        });
+
+        pushBtn.focus();
     }
 
     function showSettingsMenu() {
@@ -1812,94 +1940,14 @@ function component() {
         driveHeading.appendChild(driveHeadingBadge);
         menu.appendChild(driveHeading);
 
-        // Connect to Drive — dedicated auth-only entry point that sits
-        // ABOVE Export and Import. Establishes the OAuth grant without
-        // performing any data transfer, so a user who just wants sync
-        // running in the background doesn't have to fake an export first.
-        // Label is state-dependent (see buildConnectToDriveRow), and a
-        // successful click arms auto-sync, kicks off an immediate sync
-        // attempt, and re-paints the row in place from 'Connect to Drive'
-        // to the dimmed 'Signed in — auto-sync on' status row without a
-        // menu reopen.
-        menu.appendChild(buildConnectToDriveRow());
-
-        // Export (Drive) — uploads the same JSON payload as the local
-        // Export row to the user's Google Drive. The
-        // `settingsMenuItem--driveExport` class is the CSS anchor for the
-        // dim/disabled loading state surfaced via `body.driveExportInProgress`.
-        // The state pill mirrors the local Export row's relative label,
-        // reading the device-local `lastDriveSyncedAt` marker so the user
-        // sees how stale their last Drive sync is at the moment of action.
-        // Before the first Drive export the marker is null and the pill
-        // stays empty (matching the local Export row's behavior on a fresh
-        // install).
-        const driveExportItem = buildSettingsMenuItem(
-            'Export',
-            readLastDriveSyncedAt() ? formatRelativeExportedAt(readLastDriveSyncedAt()) : '',
-            function() { exportTodosToDrive(); },
-            'settingsMenuItem--driveExport'
-        );
-        menu.appendChild(driveExportItem);
-
-        // Import (Drive) — fetches the most recently modified backup
-        // this app uploaded to the user's Drive (drive.file scope's
-        // implicit filter handles "files this app created"). Reuses the
-        // shared OAuth token cache from driveAuth so importing right
-        // after exporting in the same session is silent. The
-        // `settingsMenuItem--driveImport` class is the CSS anchor for the
-        // dim/disabled loading state driven by `body.driveImportInProgress`.
-        const driveImportItem = buildSettingsMenuItem(
-            'Import',
-            '',
-            function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
-            'settingsMenuItem--driveImport'
-        );
-        menu.appendChild(driveImportItem);
-
-        // Auto-sync state buttons — surface conditionally based on the
-        // current sync state. 'diverged' offers explicit overwrite buttons
-        // so the user picks a winner; 'failed' offers a Try again button;
-        // 'synced' offers a Sync now button that bypasses the debounce.
-        // These rows sit AFTER the Drive Import row so the
-        // Export-then-Import contract upstream tests assert on stays
-        // unchanged.
-        const autoSyncStateNow = getAutoSyncState();
-        const driveSyncStateNow = _driveSyncState;
-        if (autoSyncStateNow === 'diverged' || driveSyncStateNow === 'diverged') {
-            const pushOverItem = buildSettingsMenuItem(
-                'Push to Drive (overwrite Drive copy)',
-                '',
-                function() { exportTodosToDrive(); },
-                'settingsMenuItem--driveResolvePush'
-            );
-            menu.appendChild(pushOverItem);
-            const pullOverItem = buildSettingsMenuItem(
-                'Pull from Drive (overwrite local)',
-                '',
-                function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
-                'settingsMenuItem--driveResolvePull'
-            );
-            menu.appendChild(pullOverItem);
-        } else if (autoSyncStateNow === 'failed') {
-            const tryAgainItem = buildSettingsMenuItem(
-                'Try again',
-                '',
-                function() {
-                    armAutoSync();
-                    performAutoSync();
-                },
-                'settingsMenuItem--driveTryAgain'
-            );
-            menu.appendChild(tryAgainItem);
-        } else if (isAutoSyncArmed() && driveSyncStateNow === 'synced') {
-            const syncNowItem = buildSettingsMenuItem(
-                'Sync now',
-                '',
-                function() { performAutoSync(); },
-                'settingsMenuItem--driveSyncNow'
-            );
-            menu.appendChild(syncNowItem);
-        }
+        // Single state-aware Sync row. Replaces the previous five-row block
+        // (Connect to Drive, Export, Import, Push to Drive overwrite, Pull
+        // from Drive overwrite). The row's label + click handler are derived
+        // from getCurrentSyncState: synced/ahead/behind/failed all route
+        // through performAutoSync (which picks push vs pull on its own),
+        // diverged opens the conflict popover, never runs OAuth then arms
+        // the loop, and in-flight states render the row dimmed + disabled.
+        menu.appendChild(buildDriveSyncRow());
 
         menu.appendChild(buildSettingsMenuDivider());
 
