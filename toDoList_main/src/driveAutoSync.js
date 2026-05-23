@@ -108,6 +108,52 @@ export function isDriveAhead(syncedIso, driveModifiedIso) {
     return driveMs > syncedMs;
 }
 
+// Resolve the single sync-state string the ghost menu's Sync row reads to
+// derive its label + click handler. Combines three signals:
+//
+//   1. In-flight body classes (driveExportInProgress / driveImportInProgress)
+//      take precedence — once a sync is underway, the row dims and reports
+//      'syncing-push' / 'syncing-pull' until the body class clears.
+//   2. Module-resident _state ('failed' / 'diverged') wins over timestamps
+//      since the auto-sync loop's failure modes can't be re-derived from the
+//      marker pair alone.
+//   3. Otherwise compute from the local-synced + local-mutation + cached
+//      Drive modifiedTime triplet, the same tree the indicator uses.
+//
+// The Drive modifiedTime isn't owned by this module (the indicator caches
+// it in main.js), so callers pass it in via `driveModifiedIso`. `hasToken`
+// is also a caller fact — when no cached OAuth token exists and the user
+// has never synced, the row reads 'never' rather than optimistically
+// claiming 'synced' against an empty Drive view.
+export function getCurrentSyncState(opts) {
+    opts = opts || {};
+    const driveModifiedIso = opts.driveModifiedIso || null;
+    const hasToken = opts.hasToken !== false;
+
+    if (typeof document !== 'undefined' && document.body && document.body.classList) {
+        if (document.body.classList.contains('driveImportInProgress')) return 'syncing-pull';
+        if (document.body.classList.contains('driveExportInProgress')) return 'syncing-push';
+    }
+
+    if (_state === 'failed') return 'failed';
+    if (_state === 'diverged') return 'diverged';
+
+    const syncedIso = readLastDriveSyncedAt();
+    const localMutationIso = readLastLocalMutationAt();
+
+    if (!hasToken && !syncedIso) return 'never';
+
+    const localAhead = isLocalAhead(syncedIso, localMutationIso);
+    const driveAhead = isDriveAhead(syncedIso, driveModifiedIso);
+
+    if (localAhead && driveAhead) return 'diverged';
+    if (driveAhead) return 'behind';
+    if (localAhead) return 'ahead';
+
+    if (!syncedIso) return 'never';
+    return 'synced';
+}
+
 // Pure decision function. Given the four inputs (cached token presence,
 // localAhead, driveAhead, armed), return the action to take:
 //   'noop' | 'push' | 'pull' | 'diverged' | 'unarmed' | 'no-token'

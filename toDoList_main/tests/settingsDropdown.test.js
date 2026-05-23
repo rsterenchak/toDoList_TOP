@@ -68,47 +68,45 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         expect(main).not.toMatch(/nav\.appendChild\(\s*themeToggle\s*\)/);
     });
 
-    it('builds Export, Import, Theme, and Toggle floating ghost menu items via a shared helper', () => {
-        // The label text shortens to 'Export' / 'Import' since the DRIVE
-        // section header disambiguates. Rows are identified by their
-        // stable extraClass anchors rather than literal labels.
+    it('builds the Drive Sync row plus Theme and Toggle floating ghost menu items', () => {
+        // After the five-row collapse the DRIVE section is a single
+        // state-aware Sync row built by buildDriveSyncRow(). The remaining
+        // toggle items still go through the shared buildSettingsMenuItem
+        // helper.
         expect(main).toMatch(/function\s+buildSettingsMenuItem\s*\(/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,200}?'settingsMenuItem--driveExport'/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Import'\s*,[\s\S]{0,200}?'settingsMenuItem--driveImport'/);
+        expect(main).toMatch(/function\s+buildDriveSyncRow\s*\(/);
+        expect(main).toMatch(/menu\.appendChild\(\s*buildDriveSyncRow\s*\(\s*\)\s*\)/);
         expect(main).toMatch(/buildSettingsMenuItem\(\s*'Theme'\s*,/);
         expect(main).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'\s*,/);
     });
 
-    it('renders a divider between the Drive data actions and the toggle group (Theme/floating ghost)', () => {
+    it('renders a divider between the Sync row and the toggle group (Theme/floating ghost)', () => {
         // The CSS class is consumed both for visual styling and as the
         // semantic anchor — the divider's render order in showSettingsMenu
         // determines which items sit above and below it.
         expect(main).toMatch(/function\s+buildSettingsMenuDivider\s*\(/);
         expect(main).toMatch(/settingsMenuDivider/);
 
-        // Order in source: DRIVE heading → driveExport → driveImport →
-        // divider → Theme → Toggle floating ghost. The LOCAL section is
-        // gone; the divider now sits between the Drive data block and the
-        // toggle group.
-        const driveHeadIdx   = main.indexOf("driveHeadingLabel.textContent = 'Drive'");
-        const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
-        const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
-        const dividerIdx     = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
-        const themeIdx       = main.indexOf("'Theme'");
-        const ghostIdx       = main.indexOf("'Toggle floating ghost'");
+        // Order in source: DRIVE heading → Sync row → divider → Theme →
+        // Toggle floating ghost. The previous Export / Import rows are
+        // gone.
+        const driveHeadIdx = main.indexOf("driveHeadingLabel.textContent = 'Drive'");
+        const syncRowIdx   = main.indexOf('menu.appendChild(buildDriveSyncRow()');
+        const dividerIdx   = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
+        const themeIdx     = main.indexOf("'Theme'");
+        const ghostIdx     = main.indexOf("'Toggle floating ghost'");
         expect(driveHeadIdx).toBeGreaterThan(-1);
-        expect(driveExportIdx).toBeGreaterThan(driveHeadIdx);
-        expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
-        expect(dividerIdx).toBeGreaterThan(driveImportIdx);
+        expect(syncRowIdx).toBeGreaterThan(driveHeadIdx);
+        expect(dividerIdx).toBeGreaterThan(syncRowIdx);
         expect(themeIdx).toBeGreaterThan(dividerIdx);
         expect(ghostIdx).toBeGreaterThan(themeIdx);
     });
 
-    it('groups the Drive rows under a DRIVE section heading reusing the existing settingsMenuSectionHeading class', () => {
-        // The DRIVE header sits at the top of the menu, above the Drive
-        // Export row. It reuses the section-header class that already
-        // styles the HELP heading further down the menu, so the labelled
-        // sections look visually identical.
+    it('groups the Sync row under a DRIVE section heading reusing the existing settingsMenuSectionHeading class', () => {
+        // The DRIVE header sits at the top of the menu, above the Sync
+        // row. It reuses the section-header class that already styles the
+        // HELP heading further down the menu, so the labelled sections
+        // look visually identical.
         const driveHeadIdx  = main.indexOf("driveHeadingLabel.textContent = 'Drive'");
         expect(driveHeadIdx).toBeGreaterThan(-1);
 
@@ -122,9 +120,9 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         // No LOCAL section heading should remain in source.
         expect(main).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
 
-        // DRIVE header sits above the Drive Export row in source order.
-        const driveExportIdx  = main.indexOf("'settingsMenuItem--driveExport'");
-        expect(driveExportIdx).toBeGreaterThan(driveHeadIdx);
+        // DRIVE header sits above the Sync row in source order.
+        const syncRowIdx = main.indexOf('menu.appendChild(buildDriveSyncRow()');
+        expect(syncRowIdx).toBeGreaterThan(driveHeadIdx);
     });
 
     it('Toggle floating ghost item flips the companion pref and mounts/destroys the singleton', () => {

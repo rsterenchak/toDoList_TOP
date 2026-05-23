@@ -354,25 +354,28 @@ describe('driveExport — source-level: timestamp write on success only', () => 
 });
 
 
-describe('settings menu — Export to Drive last-synced label', () => {
+describe('settings menu — Sync row last-synced label', () => {
     const main = read('main.js');
 
-    it('imports readLastDriveSyncedAt alongside readLastExportedAt', () => {
+    it('imports readLastDriveSyncedAt for the Sync row label compute', () => {
         expect(main).toMatch(
             /import\s*\{[^}]*readLastDriveSyncedAt[^}]*\}\s*from\s*['"]\.\/prefs\.js['"]/
         );
     });
 
-    it('passes the relative label into the Drive Export state pill', () => {
-        // The Drive Export row's state pill must read the formatted
-        // relative label so the user sees how stale their last Drive sync
-        // is at the moment of action. The row is identified by its stable
-        // `settingsMenuItem--driveExport` class anchor since the visible
-        // label is just 'Export' (the DRIVE section header disambiguates).
-        const driveIdx = main.indexOf("'settingsMenuItem--driveExport'");
-        expect(driveIdx).toBeGreaterThan(-1);
-        const slice = main.slice(Math.max(0, driveIdx - 400), driveIdx + 100);
-        expect(slice).toMatch(/formatRelativeExportedAt\s*\(\s*readLastDriveSyncedAt\(\)\s*\)/);
+    it('the Sync row reads the relative label via formatRelativeExportedAt + readLastDriveSyncedAt', () => {
+        // After the five-row collapse, the previous Drive Export row's
+        // state pill is gone — the relative-time signal now lives inline
+        // in the single Sync row's label compute. The contract is the same:
+        // formatRelativeExportedAt(readLastDriveSyncedAt()) drives the
+        // user-visible "5 minutes ago" suffix.
+        const fnIdx = main.indexOf('function computeDriveSyncLabel');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const after = main.slice(fnIdx);
+        const nextFnIdx = after.indexOf('function ', 1);
+        const body = after.slice(0, nextFnIdx > -1 ? nextFnIdx : after.length);
+        expect(body).toMatch(/readLastDriveSyncedAt\s*\(\s*\)/);
+        expect(body).toMatch(/formatRelativeExportedAt\s*\(/);
     });
 });
 
@@ -428,36 +431,40 @@ describe('driveExport — source-level contract', () => {
 });
 
 
-describe('settings menu — Export to Drive wiring', () => {
+describe('settings menu — Export to Drive wiring (via Sync row)', () => {
     const main = read('main.js');
     const css = read('style.css');
 
-    it('builds a Drive Export menu item via the shared helper, tagged with the driveExport anchor class', () => {
-        // The visible label shortens to 'Export' since the DRIVE section
-        // header disambiguates. The stable identifier is the
-        // `settingsMenuItem--driveExport` extraClass that CSS and tests
-        // pivot on.
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Export'\s*,[\s\S]{0,300}?'settingsMenuItem--driveExport'/);
-    });
-
-    it('renders two DRIVE data rows in order: Export (Drive), Import (Drive)', () => {
-        // After the LOCAL JSON paths were removed, the data section is
-        // Drive-only. Identifiers are the stable anchor classes (the
-        // visible labels are 'Export' / 'Import' under the DRIVE header).
-        const driveExportIdx = main.indexOf("'settingsMenuItem--driveExport'");
-        const driveImportIdx = main.indexOf("'settingsMenuItem--driveImport'");
-        expect(driveExportIdx).toBeGreaterThan(-1);
-        expect(driveImportIdx).toBeGreaterThan(driveExportIdx);
-        // LOCAL anchor classes must not appear in source anywhere.
+    it('LOCAL anchor classes do not appear in source anywhere', () => {
         expect(main).not.toMatch(/settingsMenuItem--exportLocal/);
         expect(main).not.toMatch(/settingsMenuItem--importLocal/);
     });
 
-    it('Drive Export row invokes exportTodosToDrive() directly', () => {
-        const idx = main.indexOf("'settingsMenuItem--driveExport'");
-        expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(Math.max(0, idx - 400), idx + 100);
-        expect(slice).toMatch(/exportTodosToDrive\s*\(\s*\)/);
+    it('exportTodosToDrive is still wired — invoked by the diverged conflict popover push branch', () => {
+        // The previous menu had a dedicated "Export to Drive" row that
+        // called exportTodosToDrive() directly. After the five-row
+        // collapse the function is reached from two paths: the auto-sync
+        // orchestrator (performAutoSync) and the diverged popover's
+        // "Push to Drive (overwrite Drive copy)" button.
+        expect(main).toMatch(/exportTodosToDrive\s*\(\s*\)/);
+        // The push button inside the popover is the manual surface.
+        // Use brace-balanced extraction — the popover body contains inner
+        // function declarations that would truncate a naive indexOf.
+        const fnIdx = main.indexOf('function openDriveConflictPopover');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const after = main.slice(fnIdx);
+        const bodyStart = after.indexOf('{');
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < after.length; i++) {
+            const c = after.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = after.slice(0, i + 1); break; }
+            }
+        }
+        expect(body).toMatch(/exportTodosToDrive\s*\(/);
     });
 
     it('imports exportTodosToDrive from the driveExport module', () => {
@@ -466,10 +473,10 @@ describe('settings menu — Export to Drive wiring', () => {
         );
     });
 
-    it('tags the menu row with settingsMenuItem--driveExport so CSS can dim it during upload', () => {
-        expect(main).toMatch(/settingsMenuItem--driveExport/);
+    it('CSS dims the single Sync row during a Drive export, via the new settingsMenuItem--driveSync anchor', () => {
+        expect(css).toMatch(/settingsMenuItem--driveSync/);
         expect(css).toMatch(
-            /body\.driveExportInProgress\s+\.settingsMenuItem--driveExport\s*\{[^}]*pointer-events:\s*none/
+            /body\.driveExportInProgress\s+\.settingsMenuItem--driveSync[\s\S]{0,200}pointer-events:\s*none/
         );
     });
 
