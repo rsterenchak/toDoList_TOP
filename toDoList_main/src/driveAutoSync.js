@@ -25,7 +25,7 @@
 // tree if Drive has moved — without this, auto-push silently overwrites a
 // pushed-from-another-device version.
 
-import { getCachedAccessToken } from './driveAuth.js';
+import { getCachedAccessToken, getAccessToken } from './driveAuth.js';
 import { queryLatestDriveFile, importTodosFromDrive } from './driveImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { readLastDriveSyncedAt, readLastLocalMutationAt } from './prefs.js';
@@ -251,13 +251,26 @@ export function performAutoSync() {
 
 // ── APP LOAD ──
 
-// Called once at boot from main.js. If a cached token exists, runs a sync
-// attempt silently (without ever opening the OAuth popup) so a user
-// returning to a tab with stale data sees the right state on load. Without
-// a cached token this is a no-op — the user re-arms with a manual click.
+// Called once at boot from main.js. Attempts a silent re-auth against
+// Google Identity Services (prompt: 'none' — never shows UI). If GIS can
+// issue a token because the user has a valid prior grant on this browser,
+// the cached token gets established here, the loop arms itself, and a
+// normal sync attempt runs against the just-loaded data — returning users
+// in good standing see green within a few hundred ms of load, zero clicks.
+//
+// If silent re-auth fails (no prior grant, expired, signed out of Google,
+// network offline), the rejection is swallowed: no popup, no toast, no
+// console error. The loop stays dormant and the user re-arms via the
+// explicit "Connect to Drive" menu row.
+//
+// Auth-time failures are intentionally distinct from sync-time failures —
+// only the latter disarm the loop and surface 'failed' state. A silent
+// re-auth that just isn't possible yet is the normal first-time-user path.
 export function autoSyncOnAppLoad() {
-    const token = getCachedAccessToken();
-    if (!token) return Promise.resolve('no-token');
-    _armed = true;
-    return performAutoSync();
+    return getAccessToken({ silent: true }).then(function() {
+        _armed = true;
+        return performAutoSync();
+    }, function() {
+        return 'no-token';
+    });
 }

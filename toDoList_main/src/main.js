@@ -78,7 +78,7 @@ import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
-import { getCachedAccessToken } from './driveAuth.js';
+import { getCachedAccessToken, getAccessToken, showDriveToast, OAUTH_CLIENT_ID } from './driveAuth.js';
 import {
     armAutoSync,
     scheduleAutoSync,
@@ -1492,18 +1492,24 @@ function component() {
     });
 
     // Auto-sync state changes (push/pull complete, diverged, failed)
-    // refresh the indicator without waiting for the next mutation.
+    // refresh the indicator without waiting for the next mutation, and
+    // re-paint the Connect row so a state flip from 'idle' → 'failed'
+    // mid-session updates the row from 'Signed in — auto-sync on' to
+    // 'Reconnect to Drive' while the menu is open.
     document.addEventListener('autoSyncStateChanged', function() {
         recomputeDriveSyncStateLocal();
+        repaintConnectRow();
     });
 
-    // A successful manual Drive Export or Import arms the auto-sync loop
-    // for the rest of the session. The signal comes via CustomEvent from
-    // driveExport.js / driveImport.js so those modules don't need to
-    // import the auto-sync module (would create a circular dependency).
+    // A successful manual Drive Export, Import, or explicit Connect click
+    // arms the auto-sync loop for the rest of the session. The signal
+    // comes via CustomEvent from driveExport.js / driveImport.js / the
+    // Connect handler above so those modules don't need to import the
+    // auto-sync module (would create a circular dependency).
     document.addEventListener('driveManualActionSuccess', function() {
         armAutoSync();
         refreshDriveSyncState();
+        repaintConnectRow();
     });
 
     // Initial paint reflects the local-only snapshot — no Drive file
@@ -1639,6 +1645,104 @@ function component() {
         return divider;
     }
 
+    // Compute the three-way state for the Connect to Drive row label.
+    //  • signed in & armed     → "Signed in — auto-sync on" (dimmed status)
+    //  • armed but no token    → "Reconnect to Drive" (token expired mid-session)
+    //  • auto-sync failed      → "Reconnect to Drive"
+    //  • otherwise             → "Connect to Drive"
+    function computeConnectRowState() {
+        const hasToken = !!getCachedAccessToken();
+        const armed = isAutoSyncArmed();
+        const autoSyncState = getAutoSyncState();
+        if (hasToken && armed) {
+            return { label: 'Signed in — auto-sync on', clickable: false };
+        }
+        if (autoSyncState === 'failed' || (armed && !hasToken)) {
+            return { label: 'Reconnect to Drive', clickable: true };
+        }
+        return { label: 'Connect to Drive', clickable: true };
+    }
+
+    function onConnectToDriveClick() {
+        if (!OAUTH_CLIENT_ID) {
+            showDriveToast({
+                label: 'Drive sign-in not configured for this build.',
+                error: true,
+            });
+            return;
+        }
+        getAccessToken().then(function() {
+            // Manual-action signal arms the loop via the existing
+            // driveManualActionSuccess listener (which also refreshes the
+            // sync badges) — keeps the wiring with Export and Import
+            // identical so future arming triggers don't have to special-
+            // case Connect.
+            if (typeof document !== 'undefined' && document.dispatchEvent) {
+                try {
+                    document.dispatchEvent(new CustomEvent('driveManualActionSuccess', {
+                        detail: { kind: 'connect' },
+                    }));
+                } catch (_) { /* CustomEvent unsupported — silent */ }
+            }
+            // Trigger an immediate sync attempt against current state so
+            // the indicator reflects truth right away (instead of waiting
+            // for the next mutation tick).
+            performAutoSync();
+            repaintConnectRow();
+        }).catch(function(err) {
+            const message = (err && err.message) || '';
+            const cancelled = /denied|cancel|popup_closed/i.test(message);
+            showDriveToast({
+                label: cancelled
+                    ? 'Drive sign-in cancelled.'
+                    : "Couldn't sign in to Drive — try again.",
+                error: true,
+            });
+            // Leave the row labeled "Connect to Drive" / "Reconnect to
+            // Drive" so the user can try again without reopening the menu.
+            repaintConnectRow();
+        });
+    }
+
+    function buildConnectToDriveRow() {
+        const state = computeConnectRowState();
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.id = 'settingsMenuConnectToDrive';
+        item.className = 'settingsMenuItem settingsMenuItem--driveConnect';
+        if (!state.clickable) {
+            item.classList.add('settingsMenuItem--driveConnect--signedIn');
+            item.disabled = true;
+            item.setAttribute('aria-disabled', 'true');
+        }
+        item.setAttribute('role', 'menuitem');
+
+        const label = document.createElement('span');
+        label.className = 'settingsMenuItemLabel';
+        label.textContent = state.label;
+
+        const stateSpan = document.createElement('span');
+        stateSpan.className = 'settingsMenuItemState';
+        stateSpan.style.display = 'none';
+
+        item.appendChild(label);
+        item.appendChild(stateSpan);
+
+        if (state.clickable) {
+            item.addEventListener('click', onConnectToDriveClick);
+        }
+        return item;
+    }
+
+    // Swap the Connect row's DOM node in place so the label flips from
+    // 'Connect to Drive' → 'Signed in — auto-sync on' without a menu
+    // reopen. Safe to call when the menu is closed (no-op).
+    function repaintConnectRow() {
+        const old = document.getElementById('settingsMenuConnectToDrive');
+        if (!old || !old.parentNode) return;
+        old.parentNode.replaceChild(buildConnectToDriveRow(), old);
+    }
+
     function showSettingsMenu() {
         const menu = document.createElement('div');
         menu.id = 'settingsMenu';
@@ -1665,6 +1769,17 @@ function component() {
         driveHeading.appendChild(driveHeadingLabel);
         driveHeading.appendChild(driveHeadingBadge);
         menu.appendChild(driveHeading);
+
+        // Connect to Drive — dedicated auth-only entry point that sits
+        // ABOVE Export and Import. Establishes the OAuth grant without
+        // performing any data transfer, so a user who just wants sync
+        // running in the background doesn't have to fake an export first.
+        // Label is state-dependent (see buildConnectToDriveRow), and a
+        // successful click arms auto-sync, kicks off an immediate sync
+        // attempt, and re-paints the row in place from 'Connect to Drive'
+        // to the dimmed 'Signed in — auto-sync on' status row without a
+        // menu reopen.
+        menu.appendChild(buildConnectToDriveRow());
 
         // Export (Drive) — uploads the same JSON payload as the local
         // Export row to the user's Google Drive. The
@@ -5520,19 +5635,22 @@ function component() {
     // exist before the class can be toggled.
     setTimeout(applyCompanionGhostPreference, 0);
 
-    // One-shot silent Drive sync-state probe. Only fires the Drive list
-    // query when an in-memory OAuth token is already cached; without one,
-    // the indicator stays in its initial 'never' / 'unknown' state and
-    // waits for the next ghost-menu open (or any Drive action) to refresh.
-    setTimeout(refreshDriveSyncState, 0);
-
     // Register the host rebuild hook so the auto-sync module's pull
-    // branch can redraw the UI after the silent import commits. Then
-    // attempt a silent sync on load — autoSyncOnAppLoad is a no-op when
-    // no in-memory OAuth token exists, so a fresh session waits dormant
-    // until the user's first manual Drive click of the session.
+    // branch can redraw the UI after the silent import commits.
     registerAutoSyncRebuild(rebuildAfterImport);
-    setTimeout(function() { autoSyncOnAppLoad(); }, 0);
+
+    // Boot-time Drive arming + state probe. autoSyncOnAppLoad attempts a
+    // silent re-auth via GIS (prompt: 'none') — if the user has a valid
+    // prior grant on this browser, the cached token is established here
+    // and the indicator paints green within a few hundred ms of load with
+    // zero clicks. If silent re-auth fails (no prior grant, expired,
+    // signed out, offline), it resolves quietly with no toast or console
+    // error. Either way, refreshDriveSyncState runs afterward to paint
+    // the indicator from whatever state landed.
+    setTimeout(function() {
+        autoSyncOnAppLoad().catch(function() { /* silent — auth failures don't disarm */ })
+            .then(function() { refreshDriveSyncState(); });
+    }, 0);
 
     return base;
 

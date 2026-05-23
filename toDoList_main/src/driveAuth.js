@@ -138,7 +138,16 @@ export function getCachedAccessToken() {
 // screen when the user has already granted consent in this session — so
 // importing right after exporting in the same session reuses the grant
 // silently.
-export function getAccessToken() {
+//
+// `opts.silent: true` swaps the prompt for `'none'`, which asks Google to
+// issue a token without ever showing UI. If the user has no prior grant on
+// this browser, the grant has expired, or they're signed out of Google,
+// GIS reports the error through the callback and the returned Promise
+// rejects — there's no popup either way. The app-load auto-sync trigger
+// uses this variant so a returning user in good standing gets zero-click
+// sync, and a fresh user fails silently with no surprise consent screen.
+export function getAccessToken(opts) {
+    const silent = !!(opts && opts.silent);
     if (tokenStillValid()) return Promise.resolve(_cachedToken);
     return loadGisLibrary(document).then(function(google) {
         return new Promise(function(resolve, reject) {
@@ -161,7 +170,7 @@ export function getAccessToken() {
                     resolve(_cachedToken);
                 },
             });
-            tokenClient.requestAccessToken({ prompt: '' });
+            tokenClient.requestAccessToken({ prompt: silent ? 'none' : '' });
         });
     });
 }
