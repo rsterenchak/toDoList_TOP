@@ -503,9 +503,17 @@ export const listLogic = (function () {
     // stuck on 'ahead'. The user-mutation callers (checkbox toggle, new
     // todo commit, drag-reorder finalisation) call this with no opts and
     // keep their existing behaviour.
+    //
+    // `opts.deferSave: true` runs the sort in memory but skips the
+    // saveToStorage call entirely. The post-Drive-import rebuild path
+    // passes this because replaceAllProjects has already sorted and
+    // persisted every project just upstream, making the rebuild's
+    // per-project re-sort a defensive no-op whose storage write
+    // duplicates work that's already on disk.
     function sortCompletedToBottom(project, opts) {
         if (!allProjects[project]) return;
         sortCompletedInPlace(allProjects[project].items);
+        if (opts && opts.deferSave === true) return;
         saveToStorage(opts);
     }
 
