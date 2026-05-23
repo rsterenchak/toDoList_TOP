@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add copy-text button and shrink due-date pill on mobile todo rows
+- [x] **[MEDIUM]** Add copy-text button and shrink due-date pill on mobile todo rows
   - Description: On mobile, the due-date pill currently uses the full desktop styling (filled background, bordered, uppercase `1D OVERDUE` / `DUE TODAY` / `JUN 30` text) and takes up a major share of each row's horizontal space — often more than the todo title itself, which is the more important content. Add two changes scoped to the mobile breakpoint only (leave desktop untouched). First, add a copy-text icon button (Tabler-style copy glyph, purple `#9D93EE`) between the title and the due-date pill on every todo row; tapping it copies the todo's title text to the clipboard and briefly swaps the icon to a checkmark for ~1s as feedback. Second, slim down the due-date pill on mobile: drop the filled background and border, condense the label text to `1d` / `Today` / `Jun 30` (preserve the existing red/amber/neutral color coding for overdue/due-today/future), and keep the calendar icon prefix. The pill must remain tappable to open the existing due-date popover. Apply both changes under the existing mobile media query in `style.css`; copy-button wiring and the temporary checkmark swap go in `main.js` (likely inside whichever of `addInitialToDo`/`regenToDos`/`appendNewToDoRow`/`addToDos_restore` builds the row — grep with offset/limit, don't read `main.js` in full). Skip blank placeholder rows when wiring the copy button.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-23
 
 ## Features
 
