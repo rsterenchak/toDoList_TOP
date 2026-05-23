@@ -1479,9 +1479,16 @@ export function addAllToDo_DOM(items, name) {
 // item — including the blank — so the user always has a ready-to-type
 // slot at the top of the list. Used by the restoreFromStorage path on boot
 // and by selectProject when a previously visited project becomes active.
-export function addToDos_restore(toDoArray, toDoName) {
+//
+// `opts.fromSync: true` forwards onto listLogic.sortCompletedToBottom so
+// the post-Drive-import rebuild — which re-sorts every project on the way
+// through — doesn't bump the local mutation marker past the just-written
+// lastDriveSyncedAt and leave the sync indicator stuck on 'ahead'. The
+// user-triggered callers (project select, post-rename re-render, app boot)
+// keep their existing behaviour by omitting opts.
+export function addToDos_restore(toDoArray, toDoName, opts) {
     if (!toDoArray || toDoArray.length === 0) return;
-    listLogic.sortCompletedToBottom(toDoName);
+    listLogic.sortCompletedToBottom(toDoName, opts);
     const items = listLogic.listItems(toDoName);
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;

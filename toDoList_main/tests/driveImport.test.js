@@ -565,6 +565,69 @@ describe('driveImport — end-to-end: confirmed import leaves lastLocalMutationA
         expect(after).not.toBe(OLD_MUTATION);
         expect(isNaN(Date.parse(after))).toBe(false);
     });
+
+    it('post-confirm rebuild loop (addToDos_restore per project) keeps lastLocalMutationAt frozen when fromSync: true', () => {
+        // End-to-end repro for the row-sort-persistence leak: the import
+        // confirms, replaceAllProjects writes data with fromSync, then
+        // rebuildAfterImport in main.js fires restoreFromStorage({ fromSync:
+        // true }) which calls addToDos_restore — which in turn calls
+        // sortCompletedToBottom. Before this fix, that sort wrote
+        // lastLocalMutationAt = Date.now() and pushed the marker past the
+        // just-written lastDriveSyncedAt. The fix threads opts through the
+        // full chain so the post-rebuild storage write stays sync-safe.
+        const OLD_MUTATION = '2026-04-01T00:00:00.000Z';
+        localStorage.setItem(LAST_LOCAL_MUTATION_AT_KEY, OLD_MUTATION);
+
+        const driveModifiedIso = '2026-05-23T10:14:28.783Z';
+        const payload = JSON.stringify({
+            version: 1,
+            exportedAt: driveModifiedIso,
+            projects: [
+                // Two projects with completed items each so the per-project
+                // sort in addToDos_restore actually has work to do — this
+                // is the realistic "another device pushed real data" shape
+                // that surfaced the original bug, not a single-empty-project
+                // case where the sort would be a no-op.
+                { name: 'Work', items: [
+                    { tit: 'Done', completed: true, due: '' },
+                    { tit: 'Open', completed: false, due: '' },
+                ], color: null },
+                { name: 'Home', items: [
+                    { tit: 'AlsoDone', completed: true, due: '' },
+                    { tit: 'AlsoOpen', completed: false, due: '' },
+                ], color: null },
+            ],
+        });
+
+        const outcome = importTodosFromString(payload, function() {
+            // Simulate rebuildAfterImport's post-replace per-project sort.
+            // Each project is sort-and-persisted, exactly as
+            // addToDos_restore does on the rebuild loop. With the fix in
+            // place, both calls forward fromSync and the mutation marker
+            // stays put.
+            listLogic.listProjectsArray().forEach(function(name) {
+                listLogic.sortCompletedToBottom(name, { fromSync: true });
+            });
+        }, {
+            sourceLabel: 'Restore from "todos-2026-05-23.json"?',
+            silentError: true,
+            fromSync: true,
+            onBeforeReplace: function() {
+                writeLastDriveSyncedAt(driveModifiedIso);
+            },
+        });
+        expect(outcome.ok).toBe(true);
+
+        document.getElementById('confirmModalConfirm').click();
+
+        // The whole chain ran; mutation marker is untouched.
+        expect(readLastLocalMutationAt()).toBe(OLD_MUTATION);
+        expect(readLastDriveSyncedAt()).toBe(driveModifiedIso);
+        // Acceptance criterion: mutation marker <= drive sync marker so
+        // the indicator reads 'synced', not 'ahead'.
+        expect(Date.parse(readLastLocalMutationAt()))
+            .toBeLessThanOrEqual(Date.parse(readLastDriveSyncedAt()));
+    });
 });
 
 

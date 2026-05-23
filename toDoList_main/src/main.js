@@ -5435,6 +5435,12 @@ function component() {
 // listLogic.replaceAllProjects has rewritten storage. Mirrors the boot
 // sequence (clear, then restoreFromStorage) so any post-restore selection
 // and accent logic still runs.
+//
+// Passes { fromSync: true } through restoreFromStorage so the post-import
+// per-project sort that addToDos_restore triggers doesn't bump the local
+// mutation marker past the just-written lastDriveSyncedAt and leave the
+// Drive sync indicator stuck on 'ahead'. Boot-time restoreFromStorage()
+// (no opts) keeps its existing behaviour of stamping the marker.
 function rebuildAfterImport() {
 
     const sideMaDiv = document.getElementById('sideMa');
@@ -5450,7 +5456,7 @@ function rebuildAfterImport() {
         while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
     }
 
-    restoreFromStorage();
+    restoreFromStorage({ fromSync: true });
 }
 
 
@@ -5510,7 +5516,14 @@ function collapseAllDescriptions() {
 
 // restoreFromStorage — call this AFTER component() is appended to document.body
 // so that getElementById calls resolve against the live DOM.
-function restoreFromStorage() {
+//
+// `opts.fromSync: true` is threaded through to the auto-selected project's
+// addToDos_restore call so the per-project sort that fires there doesn't
+// bump the local mutation marker past the just-written lastDriveSyncedAt
+// during a post-Drive-import rebuild. The user-triggered re-render paths
+// reached later (project click, rename commit) keep their existing
+// behaviour because they don't read opts.
+function restoreFromStorage(opts) {
 
     // First-run seeding: both the desktop spotlight tour and the mobile
     // welcome carousel anchor against the seeded sample project, so seed
@@ -5790,7 +5803,7 @@ function restoreFromStorage() {
     const lastItems       = listLogic.listItems(lastProject);
     const lastHasReal     = lastItems && lastItems.some(function(i){ return i.tit !== ""; });
     if (lastHasReal) {
-        addToDos_restore(lastItems, lastProject);
+        addToDos_restore(lastItems, lastProject, opts);
     } else if (lastItems) {
         addAllToDo_DOM(lastItems, lastProject);
     }
