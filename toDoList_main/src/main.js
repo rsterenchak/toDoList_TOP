@@ -1436,6 +1436,23 @@ function component() {
             paintSyncBadge(menuBadge, _driveSyncState);
             menuBadge.setAttribute('title', _driveSyncTooltip);
         }
+        // Mobile-chrome surface: the glyph on the drawer Settings button is
+        // the equivalent of the desktop ghost-icon overlay (hidden at
+        // ≤700px). Built later in component(), so getElementById may be
+        // null during the first paint — the next setDriveSyncState tick
+        // re-paints it once the button exists.
+        const drawerBadge = document.getElementById('drawerSettingsBtnSyncBadge');
+        if (drawerBadge) {
+            paintSyncBadge(drawerBadge, _driveSyncState);
+            drawerBadge.setAttribute('title', _driveSyncTooltip);
+        }
+        // The single Sync card inside the mobile Settings modal mirrors the
+        // desktop ghost-menu Sync row — repaint it whenever the underlying
+        // state changes so it tracks live updates without needing to
+        // reopen the modal.
+        if (typeof refreshSettingsModalSyncCard === 'function') {
+            refreshSettingsModalSyncCard();
+        }
     }
 
     function setDriveSyncState(state, localIso) {
@@ -1817,6 +1834,104 @@ function component() {
         const old = document.getElementById('settingsMenuDriveSync');
         if (!old || !old.parentNode) return;
         old.parentNode.replaceChild(buildDriveSyncRow(), old);
+    }
+
+    // Verb shown on the single mobile Sync card. Most states surface
+    // "Sync" — the row itself is the affordance; the sublabel carries the
+    // status detail. "Connect" replaces "Sync" in the `never` state so
+    // the first-time entry point reads as the call-to-action it is, and
+    // "Syncing…" replaces it while an upload or download is in flight.
+    function computeSettingsModalDriveSyncVerb(state) {
+        if (state === 'syncing-push' || state === 'syncing-pull') return 'Syncing…';
+        if (state === 'never') return 'Connect';
+        return 'Sync';
+    }
+
+    // Sublabel shown beneath the verb on the mobile Sync card. The
+    // synced/ahead/behind/diverged/failed/never/in-flight states match
+    // the spec table in the TODO entry — the `synced` branch folds in
+    // what used to be the standalone "LAST DRIVE: X AGO" caption row.
+    function computeSettingsModalDriveSyncSubLabel(state) {
+        if (state === 'syncing-push' || state === 'syncing-pull') return 'syncing to Drive';
+        if (state === 'never')    return 'Sign in to Drive';
+        if (state === 'ahead')    return 'Local has unsaved changes';
+        if (state === 'behind')   return 'Drive is newer';
+        if (state === 'diverged') return 'Conflict — tap to resolve';
+        if (state === 'failed')   return 'Sync failed — tap to retry';
+        // synced
+        const iso = readLastDriveSyncedAt();
+        if (!iso) return 'Synced';
+        // formatRelativeExportedAt returns "Synced just now" / "Synced 5
+        // minutes ago" — already a complete user-facing phrase, so we
+        // surface it verbatim instead of building a parallel string.
+        return formatRelativeExportedAt(iso);
+    }
+
+    // Build the single state-aware Sync card mounted inside the mobile
+    // Settings modal's Data section. Replaces the prior 2-tile grid
+    // (Drive Export / Drive Import) plus the standalone LAST DRIVE
+    // caption line. Reuses the existing .settingsModalDataTile chrome so
+    // the section reads as a single-card variant of the prior 2-tile
+    // layout — same padding, icon-above-label stacking, tap-target
+    // sizing — only the content is state-driven. Carries the
+    // settingsModalDataTile--driveSync anchor class so the existing
+    // body.driveExportInProgress / body.driveImportInProgress hooks dim
+    // it during in-flight uploads/downloads, matching the desktop Sync
+    // row's behavior.
+    function buildSettingsModalDriveSyncCard() {
+        const state = getCurrentSyncState({
+            driveModifiedIso: getCachedDriveModifiedTime(),
+            hasToken: !!getCachedAccessToken(),
+        });
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.id = 'settingsModalDriveSyncCard';
+        tile.className = 'settingsModalDataTile settingsModalDataTile--driveSync';
+        tile.setAttribute('data-sync-state', state);
+
+        const inFlight = state === 'syncing-push' || state === 'syncing-pull';
+        const glyphClass = syncStateToGlyphClass(state);
+
+        const icon = document.createElement('span');
+        icon.className = 'settingsModalDataTileIcon settingsModalDataTileIcon--driveSync';
+        if (inFlight) {
+            icon.className += ' settingsModalDataTileIcon--spinning';
+        }
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('data-sync-glyph', glyphClass);
+        icon.innerHTML = SYNC_GLYPH_SVG[glyphClass] || SYNC_GLYPH_SVG['ti-cloud-off'];
+
+        const verb = document.createElement('span');
+        verb.className = 'settingsModalDataTileVerb';
+        verb.textContent = computeSettingsModalDriveSyncVerb(state);
+
+        const sub = document.createElement('span');
+        sub.className = 'settingsModalDataTileSub';
+        sub.textContent = computeSettingsModalDriveSyncSubLabel(state);
+
+        tile.appendChild(icon);
+        tile.appendChild(verb);
+        tile.appendChild(sub);
+
+        if (inFlight) {
+            tile.disabled = true;
+            tile.setAttribute('aria-disabled', 'true');
+        } else {
+            tile.addEventListener('click', function() {
+                onDriveSyncClick(state);
+            });
+        }
+        return tile;
+    }
+
+    // Swap the mobile Sync card in place so the label/icon/sublabel
+    // reflect every state flip while the modal is open. Mirrors
+    // driveMenuRowNeedsRefresh for the desktop ghost-menu Sync row, and
+    // safely no-ops when the modal is closed (no card element in DOM).
+    function refreshSettingsModalSyncCard() {
+        const old = document.getElementById('settingsModalDriveSyncCard');
+        if (!old || !old.parentNode) return;
+        old.parentNode.replaceChild(buildSettingsModalDriveSyncCard(), old);
     }
 
     // Diverged conflict popover. Surfaces only when the Sync row is clicked
@@ -3735,35 +3850,6 @@ function component() {
         return { row: row, refresh: refresh };
     }
 
-    // Tile-styled button used inside the Settings modal's Data section to
-    // give Local / Drive Export/Import equally-weighted tap targets in a
-    // 2x2 grid. Each tile renders three stacked pieces of copy: an icon
-    // glyph at the top, the verb ('Export' / 'Import') in the middle, and
-    // a sub-label ('to file' / 'to Drive' etc.) underneath. The optional
-    // extraClass is the CSS anchor that body.driveExportInProgress /
-    // body.driveImportInProgress pivot on so the existing dim-loading hooks
-    // dim the matching tile during in-flight Drive uploads / downloads.
-    function createDrawerDataTile(iconText, verb, sub, onActivate, extraClass) {
-        const tile = document.createElement('button');
-        tile.type = 'button';
-        tile.className = 'settingsModalDataTile' + (extraClass ? ' ' + extraClass : '');
-        const icon = document.createElement('span');
-        icon.className = 'settingsModalDataTileIcon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.textContent = iconText;
-        const verbEl = document.createElement('span');
-        verbEl.className = 'settingsModalDataTileVerb';
-        verbEl.textContent = verb;
-        const subEl = document.createElement('span');
-        subEl.className = 'settingsModalDataTileSub';
-        subEl.textContent = sub;
-        tile.appendChild(icon);
-        tile.appendChild(verbEl);
-        tile.appendChild(subEl);
-        tile.addEventListener('click', onActivate);
-        return tile;
-    }
-
     // Drawer-styled row that surfaces a display-only label/value pair.
     // Mirrors createDrawerToggleRow's shape (returns { row, refresh })
     // so callers can re-read the value from valueGetter whenever they
@@ -3884,7 +3970,22 @@ function component() {
     drawerSettingsBtn.type = 'button';
     drawerSettingsBtn.setAttribute('aria-haspopup', 'dialog');
     drawerSettingsBtn.setAttribute('aria-expanded', 'false');
-    drawerSettingsBtn.textContent = 'Settings';
+
+    // Persistent mobile-chrome surface for the Drive sync-state glyph —
+    // mirrors the cloud badge overlaid on the desktop ghost icon. The
+    // desktop ghost icon is hidden at ≤700px (display: none), so the
+    // mobile equivalent lives on the gear/settings entry point so users
+    // see the sync state at a glance without opening the Settings modal.
+    const drawerSettingsBtnLabel = document.createElement('span');
+    drawerSettingsBtnLabel.className = 'drawerSettingsBtnLabel';
+    drawerSettingsBtnLabel.textContent = 'Settings';
+    drawerSettingsBtn.appendChild(drawerSettingsBtnLabel);
+
+    const drawerSettingsBtnSyncBadge = document.createElement('span');
+    drawerSettingsBtnSyncBadge.id = 'drawerSettingsBtnSyncBadge';
+    drawerSettingsBtnSyncBadge.className = 'drawerSettingsBtnSyncBadge';
+    drawerSettingsBtnSyncBadge.setAttribute('aria-hidden', 'true');
+    drawerSettingsBtn.appendChild(drawerSettingsBtnSyncBadge);
 
     // Wrap the Settings button so flex centering can apply to the wrap
     // without rearranging the footer sibling inside #sidebarBottom.
@@ -3956,12 +4057,16 @@ function component() {
         const body = document.createElement('div');
         body.id = 'settingsModalBody';
 
-        // Data section — first in the modal so the Drive export/import
-        // actions are reachable on mobile, where the desktop ghost menu
-        // that houses them is hidden by the ≤700px breakpoint. The grid
-        // lays out as two side-by-side tiles: Drive Export / Drive
-        // Import; each invokes the same handler the corresponding
-        // desktop menu row already wires up.
+        // Data section — first in the modal so the Drive sync action is
+        // reachable on mobile, where the desktop ghost menu that houses
+        // the same surface is hidden by the ≤700px breakpoint. A single
+        // state-aware Sync card replaces the prior 2-tile grid (Drive
+        // Export / Drive Import) plus the standalone "LAST DRIVE: X AGO"
+        // caption. Auto-sync handles push/pull on its own; the diverged
+        // conflict path opens the same popover the desktop Sync row
+        // opens. The card re-renders in place on every
+        // driveSyncStateChanged / driveConnectionChanged tick so the
+        // surface tracks live state without requiring a modal reopen.
         const dataSection = document.createElement('section');
         dataSection.id = 'settingsDataSection';
         dataSection.className = 'settingsSection';
@@ -3972,43 +4077,8 @@ function component() {
 
         const dataGrid = document.createElement('div');
         dataGrid.className = 'settingsModalDataGrid';
-
-        const driveExportTile = createDrawerDataTile(
-            '☁↓', 'Export', 'to Drive',
-            function() {
-                const p = exportTodosToDrive();
-                if (p && typeof p.then === 'function') {
-                    p.then(refreshDataCaption, refreshDataCaption);
-                }
-            },
-            'settingsModalDataTile--driveExport'
-        );
-        const driveImportTile = createDrawerDataTile(
-            '☁↑', 'Import', 'from Drive',
-            function() { importTodosFromDrive(function() { rebuildAfterImport(); }); },
-            'settingsModalDataTile--driveImport'
-        );
-        dataGrid.appendChild(driveExportTile);
-        dataGrid.appendChild(driveImportTile);
+        dataGrid.appendChild(buildSettingsModalDriveSyncCard());
         dataSection.appendChild(dataGrid);
-
-        // Caption sits beneath the grid and surfaces the same stale-time
-        // signal the desktop ghost menu shows as the Drive Export pill,
-        // so the user can see how stale their Drive backup is before
-        // tapping a tile.
-        const dataCaption = document.createElement('div');
-        dataCaption.className = 'settingsModalDataCaption';
-        dataSection.appendChild(dataCaption);
-
-        function formatCaptionPart(iso) {
-            if (!iso) return 'never';
-            return formatRelativeExportedAt(iso).replace(/^Synced /, '');
-        }
-        function refreshDataCaption() {
-            dataCaption.textContent =
-                'Last Drive: ' + formatCaptionPart(readLastDriveSyncedAt());
-        }
-        refreshDataCaption();
 
         const viewSection = document.createElement('section');
         viewSection.id = 'settingsViewSection';
@@ -4102,11 +4172,27 @@ function component() {
         closeX.focus();
         drawerSettingsBtn.setAttribute('aria-expanded', 'true');
 
+        // Live-update the Sync card while the modal is open. Mirrors the
+        // listeners desktop's ghost-menu Sync row already registers. The
+        // teardown happens inside close() so the listeners can't leak
+        // across multiple open/close cycles. Defined as named handlers
+        // so removeEventListener can match against the exact reference.
+        function onDriveSyncStateChangedForModal() {
+            refreshSettingsModalSyncCard();
+        }
+        function onDriveConnectionChangedForModal() {
+            refreshSettingsModalSyncCard();
+        }
+        document.addEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
+        document.addEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
+
         let closed = false;
         function close() {
             if (closed) return;
             closed = true;
             document.removeEventListener('keydown', onKeydown, true);
+            document.removeEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
+            document.removeEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
             if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
             drawerSettingsBtn.setAttribute('aria-expanded', 'false');
             if (previouslyFocused &&

@@ -4153,6 +4153,47 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--bg-hover);
   }
 
+  /* The Settings button needs a relative positioning context so the
+     absolute-positioned sync-state badge can anchor to its right edge
+     without disturbing the centered label layout. */
+  #drawerSettingsBtn {
+    position: relative;
+  }
+  .drawerSettingsBtnLabel {
+    display: inline-block;
+  }
+
+  /* Mobile-chrome Drive sync-state glyph — the equivalent of the
+     desktop ghost-icon overlay (which is hidden at ≤700px). Anchored
+     to the right edge of the Settings button so the gear/settings
+     entry point in the mobile chrome carries the live sync state
+     without opening the Settings modal. State color rules mirror the
+     desktop badge palette. */
+  .drawerSettingsBtnSyncBadge {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: var(--text-muted);
+  }
+  .drawerSettingsBtnSyncBadge svg {
+    width: 16px;
+    height: 16px;
+  }
+  .drawerSettingsBtnSyncBadge[data-sync-state="synced"] { color: var(--text-success, #4caf50); }
+  .drawerSettingsBtnSyncBadge[data-sync-state="behind"],
+  .drawerSettingsBtnSyncBadge[data-sync-state="ahead"] { color: var(--text-warning); }
+  .drawerSettingsBtnSyncBadge[data-sync-state="diverged"],
+  .drawerSettingsBtnSyncBadge[data-sync-state="failed"] { color: var(--text-danger, #e53935); }
+  .drawerSettingsBtnSyncBadge[data-sync-state="never"],
+  .drawerSettingsBtnSyncBadge[data-sync-state="unknown"] { color: var(--text-muted); }
+
   /* The drawer footer (version label + project count) is hidden on the
      mobile breakpoint — both pieces of info now live in the Settings
      modal's About section, leaving the drawer's bottom half to the
@@ -4260,13 +4301,14 @@ body.row-dragging * { cursor: grabbing !important; }
   margin: 0 0 4px;
 }
 
-/* Data section grid — 2x2 layout of equally-weighted tap tiles. Each tile
-   is a 56px tap target with stacked icon / verb / sub-label and the same
-   surface treatment as the other modal rows. Row 1 = Local Export / Local
-   Import, row 2 = Drive Export / Drive Import. */
+/* Data section grid — single state-aware Sync card that replaced the
+   prior 2-tile Drive Export / Drive Import layout. Kept as a grid (vs a
+   bare flex column) so the tile still gets the same gap + spacing
+   alignment with other modal sections and a future expansion back to
+   multiple tiles needs no wrapper restyle. */
 .settingsModalDataGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
   margin: 4px 0 8px;
 }
@@ -4316,25 +4358,61 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* Reuse the existing body-class dim-loading hooks the desktop ghost menu
-   relies on — when a Drive upload / download is in flight, the matching
-   tile dims and stops accepting clicks so the user can't double-fire
-   while the auth + transfer completes. */
-body.driveExportInProgress .settingsModalDataTile--driveExport {
+   relies on — when a Drive upload / download is in flight, the Sync card
+   dims and stops accepting clicks so the user can't double-fire while
+   the auth + transfer completes. */
+body.driveExportInProgress .settingsModalDataTile--driveSync {
   opacity: 0.55;
   pointer-events: none;
 }
-body.driveImportInProgress .settingsModalDataTile--driveImport {
+body.driveImportInProgress .settingsModalDataTile--driveSync {
   opacity: 0.55;
   pointer-events: none;
 }
 
-.settingsModalDataCaption {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+/* Sync-card icon — slightly larger than the original emoji glyph slot
+   since the SVG glyph renders best at 22-24px. The
+   --driveSync modifier sizes the contained SVG via descendant rule so
+   the parent .settingsModalDataTileIcon font-size still drives the
+   emoji-style tiles a future addition might reintroduce. State-driven
+   color comes from the parent tile's [data-sync-state] attribute so
+   the success/warning/danger tints match the desktop badge palette. */
+.settingsModalDataTileIcon--driveSync {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
-  padding: 2px 0 6px;
+}
+.settingsModalDataTileIcon--driveSync svg {
+  width: 22px;
+  height: 22px;
+}
+.settingsModalDataTile--driveSync[data-sync-state="synced"]
+    .settingsModalDataTileIcon--driveSync { color: var(--text-success, #4caf50); }
+.settingsModalDataTile--driveSync[data-sync-state="ahead"]
+    .settingsModalDataTileIcon--driveSync,
+.settingsModalDataTile--driveSync[data-sync-state="behind"]
+    .settingsModalDataTileIcon--driveSync { color: var(--text-warning); }
+.settingsModalDataTile--driveSync[data-sync-state="diverged"]
+    .settingsModalDataTileIcon--driveSync,
+.settingsModalDataTile--driveSync[data-sync-state="failed"]
+    .settingsModalDataTileIcon--driveSync { color: var(--text-danger, #e53935); }
+.settingsModalDataTile--driveSync[data-sync-state="never"]
+    .settingsModalDataTileIcon--driveSync,
+.settingsModalDataTile--driveSync[data-sync-state="unknown"]
+    .settingsModalDataTileIcon--driveSync { color: var(--text-muted); }
+
+/* In-flight spinner — the icon span rotates while syncing-push or
+   syncing-pull is the current state. Gated by prefers-reduced-motion so
+   users who've opted out of motion just see a static cloud glyph. */
+@media (prefers-reduced-motion: no-preference) {
+  .settingsModalDataTileIcon--spinning svg {
+    animation: settingsModalDataTileSpin 1.1s linear infinite;
+  }
+}
+@keyframes settingsModalDataTileSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* Toggle row styling — reused from the previous drawer rows so the

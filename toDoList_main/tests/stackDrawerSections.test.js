@@ -47,7 +47,11 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
     describe('drawer bottom structure', () => {
         it('mounts a Settings button inside #sidebarBottom (via a centering wrap)', () => {
             expect(main).toMatch(/drawerSettingsBtn\.id\s*=\s*['"]drawerSettingsBtn['"]/);
-            expect(main).toMatch(/drawerSettingsBtn\.textContent\s*=\s*['"]Settings['"]/);
+            // The button's text content lives in a dedicated label span so a
+            // sibling sync-state badge can also be appended to the button
+            // without disturbing the centered label layout.
+            expect(main).toMatch(/drawerSettingsBtnLabel\.textContent\s*=\s*['"]Settings['"]/);
+            expect(main).toMatch(/drawerSettingsBtn\.appendChild\(drawerSettingsBtnLabel\)/);
             expect(main).toMatch(/drawerSettingsBtnWrap\.id\s*=\s*['"]drawerSettingsBtnWrap['"]/);
             expect(main).toMatch(/drawerSettingsBtnWrap\.appendChild\(drawerSettingsBtn\)/);
             expect(main).toMatch(/sidebarBottom\.appendChild\(drawerSettingsBtnWrap\)/);
