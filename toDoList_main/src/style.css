@@ -4236,6 +4236,83 @@ body.row-dragging * { cursor: grabbing !important; }
   margin: 0 0 4px;
 }
 
+/* Data section grid — 2x2 layout of equally-weighted tap tiles. Each tile
+   is a 56px tap target with stacked icon / verb / sub-label and the same
+   surface treatment as the other modal rows. Row 1 = Local Export / Local
+   Import, row 2 = Drive Export / Drive Import. */
+.settingsModalDataGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.settingsModalDataTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 6px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.settingsModalDataTile:hover,
+.settingsModalDataTile:focus-visible {
+  background: var(--bg-surface);
+  border-color: var(--border-bright);
+  outline: none;
+}
+
+.settingsModalDataTileIcon {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--accent-text);
+}
+
+.settingsModalDataTileVerb {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settingsModalDataTileSub {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+/* Reuse the existing body-class dim-loading hooks the desktop ghost menu
+   relies on — when a Drive upload / download is in flight, the matching
+   tile dims and stops accepting clicks so the user can't double-fire
+   while the auth + transfer completes. */
+body.driveExportInProgress .settingsModalDataTile--driveExport {
+  opacity: 0.55;
+  pointer-events: none;
+}
+body.driveImportInProgress .settingsModalDataTile--driveImport {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.settingsModalDataCaption {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 2px 0 6px;
+}
+
 /* Toggle row styling — reused from the previous drawer rows so the
    on/off pill and 44px tap target stay identical. Now unscoped from the
    mobile breakpoint so the rows render correctly inside the modal at

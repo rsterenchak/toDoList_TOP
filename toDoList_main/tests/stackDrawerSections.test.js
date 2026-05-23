@@ -119,7 +119,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         it('Settings modal groups toggles under View and Appearance sub-headers', () => {
             const showFnIdx = main.indexOf('function showSettingsModal()');
             expect(showFnIdx).toBeGreaterThan(-1);
-            const slice = main.slice(showFnIdx, showFnIdx + 4000);
+            const slice = main.slice(showFnIdx, showFnIdx + 8000);
             expect(slice).toMatch(/viewHeading\.textContent\s*=\s*['"]View['"]/);
             expect(slice).toMatch(/appearanceHeading\.textContent\s*=\s*['"]Appearance['"]/);
             // All four toggle builders mount into the modal body.
@@ -139,7 +139,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('Settings modal three-way close vocabulary (CLAUDE.md modal rule)', () => {
         const showFnIdx = main.indexOf('function showSettingsModal()');
-        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 6000) : '';
+        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 10000) : '';
 
         it('explicit close (×) button is mounted and closes the modal', () => {
             expect(fnSlice).toMatch(/closeX\.id\s*=\s*['"]settingsModalClose['"]/);
