@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-23',
         fixed: [
             "Export and import — both local file and Google Drive — are now reachable from the mobile Settings modal.",
+            "Removed the empty band below the mobile tab bar; version and project count moved into a new About section in Settings.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-22',
         fixed: [
-            "Completion slide-out fade now plays on the row you actually checked off instead of the row that ends up at the bottom.",
             "Import your todos directly from Google Drive via the ghost menu.",
             "Ghost menu's Export to Drive row now shows how long ago you last backed up to Drive.",
             "Ghost menu's export and import rows are now grouped under labeled LOCAL and DRIVE sections.",

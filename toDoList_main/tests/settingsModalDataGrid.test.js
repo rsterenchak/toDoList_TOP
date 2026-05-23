@@ -27,8 +27,9 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
         const idx = main.indexOf('function showSettingsModal()');
         expect(idx).toBeGreaterThan(-1);
         // Wide enough to cover the data section + the rest of the modal
-        // body the tests pivot on.
-        return main.slice(idx, idx + 8000);
+        // body the tests pivot on. Widened to 10000 after the About
+        // section landed between Appearance and Help.
+        return main.slice(idx, idx + 10000);
     }
 
     describe('Data section structure', () => {
@@ -65,11 +66,13 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
             const actionIdx = main.indexOf('function createDrawerActionRow');
             expect(toggleIdx).toBeGreaterThan(-1);
             expect(actionIdx).toBeGreaterThan(-1);
-            // All three helpers cluster in one neighborhood so they're easy
-            // to maintain together.
+            // All four drawer-row helpers (Toggle / Data / Info / Action)
+            // cluster in one neighborhood so they're easy to maintain
+            // together. Widened from 4000 → 5000 after createDrawerInfoRow
+            // joined the cluster to back the Settings About section.
             const lo = Math.min(tileIdx, toggleIdx, actionIdx);
             const hi = Math.max(tileIdx, toggleIdx, actionIdx);
-            expect(hi - lo).toBeLessThan(4000);
+            expect(hi - lo).toBeLessThan(5000);
         });
 
         it('tile builder paints icon / verb / sub-label spans', () => {

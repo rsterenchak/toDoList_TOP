@@ -3310,6 +3310,31 @@ function component() {
         return tile;
     }
 
+    // Drawer-styled row that surfaces a display-only label/value pair.
+    // Mirrors createDrawerToggleRow's shape (returns { row, refresh })
+    // so callers can re-read the value from valueGetter whenever they
+    // re-show the surface — used by the Settings modal's About section
+    // so the live project count reflects every add/remove without
+    // remounting the row. The right-side value sits in a muted pill
+    // matching the OFF state of .drawerTogglePill; the row itself is a
+    // <div> (not a button) since there's nothing to tap.
+    function createDrawerInfoRow(labelText, valueGetter) {
+        const row = document.createElement('div');
+        row.className = 'drawerInfoRow';
+        const labelEl = document.createElement('span');
+        labelEl.className = 'drawerInfoLabel';
+        labelEl.textContent = labelText;
+        const pill = document.createElement('span');
+        pill.className = 'settingsInfoPill';
+        function refresh() {
+            pill.textContent = String(valueGetter());
+        }
+        row.appendChild(labelEl);
+        row.appendChild(pill);
+        refresh();
+        return { row: row, refresh: refresh };
+    }
+
     // Drawer-styled row that triggers a one-shot flow instead of toggling
     // a setting. Same 44px tap target and label typography as
     // createDrawerToggleRow, but the right-aligned slot holds a static
@@ -3564,6 +3589,28 @@ function component() {
         appearanceSection.appendChild(buildDarkThemeToggle().row);
         appearanceSection.appendChild(buildCompanionToggle().row);
 
+        // About section — surfaces the version label + live project count
+        // that used to live in #footBar / #drawerFooter on mobile. Two
+        // info rows, both built from createDrawerInfoRow so the muted-pill
+        // value chrome matches the OFF state of the toggle pills above.
+        // The project-count valueGetter reads listLogic.listProjectsArray()
+        // on every modal open, so the count stays live without an explicit
+        // refresh wire.
+        const aboutSection = document.createElement('section');
+        aboutSection.id = 'settingsAboutSection';
+        aboutSection.className = 'settingsSection';
+        const aboutHeading = document.createElement('div');
+        aboutHeading.className = 'settingsSectionHeading';
+        aboutHeading.textContent = 'About';
+        aboutSection.appendChild(aboutHeading);
+        aboutSection.appendChild(createDrawerInfoRow('Version', function() {
+            return 'v1.1';
+        }).row);
+        aboutSection.appendChild(createDrawerInfoRow('Projects', function() {
+            const count = listLogic.listProjectsArray().length;
+            return count + (count === 1 ? ' Project' : ' Projects');
+        }).row);
+
         // HELP section — single Replay welcome tour entry that dispatches
         // by viewport. On touch / narrow viewports the carousel runs; on
         // mouse / wide viewports the desktop spotlight tour runs. Tapping
@@ -3602,6 +3649,7 @@ function component() {
         body.appendChild(dataSection);
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
+        body.appendChild(aboutSection);
         body.appendChild(helpSection);
 
         dialog.appendChild(header);

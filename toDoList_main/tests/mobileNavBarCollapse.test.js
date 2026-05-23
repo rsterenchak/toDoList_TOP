@@ -40,12 +40,15 @@ describe('STACK mobile nav-bar collapse', () => {
         return match[1];
     }
 
-    it('#outerContainer collapses the first grid track to 0 at the mobile breakpoint', () => {
-        // The desktop grid reserves `var(--nav-h) + safe-area-inset-top` for
-        // the nav row. With the nav band gone, that reservation is replaced
-        // with `0` so #mainSec sits flush at the top of the viewport.
+    it('#outerContainer collapses both nav and footer grid tracks to 0 at the mobile breakpoint', () => {
+        // The desktop grid reserves `var(--nav-h)` for the nav row and
+        // `var(--foot-h) + safe-area-inset-bottom` for the footer row.
+        // With the nav band gone and #footBar hidden on mobile (the
+        // version label + project count moved to the Settings modal's
+        // About section), both reservations collapse to `0` and the
+        // middle minmax(0, 1fr) track owns the full viewport.
         const rule = extractMobileRule('#outerContainer');
-        expect(rule).toMatch(/grid-template-rows:\s*0\s+minmax\(\s*0\s*,\s*1fr\s*\)\s+calc\(\s*var\(--foot-h\)\s*\+\s*env\(safe-area-inset-bottom\)\s*\)/);
+        expect(rule).toMatch(/grid-template-rows:\s*0\s+minmax\(\s*0\s*,\s*1fr\s*\)\s+0/);
     });
 
     it('#navBar collapses to invisible 0-height chrome on mobile (not display:none)', () => {
