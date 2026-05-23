@@ -9,6 +9,7 @@
 // no rescope is needed.
 
 import { importTodosFromString } from './exportImport.js';
+import { writeLastDriveSyncedAt } from './prefs.js';
 import {
     OAUTH_CLIENT_ID,
     getAccessToken,
@@ -146,6 +147,19 @@ export function importTodosFromDrive(onAfterReplace) {
                     const outcome = importTodosFromString(
                         text,
                         function() {
+                            // Mark this device as synced with the Drive
+                            // file we just pulled. Using Drive's
+                            // modifiedTime (not Date.now()) means the
+                            // post-import sync-state comparison reads as
+                            // 'synced' regardless of clock skew between
+                            // this device and Drive's server. Written
+                            // unconditionally on success — even a no-op
+                            // restore should clear the "behind" indicator
+                            // since the local state is by definition in
+                            // sync with that Drive file.
+                            if (file && file.modifiedTime) {
+                                writeLastDriveSyncedAt(file.modifiedTime);
+                            }
                             showDriveToast({ label: 'Imported from Drive' });
                             if (typeof onAfterReplace === 'function') onAfterReplace();
                         },

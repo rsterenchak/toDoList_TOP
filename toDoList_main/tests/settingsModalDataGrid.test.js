@@ -137,17 +137,17 @@ describe('mobile Settings modal — Data section (2x2 grid)', () => {
     });
 
     describe('caption row stale-time signal', () => {
-        it('caption uses formatRelativeExportedAt and reads readLastDriveExportedAt from prefs', () => {
+        it('caption uses formatRelativeExportedAt and reads readLastDriveSyncedAt from prefs', () => {
             const slice = showSettingsModalSlice();
             expect(slice).toMatch(/settingsModalDataCaption/);
             // The helper is imported into main.js at the top and called
             // from the caption refresh — it's the same helper the desktop
             // ghost menu's Drive Export state pill uses.
             expect(slice).toMatch(/formatRelativeExportedAt\s*\(/);
-            expect(slice).toMatch(/readLastDriveExportedAt\s*\(\s*\)/);
+            expect(slice).toMatch(/readLastDriveSyncedAt\s*\(\s*\)/);
         });
 
-        it('caption falls back to "never" for null timestamps (vs the helper\'s "Never exported")', () => {
+        it('caption falls back to "never" for null timestamps (vs the helper\'s "Never synced")', () => {
             const slice = showSettingsModalSlice();
             // Null timestamps must read "never" in the caption rather than
             // the helper's longer default, so the caption stays terse
