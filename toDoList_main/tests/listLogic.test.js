@@ -428,6 +428,39 @@ describe('listLogic — fromSync suppresses lastLocalMutationAt', () => {
         expect(after).not.toBe(SEED);
         expect(isNaN(Date.parse(after))).toBe(false);
     });
+
+    // sortCompletedToBottom is the bridge between the post-Drive-import
+    // rebuild loop (addToDos_restore re-sorts every project on the way
+    // through) and saveToStorage. A previous version of this code forgot
+    // to plumb opts through, so the post-import sort bumped
+    // lastLocalMutationAt past the just-written lastDriveSyncedAt and
+    // left the indicator stuck on amber. These pin both branches so
+    // either side of the regression fails loudly.
+    it('sortCompletedToBottom() with no opts writes lastLocalMutationAt', () => {
+        listLogic.addProject('P');
+        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
+        expect(localStorage.getItem(KEY)).toBeNull();
+
+        listLogic.sortCompletedToBottom('P');
+
+        expect(localStorage.getItem(KEY)).not.toBeNull();
+        expect(isNaN(Date.parse(localStorage.getItem(KEY)))).toBe(false);
+    });
+
+    it('sortCompletedToBottom("P", { fromSync: true }) does not bump lastLocalMutationAt', () => {
+        const SEED = '2026-01-01T00:00:00.000Z';
+        listLogic.addProject('P');
+        // Pin the marker AFTER addProject's own save so the assertion
+        // measures only the sortCompletedToBottom call below.
+        localStorage.setItem(KEY, SEED);
+
+        listLogic.sortCompletedToBottom('P', { fromSync: true });
+
+        expect(localStorage.getItem(KEY)).toBe(SEED);
+        // Storage still committed — sync-safe writes persist data, they
+        // just hold the mutation timestamp.
+        expect(localStorage.getItem('allProjects')).not.toBeNull();
+    });
 });
 
 
