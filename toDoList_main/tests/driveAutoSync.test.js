@@ -214,6 +214,67 @@ describe('driveAutoSync — debounce coalesces rapid mutations into one fire', (
 });
 
 
+// Switching projects in the sidebar reaches sortCompletedToBottom via
+// addToDos_restore. With data that's already correctly sorted on disk,
+// the sort is a defensive normalization with no actual reorder — it must
+// not bump lastLocalMutationAt or dispatch driveSyncStateChanged, since
+// main.js's listener turns that event into a scheduleAutoSync call and
+// the user only changed their view, not their data.
+describe('driveAutoSync — project-switch render on pre-sorted data does not trigger auto-sync', () => {
+    beforeEach(() => {
+        _resetAutoSyncForTest();
+        listLogic._reset();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+    });
+    afterEach(() => { _resetAutoSyncForTest(); });
+
+    it('sortCompletedToBottom on an already-sorted project does not dispatch driveSyncStateChanged and does not schedule a sync', () => {
+        // Seed a sorted project that mirrors what restoreFromStorage hands
+        // to the render path on a project switch.
+        listLogic.addProject('P');
+        listLogic.addToDo('P', 'Open A');
+        listLogic.addToDo('P', 'Open B');
+        listLogic.addToDo('P', 'Done X');
+        const items = listLogic.listItems('P');
+        const doneX = items.find(i => i.tit === 'Done X');
+        doneX.completed = true;
+        // One real sort settles the array into canonical order.
+        listLogic.sortCompletedToBottom('P');
+
+        // Wire the same listener-to-scheduleAutoSync bridge that main.js
+        // installs so the assertion mirrors the real chain.
+        armAutoSync();
+        const bridge = function() { scheduleAutoSync(); };
+        document.addEventListener('driveSyncStateChanged', bridge);
+
+        vi.useFakeTimers();
+        const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+        let dispatchCount = 0;
+        const counter = function() { dispatchCount++; };
+        document.addEventListener('driveSyncStateChanged', counter);
+
+        try {
+            // Simulate a project-switch render: addToDos_restore → sortCompletedToBottom.
+            listLogic.sortCompletedToBottom('P');
+        } finally {
+            document.removeEventListener('driveSyncStateChanged', counter);
+            document.removeEventListener('driveSyncStateChanged', bridge);
+        }
+
+        const debounceCalls = setTimeoutSpy.mock.calls.filter(call => call[1] === AUTO_SYNC_DEBOUNCE_MS);
+        setTimeoutSpy.mockRestore();
+        vi.useRealTimers();
+
+        // No event dispatched, no debounce timer armed.
+        expect(dispatchCount).toBe(0);
+        expect(debounceCalls.length).toBe(0);
+        // And the auto-sync state stays idle (i.e. armed but no pending fire).
+        expect(getAutoSyncState()).toBe('idle');
+    });
+});
+
+
 // ── SOURCE-LEVEL CONTRACT ─────────────────────────────────────────────
 describe('driveAutoSync — source-level contract', () => {
     const src = read('driveAutoSync.js');

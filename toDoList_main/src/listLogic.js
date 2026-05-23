@@ -510,9 +510,54 @@ export const listLogic = (function () {
     // persisted every project just upstream, making the rebuild's
     // per-project re-sort a defensive no-op whose storage write
     // duplicates work that's already on disk.
+    //
+    // Skips the in-memory rewrite AND the saveToStorage call when the
+    // desired order matches the current order position-for-position. Render
+    // entry points (project switch, restoreFromStorage) reach this function
+    // with data that's already correctly sorted on disk, and the historical
+    // unconditional save bumped lastLocalMutationAt and tripped auto-sync
+    // even though nothing actually changed.
     function sortCompletedToBottom(project, opts) {
         if (!allProjects[project]) return;
-        sortCompletedInPlace(allProjects[project].items);
+        const arr = allProjects[project].items;
+
+        // Compute the would-be sorted order without mutating yet so the
+        // noop check below has both sides to compare. Mirrors the partition
+        // logic in sortCompletedInPlace.
+        let blank = null;
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i].tit === '') { blank = arr[i]; break; }
+        }
+        const blankExisted = !!blank;
+        if (!blank) blank = toDo('', '', '', 1, 0);
+
+        const uncompleted = [];
+        const completed = [];
+        for (let i = 0; i < arr.length; i++) {
+            const it = arr[i];
+            if (it.tit === '') continue;
+            if (it.completed) completed.push(it);
+            else uncompleted.push(it);
+        }
+
+        const desiredLen = 1 + uncompleted.length + completed.length;
+        let unchanged = blankExisted && arr.length === desiredLen && arr[0] === blank;
+        if (unchanged) {
+            let idx = 1;
+            for (let i = 0; i < uncompleted.length && unchanged; i++) {
+                if (arr[idx++] !== uncompleted[i]) unchanged = false;
+            }
+            for (let i = 0; i < completed.length && unchanged; i++) {
+                if (arr[idx++] !== completed[i]) unchanged = false;
+            }
+        }
+        if (unchanged) return;
+
+        arr.length = 0;
+        arr.push(blank);
+        for (let i = 0; i < uncompleted.length; i++) arr.push(uncompleted[i]);
+        for (let i = 0; i < completed.length; i++)   arr.push(completed[i]);
+
         if (opts && opts.deferSave === true) return;
         saveToStorage(opts);
     }
