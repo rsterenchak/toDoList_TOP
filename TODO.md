@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add regression test pinning that listLogic.js never references `todos.user_id`
+- [x] **[MEDIUM]** Add regression test pinning that listLogic.js never references `todos.user_id`
   - Description: The `todos` table intentionally has no `user_id` column — RLS on todos uses a sub-select against the parent project to enforce per-user access, and Phase 5's schema makes this explicit. Despite this, three separate PR iterations have re-introduced `user_id` references against the todos table (in hydrateFromSupabase's `.eq('user_id', ...)` filter, twice; and now in persistMutation's insert branch's row payload). Each surfaces as a PGRST204 "Could not find the 'user_id' column of 'todos' in the schema cache" error at runtime. The pattern is automation-driven — readers reasonably assume every row needs user_id, miss the projects-side RLS sub-select, and add the reference. Add a regression test at `tests/listLogicSchema.test.js` that grep-asserts `listLogic.js` source contains zero occurrences of `'user_id'` within a 200-character window of `'todos'` (string-based static check, not a runtime test — fast and deterministic). Implementation: read `listLogic.js` as a string via `fs.readFileSync`, scan with a regex like `/['"]todos['"][\s\S]{0,200}['"]user_id['"]/` and `/['"]user_id['"][\s\S]{0,200}['"]todos['"]/`, assert both match zero times. Also add an inline comment at the top of persistMutation's insert branch and update branch and at hydrateFromSupabase's todos query saying explicitly "DO NOT add user_id to todos queries or payloads — see tests/listLogicSchema.test.js". The comment + the failing test together should make the regression impossible going forward.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogicSchema.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-24
 
 ## Features
 
