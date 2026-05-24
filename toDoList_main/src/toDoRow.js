@@ -1266,6 +1266,7 @@ export function buildToDoRow(item, toDoName) {
         }
 
         listLogic.saveToStorage();
+        listLogic.commitBlankPlaceholder(toDoName, item);
         applyDueUrgency(toDoChild, item);
         updateDuePillLabel(duePill, item);
 

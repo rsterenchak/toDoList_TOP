@@ -502,6 +502,36 @@ export const listLogic = (function () {
     };
 
 
+    // Promote an existing blank-placeholder item to a real Supabase row.
+    // The Enter-to-commit handler in toDoRow.js mutates `item.tit` in
+    // place on the blank placeholder rather than re-routing through
+    // `addToDo`, so the placeholder — filtered from every prior write
+    // because its title was empty — has never been INSERTed. Without
+    // this call, the row only lives in localStorage and the followup
+    // `sortCompletedToBottom` fires UPDATEs against an id Supabase has
+    // never seen (silently 204s), so the row never lands in the
+    // backend. The caller has already done the in-memory mutation and
+    // the localStorage save; this function only handles the missing
+    // INSERT. Defensive on an empty title so a future caller can't
+    // smuggle a blank row past the persistence boundary.
+    // @category: user-mutation-only
+    function commitBlankPlaceholder(projectName, item) {
+
+        if (!projectName || !allProjects[projectName] || !item) return;
+        if (!item.tit || item.tit === '') return;
+
+        if (!item.id) item.id = genId();
+        persistMutation({
+            op: 'insert',
+            table: 'todos',
+            payload: toTodoRowPayload(
+                item,
+                allProjects[projectName].id || null
+            ),
+        });
+    }
+
+
     // @category: user-mutation-only
     function editProject(currentProperty, newProperty) {
 
@@ -2183,6 +2213,7 @@ export const listLogic = (function () {
         removeToDo,
         removeToDoByItem,
         insertToDoAt,
+        commitBlankPlaceholder,
         editProject,
         listItems,
         projectLength,
