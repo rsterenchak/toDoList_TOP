@@ -95,6 +95,7 @@ import {
 import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
+import { supabase } from './supabaseClient.js';
 import button from './addProj_button.svg';
 
 // One-shot migration of the prior `todoapp_lastDriveExportedAt` localStorage
@@ -2175,6 +2176,29 @@ function component() {
         );
         menu.appendChild(helpItem);
 
+        // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
+        // the DRIVE / HELP section pattern: a divider + small heading
+        // followed by the row(s). Tap calls supabase.auth.signOut; the
+        // app-level onAuthStateChange listener installed in index.js
+        // takes care of re-rendering the magic-link modal once the
+        // session clears.
+        menu.appendChild(buildSettingsMenuDivider());
+        const accountHeading = document.createElement('div');
+        accountHeading.className = 'settingsMenuSectionHeading';
+        accountHeading.textContent = 'Account';
+        accountHeading.setAttribute('role', 'presentation');
+        menu.appendChild(accountHeading);
+
+        const signOutItem = buildSettingsMenuItem(
+            'Sign out',
+            '',
+            function() {
+                hideSettingsMenu();
+                supabase.auth.signOut();
+            }
+        );
+        menu.appendChild(signOutItem);
+
         document.body.appendChild(menu);
 
         // Paint the DRIVE section header badge to reflect the current
@@ -4235,11 +4259,30 @@ function component() {
         });
         helpSection.appendChild(replayRow);
 
+        // Account section — Phase 4 auth gate's sign-out exit. Mirrors
+        // the DRIVE / HELP / About section pattern at the same heading
+        // typography so the row chrome reads consistently. Tap closes
+        // the modal first so the auth modal lands on a clean surface
+        // when the app-level onAuthStateChange listener re-renders it.
+        const accountSection = document.createElement('section');
+        accountSection.id = 'settingsAccountSection';
+        accountSection.className = 'settingsSection';
+        const accountHeading = document.createElement('div');
+        accountHeading.className = 'settingsSectionHeading';
+        accountHeading.textContent = 'Account';
+        accountSection.appendChild(accountHeading);
+        const signOutRow = createDrawerActionRow('Sign out', function() {
+            close();
+            supabase.auth.signOut();
+        });
+        accountSection.appendChild(signOutRow);
+
         body.appendChild(dataSection);
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
         body.appendChild(aboutSection);
         body.appendChild(helpSection);
+        body.appendChild(accountSection);
 
         dialog.appendChild(header);
         dialog.appendChild(body);

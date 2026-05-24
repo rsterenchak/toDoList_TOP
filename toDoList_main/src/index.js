@@ -5,20 +5,63 @@ import './favicon.svg';
 import { component, restoreFromStorage, notifyUpdateAvailable } from './main.js';
 import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
+import { supabase } from './supabaseClient.js';
+import { showAuthModal, hideAuthModal } from './auth.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
 document.body.appendChild(component()); // build and attach DOM
 
-restoreFromStorage();                   // now that DOM is live, restore saved projects
+// ── AUTH GATE ──
+// Phase 4: render the magic-link sign-in modal as a hard front door
+// when no Supabase session exists. bootApp() runs the normal load
+// path (restoreFromStorage → maybeStartFirstRunCarousel); it's
+// idempotent via the `booted` latch so the initial getSession() and
+// the onAuthStateChange subscription (which fires on subscribe with
+// the current session) can both safely trigger it. On a sign-out
+// event we re-render the modal so the chrome below stays gated; the
+// in-memory + localStorage state is left untouched — Phase 5 will
+// route data through Supabase, and Phase 6 will migrate the local
+// snapshot to the backend.
+let booted = false;
+function bootApp() {
+    if (booted) return;
+    booted = true;
+    restoreFromStorage();              // now that DOM is live, restore saved projects
+    // First-run welcome carousel for mobile new users. The flag check and
+    // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
+    // so callers don't need to know the gating rules; runs after restoreFromStorage
+    // so the seeded sample project is already on screen when the closer card lands.
+    // Desktop falls through to the existing coachmark tour started inside
+    // restoreFromStorage.
+    maybeStartFirstRunCarousel();
+}
 
-// First-run welcome carousel for mobile new users. The flag check and
-// (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
-// so callers don't need to know the gating rules; runs after restoreFromStorage
-// so the seeded sample project is already on screen when the closer card lands.
-// Desktop falls through to the existing coachmark tour started inside
-// restoreFromStorage.
-maybeStartFirstRunCarousel();
+supabase.auth.getSession().then(function(result) {
+    const session = result && result.data && result.data.session;
+    if (session) {
+        bootApp();
+    } else {
+        showAuthModal();
+    }
+}).catch(function() {
+    // Network failure on initial session probe — render the modal so
+    // the user can manually authenticate; the same probe runs again
+    // on the magic-link callback when the URL hash carries the
+    // exchanged tokens.
+    showAuthModal();
+});
+
+supabase.auth.onAuthStateChange(function(_event, session) {
+    if (session) {
+        hideAuthModal();
+        bootApp();
+    } else {
+        // Sign-out (or initial-load with no session). Re-render the
+        // modal so the chrome behind it stays gated.
+        showAuthModal();
+    }
+});
 
 
 // ── SERVICE WORKER ──
