@@ -20,9 +20,11 @@ import {
     getAutoSyncState,
     _resetAutoSyncForTest,
     AUTO_SYNC_DEBOUNCE_MS,
+    AUTO_SYNC_POLL_INTERVAL_MS,
     performAutoSync,
     autoSyncOnAppLoad,
     registerAutoSyncRebuild,
+    installAutoSyncBackgroundTriggers,
     getCachedDriveModifiedTime,
     updateCachedDriveModifiedTime,
 } from '../src/driveAutoSync.js';
@@ -968,5 +970,397 @@ describe('CSS — diverged and failed indicator states', () => {
         expect(css).toMatch(
             /\.settingsMenuDriveSyncBadge\[data-sync-state="diverged"\]/
         );
+    });
+});
+
+
+// ── BACKGROUND TRIGGERS: VISIBILITYCHANGE / FOCUS / 60s POLL ──────────
+describe('driveAutoSync — installAutoSyncBackgroundTriggers wires the three sync triggers', () => {
+    // The three triggers all funnel through performAutoSync(); we assert
+    // wiring at the source level (each handler exists, each is gated by
+    // getCachedAccessToken, the poll has the visibility gate inside its
+    // callback so a hidden→visible flip resumes the cadence without
+    // re-registering the interval).
+    const src = read('driveAutoSync.js');
+
+    it('exports installAutoSyncBackgroundTriggers', async () => {
+        const mod = await import('../src/driveAutoSync.js');
+        expect(typeof mod.installAutoSyncBackgroundTriggers).toBe('function');
+    });
+
+    it('exports AUTO_SYNC_POLL_INTERVAL_MS = 60 seconds', async () => {
+        const mod = await import('../src/driveAutoSync.js');
+        expect(mod.AUTO_SYNC_POLL_INTERVAL_MS).toBe(60 * 1000);
+    });
+
+    it('registers a visibilitychange listener on document', () => {
+        expect(src).toMatch(
+            /document\.addEventListener\(\s*['"]visibilitychange['"]/
+        );
+    });
+
+    it('registers a focus listener on window', () => {
+        expect(src).toMatch(
+            /window\.addEventListener\(\s*['"]focus['"]/
+        );
+    });
+
+    it('registers a setInterval at the AUTO_SYNC_POLL_INTERVAL_MS cadence', () => {
+        // setInterval is called with the poll constant as its delay. Find
+        // the call by matching the constant name directly rather than
+        // trying to balance parens around the callback body.
+        expect(src).toMatch(/setInterval\s*\(/);
+        expect(src).toMatch(/,\s*AUTO_SYNC_POLL_INTERVAL_MS\s*\)/);
+    });
+
+    it('all three trigger handlers short-circuit when getCachedAccessToken returns null', () => {
+        // Body of installAutoSyncBackgroundTriggers must contain the
+        // token gate at least three times — one per trigger callback.
+        const fnIdx = src.indexOf('export function installAutoSyncBackgroundTriggers');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const bodyStart = src.indexOf('{', fnIdx);
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < src.length; i++) {
+            const c = src.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = src.slice(bodyStart, i + 1); break; }
+            }
+        }
+        const tokenGates = body.match(/getCachedAccessToken\s*\(\s*\)/g) || [];
+        expect(tokenGates.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('the visibilitychange and the poll callback both gate on document.visibilityState === "visible"', () => {
+        // visibilitychange handler ignores the hidden transition, and the
+        // poll callback skips its body when the tab is hidden — both
+        // checks live in the module source.
+        const matches = src.match(/document\.visibilityState\s*!==\s*['"]visible['"]/g) || [];
+        expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('all three callbacks invoke performAutoSync', () => {
+        // Body of installAutoSyncBackgroundTriggers must contain three
+        // performAutoSync calls — one per trigger.
+        const fnIdx = src.indexOf('export function installAutoSyncBackgroundTriggers');
+        const bodyStart = src.indexOf('{', fnIdx);
+        let depth = 0;
+        let body = '';
+        for (let i = bodyStart; i < src.length; i++) {
+            const c = src.charAt(i);
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) { body = src.slice(bodyStart, i + 1); break; }
+            }
+        }
+        const calls = body.match(/performAutoSync\s*\(/g) || [];
+        expect(calls.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('main.js calls installAutoSyncBackgroundTriggers once at boot', () => {
+        const main = read('main.js');
+        // Imported and invoked exactly once. We allow the function name to
+        // appear at most twice — once in the import statement, once at the
+        // call site — to guard against a future refactor that accidentally
+        // installs the triggers twice and stacks duplicate listeners.
+        expect(main).toMatch(/installAutoSyncBackgroundTriggers/);
+        const occurrences = main.match(/installAutoSyncBackgroundTriggers/g) || [];
+        expect(occurrences.length).toBeLessThanOrEqual(2);
+    });
+});
+
+
+describe('driveAutoSync — installAutoSyncBackgroundTriggers behavioural wiring', () => {
+    let originalGoogle;
+    let originalFetch;
+    let originalVisibilityDescriptor;
+
+    function setVisibilityState(value) {
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            get() { return value; },
+        });
+    }
+
+    beforeEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        originalGoogle = window.google;
+        originalFetch = globalThis.fetch;
+        originalVisibilityDescriptor = Object.getOwnPropertyDescriptor(
+            Document.prototype, 'visibilityState'
+        ) || Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    });
+
+    afterEach(() => {
+        _resetAutoSyncForTest();
+        _resetCachedToken();
+        _resetGisPromise();
+        if (originalGoogle === undefined) {
+            try { delete window.google; } catch (_) { window.google = undefined; }
+        } else {
+            window.google = originalGoogle;
+        }
+        if (originalFetch === undefined) {
+            try { delete globalThis.fetch; } catch (_) { globalThis.fetch = undefined; }
+        } else {
+            globalThis.fetch = originalFetch;
+        }
+        // Restore the visibilityState descriptor so later tests see jsdom's
+        // default getter.
+        try { delete document.visibilityState; } catch (_) {}
+        if (originalVisibilityDescriptor) {
+            try {
+                Object.defineProperty(document, 'visibilityState', originalVisibilityDescriptor);
+            } catch (_) { /* jsdom restores its own on next test boot */ }
+        }
+    });
+
+    async function primeCachedToken() {
+        window.google = {
+            accounts: {
+                oauth2: {
+                    initTokenClient(config) {
+                        return {
+                            requestAccessToken() {
+                                config.callback({
+                                    access_token: 'bg-trigger-token',
+                                    expires_in: 3600,
+                                });
+                            },
+                        };
+                    },
+                },
+            },
+        };
+        const { getAccessToken } = await import('../src/driveAuth.js');
+        await getAccessToken();
+    }
+
+    it('visibilitychange → visible fires performAutoSync (Drive query observed)', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        const fetchSpy = vi.fn(function() {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ files: [] }),
+            });
+        });
+        globalThis.fetch = fetchSpy;
+
+        setVisibilityState('visible');
+        installAutoSyncBackgroundTriggers();
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        // Let the microtask + first .then in performAutoSync resolve.
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const hit = fetchSpy.mock.calls.some(function(call) {
+            const url = call[0];
+            return typeof url === 'string' && url.indexOf('drive/v3/files') !== -1;
+        });
+        expect(hit).toBe(true);
+    });
+
+    it('visibilitychange → hidden does NOT fire performAutoSync', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        const fetchSpy = vi.fn();
+        globalThis.fetch = fetchSpy;
+
+        setVisibilityState('hidden');
+        installAutoSyncBackgroundTriggers();
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        await Promise.resolve();
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('window focus fires performAutoSync (Drive query observed)', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        const fetchSpy = vi.fn(function() {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ files: [] }),
+            });
+        });
+        globalThis.fetch = fetchSpy;
+
+        installAutoSyncBackgroundTriggers();
+        window.dispatchEvent(new Event('focus'));
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const hit = fetchSpy.mock.calls.some(function(call) {
+            const url = call[0];
+            return typeof url === 'string' && url.indexOf('drive/v3/files') !== -1;
+        });
+        expect(hit).toBe(true);
+    });
+
+    it('no cached token short-circuits all three triggers (zero fetch)', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        // No primeCachedToken — getCachedAccessToken() returns null.
+        armAutoSync();
+
+        const fetchSpy = vi.fn();
+        globalThis.fetch = fetchSpy;
+
+        setVisibilityState('visible');
+        installAutoSyncBackgroundTriggers();
+
+        // Fire visibilitychange.
+        document.dispatchEvent(new Event('visibilitychange'));
+        // Fire focus.
+        window.dispatchEvent(new Event('focus'));
+        // Fire the interval body.
+        vi.useFakeTimers();
+        // Re-install under fake timers so the interval registers against
+        // the fake clock.
+        installAutoSyncBackgroundTriggers();
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new Event('focus'));
+        vi.advanceTimersByTime(60 * 1000 + 100);
+        vi.useRealTimers();
+
+        await Promise.resolve();
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('60s interval poll fires performAutoSync when the tab is visible', async () => {
+        vi.useFakeTimers();
+        const { installAutoSyncBackgroundTriggers, AUTO_SYNC_POLL_INTERVAL_MS } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        const fetchSpy = vi.fn(function() {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ files: [] }),
+            });
+        });
+        globalThis.fetch = fetchSpy;
+
+        setVisibilityState('visible');
+        installAutoSyncBackgroundTriggers();
+
+        // Advance just past one interval tick.
+        vi.advanceTimersByTime(AUTO_SYNC_POLL_INTERVAL_MS + 100);
+        vi.useRealTimers();
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const hit = fetchSpy.mock.calls.some(function(call) {
+            const url = call[0];
+            return typeof url === 'string' && url.indexOf('drive/v3/files') !== -1;
+        });
+        expect(hit).toBe(true);
+    });
+
+    it('60s interval poll skips its body when the tab is hidden', async () => {
+        vi.useFakeTimers();
+        const { installAutoSyncBackgroundTriggers, AUTO_SYNC_POLL_INTERVAL_MS } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        const fetchSpy = vi.fn();
+        globalThis.fetch = fetchSpy;
+
+        setVisibilityState('hidden');
+        installAutoSyncBackgroundTriggers();
+
+        // Three full interval ticks — still hidden, nothing should fire.
+        vi.advanceTimersByTime(3 * AUTO_SYNC_POLL_INTERVAL_MS + 100);
+        vi.useRealTimers();
+
+        await Promise.resolve();
+        expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('a near-simultaneous visibilitychange + focus pair coalesces into a single Drive query via _inFlight', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        // The Drive list query is the first network hit performAutoSync
+        // issues. With the _inFlight guard the second trigger should fall
+        // into the in-flight branch and return early without a second
+        // list. Return a never-resolving promise so the first query stays
+        // in flight while we fire the second trigger.
+        let listCalls = 0;
+        let resolveFirst;
+        globalThis.fetch = vi.fn(function(url) {
+            if (typeof url === 'string' && url.indexOf('drive/v3/files') !== -1) {
+                listCalls += 1;
+                return new Promise(function(resolve) { resolveFirst = resolve; });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+        });
+
+        setVisibilityState('visible');
+        installAutoSyncBackgroundTriggers();
+        document.dispatchEvent(new Event('visibilitychange'));
+        // Don't let the first promise resolve yet — fire the second trigger.
+        window.dispatchEvent(new Event('focus'));
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Only one Drive list call observed — the second trigger fell into
+        // the in-flight branch.
+        expect(listCalls).toBe(1);
+
+        // Cleanup: resolve the pending fetch so the test doesn't leak.
+        if (resolveFirst) {
+            resolveFirst({ ok: true, json: () => Promise.resolve({ files: [] }) });
+        }
+        await Promise.resolve();
+    });
+
+    it('idempotent: calling installAutoSyncBackgroundTriggers twice does not stack duplicate visibilitychange handlers', async () => {
+        const { installAutoSyncBackgroundTriggers } = await import('../src/driveAutoSync.js');
+        await primeCachedToken();
+        armAutoSync();
+
+        let listCalls = 0;
+        globalThis.fetch = vi.fn(function(url) {
+            if (typeof url === 'string' && url.indexOf('drive/v3/files') !== -1) {
+                listCalls += 1;
+            }
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ files: [] }),
+            });
+        });
+
+        setVisibilityState('visible');
+        installAutoSyncBackgroundTriggers();
+        installAutoSyncBackgroundTriggers();
+        installAutoSyncBackgroundTriggers();
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Even with three install calls, only one handler is attached, so
+        // one Drive list query fires per dispatched event.
+        expect(listCalls).toBe(1);
     });
 });

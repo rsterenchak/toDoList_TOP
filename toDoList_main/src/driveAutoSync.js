@@ -31,6 +31,7 @@ import { exportTodosToDrive } from './driveExport.js';
 import { readLastDriveSyncedAt, readLastLocalMutationAt } from './prefs.js';
 
 export const AUTO_SYNC_DEBOUNCE_MS = 10 * 1000;
+export const AUTO_SYNC_POLL_INTERVAL_MS = 60 * 1000;
 
 let _armed = false;
 let _debounceTimer = null;
@@ -38,6 +39,9 @@ let _state = 'idle';
 let _lastFailureMessage = null;
 let _onRebuildAfterImport = null;
 let _inFlight = false;
+let _pollIntervalId = null;
+let _visibilityChangeListener = null;
+let _focusListener = null;
 
 // Cached Drive `modifiedTime` from the most recent successful query or
 // push/pull. The indicator's local-only recompute path reads this via
@@ -97,6 +101,7 @@ export function _resetAutoSyncForTest() {
         clearTimeout(_debounceTimer);
         _debounceTimer = null;
     }
+    _uninstallBackgroundTriggers();
 }
 
 
@@ -357,4 +362,74 @@ export function autoSyncOnAppLoad() {
     }, function() {
         return 'no-token';
     });
+}
+
+
+// ── BACKGROUND TRIGGERS ──
+//
+// Beyond the boot-time silent re-auth and the per-mutation debounce, three
+// background triggers feed performAutoSync() so a tab left open on Device B
+// notices when Device A has pushed a fresh version to Drive:
+//
+//   1. visibilitychange → 'visible': catches tab returns after sleep / OS
+//      app-switch / phone screen-on. The common case where a user picks the
+//      phone back up after editing on the laptop.
+//   2. window focus: desktop-tab-switch backstop. Some browsers fire focus
+//      but not visibilitychange when the user switches between tabs in the
+//      same window.
+//   3. 60s setInterval, gated on document.visibilityState === 'visible':
+//      catches devices left open in the foreground while another device
+//      pushes — without this, a static visible tab never re-queries.
+//
+// All three short-circuit when getCachedAccessToken() returns null so the
+// triggers can never open an OAuth popup — with no cached token they're
+// silent no-ops. The existing _inFlight guard in performAutoSync()
+// coalesces near-simultaneous triggers (visibilitychange + focus on a
+// desktop tab return) into one Drive query.
+//
+// The poll's visibility gate lives inside the callback rather than around
+// the interval registration so a hidden→visible transition resumes the
+// poll without tearing down and recreating the timer.
+//
+// Idempotent — calling twice tears down the previous listeners and interval
+// before reinstalling, so the boot path can't leave duplicate triggers
+// behind if it ever runs more than once.
+export function installAutoSyncBackgroundTriggers() {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+    _uninstallBackgroundTriggers();
+
+    _visibilityChangeListener = function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!getCachedAccessToken()) return;
+        performAutoSync().catch(function() { /* silent — performAutoSync handles its own failure modes */ });
+    };
+    document.addEventListener('visibilitychange', _visibilityChangeListener);
+
+    _focusListener = function() {
+        if (!getCachedAccessToken()) return;
+        performAutoSync().catch(function() { /* silent */ });
+    };
+    window.addEventListener('focus', _focusListener);
+
+    _pollIntervalId = setInterval(function() {
+        if (document.visibilityState !== 'visible') return;
+        if (!getCachedAccessToken()) return;
+        performAutoSync().catch(function() { /* silent */ });
+    }, AUTO_SYNC_POLL_INTERVAL_MS);
+}
+
+function _uninstallBackgroundTriggers() {
+    if (_visibilityChangeListener && typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', _visibilityChangeListener);
+    }
+    _visibilityChangeListener = null;
+    if (_focusListener && typeof window !== 'undefined') {
+        window.removeEventListener('focus', _focusListener);
+    }
+    _focusListener = null;
+    if (_pollIntervalId) {
+        clearInterval(_pollIntervalId);
+        _pollIntervalId = null;
+    }
 }

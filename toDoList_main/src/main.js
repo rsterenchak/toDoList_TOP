@@ -85,6 +85,7 @@ import {
     performAutoSync,
     autoSyncOnAppLoad,
     registerAutoSyncRebuild,
+    installAutoSyncBackgroundTriggers,
     getAutoSyncState,
     getCurrentSyncState,
     getCachedDriveModifiedTime,
@@ -5815,6 +5816,13 @@ function component() {
     // Register the host rebuild hook so the auto-sync module's pull
     // branch can redraw the UI after the silent import commits.
     registerAutoSyncRebuild(rebuildAfterImport);
+
+    // Install the background sync triggers — visibilitychange, focus, and a
+    // 60s visible-tab interval poll — so a tab left open notices when
+    // another device has pushed a fresh version to Drive. All three are
+    // gated on getCachedAccessToken() being non-null, so they never open an
+    // OAuth popup; with no cached token they're silent no-ops.
+    installAutoSyncBackgroundTriggers();
 
     // Boot-time Drive arming + state probe. autoSyncOnAppLoad attempts a
     // silent re-auth via GIS (prompt: 'none') — if the user has a valid
