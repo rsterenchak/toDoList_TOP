@@ -76,7 +76,7 @@ import {
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import { formatRelativeExportedAt } from './exportImport.js';
+import { attachDragDropImport, formatRelativeExportedAt } from './exportImport.js';
 import { exportTodosToDrive } from './driveExport.js';
 import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
 import { getCachedAccessToken, getAccessToken, showDriveToast, OAUTH_CLIENT_ID } from './driveAuth.js';
@@ -5943,6 +5943,13 @@ function component() {
     // Register the host rebuild hook so the auto-sync module's pull
     // branch can redraw the UI after the silent import commits.
     registerAutoSyncRebuild(rebuildAfterImport);
+
+    // Window-level drag-and-drop import. Dropping a .json file anywhere on
+    // the page routes through the same parse → validate → confirm → replace
+    // pipeline as the file picker and the Drive pull, with rebuildAfterImport
+    // as the post-replace UI redraw. Pointer-coarse devices skip the
+    // listeners entirely (the function early-returns).
+    attachDragDropImport(rebuildAfterImport);
 
     // Install the background sync triggers — visibilitychange, focus, and a
     // 60s visible-tab interval poll — so a tab left open notices when

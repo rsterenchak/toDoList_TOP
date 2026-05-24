@@ -5048,32 +5048,50 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
 
 /* ── IMPORT DROP OVERLAY ──
    Full-window dim while a file is being dragged over the app. Pointer events
-   are disabled on the inner label so the underlying drag/drop listeners on
-   <window> still fire. */
+   are disabled so the underlying drag/drop listeners on <window> still fire.
+   The dashed perimeter traces the window edge to read as a true "drop zone"
+   rather than a small centered card; the icon + label + subline stack tells
+   the user what the drop will do (destructive overwrite) before the confirm
+   modal opens. */
 #importDropOverlay {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(14, 15, 20, 0.72);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
 }
 
 #importDropOverlayInner {
+  position: absolute;
+  inset: 18px;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 0 24px var(--accent-glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-primary);
+}
+
+#importDropOverlayIcon {
+  color: var(--accent);
+}
+
+#importDropOverlayLabel {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 18px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-primary);
-  padding: 18px 28px;
-  border: 2px dashed var(--accent);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+}
+
+#importDropOverlaySubline {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 

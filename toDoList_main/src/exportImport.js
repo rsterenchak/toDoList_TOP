@@ -285,9 +285,39 @@ export function attachDragDropImport(onAfterReplace) {
         if (overlay) return;
         overlay = document.createElement('div');
         overlay.id = 'importDropOverlay';
+
+        // The inset perimeter that carries the dashed border + glow. Sized
+        // via inset:18px in CSS so the dash sits a hair inside the window
+        // edge rather than flush against it.
         const inner = document.createElement('div');
         inner.id = 'importDropOverlayInner';
-        inner.textContent = 'Drop to import';
+
+        // Inline SVG file-with-upload-arrow glyph (Tabler-style). Kept
+        // inline so it inherits currentColor from the parent and so no
+        // icon-font dependency is needed. aria-hidden because the label
+        // beneath it conveys the action verbally.
+        inner.insertAdjacentHTML('beforeend',
+            '<svg id="importDropOverlayIcon" xmlns="http://www.w3.org/2000/svg"'
+            + ' width="44" height="44" viewBox="0 0 24 24" fill="none"'
+            + ' stroke="currentColor" stroke-width="1.5" stroke-linecap="round"'
+            + ' stroke-linejoin="round" aria-hidden="true">'
+            + '<path d="M14 3v4a1 1 0 0 0 1 1h4"/>'
+            + '<path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>'
+            + '<path d="M12 11v6"/>'
+            + '<path d="M9.5 13.5 12 11l2.5 2.5"/>'
+            + '</svg>'
+        );
+
+        const label = document.createElement('div');
+        label.id = 'importDropOverlayLabel';
+        label.textContent = 'DROP JSON TO IMPORT';
+        inner.appendChild(label);
+
+        const subline = document.createElement('div');
+        subline.id = 'importDropOverlaySubline';
+        subline.textContent = 'Replaces all current projects & todos';
+        inner.appendChild(subline);
+
         overlay.appendChild(inner);
         document.body.appendChild(overlay);
     }
