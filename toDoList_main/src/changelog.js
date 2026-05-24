@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-24',
         fixed: [
-            "The app now checks for a new version every time you re-open the tab, so installed clients stop running stale code in the background.",
             "Drive sync now also refreshes when you return to the tab, when the window regains focus, and once a minute while the tab is visible — so a device left open notices edits made on another device without you having to touch it.",
             "Sync button now prompts you to sign in again when your Drive session has expired, instead of looking ready and doing nothing when you tap it.",
             "Mobile Settings now surfaces the 'Update available' cue, and the gear button picks up a dot, so the reload prompt isn't desktop-only.",
             "Tapping a todo row on mobile now highlights it as the active card and unclamps long titles so they wrap into readable paragraphs without having to enter edit mode.",
+            "Mobile read-mode no longer shows an empty title band on first tap — the title stays visible and wraps to multi-line as intended.",
         ],
     },
 ];

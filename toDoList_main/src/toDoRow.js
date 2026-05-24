@@ -395,6 +395,11 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
 
         // one-click editing — focus with caret at end rather than selecting text
         if (document.activeElement !== toDoInput) {
+            // Set data-mobile-edit BEFORE calling focus(): on phones the
+            // input is opacity:0 / pointer-events:none until this attribute
+            // flips the CSS swap, so a focus() call without the attribute
+            // is a no-op. Cleared on the input's own blur handler below.
+            if (isMobile) toDoChild.setAttribute('data-mobile-edit', 'true');
             const end = toDoInput.value.length;
             toDoInput.focus();
             toDoInput.setSelectionRange(end, end);
@@ -410,6 +415,12 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
         descToggle.addEventListener('click', function() {
             if (!descToggle.classList.contains('open')) {
                 toDoChild.removeAttribute('data-mobile-read');
+                // Defensive: closing the description always collapses the
+                // row fully, regardless of whether the title was in edit
+                // mode. The blur handler on toDoInput clears this too;
+                // doing it here as well covers the case where the user
+                // closes the description without ever blurring the input.
+                toDoChild.removeAttribute('data-mobile-edit');
             }
         });
     }
@@ -1328,6 +1339,10 @@ export function buildToDoRow(item, toDoName) {
         }
         toDoInput.title = item.tit || "";
         toDoTitleDisplay.textContent = item.tit || "";
+        // Hand the visible slot back to the wrappable span on mobile —
+        // clearing data-mobile-edit re-applies the opacity:0 swap so the
+        // span (now showing the updated item.tit) is what the user sees.
+        toDoChild.removeAttribute('data-mobile-edit');
     });
 
     // Escape on the title cancels the in-progress edit by restoring the

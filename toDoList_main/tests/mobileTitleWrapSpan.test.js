@@ -173,23 +173,39 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
         expect(body).toMatch(/pointer-events:\s*none/);
     });
 
-    it('phone input becomes visible again on focus, kicking the span out', () => {
-        // Second tap on the active row → toDoInput.focus() — at that
-        // moment the span hides and the input takes over the visual slot
-        // for editing.
+    it('phone input becomes visible when the row carries data-mobile-edit', () => {
+        // Second tap on the active row sets data-mobile-edit="true" on
+        // #toDoChild before calling toDoInput.focus() — at that moment
+        // the span hides and the input takes over the visual slot for
+        // editing. The previous implementation keyed the swap on the
+        // input's own :focus and the row's :focus-within, which broke
+        // because the first-tap descToggle.click() landed focus on the
+        // synthetic button and so spuriously matched :focus-within,
+        // hiding the title behind an empty band before the input had
+        // received focus. The attribute-keyed swap eliminates that race.
         const phoneIdx = css.indexOf('@media (max-width: 420px)');
         const phoneBlock = css.slice(phoneIdx);
-        const focusRule = phoneBlock.match(
-            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+#toDoInput:focus\s*\{([\s\S]{0,400}?)\}/
+        const inputEditRule = phoneBlock.match(
+            /#toDoChild\[data-mobile-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+#toDoInput\s*\{([\s\S]{0,400}?)\}/
         );
-        expect(focusRule).toBeTruthy();
-        const body = focusRule[1];
+        expect(inputEditRule).toBeTruthy();
+        const body = inputEditRule[1];
         expect(body).toMatch(/opacity:\s*1/);
         expect(body).toMatch(/position:\s*static/);
         expect(body).toMatch(/pointer-events:\s*auto/);
-        // Sibling cascade hides the span when the row contains focus.
+        // Sibling cascade hides the span when the row is in edit mode.
         expect(phoneBlock).toMatch(
-            /#toDoChild:not\(\[data-original-blank="true"\]\):focus-within\s+\.toDoTitleDisplay\s*\{[\s\S]{0,120}display:\s*none/
+            /#toDoChild\[data-mobile-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{[\s\S]{0,120}display:\s*none/
+        );
+        // The buggy :focus-within rule on .toDoTitleDisplay must be gone
+        // — its presence was the root cause of the read-mode title vanish.
+        expect(phoneBlock).not.toMatch(
+            /#toDoChild:not\(\[data-original-blank="true"\]\):focus-within\s+\.toDoTitleDisplay/
+        );
+        // The companion :focus rule that un-hid the input is also gone
+        // — replaced by the attribute-keyed rule above.
+        expect(phoneBlock).not.toMatch(
+            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+#toDoInput:focus\s*\{/
         );
     });
 

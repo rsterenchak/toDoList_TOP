@@ -4663,15 +4663,21 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
   #toDoChild.todo-active:not([data-original-blank="true"]) #toDoInput {
     pointer-events: none;
   }
-  #toDoChild:not([data-original-blank="true"]) #toDoInput:focus {
+  /* Edit-mode swap is keyed on an explicit `data-mobile-edit` attribute
+     set by wireToDoRowClick on the second tap (rather than `:focus-within`,
+     which spuriously matched whenever the first-tap descToggle button
+     received focus and hid the title behind an empty band). The attribute
+     is cleared on input blur and on descToggle close so read mode keeps
+     the wrappable span visible. */
+  #toDoChild[data-mobile-edit="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
+    display: none;
+  }
+  #toDoChild[data-mobile-edit="true"]:not([data-original-blank="true"]) #toDoInput {
     opacity: 1;
     position: static;
     width: auto;
     height: auto;
     pointer-events: auto;
-  }
-  #toDoChild:not([data-original-blank="true"]):focus-within .toDoTitleDisplay {
-    display: none;
   }
 
   /* Tap-to-expand active state: the data-mobile-read attribute set by

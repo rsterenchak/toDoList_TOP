@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix mobile title vanishing on first tap of read-mode row
+- [x] **[HIGH]** Fix mobile title vanishing on first tap of read-mode row
   - Description: On mobile (≤420px), tapping a committed row to enter read mode collapses the title slot to an empty band — neither the wrappable `.toDoTitleDisplay` span nor `#toDoInput` is visible, even though the row-level active styling (indigo wash, left-edge border) and the description panel below both render correctly. Root cause is the `:focus-within` rule introduced for the title display→input swap: `#toDoChild:not([data-original-blank="true"]):focus-within .toDoTitleDisplay { display: none; }`. The first-tap branch of `wireToDoRowClick` calls `descToggle.click()` to open the description panel, which on Android Chrome and most non-iOS engines focuses the `<button>` it synthetically clicks. That focus on a descendant of `#toDoChild` makes `:focus-within` match, which hides the span. Meanwhile `#toDoInput` itself only un-hides on its own `:focus` (not `:focus-within`), so the input stays `opacity: 0; position: absolute` and invisible. The result: read mode opens, the wash and border paint, the description appears, but the title row is empty until a second tap focuses the input directly. Replace `:focus-within` with an explicit attribute the click handler sets only when entering true edit mode, so read mode keeps the span visible and edit mode hands off to the input.
     - Behavior:
       1. First tap on a collapsed committed row (read mode) → `data-mobile-read="true"` set on `#toDoChild`, `.toDoTitleDisplay` stays visible and unclamps to wrap, `#toDoInput` stays hidden. No `:focus-within` dependency.
@@ -26,7 +26,7 @@
       - No regression on desktop or tablet (>420px) — the new `data-mobile-edit` rules sit inside the `@media (max-width: 420px)` block alongside the existing mobile chrome.
     - Out of scope: the original read-mode visual treatment (indigo wash, left-edge border, description auto-open) — those are working as intended. The row-level click handler's bail-outs for the copy button, due pill, and checkbox are also untouched.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-24
 
 ## Features
 
