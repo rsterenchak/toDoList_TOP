@@ -130,6 +130,15 @@ describe('settings menu — Sync row state→label mapping', () => {
         expect(fn).toMatch(/Sync\s*•\s*not connected/);
     });
 
+    it('reauth-required state reads "Sync • sign in again"', () => {
+        // Distinct from 'never' (true first-run, no local history) and
+        // 'failed' (mid-flight sync error) — surfaced when the user has
+        // synced before but the in-memory token is gone (expired Google
+        // session, revoked grant, blocked third-party cookies).
+        const fn = extractFn('computeDriveSyncLabel');
+        expect(fn).toMatch(/Sync\s*•\s*sign in again/);
+    });
+
     it('in-flight states (syncing-push / syncing-pull) read "Sync • syncing…"', () => {
         const fn = extractFn('computeDriveSyncLabel');
         expect(fn).toMatch(/Sync\s*•\s*syncing…/);
@@ -194,6 +203,27 @@ describe('settings menu — Sync row state→action mapping', () => {
         const slice = fn.slice(neverIdx, neverIdx + 1500);
         // Replicates the previous Connect handler's success contract:
         // getAccessToken → armAutoSync → performAutoSync.
+        const tokenIdx   = slice.indexOf('getAccessToken(');
+        const armIdx     = slice.indexOf('armAutoSync()');
+        const performIdx = slice.indexOf('performAutoSync()');
+        expect(tokenIdx).toBeGreaterThan(-1);
+        expect(armIdx).toBeGreaterThan(tokenIdx);
+        expect(performIdx).toBeGreaterThan(armIdx);
+    });
+
+    it('reauth-required mirrors the never branch — getAccessToken → armAutoSync → performAutoSync', () => {
+        // The bug: a returning user whose silent re-auth failed reads as
+        // 'synced'/'ahead' (cached prior session) but clicking the Sync row
+        // dead-ends inside performAutoSync's no-token gate with no UI
+        // feedback. Fix routes the click through the OAuth popup just like
+        // the first-time-connect ('never') branch does.
+        const fn = extractFn('onDriveSyncClick');
+        const reauthIdx = fn.indexOf("'reauth-required'");
+        expect(reauthIdx).toBeGreaterThan(-1);
+        // The branch may be expressed as `'never' || 'reauth-required'` so
+        // we slice from the literal forward — the helper trio must appear
+        // somewhere in the same branch body.
+        const slice = fn.slice(reauthIdx, reauthIdx + 1500);
         const tokenIdx   = slice.indexOf('getAccessToken(');
         const armIdx     = slice.indexOf('armAutoSync()');
         const performIdx = slice.indexOf('performAutoSync()');
@@ -334,6 +364,25 @@ describe('driveAutoSync — getCurrentSyncState resolver', () => {
 
     it('no cached token and no prior sync → never', () => {
         expect(getCurrentSyncState({ hasToken: false })).toBe('never');
+    });
+
+    it('no cached token but a prior sync marker exists → reauth-required', () => {
+        // The new fourth bucket distinguishes "had a session before,
+        // doesn't now" from "true first-run" so the click handler can
+        // route through the OAuth popup instead of dead-ending in
+        // performAutoSync's no-token gate.
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        expect(getCurrentSyncState({ hasToken: false })).toBe('reauth-required');
+    });
+
+    it('reauth-required takes precedence over the localAhead branch when token is missing', () => {
+        // Pin the precedence: a user with local edits queued up but no
+        // token still reads as 'reauth-required' (not 'ahead'), because
+        // the recovery action they need is sign-in, not a sync attempt
+        // that would silently no-token-out.
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        writeLastLocalMutationAt('2026-05-22T11:00:00.000Z');
+        expect(getCurrentSyncState({ hasToken: false })).toBe('reauth-required');
     });
 
     it('local mutation after the last sync → ahead', () => {

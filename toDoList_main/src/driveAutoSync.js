@@ -163,7 +163,11 @@ export function isDriveAhead(syncedIso, driveModifiedIso) {
 // it in main.js), so callers pass it in via `driveModifiedIso`. `hasToken`
 // is also a caller fact — when no cached OAuth token exists and the user
 // has never synced, the row reads 'never' rather than optimistically
-// claiming 'synced' against an empty Drive view.
+// claiming 'synced' against an empty Drive view. When the user HAS synced
+// before but the in-memory token is gone (silent re-auth failed, Google
+// session expired, third-party cookies blocked), the row reads
+// 'reauth-required' so the click handler routes through OAuth instead of
+// dead-ending at performAutoSync's no-token gate.
 export function getCurrentSyncState(opts) {
     opts = opts || {};
     const driveModifiedIso = opts.driveModifiedIso || null;
@@ -181,6 +185,11 @@ export function getCurrentSyncState(opts) {
     const localMutationIso = readLastLocalMutationAt();
 
     if (!hasToken && !syncedIso) return 'never';
+    // Had a session before, doesn't now — distinct from 'never' (true
+    // first-run) and 'failed' (sync attempt failed mid-flight). Takes
+    // precedence over the localAhead/driveAhead branches because the user
+    // can't actually push or pull without a fresh token.
+    if (!hasToken) return 'reauth-required';
 
     const localAhead = isLocalAhead(syncedIso, localMutationIso);
     const driveAhead = isDriveAhead(syncedIso, driveModifiedIso);
@@ -261,7 +270,15 @@ export function performAutoSync() {
     });
 
     if (decision === 'unarmed') return Promise.resolve('unarmed');
-    if (decision === 'no-token') return Promise.resolve('no-token');
+    if (decision === 'no-token') {
+        // Belt-and-suspenders: a token-less attempt means a silent re-auth
+        // probably just failed (expired session, revoked grant). Fire the
+        // state-change event so the indicator and Sync row recompute
+        // against the now-false hasToken and surface 'reauth-required'
+        // instead of staying frozen on the prior 'synced' / 'ahead' label.
+        emitStateChange();
+        return Promise.resolve('no-token');
+    }
 
     _inFlight = true;
     return queryLatestDriveFile(token).then(function(files) {

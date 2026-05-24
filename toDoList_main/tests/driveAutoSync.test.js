@@ -18,6 +18,7 @@ import {
     disarmAutoSync,
     isAutoSyncArmed,
     getAutoSyncState,
+    getCurrentSyncState,
     _resetAutoSyncForTest,
     AUTO_SYNC_DEBOUNCE_MS,
     AUTO_SYNC_POLL_INTERVAL_MS,
@@ -419,6 +420,81 @@ describe('driveAutoSync — performAutoSync diverged auto-pause', () => {
         armAutoSync();
         const result = await performAutoSync();
         expect(result).toBe('no-token');
+    });
+
+    it('dispatches autoSyncStateChanged on the no-token return so the indicator can repaint into reauth-required', async () => {
+        // Bug: when silent re-auth fails and the user later clicks Sync,
+        // performAutoSync used to return 'no-token' as a silent side-
+        // effect-free promise. The indicator stayed frozen on the
+        // pre-failure label ("Sync • 36 minutes ago") and the row read as
+        // a dead button. Fix dispatches the state-change event so the
+        // indicator's autoSyncStateChanged listener recomputes against
+        // the now-false hasToken and surfaces the reauth-required cue.
+        armAutoSync();
+        let fired = 0;
+        const listener = function() { fired += 1; };
+        document.addEventListener('autoSyncStateChanged', listener);
+        try {
+            await performAutoSync();
+        } finally {
+            document.removeEventListener('autoSyncStateChanged', listener);
+        }
+        expect(fired).toBeGreaterThanOrEqual(1);
+    });
+});
+
+
+// ── getCurrentSyncState — reauth-required state ───────────────────────
+describe('driveAutoSync — getCurrentSyncState resolves the reauth-required bucket', () => {
+    afterEach(() => {
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+        if (document && document.body && document.body.classList) {
+            document.body.classList.remove('driveExportInProgress');
+            document.body.classList.remove('driveImportInProgress');
+        }
+        _resetAutoSyncForTest();
+    });
+
+    it('returns "reauth-required" when no cached token but a prior sync marker exists', () => {
+        // Had a session before, doesn't now — distinct from 'never'
+        // (true first-run) and 'failed' (sync attempt failed mid-flight).
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        expect(getCurrentSyncState({ hasToken: false })).toBe('reauth-required');
+    });
+
+    it('still returns "never" when no token AND no prior sync marker', () => {
+        // True first-run: token absence is expected, not a regression.
+        expect(getCurrentSyncState({ hasToken: false })).toBe('never');
+    });
+
+    it('reauth-required takes precedence over the local-ahead branch when token is missing', () => {
+        // Without a token the user can't push, so flagging local edits
+        // as 'ahead' is a dead-end — surface the recovery cue instead.
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        writeLastLocalMutationAt('2026-05-22T11:00:00.000Z');
+        expect(getCurrentSyncState({ hasToken: false })).toBe('reauth-required');
+    });
+
+    it('reauth-required takes precedence over the drive-ahead branch when token is missing', () => {
+        // Same reasoning for the pull direction: without a token the
+        // user can't pull either, so 'behind' is misleading.
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        expect(getCurrentSyncState({
+            driveModifiedIso: '2026-05-22T11:00:00.000Z',
+            hasToken: false,
+        })).toBe('reauth-required');
+    });
+
+    it('hasToken=true still resolves to the timestamp-derived state (regression guard)', () => {
+        // The new branch must only fire on hasToken=false — the
+        // synced/ahead/behind/diverged matrix below stays intact for the
+        // happy path.
+        writeLastDriveSyncedAt('2026-05-22T10:00:00.000Z');
+        expect(getCurrentSyncState({
+            driveModifiedIso: '2026-05-22T10:00:00.000Z',
+            hasToken: true,
+        })).toBe('synced');
     });
 });
 
