@@ -136,7 +136,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \***********************************************/
 () {
 
-eval("{\n// @ts-ignore\ntry {\n    self['workbox:core:7.3.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-core/_version.js?\n}");
+eval("{\n// @ts-ignore\ntry {\n    self['workbox:core:7.4.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-core/_version.js?\n}");
 
 /***/ },
 
@@ -236,7 +236,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony import */ var _ve
   \*****************************************************/
 () {
 
-eval("{\n// @ts-ignore\ntry {\n    self['workbox:precaching:7.3.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-precaching/_version.js?\n}");
+eval("{\n// @ts-ignore\ntry {\n    self['workbox:precaching:7.4.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-precaching/_version.js?\n}");
 
 /***/ },
 
@@ -456,7 +456,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \**************************************************/
 () {
 
-eval("{\n// @ts-ignore\ntry {\n    self['workbox:routing:7.3.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-routing/_version.js?\n}");
+eval("{\n// @ts-ignore\ntry {\n    self['workbox:routing:7.4.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-routing/_version.js?\n}");
 
 /***/ },
 
@@ -526,7 +526,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \*****************************************************/
 () {
 
-eval("{\n// @ts-ignore\ntry {\n    self['workbox:strategies:7.3.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-strategies/_version.js?\n}");
+eval("{\n// @ts-ignore\ntry {\n    self['workbox:strategies:7.4.0'] && _();\n}\ncatch (e) { }\n\n\n//# sourceURL=webpack://todolist_main/./node_modules/workbox-strategies/_version.js?\n}");
 
 /***/ },
 
