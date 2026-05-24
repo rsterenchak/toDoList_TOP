@@ -223,7 +223,7 @@ function sendMagicLink(email) {
     return supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: window.location.origin + window.location.pathname,
         },
     }).then(function(response) {
         const error = response && response.error;
