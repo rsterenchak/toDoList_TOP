@@ -4194,6 +4194,29 @@ body.row-dragging * { cursor: grabbing !important; }
   .drawerSettingsBtnSyncBadge[data-sync-state="never"],
   .drawerSettingsBtnSyncBadge[data-sync-state="unknown"] { color: var(--text-muted); }
 
+  /* Mobile-chrome service-worker update cue — the desktop #footVersion
+     dot lives in the footer which is hidden at ≤700px, so the gear
+     button picks up an equivalent dot. The dot is hidden by default and
+     paints only when the Settings button has the .hasUpdate class
+     (toggled from the appUpdateAvailable event). Anchored to the
+     top-right corner so it never collides with the centered label or
+     the right-edge sync badge. */
+  .drawerSettingsBtnUpdateDot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+    display: none;
+    pointer-events: none;
+  }
+  #drawerSettingsBtn.hasUpdate .drawerSettingsBtnUpdateDot {
+    display: block;
+  }
+
   /* The drawer footer (version label + project count) is hidden on the
      mobile breakpoint — both pieces of info now live in the Settings
      modal's About section, leaving the drawer's bottom half to the
@@ -4523,6 +4546,38 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
   text-transform: uppercase;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+/* Service-worker update cue — only appears beside the Version row when
+   a new worker is waiting. Mirrors the chrome of .settingsInfoPill but
+   in the accent palette so it reads as an attention-grabbing tappable
+   affordance. Triggers applyPendingUpdate() (skipWaiting + reload) on
+   click. */
+.settingsAboutUpdatePill {
+  margin-left: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.settingsAboutUpdatePill:hover,
+.settingsAboutUpdatePill:focus-visible {
+  background: var(--accent);
+  color: var(--bg-base, #fff);
+  outline: none;
+}
+.drawerInfoRow.hasUpdate .settingsInfoPill {
+  display: none;
 }
 
 /* Hide the mobile-only chrome at desktop sizes — these elements live

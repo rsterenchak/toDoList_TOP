@@ -141,7 +141,18 @@ export function updateChangelogDot() {
 // once a new worker reaches the `waiting` state. The footer version label
 // reuses the #changelogDot visual vocabulary to signal the update, and its
 // click handler switches from "open changelog" to "skipWaiting + reload".
+//
+// The desktop footer is hidden on mobile (≤700px), so notifyUpdateAvailable
+// also dispatches an `appUpdateAvailable` CustomEvent on document. The mobile
+// Settings modal's About → Version row listens for it (mirroring the
+// driveSyncStateChanged pattern the Sync card uses), and the mobile
+// chrome's #drawerSettingsBtn adopts a small dot via the same event so the
+// cue surfaces without the user having to open Settings.
 let pendingUpdateRegistration = null;
+
+export function hasPendingUpdate() {
+    return pendingUpdateRegistration !== null;
+}
 
 export function notifyUpdateAvailable(registration) {
     pendingUpdateRegistration = registration || null;
@@ -152,6 +163,10 @@ export function notifyUpdateAvailable(registration) {
         footVersion.setAttribute('aria-label', 'Update available — reload to apply');
     }
     updateChangelogDot();
+    // Mobile surfaces (Settings modal About row, gear-button dot) live
+    // outside the footer and listen for this event to flip into their
+    // "update available" appearance.
+    document.dispatchEvent(new CustomEvent('appUpdateAvailable'));
 }
 
 export function applyPendingUpdate() {
