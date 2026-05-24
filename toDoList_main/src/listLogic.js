@@ -1825,7 +1825,7 @@ export const listLogic = (function () {
                     if (!payload.title || payload.title === '') return;
                     row = {
                         id: payload.id,
-                        user_id: userId,
+                        //user_id: userId,
                         project_id: payload.project_id,
                         title: payload.title,
                         description: payload.description || null,
