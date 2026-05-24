@@ -2238,6 +2238,13 @@ body.row-dragging * { cursor: grabbing !important; }
 #toDoInput:focus { outline: none; background: transparent; color: var(--text-primary); }
 #toDoInput:focus::placeholder { color: transparent; }
 
+/* Wrappable title display element used in place of #toDoInput on phones —
+   inputs are single-line by HTML spec so the input can't wrap, but a span
+   can. Hidden everywhere except inside the ≤420px media block below. */
+.toDoTitleDisplay {
+  display: none;
+}
+
 /* NEW-TASK AFFORDANCES — purely decorative cues that sit inside the blank
    placeholder row alongside #toDoInput. Both use pointer-events: none so
    click-anywhere-on-the-row still falls through to the row click handler
@@ -4614,6 +4621,69 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Phone-only: committed rows hand the visible title slot to the wrappable
+     span so long titles can unclamp into multi-line text. #toDoInput stays
+     in the layout flow for focus/edit but is opacity'd out and pulled out
+     of normal flow until it receives focus, at which point the span hides
+     and the input takes over the visual slot for editing. */
+  #toDoChild:not([data-original-blank="true"]) .toDoTitleDisplay {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    align-self: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    margin: 0;
+  }
+  #toDoChild.completed:not([data-original-blank="true"]) .toDoTitleDisplay {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+  #toDoChild:not([data-original-blank="true"]) #toDoInput {
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  /* Override the global .todo-active pointer-events rule on phones — the
+     first tap on a collapsed row must fall through to the row click
+     handler instead of focusing the input. The input re-enables on its
+     own :focus. */
+  #toDoChild.todo-active:not([data-original-blank="true"]) #toDoInput {
+    pointer-events: none;
+  }
+  #toDoChild:not([data-original-blank="true"]) #toDoInput:focus {
+    opacity: 1;
+    position: static;
+    width: auto;
+    height: auto;
+    pointer-events: auto;
+  }
+  #toDoChild:not([data-original-blank="true"]):focus-within .toDoTitleDisplay {
+    display: none;
+  }
+
+  /* Tap-to-expand active state: the data-mobile-read attribute set by
+     wireToDoRowClick on first tap drops the single-line clamp on the
+     display span so long titles wrap into readable paragraph text.
+     Specificity (two attribute selectors + one ID + one class) beats the
+     collapsed-row ellipsis rule above. */
+  #toDoChild[data-mobile-read="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
   }
 
   /* Collapse bulk description buttons to chevron-only so they don't overlap
