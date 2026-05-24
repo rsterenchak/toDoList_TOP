@@ -1817,6 +1817,11 @@ export const listLogic = (function () {
                         position: payload.position == null ? 0 : payload.position,
                     };
                 } else if (table === 'todos') {
+                    // DO NOT add user_id to todos queries or payloads —
+                    // see tests/listLogicSchema.test.js. The todos table
+                    // has no user_id column; per-user access is enforced
+                    // by RLS via a sub-select against the parent project.
+                    //
                     // Blank-placeholder filter at the persistence boundary
                     // — these are render artifacts, not real rows. The
                     // payload arrives already in Supabase column shape
@@ -1825,7 +1830,6 @@ export const listLogic = (function () {
                     if (!payload.title || payload.title === '') return;
                     row = {
                         id: payload.id,
-                        //user_id: userId,
                         project_id: payload.project_id,
                         title: payload.title,
                         description: payload.description || null,
@@ -1856,6 +1860,10 @@ export const listLogic = (function () {
                         position: payload.position == null ? 0 : payload.position,
                     };
                 } else if (table === 'todos') {
+                    // DO NOT add user_id to todos queries or payloads —
+                    // see tests/listLogicSchema.test.js. The todos table
+                    // has no user_id column; per-user access is enforced
+                    // by RLS via a sub-select against the parent project.
                     row = {
                         project_id: payload.project_id,
                         title: payload.title,
@@ -1945,10 +1953,16 @@ export const listLogic = (function () {
                 .select('*')
                 .eq('user_id', userId)
                 .order('position', { ascending: true });
+
+            // DO NOT add user_id to todos queries or payloads — see
+            // tests/listLogicSchema.test.js. The todos table has no
+            // user_id column; per-user access is enforced by RLS
+            // through a sub-select against the parent project, so
+            // filtering server-side by user is automatic and the
+            // client-side query stays scoped to project_id only.
             const todoRes = await supabase
                 .from('todos')
                 .select('*')
-                //.eq('user_id', userId)
                 .order('position', { ascending: true });
 
             if (projRes && projRes.error) {
