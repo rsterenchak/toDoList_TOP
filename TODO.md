@@ -2,27 +2,32 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Make mobile todo titles readable by wrapping in tap-to-expand active row
-  - Description: On mobile (≤700px), long todo titles get truncated to ~20 characters by the single-line ellipsis on `#toDoInput`, forcing the user to focus the input to read the full text. Replace the ellipsis treatment with a tap-to-expand active-row pattern that piggybacks on the existing `data-mobile-read="true"` flow already used to surface descriptions. When a committed row is tapped on the title area, it becomes the active row: the title unclamps and wraps freely (no `-webkit-line-clamp` cap, normal `white-space`), the row's background shifts to a subtle indigo wash (`#1f1d33`) with a 2px purple left-edge border, and the description panel slides open in the same beat (the existing first-tap behavior). Only one row stays expanded at a time — tapping another row collapses this one, mirroring the current single-active-row enforcement in `wireToDoRowClick`. A second tap on the title focuses the input for editing, same as today's two-tap flow.
+- [ ] **[MEDIUM]** Make mobile todo titles readable by wrapping in tap-to-expand active row
+  - Description: On mobile (≤420px), long todo titles get truncated to ~20 characters by the single-line ellipsis applied to `#toDoInput`, and because `#toDoInput` is an `<input type="text">` element, no amount of CSS can make it wrap — inputs are single-line by spec. Replace the ellipsis treatment with a tap-to-expand active-row pattern that piggybacks on the existing `data-mobile-read="true"` flow already used to surface descriptions. Add a sibling display element (a `<span id="toDoTitleDisplay" class="toDoTitleDisplay">` placed immediately before `#toDoInput` in `buildToDoRow`) that renders `item.tit` as wrappable text and is the default visible element on mobile; `#toDoInput` is visually hidden but kept in the DOM for accessibility, focus management, and edit mode. When a committed row is tapped on the title area, it becomes the active row: the display element unclamps and wraps freely (no `-webkit-line-clamp`, `white-space: normal`), the row's background shifts to a subtle indigo wash (`#1f1d33`) with a 2px purple left-edge border, and the description panel slides open in the same beat (the existing first-tap behavior). Only one row stays expanded at a time — tapping another row collapses this one, mirroring the current single-active-row enforcement in `wireToDoRowClick`. A second tap on the title focuses the input for editing: at that point the display element hides and `#toDoInput` takes over the visual slot, restoring today's input-based edit flow.
     - Behavior:
-      1. First tap on a collapsed committed row's title area → enter active state: title wraps to full text, background swaps to `#1f1d33` with `border-left: 2px solid var(--accent)`, description panel opens via the existing `descToggle.click()` call.
-      2. Tap on another row → collapse the previously active row (clear title-expanded styling and close its description), expand the newly tapped one.
-      3. Second tap on the active row's title → focus the input with caret at end (existing committed-row behavior).
-      4. The expanded row's title uses `white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4` so wrapped text reads as a paragraph, not as a clipped input field. Collapsed rows keep today's single-line ellipsis treatment.
+      1. On mobile (≤420px), each committed row renders `#toDoTitleDisplay` (the new span) visible by default and `#toDoInput` visually hidden (`opacity: 0; pointer-events: none; position: absolute`). The span keeps single-line ellipsis truncation in the collapsed state, matching today's chrome.
+      2. First tap on a collapsed row's title area → enter active state: `data-mobile-read="true"` set on `#toDoChild`. The span unclamps (`white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.4`), the row's background swaps to `#1f1d33` with `border-left: 2px solid var(--accent)`, the description panel opens via the existing `descToggle.click()` call.
+      3. Tap on another row → collapse the previously active row (clear `data-mobile-read`, close its description), expand the newly tapped one.
+      4. Second tap on the active row's title → hide `#toDoTitleDisplay`, show `#toDoInput`, focus the input with caret at end (existing committed-row behavior). On blur, swap back: input hides, span reappears with the updated value.
+      5. The span's text content stays in sync with `item.tit` via the existing keyup persistence block and the blur snap-back path in `buildToDoRow` — update `toDoTitleDisplay.textContent` anywhere `item.tit` is written.
+      6. Desktop (>420px or non-touch pointer) keeps the existing input-as-display behavior with no change — the span is rendered but hidden via media query, the input stays visible at all times.
     - Implementation notes:
-      - Tie the styling to the existing `data-mobile-read="true"` attribute that `wireToDoRowClick` already sets — no new attribute needed. Add a `@media (max-width: 700px)` rule keyed on `#toDoChild[data-mobile-read="true"]` for the bg wash, left-edge border, and unclamped `#toDoInput`.
-      - The single-active-row enforcement loop already exists in the mobile branch of `wireToDoRowClick` (`document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(...)`) — it closes the prior row's `descToggle`. The unclamping happens for free as the CSS rule keys off the same attribute.
-      - The existing `descToggle` click listener already clears `data-mobile-read` when the description closes, which means tapping the chevron to dismiss the description also collapses the title back to single-line — that's the intended interaction model for option 1.
-      - Inline styles in `main.js` that set `#toDoInput` properties (font-size, border) keep their existing values; only the CSS rules for wrapping (`white-space`, `overflow`, `text-overflow`, `line-height`) change conditionally. Per CLAUDE.md, no inline JS style writes should touch wrap behavior.
+      - Tie the styling to the existing `data-mobile-read="true"` attribute that `wireToDoRowClick` already sets on the row — no new attribute needed for the active state. Add a `@media (max-width: 420px)` block keyed on `#toDoChild[data-mobile-read="true"] .toDoTitleDisplay` for the unclamp behavior, alongside selectors for the bg wash and left-edge border on `#toDoChild[data-mobile-read="true"]`.
+      - The single-active-row enforcement loop already exists in the mobile branch of `wireToDoRowClick` (`document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(...)`) — it closes the prior row's `descToggle`. Unclamping happens for free because the CSS rule keys off the same attribute.
+      - The existing `descToggle` click listener already clears `data-mobile-read` when the description closes, which means tapping the chevron to dismiss the description also collapses the title back to single-line truncation — intended behavior for option 1.
+      - The display→input swap on second tap (and back on blur) is the new interaction logic to add. Hide-via-opacity (not `display: none`) keeps the input in the layout flow so the existing focus management still works.
+      - Keep all `#toDoInput` inline style writes in `main.js` / `toDoRow.js` (font-size, border) untouched — they don't affect the new span and don't conflict with the wrap behavior since the input never tries to wrap.
+      - The existing 420px ellipsis rule on `#toDoInput` becomes redundant on mobile since the input is hidden by default — leave it in place (it's still the source of truth for desktop column widths between 421–700px) and add the new selectors alongside.
     - Acceptance criteria:
-      - A 60-character title in a collapsed row truncates with an ellipsis as today.
+      - A 60-character title in a collapsed mobile row truncates with an ellipsis as today.
       - Tapping that row's title area unclamps the title to full text wrapped across multiple lines, applies the indigo wash and left-edge border, and opens the description panel.
       - Tapping a different committed row collapses the previously active one back to single-line truncation.
-      - A second tap on the active row's title focuses the input with the caret at the end — no regression to the existing two-tap edit flow.
+      - A second tap on the active row's title focuses an input with the caret at the end — no regression to the existing two-tap edit flow. Typing in the input updates the displayed title on blur.
       - The copy-title button and due pill remain tappable and don't trigger row activation (existing `e.target.closest('.copyTitleBtn')` / duePill bail-outs in `wireToDoRowClick` still hold).
-    - Out of scope: any change to the collapsed-row chrome (copy button placement, due pill styling, meta-row layout), the desktop breakpoint, or the description-edit flow itself.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`
-  - Completed: 2026-05-24
+      - Desktop (>420px) renders unchanged — the new span is never visible there.
+    - Out of scope: any change to the collapsed-row chrome (copy button placement, due pill styling, meta-row layout), the desktop breakpoint, the description-edit flow itself, or the 421–700px tablet range.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
