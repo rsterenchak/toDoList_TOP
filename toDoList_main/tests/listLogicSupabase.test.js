@@ -17,6 +17,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
+import { dueStringToISO, isoToDueString } from '../src/listLogic.js';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 const SRC = readFileSync(resolve(srcDir, 'listLogic.js'), 'utf8');
@@ -110,8 +112,10 @@ describe('listLogic Phase 5 — persistMutation request shape', () => {
     it('filters blank-titled todos at the persistence boundary', () => {
         // The blank placeholder is a render artifact pinned at index 0
         // of every project. It must never reach Supabase or the row
-        // count would drift between cache and backend.
-        expect(body).toMatch(/payload\.tit\s*===\s*['"]['"]/);
+        // count would drift between cache and backend. The payload
+        // arrives in Supabase column shape (see toTodoRowPayload), so
+        // the check is on the `title` field, not the in-memory `tit`.
+        expect(body).toMatch(/payload\.title\s*===\s*['"]['"]/);
     });
 
     it('handles every documented op kind: insert, update, delete, truncate, bulkInsert', () => {
@@ -122,11 +126,20 @@ describe('listLogic Phase 5 — persistMutation request shape', () => {
         expect(body).toMatch(/op\s*===\s*['"]bulkInsert['"]/);
     });
 
-    it('translates due ("M-D-YYYY") to due_date (ISO) on todo writes', () => {
-        // dueStringToISO lives at module scope; persistMutation calls it
-        // on every todo write so the in-memory string format gets
-        // converted to what the Postgres `date` column expects.
-        expect(body).toMatch(/dueStringToISO\s*\(\s*payload\.due\s*\)/);
+    it('reads due_date (ISO) directly off the payload — translation now happens upstream in toTodoRowPayload', () => {
+        // Pre-fix, persistMutation called dueStringToISO(payload.due)
+        // because callers were sending in-memory field names. The fix
+        // moved the conversion into toTodoRowPayload so the payload
+        // shape matches Supabase columns at every call site; here we
+        // just hand the already-ISO value to the network call.
+        expect(body).toMatch(/due_date:\s*payload\.due_date/);
+        // The legacy in-memory short field names must never appear in
+        // the network row — that was the original bug.
+        expect(body).not.toMatch(/payload\.tit\b/);
+        expect(body).not.toMatch(/payload\.desc\b/);
+        expect(body).not.toMatch(/payload\.due\b(?!_date)/);
+        expect(body).not.toMatch(/payload\.pri\b/);
+        expect(body).not.toMatch(/payload\.pos\b/);
     });
 
     it('logs failures via console.warn without rolling back', () => {
@@ -134,6 +147,182 @@ describe('listLogic Phase 5 — persistMutation request shape', () => {
         // sync-issues indicator to Phase 6. The failure path here is
         // just a warn so the page stays responsive.
         expect(body).toMatch(/console\.warn\s*\(/);
+    });
+});
+
+
+describe('listLogic Phase 5 — Supabase column-name payload shape (regression for #fix-persistmutation-payloads)', () => {
+    // The Phase 5 refactor wired persistMutation into every mutation
+    // function but built payloads with `Object.assign({}, listItem, …)`
+    // shortcuts, which leaked the in-memory short field names (tit,
+    // desc, due, pri, pos) into the network body. Supabase silently
+    // ignored the unknown columns and the writes either failed or
+    // landed with only `id` populated. The fix routes every payload
+    // through the explicit toTodoRowPayload / toProjectRowPayload
+    // helpers so the network shape can never drift from the schema.
+
+    const toTodoBody = functionBody(SRC, 'toTodoRowPayload');
+    const toProjectBody = functionBody(SRC, 'toProjectRowPayload');
+
+    it('toTodoRowPayload exists as a module-scoped helper', () => {
+        expect(toTodoBody).toBeTruthy();
+    });
+
+    it('toTodoRowPayload maps every in-memory field to its Supabase column name', () => {
+        // The exact field-by-field mapping prescribed by the task
+        // description: tit→title, desc→description, due→due_date (ISO),
+        // pri→priority (stringified), pos→position. id and recurrence
+        // keep their names; project_id is passed in by the caller.
+        expect(toTodoBody).toMatch(/id:\s*item\.id/);
+        expect(toTodoBody).toMatch(/project_id:\s*projectId/);
+        expect(toTodoBody).toMatch(/title:\s*item\.tit\b/);
+        expect(toTodoBody).toMatch(/description:\s*item\.desc\b/);
+        expect(toTodoBody).toMatch(/due_date:\s*dueStringToISO\s*\(\s*item\.due\s*\)/);
+        expect(toTodoBody).toMatch(/priority:\s*[^,]*item\.pri\b/);
+        expect(toTodoBody).toMatch(/position:\s*item\.pos\b/);
+        expect(toTodoBody).toMatch(/completed:\s*!!item\.completed/);
+        expect(toTodoBody).toMatch(/recurrence:\s*item\.recurrence\b/);
+    });
+
+    it('toProjectRowPayload maps to the projects-table column names', () => {
+        expect(toProjectBody).toBeTruthy();
+        expect(toProjectBody).toMatch(/id:\s*entry\.id/);
+        expect(toProjectBody).toMatch(/name:\s*name\b/);
+        expect(toProjectBody).toMatch(/color:\s*entry\.color\b/);
+        expect(toProjectBody).toMatch(/position:\s*position\b/);
+    });
+
+    it('listLogic source contains no Object.assign payload shortcuts on persistMutation calls', () => {
+        // The implementation note in the task description explicitly
+        // forbids Object.assign on persistMutation payloads because it
+        // silently copies whatever in-memory shape the caller happens
+        // to have — the bug that motivated this entire fix. Catch any
+        // future regression at the source level.
+        const objAssignInPayload = /payload:\s*Object\.assign\b/;
+        expect(SRC).not.toMatch(objAssignInPayload);
+    });
+
+    // Every todo-touching mutation function must build its payload via
+    // the toTodoRowPayload helper. The previous shape — passing the
+    // raw in-memory `listItem` plus `project_id` through Object.assign
+    // — is what produced the field-name bug.
+    const todoCallers = [
+        'addToDo',
+        'insertToDoAt',
+        'reorderToDo',
+        'sortCompletedToBottom',
+        'setRecurrence',
+        'advanceRecurringTodo',
+        'seedSampleProject',
+        'seedSampleTodos',
+        'replaceAllProjects',
+        'hydrateFromSupabase',
+    ];
+    todoCallers.forEach(function(name) {
+        it(name + ' constructs its todo payload through toTodoRowPayload', () => {
+            const body = functionBody(SRC, name);
+            expect(body, 'function ' + name + ' not found').toBeTruthy();
+            expect(body).toMatch(/toTodoRowPayload\s*\(/);
+        });
+    });
+
+    // Every project-touching mutation function must build its payload
+    // via toProjectRowPayload. Project payloads were already using the
+    // correct column names before this fix, but routing them through
+    // the helper keeps the contract auditable in one place.
+    const projectCallers = [
+        'addProject',
+        'editProject',
+        'reorderProject',
+        'setProjectColor',
+        'seedSampleProject',
+        'replaceAllProjects',
+        'hydrateFromSupabase',
+    ];
+    projectCallers.forEach(function(name) {
+        it(name + ' constructs its project payload through toProjectRowPayload', () => {
+            const body = functionBody(SRC, name);
+            expect(body, 'function ' + name + ' not found').toBeTruthy();
+            expect(body).toMatch(/toProjectRowPayload\s*\(/);
+        });
+    });
+});
+
+
+describe('listLogic Phase 5 — dueStringToISO / isoToDueString boundary helpers', () => {
+    // The persistence boundary converts the in-memory "M-D-YYYY"
+    // string format to/from Postgres's ISO YYYY-MM-DD `date` column.
+    // These helpers are exported so the rest of the app and the test
+    // suite share one canonical translation rather than re-inventing
+    // it per call site.
+
+    it('dueStringToISO zero-pads single-digit months and days', () => {
+        expect(dueStringToISO('5-31-2026')).toBe('2026-05-31');
+        expect(dueStringToISO('1-1-2026')).toBe('2026-01-01');
+        expect(dueStringToISO('12-25-2025')).toBe('2025-12-25');
+    });
+
+    it('isoToDueString strips the zero-pad on the way back to in-memory shape', () => {
+        expect(isoToDueString('2026-05-31')).toBe('5-31-2026');
+        expect(isoToDueString('2026-01-01')).toBe('1-1-2026');
+        expect(isoToDueString('2025-12-25')).toBe('12-25-2025');
+    });
+
+    it('dueStringToISO returns null for the documented blank sentinels', () => {
+        expect(dueStringToISO('')).toBeNull();
+        expect(dueStringToISO('--')).toBeNull();
+        expect(dueStringToISO('X-X-XXXX')).toBeNull();
+        expect(dueStringToISO(null)).toBeNull();
+        expect(dueStringToISO(undefined)).toBeNull();
+    });
+
+    it('isoToDueString returns the empty string when the input cannot be parsed', () => {
+        expect(isoToDueString('')).toBe('');
+        expect(isoToDueString(null)).toBe('');
+        expect(isoToDueString('not-an-iso-date')).toBe('');
+    });
+
+    it('round-trips a normal date losslessly', () => {
+        expect(isoToDueString(dueStringToISO('7-4-2026'))).toBe('7-4-2026');
+        expect(dueStringToISO(isoToDueString('2026-07-04'))).toBe('2026-07-04');
+    });
+});
+
+
+describe('listLogic Phase 5 — new todo and project rows always carry an in-memory id (regression for #fix-persistmutation-payloads)', () => {
+    // The toDo factory and every code path that builds a new project
+    // or todo entry in memory must assign a crypto.randomUUID() id
+    // before the persistMutation call. Without it, the in-memory row
+    // never learns the server-generated id and subsequent UPDATE/DELETE
+    // calls target undefined.
+
+    it('toDo factory assigns crypto.randomUUID at construction', () => {
+        const toDoSrc = readFileSync(resolve(srcDir, 'toDo.js'), 'utf8');
+        expect(toDoSrc).toMatch(/crypto\.randomUUID\s*\(/);
+        // The id field is included in the returned object literal so
+        // every consumer of toDo() sees it on the in-memory shape.
+        expect(toDoSrc).toMatch(/return\s*\{\s*id\b/);
+    });
+
+    it('addProject seeds a fresh project id via genId before persisting', () => {
+        const body = functionBody(SRC, 'addProject');
+        expect(body).toMatch(/projectId\s*=\s*genId\s*\(\s*\)/);
+        expect(body).toMatch(/id:\s*projectId/);
+    });
+
+    it('advanceRecurringTodo seeds the completed clone with an id before the INSERT', () => {
+        const body = functionBody(SRC, 'advanceRecurringTodo');
+        // The clone declaration must include the id field sourced from
+        // genId() so the optimistic INSERT references a stable row.
+        expect(body).toMatch(/completedClone\s*=\s*\{\s*id:\s*genId\s*\(\s*\)/);
+        // The clone is pushed into the project's items array (in-memory
+        // round-trip) before any persistMutation call fires.
+        expect(body).toMatch(/arr\.push\s*\(\s*completedClone\s*\)/);
+    });
+
+    it('insertToDoAt backfills an id on the re-inserted item before the persistence call', () => {
+        const body = functionBody(SRC, 'insertToDoAt');
+        expect(body).toMatch(/if\s*\(\s*!\s*item\.id\s*\)\s*item\.id\s*=\s*genId\s*\(\s*\)/);
     });
 });
 
