@@ -1,13 +1,17 @@
 // Tests for the pure pieces of exportImport.js — payload shape and the
-// validator. UI paths (file picker, drag-and-drop overlay, confirm modal,
-// stale hint) are exercised manually; the test suite focuses on the data
-// surface that a malformed import file would otherwise leak into the app.
+// validator. UI paths (file picker, confirm modal, stale hint) are
+// exercised manually; the test suite focuses on the data surface that
+// a malformed import file would otherwise leak into the app. The drag-
+// and-drop overlay structure is locked in below so the boot-time wiring
+// keeps the redesigned full-window perimeter rather than silently
+// regressing to a centered card or a no-op listener install.
 
 import { listLogic } from '../src/listLogic.js';
 import {
     buildExportPayload,
     parseAndValidateExport,
     formatRelativeExportedAt,
+    attachDragDropImport,
 } from '../src/exportImport.js';
 
 
@@ -133,6 +137,82 @@ describe('exportImport — formatRelativeExportedAt', () => {
         expect(formatRelativeExportedAt('2025-05-04T12:00:00Z', now)).toBe('Synced 1 year ago');
         // ~2 years.
         expect(formatRelativeExportedAt('2024-05-04T12:00:00Z', now)).toBe('Synced 2 years ago');
+    });
+});
+
+
+describe('exportImport — attachDragDropImport overlay', () => {
+    // The boot-time call from main.js was missing for a while, so dropping
+    // a .json file silently did nothing. These tests pin both halves of
+    // the contract: (1) on coarse-pointer touch devices the listeners are
+    // never installed (no overlay, no dropEffect), and (2) on mouse
+    // devices, dragging a file in renders the redesigned full-window
+    // perimeter — inset dashed border + icon + label + subline — rather
+    // than the previous small centered card.
+
+    function installMatchMedia(coarse) {
+        window.matchMedia = function(query) {
+            const matches = query.indexOf('coarse') !== -1 ? !!coarse : !coarse;
+            return {
+                matches: matches,
+                media: query,
+                onchange: null,
+                addListener: function() {},
+                removeListener: function() {},
+                addEventListener: function() {},
+                removeEventListener: function() {},
+                dispatchEvent: function() { return false; },
+            };
+        };
+    }
+
+    function fireDragEnterWithFile() {
+        const event = new Event('dragenter', { bubbles: true, cancelable: true });
+        event.dataTransfer = { types: ['Files'] };
+        window.dispatchEvent(event);
+    }
+
+    afterEach(() => {
+        const overlay = document.getElementById('importDropOverlay');
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    });
+
+    it('skips listener install on pointer-coarse (touch) devices', () => {
+        installMatchMedia(true);
+        attachDragDropImport(function() {});
+
+        fireDragEnterWithFile();
+        expect(document.getElementById('importDropOverlay')).toBeNull();
+    });
+
+    it('renders the full-window dashed perimeter with icon, label, and subline on drag', () => {
+        installMatchMedia(false);
+        attachDragDropImport(function() {});
+
+        fireDragEnterWithFile();
+
+        const overlay = document.getElementById('importDropOverlay');
+        expect(overlay).not.toBeNull();
+
+        const inner = document.getElementById('importDropOverlayInner');
+        expect(inner).not.toBeNull();
+        expect(inner.parentNode).toBe(overlay);
+
+        // Icon: inline SVG so no icon-font dependency, sized 44px.
+        const icon = document.getElementById('importDropOverlayIcon');
+        expect(icon).not.toBeNull();
+        expect(icon.tagName.toLowerCase()).toBe('svg');
+        expect(icon.getAttribute('width')).toBe('44');
+
+        // Label: exact wording the redesign brief calls for.
+        const label = document.getElementById('importDropOverlayLabel');
+        expect(label).not.toBeNull();
+        expect(label.textContent).toBe('DROP JSON TO IMPORT');
+
+        // Subline: states the destructive overwrite before the modal opens.
+        const subline = document.getElementById('importDropOverlaySubline');
+        expect(subline).not.toBeNull();
+        expect(subline.textContent).toMatch(/replaces all/i);
     });
 });
 
