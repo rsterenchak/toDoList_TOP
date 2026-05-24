@@ -18,6 +18,11 @@ import {
     writeLastLocalMutationAt,
 } from '../src/prefs.js';
 import { listLogic } from '../src/listLogic.js';
+import {
+    armAutoSync,
+    performAutoSync,
+    _resetAutoSyncForTest,
+} from '../src/driveAutoSync.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -257,10 +262,14 @@ describe('Drive sync indicator — live recompute on driveSyncStateChanged', () 
     });
 
     it('recompute helper does not re-issue the Drive query', () => {
-        // The local-edit tick must only re-evaluate the localAhead branch
-        // against the cached driveModifiedTime — never re-fetch from
-        // Drive, since saveToStorage runs on every mutation and a
-        // network call here would be expensive and racy.
+        // The local-edit tick must only re-evaluate state against cached
+        // inputs — never re-fetch from Drive, since saveToStorage runs on
+        // every mutation and a network call here would be expensive and
+        // racy. The ban is on Drive *queries*; getCachedAccessToken is an
+        // in-memory read (used by the no-token branch to surface
+        // 'reauth-required' instead of optimistically painting 'ahead'
+        // against a Drive copy the user can't actually reach) and is
+        // permitted here.
         const idx = main.indexOf('function recomputeDriveSyncStateLocal');
         expect(idx).toBeGreaterThan(-1);
         const openBrace = main.indexOf('{', idx);
@@ -275,7 +284,6 @@ describe('Drive sync indicator — live recompute on driveSyncStateChanged', () 
         }
         const body = main.slice(openBrace, end);
         expect(body).not.toMatch(/queryLatestDriveFile/);
-        expect(body).not.toMatch(/getCachedAccessToken/);
     });
 
     it('reads the cached drive modifiedTime via getCachedDriveModifiedTime rather than re-querying', () => {
@@ -348,5 +356,36 @@ describe('Drive sync indicator — end-to-end local-edit signal', () => {
         const mutationMs = Date.parse(readLastLocalMutationAt());
         const syncedMs   = Date.parse(syncedIso);
         expect(mutationMs).toBeGreaterThan(syncedMs);
+    });
+});
+
+
+// ── PERFORM AUTO-SYNC EMITS AUTO-SYNC-STATE-CHANGED ON NO-TOKEN ───────
+describe('Drive sync indicator — performAutoSync dispatches autoSyncStateChanged on no-token', () => {
+    beforeEach(() => {
+        _resetAutoSyncForTest();
+        try { localStorage.removeItem(LAST_DRIVE_SYNCED_AT_KEY); } catch (_) {}
+        try { localStorage.removeItem(LAST_LOCAL_MUTATION_AT_KEY); } catch (_) {}
+    });
+    afterEach(() => { _resetAutoSyncForTest(); });
+
+    it('fires the indicator-recompute event when armed without a cached token', async () => {
+        // The "dead Sync button" bug: silent re-auth fails, performAutoSync
+        // returns 'no-token' silently, the indicator stays frozen on the
+        // pre-failure label and the button looks alive. Fix dispatches
+        // autoSyncStateChanged so main.js's listener repaints the indicator
+        // into the reauth-required state (getCurrentSyncState reads the
+        // now-false hasToken and resolves the new bucket).
+        armAutoSync();
+        let fired = 0;
+        const listener = function() { fired += 1; };
+        document.addEventListener('autoSyncStateChanged', listener);
+        try {
+            const result = await performAutoSync();
+            expect(result).toBe('no-token');
+        } finally {
+            document.removeEventListener('autoSyncStateChanged', listener);
+        }
+        expect(fired).toBeGreaterThanOrEqual(1);
     });
 });

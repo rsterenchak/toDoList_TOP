@@ -1362,6 +1362,7 @@ function component() {
         if (state === 'diverged') return 'Drive and this device both changed — open the menu to resolve';
         if (state === 'failed')   return 'Auto-sync failed — open the menu to try again';
         if (state === 'never')    return 'Not synced to Drive yet';
+        if (state === 'reauth-required') return 'Sign in again — session expired';
         return 'Sync state unknown';
     }
 
@@ -1474,16 +1475,13 @@ function component() {
         const localIso = readLastDriveSyncedAt();
         const localMutationIso = readLastLocalMutationAt();
         if (!token) {
-            // Local-only signal: with no Drive query, only the localAhead
-            // branch is reliable. Fall through to the historic
-            // 'unknown'/'never' bucket otherwise so we don't
-            // optimistically claim 'synced' without a verification.
-            const localOnly = computeDriveSyncState(localIso, null, localMutationIso);
-            if (localOnly === 'ahead') {
-                setDriveSyncState('ahead', localIso);
-            } else {
-                setDriveSyncState(localIso ? 'unknown' : 'never', localIso);
-            }
+            // No cached token. The user can't actually push or pull
+            // without re-auth, so localAhead is moot — surface the recovery
+            // path directly: 'reauth-required' when there's a prior sync
+            // marker (had a session before, doesn't now), 'never' when
+            // there isn't (true first-run). Both render muted; the menu
+            // Sync row's copy carries the meaning.
+            setDriveSyncState(localIso ? 'reauth-required' : 'never', localIso);
             return Promise.resolve();
         }
         return queryLatestDriveFile(token).then(function(files) {
@@ -1518,6 +1516,16 @@ function component() {
         }
         const localIso = readLastDriveSyncedAt();
         const localMutationIso = readLastLocalMutationAt();
+        // Mirror refreshDriveSyncState's no-token branch — a token-less
+        // local-edit tick must keep the badge on the recovery cue
+        // ('reauth-required' / 'never') instead of optimistically flipping
+        // to 'ahead' against a Drive copy the user can't actually reach.
+        // getCachedAccessToken is an in-memory read (no network), so it
+        // doesn't violate the "no Drive query" contract this helper holds.
+        if (!getCachedAccessToken()) {
+            setDriveSyncState(localIso ? 'reauth-required' : 'never', localIso);
+            return;
+        }
         setDriveSyncState(
             computeDriveSyncState(localIso, getCachedDriveModifiedTime(), localMutationIso),
             localIso
@@ -1721,6 +1729,7 @@ function component() {
         if (state === 'behind')   return 'Sync • Drive is newer';
         if (state === 'diverged') return 'Sync • conflict — tap to resolve';
         if (state === 'failed')   return 'Sync • failed — tap to retry';
+        if (state === 'reauth-required') return 'Sync • sign in again';
         return 'Sync • not connected';
     }
 
@@ -1737,7 +1746,7 @@ function component() {
             return;
         }
 
-        if (state === 'never') {
+        if (state === 'never' || state === 'reauth-required') {
             if (!OAUTH_CLIENT_ID) {
                 showDriveToast({
                     label: 'Drive sign-in not configured for this build.',
@@ -1855,6 +1864,7 @@ function component() {
     function computeSettingsModalDriveSyncSubLabel(state) {
         if (state === 'syncing-push' || state === 'syncing-pull') return 'syncing to Drive';
         if (state === 'never')    return 'Sign in to Drive';
+        if (state === 'reauth-required') return 'Sign in again — session expired';
         if (state === 'ahead')    return 'Local has unsaved changes';
         if (state === 'behind')   return 'Drive is newer';
         if (state === 'diverged') return 'Conflict — tap to resolve';
