@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Make mobile todo titles readable by wrapping in tap-to-expand active row
+- [x] **[MEDIUM]** Make mobile todo titles readable by wrapping in tap-to-expand active row
   - Description: On mobile (≤700px), long todo titles get truncated to ~20 characters by the single-line ellipsis on `#toDoInput`, forcing the user to focus the input to read the full text. Replace the ellipsis treatment with a tap-to-expand active-row pattern that piggybacks on the existing `data-mobile-read="true"` flow already used to surface descriptions. When a committed row is tapped on the title area, it becomes the active row: the title unclamps and wraps freely (no `-webkit-line-clamp` cap, normal `white-space`), the row's background shifts to a subtle indigo wash (`#1f1d33`) with a 2px purple left-edge border, and the description panel slides open in the same beat (the existing first-tap behavior). Only one row stays expanded at a time — tapping another row collapses this one, mirroring the current single-active-row enforcement in `wireToDoRowClick`. A second tap on the title focuses the input for editing, same as today's two-tap flow.
     - Behavior:
       1. First tap on a collapsed committed row's title area → enter active state: title wraps to full text, background swaps to `#1f1d33` with `border-left: 2px solid var(--accent)`, description panel opens via the existing `descToggle.click()` call.
@@ -22,7 +22,7 @@
       - The copy-title button and due pill remain tappable and don't trigger row activation (existing `e.target.closest('.copyTitleBtn')` / duePill bail-outs in `wireToDoRowClick` still hold).
     - Out of scope: any change to the collapsed-row chrome (copy button placement, due pill styling, meta-row layout), the desktop breakpoint, or the description-edit flow itself.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-24
 
 ## Features
 

@@ -157,3 +157,64 @@ describe('STACK mobile tap-to-view — visual merge with descSibling', () => {
         );
     });
 });
+
+
+describe('STACK mobile tap-to-view — active row title is unclamped and washed', () => {
+
+    const css = read('style.css');
+
+    function mobileBlock() {
+        const idx = css.indexOf('@media (max-width: 700px)');
+        expect(idx).toBeGreaterThan(-1);
+        return css.slice(idx);
+    }
+
+    it('active mobile-read row applies a subtle wash background so it reads as the active card', () => {
+        // Without the wash, the only visual cue that a row is active is
+        // the left-edge accent — long titles still get lost in the row's
+        // default chrome. The wash distinguishes the active row from its
+        // collapsed siblings.
+        expect(mobileBlock()).toMatch(
+            /#toDoChild\[data-mobile-read="true"\]\s*\{[\s\S]{0,200}background:\s*var\(--bg-hover\)/
+        );
+    });
+
+    it('active mobile-read row paints a 2px accent left-edge', () => {
+        // The left-edge ties the row to the descSibling below it so the
+        // two surfaces read as one extended active card.
+        expect(mobileBlock()).toMatch(
+            /#toDoChild\[data-mobile-read="true"\]\s*\{[\s\S]{0,200}box-shadow:\s*inset\s+2px\s+0\s+0\s+var\(--accent\)/
+        );
+    });
+
+    it('toDoInput inside an active mobile-read row drops the single-line clamp so long titles wrap', () => {
+        // The four properties together — white-space: normal,
+        // overflow: visible, text-overflow: clip, line-height: 1.4 —
+        // are what unclamp the title from the default single-line
+        // input rendering used by the ≤420px ellipsis rule. All four
+        // must be present and selector specificity must beat the
+        // ≤420px `#toDoInput` rule (two IDs vs one).
+        const block = mobileBlock();
+        const ruleMatch = block.match(
+            /#toDoChild\[data-mobile-read="true"\]\s+#toDoInput\s*\{([\s\S]{0,300}?)\}/
+        );
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/white-space:\s*normal/);
+        expect(body).toMatch(/overflow:\s*visible/);
+        expect(body).toMatch(/text-overflow:\s*clip/);
+        expect(body).toMatch(/line-height:\s*1\.4/);
+    });
+
+    it('collapsed rows still get the ≤420px single-line ellipsis treatment', () => {
+        // Acceptance criterion: "A 60-character title in a collapsed row
+        // truncates with an ellipsis as today." Don't drop the existing
+        // narrow-phone ellipsis rule when introducing the unclamp.
+        const idx = css.indexOf('@media (max-width: 420px)');
+        expect(idx).toBeGreaterThan(-1);
+        const phoneBlock = css.slice(idx);
+        expect(phoneBlock).toMatch(
+            /#toDoInput\s*\{[\s\S]{0,200}text-overflow:\s*ellipsis[\s\S]{0,200}white-space:\s*nowrap/
+        );
+    });
+});
