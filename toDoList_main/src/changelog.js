@@ -5,15 +5,19 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-24',
+        fixed: [
+            "The app now checks for a new version every time you re-open the tab, so installed clients stop running stale code in the background.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-23',
         fixed: [
             "Connect to Drive now arms auto-sync immediately on sign-in, and the sync indicator no longer shows the red failure icon when you simply have unsaved local changes.",
             "The Drive menu is now a single Sync button — auto-sync picks push or pull on its own, and a chooser appears only when there's a real conflict to resolve.",
             "Sync indicator no longer flickers to 'Drive is newer' immediately after a successful sync.",
             "Switching to another project no longer triggers an unnecessary sync to Drive.",
-        ],
-        changed: [
-            "Mobile Settings now uses the same single-button Drive sync as desktop — auto-sync handles push and pull, with manual conflict resolution only when needed.",
         ],
     },
 ];
