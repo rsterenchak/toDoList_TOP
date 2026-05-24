@@ -56,6 +56,7 @@ import {
     updateChangelogDot,
     notifyUpdateAvailable,
     applyPendingUpdate,
+    hasPendingUpdate,
     createHelpFab,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
@@ -3886,6 +3887,37 @@ function component() {
         return { row: row, refresh: refresh };
     }
 
+    // Paint the service-worker update cue on the About → Version row.
+    // When a new worker is waiting (hasPendingUpdate()), the muted value
+    // pill is replaced by a tappable accent-colored "Update available"
+    // pill that calls applyPendingUpdate (skipWaiting + reload — the
+    // same flow the desktop footer's #footVersion runs). When no update
+    // is pending the row reverts to its read-only state. Idempotent —
+    // safe to call from both the initial render and the
+    // appUpdateAvailable event handler while the modal is open.
+    function paintAboutVersionUpdateCue(versionRow) {
+        if (!versionRow) return;
+        const existingPill = versionRow.querySelector('.settingsAboutUpdatePill');
+        if (hasPendingUpdate()) {
+            versionRow.classList.add('hasUpdate');
+            if (existingPill) return;
+            const updatePill = document.createElement('button');
+            updatePill.type = 'button';
+            updatePill.className = 'settingsAboutUpdatePill';
+            updatePill.textContent = 'Update available';
+            updatePill.setAttribute('aria-label', 'Update available — tap to reload');
+            updatePill.addEventListener('click', function() {
+                applyPendingUpdate();
+            });
+            versionRow.appendChild(updatePill);
+        } else {
+            versionRow.classList.remove('hasUpdate');
+            if (existingPill && existingPill.parentNode) {
+                existingPill.parentNode.removeChild(existingPill);
+            }
+        }
+    }
+
     // Drawer-styled row that triggers a one-shot flow instead of toggling
     // a setting. Same 44px tap target and label typography as
     // createDrawerToggleRow, but the right-aligned slot holds a static
@@ -3997,6 +4029,34 @@ function component() {
     drawerSettingsBtnSyncBadge.className = 'drawerSettingsBtnSyncBadge';
     drawerSettingsBtnSyncBadge.setAttribute('aria-hidden', 'true');
     drawerSettingsBtn.appendChild(drawerSettingsBtnSyncBadge);
+
+    // Mobile-chrome service-worker update cue — the desktop footer's
+    // #footVersion dot is hidden at ≤700px, so the mobile gear/settings
+    // entry point picks up an equivalent dot via the .hasUpdate class.
+    // Mirrors the #changelogDot pattern on #footVersion. The dot is
+    // painted by CSS; this element just exists so the class hook has
+    // somewhere to apply paint. Toggled in lockstep with the same
+    // appUpdateAvailable event the Settings modal listens for.
+    const drawerSettingsBtnUpdateDot = document.createElement('span');
+    drawerSettingsBtnUpdateDot.id = 'drawerSettingsBtnUpdateDot';
+    drawerSettingsBtnUpdateDot.className = 'drawerSettingsBtnUpdateDot';
+    drawerSettingsBtnUpdateDot.setAttribute('aria-hidden', 'true');
+    drawerSettingsBtn.appendChild(drawerSettingsBtnUpdateDot);
+
+    function refreshDrawerSettingsBtnUpdateCue() {
+        if (hasPendingUpdate()) {
+            drawerSettingsBtn.classList.add('hasUpdate');
+            drawerSettingsBtn.setAttribute('data-has-update', 'true');
+        } else {
+            drawerSettingsBtn.classList.remove('hasUpdate');
+            drawerSettingsBtn.removeAttribute('data-has-update');
+        }
+    }
+    // Initial paint covers the rare second-load case where the worker
+    // was already waiting at register-time and the event fired before
+    // this listener was attached.
+    refreshDrawerSettingsBtnUpdateCue();
+    document.addEventListener('appUpdateAvailable', refreshDrawerSettingsBtnUpdateCue);
 
     // Wrap the Settings button so flex centering can apply to the wrap
     // without rearranging the footer sibling inside #sidebarBottom.
@@ -4132,6 +4192,14 @@ function component() {
             const count = listLogic.listProjectsArray().length;
             return count + (count === 1 ? ' Project' : ' Projects');
         }).row);
+        // Service-worker update cue. When a new worker is waiting, the
+        // Version row gains a tappable "Update available" pill that
+        // routes to applyPendingUpdate (the same skipWaiting + reload
+        // path the desktop footer uses). The row is the first
+        // .drawerInfoRow child of the About section; paintAboutVersionUpdateCue
+        // toggles the pill in lockstep with the appUpdateAvailable event.
+        const versionRow = aboutSection.querySelector('.drawerInfoRow');
+        paintAboutVersionUpdateCue(versionRow);
 
         // HELP section — single Replay welcome tour entry that dispatches
         // by viewport. On touch / narrow viewports the carousel runs; on
@@ -4194,8 +4262,12 @@ function component() {
         function onDriveConnectionChangedForModal() {
             refreshSettingsModalSyncCard();
         }
+        function onAppUpdateAvailableForModal() {
+            paintAboutVersionUpdateCue(versionRow);
+        }
         document.addEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
         document.addEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
+        document.addEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
 
         let closed = false;
         function close() {
@@ -4204,6 +4276,7 @@ function component() {
             document.removeEventListener('keydown', onKeydown, true);
             document.removeEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
             document.removeEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
+            document.removeEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
             if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
             drawerSettingsBtn.setAttribute('aria-expanded', 'false');
             if (previouslyFocused &&
