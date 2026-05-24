@@ -97,7 +97,6 @@ import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import button from './addProj_button.svg';
 
-
 // One-shot migration of the prior `todoapp_lastDriveExportedAt` localStorage
 // key to the new `todoapp_lastDriveSyncedAt` key. Runs once at app boot —
 // the helper is self-cleaning, so subsequent loads short-circuit. Existing

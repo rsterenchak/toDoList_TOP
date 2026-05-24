@@ -8,7 +8,6 @@ import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
-
 document.body.appendChild(component()); // build and attach DOM
 
 restoreFromStorage();                   // now that DOM is live, restore saved projects
