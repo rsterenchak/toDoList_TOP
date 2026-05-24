@@ -5957,11 +5957,11 @@ function component() {
     // signed out, offline), it resolves quietly with no toast or console
     // error. Either way, refreshDriveSyncState runs afterward to paint
     // the indicator from whatever state landed.
-    setTimeout(function() {
-        autoSyncOnAppLoad().catch(function() { /* silent — auth failures don't disarm */ })
-            .then(function() { refreshDriveSyncState(); });
-    }, 0);
-
+    // TEMP: disabled during Phase 4–6 backend work — Drive is being removed
+    // setTimeout(function() {
+    //     autoSyncOnAppLoad().catch(function() { /* silent — auth failure ... */ })
+    //         .then(function() { refreshDriveSyncState(); });
+    // }, 0);
     return base;
 
 };
