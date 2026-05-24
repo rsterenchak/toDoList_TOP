@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-24',
-        added: [
-            "Drag a .json export anywhere on the window to restore a backup, with a full-window drop zone that previews the destructive overwrite before confirming.",
-        ],
         fixed: [
             "Tapping a todo row on mobile now highlights it as the active card and unclamps long titles so they wrap into readable paragraphs without having to enter edit mode.",
             "Mobile read-mode no longer shows an empty title band on first tap — the title stays visible and wraps to multi-line as intended.",
             "Creating, editing, and reordering todos now reliably syncs across devices, fixing a backend payload mismatch that was silently dropping most writes.",
             "New todos now sync to the cloud the moment you press Enter, instead of waiting for a later refresh to pick them up.",
+            "Long todo titles on mobile no longer get clipped when the row is tapped open — the row now grows to fit the wrapped title.",
         ],
     },
 ];

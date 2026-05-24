@@ -2,10 +2,10 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix mobile read-mode row clipping long titles behind fixed row height
+- [x] **[HIGH]** Fix mobile read-mode row clipping long titles behind fixed row height
   - Description: On mobile (≤700px), tapping a committed todo row to enter read mode (`data-mobile-read="true"`) unclamps the title display span to `white-space: normal` so long titles wrap into multi-line text — but the base `#toDoChild` rule sets `height: var(--item-h)` (a fixed clamp) and the row also has `overflow: clip`, so a wrapped 2–3 line title overflows the row's box and gets visually cut off (top and bottom lines truncated, only the middle line readable). Reproduces on the active row in the screenshot ("Bug: Delete key not working on Mac for project or list item deletion") at the iPhone width. Fix in `style.css` by adding `height: auto; min-height: var(--item-h);` to the existing mobile-scoped `#toDoChild[data-mobile-read="true"]:not([data-original-blank="true"])` rule so the row grows with its wrapped title content while preserving the 54px minimum for short titles. Keep `align-items: center` so the right-side controls (copy button, due-date pill, expand caret) float to the vertical middle of the tall title block — matches the chosen visual treatment (Option B). The descSibling panel below the row continues to render correctly since it's a separate grid track that already sizes to content; no JS changes needed.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-24
 
 ## Features
 

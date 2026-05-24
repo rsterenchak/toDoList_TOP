@@ -217,4 +217,22 @@ describe('STACK mobile tap-to-view — active row title is unclamped and washed'
             /#toDoInput\s*\{[\s\S]{0,200}text-overflow:\s*ellipsis[\s\S]{0,200}white-space:\s*nowrap/
         );
     });
+
+    it('active mobile-read row grows with its wrapped title content instead of clipping', () => {
+        // Regression pin: the base #toDoChild rule sets height: var(--item-h)
+        // and overflow: clip, so when the title-display span unclamps to
+        // white-space: normal the wrapped lines overflow the row's fixed
+        // box and get visually cut off (top and bottom lines truncated,
+        // middle line readable). The fix promotes the row to a flexible
+        // height with a 54px floor so short titles still anchor to the
+        // standard row height while long titles can expand.
+        const block = mobileBlock();
+        const ruleMatch = block.match(
+            /#toDoChild\[data-mobile-read="true"\]:not\(\[data-original-blank="true"\]\)\s*\{([\s\S]{0,400}?)\}/
+        );
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/height:\s*auto/);
+        expect(body).toMatch(/min-height:\s*var\(--item-h\)/);
+    });
 });

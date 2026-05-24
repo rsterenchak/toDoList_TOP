@@ -4691,6 +4691,18 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
     text-overflow: clip;
     line-height: 1.4;
   }
+  /* The base #toDoChild rule pins the row to height: var(--item-h) and
+     overflow: clip, which combined with the unclamp above would otherwise
+     cut the wrapped top/bottom lines off the row's fixed box. Promote the
+     row to a flexible height with a 54px floor so short titles still
+     anchor to the standard row height while long titles let the row grow.
+     align-items: center is inherited from the base rule so the right-side
+     controls (copy, due-date pill, expand caret) stay vertically centered
+     against the tall title block. */
+  #toDoChild[data-mobile-read="true"]:not([data-original-blank="true"]) {
+    height: auto;
+    min-height: var(--item-h);
+  }
 
   /* Collapse bulk description buttons to chevron-only so they don't overlap
      the "Todo Items" header on narrow phones. */
