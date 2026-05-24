@@ -24,7 +24,7 @@ function genId() {
 // what the renderer expects. Supabase stores them as ISO YYYY-MM-DD
 // dates. Conversion happens at the persistence boundary so neither
 // the renderer nor the Supabase calls need to know about both formats.
-function dueStringToISO(due) {
+export function dueStringToISO(due) {
     if (!due || typeof due !== 'string') return null;
     if (due === '' || due === '--' || due === 'X-X-XXXX') return null;
     const parts = due.split('-');
@@ -38,7 +38,7 @@ function dueStringToISO(due) {
     return y + '-' + mm + '-' + dd;
 }
 
-function isoToDueString(iso) {
+export function isoToDueString(iso) {
     if (!iso || typeof iso !== 'string') return '';
     const parts = iso.split('-');
     if (parts.length !== 3) return '';
@@ -47,6 +47,39 @@ function isoToDueString(iso) {
     const d = parseInt(parts[2], 10);
     if (isNaN(y) || isNaN(m) || isNaN(d)) return '';
     return m + '-' + d + '-' + y;
+}
+
+
+// ── PERSISTENCE-PAYLOAD BUILDERS ─────────────────────────────────────
+// Build the exact row shape Supabase expects, with explicit field
+// mapping from the in-memory shorthand (`tit`/`desc`/`due`/`pri`/`pos`)
+// to the column names declared in the Phase 2 schema
+// (`title`/`description`/`due_date`/`priority`/`position`). Centralised
+// so a future schema column gets added in one place and so no call site
+// can slip back to an `Object.assign({}, item, …)` shortcut that would
+// silently smuggle the in-memory field names into the network payload
+// and have Supabase drop them.
+function toTodoRowPayload(item, projectId) {
+    return {
+        id: item.id,
+        project_id: projectId,
+        title: item.tit,
+        description: item.desc || null,
+        due_date: dueStringToISO(item.due),
+        priority: item.pri == null ? null : String(item.pri),
+        position: item.pos,
+        completed: !!item.completed,
+        recurrence: item.recurrence || null,
+    };
+}
+
+function toProjectRowPayload(entry, name, position) {
+    return {
+        id: entry.id,
+        name: name,
+        color: entry.color || null,
+        position: position,
+    };
 }
 
 
@@ -270,12 +303,11 @@ export const listLogic = (function () {
         persistMutation({
             op: 'insert',
             table: 'projects',
-            payload: {
-                id: projectId,
-                name: projectName,
-                color: null,
-                position: allProjectsTotal - 1,
-            },
+            payload: toProjectRowPayload(
+                allProjects[projectName],
+                projectName,
+                allProjectsTotal - 1
+            ),
         });
 
         return {
@@ -351,9 +383,10 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'insert',
                 table: 'todos',
-                payload: Object.assign({}, listItem, {
-                    project_id: allProjects[projectDes].id || null,
-                }),
+                payload: toTodoRowPayload(
+                    listItem,
+                    allProjects[projectDes].id || null
+                ),
             });
         }
 
@@ -458,9 +491,10 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'insert',
                 table: 'todos',
-                payload: Object.assign({}, item, {
-                    project_id: allProjects[project].id || null,
-                }),
+                payload: toTodoRowPayload(
+                    item,
+                    allProjects[project].id || null
+                ),
             });
         }
     };
@@ -491,12 +525,11 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'projects',
-                payload: {
-                    id: entry.id,
-                    name: trimmed,
-                    color: entry.color || null,
-                    position: Object.keys(allProjects).indexOf(trimmed),
-                },
+                payload: toProjectRowPayload(
+                    entry,
+                    trimmed,
+                    Object.keys(allProjects).indexOf(trimmed)
+                ),
             });
         }
 
@@ -563,12 +596,7 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'projects',
-                payload: {
-                    id: entry.id,
-                    name: k,
-                    color: entry.color || null,
-                    position: idx,
-                },
+                payload: toProjectRowPayload(entry, k, idx),
             });
         });
     }
@@ -623,7 +651,7 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'todos',
-                payload: Object.assign({}, it, { project_id: projId }),
+                payload: toTodoRowPayload(it, projId),
             });
         });
     }
@@ -734,7 +762,7 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'todos',
-                payload: Object.assign({}, it, { project_id: projId }),
+                payload: toTodoRowPayload(it, projId),
             });
         });
     }
@@ -785,12 +813,11 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'projects',
-                payload: {
-                    id: entry.id,
-                    name: projectName,
-                    color: entry.color || null,
-                    position: Object.keys(allProjects).indexOf(projectName),
-                },
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
             });
         }
     }
@@ -818,9 +845,10 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'todos',
-                payload: Object.assign({}, item, {
-                    project_id: allProjects[project].id || null,
-                }),
+                payload: toTodoRowPayload(
+                    item,
+                    allProjects[project].id || null
+                ),
             });
         }
     }
@@ -877,16 +905,14 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'insert',
                 table: 'todos',
-                payload: Object.assign({}, completedClone, {
-                    project_id: projId,
-                }),
+                payload: toTodoRowPayload(completedClone, projId),
             });
         }
         if (item.id && item.tit !== '') {
             persistMutation({
                 op: 'update',
                 table: 'todos',
-                payload: Object.assign({}, item, { project_id: projId }),
+                payload: toTodoRowPayload(item, projId),
             });
         }
         return true;
@@ -1511,19 +1537,18 @@ export const listLogic = (function () {
         persistMutation({
             op: 'insert',
             table: 'projects',
-            payload: {
-                id: projectId,
-                name: name,
-                color: null,
-                position: allProjectsTotal - 1,
-            },
+            payload: toProjectRowPayload(
+                allProjects[name],
+                name,
+                allProjectsTotal - 1
+            ),
         });
         sampleItems.forEach(function(it) {
             if (!it || it.tit === '') return;
             persistMutation({
                 op: 'insert',
                 table: 'todos',
-                payload: Object.assign({}, it, { project_id: projectId }),
+                payload: toTodoRowPayload(it, projectId),
             });
         });
         return true;
@@ -1573,9 +1598,7 @@ export const listLogic = (function () {
             persistMutation({
                 op: 'update',
                 table: 'todos',
-                payload: Object.assign({}, chevronItem, {
-                    project_id: entry.id || null,
-                }),
+                payload: toTodoRowPayload(chevronItem, entry.id || null),
             });
         }
         return true;
@@ -1657,18 +1680,11 @@ export const listLogic = (function () {
                 const todoRows = [];
                 Object.keys(allProjects).forEach(function(name, idx) {
                     const entry = allProjects[name];
-                    projectRows.push({
-                        id: entry.id,
-                        name: name,
-                        color: entry.color || null,
-                        position: idx,
-                    });
+                    projectRows.push(toProjectRowPayload(entry, name, idx));
                     entry.items.forEach(function(it, itemIdx) {
                         if (!it || it.tit === '') return;
-                        todoRows.push(Object.assign({}, it, {
-                            project_id: entry.id,
-                            pos: itemIdx,
-                        }));
+                        it.pos = itemIdx;
+                        todoRows.push(toTodoRowPayload(it, entry.id));
                     });
                 });
                 if (projectRows.length > 0) {
@@ -1769,17 +1785,20 @@ export const listLogic = (function () {
                     };
                 } else if (table === 'todos') {
                     // Blank-placeholder filter at the persistence boundary
-                    // — these are render artifacts, not real rows.
-                    if (!payload.tit || payload.tit === '') return;
+                    // — these are render artifacts, not real rows. The
+                    // payload arrives already in Supabase column shape
+                    // (built by toTodoRowPayload), so the check is on
+                    // `title` not the in-memory `tit`.
+                    if (!payload.title || payload.title === '') return;
                     row = {
                         id: payload.id,
                         user_id: userId,
                         project_id: payload.project_id,
-                        title: payload.tit,
-                        description: payload.desc || '',
-                        due_date: dueStringToISO(payload.due),
-                        priority: payload.pri == null ? 1 : payload.pri,
-                        position: payload.pos == null ? 0 : payload.pos,
+                        title: payload.title,
+                        description: payload.description || null,
+                        due_date: payload.due_date,
+                        priority: payload.priority == null ? null : String(payload.priority),
+                        position: payload.position,
                         completed: !!payload.completed,
                         recurrence: payload.recurrence || null,
                     };
@@ -1806,11 +1825,11 @@ export const listLogic = (function () {
                 } else if (table === 'todos') {
                     row = {
                         project_id: payload.project_id,
-                        title: payload.tit,
-                        description: payload.desc || '',
-                        due_date: dueStringToISO(payload.due),
-                        priority: payload.pri == null ? 1 : payload.pri,
-                        position: payload.pos == null ? 0 : payload.pos,
+                        title: payload.title,
+                        description: payload.description || null,
+                        due_date: payload.due_date,
+                        priority: payload.priority == null ? null : String(payload.priority),
+                        position: payload.position,
                         completed: !!payload.completed,
                         recurrence: payload.recurrence || null,
                     };
@@ -1978,22 +1997,15 @@ export const listLogic = (function () {
                 persistMutation({
                     op: 'insert',
                     table: 'projects',
-                    payload: {
-                        id: local.id,
-                        name: name,
-                        color: local.color || null,
-                        position: 0,
-                    },
+                    payload: toProjectRowPayload(merged[name], name, 0),
                 });
                 merged[name].items.forEach(function(it, idx) {
                     if (!it.id) it.id = genId();
+                    it.pos = idx;
                     persistMutation({
                         op: 'insert',
                         table: 'todos',
-                        payload: Object.assign({}, it, {
-                            project_id: local.id,
-                            pos: idx,
-                        }),
+                        payload: toTodoRowPayload(it, local.id),
                     });
                 });
             });
