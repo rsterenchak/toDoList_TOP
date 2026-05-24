@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-24',
         added: [
-            "Magic-link sign-in now gates the app — enter your email to receive a sign-in link, and sign out anytime from Settings.",
+            "Projects and todos now sync to your account, so the same lists show up on every device you sign in on.",
         ],
         fixed: [
             "Sync button now prompts you to sign in again when your Drive session has expired, instead of looking ready and doing nothing when you tap it.",

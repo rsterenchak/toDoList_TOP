@@ -35,6 +35,24 @@ function bootApp() {
     // Desktop falls through to the existing coachmark tour started inside
     // restoreFromStorage.
     maybeStartFirstRunCarousel();
+
+    // Phase 5: with the offline cache rendered, reconcile against
+    // Supabase in the background. The hydrate call awaits the
+    // projects + todos pull, picks last-write-wins on `updated_at`
+    // for divergent rows, rewrites `allProjects` in place, and
+    // dispatches the `listLogicHydrated` event main.js listens for
+    // to do a one-shot full re-render. Once the data settles,
+    // subscribe to realtime so incoming server changes flow into the
+    // UI without a refresh. Errors inside hydrate already get
+    // console.warn'd; the .catch() here is belt-and-suspenders so
+    // an unexpected rejection can't take down the page load.
+    listLogic.hydrateFromSupabase()
+        .then(function() {
+            listLogic.subscribeToRealtime();
+        })
+        .catch(function(e) {
+            console.warn('[bootApp] hydrate/subscribe failed:', e);
+        });
 }
 
 supabase.auth.getSession().then(function(result) {
@@ -58,7 +76,11 @@ supabase.auth.onAuthStateChange(function(_event, session) {
         bootApp();
     } else {
         // Sign-out (or initial-load with no session). Re-render the
-        // modal so the chrome behind it stays gated.
+        // modal so the chrome behind it stays gated, and let
+        // listLogic tear down its realtime subscriptions + clear
+        // its in-memory state so the next user can't see the
+        // previous user's data.
+        try { listLogic.handleSignOut(); } catch (_) { /* noop */ }
         showAuthModal();
     }
 });

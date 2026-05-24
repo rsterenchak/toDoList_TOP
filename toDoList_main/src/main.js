@@ -6035,6 +6035,34 @@ function seedSampleTodosIntoActiveProjectIfEmpty() {
 
 export { component, restoreFromStorage, notifyUpdateAvailable };
 
+
+// Phase 5: one-shot full re-render hook for Supabase hydration. The
+// boot path calls restoreFromStorage off the local cache so the UI
+// has something to show immediately; listLogic.hydrateFromSupabase
+// then reconciles against the backend in the background and
+// dispatches this event when the in-memory tree has been replaced.
+// The listener clears the sidebar + main list DOM and replays
+// restoreFromStorage so the rebuild is mechanical — same code path
+// as initial load, no special-case "diff and patch" logic to keep
+// in sync with the renderer.
+if (typeof document !== 'undefined') {
+    document.addEventListener('listLogicHydrated', function onHydrate() {
+        const sideMaDiv = document.getElementById('sideMa');
+        const mainListDiv = document.getElementById('mainList');
+        if (sideMaDiv) {
+            while (sideMaDiv.firstChild) sideMaDiv.removeChild(sideMaDiv.firstChild);
+        }
+        if (mainListDiv) {
+            while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
+        }
+        try {
+            restoreFromStorage({ fromSync: true });
+        } catch (e) {
+            console.warn('[listLogicHydrated] re-render failed:', e);
+        }
+    });
+}
+
 // Bulk open/close every committed row's description panel. Clicks the row's
 // own #descToggle so the closure-scoped `switcher` inside wireDescToggle
 // stays in sync with the DOM — individual per-row toggles keep working

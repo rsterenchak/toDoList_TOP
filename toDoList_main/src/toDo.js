@@ -15,11 +15,18 @@ const toDo = (title, description, dueDate, priority, position) => {
     // { pattern, interval, intervalUnit, basis, endDate } — see
     // listLogic.js's nextDueDate for the supported pattern values.
     let recurrence = null;
+    // Stable identifier used by the Supabase persistence layer. Assigned
+    // at creation so optimistic writes can target the same row the server
+    // will see. crypto.randomUUID is available on every browser since
+    // 2021; the global fallback below covers older environments and
+    // legacy test runners where the API may be absent.
+    let id = (typeof globalThis !== 'undefined'
+        && globalThis.crypto
+        && typeof globalThis.crypto.randomUUID === 'function')
+        ? globalThis.crypto.randomUUID()
+        : null;
 
-    // console.log("Called toDo Object");
-
-
-    return {tit, desc, due, pri, pos, completed, recurrence};
+    return {id, tit, desc, due, pri, pos, completed, recurrence};
   };
   
 
