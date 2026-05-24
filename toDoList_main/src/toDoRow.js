@@ -971,6 +971,7 @@ export function buildToDoRow(item, toDoName) {
 
     // create elements
     const toDoChild       = document.createElement("div");
+    const toDoTitleDisplay = document.createElement("span");
     const toDoInput       = document.createElement("input");
     const copyBtn         = document.createElement("button");
     const duePill         = document.createElement("button");
@@ -1006,6 +1007,17 @@ export function buildToDoRow(item, toDoName) {
     duePill.setAttribute('aria-expanded', 'false');
 
     spacer.id = "spacer";
+
+    // Wrappable display element for the title. On ≤420px the span is the
+    // visible title and the input is visually hidden until focus; long
+    // titles can wrap to multiple lines when the row enters mobile-read
+    // mode, which a single-line <input> cannot do by HTML spec. Desktop /
+    // tablet keep the input as the visible title — CSS hides this span at
+    // those breakpoints.
+    toDoTitleDisplay.id        = "toDoTitleDisplay";
+    toDoTitleDisplay.className = "toDoTitleDisplay";
+    toDoTitleDisplay.textContent = item.tit || "";
+    if (!item.tit) toDoTitleDisplay.style.display = "none";
 
     toDoInput.type        = "text";
     toDoInput.autocomplete = "off";
@@ -1128,6 +1140,7 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(swipePaneLeft);
     toDoChild.appendChild(swipePaneRight);
     if (addGlyph) toDoChild.appendChild(addGlyph);
+    toDoChild.appendChild(toDoTitleDisplay);
     toDoChild.appendChild(toDoInput);
     toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(duePill);
@@ -1218,6 +1231,8 @@ export function buildToDoRow(item, toDoName) {
 
         toDoInput.value = val;
         toDoInput.title = val;
+        toDoTitleDisplay.textContent = val;
+        toDoTitleDisplay.style.display = "";
         item.tit = val;
         item.pri = 2;
         // Row is no longer a blank placeholder — clear the marker so the
@@ -1295,6 +1310,7 @@ export function buildToDoRow(item, toDoName) {
         if (val.length > 0) {
             item.tit = val;
             toDoInput.title = val;
+            toDoTitleDisplay.textContent = val;
             listLogic.saveToStorage();
         }
     });
@@ -1311,6 +1327,7 @@ export function buildToDoRow(item, toDoName) {
             listLogic.saveToStorage();
         }
         toDoInput.title = item.tit || "";
+        toDoTitleDisplay.textContent = item.tit || "";
     });
 
     // Escape on the title cancels the in-progress edit by restoring the
@@ -1322,6 +1339,7 @@ export function buildToDoRow(item, toDoName) {
         item.tit = savedTitle;
         listLogic.saveToStorage();
         toDoInput.title = savedTitle;
+        toDoTitleDisplay.textContent = savedTitle;
         toDoInput.blur();
         event.preventDefault();
     });
