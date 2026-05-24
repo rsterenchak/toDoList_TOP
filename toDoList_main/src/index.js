@@ -30,9 +30,20 @@ maybeStartFirstRunCarousel();
 // `waiting` state on a subsequent deploy, notify main.js so the footer
 // can surface an "update available" cue; clicking the version label
 // tells the worker to skipWaiting and reloads the page.
+//
+// updateViaCache: 'none' tells the browser to bypass the HTTP cache when
+// checking sw.js for updates. GitHub Pages serves assets with a 10-minute
+// Cache-Control max-age, which would otherwise gate update discovery
+// behind that cache lifetime. With 'none', every navigation re-checks
+// sw.js against the origin so new builds are found within one page load.
+//
+// visibilitychange + a periodic interval call registration.update() so
+// installed PWAs that stay open in the background for hours/days still
+// discover new builds. Navigation alone is not enough on mobile, where
+// users frequently re-foreground the app without ever doing a full load.
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').then(function (registration) {
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (registration) {
             if (registration.waiting) {
                 notifyUpdateAvailable(registration);
             }
@@ -45,6 +56,20 @@ if ('serviceWorker' in navigator) {
                     }
                 });
             });
+
+            function checkForUpdate() {
+                if (typeof registration.update === 'function') {
+                    try { registration.update(); } catch (_) { /* update() can reject on quota / network */ }
+                }
+            }
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') checkForUpdate();
+            });
+
+            // Hourly poll catches the case where the tab stays visible for
+            // a long session and no visibilitychange ever fires.
+            setInterval(checkForUpdate, 60 * 60 * 1000);
         }).catch(function () { /* registration can fail on file:// or insecure origins */ });
 
         let reloading = false;
