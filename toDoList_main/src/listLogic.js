@@ -373,10 +373,10 @@ export const listLogic = (function () {
         }
 
         let listItem = toDo(itemTitle, itemDesc, itemDue, itemPri, itemPos);
+        listItem.id = crypto.randomUUID();   // ADD THIS LINE
         arr.push(listItem);
 
-        // Re-pin the blank placeholder to index 0.
-        sortCompletedInPlace(arr);
+
 
         saveToStorage();
         if (listItem.tit !== '') {
@@ -389,7 +389,9 @@ export const listLogic = (function () {
                 ),
             });
         }
-
+        // Re-pin the blank placeholder to index 0.
+        sortCompletedInPlace(arr);
+        
         return {
             array: arr,
             string: projectName,
@@ -1760,6 +1762,7 @@ export const listLogic = (function () {
     }
 
     async function persistMutation(req) {
+
         if (!req || !req.op || !req.table) return;
         try {
             const sessionResult = await supabase.auth.getSession();
@@ -1772,7 +1775,7 @@ export const listLogic = (function () {
             const op = req.op;
             const table = req.table;
             const payload = req.payload || {};
-
+            console.log('[persistMutation] called:', op, table, JSON.stringify(payload));
             if (op === 'insert') {
                 let row;
                 if (table === 'projects') {
@@ -1915,7 +1918,7 @@ export const listLogic = (function () {
             const todoRes = await supabase
                 .from('todos')
                 .select('*')
-                .eq('user_id', userId)
+                //.eq('user_id', userId)
                 .order('position', { ascending: true });
 
             if (projRes && projRes.error) {
