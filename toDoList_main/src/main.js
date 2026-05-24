@@ -5959,8 +5959,8 @@ function component() {
     // the indicator from whatever state landed.
     // TEMP: disabled during Phase 4–6 backend work — Drive is being removed
     // setTimeout(function() {
-    //     autoSyncOnAppLoad().catch(function() { /* silent — auth failure ... */ })
-    //         .then(function() { refreshDriveSyncState(); });
+    //      autoSyncOnAppLoad().catch(function() { /* silent — auth failure ... */ })
+    //          .then(function() { refreshDriveSyncState(); });
     // }, 0);
     return base;
 
