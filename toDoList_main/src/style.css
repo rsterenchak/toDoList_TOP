@@ -5201,6 +5201,181 @@ body.driveImportInProgress .settingsModalDataTile--driveSync {
 }
 
 
+/* ── AUTH MODAL (PHASE 4 SIGN-IN GATE) ──
+   Full-screen takeover (option C from the design pass) that blocks the
+   rest of the app until a Supabase session is established. The backdrop
+   fills the viewport, paints the base bg over whatever the chrome
+   already mounted, and stacks above every other modal/popover so a
+   sign-out re-render still wins over a stale popover that happened to
+   be open at the time. The internal column centers the ghost mascot,
+   "Welcome." heading (or "Check your inbox." on screen 2), email
+   input + Continue button, and the two confirmation-screen actions.
+   Stays inside the dark theme by default per CLAUDE.md and recolors
+   through the same theme tokens the rest of the app uses. */
+#authModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: var(--bg-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px env(safe-area-inset-right, 24px) 24px env(safe-area-inset-left, 24px);
+  overflow-y: auto;
+}
+
+#authModal {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.authModalMascot {
+  position: relative;
+  width: 144px;
+  height: 168px;
+  background-image: url('./ghost_purple.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  filter: drop-shadow(0 0 18px var(--accent-glow));
+  margin: 0 auto;
+}
+
+.authModalMailBadge {
+  position: absolute;
+  right: 8%;
+  bottom: 4%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #6C5DF5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.authModalMailBadge::before {
+  content: '✉';
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.authModalHeading {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  margin: 0;
+  padding: 0;
+}
+
+#authModalForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* font-size: 16px — required to prevent iOS Safari auto-zoom on focus
+   per the mobile-input rule in CLAUDE.md. */
+.authModalEmailInput {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.authModalEmailInput::placeholder {
+  color: var(--text-muted);
+}
+
+.authModalEmailInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.authModalSubmit {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: #6C5DF5;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+
+.authModalSubmit:hover { filter: brightness(1.08); }
+.authModalSubmit:active { transform: translateY(1px); }
+.authModalSubmit:disabled { opacity: 0.6; cursor: default; }
+
+.authModalError {
+  color: var(--text-danger);
+  font-size: 13px;
+  text-align: center;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.authModalBody {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.authModalEmailHighlight {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.authModalResend {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.authModalResend:hover { background: var(--accent-dim); }
+.authModalResend:disabled { opacity: 0.55; cursor: default; }
+
+.authModalUseDifferent {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.authModalUseDifferent:hover { color: var(--text-primary); }
+
+
 /* ── WELCOME CAROUSEL (MOBILE FIRST RUN) ──
    Four-card full-viewport walkthrough that introduces projects, the slide-
    out menu, and where the music and settings toggles live before dropping

@@ -143,7 +143,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('Settings modal three-way close vocabulary (CLAUDE.md modal rule)', () => {
         const showFnIdx = main.indexOf('function showSettingsModal()');
-        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 10000) : '';
+        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 15000) : '';
 
         it('explicit close (×) button is mounted and closes the modal', () => {
             expect(fnSlice).toMatch(/closeX\.id\s*=\s*['"]settingsModalClose['"]/);
