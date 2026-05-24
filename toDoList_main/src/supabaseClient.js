@@ -45,19 +45,67 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 // Singleton — one client per page load, shared by every importer.
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-        // Persist the auth session (JWT) in localStorage so the user
-        // stays signed in across page reloads. This is the default but
-        // we set it explicitly so the contract is visible.
-        persistSession: true,
-        // Auto-refresh the JWT in the background as it approaches
-        // expiry. Without this, sessions would die after ~1 hour.
-        autoRefreshToken: true,
-        // Detect the magic-link callback in the URL after the user
-        // clicks the email link, exchange it for a session, then clear
-        // the hash. Required for the magic-link flow we picked in
-        // Phase 1 Decision 2.
-        detectSessionInUrl: true,
-    },
-});
+//
+// When SUPABASE_URL is empty (e.g. a test runner with no `.env` file,
+// or a build that forgot to pipe the secrets through), createClient
+// throws synchronously with "supabaseUrl is required.". The full test
+// suite imports listLogic.js which now imports this module, so a throw
+// here would brick every test file. The stub below stands in for the
+// real client with no-op handlers shaped like the surfaces the rest of
+// the codebase actually touches (auth.getSession, from().insert/update/
+// delete/select, channel().on().subscribe, removeChannel). Real
+// production builds carry the env vars and hit the live createClient
+// path below.
+function buildStubClient() {
+    const noopQuery = {
+        select: function() { return Promise.resolve({ data: [], error: null }); },
+        insert: function() { return Promise.resolve({ data: null, error: null }); },
+        update: function() { return this; },
+        delete: function() { return this; },
+        eq: function() { return Promise.resolve({ data: null, error: null }); },
+        order: function() { return Promise.resolve({ data: [], error: null }); },
+    };
+    const noopChannel = {
+        on: function() { return this; },
+        subscribe: function() { return this; },
+        unsubscribe: function() { return this; },
+    };
+    return {
+        auth: {
+            getSession: function() {
+                return Promise.resolve({ data: { session: null }, error: null });
+            },
+            onAuthStateChange: function() {
+                return { data: { subscription: { unsubscribe: function() {} } } };
+            },
+            signInWithOtp: function() {
+                return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+            },
+            signOut: function() {
+                return Promise.resolve({ error: null });
+            },
+        },
+        from: function() { return noopQuery; },
+        channel: function() { return noopChannel; },
+        removeChannel: function() {},
+    };
+}
+
+export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            // Persist the auth session (JWT) in localStorage so the user
+            // stays signed in across page reloads. This is the default but
+            // we set it explicitly so the contract is visible.
+            persistSession: true,
+            // Auto-refresh the JWT in the background as it approaches
+            // expiry. Without this, sessions would die after ~1 hour.
+            autoRefreshToken: true,
+            // Detect the magic-link callback in the URL after the user
+            // clicks the email link, exchange it for a session, then clear
+            // the hash. Required for the magic-link flow we picked in
+            // Phase 1 Decision 2.
+            detectSessionInUrl: true,
+        },
+    })
+    : buildStubClient();
