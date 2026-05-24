@@ -478,6 +478,120 @@ describe('listLogic Phase 5 — main.js listens for the one-shot re-render event
 });
 
 
+describe('listLogic Phase 5 — commitBlankPlaceholder promotes the in-place blank row into a Supabase INSERT', () => {
+    // The Enter-to-commit handler in toDoRow.js mutates the blank
+    // placeholder's `item.tit` directly instead of routing through
+    // `addToDo`, so the placeholder — filtered from every prior write
+    // because its title was empty — has never been INSERTed. Without
+    // a dedicated commit path, the row only ever lands in
+    // localStorage and the followup sortCompletedToBottom UPDATE
+    // silently 204s against an id Supabase has never seen.
+
+    const body = functionBody(SRC, 'commitBlankPlaceholder');
+
+    it('exists as a declared function', () => {
+        expect(body).toBeTruthy();
+    });
+
+    it('is exported from the IIFE return object', () => {
+        // The IIFE return is the public surface toDoRow.js calls into.
+        expect(SRC).toMatch(/\bcommitBlankPlaceholder\b/);
+    });
+
+    it('fires persistMutation with op:"insert" against the todos table', () => {
+        expect(body).toMatch(/persistMutation\s*\(/);
+        expect(body).toMatch(/op:\s*['"]insert['"]/);
+        expect(body).toMatch(/table:\s*['"]todos['"]/);
+    });
+
+    it('builds the INSERT payload through toTodoRowPayload so the row matches the Supabase column shape', () => {
+        // The original Phase 5 bug was payloads built via Object.assign
+        // that leaked the in-memory short field names (tit/desc/due/
+        // pri/pos). Routing through the explicit helper is what keeps
+        // the network shape locked to the schema.
+        expect(body).toMatch(/toTodoRowPayload\s*\(/);
+    });
+
+    it('passes the project id from allProjects[projectName].id as the second argument', () => {
+        // The todos.project_id FK is what scopes the row to the right
+        // project — without it the INSERT either rejects or orphans.
+        expect(body).toMatch(/allProjects\s*\[\s*projectName\s*\]\.id/);
+    });
+
+    it('no-ops on an empty title so a stray caller can not smuggle a blank row past the persistence boundary', () => {
+        // Defensive: the Enter handler already gates on `if (!val) return`,
+        // but the contract here is that commitBlankPlaceholder by itself
+        // never writes a blank-titled row even if mis-called.
+        expect(body).toMatch(/item\.tit/);
+        // Some early-return on the empty-title condition must appear
+        // ahead of the persistMutation call.
+        const titGuardIdx = body.search(/!\s*item\.tit|item\.tit\s*===\s*['"]['"]/);
+        const persistIdx = body.indexOf('persistMutation');
+        expect(titGuardIdx).toBeGreaterThan(-1);
+        expect(persistIdx).toBeGreaterThan(-1);
+        expect(titGuardIdx).toBeLessThan(persistIdx);
+    });
+
+    it('no-ops when the project is missing so a stale toDoName from a deleted project can not crash the write', () => {
+        // Same defensive shape as removeToDoByItem and insertToDoAt —
+        // a missing project entry returns early before any persistence.
+        expect(body).toMatch(/!\s*allProjects\s*\[\s*projectName\s*\]/);
+    });
+});
+
+
+describe('listLogic Phase 5 — toDoRow.js Enter-commit wiring calls commitBlankPlaceholder', () => {
+    // The bug: the Enter keydown handler in buildToDoRow promotes the
+    // blank placeholder by mutating item.tit in place and calling only
+    // saveToStorage(), which writes localStorage but skips Supabase.
+    // The fix wires a listLogic.commitBlankPlaceholder call between
+    // the saveToStorage and the appendNewToDoRow / focusBlankToDoInput
+    // branch so the INSERT fires before the followup sort triggers any
+    // UPDATEs.
+
+    const toDoRowSrc = readFileSync(resolve(srcDir, 'toDoRow.js'), 'utf8');
+
+    function extractRange(startNeedle, endNeedle) {
+        const startIdx = toDoRowSrc.indexOf(startNeedle);
+        expect(startIdx).toBeGreaterThan(-1);
+        const endIdx = toDoRowSrc.indexOf(endNeedle, startIdx + startNeedle.length);
+        expect(endIdx).toBeGreaterThan(-1);
+        return toDoRowSrc.slice(startIdx, endIdx);
+    }
+
+    it('the Enter commit handler invokes listLogic.commitBlankPlaceholder with the project name and item', () => {
+        const enter = extractRange(
+            'toDoInput keydown — Enter to commit title',
+            '// toDoInput keyup'
+        );
+        expect(enter).toMatch(
+            /listLogic\.commitBlankPlaceholder\s*\(\s*toDoName\s*,\s*item\s*\)/
+        );
+    });
+
+    it('the commitBlankPlaceholder call sits between saveToStorage and the appendNewToDoRow / focusBlankToDoInput branch', () => {
+        const enter = extractRange(
+            'toDoInput keydown — Enter to commit title',
+            '// toDoInput keyup'
+        );
+        const saveIdx = enter.search(/listLogic\.saveToStorage\s*\(\s*\)/);
+        const commitIdx = enter.search(/listLogic\.commitBlankPlaceholder\s*\(/);
+        const appendIdx = enter.search(/appendNewToDoRow\s*\(/);
+        const focusIdx  = enter.search(/focusBlankToDoInput\s*\(/);
+        expect(saveIdx).toBeGreaterThan(-1);
+        expect(commitIdx).toBeGreaterThan(-1);
+        expect(appendIdx).toBeGreaterThan(-1);
+        expect(focusIdx).toBeGreaterThan(-1);
+        // INSERT must fire before sortCompletedToBottom (called from
+        // appendNewToDoRow) so the UPDATEs that follow have a real row
+        // to update — otherwise Supabase silently 204s the UPDATE.
+        expect(saveIdx).toBeLessThan(commitIdx);
+        expect(commitIdx).toBeLessThan(appendIdx);
+        expect(commitIdx).toBeLessThan(focusIdx);
+    });
+});
+
+
 describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged alias', () => {
     const body = functionBody(SRC, 'saveToStorage');
 
