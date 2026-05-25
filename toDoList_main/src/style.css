@@ -2651,6 +2651,30 @@ body.row-dragging * { cursor: grabbing !important; }
   animation: recurringFlashPulse 250ms ease-out;
 }
 
+/* DESCRIPTION TOGGLE (todo) */
+#descToggle {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-secondary);
+  user-select: none;
+}
+#descToggle::after {
+  content: '▾';
+  display: block;
+  transition: transform 0.2s ease;
+}
+#descToggle:hover { color: var(--text-primary); background: var(--bg-hover); }
+#descToggle.open::after { transform: rotate(180deg); }
+
 /* CLOSE BUTTON (todo) */
 #closeButtonToDo {
   width: 24px;
@@ -2670,11 +2694,11 @@ body.row-dragging * { cursor: grabbing !important; }
 #closeButtonToDo:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 /* STATS TOGGLE — chart-icon button that opens the recurring-task stats
-   drawer. 24×24 hit area with the same hover treatment as the close
-   button so the meta cluster reads as one unified strip. The button is
-   always in the DOM but only paints when the row has a `data-has-recurrence`
-   flag (set by updateRecurringGlyph), so non-recurring rows never see
-   the icon. */
+   drawer. Visually mirrors descToggle's footprint (24×24 hit area) and
+   hover treatment so the meta cluster reads as one unified strip. The
+   button is always in the DOM but only paints when the row has a
+   `data-has-recurrence` flag (set by updateRecurringGlyph), so
+   non-recurring rows never see the icon. */
 #toDoChild:not([data-has-recurrence]) #statsToggle {
   display: none;
 }
@@ -3812,7 +3836,7 @@ body.row-dragging * { cursor: grabbing !important; }
      a dashed divider — the spec calls for "an internal divider" so the
      two read as one extended creation surface rather than two separate
      boxes. */
-  #toDoChild[data-blank-placeholder][data-desc-open] + #descSibling {
+  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #descSibling {
     margin-top: -5px;
     border-top: 0.5px dashed var(--border-mid);
     border-radius: 0 0 6px 6px;
@@ -3836,7 +3860,7 @@ body.row-dragging * { cursor: grabbing !important; }
      text rather than a clipped single line. Overrides the ≤420px
      ellipsis rule below for this active state only. The collapsed-row
      ellipsis treatment returns automatically once data-mobile-read is
-     cleared (description close or another row activation). */
+     cleared (descToggle close or another row activation). */
   #toDoChild[data-mobile-read="true"] #toDoInput {
     white-space: normal;
     overflow: visible;
@@ -3874,6 +3898,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #projButton,
   #sidebarToggle,
   #closeButtonToDo,
+  #descToggle,
   #projChild,
   #toDoChild,
   .mobileProjChev,
@@ -4619,10 +4644,10 @@ body.row-dragging * { cursor: grabbing !important; }
   }
   /* Edit-mode swap is keyed on an explicit `data-mobile-edit` attribute
      set by wireToDoRowClick on the second tap (rather than `:focus-within`,
-     which spuriously matched whenever a sub-control received focus and
-     hid the title behind an empty band). The attribute is cleared on
-     input blur and on description close so read mode keeps the wrappable
-     span visible. */
+     which spuriously matched whenever the first-tap descToggle button
+     received focus and hid the title behind an empty band). The attribute
+     is cleared on input blur and on descToggle close so read mode keeps
+     the wrappable span visible. */
   #toDoChild[data-mobile-edit="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
     display: none;
   }
