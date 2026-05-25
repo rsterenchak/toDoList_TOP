@@ -521,6 +521,16 @@ describe('listLogic Phase 5 — main.js listens for the one-shot re-render event
         // initial load) rather than a custom diff-and-patch.
         expect(mainSrc).toMatch(/addEventListener\s*\(\s*['"]listLogicHydrated['"]/);
     });
+
+    it('guards the listLogicHydrated registration with a one-shot window flag', () => {
+        // The four-entry webpack bundle evaluates main.js's module body
+        // more than once during boot, which previously double-registered
+        // the listener and let the second invocation wipe the freshly
+        // hydrated sidebar. The guard short-circuits re-registration on
+        // any subsequent module evaluation.
+        const guardRe = /!\s*window\.__hydrateListenerRegistered[\s\S]{0,200}window\.__hydrateListenerRegistered\s*=\s*true[\s\S]{0,200}addEventListener\s*\(\s*['"]listLogicHydrated['"]/;
+        expect(mainSrc).toMatch(guardRe);
+    });
 });
 
 
