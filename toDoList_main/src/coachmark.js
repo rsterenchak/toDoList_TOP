@@ -5,9 +5,9 @@
 // node to anchor against. This module dims the page with a full-viewport
 // overlay, cuts a hole around one target element at a time via a four-
 // rect mask, and anchors a callout next to the spotlight that walks
-// through the sample project row, a due-date pill, the description
-// chevron, the sidebar "+" project button, the Pomodoro toggle, the
-// music toggle, and the settings toggle in the navbar.
+// through the sample project row, a due-date pill, the sidebar "+"
+// project button, the Pomodoro toggle, the music toggle, and the
+// settings toggle in the navbar.
 //
 // State is local to the module — only the persisted flag in prefs.js
 // (`todoapp_onboardingComplete`) survives between sessions. Calling
@@ -69,23 +69,6 @@ const STEPS = [
             for (let i = 0; i < rows.length; i++) {
                 const pill = rows[i].querySelector('#duePill');
                 if (pill && pill.style.display !== 'none') return pill;
-            }
-            return null;
-        },
-        advanceOn: ['click'],
-        placement: 'bottom',
-    },
-    {
-        id: 'descToggle',
-        title: 'Expand for details',
-        body: 'The chevron next to each todo opens a description panel — great for notes or links.',
-        target: function() {
-            const main = document.getElementById('mainList');
-            if (!main) return null;
-            const rows = main.querySelectorAll('#toDoChild');
-            for (let i = 0; i < rows.length; i++) {
-                const tog = rows[i].querySelector('#descToggle');
-                if (tog && tog.style.display !== 'none') return tog;
             }
             return null;
         },

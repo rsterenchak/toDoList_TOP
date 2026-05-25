@@ -332,19 +332,18 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 //
 // Mobile (≤700px) replaces the desktop one-tap-to-edit with a two-stage
 // tap-to-view / tap-to-edit flow on committed rows: the first tap on a
-// collapsed row programmatically opens the description panel via the
-// existing descToggle (so descSibling appears below) and marks the row
-// `data-mobile-read="true"` WITHOUT focusing the input — the user can read
-// the description without summoning the soft keyboard. A second tap on the
-// title input area falls through to the focus path below and enters edit
-// mode. The auto-opened state is auto-collapsed when the user taps outside
-// the row+descSibling unit (handled in main.js's document click listener).
-function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
+// collapsed row programmatically opens the description panel (so descSibling
+// appears below) and marks the row `data-mobile-read="true"` WITHOUT focusing
+// the input — the user can read the description without summoning the soft
+// keyboard. A second tap on the title input area falls through to the focus
+// path below and enters edit mode. The auto-opened state is auto-collapsed
+// when the user taps outside the row+descSibling unit (handled in main.js's
+// document click listener).
+function wireToDoRowClick(toDoChild, toDoInput) {
     toDoChild.addEventListener('click', function(e) {
         // Let dedicated controls handle their own clicks without interference
         if (e.target.id === 'checkToDo'      ||
             e.target.id === 'closeButtonToDo' ||
-            e.target.id === 'descToggle'      ||
             e.target.closest('#statsToggle')  ||
             e.target.closest('#duePill')      ||
             e.target.closest('.copyTitleBtn') ||
@@ -359,23 +358,20 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
         }
 
         const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
-        const descOpen = !!(descToggle && descToggle.classList.contains('open'));
+        const descOpen = !!(toDoChild.__isDescOpen && toDoChild.__isDescOpen());
 
         // Mobile tap-to-view: first tap on a collapsed committed row enters
         // read mode (descSibling appears below) without summoning the
         // keyboard. Subsequent taps on the title area fall through to the
         // focus path so the user can edit.
-        if (isMobile && !descOpen && descToggle) {
+        if (isMobile && !descOpen) {
             // Only one row stays in mobile-read at a time — collapse any
             // other rows that were auto-expanded by a previous tap.
             document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(function(other) {
                 if (other === toDoChild) return;
-                const otherToggle = other.querySelector('#descToggle');
-                if (otherToggle && otherToggle.classList.contains('open')) {
-                    otherToggle.click();
-                }
+                if (other.__closeDesc) other.__closeDesc();
             });
-            descToggle.click();
+            if (toDoChild.__openDesc) toDoChild.__openDesc();
             toDoChild.setAttribute('data-mobile-read', 'true');
             // Mark .todo-active so the input is interactive on the next tap
             // (matches the existing committed-row activation rule), but do
@@ -405,25 +401,6 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             toDoInput.setSelectionRange(end, end);
         }
     });
-
-    // Whenever the description panel closes — manually via descToggle or
-    // programmatically via the outside-tap collapse — clear the
-    // mobile-read marker so the row's state stays in sync with what the
-    // user can actually see. Without this the next tap would skip the
-    // open-and-stay-in-read step and jump straight to focus.
-    if (descToggle) {
-        descToggle.addEventListener('click', function() {
-            if (!descToggle.classList.contains('open')) {
-                toDoChild.removeAttribute('data-mobile-read');
-                // Defensive: closing the description always collapses the
-                // row fully, regardless of whether the title was in edit
-                // mode. The blur handler on toDoInput clears this too;
-                // doing it here as well covers the case where the user
-                // closes the description without ever blurring the input.
-                toDoChild.removeAttribute('data-mobile-edit');
-            }
-        });
-    }
 }
 
 
@@ -1126,45 +1103,97 @@ function buildInfoGlyph() {
 }
 
 
-// ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
-// Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
+// ── HELPER: open / close / toggle helpers for a row's description panel ──
+// Stashes openDesc / closeDesc / toggleDesc / isDescOpen as `__` properties
+// on the row so other modules (bulk expand/collapse, the mobile chip, the
+// outside-click collapse, keyboard shortcuts) can drive the panel without
+// poking at internal state. The panel itself is a sibling of the row in
+// #mainList — same DOM shape as before, just no explicit chevron button
+// driving it.
+function wireDescriptionPanel(toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
 
-    let switcher = 0;
+    let isOpen = false;
 
-    descToggle.addEventListener("click", function(event) {
-        event.stopPropagation();
-
+    function open() {
+        if (isOpen) return;
         const mainList = toDoChild.parentElement;
         if (!mainList) return;
+        mainList.insertBefore(descSibling, toDoChild.nextSibling);
+        descSibling.appendChild(descSpacer1);
+        descSibling.appendChild(descInput);
+        descSibling.appendChild(descSpacer2);
+        descInput.value = item["desc"] || "";
+        toDoChild.setAttribute('data-desc-open', 'true');
+        isOpen = true;
+    }
 
-        if (switcher === 0) {
-            mainList.insertBefore(descSibling, toDoChild.nextSibling);
-            descSibling.appendChild(descSpacer1);
-            descSibling.appendChild(descInput);
-            descSibling.appendChild(descSpacer2);
-            descInput.value = item["desc"] || "";
-            descToggle.classList.add("open");
-            switcher = 1;
-        } else {
-            if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
-                mainList.removeChild(toDoChild.nextSibling);
-            }
-            descToggle.classList.remove("open");
-            switcher = 0;
+    function close() {
+        if (!isOpen) return;
+        const mainList = toDoChild.parentElement;
+        if (mainList && descSibling.parentElement === mainList) {
+            mainList.removeChild(descSibling);
         }
-    });
+        toDoChild.removeAttribute('data-desc-open');
+        // Closing always collapses the row fully — the mobile-read marker
+        // and the mobile-edit swap both clear so a re-tap re-enters from
+        // a clean state.
+        toDoChild.removeAttribute('data-mobile-read');
+        toDoChild.removeAttribute('data-mobile-edit');
+        isOpen = false;
+    }
 
-    // Enter on the focused expand caret routes through the same click handler
-    // so keyboard activation toggles the description panel identically to a
-    // mouse click. Focus stays on the caret either way: on expand, Tab steps
-    // naturally into the new description input; on collapse, the caret keeps
-    // focus so the user can re-open with Enter again.
-    descToggle.addEventListener("keydown", function(event) {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        descToggle.click();
-    });
+    function toggle() {
+        if (isOpen) close();
+        else open();
+    }
+
+    toDoChild.__openDesc    = open;
+    toDoChild.__closeDesc   = close;
+    toDoChild.__toggleDesc  = toggle;
+    toDoChild.__isDescOpen  = function() { return isOpen; };
+}
+
+
+// ── HELPER: wire focus-driven open/close on the row + description panel ──
+// Focus into the row opens the description; focus leaving both the row and
+// its description panel closes it. The relatedTarget guard keeps the panel
+// open while the user tabs from the title into sub-controls (statsToggle,
+// closeButtonToDo) and onward into the description input itself — the
+// panel only collapses once focus is no longer anywhere in the row/desc
+// unit. Blank placeholder rows skip focus-open so the always-pinned
+// "Add a task…" placeholder doesn't accidentally flash a description
+// panel on every visit; descriptions only make sense for committed rows.
+function wireDescriptionFocusOpen(toDoChild, descSibling, item) {
+
+    function withinRowOrDesc(node) {
+        if (!node) return false;
+        return toDoChild.contains(node) || descSibling.contains(node);
+    }
+
+    function onFocusIn() {
+        if (!item.tit) return;
+        if (toDoChild.__openDesc) toDoChild.__openDesc();
+    }
+
+    function onFocusOut(event) {
+        // Blank placeholder rows manage their description through the
+        // mobile chip — not via focus — so leaving the input shouldn't
+        // collapse a chip-opened panel out from under the user.
+        if (!item.tit) return;
+        const next = event.relatedTarget;
+        if (next && withinRowOrDesc(next)) return;
+        // Defer one tick so a synchronous focus shift inside the unit (e.g.
+        // .focus() called from a click handler that fires after focusout)
+        // can land before we decide to close.
+        setTimeout(function() {
+            if (withinRowOrDesc(document.activeElement)) return;
+            if (toDoChild.__closeDesc) toDoChild.__closeDesc();
+        }, 0);
+    }
+
+    toDoChild.addEventListener('focusin',  onFocusIn);
+    toDoChild.addEventListener('focusout', onFocusOut);
+    descSibling.addEventListener('focusout', onFocusOut);
 }
 
 
@@ -1179,7 +1208,6 @@ export function buildToDoRow(item, toDoName) {
     const copyBtn         = document.createElement("button");
     const duePill         = document.createElement("button");
     const closeButtonToDo = document.createElement("div");
-    const descToggle      = document.createElement("div");
     const statsToggle     = document.createElement("div");
     const spacer          = document.createElement("div");
     const descSibling     = document.createElement("div");
@@ -1256,9 +1284,9 @@ export function buildToDoRow(item, toDoName) {
     // Hide delete on blank placeholder rows — deleting the only available
     // input slot would leave the user with no way to create new items.
     if (!item.tit) closeButtonToDo.style.display = "none";
-    // tabindex + role mirror the descToggle treatment so keyboard users can
-    // tab to the delete button and press Enter to fire the same confirm-delete
-    // flow the mouse path uses. Hidden placeholder rows skip it via display:none.
+    // tabindex + role let keyboard users tab to the delete button and press
+    // Enter to fire the same confirm-delete flow the mouse path uses. Hidden
+    // placeholder rows skip it via display:none.
     closeButtonToDo.setAttribute("tabindex", "0");
     closeButtonToDo.setAttribute("role", "button");
     closeButtonToDo.setAttribute("aria-label", "Delete todo");
@@ -1284,15 +1312,6 @@ export function buildToDoRow(item, toDoName) {
     copyBtn.title = "Copy todo title";
     if (!item.tit) copyBtn.style.display = "none";
     setCopyBtnGlyph(copyBtn, false);
-
-    descToggle.id            = "descToggle";
-    descToggle.style.display = item.tit ? "flex" : "none";
-    // tabindex makes the non-button caret focusable so keyboard users can
-    // reach it in tab order. Hidden placeholder rows (display:none) skip it
-    // naturally, and committing the row reveals it without a re-wire.
-    descToggle.setAttribute("tabindex", "0");
-    descToggle.setAttribute("role", "button");
-    descToggle.setAttribute("aria-label", "Toggle description");
 
     // Stats toggle — chart-icon button that opens the recurring-task
     // stats drawer. Always present in the DOM but CSS-hidden unless the
@@ -1349,7 +1368,6 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(statsToggle);
-    toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
 
     updateDuePillLabel(duePill, item);
@@ -1386,8 +1404,8 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
-    wireSubControlBackspaceExit(descToggle, toDoChild);
+    wireDescriptionPanel(toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+    wireDescriptionFocusOpen(toDoChild, descSibling, item);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
@@ -1396,7 +1414,7 @@ export function buildToDoRow(item, toDoName) {
         closeButtonToDo: closeButtonToDo,
         item: item
     });
-    wireToDoRowClick(toDoChild, toDoInput, descToggle);
+    wireToDoRowClick(toDoChild, toDoInput);
 
     // Browsers natively toggle a checkbox on Space but NOT on Enter. Adding
     // Enter→toggle here keeps the keyboard contract uniform with the row's
@@ -1467,7 +1485,6 @@ export function buildToDoRow(item, toDoName) {
         updateDuePillLabel(duePill, item);
 
         // Idempotent — no-op when already visible; safely covers first-commit reveal.
-        descToggle.style.display      = "flex";
         checkToDo.style.display       = "";
         closeButtonToDo.style.display = "";
         duePill.style.display         = "";

@@ -1455,9 +1455,9 @@ function component() {
                     rebuildAfterImport();
                 } else {
                     // Active project may hold only the blank placeholder.
-                    // The desktop coachmark steps for #duePill and
-                    // #descToggle need a real titled row to anchor
-                    // against, so seed starter todos into it.
+                    // The desktop coachmark steps for #duePill anchor
+                    // against a real titled row, so seed starter todos
+                    // into the active project if it's empty.
                     seedSampleTodosIntoActiveProjectIfEmpty();
                 }
                 // rAF defer so the data-view flip and any re-render have
@@ -3140,8 +3140,8 @@ function component() {
     // Bulk description control — single toggle anchored to the right end of
     // the top add-task row. Lives as an absolutely-positioned overlay inside
     // #mainBar so the list can scroll beneath it without dragging the button
-    // along. Clicks are dispatched to each row's own #descToggle so the
-    // per-row switcher state in wireDescToggle stays in sync with the DOM.
+    // along. Routes through each row's stashed __openDesc / __closeDesc
+    // helper so the data-desc-open state stays in sync with the DOM.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
 
@@ -3534,9 +3534,9 @@ function component() {
                 rebuildAfterImport();
             } else {
                 // Active project may hold only the blank placeholder.
-                // The desktop coachmark steps for #duePill and
-                // #descToggle need a real titled row to anchor against,
-                // so seed starter todos into it.
+                // The desktop coachmark steps for #duePill anchor against
+                // a real titled row, so seed starter todos into the active
+                // project if it's empty.
                 seedSampleTodosIntoActiveProjectIfEmpty();
             }
             // rAF defer so the data-view flip and any re-render have a
@@ -3761,10 +3761,7 @@ function component() {
         }
         if (!insideRow && !insideDesc && !insideStats) {
             document.querySelectorAll('#toDoChild[data-mobile-read="true"]').forEach(function(el) {
-                const dt = el.querySelector('#descToggle');
-                if (dt && dt.classList.contains('open')) {
-                    dt.click();
-                }
+                if (el.__closeDesc) el.__closeDesc();
             });
         }
     });
@@ -3821,12 +3818,12 @@ function component() {
     // Global "Ctrl+Delete" (or Cmd+Delete) shortcut — toggle the description
     // panel of the currently active todo row. Resolves the active row from
     // focus (preferred) and falls back to the `.todo-active` marker the
-    // arrow-nav handler maintains. Skips the placeholder (its descToggle is
-    // hidden via display:none). Chord-style means we don't need the typing-
-    // surface guard — toggling a description while editing the title is a
-    // feature, not a hazard. The bare `Delete` (no Ctrl) still routes to the
-    // arrow-nav handler's confirm-delete path; that handler bails when any
-    // modifier is held, so the two never collide.
+    // arrow-nav handler maintains. Skips the always-pinned blank placeholder.
+    // Chord-style means we don't need the typing-surface guard — toggling a
+    // description while editing the title is a feature, not a hazard. The
+    // bare `Delete` (no Ctrl) still routes to the arrow-nav handler's
+    // confirm-delete path; that handler bails when any modifier is held, so
+    // the two never collide.
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Delete') return;
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -3839,10 +3836,9 @@ function component() {
             if (mainListDiv) row = mainListDiv.querySelector('#toDoChild.todo-active');
         }
         if (!row) return;
-        const descToggle = row.querySelector('#descToggle');
-        if (!descToggle) return;
-        if (descToggle.style.display === 'none') return; // placeholder row
-        descToggle.click();
+        if (row.__item && !row.__item.tit) return; // placeholder row
+        if (!row.__toggleDesc) return;
+        row.__toggleDesc();
         e.preventDefault();
     });
 
@@ -5286,8 +5282,8 @@ function rebuildAfterImport() {
 // Replay-tour helper: when the user has projects but the currently
 // selected one holds only the blank placeholder, push the same starter
 // todos seedSampleProject ships so the desktop coachmark steps that
-// anchor against per-row chrome (#duePill, #descToggle) have a real
-// titled row to point at. A no-op when no project is selected, when the
+// anchor against per-row chrome (#duePill) have a real titled row to
+// point at. A no-op when no project is selected, when the
 // active project already has any titled item, or when the seed itself
 // declines (listLogic.seedSampleTodos returns false). Re-renders the
 // main list in place so the new rows appear without touching the
@@ -5350,25 +5346,24 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
     });
 }
 
-// Bulk open/close every committed row's description panel. Clicks the row's
-// own #descToggle so the closure-scoped `switcher` inside wireDescToggle
-// stays in sync with the DOM — individual per-row toggles keep working
-// after a bulk action. Blank placeholder rows hide their #descToggle
-// (display: none), so filtering on that skips them.
+// Bulk open/close every committed row's description panel. Routes through
+// each row's stashed __openDesc / __closeDesc helper so individual rows
+// keep their state in sync after a bulk action. Blank placeholder rows
+// (item.tit === '') own a __openDesc that bails on empty titles, so the
+// bulk pass naturally skips the always-pinned blank.
 function expandAllDescriptions() {
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
-        if (toggle.style.display === 'none') return;
-        if (!toggle.classList.contains('open')) toggle.click();
+    mainListDiv.querySelectorAll('#toDoChild').forEach(function(row) {
+        if (row.__item && row.__item.tit && row.__openDesc) row.__openDesc();
     });
 }
 
 function collapseAllDescriptions() {
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
-        if (toggle.classList.contains('open')) toggle.click();
+    mainListDiv.querySelectorAll('#toDoChild').forEach(function(row) {
+        if (row.__closeDesc) row.__closeDesc();
     });
 }
 

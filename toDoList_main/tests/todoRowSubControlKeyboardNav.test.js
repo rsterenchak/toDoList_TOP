@@ -36,16 +36,6 @@ describe('todo row sub-control keyboard navigation', () => {
         throw new Error('unterminated function for: ' + signature);
     }
 
-    it('descToggle gets tabindex="0" and a button role so the expand caret is keyboard-reachable', () => {
-        // The caret is a <div>, which isn't natively focusable. tabindex="0"
-        // puts it in the tab order; role="button" makes assistive tech
-        // announce it correctly. Hidden placeholder rows skip it via
-        // display:none, so we don't need a separate placeholder branch.
-        const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
-        expect(fn).toMatch(/descToggle\.setAttribute\(\s*["']tabindex["']\s*,\s*["']0["']\s*\)/);
-        expect(fn).toMatch(/descToggle\.setAttribute\(\s*["']role["']\s*,\s*["']button["']\s*\)/);
-    });
-
     it('closeButtonToDo gets tabindex="0" and a button role so the delete X is keyboard-reachable', () => {
         const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
         expect(fn).toMatch(/closeButtonToDo\.setAttribute\(\s*["']tabindex["']\s*,\s*["']0["']\s*\)/);
@@ -66,19 +56,6 @@ describe('todo row sub-control keyboard navigation', () => {
         expect(handler).toMatch(/event\.key\s*!==\s*["']Enter["']/);
         expect(handler).toMatch(/checkToDo\.checked\s*=\s*!checkToDo\.checked/);
         expect(handler).toMatch(/dispatchEvent\(\s*new Event\(\s*["']change["']/);
-    });
-
-    it('descToggle Enter routes through its existing click handler', () => {
-        // Reusing click() rather than duplicating the expand/collapse logic
-        // keeps the keyboard path in lockstep with the mouse path — any
-        // future tweak to the toggle's click handler automatically applies
-        // to keyboard users too.
-        const fn = extractFunction(toDoRow, 'function wireDescToggle(');
-        expect(fn).toMatch(/descToggle\.addEventListener\(\s*["']keydown["']/);
-        const handler = fn.slice(fn.indexOf("descToggle.addEventListener(\"keydown\""));
-        expect(handler).toMatch(/event\.key\s*!==\s*["']Enter["']/);
-        expect(handler).toMatch(/descToggle\.click\(\s*\)/);
-        expect(handler).toMatch(/preventDefault\(\s*\)/);
     });
 
     it('closeButtonToDo Enter routes through its existing click handler so the delete confirmation still fires', () => {
@@ -258,14 +235,13 @@ describe('todo row sub-control keyboard navigation', () => {
             expect(addListenerIdx).toBeGreaterThan(guardIdx);
         });
 
-        it('buildToDoRow wires the helper for every sub-control: checkToDo, duePill, descToggle, statsToggle, closeButtonToDo', () => {
-            // All five chrome controls share the same one-key exit. The
+        it('buildToDoRow wires the helper for every sub-control: checkToDo, duePill, statsToggle, closeButtonToDo', () => {
+            // All four chrome controls share the same one-key exit. The
             // title input itself is NOT wired — its native Backspace must
             // still delete characters.
             const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
             expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*checkToDo\s*,\s*toDoChild\s*\)/);
             expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*duePill\s*,\s*toDoChild\s*\)/);
-            expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*descToggle\s*,\s*toDoChild\s*\)/);
             expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*statsToggle\s*,\s*toDoChild\s*\)/);
             expect(fn).toMatch(/wireSubControlBackspaceExit\(\s*closeButtonToDo\s*,\s*toDoChild\s*\)/);
             // toDoInput is never the first argument — wiring Backspace on
