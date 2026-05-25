@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-25',
         fixed: [
-            "First sign-in on a device now uploads your existing local projects to the cloud, and signing out clears the local copy so a shared device can't leak data between users.",
             "Removed the Google Drive sync UI now that signing in to your account handles multi-device sync automatically.",
             "Settings menu now has Export to JSON and Import from JSON options for downloading your data as a portable file or restoring everything from a previously exported file.",
             "Recurring-task stats now show a readable two-row recency strip on narrow phones instead of a squeezed contributions grid.",
             "Recurring-task stats drawer no longer overflows onto the next row on narrow phones — the two-row recency strip and missed-date pills now sit cleanly inside the drawer's border.",
+            "Recurring-task stats recency strip on narrow phones now uses a single slim row of 14 cells, eliminating the residual drawer overflow onto the next todo row.",
         ],
     },
 ];

@@ -25,51 +25,56 @@ function extractFunction(source, signature) {
     throw new Error('unterminated function for: ' + signature);
 }
 
-// On phone-width viewports (≤420px) the recurring-task stats drawer
-// rendered its two-row recency strip but the drawer's row track in
-// #mainList did not grow to fit. The strip's SVG declared explicit
-// width/height attributes, yet inside the flex-column wrapper the SVG's
-// reported block size collapsed below the rendered children — the
-// auto-sized grid row track sized to that smaller value and the bottom
-// of the drawer (second strip row + MISSED pill list) leaked past the
-// drawer's bottom border, with the next #toDoChild overlapping. The fix
-// declares an explicit pixel min-height on the wrapping div in the
-// mobile branch, computed from the strip's row count, the caption row,
-// the labels row, and the inter-row gaps — mirroring the lock-in
-// pattern from statsGridAxisLabels.test.js.
-describe('mobile recency-strip wrapper declares an explicit min-height', () => {
+// On phone-width viewports (≤420px) the recurring-task stats drawer's
+// bottom edge leaked past the next #toDoChild — the previous two-row
+// wrap strip had no intrinsic pixel height inside its flex-column
+// wrapper, so the auto-sized #mainList grid track collapsed below the
+// rendered children. The fix swaps the wrap for a single-row layout
+// of 14 cells at 16×16 px (3 px gap) and pins explicit `width="263"`
+// `height="16"` attributes on the SVG so it contributes a real pixel
+// height to the grid track. This regression test mirrors the
+// statsGridAxisLabels.test.js pattern — both lock in pixel-level SVG
+// sizing inside an auto-sized grid track.
+describe('mobile recency-strip SVG declares an explicit pixel height', () => {
     const toDoRow = read('toDoRow.js');
     const fn = extractFunction(toDoRow, 'function buildFallbackStrip(');
 
-    it('assigns wrapper.style.minHeight inside buildFallbackStrip', () => {
-        expect(fn).toMatch(/wrapper\.style\.minHeight\s*=/);
+    it('mobile cell metrics resolve to a 16 px row — cellSize 16, gap 3, 14 cells', () => {
+        // 14 × 16 + 13 × 3 = 263 px width; single row → 16 px height.
+        // These constants are the contract every other assertion depends on.
+        expect(fn).toMatch(/cellSize\s*=\s*mobile\s*\?\s*16\s*:\s*18/);
+        expect(fn).toMatch(/gap\s*=\s*mobile\s*\?\s*3\s*:\s*4/);
+        expect(fn).toMatch(/maxCells\s*=\s*mobile\s*\?\s*14\s*:\s*12/);
     });
 
-    it('the min-height expression references the strip layout dimensions', () => {
-        // Without referencing the strip's height, a hardcoded pixel
-        // value would silently desync if the cell size or row count
-        // ever changed. Either reusing the `height` variable
-        // (rows * cellSize + (rows - 1) * gap) or referencing
-        // `rows * cellSize` directly keeps the lower bound tied to the
-        // actual SVG layout.
-        const stmt = fn.match(/wrapper\.style\.minHeight\s*=[^;]+;/);
-        expect(stmt).not.toBeNull();
-        const expr = stmt[0];
-        const referencesLayout =
-            /\bheight\b/.test(expr) || /rows\s*\*\s*cellSize/.test(expr);
-        expect(referencesLayout).toBe(true);
+    it('SVG sets an explicit pixel height attribute equal to one cell row', () => {
+        // setAttribute('height', height) where height = rows * cellSize and
+        // rows is the constant 1 — i.e. the SVG reports cellSize pixels
+        // tall regardless of how CSS sizes its parent.
+        expect(fn).toMatch(/rows\s*=\s*1\s*;/);
+        expect(fn).toMatch(/height\s*=\s*rows\s*\*\s*cellSize\s*;/);
+        expect(fn).toMatch(/setAttribute\(\s*['"]height['"]\s*,\s*height\s*\)/);
     });
 
-    it('the min-height assignment is gated by the mobile flag', () => {
-        // Desktop (single-row, month/year cadence) must not carry an
-        // inline min-height — it has no two-row wrap to protect, and
-        // an inline value would compete with style.css.
-        const minHeightIdx = fn.indexOf('wrapper.style.minHeight');
-        expect(minHeightIdx).toBeGreaterThan(-1);
-        const before = fn.slice(0, minHeightIdx);
-        const lastIf = before.lastIndexOf('if (');
-        expect(lastIf).toBeGreaterThan(-1);
-        const ifLine = before.slice(lastIf, lastIf + 80);
-        expect(ifLine).toMatch(/if\s*\(\s*mobile\s*\)/);
+    it('SVG sets an explicit pixel width attribute that matches the cell row footprint', () => {
+        // width = cols * cellSize + (cols - 1) * gap. The attribute must
+        // be set explicitly — relying on the viewBox alone leaves the SVG
+        // at the user-agent default (300 px) inside a flex column.
+        expect(fn).toMatch(/setAttribute\(\s*['"]width['"]\s*,\s*width\s*\)/);
+    });
+
+    it('viewBox starts at 0 0 and uses the computed width/height — no hardcoded "0 0 263 16" string', () => {
+        // The viewBox is derived from `width` and `height` so the desktop
+        // (single-row 12-cell 18 px) and mobile (single-row 14-cell 16 px)
+        // branches share the same expression.
+        expect(fn).toMatch(/viewBox['"]\s*,\s*['"]0 0 ['"]\s*\+\s*width\s*\+\s*['"] ['"]\s*\+\s*height/);
+    });
+
+    it('no longer leans on wrapper.style.minHeight — the SVG height attribute is the load-bearing fix', () => {
+        // The legacy two-row wrap pushed a pixel min-height onto the
+        // wrapping <div> to compensate for the SVG collapsing inside its
+        // flex parent. The single-row layout makes that workaround
+        // redundant; carrying both would just compete with style.css.
+        expect(fn).not.toMatch(/wrapper\.style\.minHeight/);
     });
 });
