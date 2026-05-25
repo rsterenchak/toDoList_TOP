@@ -2845,6 +2845,32 @@ body.row-dragging * { cursor: grabbing !important; }
   font-family: inherit;
 }
 
+/* Mobile recency strip — the two-row fallback used on ≤420px viewports
+   for daily/weekly cadences whose contributions grid would otherwise
+   squeeze to an unreadable sliver. Caption above, oldest/today labels
+   below, framing the SVG produced by buildFallbackStrip(stats, true). */
+.statsFallbackStripMobile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-x: visible;
+}
+.statsFallbackStripCaption {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.statsFallbackStripLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.statsFallbackStripLabel {
+  letter-spacing: 0.04em;
+}
+
 .statsMissedList {
   display: flex;
   flex-wrap: wrap;

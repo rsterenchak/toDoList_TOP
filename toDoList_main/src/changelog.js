@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-25',
         fixed: [
-            "The browser console no longer prints hydration debug messages on every sign-in.",
             "Editing an existing todo's title now saves to the cloud — previously the change only persisted locally and could revert on the next refresh.",
             "First sign-in on a device now uploads your existing local projects to the cloud, and signing out clears the local copy so a shared device can't leak data between users.",
             "Removed the Google Drive sync UI now that signing in to your account handles multi-device sync automatically.",
             "Settings menu now has Export to JSON and Import from JSON options for downloading your data as a portable file or restoring everything from a previously exported file.",
+            "Recurring-task stats now show a readable two-row recency strip on narrow phones instead of a squeezed contributions grid.",
         ],
     },
 ];

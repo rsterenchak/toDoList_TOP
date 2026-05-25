@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Swap recurring-task stats heat map for a recency strip on mobile
+- [x] **[MEDIUM]** Swap recurring-task stats heat map for a recency strip on mobile
   - Description: On phone-width viewports (≤420px) the contributions grid inside the recurring-task stats drawer collapses to an unreadable sliver — the `.statsGridWrapper`'s `overflow-x: auto` lets the SVG share horizontal space with surrounding chrome, and 14px cells against the dark background are already a low-contrast target before the squeeze. Replace the calendar-shape grid with the existing `buildFallbackStrip` recency pattern when the viewport matches `(max-width: 420px)`: show the last 14 expected occurrences as 22×22 cells with 4px gaps, wrapping to two rows (7 per row), with a small `LAST 14` caption above and `<oldest-date>` / `today` labels below the strip. Reuse `buildFallbackStrip` rather than duplicating SVG-building logic — extend its signature (or wrap it) so the daily/weekday/weekly cadences that normally render the contributions grid can opt into the strip on mobile while keeping the calendar grid on desktop. Cell color rules (hit / miss / today ring / future) stay identical to the desktop grid so the legend reads the same. Month/year cadences already use the fallback strip and are unchanged. The stat-card strip, window toggle, miss callout, and missed-pill list above and below the visualization are unaffected.
   - Behavior:
     1. On viewports >420px wide, the contributions grid renders as today (no regression).
@@ -21,7 +21,7 @@
     - Tooltips on strip cells match the desktop grid's `cellTitleLabel` output.
   - Out of scope: changing the desktop contributions grid, changing the stat-card strip or window toggle, adding new color treatments, persisting window selection across opens.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 - [x] **[MEDIUM]** Add JSON export and import buttons that hit Supabase directly
   - Description: Replace the cut Drive sync feature with a simpler, more user-empowering backup mechanism: two buttons in the settings menu that export the user's entire dataset to a downloadable JSON file, and re-import a JSON file to replace their Supabase data. This gives users a real escape hatch — they can leave the app whenever they want with their data in a portable format they own — and serves as a manual backup affordance for users who want belt-and-suspenders against data loss. Unlike Drive sync, this isn't a continuous background sync; it's an explicit, one-click action the user takes when they want a snapshot. The export reads directly from Supabase (not localStorage) to ensure the file reflects authoritative server state. The import writes directly to Supabase, then triggers a re-hydration so the UI reflects the imported state.
