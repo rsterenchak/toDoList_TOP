@@ -532,6 +532,38 @@ export const listLogic = (function () {
     }
 
 
+    // Push an in-place edit of an already-committed todo to Supabase.
+    // The Enter-to-commit handler in toDoRow.js is the sole caller and
+    // routes here when the row being committed is NOT a blank
+    // placeholder being promoted for the first time — without this
+    // branch, the handler fired `commitBlankPlaceholder` on every
+    // Enter, which re-INSERTed an already-existing row and tripped
+    // Supabase's unique-constraint check on todos_pkey with a 409 and
+    // PostgreSQL code 23505. Caller has already mutated `item` (title
+    // and friends) in place and called `saveToStorage()`; this
+    // function only handles the matching Supabase UPDATE. Gates on
+    // `item.id` (the row must already exist in the backend) and on a
+    // non-empty title (blank placeholders never reach Supabase),
+    // mirroring the guards in commitBlankPlaceholder so the two
+    // functions form a complete cover of the commit-vs-edit branches.
+    // @category: user-mutation-only
+    function editToDoItem(projectName, item) {
+
+        if (!projectName || !allProjects[projectName] || !item) return;
+        if (!item.id) return;
+        if (!item.tit || item.tit === '') return;
+
+        persistMutation({
+            op: 'update',
+            table: 'todos',
+            payload: toTodoRowPayload(
+                item,
+                allProjects[projectName].id || null
+            ),
+        });
+    }
+
+
     // @category: user-mutation-only
     function editProject(currentProperty, newProperty) {
 
@@ -2239,6 +2271,7 @@ export const listLogic = (function () {
         removeToDoByItem,
         insertToDoAt,
         commitBlankPlaceholder,
+        editToDoItem,
         editProject,
         listItems,
         projectLength,

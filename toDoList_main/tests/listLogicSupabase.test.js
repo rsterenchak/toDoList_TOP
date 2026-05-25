@@ -641,6 +641,141 @@ describe('listLogic Phase 5 — toDoRow.js Enter-commit wiring calls commitBlank
 });
 
 
+describe('listLogic — editToDoItem routes title edits of already-committed todos to UPDATE (regression for #fix-duplicate-key-409-title-edit)', () => {
+    // The bug: the Enter keydown handler in toDoRow.js fired
+    // commitBlankPlaceholder on every commit, regardless of whether
+    // the row was a blank placeholder being promoted for the first
+    // time or an already-committed row being re-edited. The second
+    // case re-INSERTed an id Supabase already had, which Supabase
+    // rejected with HTTP 409 and PostgreSQL code 23505 (duplicate
+    // key value violates unique constraint "todos_pkey"). The fix
+    // adds an editToDoItem branch that fires op:'update' for the
+    // edit case and gates the existing commitBlankPlaceholder call
+    // behind the isFirstCommit signal already computed at the top
+    // of the handler.
+
+    const body = functionBody(SRC, 'editToDoItem');
+    const toDoRowSrc = readFileSync(resolve(srcDir, 'toDoRow.js'), 'utf8');
+
+    function extractRange(src, startNeedle, endNeedle) {
+        const startIdx = src.indexOf(startNeedle);
+        expect(startIdx).toBeGreaterThan(-1);
+        const endIdx = src.indexOf(endNeedle, startIdx + startNeedle.length);
+        expect(endIdx).toBeGreaterThan(-1);
+        return src.slice(startIdx, endIdx);
+    }
+
+    it('editToDoItem exists as a declared function in listLogic.js', () => {
+        expect(body).toBeTruthy();
+    });
+
+    it('editToDoItem is exported from the IIFE return object so toDoRow.js can reach it', () => {
+        // A bare identifier on its own line inside the return block
+        // is enough — same shape every other exported function uses.
+        expect(SRC).toMatch(/\beditToDoItem\b\s*,/);
+    });
+
+    it('editToDoItem fires persistMutation with op:"update" against the todos table', () => {
+        // The crux of the fix — the bug fired op:'insert' on an id
+        // Supabase already had, which is what tripped 23505. Lock in
+        // op:'update' so a future refactor cannot silently revert to
+        // the duplicate-key path.
+        expect(body).toMatch(/persistMutation\s*\(/);
+        expect(body).toMatch(/op:\s*['"]update['"]/);
+        expect(body).toMatch(/table:\s*['"]todos['"]/);
+        // And — equally important — editToDoItem must NEVER fire
+        // op:'insert', or the bug is right back.
+        expect(body).not.toMatch(/op:\s*['"]insert['"]/);
+    });
+
+    it('editToDoItem builds its payload through toTodoRowPayload so the row matches the Supabase column shape', () => {
+        // The Phase 5 contract: every todo-touching mutation routes
+        // its payload through the toTodoRowPayload helper so the
+        // schema mapping lives in one place. New caller, same rule.
+        expect(body).toMatch(/toTodoRowPayload\s*\(/);
+    });
+
+    it('editToDoItem no-ops without an item.id so the UPDATE is never sent against an unsaved row', () => {
+        // Defensive: an edit fired before the row was INSERTed (e.g.
+        // a stale caller racing the first-commit path) would otherwise
+        // UPDATE a row that does not yet exist in Supabase and silently
+        // 204. Returning early keeps the caller honest.
+        const idGuardIdx = body.search(/!\s*item\.id/);
+        const persistIdx = body.indexOf('persistMutation');
+        expect(idGuardIdx).toBeGreaterThan(-1);
+        expect(persistIdx).toBeGreaterThan(-1);
+        expect(idGuardIdx).toBeLessThan(persistIdx);
+    });
+
+    it('editToDoItem no-ops on an empty title so a blank placeholder can not smuggle past the persistence boundary', () => {
+        // Mirrors the same guard in commitBlankPlaceholder — these two
+        // functions form the complete commit-vs-edit cover for the
+        // toDoRow Enter handler, and the blank-placeholder filter has
+        // to be enforced on both branches.
+        const titGuardIdx = body.search(/!\s*item\.tit|item\.tit\s*===\s*['"]['"]/);
+        const persistIdx = body.indexOf('persistMutation');
+        expect(titGuardIdx).toBeGreaterThan(-1);
+        expect(persistIdx).toBeGreaterThan(-1);
+        expect(titGuardIdx).toBeLessThan(persistIdx);
+    });
+
+    it('editToDoItem no-ops when the project is missing so a stale toDoName from a deleted project can not crash the write', () => {
+        expect(body).toMatch(/!\s*allProjects\s*\[\s*projectName\s*\]/);
+    });
+
+    it('the toDoRow Enter handler branches on isFirstCommit and routes the edit path to editToDoItem (not commitBlankPlaceholder)', () => {
+        // The wiring half of the fix — the handler must call
+        // editToDoItem on the edit branch so the network actually
+        // fires UPDATE. Without this branch, commitBlankPlaceholder
+        // would still be the only persistence call and the 409 would
+        // come right back.
+        const enter = extractRange(
+            toDoRowSrc,
+            'toDoInput keydown — Enter to commit title',
+            '// toDoInput keyup'
+        );
+        // editToDoItem is called on the not-first-commit path.
+        expect(enter).toMatch(
+            /listLogic\.editToDoItem\s*\(\s*toDoName\s*,\s*item\s*\)/
+        );
+        // The isFirstCommit signal already exists in the handler;
+        // assert the persistence calls live inside an if/else keyed
+        // off it so first-commit still INSERTs and edits UPDATE.
+        expect(enter).toMatch(/if\s*\(\s*isFirstCommit\s*\)/);
+        // And — the duplicate-key path the bug fired — both calls
+        // must coexist exactly once each so neither branch can fire
+        // the wrong op.
+        const insertMatches = enter.match(/listLogic\.commitBlankPlaceholder\s*\(/g) || [];
+        const updateMatches = enter.match(/listLogic\.editToDoItem\s*\(/g) || [];
+        expect(insertMatches.length).toBe(1);
+        expect(updateMatches.length).toBe(1);
+    });
+
+    it('the editToDoItem call sits between saveToStorage and the appendNewToDoRow / focusBlankToDoInput branch', () => {
+        // Mirrors the ordering pin on commitBlankPlaceholder — the
+        // persistence call must fire after saveToStorage (so the
+        // local cache is consistent) and before the followup sort
+        // that re-pins the blank placeholder.
+        const enter = extractRange(
+            toDoRowSrc,
+            'toDoInput keydown — Enter to commit title',
+            '// toDoInput keyup'
+        );
+        const saveIdx   = enter.search(/listLogic\.saveToStorage\s*\(\s*\)/);
+        const editIdx   = enter.search(/listLogic\.editToDoItem\s*\(/);
+        const appendIdx = enter.search(/appendNewToDoRow\s*\(/);
+        const focusIdx  = enter.search(/focusBlankToDoInput\s*\(/);
+        expect(saveIdx).toBeGreaterThan(-1);
+        expect(editIdx).toBeGreaterThan(-1);
+        expect(appendIdx).toBeGreaterThan(-1);
+        expect(focusIdx).toBeGreaterThan(-1);
+        expect(saveIdx).toBeLessThan(editIdx);
+        expect(editIdx).toBeLessThan(appendIdx);
+        expect(editIdx).toBeLessThan(focusIdx);
+    });
+});
+
+
 describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged alias', () => {
     const body = functionBody(SRC, 'saveToStorage');
 
