@@ -6052,7 +6052,15 @@ export { component, restoreFromStorage, notifyUpdateAvailable };
 // restoreFromStorage so the rebuild is mechanical — same code path
 // as initial load, no special-case "diff and patch" logic to keep
 // in sync with the renderer.
-if (typeof document !== 'undefined') {
+// One-shot guard: main.js's module body evaluates more than once during
+// boot (the webpack-generated HTML loads multiple entry bundles that all
+// pull main.js in), so a naked addEventListener would register the
+// listener twice and dispatch fires both callbacks. The second pass would
+// re-enter restoreFromStorage on an empty in-memory tree and wipe the
+// sidebar. The window-scoped flag short-circuits the re-registration on
+// any subsequent module evaluation, regardless of cause.
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__hydrateListenerRegistered) {
+    window.__hydrateListenerRegistered = true;
     document.addEventListener('listLogicHydrated', function onHydrate() {
         console.log('[main.js] listLogicHydrated listener fired');
         console.log('[main.js] projects count at listener time:', listLogic.listProjectsArray().length);
