@@ -3,32 +3,30 @@
 ## Bugs
 
 - [ ] **[HIGH]** Replace inline stats drawer with a modal on mobile
-  - Description: After three rounds of trying to make the inline `#statsSibling` drawer contain its full content on phone-width viewports (≤420px) — bigger cells, single-row strip, drawer height fixes — the drawer-in-row pattern keeps fighting both the `#mainList` grid track sizing and the visual containment of "this belongs to this row." Switch the mobile experience to a full-screen modal instead: tap the existing chart-icon button on a recurring row, the row stays put, and a modal opens showing the full stats payload. This moots the grid-track height problem (the modal lives outside `#mainList`) and gives the contributions grid enough room to render at its desktop size instead of degrading to the truncated `statsFallbackStripMobile` strip. Desktop continues to use the inline drawer as it does today — the drawer pattern works fine at ≥421px. Modal layout: centered overlay with the recurring task's title in the header, a small close X, a cadence subtitle (`DAILY · ENDS NEVER`, `WEEKLY · ENDS JAN 1`, etc.), then the full stat-card strip, window-toggle row, contributions grid (the same `buildContributionsGrid` used on desktop, NOT the mobile fallback strip), `.statsMissCallout`, and the missed-pill list. Window selection is ephemeral and resets to 30d on each open. Close vocabulary follows the existing CLAUDE.md three-way rule: an explicit X button, backdrop click, and Escape key. Tear down the existing `statsFallbackStripMobile` builder and its mobile-only CSS — once the modal lands they're dead code.
+  - Description: After multiple attempts to make the inline `#statsSibling` drawer contain its content on phone-width viewports (≤420px) — bigger cells, single-row strip, height fixes — the drawer-in-row pattern keeps fighting both the `#mainList` grid track sizing and visual containment. Switch the mobile experience to a full-screen modal: tap the existing chart-icon button on a recurring row, and a modal opens containing the full stats payload. This sidesteps the grid-track problem entirely (modal lives outside `#mainList`) and gives the contributions grid room to render at desktop size instead of degrading to the truncated `statsFallbackStripMobile`. Desktop keeps the inline drawer unchanged. Modal contents: task title in the header with a close X, a cadence subtitle line, then the existing stat-card strip, window-toggle row, full `buildContributionsGrid` grid, `.statsMissCallout`, and missed-pill list — all reused from the current `renderDrawer()`. Close via X / backdrop / Escape per CLAUDE.md. Window selection resets to 30d on each open. Once landed, remove the dead `statsFallbackStripMobile` builder and its CSS.
   - Behavior:
-    1. On viewports ≤420px, tapping a recurring row's chart-icon button opens a centered modal (not the inline drawer) containing the full stats payload.
-    2. The modal renders the full `buildContributionsGrid` contributions grid, not the truncated mobile recency strip.
-    3. The modal closes via X button, backdrop click, OR Escape (matching CLAUDE.md's three-way modal close vocabulary).
-    4. Window selection (14d / 30d / 90d / All) inside the modal is ephemeral — closing and reopening resets to 30d.
-    5. The inline drawer continues to render unchanged on viewports >420px (desktop).
-    6. The chart-icon button itself is unchanged — same icon, same `data-has-recurrence` gating, same `#statsToggle` ID.
-    7. The mobile-only fallback strip (`statsFallbackStripMobile` class) and its CSS rules are removed — modal renders the full grid instead.
+    1. Viewports ≤420px: tapping chart icon opens a modal (not inline drawer) with the full stats payload.
+    2. Modal uses the full `buildContributionsGrid`, not the truncated mobile strip.
+    3. Modal closes via X, backdrop click, or Escape.
+    4. Window selection is ephemeral — resets to 30d on reopen.
+    5. Viewports >420px: inline drawer renders exactly as today.
+    6. Chart-icon button unchanged (same ID, same `data-has-recurrence` gating).
+    7. `statsFallbackStripMobile` builder and CSS removed.
   - Implementation notes:
-    - In `wireStatsToggle`'s click handler, branch on `window.matchMedia('(max-width: 420px)').matches`: if true, open a modal containing the drawer-render output; if false, keep the existing inline insert/remove flow.
-    - Build the modal following the existing modal pattern in `main.js` (see `#changelogModal`, `#helpModal`, or similar) — same backdrop + close-X + Escape wiring, same `--modal-z` z-index family.
-    - Reuse `renderDrawer()`'s existing children (`statsCardStrip`, `statsWindowToggle`, `buildContributionsGrid`, `statsMissCallout`, `statsMissedList`) — only the wrapping container changes from `#statsSibling` to the new modal body. The recurring task's title goes in the modal header so the modal makes sense out of context.
-    - Add the cadence subtitle line under the title: `recurrence.pattern.toUpperCase()` + ` · ENDS ` + (endDate || `NEVER`). Use the same `.statsApproximateNote` rhythm.
-    - Remove `buildFallbackStripMobile` / `statsFallbackStripMobile` from `toDoRow.js` and the corresponding mobile media-query rules from `style.css`. They were a stepping stone; the modal makes them unnecessary.
-    - Keep `buildFallbackStrip` (no Mobile suffix) — it's still used by month/year cadences on desktop.
-    - Mobile inputs (the window-toggle buttons) need `font-size: 16px+` per CLAUDE.md — confirm the existing `.statsWindowBtn` 11px rule doesn't apply inside the mobile modal, OR override at the modal scope. Buttons aren't text inputs, but the rule's intent (no iOS auto-zoom) should be respected.
+    - In `wireStatsToggle`'s click handler, branch on `window.matchMedia('(max-width: 420px)').matches` — true opens a modal, false uses the existing inline insert/remove path.
+    - Follow the existing modal pattern in `main.js` (changelog/help modals) for backdrop, close-X, Escape wiring, and z-index.
+    - Reuse `renderDrawer()`'s children (`statsCardStrip`, `statsWindowToggle`, `buildContributionsGrid`, `statsMissCallout`, `statsMissedList`) inside the modal body — only the wrapping container changes.
+    - Add a cadence subtitle line under the title: `<pattern> · ENDS <endDate || NEVER>`.
+    - Delete `buildFallbackStripMobile` / `statsFallbackStripMobile` from `toDoRow.js` and `style.css`. Keep plain `buildFallbackStrip` — still used by month/year cadences on desktop.
   - Acceptance criteria:
-    - 380px viewport, tap chart icon on a recurring row → modal opens, drawer does NOT inline-insert.
-    - Modal contains all stats elements (cards, toggle, full grid, callout, missed-pill list) within its visual border — no overflow.
-    - X / backdrop / Escape all close the modal.
-    - Reopen after close → window resets to 30d.
-    - >420px viewport: inline drawer behavior identical to before this PR.
-    - `statsFallbackStripMobile` class is gone from both `toDoRow.js` and `style.css`.
-  - Out of scope: changing desktop drawer; redesigning the contributions grid; adding new stats (per-occurrence notes, charts beyond the existing grid); persisting window selection across opens.
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/` (new test asserting modal-vs-drawer branch by viewport width, and that the mobile-strip dead code is removed)
+    - 380px viewport: tap chart icon → modal opens, no inline drawer.
+    - All stats elements render inside the modal's border.
+    - X, backdrop, and Escape all close the modal.
+    - Reopen resets window to 30d.
+    - >420px: inline drawer behavior identical to before this PR.
+    - `statsFallbackStripMobile` class is gone from `toDoRow.js` and `style.css`.
+  - Out of scope: desktop drawer changes; contributions grid redesign; new stats beyond what `renderDrawer` already builds; persisting window selection.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/` (new test asserting the modal-vs-drawer viewport branch + that the mobile-strip dead code is gone)
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [ ] **[MEDIUM]** Hide checkbox on mobile and rely on existing swipe-right to complete
