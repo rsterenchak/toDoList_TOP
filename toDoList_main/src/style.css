@@ -3521,6 +3521,18 @@ body.row-dragging * { cursor: grabbing !important; }
     display: none;
   }
 
+  /* Per-row check-off square is redundant on mobile — swipe-right is the
+     expected touch pattern for completion, and attachToDoDrag's onRight
+     handler programmatically toggles checkToDo.checked and dispatches its
+     change event, so the persistence path and the just-completed
+     micro-interaction are unchanged. The element stays in the DOM because
+     the swipe guard reads `cb.style.display === 'none'` (inline style only)
+     to skip blank placeholder rows — hiding via @media leaves the inline
+     style untouched, so committed rows still complete on swipe. */
+  #checkToDo {
+    display: none;
+  }
+
   /* ── Prevent iOS Safari zoom on input focus ──
      Any input smaller than 16px triggers auto-zoom.
      !important is required because inline styles set in
