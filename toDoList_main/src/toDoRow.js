@@ -514,14 +514,26 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
         });
         drawer.appendChild(toggleRow);
 
-        // Grid (or fallback strip for month/year cadences).
+        // Grid (or fallback strip for month/year cadences). On narrow phones
+        // the contributions grid collapses to an unreadable sliver, so swap
+        // it for a two-row recency strip showing the last 14 expected
+        // occurrences. Month/year cadences keep their existing single-row
+        // strip on every viewport.
         const useFallback =
             item.recurrence.pattern === 'monthly' ||
             item.recurrence.pattern === 'yearly' ||
             item.recurrence.intervalUnit === 'month' ||
             item.recurrence.intervalUnit === 'year';
+        const isNarrowViewport =
+            typeof window !== 'undefined' &&
+            window.matchMedia &&
+            window.matchMedia('(max-width: 420px)').matches;
         drawer.appendChild(
-            useFallback ? buildFallbackStrip(stats) : buildContributionsGrid(stats)
+            useFallback
+                ? buildFallbackStrip(stats)
+                : (isNarrowViewport
+                    ? buildFallbackStrip(stats, true)
+                    : buildContributionsGrid(stats))
         );
 
         // Pattern callout — a one-sentence summary of the miss set,
@@ -793,17 +805,34 @@ function buildContributionsGrid(stats) {
 // custom-year cadences — a weekday grid would be too sparse to read at
 // those intervals, so the last 12 expected occurrences are rendered as
 // a single row of 18×18 cells.
-function buildFallbackStrip(stats) {
+//
+// `mobile` flips the strip into a two-row recency layout used on
+// narrow phones (≤420px) for daily / weekly / custom-day / custom-week
+// cadences whose contributions grid would otherwise collapse to an
+// unreadable sliver. The mobile layout renders the last 14 expected
+// occurrences as 22×22 cells, 7 per row across 2 rows, framed by a
+// LAST 14 caption above and oldest-date / today labels below.
+function buildFallbackStrip(stats, mobile) {
     const wrapper = document.createElement('div');
     wrapper.className = 'statsGridWrapper statsFallbackStrip';
+    if (mobile) wrapper.classList.add('statsFallbackStripMobile');
 
-    const cellSize = 18;
+    const cellSize = mobile ? 22 : 18;
     const gap = 4;
-    const expected = stats.expectedDates.slice(-12);
+    const maxCells = mobile ? 14 : 12;
+    const cellsPerRow = mobile ? 7 : maxCells;
+    const expected = stats.expectedDates.slice(-maxCells);
     if (expected.length === 0) {
         wrapper.classList.add('statsGridEmpty');
         wrapper.textContent = 'No expected occurrences in this window yet.';
         return wrapper;
+    }
+
+    if (mobile) {
+        const caption = document.createElement('div');
+        caption.className = 'statsFallbackStripCaption';
+        caption.textContent = 'LAST 14';
+        wrapper.appendChild(caption);
     }
 
     const today = new Date();
@@ -812,8 +841,10 @@ function buildFallbackStrip(stats) {
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
-    const width  = expected.length * cellSize + (expected.length - 1) * gap;
-    const height = cellSize;
+    const colsThisLayout = mobile ? cellsPerRow : expected.length;
+    const rows = mobile ? Math.ceil(expected.length / cellsPerRow) : 1;
+    const width  = colsThisLayout * cellSize + (colsThisLayout - 1) * gap;
+    const height = rows * cellSize + (rows - 1) * gap;
     svg.setAttribute('width',  width);
     svg.setAttribute('height', height);
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
@@ -822,10 +853,13 @@ function buildFallbackStrip(stats) {
     svg.setAttribute('aria-label', 'Recurring task occurrence strip');
 
     expected.forEach(function(d, idx) {
-        const x = idx * (cellSize + gap);
+        const row = mobile ? Math.floor(idx / cellsPerRow) : 0;
+        const col = mobile ? (idx % cellsPerRow) : idx;
+        const x = col * (cellSize + gap);
+        const y = row * (cellSize + gap);
         const rect = document.createElementNS(svgNS, 'rect');
         rect.setAttribute('x', x);
-        rect.setAttribute('y', 0);
+        rect.setAttribute('y', y);
         rect.setAttribute('width', cellSize);
         rect.setAttribute('height', cellSize);
         rect.setAttribute('rx', 2);
@@ -842,6 +876,21 @@ function buildFallbackStrip(stats) {
     });
 
     wrapper.appendChild(svg);
+
+    if (mobile) {
+        const labels = document.createElement('div');
+        labels.className = 'statsFallbackStripLabels';
+        const oldest = document.createElement('span');
+        oldest.className = 'statsFallbackStripLabel';
+        oldest.textContent = formatShortDate(expected[0]);
+        const todayLabel = document.createElement('span');
+        todayLabel.className = 'statsFallbackStripLabel';
+        todayLabel.textContent = 'today';
+        labels.appendChild(oldest);
+        labels.appendChild(todayLabel);
+        wrapper.appendChild(labels);
+    }
+
     return wrapper;
 }
 
