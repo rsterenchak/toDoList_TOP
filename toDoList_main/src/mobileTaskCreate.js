@@ -158,13 +158,14 @@ export function attachMobileCreateChips(toDoChild, item) {
     descChip.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        // Route through the row's stashed __toggleDesc so insert/remove
-        // of #descSibling and the data-desc-open state stay in lockstep
-        // with manual toggles. Mirror the open state on the chip so the
-        // user can see their selection visually.
-        if (!toDoChild.__toggleDesc) return;
-        toDoChild.__toggleDesc();
-        if (toDoChild.__isDescOpen && toDoChild.__isDescOpen()) {
+        // Reuse the row's existing descToggle — its click handler owns
+        // the insert/remove of #descSibling, save/restore semantics, and
+        // the `.open` class that drives CSS state. Mirror the open state
+        // on the chip so the user can see their selection visually.
+        const descToggle = toDoChild.querySelector('#descToggle');
+        if (!descToggle) return;
+        descToggle.click();
+        if (descToggle.classList.contains('open')) {
             descChip.classList.add('mobileCreateChipSelected');
         } else {
             descChip.classList.remove('mobileCreateChipSelected');
