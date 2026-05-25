@@ -30,9 +30,12 @@ function extractFunction(source, signature) {
 // background lose contrast and the overflow-x: auto wrapper lets the SVG
 // share horizontal space with surrounding chrome. The fix swaps the grid
 // for the existing buildFallbackStrip output, parameterized with a
-// `mobile` flag that lays the last 14 expected occurrences out as 22×22
-// cells, 7 per row across 2 rows, framed by a LAST 14 caption and oldest
-// / today labels.
+// `mobile` flag that lays the last 14 expected occurrences out as a
+// single row of 16×16 cells with 3px gaps, framed by a LAST 14 caption
+// and oldest / today labels. The single-row layout (rather than the
+// initial 7×2 wrap) keeps the SVG's intrinsic height deterministic so
+// the drawer's #mainList grid track sizes correctly — see
+// statsRecencyStripWrapperMinHeight.test.js for the height assertion.
 describe('recurring-task stats use the recency strip on phone viewports', () => {
     const toDoRow = read('toDoRow.js');
     const css = read('style.css');
@@ -42,10 +45,10 @@ describe('recurring-task stats use the recency strip on phone viewports', () => 
         expect(fn).toMatch(/function\s+buildFallbackStrip\s*\(\s*stats\s*,\s*mobile\s*\)/);
         // Mobile slice is the last 14; desktop slice stays at the last 12.
         expect(fn).toMatch(/slice\(\s*-\s*(?:maxCells|14)\s*\)/);
-        // 22×22 cells when mobile, 18×18 when not.
-        expect(fn).toMatch(/22/);
-        // 7 cells per row in the mobile branch.
-        expect(fn).toMatch(/(?:cellsPerRow|7)/);
+        // 16×16 cells when mobile, 18×18 when not.
+        expect(fn).toMatch(/cellSize\s*=\s*mobile\s*\?\s*16\s*:\s*18/);
+        // 3px inter-cell gap on mobile; 4px on the desktop fallback.
+        expect(fn).toMatch(/gap\s*=\s*mobile\s*\?\s*3\s*:\s*4/);
         // Cells must still flow through the shared cellClasses helper so
         // hit / miss / today / future treatments match the desktop grid.
         expect(fn).toMatch(/cellClasses\s*\(/);
@@ -54,15 +57,14 @@ describe('recurring-task stats use the recency strip on phone viewports', () => 
         expect(fn).toMatch(/cellTitleLabel\s*\(/);
     });
 
-    it('mobile branch wraps to two rows of 7 — row math uses Math.floor(idx / cellsPerRow)', () => {
+    it('mobile branch lays cells out in a single row — no Math.floor wrap', () => {
         const fn = extractFunction(toDoRow, 'function buildFallbackStrip(');
-        // The Y coordinate must vary across rows in the mobile layout —
-        // a literal `y = 0` (the legacy single-row behavior) would leave
-        // every mobile cell stacked on top of the first row.
-        expect(fn).toMatch(/Math\.floor\(\s*idx\s*\/\s*(?:cellsPerRow|7)\s*\)/);
-        expect(fn).toMatch(/idx\s*%\s*(?:cellsPerRow|7)/);
-        // The height computation must allow more than one row of cells.
-        expect(fn).toMatch(/rows\s*\*\s*cellSize/);
+        // The two-row wrap (Math.floor(idx / cellsPerRow)) is gone — a
+        // single row keeps the SVG's intrinsic height equal to cellSize,
+        // which is the property the drawer's grid track sizing depends on.
+        expect(fn).not.toMatch(/Math\.floor\(\s*idx\s*\/\s*(?:cellsPerRow|7)\s*\)/);
+        // rows must be a constant 1 so the SVG height resolves to cellSize.
+        expect(fn).toMatch(/rows\s*=\s*1/);
     });
 
     it('mobile strip renders a LAST 14 caption above and oldest / today labels below', () => {

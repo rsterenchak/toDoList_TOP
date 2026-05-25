@@ -806,21 +806,25 @@ function buildContributionsGrid(stats) {
 // those intervals, so the last 12 expected occurrences are rendered as
 // a single row of 18×18 cells.
 //
-// `mobile` flips the strip into a two-row recency layout used on
-// narrow phones (≤420px) for daily / weekly / custom-day / custom-week
-// cadences whose contributions grid would otherwise collapse to an
-// unreadable sliver. The mobile layout renders the last 14 expected
-// occurrences as 22×22 cells, 7 per row across 2 rows, framed by a
-// LAST 14 caption above and oldest-date / today labels below.
+// `mobile` flips the strip into a recency layout used on narrow phones
+// (≤420px) for daily / weekly / custom-day / custom-week cadences whose
+// contributions grid would otherwise collapse to an unreadable sliver.
+// The mobile layout renders the last 14 expected occurrences as a
+// single horizontal row of 16×16 cells with 3px gaps (no wrap), framed
+// by a LAST 14 caption above and oldest-date / today labels below. The
+// SVG declares an explicit pixel height so the auto-sized #mainList
+// grid track grows to fit the strip — the prior two-row wrap collapsed
+// the wrapper's block size and let the drawer's bottom edge leak past
+// the next #toDoChild on ≤420px viewports.
 function buildFallbackStrip(stats, mobile) {
     const wrapper = document.createElement('div');
     wrapper.className = 'statsGridWrapper statsFallbackStrip';
     if (mobile) wrapper.classList.add('statsFallbackStripMobile');
 
-    const cellSize = mobile ? 22 : 18;
-    const gap = 4;
+    const cellSize = mobile ? 16 : 18;
+    const gap = mobile ? 3 : 4;
     const maxCells = mobile ? 14 : 12;
-    const cellsPerRow = mobile ? 7 : maxCells;
+    const cellsPerRow = maxCells;
     const expected = stats.expectedDates.slice(-maxCells);
     if (expected.length === 0) {
         wrapper.classList.add('statsGridEmpty');
@@ -842,9 +846,9 @@ function buildFallbackStrip(stats, mobile) {
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
     const colsThisLayout = mobile ? cellsPerRow : expected.length;
-    const rows = mobile ? Math.ceil(expected.length / cellsPerRow) : 1;
+    const rows = 1;
     const width  = colsThisLayout * cellSize + (colsThisLayout - 1) * gap;
-    const height = rows * cellSize + (rows - 1) * gap;
+    const height = rows * cellSize;
     svg.setAttribute('width',  width);
     svg.setAttribute('height', height);
     svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
@@ -853,10 +857,9 @@ function buildFallbackStrip(stats, mobile) {
     svg.setAttribute('aria-label', 'Recurring task occurrence strip');
 
     expected.forEach(function(d, idx) {
-        const row = mobile ? Math.floor(idx / cellsPerRow) : 0;
-        const col = mobile ? (idx % cellsPerRow) : idx;
+        const col = idx;
         const x = col * (cellSize + gap);
-        const y = row * (cellSize + gap);
+        const y = 0;
         const rect = document.createElementNS(svgNS, 'rect');
         rect.setAttribute('x', x);
         rect.setAttribute('y', y);
@@ -889,19 +892,6 @@ function buildFallbackStrip(stats, mobile) {
         labels.appendChild(oldest);
         labels.appendChild(todayLabel);
         wrapper.appendChild(labels);
-
-        // Lock in a pixel min-height so the drawer's #mainList row track
-        // grows to fit the two-row strip + caption + date labels. Without
-        // this, the flex-column wrapper reports a block size that
-        // collapses below the rendered children — the auto-sized grid
-        // track sizes to that smaller value and the missed-pill list
-        // leaks past the drawer's bottom border on ≤420px viewports.
-        const captionH = 14;
-        const labelsH = 14;
-        const flexGap = 4;
-        const wrapperPadY = 4;
-        wrapper.style.minHeight =
-            (captionH + flexGap + height + flexGap + labelsH + wrapperPadY) + 'px';
     }
 
     return wrapper;

@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Fix recurring-task stats drawer overflow on mobile by switching strip to single-row 16px cells
+- [x] **[HIGH]** Fix recurring-task stats drawer overflow on mobile by switching strip to single-row 16px cells
   - Description: After the initial mobile recency-strip swap, the drawer's bottom content (strip's second wrap row + missed-dates pill list) still renders outside the drawer's visual border on phone-width viewports (≤420px) — the next `#toDoChild` overlaps the drawer's lower half. Root cause is the two-row wrap layout: the SVG's intrinsic block size collapses below its rendered children's footprint, so the `#mainList` grid track sizes to the wrong value and the next row sits on top. Fix by reworking the mobile recency strip to a single row of 14 cells at 16×16px with a 3px gap (no wrap), and declaring an explicit `height="16"` on the SVG so the grid track sizes deterministically. Mirrors the prior visualizer-bars learning: CSS-only SVG sizing inside a grid track needs an explicit height or the track caps to the wrong value. The single-row layout also resolves the height calculation question — total strip block is one cell tall plus the `LAST 14` caption above and the oldest-date / `today` label row below, all measurable in pixels. Total width at 16px cells + 3px gaps for 14 cells is `14×16 + 13×3 = 263px`, which fits inside a 380px viewport's drawer padding box with margin to spare. Cells still use the same `cellClasses` / `cellTitleLabel` helpers so the hit / miss / today-ring treatments are identical to desktop.
   - Behavior:
     1. On viewports ≤420px wide, daily / weekdays / weekly / custom-interval cadences render a single horizontal row of 14 cells at 16×16px with 3px gaps — no wrap, no horizontal scroll.
@@ -23,7 +23,7 @@
     - Add a regression test (mirroring the `statsGridAxisLabels.test.js` pattern) asserting the mobile-strip SVG declares an explicit `height` attribute and lays cells out in a single row.
   - Out of scope: changing the desktop contributions grid, adjusting stat-card / window-toggle layout, adding new color treatments.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/tests/` (new regression test alongside the existing stats-drawer tests)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 - [ ] **[MEDIUM]** Hide checkbox on mobile and rely on existing swipe-right to complete
   - Description: On `≤700px` viewports the `#checkToDo` square at the left of each todo row is visually redundant — swipe-right-to-complete is already wired in `toDoRow.js` via `attachToDoDrag`'s `swipeTargets.onRight`, which programmatically toggles `checkToDo.checked` and dispatches its existing `change` event, so the data path and completion micro-interaction are unchanged. Hide the checkbox at the mobile breakpoint in `style.css` (`#checkToDo { display: none; }` inside `@media (max-width: 700px)`) so the title gets the reclaimed horizontal space; the desktop layout keeps the checkbox exactly as today. Don't remove the element from the DOM — `swipeTargets.onRight` guards on `cb.style.display === 'none'` and the swipe path needs `checkToDo` to exist so it can flip `.checked` and fire the change event the persistence layer listens for. Verify swipe-right still completes/uncompletes from a mobile viewport, that the strikethrough + slide-to-Completed animation still plays, and that the completed-section toggle continues to surface re-open via swipe.
