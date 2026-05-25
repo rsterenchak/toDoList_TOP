@@ -49,7 +49,7 @@ describe('mobile copy-title button — wiring and skip-on-blank-placeholder', ()
 
     it('inserts copyBtn into the DOM between toDoInput and duePill', () => {
         // The chrome order on each row reads:
-        //   toDoInput → copyBtn → duePill → spacer → statsToggle → close
+        //   toDoInput → copyBtn → duePill → spacer → statsToggle → descToggle → close
         // The build site appends in that exact order, so an indexOf chain
         // locks the sequence in.
         const inputAppend = buildBody.indexOf('toDoChild.appendChild(toDoInput)');
@@ -64,15 +64,15 @@ describe('mobile copy-title button — wiring and skip-on-blank-placeholder', ()
 
     it('hides the copy button on blank placeholder rows (skips wiring on no-title rows)', () => {
         // Blank rows already hide every other piece of row chrome
-        // (delete X, duePill, checkbox). copyBtn follows the same
-        // `if (!item.tit) ... display = "none"` pattern so a brand-new
-        // placeholder doesn't surface a copy icon for an empty title.
+        // (delete X, descToggle, duePill, checkbox). copyBtn follows the
+        // same `if (!item.tit) ... display = "none"` pattern so a brand-
+        // new placeholder doesn't surface a copy icon for an empty title.
         expect(buildBody).toMatch(
             /if\s*\(\s*!item\.tit\s*\)\s*copyBtn\.style\.display\s*=\s*["']none["']/
         );
     });
 
-    it('reveals copyBtn in the Enter-commit handler alongside duePill / closeButton', () => {
+    it('reveals copyBtn in the Enter-commit handler alongside duePill / closeButton / descToggle', () => {
         // When the user commits a blank row into a real todo, the row's
         // chrome cluster (checkbox, close, due pill, etc.) all flip back
         // to their default display. copyBtn has to ride along — otherwise
