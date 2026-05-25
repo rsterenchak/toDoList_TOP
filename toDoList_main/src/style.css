@@ -1164,6 +1164,7 @@ body:has(#confirmModalBackdrop) #helpFab,
 body:has(#changelogModalBackdrop) #helpFab,
 body:has(#helpModalBackdrop) #helpFab,
 body:has(#missedDatesModalBackdrop) #helpFab,
+body:has(#statsModalBackdrop) #helpFab,
 body:has(#dueDatePopover) #helpFab,
 body:has(#projContextMenu) #helpFab,
 body:has(#settingsMenu) #helpFab {
@@ -2845,32 +2846,6 @@ body.row-dragging * { cursor: grabbing !important; }
   font-family: inherit;
 }
 
-/* Mobile recency strip — the two-row fallback used on ≤420px viewports
-   for daily/weekly cadences whose contributions grid would otherwise
-   squeeze to an unreadable sliver. Caption above, oldest/today labels
-   below, framing the SVG produced by buildFallbackStrip(stats, true). */
-.statsFallbackStripMobile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-x: visible;
-}
-.statsFallbackStripCaption {
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.statsFallbackStripLabels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-.statsFallbackStripLabel {
-  letter-spacing: 0.04em;
-}
-
 .statsMissedList {
   display: flex;
   flex-wrap: wrap;
@@ -3072,6 +3047,98 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 14px;
     padding: 10px 16px;
   }
+}
+
+/* ── STATS MODAL ──
+   Mobile-only full-screen surface for the recurring-task stats payload.
+   Opens from the chart-icon button on ≤420px viewports — the inline
+   #statsSibling drawer fought #mainList's grid track sizing too hard at
+   phone widths, so this modal sidesteps the containment problem entirely
+   and gives the contributions grid room to render at desktop size.
+   Mirrors #missedDatesModal's shell — header with title + close X, a
+   scrollable body, three-way close (X / backdrop / Escape). */
+#statsModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+#statsModal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+#statsModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#statsModalTitleWrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+#statsModalTitle {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#statsModalSubtitle {
+  margin-top: 4px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#statsModalClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s ease;
+}
+#statsModalClose:hover { color: var(--text-primary); }
+#statsModalClose:focus { outline: none; color: var(--accent-text); }
+#statsModalBody {
+  padding: 12px 16px 16px;
+  overflow: auto;
+  flex: 1 1 auto;
+}
+.statsModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* When the completed section is collapsed, hide any stats drawer that
@@ -4604,26 +4671,16 @@ body.row-dragging * { cursor: grabbing !important; }
   #emptyState.emptyStateNoProjects .emptyStateIcon { font-size: 44px; }
   #emptyState.emptyStateNoProjects .emptyStateTitle { font-size: 14px; }
 
-  /* Recurring-task stats drawer — defensive constraints for ≤420px so
-     the drawer's full content (stat cards, window toggle, mobile recency
-     strip with caption + cells + date labels, miss callout, missed-pill
-     list) stays inside #statsSibling's visual border. The drawer is a
-     flex column whose grid track inside #mainList uses
-     grid-auto-rows: minmax(54px, auto) — the `auto` max relies on each
-     flex item contributing its real painted height up to the track.
-     Without the explicit `min-height: 0` here, a flex item with the
-     default `min-height: auto` (= min-content) can stop the grid track
-     from shrink-then-grow in response to a re-rendered drawer. And the
-     explicit `overflow: visible` defeats any cascade quirk where a
-     mobile-only @media addition might later sneak in an overflow clip
-     and re-clip the strip's caption / labels / callout / pill list
-     past the drawer's bottom border. Belt-and-braces on top of the
-     default behaviour. */
+  /* Defensive constraints on #statsSibling at ≤420px — the stats surface
+     at this viewport is the full-screen #statsModal (not the inline drawer),
+     but if the inline drawer ever does render here (e.g. a browser without
+     matchMedia support), these constraints keep it from clipping its own
+     children. The drawer is a flex column whose grid track inside #mainList
+     uses grid-auto-rows: minmax(54px, auto) — `min-height: 0` lets the
+     flex column shrink-then-grow in response to a re-render, and `overflow:
+     visible` defeats any cascade quirk that might sneak in an overflow clip. */
   #statsSibling {
     overflow: visible;
-    min-height: 0;
-  }
-  .statsFallbackStripMobile {
     min-height: 0;
   }
 }

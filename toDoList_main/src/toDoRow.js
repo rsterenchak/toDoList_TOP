@@ -435,23 +435,38 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
 // regardless of count.
 const MISS_PILL_THRESHOLD = 7;
 
-// ── HELPER: wire the chart-icon toggle that opens/closes the recurring-task stats drawer ──
-// Parallels wireDescToggle in behavior: opens a new `#statsSibling` panel
-// directly beneath the row (after `#descSibling` if that one is also open),
-// closes on a second click, and supports Enter activation when focused.
-// The drawer renders a stat-card strip, a window selector (14d / 30d / 90d
-// / All — default 30d), a contributions grid (or a fallback strip for
-// month-/year-cadence recurrences), and a missed-dates pill list.
+// ── HELPER: wire the chart-icon toggle that opens/closes the recurring-task stats surface ──
+// Desktop (>420px) keeps the inline `#statsSibling` drawer pattern — opens a
+// new panel directly beneath the row (after `#descSibling` if that one is
+// also open), closes on a second click. Mobile (≤420px) routes to a
+// full-screen `#statsModal` instead: the inline drawer fought #mainList's
+// grid track sizing too hard at phone widths, so the modal sidesteps the
+// containment problem entirely and gives the contributions grid room to
+// render at desktop size. Both surfaces render the same payload — stat-card
+// strip, window selector (14d / 30d / 90d / All — default 30d), contributions
+// grid (or a fallback strip for month-/year-cadence recurrences), miss-pattern
+// callout, and missed-dates pill list. Enter activates the chart icon
+// from keyboard focus.
 function wireStatsToggle(statsToggle, toDoChild, item) {
 
     let currentWindow = '30d';
+    // Tracks where the current stats payload is rendered so the window-toggle
+    // buttons (and any future re-render trigger) know which container to
+    // replace — the inline #statsSibling drawer on desktop, or the body of
+    // the mobile modal. Set on open, cleared on close.
+    let openMode = null; // null | 'drawer' | 'modal'
+    let modalBody = null;
 
-    function renderDrawer() {
+    function renderStatsContent(forModal) {
         const projectName = toDoChild.dataset.value;
         if (!projectName || !item.recurrence) return null;
 
-        const drawer = document.createElement('div');
-        drawer.id = 'statsSibling';
+        const container = document.createElement('div');
+        if (forModal) {
+            container.className = 'statsModalContent';
+        } else {
+            container.id = 'statsSibling';
+        }
 
         const stats = listLogic.getRecurringTaskStats(projectName, item, currentWindow);
 
@@ -477,7 +492,7 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
             card.appendChild(l);
             strip.appendChild(card);
         });
-        drawer.appendChild(strip);
+        container.appendChild(strip);
 
         // Approximate-dates note for completion-basis recurrences — the
         // expected sequence is reconstructed from `nextDueDate`, not from
@@ -486,7 +501,7 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
             const note = document.createElement('div');
             note.className = 'statsApproximateNote';
             note.textContent = 'completion-based — dates approximate';
-            drawer.appendChild(note);
+            container.appendChild(note);
         }
 
         // Window toggle row.
@@ -508,32 +523,25 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
                 ev.stopPropagation();
                 if (currentWindow === w.key) return;
                 currentWindow = w.key;
-                replaceDrawerInPlace();
+                replaceContentInPlace();
             });
             toggleRow.appendChild(btn);
         });
-        drawer.appendChild(toggleRow);
+        container.appendChild(toggleRow);
 
-        // Grid (or fallback strip for month/year cadences). On narrow phones
-        // the contributions grid collapses to an unreadable sliver, so swap
-        // it for a two-row recency strip showing the last 14 expected
-        // occurrences. Month/year cadences keep their existing single-row
-        // strip on every viewport.
+        // Grid (or fallback strip for month/year cadences). The modal always
+        // renders the full contributions grid — its full-window layout gives
+        // the grid room to breathe regardless of viewport, which is the whole
+        // reason this path exists.
         const useFallback =
             item.recurrence.pattern === 'monthly' ||
             item.recurrence.pattern === 'yearly' ||
             item.recurrence.intervalUnit === 'month' ||
             item.recurrence.intervalUnit === 'year';
-        const isNarrowViewport =
-            typeof window !== 'undefined' &&
-            window.matchMedia &&
-            window.matchMedia('(max-width: 420px)').matches;
-        drawer.appendChild(
+        container.appendChild(
             useFallback
                 ? buildFallbackStrip(stats)
-                : (isNarrowViewport
-                    ? buildFallbackStrip(stats, true)
-                    : buildContributionsGrid(stats))
+                : buildContributionsGrid(stats)
         );
 
         // Pattern callout — a one-sentence summary of the miss set,
@@ -554,7 +562,7 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
 
             callout.appendChild(icon);
             callout.appendChild(text);
-            drawer.appendChild(callout);
+            container.appendChild(callout);
         }
 
         // Missed-dates list. Up to MISS_PILL_THRESHOLD misses render
@@ -610,25 +618,134 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
                 missed.appendChild(moreBtn);
             }
 
-            drawer.appendChild(missed);
+            container.appendChild(missed);
         }
 
-        return drawer;
+        return container;
     }
 
-    // Replace the open drawer in place without closing the description
-    // panel — used by the window-toggle buttons so a click on `14d` /
-    // `30d` etc. re-derives stats and re-renders the grid while leaving
-    // the drawer (and any sibling descSibling) intact.
-    function replaceDrawerInPlace() {
-        const mainList = toDoChild.parentElement;
-        if (!mainList) return;
-        let existing = toDoChild.nextSibling;
-        while (existing && existing.id !== 'statsSibling') existing = existing.nextSibling;
-        if (!existing) return;
-        const fresh = renderDrawer();
-        if (!fresh) return;
-        mainList.replaceChild(fresh, existing);
+    // Re-render the stats payload after a window-toggle click. Picks the
+    // right container based on whichever surface (inline drawer or
+    // full-screen modal) is currently open.
+    function replaceContentInPlace() {
+        if (openMode === 'drawer') {
+            const mainList = toDoChild.parentElement;
+            if (!mainList) return;
+            let existing = toDoChild.nextSibling;
+            while (existing && existing.id !== 'statsSibling') existing = existing.nextSibling;
+            if (!existing) return;
+            const fresh = renderStatsContent(false);
+            if (!fresh) return;
+            mainList.replaceChild(fresh, existing);
+            return;
+        }
+        if (openMode === 'modal' && modalBody) {
+            const fresh = renderStatsContent(true);
+            if (!fresh) return;
+            modalBody.innerHTML = '';
+            modalBody.appendChild(fresh);
+        }
+    }
+
+    // Full-screen stats modal — mobile-only surface that sidesteps the
+    // #mainList grid track sizing fight by rendering the full stats
+    // payload (cards, window toggle, contributions grid, miss callout,
+    // missed pills) outside the row entirely. Closes via X / backdrop /
+    // Escape per CLAUDE.md. The chart-icon button's open/aria state is
+    // cleared on close so a second tap re-opens cleanly.
+    function openStatsModal() {
+        // Defensive: tear down any prior instance so we never stack two
+        // stats modals (e.g. on a rapid double-tap).
+        const prior = document.getElementById('statsModalBackdrop');
+        if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+        currentWindow = '30d';
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'statsModalBackdrop';
+
+        const dialog = document.createElement('div');
+        dialog.id = 'statsModal';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-labelledby', 'statsModalTitle');
+
+        const header = document.createElement('div');
+        header.id = 'statsModalHeader';
+
+        const titleWrap = document.createElement('div');
+        titleWrap.id = 'statsModalTitleWrap';
+
+        const titleEl = document.createElement('div');
+        titleEl.id = 'statsModalTitle';
+        titleEl.textContent = item.tit || '';
+
+        const subtitleEl = document.createElement('div');
+        subtitleEl.id = 'statsModalSubtitle';
+        subtitleEl.textContent = formatCadenceSubtitle(item.recurrence);
+
+        titleWrap.appendChild(titleEl);
+        titleWrap.appendChild(subtitleEl);
+
+        const closeX = document.createElement('button');
+        closeX.id = 'statsModalClose';
+        closeX.type = 'button';
+        closeX.setAttribute('aria-label', 'Close stats');
+        closeX.textContent = '×';
+
+        header.appendChild(titleWrap);
+        header.appendChild(closeX);
+
+        const body = document.createElement('div');
+        body.id = 'statsModalBody';
+        modalBody = body;
+
+        openMode = 'modal';
+        const content = renderStatsContent(true);
+        if (content) body.appendChild(content);
+
+        dialog.appendChild(header);
+        dialog.appendChild(body);
+        backdrop.appendChild(dialog);
+        document.body.appendChild(backdrop);
+
+        const previouslyFocused = document.activeElement;
+        closeX.focus();
+
+        statsToggle.classList.add('open');
+        statsToggle.setAttribute('aria-expanded', 'true');
+        statsToggle.setAttribute('aria-label', 'Hide stats');
+
+        let closed = false;
+        function close() {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKeydown, true);
+            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            openMode = null;
+            modalBody = null;
+            statsToggle.classList.remove('open');
+            statsToggle.setAttribute('aria-expanded', 'false');
+            statsToggle.setAttribute('aria-label', 'Show stats');
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                previouslyFocused.focus();
+            }
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                close();
+            }
+        }
+
+        closeX.addEventListener('click', close);
+        backdrop.addEventListener('click', function(event) {
+            if (event.target === backdrop) close();
+        });
+        document.addEventListener('keydown', onKeydown, true);
     }
 
     statsToggle.addEventListener('click', function(event) {
@@ -639,6 +756,19 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
         if (!item.recurrence) return;
         const mainList = toDoChild.parentElement;
         if (!mainList) return;
+
+        // Mobile (≤420px) gets a full-screen modal; the inline drawer
+        // fights #mainList's grid track sizing too hard at that width.
+        // The branch is at click time so a resize after the initial
+        // render doesn't strand a half-open drawer in the wrong mode.
+        const useModal =
+            typeof window !== 'undefined' &&
+            window.matchMedia &&
+            window.matchMedia('(max-width: 420px)').matches;
+        if (useModal) {
+            openStatsModal();
+            return;
+        }
 
         // Check if a stats drawer for this row is already open. The
         // drawer lives directly after the row OR after descSibling if
@@ -654,14 +784,19 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
 
         if (existing && existing.id === 'statsSibling') {
             mainList.removeChild(existing);
+            openMode = null;
             statsToggle.classList.remove('open');
             statsToggle.setAttribute('aria-expanded', 'false');
             statsToggle.setAttribute('aria-label', 'Show stats');
             return;
         }
 
-        const drawer = renderDrawer();
-        if (!drawer) return;
+        openMode = 'drawer';
+        const drawer = renderStatsContent(false);
+        if (!drawer) {
+            openMode = null;
+            return;
+        }
         // Slot after descSibling when it's open so both panels stack
         // beneath the row in a deterministic order. Otherwise slot
         // directly under the row.
@@ -680,6 +815,47 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
         event.preventDefault();
         statsToggle.click();
     });
+}
+
+
+// Cadence subtitle for the mobile stats modal — surfaces the recurrence
+// pattern and end-date alongside the title so users coming straight from a
+// chart-icon tap see the cadence they're looking at. Examples:
+//   "DAILY · ENDS NEVER"
+//   "EVERY 3 WEEKS · ENDS JUN 14, 2026"
+function formatCadenceSubtitle(recurrence) {
+    if (!recurrence) return '';
+    let pattern;
+    if (recurrence.pattern === 'custom') {
+        const n = recurrence.interval || 1;
+        const unit = recurrence.intervalUnit || 'day';
+        const plural = n === 1 ? unit : unit + 's';
+        pattern = 'EVERY ' + n + ' ' + plural.toUpperCase();
+    } else {
+        pattern = (recurrence.pattern || '').toUpperCase();
+    }
+    const end = formatCadenceEndDate(recurrence.endDate);
+    return pattern + ' · ENDS ' + end;
+}
+
+const CADENCE_MONTH_SHORT = [
+    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+];
+function formatCadenceEndDate(endDateStr) {
+    if (!endDateStr) return 'NEVER';
+    // Recurrence end dates are stored as "M-D-YYYY"; parse defensively so a
+    // malformed value falls back to the literal string rather than NaN.
+    const parts = String(endDateStr).split('-');
+    if (parts.length === 3) {
+        const m = parseInt(parts[0], 10);
+        const d = parseInt(parts[1], 10);
+        const y = parseInt(parts[2], 10);
+        if (!isNaN(m) && !isNaN(d) && !isNaN(y) && m >= 1 && m <= 12) {
+            return CADENCE_MONTH_SHORT[m - 1] + ' ' + d + ', ' + y;
+        }
+    }
+    return String(endDateStr).toUpperCase();
 }
 
 
@@ -805,38 +981,18 @@ function buildContributionsGrid(stats) {
 // custom-year cadences — a weekday grid would be too sparse to read at
 // those intervals, so the last 12 expected occurrences are rendered as
 // a single row of 18×18 cells.
-//
-// `mobile` flips the strip into a recency layout used on narrow phones
-// (≤420px) for daily / weekly / custom-day / custom-week cadences whose
-// contributions grid would otherwise collapse to an unreadable sliver.
-// The mobile layout renders the last 14 expected occurrences as a
-// single horizontal row of 16×16 cells with 3px gaps (no wrap), framed
-// by a LAST 14 caption above and oldest-date / today labels below. The
-// SVG declares an explicit pixel height so the auto-sized #mainList
-// grid track grows to fit the strip — the prior two-row wrap collapsed
-// the wrapper's block size and let the drawer's bottom edge leak past
-// the next #toDoChild on ≤420px viewports.
-function buildFallbackStrip(stats, mobile) {
+function buildFallbackStrip(stats) {
     const wrapper = document.createElement('div');
     wrapper.className = 'statsGridWrapper statsFallbackStrip';
-    if (mobile) wrapper.classList.add('statsFallbackStripMobile');
 
-    const cellSize = mobile ? 16 : 18;
-    const gap = mobile ? 3 : 4;
-    const maxCells = mobile ? 14 : 12;
-    const cellsPerRow = maxCells;
+    const cellSize = 18;
+    const gap = 4;
+    const maxCells = 12;
     const expected = stats.expectedDates.slice(-maxCells);
     if (expected.length === 0) {
         wrapper.classList.add('statsGridEmpty');
         wrapper.textContent = 'No expected occurrences in this window yet.';
         return wrapper;
-    }
-
-    if (mobile) {
-        const caption = document.createElement('div');
-        caption.className = 'statsFallbackStripCaption';
-        caption.textContent = 'LAST 14';
-        wrapper.appendChild(caption);
     }
 
     const today = new Date();
@@ -845,9 +1001,8 @@ function buildFallbackStrip(stats, mobile) {
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
-    const colsThisLayout = mobile ? cellsPerRow : expected.length;
     const rows = 1;
-    const width  = colsThisLayout * cellSize + (colsThisLayout - 1) * gap;
+    const width  = expected.length * cellSize + (expected.length - 1) * gap;
     const height = rows * cellSize;
     svg.setAttribute('width',  width);
     svg.setAttribute('height', height);
@@ -879,21 +1034,6 @@ function buildFallbackStrip(stats, mobile) {
     });
 
     wrapper.appendChild(svg);
-
-    if (mobile) {
-        const labels = document.createElement('div');
-        labels.className = 'statsFallbackStripLabels';
-        const oldest = document.createElement('span');
-        oldest.className = 'statsFallbackStripLabel';
-        oldest.textContent = formatShortDate(expected[0]);
-        const todayLabel = document.createElement('span');
-        todayLabel.className = 'statsFallbackStripLabel';
-        todayLabel.textContent = 'today';
-        labels.appendChild(oldest);
-        labels.appendChild(todayLabel);
-        wrapper.appendChild(labels);
-    }
-
     return wrapper;
 }
 
