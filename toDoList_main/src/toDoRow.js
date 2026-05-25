@@ -889,6 +889,19 @@ function buildFallbackStrip(stats, mobile) {
         labels.appendChild(oldest);
         labels.appendChild(todayLabel);
         wrapper.appendChild(labels);
+
+        // Lock in a pixel min-height so the drawer's #mainList row track
+        // grows to fit the two-row strip + caption + date labels. Without
+        // this, the flex-column wrapper reports a block size that
+        // collapses below the rendered children — the auto-sized grid
+        // track sizes to that smaller value and the missed-pill list
+        // leaks past the drawer's bottom border on ≤420px viewports.
+        const captionH = 14;
+        const labelsH = 14;
+        const flexGap = 4;
+        const wrapperPadY = 4;
+        wrapper.style.minHeight =
+            (captionH + flexGap + height + flexGap + labelsH + wrapperPadY) + 'px';
     }
 
     return wrapper;
