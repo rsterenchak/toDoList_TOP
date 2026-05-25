@@ -96,6 +96,7 @@ import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncM
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
+import { wipeLocalUserDataOnSignOut } from './migration.js';
 import button from './addProj_button.svg';
 
 
@@ -2196,7 +2197,7 @@ function component() {
             '',
             function() {
                 hideSettingsMenu();
-                supabase.auth.signOut();
+                wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });
             }
         );
         menu.appendChild(signOutItem);
@@ -4275,7 +4276,7 @@ function component() {
         accountSection.appendChild(accountHeading);
         const signOutRow = createDrawerActionRow('Sign out', function() {
             close();
-            supabase.auth.signOut();
+            wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });
         });
         accountSection.appendChild(signOutRow);
 
