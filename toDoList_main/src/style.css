@@ -3906,6 +3906,14 @@ body.row-dragging * { cursor: grabbing !important; }
     touch-action: manipulation;
   }
 
+  /* Tapping a row already opens its description on touch, so the chevron is
+     redundant on mobile — hide it to reclaim horizontal space for the title.
+     `!important` overrides the inline `style.display = "flex"` writes that
+     toDoRow.js applies on row creation and on first-commit reveal. */
+  #descToggle {
+    display: none !important;
+  }
+
   /* ── STACK mobile project header ──
      Mounts above the todo list at the ≤700px breakpoint as a
      screen-level header: PROJECT N OF M label, a two-line project
