@@ -2,6 +2,27 @@
 
 ## Bugs
 
+- [ ] **[MEDIUM]** Swap recurring-task stats heat map for a recency strip on mobile
+  - Description: On phone-width viewports (≤420px) the contributions grid inside the recurring-task stats drawer collapses to an unreadable sliver — the `.statsGridWrapper`'s `overflow-x: auto` lets the SVG share horizontal space with surrounding chrome, and 14px cells against the dark background are already a low-contrast target before the squeeze. Replace the calendar-shape grid with the existing `buildFallbackStrip` recency pattern when the viewport matches `(max-width: 420px)`: show the last 14 expected occurrences as 22×22 cells with 4px gaps, wrapping to two rows (7 per row), with a small `LAST 14` caption above and `<oldest-date>` / `today` labels below the strip. Reuse `buildFallbackStrip` rather than duplicating SVG-building logic — extend its signature (or wrap it) so the daily/weekday/weekly cadences that normally render the contributions grid can opt into the strip on mobile while keeping the calendar grid on desktop. Cell color rules (hit / miss / today ring / future) stay identical to the desktop grid so the legend reads the same. Month/year cadences already use the fallback strip and are unchanged. The stat-card strip, window toggle, miss callout, and missed-pill list above and below the visualization are unaffected.
+  - Behavior:
+    1. On viewports >420px wide, the contributions grid renders as today (no regression).
+    2. On viewports ≤420px wide, daily / weekdays / weekly / custom-interval cadences render the recency strip (last 14 expected occurrences, 22×22 cells, 7 per row, 2 rows) instead of the contributions grid.
+    3. Strip cells use the same `cellClasses` / `cellTitleLabel` helpers so hit / miss / today / future treatments are identical to the grid.
+    4. A `LAST 14` caption sits above the strip; oldest-date and `today` labels sit below, mirroring the screenshot mockup.
+    5. Window-toggle changes (14d / 30d / 90d / All) still re-render the drawer; on mobile the strip always shows the last 14 regardless of window selection (the strip is a fixed-recency view, while the stat cards above still respect the window).
+  - Implementation notes:
+    - Add a `mobile` (or viewport-derived) parameter to `wireStatsToggle`'s `renderDrawer` so the branch picking between `buildContributionsGrid` and `buildFallbackStrip` checks viewport width, not just `item.recurrence.pattern`.
+    - Use `window.matchMedia('(max-width: 420px)').matches` at drawer-render time; no need to wire a resize listener since the drawer is rebuilt each time it opens.
+    - `buildFallbackStrip` currently lays out cells in a single row — extend it (or add a sibling `buildRecencyStripMobile`) that wraps to two rows of 7 at the mobile cell size. Keep the single-row variant for desktop month/year cadences.
+    - Add `LAST 14` caption + date labels around the SVG, styled with the same `.statsGridLabel` / muted-text rhythm already in `style.css`.
+  - Acceptance criteria:
+    - Heat map is legible on a 380px-wide viewport — cells are at least 22px square, not clipped, not hidden behind a sibling.
+    - Desktop renderings (>420px) are pixel-identical to current output.
+    - Tooltips on strip cells match the desktop grid's `cellTitleLabel` output.
+  - Out of scope: changing the desktop contributions grid, changing the stat-card strip or window toggle, adding new color treatments, persisting window selection across opens.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+
 - [x] **[MEDIUM]** Add JSON export and import buttons that hit Supabase directly
   - Description: Replace the cut Drive sync feature with a simpler, more user-empowering backup mechanism: two buttons in the settings menu that export the user's entire dataset to a downloadable JSON file, and re-import a JSON file to replace their Supabase data. This gives users a real escape hatch — they can leave the app whenever they want with their data in a portable format they own — and serves as a manual backup affordance for users who want belt-and-suspenders against data loss. Unlike Drive sync, this isn't a continuous background sync; it's an explicit, one-click action the user takes when they want a snapshot. The export reads directly from Supabase (not localStorage) to ensure the file reflects authoritative server state. The import writes directly to Supabase, then triggers a re-hydration so the UI reflects the imported state.
   - Architecture: (1) Export reads from Supabase via two `select * from projects` and `select * from todos` queries scoped to the user via RLS (no explicit user_id filter needed — RLS handles it). The result is serialized as JSON with shape `{ version: 1, exportedAt: <iso>, projects: [...], todos: [...] }` and triggered as a browser download via a synthetic anchor element with `href=URL.createObjectURL(blob)`. (2) Import accepts a JSON file via a hidden `<input type="file">`, parses the contents, validates the shape, shows a confirmation modal warning that this will replace all current data, and on confirm runs a sequence of Supabase calls: truncate-all (delete user's projects, which cascades to todos via FK), then bulk-insert the imported projects, then bulk-insert the imported todos. After the import completes, re-hydrate by calling the existing `hydrateFromSupabase` (which now operates on the freshly-imported data) and dispatches `listLogicHydrated` so the UI rebuilds.
