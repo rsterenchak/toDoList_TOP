@@ -2,26 +2,34 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Hide description chevron on todo rows on mobile only
-  - Description: Each todo row ends with a small `▼` chevron that toggles the description panel. On mobile, horizontal space is at a premium and titles already truncate aggressively — hide the chevron at the mobile breakpoint so the saved space goes to the title. Tapping the row already opens the description, so the chevron is redundant on touch anyway. Desktop keeps the chevron unchanged (it's still useful as an explicit affordance with a mouse, and there's room for it).
-  - Behavior:
-    1. At the mobile breakpoint, the `▼` chevron is not visible on any todo row (initial render, restore-from-storage, newly added rows, completed rows).
-    2. Tapping a todo row still opens its description (unchanged).
-    3. Blurring/tapping outside still closes the description (unchanged — verify, since on mobile the chevron may have been one of the close paths).
-    4. On desktop, the chevron renders and behaves exactly as today.
-    5. No layout shift on mobile rows — the saved space goes to the title.
-  - Implementation notes:
-    - Prefer a CSS-only change: target the chevron element by its existing class and `display: none` it inside the existing mobile breakpoint in `style.css`. No DOM/JS changes needed if the chevron is already a discrete element.
-    - Grep `main.js` for the chevron's class/selector first to confirm there are no inline `style.display` writes — those would override the CSS rule and need to be made conditional (or removed) for the hide to take effect.
-    - Mobile breakpoint should match existing convention in `style.css` (no new breakpoint).
-    - If close-on-outside-tap doesn't already work on mobile, that's a separate bug — file it separately rather than scope-creeping this entry.
-  - Acceptance criteria:
-    - On a narrow viewport, no `▼` chevron appears on any todo row; titles have noticeably more room.
-    - Tapping a row opens the description; tapping outside closes it.
-    - On a wide viewport, the chevron renders and works exactly as today.
-  - Out of scope: Desktop chevron behavior, the description panel itself, focus/blur behavior, refactoring the four overlapping todo-row builders.
-  - File: `toDoList_main/src/style.css` (likely CSS-only; `toDoList_main/src/main.js` only if inline style writes need to be made conditional)
-  - Completed: 2026-05-25
+- [ ] **[MEDIUM]** Add description editor modal on mobile for drafting TODO.md entries
+ - Description: On mobile (touch devices, `pointer: coarse`), tapping a todo row body opens a centered modal editor over a backdrop for editing that todo's `desc` field. The intended use is drafting TODO.md backlog entries inside the app, so the editor must preserve markdown formatting (backticks, indentation, multi-line) and offer a one-tap copy-to-clipboard. Match the existing modal pattern (changelog modal): floating dialog padded from screen edges, purple-accented border, header with todo title + close X, monospace `<textarea>` filling the body, toolbar at the bottom.
+ - Behavior:
+   1. Tap on a todo row body (excluding the checkbox, date pill, and any existing controls) opens the modal for that row's todo.
+   2. Modal renders the current `desc` value in a monospace textarea, font-size 16px (CLAUDE.md mobile-input constraint to avoid iOS auto-zoom), `white-space: pre`, multi-line, no auto-resize on the row itself.
+   3. Toolbar holds two buttons: "Copy as TODO.md entry" (primary, purple) copies the textarea contents to clipboard via `navigator.clipboard.writeText`; "Clear" wipes the textarea contents (with a confirmation step per CLAUDE.md's destructive-action rule, since this throws away saved description text).
+   4. Save commits the textarea value back to the todo via `listLogic.js` (data-model mutations route through here) and closes the modal.
+   5. Modal closes 3 ways per CLAUDE.md: explicit close X, backdrop click, Escape (even though Escape isn't reachable from a soft keyboard, keep it for parity with desktop keyboards on tablets).
+   6. On the todo row, when `desc` is non-empty, render a small purple note-style indicator icon (inline SVG or a CSS-drawn glyph — no new dependencies) between the checkbox and the title so the user can tell at a glance which todos carry descriptions.
+ - Implementation notes:
+   - The `desc` field already exists on the `toDo` factory and is already persisted by `listLogic.js` — no data-model changes needed, only UI surface.
+   - Gate the tap-to-open listener on `window.matchMedia('(pointer: coarse)').matches` so desktop behavior is unchanged. The description is silently still on the data model in localStorage on desktop; exposing it on desktop is a follow-up.
+   - Be careful about tap-target collisions: tapping the checkbox, date pill, delete button, or title-edit affordance must NOT open the modal. Wire the listener on the row body element specifically, and stop propagation from the controls.
+   - `main.js` is over 25k tokens — navigate with grep + offset/limit when adding the modal builder and tap handler; don't try to read in full.
+   - No new dependencies (per CLAUDE.md). Use the existing modal-creation helpers and styling tokens in `style.css`.
+   - The "Copy as TODO.md entry" button copies the raw textarea contents as-is — the user is responsible for the markdown shape. (A future iteration could assemble `- [ ] **[PRIORITY]** {title}\n  - Description: {desc}\n  - File: ...` from structured fields, but scope here is just the editor surface.)
+ - Acceptance criteria:
+   - Tapping a todo row body on a touch device opens the modal; tapping the checkbox or date pill does not.
+   - Modal preserves markdown formatting on save and on reload from localStorage.
+   - "Copy as TODO.md entry" places the textarea contents on the clipboard.
+   - "Clear" prompts for confirmation before wiping non-empty content.
+   - Modal closes via X, backdrop tap, and Escape.
+   - Rows with non-empty `desc` show the indicator icon; rows with empty `desc` do not.
+   - Textarea font-size is 16px+ on mobile (no iOS auto-zoom on focus).
+ - Out of scope: desktop entry point for the editor; structured entry assembly from title + priority + file fields; rich-text or syntax-highlighted markdown editing.
+ - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+ - Completed: YYYY-MM-DD (PR #<number>)
+
 
 ## Features
 
