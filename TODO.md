@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Hide description chevron on todo rows on mobile only
+- [x] **[MEDIUM]** Hide description chevron on todo rows on mobile only
   - Description: Each todo row ends with a small `▼` chevron that toggles the description panel. On mobile, horizontal space is at a premium and titles already truncate aggressively — hide the chevron at the mobile breakpoint so the saved space goes to the title. Tapping the row already opens the description, so the chevron is redundant on touch anyway. Desktop keeps the chevron unchanged (it's still useful as an explicit affordance with a mouse, and there's room for it).
   - Behavior:
     1. At the mobile breakpoint, the `▼` chevron is not visible on any todo row (initial render, restore-from-storage, newly added rows, completed rows).
@@ -21,7 +21,7 @@
     - On a wide viewport, the chevron renders and works exactly as today.
   - Out of scope: Desktop chevron behavior, the description panel itself, focus/blur behavior, refactoring the four overlapping todo-row builders.
   - File: `toDoList_main/src/style.css` (likely CSS-only; `toDoList_main/src/main.js` only if inline style writes need to be made conditional)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 ## Features
 
