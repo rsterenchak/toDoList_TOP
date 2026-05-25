@@ -3508,8 +3508,14 @@ body.row-dragging * { cursor: grabbing !important; }
 
   .dragHandle { opacity: 1; }
 
+  /* Lateral gutter at 14px on each side so titles don't read as hugging the
+     screen edge. `env(safe-area-inset-*)` stacks on top of the base value so
+     landscape and notched devices get the additional inset they need.
+     Swipe-action panes are absolute-positioned children of #toDoChild, so
+     applying the inset as margin (rather than padding on #mainList) keeps
+     each row's swipe panes spanning the full row width. */
   #toDoChild {
-    margin: 4px 6px;
+    margin: 4px calc(14px + env(safe-area-inset-right, 0px)) 4px calc(14px + env(safe-area-inset-left, 0px));
     padding: 0 8px 0 4px;
   }
 
@@ -4596,11 +4602,16 @@ body.row-dragging * { cursor: grabbing !important; }
      in the layout flow for focus/edit but is opacity'd out and pulled out
      of normal flow until it receives focus, at which point the span hides
      and the input takes over the visual slot for editing. */
+  /* 15px (rather than #toDoInput's 16px) buys back some of the horizontal
+     room lost to the wider row gutter. Safe to drop below the 16px iOS
+     auto-zoom threshold because this is a span, not an input — the rule
+     only applies to focused inputs. The underlying #toDoInput stays at
+     16px so focused editing still avoids the zoom. */
   #toDoChild:not([data-original-blank="true"]) .toDoTitleDisplay {
     display: block;
     flex: 1 1 0;
     min-width: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-family: inherit;
     color: var(--text-primary);
     letter-spacing: 0.02em;
