@@ -23,13 +23,12 @@ describe('STACK mobile tap-to-view — first tap expands without focusing', () =
 
     const toDoRow = read('toDoRow.js');
 
-    it('wireToDoRowClick drives the read-mode expand through the row helper', () => {
-        // The two-stage flow opens the description through the row's
-        // stashed __openDesc helper — no explicit chevron sub-control is
-        // involved, but the click handler still owns the
-        // open-without-focusing-input dance.
-        expect(toDoRow).toMatch(/function wireToDoRowClick\(toDoChild,\s*toDoInput\)/);
-        expect(toDoRow).toMatch(/wireToDoRowClick\(toDoChild,\s*toDoInput\)/);
+    it('wireToDoRowClick receives descToggle so it can drive the read-mode expand', () => {
+        // The two-stage flow needs a reference to the row's own descToggle
+        // — without it, the click handler can't programmatically open the
+        // description without focusing the input.
+        expect(toDoRow).toMatch(/function wireToDoRowClick\(toDoChild,\s*toDoInput,\s*descToggle\)/);
+        expect(toDoRow).toMatch(/wireToDoRowClick\(toDoChild,\s*toDoInput,\s*descToggle\)/);
     });
 
     it('the mobile branch is gated on the ≤700px breakpoint', () => {
@@ -38,11 +37,11 @@ describe('STACK mobile tap-to-view — first tap expands without focusing', () =
         expect(toDoRow).toMatch(/window\.innerWidth\s*<=\s*700/);
     });
 
-    it('first tap calls the row\'s __openDesc helper and marks the row data-mobile-read', () => {
-        // Routes through the stashed open helper rather than reaching into
-        // descSibling directly so insertion / close coupling with the rest
-        // of the panel-management code stays in one place.
-        expect(toDoRow).toMatch(/toDoChild\.__openDesc\(\)/);
+    it('first tap programmatically clicks descToggle and marks the row data-mobile-read', () => {
+        // Reuses descToggle.click() rather than reaching into descSibling
+        // directly, so the existing wireDescToggle logic handles DOM
+        // insertion / open class flip in lockstep.
+        expect(toDoRow).toMatch(/descToggle\.click\(\)/);
         expect(toDoRow).toMatch(/setAttribute\(\s*['"]data-mobile-read['"]\s*,\s*['"]true['"]\s*\)/);
     });
 
@@ -67,60 +66,10 @@ describe('STACK mobile tap-to-view — first tap expands without focusing', () =
 
     it('first tap on a new row collapses any other rows that are already in mobile-read', () => {
         // Single-row-at-a-time: tapping a new row resets the prior auto-
-        // expanded row so only one descSibling is open.
+        // expanded row's descToggle so only one descSibling is open.
         expect(toDoRow).toMatch(
             /querySelectorAll\(\s*['"]#toDoChild\[data-mobile-read="true"\]['"]\s*\)/
         );
-    });
-});
-
-
-describe('description chevron removal — no #descToggle anywhere', () => {
-
-    const toDoRow = read('toDoRow.js');
-    const css = read('style.css');
-    const main = read('main.js');
-
-    it('buildToDoRow does not create a #descToggle element', () => {
-        // The dropdown chevron is gone — the description panel now opens
-        // on focus and closes on blur, so the explicit toggle button is
-        // redundant chrome.
-        expect(toDoRow).not.toMatch(/descToggle\.id\s*=\s*["']descToggle["']/);
-    });
-
-    it('style.css carries no #descToggle rules', () => {
-        expect(css).not.toMatch(/#descToggle\b/);
-    });
-
-    it('main.js no longer reaches for #descToggle anywhere', () => {
-        expect(main).not.toMatch(/#descToggle\b/);
-        expect(main).not.toMatch(/descToggle\.click\(/);
-    });
-
-    it('row exposes __openDesc / __closeDesc / __toggleDesc / __isDescOpen helpers', () => {
-        // Other modules (mobile chip, bulk expand, outside-click collapse,
-        // keyboard shortcut) drive the description through these helpers
-        // instead of poking at a now-deleted chevron.
-        expect(toDoRow).toMatch(/toDoChild\.__openDesc\s*=/);
-        expect(toDoRow).toMatch(/toDoChild\.__closeDesc\s*=/);
-        expect(toDoRow).toMatch(/toDoChild\.__toggleDesc\s*=/);
-        expect(toDoRow).toMatch(/toDoChild\.__isDescOpen\s*=/);
-    });
-
-    it('focusin on the row opens the description; focusout closes it', () => {
-        // wireDescriptionFocusOpen owns the focus-driven open/close.
-        expect(toDoRow).toMatch(/function wireDescriptionFocusOpen\(/);
-        expect(toDoRow).toMatch(/toDoChild\.addEventListener\(\s*['"]focusin['"]/);
-        expect(toDoRow).toMatch(/toDoChild\.addEventListener\(\s*['"]focusout['"]/);
-        // descSibling also gets a focusout so tabbing OUT of the
-        // description input closes the panel (focusout from descInput
-        // bubbles to descSibling, not toDoChild).
-        expect(toDoRow).toMatch(/descSibling\.addEventListener\(\s*['"]focusout['"]/);
-    });
-
-    it('bulk expand / collapse routes through the row helpers', () => {
-        expect(main).toMatch(/row\.__openDesc\(\)/);
-        expect(main).toMatch(/row\.__closeDesc\(\)/);
     });
 });
 
@@ -129,11 +78,13 @@ describe('STACK mobile tap-to-view — second tap focuses for edit', () => {
 
     const toDoRow = read('toDoRow.js');
 
-    it('second tap (description already open) falls through to the focus-input path', () => {
+    it('second tap (descToggle already open) falls through to the focus-input path', () => {
         // The mobile branch is `isMobile && !descOpen` — once descOpen
         // becomes true, the branch is skipped and execution reaches the
         // committed-row activation block that focuses toDoInput.
-        expect(toDoRow).toMatch(/isMobile\s*&&\s*!descOpen\b/);
+        expect(toDoRow).toMatch(
+            /isMobile\s*&&\s*!descOpen\s*&&\s*descToggle/
+        );
         // The focus path below the branch must remain intact.
         const focusBlock = toDoRow.match(
             /toDoInput\.focus\(\);[\s\S]{0,200}setSelectionRange\(end,\s*end\)/
@@ -141,13 +92,12 @@ describe('STACK mobile tap-to-view — second tap focuses for edit', () => {
         expect(focusBlock).toBeTruthy();
     });
 
-    it('description close clears data-mobile-read so re-tap re-enters read mode cleanly', () => {
+    it('descToggle close listener clears data-mobile-read so re-tap re-enters read mode cleanly', () => {
         // Without this cleanup, manually closing the description (or the
         // outside-tap collapse) would leave data-mobile-read stale and
-        // the next tap would skip the open-and-stay step. The cleanup
-        // now lives directly in __closeDesc.
+        // the next tap would skip the open-and-stay step.
         expect(toDoRow).toMatch(
-            /function close\(\)[\s\S]{0,500}removeAttribute\(\s*['"]data-mobile-read['"]\s*\)/
+            /descToggle\.addEventListener\(\s*['"]click['"][\s\S]{0,300}removeAttribute\(\s*['"]data-mobile-read['"]\s*\)/
         );
     });
 });
@@ -163,12 +113,12 @@ describe('STACK mobile tap-to-view — outside tap collapses read mode', () => {
         );
     });
 
-    it('outside-collapse calls __closeDesc to close descSibling', () => {
-        // Routing through the row's helper keeps the data-desc-open
-        // attribute and the DOM in lockstep with manual toggles; the
-        // helper also clears data-mobile-read in one place.
+    it('outside-collapse fires descToggle.click() to close descSibling', () => {
+        // Routing through descToggle keeps the open-class and DOM in
+        // lockstep with manual toggles; it also lets the descToggle
+        // cleanup listener clear data-mobile-read in one place.
         const collapseBlock = main.match(
-            /querySelectorAll\(\s*['"]#toDoChild\[data-mobile-read="true"\]['"][\s\S]{0,400}__closeDesc\(\)/
+            /querySelectorAll\(\s*['"]#toDoChild\[data-mobile-read="true"\]['"][\s\S]{0,400}dt\.click\(\)/
         );
         expect(collapseBlock).toBeTruthy();
     });
