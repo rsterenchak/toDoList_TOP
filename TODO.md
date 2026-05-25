@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Replace due-date pill with bare calendar icon on mobile todo rows
+- [x] **[MEDIUM]** Replace due-date pill with bare calendar icon on mobile todo rows
   - Description: On mobile (touch / narrow viewport), the due-date pill on each todo row (icon + "May 31" text inside a padded background) eats horizontal space and forces the title to truncate aggressively — see screenshot in conversation history where titles cut off at ~25 characters. Replace the pill with just the calendar icon (`ti-calendar` or existing equivalent), no background chrome, no date text inline. The icon's color encodes urgency: red `#E24B4A` for overdue, amber `#EF9F27` for due today or within 3 days, purple `#9D93EE` for future dates, dim gray `#5a5a6a` for no date set. The actual date stays accessible — tapping the icon still opens the existing due-date popover, which shows and edits the date as it does today. Desktop layout is unchanged (it has the room for the full pill).
   - Behavior:
     1. At mobile breakpoint, render only the calendar icon in the due-date slot — no `May 31` text node, no pill padding/background.
@@ -22,7 +22,7 @@
     - Desktop layout (wide viewport) shows the full pill as today.
   - Out of scope: Changes to the due-date popover itself, changes to desktop rendering, recurring-task UI.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 ## Features
 
