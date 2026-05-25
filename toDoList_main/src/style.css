@@ -2897,9 +2897,19 @@ body.row-dragging * { cursor: grabbing !important; }
 /* Pattern callout — one-sentence summary of the miss set, rendered
    immediately below the contributions grid. Mirrors the .statsApproximateNote
    band but with a 2px accent-tinted left edge and an info glyph prefix so
-   it reads as a derived insight, not a parenthetical disclaimer. */
+   it reads as a derived insight, not a parenthetical disclaimer.
+
+   Grid (rather than flex) layout pins the icon to a fixed leading column
+   and lets the text column wrap freely. Flex with align-items: center on a
+   wrapping text node reported an intrinsic block-size to #mainList's
+   auto-sized grid track that didn't include the wrapped text's full
+   height, so the callout (and the .statsMissedList below it) painted
+   past #statsSibling's bottom border on ≤420px viewports. Grid resolves
+   the row height from max-content of the text column, which the parent
+   track sees correctly. */
 .statsMissCallout {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 6px;
   font-size: 11px;
@@ -2912,11 +2922,9 @@ body.row-dragging * { cursor: grabbing !important; }
   line-height: 1.35;
 }
 .statsMissCalloutIcon {
-  flex: 0 0 auto;
   color: var(--accent-text);
 }
 .statsMissCalloutText {
-  flex: 1 1 auto;
   color: var(--text-primary);
 }
 
