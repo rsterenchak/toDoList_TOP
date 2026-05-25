@@ -366,6 +366,52 @@ describe('listLogic Phase 5 — hydrateFromSupabase reconciliation', () => {
 });
 
 
+describe('listLogic — hydrateFromSupabase single-flight guard', () => {
+    // After magic-link sign-in, hydrateFromSupabase is called twice in
+    // quick succession (once from the initial boot path, once from the
+    // onAuthStateChange SIGNED_IN listener for the restored session).
+    // The second concurrent call must short-circuit before re-running
+    // the fetch/dispatch, or the in-flight reconciliation can wipe the
+    // sidebar mid-execution. The guard is a module-scoped flag set on
+    // entry and reset in a finally block so a *subsequent* (non-
+    // overlapping) call still runs.
+
+    const body = functionBody(SRC, 'hydrateFromSupabase');
+
+    it('declares a module-scoped hydrationInFlight flag, initialised to false', () => {
+        expect(SRC).toMatch(/let\s+hydrationInFlight\s*=\s*false\s*;/);
+    });
+
+    it('returns early if hydrationInFlight is already true (single-flight guard)', () => {
+        expect(body).toMatch(/if\s*\(\s*hydrationInFlight\s*\)\s*return\s*;?/);
+    });
+
+    it('sets hydrationInFlight = true before the awaited fetch begins', () => {
+        // The flag flip must precede the first await, so a synchronous
+        // second call lands on a true flag and short-circuits.
+        const guardIdx = body.search(/if\s*\(\s*hydrationInFlight\s*\)\s*return/);
+        const setTrueIdx = body.search(/hydrationInFlight\s*=\s*true/);
+        const firstAwaitIdx = body.search(/\bawait\b/);
+        expect(guardIdx).toBeGreaterThanOrEqual(0);
+        expect(setTrueIdx).toBeGreaterThan(guardIdx);
+        expect(firstAwaitIdx).toBeGreaterThan(setTrueIdx);
+    });
+
+    it('resets hydrationInFlight to false inside a finally block', () => {
+        // The reset must live in `finally` so a thrown/rejected fetch
+        // still releases the flag for the next user-initiated hydration.
+        expect(body).toMatch(/finally\s*\{[\s\S]*?hydrationInFlight\s*=\s*false[\s\S]*?\}/);
+    });
+
+    it('the "called" console.log lives below the guard so a short-circuited call is silent', () => {
+        const guardIdx = body.search(/if\s*\(\s*hydrationInFlight\s*\)\s*return/);
+        const logIdx = body.search(/console\.log\s*\(\s*['"]\[hydrateFromSupabase\] called['"]/);
+        expect(guardIdx).toBeGreaterThanOrEqual(0);
+        expect(logIdx).toBeGreaterThan(guardIdx);
+    });
+});
+
+
 describe('listLogic Phase 5 — recurring task completion clones', () => {
     const body = functionBody(SRC, 'advanceRecurringTodo');
 
