@@ -351,143 +351,16 @@ describe('listLogic — storage', () => {
 });
 
 
-// ── SYNC-INITIATED SAVES ────────────────────────────────────────────
-// The Drive import path needs to persist the imported tree without
-// pushing the lastLocalMutationAt marker past lastDriveSyncedAt — a
-// post-import save that bumped the mutation marker would leave the
-// sync indicator stuck on 'ahead' even though the local state had just
-// been pulled from Drive. The { fromSync: true } opt suppresses that
-// write while still committing the JSON payload and dispatching the
-// recompute event.
-describe('listLogic — fromSync suppresses lastLocalMutationAt', () => {
-    const KEY = 'todoapp_lastLocalMutationAt';
-    beforeEach(() => {
-        listLogic._reset();
-        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
-    });
-
-    it('saveToStorage() with no opts writes lastLocalMutationAt', () => {
-        listLogic.addProject('P');
-        expect(localStorage.getItem(KEY)).not.toBeNull();
-        const before = localStorage.getItem(KEY);
-        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
-        expect(localStorage.getItem(KEY)).toBeNull();
-
-        listLogic.saveToStorage();
-        expect(localStorage.getItem(KEY)).not.toBeNull();
-        // Sanity: the new stamp is a parseable ISO date.
-        expect(isNaN(Date.parse(localStorage.getItem(KEY)))).toBe(false);
-        // (Suppress an unused warning on `before`.)
-        expect(typeof before).toBe('string');
-    });
-
-    it('saveToStorage({ fromSync: true }) skips lastLocalMutationAt but still persists allProjects', () => {
-        listLogic.addProject('P');
-        listLogic.addToDo('P', 'Milk');
-        // Clear the marker so the assertion measures only the next call.
-        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
-        // Drop the persisted snapshot too so the still-persists assertion
-        // is meaningful.
-        try { localStorage.removeItem('allProjects'); } catch (_) { /* ignore */ }
-
-        listLogic.saveToStorage({ fromSync: true });
-
-        expect(localStorage.getItem(KEY)).toBeNull();
-        const raw = localStorage.getItem('allProjects');
-        expect(raw).not.toBeNull();
-        const parsed = JSON.parse(raw);
-        expect(parsed.P.items.map(i => i.tit)).toContain('Milk');
-    });
-
-    it('replaceAllProjects(..., { fromSync: true }) does not bump lastLocalMutationAt', () => {
-        // Seed a mutation marker pinned to a known past timestamp so the
-        // assertion can prove the value was untouched, not just absent.
-        const SEED = '2026-01-01T00:00:00.000Z';
-        localStorage.setItem(KEY, SEED);
-
-        listLogic.replaceAllProjects([
-            { name: 'Imported', items: [{ tit: 'Pulled', completed: false, due: '' }], color: null },
-        ], { fromSync: true });
-
-        // Storage still updated for projects.
-        expect(listLogic.listProjectsArray()).toEqual(['Imported']);
-        // But lastLocalMutationAt is exactly the seeded value — no bump.
-        expect(localStorage.getItem(KEY)).toBe(SEED);
-    });
-
-    it('replaceAllProjects(...) with no opts still bumps lastLocalMutationAt (regression guard)', () => {
-        const SEED = '2026-01-01T00:00:00.000Z';
-        localStorage.setItem(KEY, SEED);
-
-        listLogic.replaceAllProjects([
-            { name: 'Imported', items: [], color: null },
-        ]);
-
-        const after = localStorage.getItem(KEY);
-        expect(after).not.toBeNull();
-        expect(after).not.toBe(SEED);
-        expect(isNaN(Date.parse(after))).toBe(false);
-    });
-
-    // sortCompletedToBottom is the bridge between the post-Drive-import
-    // rebuild loop (addToDos_restore re-sorts every project on the way
-    // through) and saveToStorage. A previous version of this code forgot
-    // to plumb opts through, so the post-import sort bumped
-    // lastLocalMutationAt past the just-written lastDriveSyncedAt and
-    // left the indicator stuck on amber. These pin both branches so
-    // either side of the regression fails loudly.
-    it('sortCompletedToBottom() with no opts writes lastLocalMutationAt', () => {
-        // Stage a real reorder — sortCompletedToBottom is a noop when the
-        // array is already in canonical order, so the marker only flips
-        // when the sort actually moves something.
-        listLogic.addProject('P');
-        listLogic.addToDo('P', 'A');
-        listLogic.addToDo('P', 'B');
-        const itemA = listLogic.listItems('P').find(i => i.tit === 'A');
-        itemA.completed = true;
-        try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
-        expect(localStorage.getItem(KEY)).toBeNull();
-
-        listLogic.sortCompletedToBottom('P');
-
-        expect(localStorage.getItem(KEY)).not.toBeNull();
-        expect(isNaN(Date.parse(localStorage.getItem(KEY)))).toBe(false);
-    });
-
-    it('sortCompletedToBottom("P", { fromSync: true }) does not bump lastLocalMutationAt', () => {
-        const SEED = '2026-01-01T00:00:00.000Z';
-        listLogic.addProject('P');
-        // Stage a real reorder so the sort actually writes — the fromSync
-        // suppression is only meaningful when there's a write to suppress.
-        listLogic.addToDo('P', 'A');
-        listLogic.addToDo('P', 'B');
-        const itemA = listLogic.listItems('P').find(i => i.tit === 'A');
-        itemA.completed = true;
-        // Pin the marker AFTER the setup writes so the assertion measures
-        // only the sortCompletedToBottom call below.
-        localStorage.setItem(KEY, SEED);
-
-        listLogic.sortCompletedToBottom('P', { fromSync: true });
-
-        expect(localStorage.getItem(KEY)).toBe(SEED);
-        // Storage still committed — sync-safe writes persist data, they
-        // just hold the mutation timestamp.
-        expect(localStorage.getItem('allProjects')).not.toBeNull();
-    });
-});
-
-
-// The post-Drive-import rebuild path used to write the entire projects
-// blob twice: once inside replaceAllProjects (which already sorts every
-// project before persisting) and again inside the auto-selected project's
-// addToDos_restore -> sortCompletedToBottom pass. The second write was
-// pure duplication. `opts.deferSave: true` runs the in-memory sort but
-// skips the storage write so the rebuild flow collapses to a single
-// persisted write.
+// The post-import rebuild path used to write the entire projects blob
+// twice: once inside replaceAllProjects (which already sorts every
+// project before persisting) and again inside the auto-selected
+// project's addToDos_restore -> sortCompletedToBottom pass. The second
+// write was pure duplication. `opts.deferSave: true` runs the in-memory
+// sort but skips the storage write so the rebuild flow collapses to a
+// single persisted write.
 describe('listLogic — deferSave skips redundant storage writes during rebuild', () => {
     beforeEach(() => {
         listLogic._reset();
-        try { localStorage.removeItem('todoapp_lastLocalMutationAt'); } catch (_) { /* ignore */ }
     });
 
     it('sortCompletedToBottom("P", { deferSave: true }) does not call localStorage.setItem("allProjects", ...)', () => {
@@ -585,18 +458,14 @@ describe('listLogic — deferSave skips redundant storage writes during rebuild'
 // Render entry points (project switch in the sidebar, restoreFromStorage
 // on boot) reach sortCompletedToBottom with data that's already correctly
 // sorted on disk. A prior version of this code wrote allProjects
-// unconditionally on every call, which bumped lastLocalMutationAt and
-// tripped the Drive auto-sync indicator into amber after a mere view
-// change. These pin the noop-when-already-sorted contract.
+// unconditionally on every call. These pin the noop-when-already-sorted
+// contract.
 describe('listLogic — sortCompletedToBottom is a no-op when order is unchanged', () => {
-    const MUTATION_KEY = 'todoapp_lastLocalMutationAt';
-
     beforeEach(() => {
         listLogic._reset();
-        try { localStorage.removeItem(MUTATION_KEY); } catch (_) { /* ignore */ }
     });
 
-    it('writes nothing and leaves lastLocalMutationAt untouched on an already-sorted project', () => {
+    it('writes nothing on an already-sorted project', () => {
         // Seed a project that's already in the canonical sorted order:
         // blank at index 0, uncompleted items, then completed items.
         listLogic.addProject('P');
@@ -610,20 +479,13 @@ describe('listLogic — sortCompletedToBottom is a no-op when order is unchanged
         const titlesBefore = listLogic.listItems('P').map(i => i.tit);
         expect(titlesBefore).toEqual(['', 'Open A', 'Open B', 'Done X']);
 
-        // Pin a known marker so the assertion measures only the next call.
-        const SEED = '2026-01-01T00:00:00.000Z';
-        localStorage.setItem(MUTATION_KEY, SEED);
-
         const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
         listLogic.sortCompletedToBottom('P');
         const allProjectsWrites = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
-        const mutationWrites = setItemSpy.mock.calls.filter(args => args[0] === MUTATION_KEY);
         setItemSpy.mockRestore();
 
-        // No allProjects write, and the mutation marker was not touched.
+        // No allProjects write on the canonical-order re-pass.
         expect(allProjectsWrites.length).toBe(0);
-        expect(mutationWrites.length).toBe(0);
-        expect(localStorage.getItem(MUTATION_KEY)).toBe(SEED);
     });
 
     it('writes once and reorders when the project is not already sorted', () => {
@@ -639,8 +501,6 @@ describe('listLogic — sortCompletedToBottom is a no-op when order is unchanged
         // Items now: ['', Open A, Done X(done), Open B] — Done X sits ahead
         // of Open B, so the sort must move it to the bottom.
 
-        try { localStorage.removeItem(MUTATION_KEY); } catch (_) { /* ignore */ }
-
         const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
         listLogic.sortCompletedToBottom('P');
         const allProjectsWrites = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
@@ -650,30 +510,6 @@ describe('listLogic — sortCompletedToBottom is a no-op when order is unchanged
         expect(allProjectsWrites.length).toBe(1);
         const titlesAfter = listLogic.listItems('P').map(i => i.tit);
         expect(titlesAfter).toEqual(['', 'Open A', 'Open B', 'Done X']);
-        // And the mutation marker IS stamped.
-        expect(localStorage.getItem(MUTATION_KEY)).not.toBeNull();
-    });
-
-    it('fromSync semantics are preserved: a real reorder writes but does not bump lastLocalMutationAt', () => {
-        listLogic.addProject('P');
-        listLogic.addToDo('P', 'Open A');
-        listLogic.addToDo('P', 'Done X');
-        listLogic.addToDo('P', 'Open B');
-        const items = listLogic.listItems('P');
-        const doneX = items.find(i => i.tit === 'Done X');
-        doneX.completed = true;
-
-        const SEED = '2026-01-01T00:00:00.000Z';
-        localStorage.setItem(MUTATION_KEY, SEED);
-
-        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
-        listLogic.sortCompletedToBottom('P', { fromSync: true });
-        const allProjectsWrites = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
-        setItemSpy.mockRestore();
-
-        // One real write, mutation marker held at the seed.
-        expect(allProjectsWrites.length).toBe(1);
-        expect(localStorage.getItem(MUTATION_KEY)).toBe(SEED);
     });
 });
 

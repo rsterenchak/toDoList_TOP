@@ -144,8 +144,7 @@ export function updateChangelogDot() {
 //
 // The desktop footer is hidden on mobile (≤700px), so notifyUpdateAvailable
 // also dispatches an `appUpdateAvailable` CustomEvent on document. The mobile
-// Settings modal's About → Version row listens for it (mirroring the
-// driveSyncStateChanged pattern the Sync card uses), and the mobile
+// Settings modal's About → Version row listens for it, and the mobile
 // chrome's #drawerSettingsBtn adopts a small dot via the same event so the
 // cue surfaces without the user having to open Settings.
 let pendingUpdateRegistration = null;

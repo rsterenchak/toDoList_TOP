@@ -776,18 +776,14 @@ describe('listLogic — editToDoItem routes title edits of already-committed tod
 });
 
 
-describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged alias', () => {
+describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged event', () => {
     const body = functionBody(SRC, 'saveToStorage');
 
     it('exists as a declared function', () => {
         expect(body).toBeTruthy();
     });
 
-    it('dispatches both driveSyncStateChanged (legacy alias) and dataChanged', () => {
-        // The legacy name is retained so any external listener wired
-        // by the Drive sync indicator keeps ticking; dataChanged is
-        // the Phase 5+ canonical event name.
-        expect(body).toMatch(/['"]driveSyncStateChanged['"]/);
+    it('dispatches the canonical dataChanged CustomEvent', () => {
         expect(body).toMatch(/['"]dataChanged['"]/);
     });
 });

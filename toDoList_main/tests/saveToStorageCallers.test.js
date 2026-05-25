@@ -12,8 +12,9 @@
 //     path in disguise.
 //
 //   sync-safe — accepts an `opts` parameter and forwards it via
-//     `saveToStorage(opts)` so the import pipeline can pass
-//     `{ fromSync: true }` and suppress the lastLocalMutationAt bump.
+//     `saveToStorage(opts)` so reconciliation callers can pass
+//     `{ fromSync: true }` and suppress the per-row Supabase mirror
+//     writes downstream.
 //
 //   defensive-normalize — invoked from both render and mutation paths
 //     and must skip the write when no observable change occurred. Must
@@ -22,16 +23,11 @@
 //     accept an `opts` parameter so the sync-safe path forwards
 //     correctly when a real change DID occur.
 //
-// Background: the Drive import pipeline writes lastDriveSyncedAt before
-// it dispatches the data replace. If any post-replace code path calls
-// saveToStorage without forwarding the fromSync flag, the resulting
-// writeLastLocalMutationAt bump lands AFTER lastDriveSyncedAt and the
-// sync indicator reads 'ahead' even though the local state has just
-// been pulled from Drive. The same indicator-trip also fires when a
-// defensive sort runs from a render path and saves unconditionally
-// even though no data actually changed (the project-switch bug). The
-// annotation-plus-shape contract catches both failure modes at lint
-// time so the next new caller can't repeat the audit miss silently.
+// Background: a defensive sort running from a render path that saves
+// unconditionally even though no data actually changed produced the
+// project-switch bug — the annotation-plus-shape contract catches that
+// failure mode at lint time so the next new caller can't repeat the
+// audit miss silently.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

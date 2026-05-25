@@ -76,37 +76,13 @@ import {
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import { attachDragDropImport, formatRelativeExportedAt } from './exportImport.js';
-import { exportTodosToDrive } from './driveExport.js';
-import { importTodosFromDrive, queryLatestDriveFile } from './driveImport.js';
-import { getCachedAccessToken, getAccessToken, showDriveToast, OAUTH_CLIENT_ID } from './driveAuth.js';
-import {
-    armAutoSync,
-    scheduleAutoSync,
-    performAutoSync,
-    autoSyncOnAppLoad,
-    registerAutoSyncRebuild,
-    installAutoSyncBackgroundTriggers,
-    getAutoSyncState,
-    getCurrentSyncState,
-    getCachedDriveModifiedTime,
-    updateCachedDriveModifiedTime,
-} from './driveAutoSync.js';
-import { readLastDriveSyncedAt, readLastLocalMutationAt, migrateLegacyDriveSyncMarker } from './prefs.js';
+import { attachDragDropImport } from './exportImport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import button from './addProj_button.svg';
 
-
-
-// One-shot migration of the prior `todoapp_lastDriveExportedAt` localStorage
-// key to the new `todoapp_lastDriveSyncedAt` key. Runs once at app boot —
-// the helper is self-cleaning, so subsequent loads short-circuit. Existing
-// users keep the timestamp they had before; the key just changes name to
-// reflect that it now tracks the last sync in either direction.
-migrateLegacyDriveSyncMarker();
 
 
 // Apply the saved theme during import, before component() — sets data-theme
@@ -221,20 +197,12 @@ function component() {
 
     // ── ghost menu trigger (far right of nav) ──
     // Single 36px ghost icon button replaces the previous save/import/kebab
-    // cluster. Clicking it opens a dropdown with Drive Export, Drive Import,
-    // (divider), Theme, and Toggle floating ghost. The trigger itself stays
-    // anchored to the top-right; the floating-ghost companion (toggled from
-    // inside the menu) is the one that drifts around the viewport. A subtle
-    // hover-pulse animation on the trigger hints first-time users that it's
-    // clickable — see #settingsToggle keyframes in style.css.
-    //
-    // The trigger also surfaces a small cloud badge overlaid on the bottom-
-    // right of the ghost icon that reflects the current Drive sync state
-    // ('synced' / 'behind' / 'never' / 'unknown'). See refreshDriveSyncState
-    // below — it runs once on app load (silent — no OAuth popup if the user
-    // hasn't signed in this session) and again whenever the ghost menu
-    // opens. The same state drives the badge next to the DRIVE section
-    // header inside the popover menu.
+    // cluster. Clicking it opens a dropdown with Theme and Toggle floating
+    // ghost rows. The trigger itself stays anchored to the top-right; the
+    // floating-ghost companion (toggled from inside the menu) is the one
+    // that drifts around the viewport. A subtle hover-pulse animation on
+    // the trigger hints first-time users that it's clickable — see
+    // #settingsToggle keyframes in style.css.
 
     // ── pomodoro clock icon (sits left of the ghost menu trigger) ──
     // Single 36px clock icon button. Click opens a small popover with mode
@@ -1287,304 +1255,6 @@ function component() {
         '</g>' +
         '</svg>';
 
-    // Drive sync-state badge — sits as a small absolute-positioned overlay
-    // on the bottom-right of the ghost icon. Built as a separate <span>
-    // sibling rather than a child of the SVG so CSS can position it
-    // independently and swap glyphs without rewriting the whole SVG.
-    const settingsToggleSyncBadge = document.createElement('span');
-    settingsToggleSyncBadge.className = 'settingsToggleSyncBadge';
-    settingsToggleSyncBadge.setAttribute('aria-hidden', 'true');
-    settingsToggle.appendChild(settingsToggleSyncBadge);
-
-    // ── Drive sync-state indicator ──
-    //
-    // Reflects the local lastDriveSyncedAt timestamp against the latest
-    // Drive backup's modifiedTime AND the local mutation marker in five
-    // buckets:
-    //   synced   — no drift in either direction
-    //   ahead    — local edits since the last sync (push to Drive)
-    //   behind   — Drive modifiedTime is newer (another device pushed)
-    //   never    — no lastDriveSyncedAt and no Drive file
-    //   unknown  — query failed, network offline, or no cached OAuth token
-    //
-    // The diverged case (both local edits AND a newer Drive file) folds
-    // into 'behind' — this app has no conflict-resolution UI yet, so
-    // surfacing "pull first" is the conservative call.
-    //
-    // Paints two surfaces: the cloud badge overlaid on the ghost icon in
-    // the header, and the matching cloud icon next to the DRIVE section
-    // header inside the popover menu. Both surfaces share the same state.
-    let _driveSyncState = 'unknown';
-    let _driveSyncTooltip = 'Sync state unknown';
-    // The cached Drive modifiedTime is owned by driveAutoSync.js — read it
-    // through getCachedDriveModifiedTime and write only via
-    // updateCachedDriveModifiedTime. Centralising the cache keeps push and
-    // pull paths from leaving stale data behind after a successful sync.
-
-    function computeDriveSyncState(localIso, driveModifiedIso, localMutationIso) {
-        if (!driveModifiedIso) {
-            // No Drive file in evidence. With no local marker either,
-            // the user has never interacted with Drive — 'never'.
-            // Otherwise apply the localAhead branch against the synced
-            // marker so a local edit after the last sync still surfaces.
-            if (!localIso) return 'never';
-            const syncedMs = Date.parse(localIso);
-            if (isNaN(syncedMs)) return 'unknown';
-            if (localMutationIso) {
-                const mutationMs = Date.parse(localMutationIso);
-                if (!isNaN(mutationMs) && mutationMs > syncedMs) return 'ahead';
-            }
-            return 'synced';
-        }
-        if (!localIso) return 'behind';
-        const syncedMs = Date.parse(localIso);
-        const driveMs  = Date.parse(driveModifiedIso);
-        if (isNaN(syncedMs) || isNaN(driveMs)) return 'unknown';
-        const driveAhead = driveMs > syncedMs;
-        let localAhead = false;
-        if (localMutationIso) {
-            const mutationMs = Date.parse(localMutationIso);
-            if (!isNaN(mutationMs) && mutationMs > syncedMs) localAhead = true;
-        }
-        // Auto-sync introduces a fourth state: both sides have moved
-        // since the last sync. The user must resolve manually — the
-        // popover offers explicit overwrite-with-warning buttons in this
-        // state. Surfaces as red ti-cloud-x in the indicator.
-        if (localAhead && driveAhead) return 'diverged';
-        if (driveAhead) return 'behind';
-        if (localAhead) return 'ahead';
-        return 'synced';
-    }
-
-    function syncStateTooltip(state, localIso) {
-        if (state === 'synced') {
-            const rel = formatRelativeExportedAt(localIso);
-            return 'Up to date — last synced ' + rel.replace(/^Synced\s*/, '');
-        }
-        if (state === 'behind') return 'Drive is newer than local — pull to update';
-        if (state === 'ahead')  return 'Local has unsaved changes — push to Drive';
-        if (state === 'diverged') return 'Drive and this device both changed — open the menu to resolve';
-        if (state === 'failed')   return 'Auto-sync failed — open the menu to try again';
-        if (state === 'never')    return 'Not synced to Drive yet';
-        if (state === 'reauth-required') return 'Sign in again — session expired';
-        return 'Sync state unknown';
-    }
-
-    // Explicit state → Tabler-style glyph class mapping. Pulled out into a
-    // dedicated function so the routing is testable in isolation and the
-    // `ahead` case can't accidentally fall through to the failure glyph
-    // (the prior fallthrough-via-reference shape was the root cause of the
-    // 'ahead renders as failed' regression).
-    //   synced    → ti-cloud-check  (green check inside the cloud)
-    //   ahead     → ti-cloud-up     (amber up-arrow — same glyph as behind,
-    //                                tooltip differentiates the direction)
-    //   behind    → ti-cloud-up     (amber)
-    //   diverged  → ti-cloud-x      (red X inside the cloud)
-    //   failed    → ti-cloud-off    (red slashed cloud)
-    //   never     → ti-cloud-off    (muted gray — same glyph as failed,
-    //                                distinguished only by the color rule)
-    //   unknown   → ti-cloud-off    (muted gray — sibling of never)
-    function syncStateToGlyphClass(state) {
-        if (state === 'synced')   return 'ti-cloud-check';
-        if (state === 'ahead')    return 'ti-cloud-up';
-        if (state === 'behind')   return 'ti-cloud-up';
-        if (state === 'diverged') return 'ti-cloud-x';
-        if (state === 'failed')   return 'ti-cloud-off';
-        // never, unknown, and any unrecognized state share the muted
-        // cloud-off glyph — the failure-vs-never distinction is carried by
-        // the [data-sync-state] CSS color rule, not the glyph itself.
-        return 'ti-cloud-off';
-    }
-
-    // SVG glyph bodies keyed by glyph class (not by state). All sized to
-    // 12x12, single-color via currentColor so the wrapping element's color
-    // CSS rule drives the tint (green / amber / red / muted).
-    const SYNC_GLYPH_SVG = {
-        'ti-cloud-check':
-            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
-            '<polyline points="9 14 11 16 15 12"/>' +
-            '</svg>',
-        'ti-cloud-up':
-            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
-            '<polyline points="9 14 12 11 15 14"/>' +
-            '<line x1="12" y1="11" x2="12" y2="17"/>' +
-            '</svg>',
-        'ti-cloud-off':
-            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
-            '<line x1="4" y1="4" x2="20" y2="20"/>' +
-            '</svg>',
-        'ti-cloud-x':
-            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-            '<path d="M6.5 19A4.5 4.5 0 0 1 6 10a6 6 0 0 1 11.5-2 4.5 4.5 0 0 1 1 8.95"/>' +
-            '<line x1="9" y1="11" x2="15" y2="17"/>' +
-            '<line x1="15" y1="11" x2="9" y2="17"/>' +
-            '</svg>',
-    };
-
-    function paintSyncBadge(host, state) {
-        if (!host) return;
-        const glyphClass = syncStateToGlyphClass(state);
-        host.innerHTML = SYNC_GLYPH_SVG[glyphClass] || SYNC_GLYPH_SVG['ti-cloud-off'];
-        host.setAttribute('data-sync-state', state);
-        host.setAttribute('data-sync-glyph', glyphClass);
-    }
-
-    function paintAllSyncBadges() {
-        paintSyncBadge(settingsToggleSyncBadge, _driveSyncState);
-        settingsToggle.setAttribute('data-drive-sync', _driveSyncState);
-        settingsToggle.setAttribute('title',
-            _driveSyncState === 'unknown' ? 'Menu' : 'Menu — ' + _driveSyncTooltip);
-        const menuBadge = document.getElementById('settingsMenuDriveSyncBadge');
-        if (menuBadge) {
-            paintSyncBadge(menuBadge, _driveSyncState);
-            menuBadge.setAttribute('title', _driveSyncTooltip);
-        }
-        // Mobile-chrome surface: the glyph on the drawer Settings button is
-        // the equivalent of the desktop ghost-icon overlay (hidden at
-        // ≤700px). Built later in component(), so getElementById may be
-        // null during the first paint — the next setDriveSyncState tick
-        // re-paints it once the button exists.
-        const drawerBadge = document.getElementById('drawerSettingsBtnSyncBadge');
-        if (drawerBadge) {
-            paintSyncBadge(drawerBadge, _driveSyncState);
-            drawerBadge.setAttribute('title', _driveSyncTooltip);
-        }
-        // The single Sync card inside the mobile Settings modal mirrors the
-        // desktop ghost-menu Sync row — repaint it whenever the underlying
-        // state changes so it tracks live updates without needing to
-        // reopen the modal.
-        if (typeof refreshSettingsModalSyncCard === 'function') {
-            refreshSettingsModalSyncCard();
-        }
-    }
-
-    function setDriveSyncState(state, localIso) {
-        _driveSyncState = state;
-        _driveSyncTooltip = syncStateTooltip(state, localIso || readLastDriveSyncedAt());
-        paintAllSyncBadges();
-    }
-
-    // Silent Drive query — only fires when a valid in-memory OAuth token is
-    // already cached (i.e., the user signed in earlier this session via an
-    // explicit Drive action). Without a cached token the local-only branch
-    // can still surface 'ahead' (the user has clearly edited since their
-    // last sync), but we can't tell whether Drive is also newer, so the
-    // 'behind' branch is suppressed — the state lands on 'unknown'
-    // instead. The query runs on app load and on every ghost-menu open.
-    function refreshDriveSyncState() {
-        const token = getCachedAccessToken();
-        const localIso = readLastDriveSyncedAt();
-        const localMutationIso = readLastLocalMutationAt();
-        if (!token) {
-            // No cached token. The user can't actually push or pull
-            // without re-auth, so localAhead is moot — surface the recovery
-            // path directly: 'reauth-required' when there's a prior sync
-            // marker (had a session before, doesn't now), 'never' when
-            // there isn't (true first-run). Both render muted; the menu
-            // Sync row's copy carries the meaning.
-            setDriveSyncState(localIso ? 'reauth-required' : 'never', localIso);
-            return Promise.resolve();
-        }
-        return queryLatestDriveFile(token).then(function(files) {
-            const file = files && files.length ? files[0] : null;
-            updateCachedDriveModifiedTime(file && file.modifiedTime ? file.modifiedTime : null);
-            setDriveSyncState(
-                computeDriveSyncState(localIso, getCachedDriveModifiedTime(), localMutationIso),
-                localIso
-            );
-        }).catch(function() {
-            setDriveSyncState('unknown', localIso);
-        });
-    }
-
-    // Local-only recompute — fires from the `driveSyncStateChanged`
-    // CustomEvent dispatched by listLogic.saveToStorage after every
-    // mutation. Uses the cached driveModifiedTime from the most recent
-    // app-load/menu-open query, so the indicator flips to amber the
-    // instant the user edits anything without re-issuing the Drive
-    // query. `driveAhead` therefore can't get clobbered by local-edit
-    // ticks — the cached input is the most authoritative thing we have
-    // until the next menu open refreshes it.
-    function recomputeDriveSyncStateLocal() {
-        // The auto-sync loop owns 'diverged' and 'failed' — both are
-        // module-resident facts that can't be re-derived from
-        // timestamps alone. When the loop is in one of those states,
-        // surface it; otherwise compute from the marker pair as before.
-        const autoSyncState = getAutoSyncState();
-        if (autoSyncState === 'diverged' || autoSyncState === 'failed') {
-            setDriveSyncState(autoSyncState, readLastDriveSyncedAt());
-            return;
-        }
-        const localIso = readLastDriveSyncedAt();
-        const localMutationIso = readLastLocalMutationAt();
-        // Mirror refreshDriveSyncState's no-token branch — a token-less
-        // local-edit tick must keep the badge on the recovery cue
-        // ('reauth-required' / 'never') instead of optimistically flipping
-        // to 'ahead' against a Drive copy the user can't actually reach.
-        // getCachedAccessToken is an in-memory read (no network), so it
-        // doesn't violate the "no Drive query" contract this helper holds.
-        if (!getCachedAccessToken()) {
-            setDriveSyncState(localIso ? 'reauth-required' : 'never', localIso);
-            return;
-        }
-        setDriveSyncState(
-            computeDriveSyncState(localIso, getCachedDriveModifiedTime(), localMutationIso),
-            localIso
-        );
-    }
-
-    // Re-render the Sync row inline whenever the state machinery moves so
-    // an already-open menu reflects the latest label without closing.
-    document.addEventListener('driveSyncStateChanged', recomputeDriveSyncStateLocal);
-    document.addEventListener('driveSyncStateChanged', function() {
-        driveMenuRowNeedsRefresh();
-    });
-
-    // Local mutations schedule a debounced auto-sync attempt. The gate
-    // lives inside scheduleAutoSync — pre-arming mutations are no-ops, so
-    // the trigger can fire unconditionally on every mutation tick.
-    document.addEventListener('driveSyncStateChanged', function() {
-        scheduleAutoSync();
-    });
-
-    // Auto-sync state changes (push/pull complete, diverged, failed)
-    // refresh the indicator without waiting for the next mutation, and
-    // re-render the Sync row so the label flips (e.g. "syncing..." →
-    // "synced just now") while the menu is open.
-    document.addEventListener('autoSyncStateChanged', function() {
-        recomputeDriveSyncStateLocal();
-        driveMenuRowNeedsRefresh();
-    });
-
-    // A successful manual Drive Export or Import arms the auto-sync loop
-    // for the rest of the session. The signal comes via CustomEvent from
-    // driveExport.js / driveImport.js so those modules don't need to import
-    // the auto-sync module (would create a circular dependency).
-    document.addEventListener('driveManualActionSuccess', function() {
-        armAutoSync();
-        refreshDriveSyncState();
-        driveMenuRowNeedsRefresh();
-    });
-
-    // A successful OAuth grant fires this event so the Sync row's label can
-    // flip out of the 'not connected' wording even before the first sync
-    // attempt resolves.
-    document.addEventListener('driveConnectionChanged', function() {
-        driveMenuRowNeedsRefresh();
-    });
-
-    // Initial paint reflects the local-only snapshot — no Drive file
-    // information yet, so the state lands on 'never' (no local timestamp)
-    // or 'unknown' (local timestamp from a prior session but no cached
-    // token to verify Drive against).
-    setDriveSyncState(
-        readLastDriveSyncedAt() ? 'unknown' : 'never',
-        readLastDriveSyncedAt()
-    );
-
     // When the no-projects empty state is showing, its Create button is the
     // single keyboard affordance on the page (Enter creates the first
     // project). Returning focus to settingsToggle after the menu closes
@@ -1709,378 +1379,10 @@ function component() {
         return divider;
     }
 
-    // Compute the inline label string for the single Sync row, given the
-    // resolved sync-state from getCurrentSyncState. The textual contract
-    // ('synced just now' / '5 minutes ago' / 'local has unsaved changes' /
-    // …) is the public surface the user reads — keep it stable so the
-    // state→label tests pin it.
-    function computeDriveSyncLabel(state) {
-        if (state === 'syncing-push' || state === 'syncing-pull') {
-            return 'Sync • syncing…';
-        }
-        if (state === 'synced') {
-            const iso = readLastDriveSyncedAt();
-            if (!iso) return 'Sync • synced';
-            const rel = formatRelativeExportedAt(iso);
-            // formatRelativeExportedAt returns "Synced just now" / "Synced 5
-            // minutes ago". For the just-now case keep the word ("synced
-            // just now"); for older marks drop the "Synced" prefix so the
-            // pill reads "5 minutes ago".
-            if (rel === 'Synced just now') return 'Sync • synced just now';
-            return 'Sync • ' + rel.replace(/^Synced\s*/, '');
-        }
-        if (state === 'ahead')    return 'Sync • local has unsaved changes';
-        if (state === 'behind')   return 'Sync • Drive is newer';
-        if (state === 'diverged') return 'Sync • conflict — tap to resolve';
-        if (state === 'failed')   return 'Sync • failed — tap to retry';
-        if (state === 'reauth-required') return 'Sync • sign in again';
-        return 'Sync • not connected';
-    }
-
-    // Dispatch the click action based on the resolved sync state. The
-    // state→action table is the public contract pinned by driveSyncMenuRow
-    // tests: synced/ahead/behind → performAutoSync; failed → arm + perform;
-    // diverged → conflict popover; never → OAuth + arm + perform; in-flight
-    // → no-op (the row is disabled, this branch is defensive only).
-    function onDriveSyncClick(state) {
-        if (state === 'syncing-push' || state === 'syncing-pull') return;
-
-        if (state === 'diverged') {
-            openDriveConflictPopover();
-            return;
-        }
-
-        if (state === 'never' || state === 'reauth-required') {
-            if (!OAUTH_CLIENT_ID) {
-                showDriveToast({
-                    label: 'Drive sign-in not configured for this build.',
-                    error: true,
-                });
-                return;
-            }
-            getAccessToken().then(function() {
-                armAutoSync();
-                performAutoSync();
-                if (typeof document !== 'undefined' && document.dispatchEvent) {
-                    try {
-                        document.dispatchEvent(new CustomEvent('driveConnectionChanged', {
-                            detail: { connected: true },
-                        }));
-                        document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
-                    } catch (_) { /* CustomEvent unsupported — silent */ }
-                }
-                refreshDriveSyncState();
-                driveMenuRowNeedsRefresh();
-            }).catch(function(err) {
-                const message = (err && err.message) || '';
-                const cancelled = /denied|cancel|popup_closed/i.test(message);
-                showDriveToast({
-                    label: cancelled
-                        ? 'Drive sign-in cancelled.'
-                        : "Couldn't sign in to Drive — try again.",
-                    error: true,
-                });
-                driveMenuRowNeedsRefresh();
-            });
-            return;
-        }
-
-        if (state === 'failed') {
-            // armAutoSync resets failed → idle so performAutoSync's armed
-            // gate passes on this retry tick.
-            armAutoSync();
-            performAutoSync();
-            return;
-        }
-
-        // synced / ahead / behind all route through the same auto-sync
-        // entry point — the decision tree inside performAutoSync re-queries
-        // Drive and picks push / pull / noop on its own.
-        performAutoSync();
-    }
-
-    // Build the single Drive Sync row. Reads the resolved sync state and
-    // wires a state-specific label + click handler. In-flight states
-    // produce a dimmed, non-clickable row (no listener attached); the
-    // existing body.driveExportInProgress / body.driveImportInProgress
-    // class hooks drive the dim styling.
-    function buildDriveSyncRow() {
-        const state = getCurrentSyncState({
-            driveModifiedIso: getCachedDriveModifiedTime(),
-            hasToken: !!getCachedAccessToken(),
-        });
-
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.id = 'settingsMenuDriveSync';
-        item.className = 'settingsMenuItem settingsMenuItem--driveSync';
-        item.setAttribute('role', 'menuitem');
-        item.setAttribute('data-sync-state', state);
-
-        const label = document.createElement('span');
-        label.className = 'settingsMenuItemLabel';
-        label.textContent = computeDriveSyncLabel(state);
-
-        const stateSpan = document.createElement('span');
-        stateSpan.className = 'settingsMenuItemState';
-        stateSpan.style.display = 'none';
-
-        item.appendChild(label);
-        item.appendChild(stateSpan);
-
-        const inFlight = state === 'syncing-push' || state === 'syncing-pull';
-        if (inFlight) {
-            item.disabled = true;
-            item.setAttribute('aria-disabled', 'true');
-        } else {
-            item.addEventListener('click', function() {
-                onDriveSyncClick(state);
-            });
-        }
-        return item;
-    }
-
-    // Swap the Sync row's DOM node in place so the label reflects every
-    // state flip while the menu is open (e.g. the user opens the menu mid-
-    // sync and watches the label change from "syncing..." → "synced just
-    // now"). Safe to call when the menu is closed (no-op).
-    function driveMenuRowNeedsRefresh() {
-        const old = document.getElementById('settingsMenuDriveSync');
-        if (!old || !old.parentNode) return;
-        old.parentNode.replaceChild(buildDriveSyncRow(), old);
-    }
-
-    // Verb shown on the single mobile Sync card. Most states surface
-    // "Sync" — the row itself is the affordance; the sublabel carries the
-    // status detail. "Connect" replaces "Sync" in the `never` state so
-    // the first-time entry point reads as the call-to-action it is, and
-    // "Syncing…" replaces it while an upload or download is in flight.
-    function computeSettingsModalDriveSyncVerb(state) {
-        if (state === 'syncing-push' || state === 'syncing-pull') return 'Syncing…';
-        if (state === 'never') return 'Connect';
-        return 'Sync';
-    }
-
-    // Sublabel shown beneath the verb on the mobile Sync card. The
-    // synced/ahead/behind/diverged/failed/never/in-flight states match
-    // the spec table in the TODO entry — the `synced` branch folds in
-    // what used to be the standalone "LAST DRIVE: X AGO" caption row.
-    function computeSettingsModalDriveSyncSubLabel(state) {
-        if (state === 'syncing-push' || state === 'syncing-pull') return 'syncing to Drive';
-        if (state === 'never')    return 'Sign in to Drive';
-        if (state === 'reauth-required') return 'Sign in again — session expired';
-        if (state === 'ahead')    return 'Local has unsaved changes';
-        if (state === 'behind')   return 'Drive is newer';
-        if (state === 'diverged') return 'Conflict — tap to resolve';
-        if (state === 'failed')   return 'Sync failed — tap to retry';
-        // synced
-        const iso = readLastDriveSyncedAt();
-        if (!iso) return 'Synced';
-        // formatRelativeExportedAt returns "Synced just now" / "Synced 5
-        // minutes ago" — already a complete user-facing phrase, so we
-        // surface it verbatim instead of building a parallel string.
-        return formatRelativeExportedAt(iso);
-    }
-
-    // Build the single state-aware Sync card mounted inside the mobile
-    // Settings modal's Data section. Replaces the prior 2-tile grid
-    // (Drive Export / Drive Import) plus the standalone LAST DRIVE
-    // caption line. Reuses the existing .settingsModalDataTile chrome so
-    // the section reads as a single-card variant of the prior 2-tile
-    // layout — same padding, icon-above-label stacking, tap-target
-    // sizing — only the content is state-driven. Carries the
-    // settingsModalDataTile--driveSync anchor class so the existing
-    // body.driveExportInProgress / body.driveImportInProgress hooks dim
-    // it during in-flight uploads/downloads, matching the desktop Sync
-    // row's behavior.
-    function buildSettingsModalDriveSyncCard() {
-        const state = getCurrentSyncState({
-            driveModifiedIso: getCachedDriveModifiedTime(),
-            hasToken: !!getCachedAccessToken(),
-        });
-        const tile = document.createElement('button');
-        tile.type = 'button';
-        tile.id = 'settingsModalDriveSyncCard';
-        tile.className = 'settingsModalDataTile settingsModalDataTile--driveSync';
-        tile.setAttribute('data-sync-state', state);
-
-        const inFlight = state === 'syncing-push' || state === 'syncing-pull';
-        const glyphClass = syncStateToGlyphClass(state);
-
-        const icon = document.createElement('span');
-        icon.className = 'settingsModalDataTileIcon settingsModalDataTileIcon--driveSync';
-        if (inFlight) {
-            icon.className += ' settingsModalDataTileIcon--spinning';
-        }
-        icon.setAttribute('aria-hidden', 'true');
-        icon.setAttribute('data-sync-glyph', glyphClass);
-        icon.innerHTML = SYNC_GLYPH_SVG[glyphClass] || SYNC_GLYPH_SVG['ti-cloud-off'];
-
-        const verb = document.createElement('span');
-        verb.className = 'settingsModalDataTileVerb';
-        verb.textContent = computeSettingsModalDriveSyncVerb(state);
-
-        const sub = document.createElement('span');
-        sub.className = 'settingsModalDataTileSub';
-        sub.textContent = computeSettingsModalDriveSyncSubLabel(state);
-
-        tile.appendChild(icon);
-        tile.appendChild(verb);
-        tile.appendChild(sub);
-
-        if (inFlight) {
-            tile.disabled = true;
-            tile.setAttribute('aria-disabled', 'true');
-        } else {
-            tile.addEventListener('click', function() {
-                onDriveSyncClick(state);
-            });
-        }
-        return tile;
-    }
-
-    // Swap the mobile Sync card in place so the label/icon/sublabel
-    // reflect every state flip while the modal is open. Mirrors
-    // driveMenuRowNeedsRefresh for the desktop ghost-menu Sync row, and
-    // safely no-ops when the modal is closed (no card element in DOM).
-    function refreshSettingsModalSyncCard() {
-        const old = document.getElementById('settingsModalDriveSyncCard');
-        if (!old || !old.parentNode) return;
-        old.parentNode.replaceChild(buildSettingsModalDriveSyncCard(), old);
-    }
-
-    // Diverged conflict popover. Surfaces only when the Sync row is clicked
-    // in 'diverged' state, offering the two destructive overwrite paths
-    // (push or pull) the previous menu rows surfaced permanently. Follows
-    // the standard 3-way dismissal pattern from CLAUDE.md: an explicit
-    // close button, backdrop click, and Escape.
-    function openDriveConflictPopover() {
-        // Defensive: never stack two backdrops.
-        const prior = document.getElementById('driveConflictBackdrop');
-        if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
-
-        const backdrop = document.createElement('div');
-        backdrop.id = 'driveConflictBackdrop';
-
-        const dialog = document.createElement('div');
-        dialog.id = 'driveConflictPopover';
-        dialog.setAttribute('role', 'dialog');
-        dialog.setAttribute('aria-modal', 'true');
-        dialog.setAttribute('aria-labelledby', 'driveConflictTitle');
-
-        const header = document.createElement('div');
-        header.id = 'driveConflictHeader';
-
-        const title = document.createElement('div');
-        title.id = 'driveConflictTitle';
-        title.textContent = 'Drive sync conflict';
-
-        const closeX = document.createElement('button');
-        closeX.id = 'driveConflictClose';
-        closeX.type = 'button';
-        closeX.setAttribute('aria-label', 'Close');
-        closeX.textContent = '×';
-
-        header.appendChild(title);
-        header.appendChild(closeX);
-
-        const body = document.createElement('div');
-        body.id = 'driveConflictBody';
-        body.textContent = 'Drive and this device both changed since the last sync. Pick the version to keep — the other side will be overwritten.';
-
-        const actions = document.createElement('div');
-        actions.id = 'driveConflictActions';
-
-        const pushBtn = document.createElement('button');
-        pushBtn.type = 'button';
-        pushBtn.id = 'driveConflictPush';
-        pushBtn.className = 'driveConflictAction';
-        pushBtn.textContent = 'Push to Drive (overwrite Drive copy)';
-
-        const pullBtn = document.createElement('button');
-        pullBtn.type = 'button';
-        pullBtn.id = 'driveConflictPull';
-        pullBtn.className = 'driveConflictAction';
-        pullBtn.textContent = 'Pull from Drive (overwrite local)';
-
-        actions.appendChild(pushBtn);
-        actions.appendChild(pullBtn);
-
-        dialog.appendChild(header);
-        dialog.appendChild(body);
-        dialog.appendChild(actions);
-        backdrop.appendChild(dialog);
-        document.body.appendChild(backdrop);
-
-        let closed = false;
-        function close() {
-            if (closed) return;
-            closed = true;
-            document.removeEventListener('keydown', onKeydown, true);
-            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-        }
-        function onKeydown(event) {
-            if (event.key === 'Escape') {
-                event.stopPropagation();
-                close();
-            }
-        }
-
-        closeX.addEventListener('click', close);
-        backdrop.addEventListener('click', function(event) {
-            if (event.target === backdrop) close();
-        });
-        document.addEventListener('keydown', onKeydown, true);
-
-        pushBtn.addEventListener('click', function() {
-            close();
-            exportTodosToDrive();
-        });
-        pullBtn.addEventListener('click', function() {
-            close();
-            importTodosFromDrive(function() { rebuildAfterImport(); });
-        });
-
-        pushBtn.focus();
-    }
-
     function showSettingsMenu() {
         const menu = document.createElement('div');
         menu.id = 'settingsMenu';
         menu.setAttribute('role', 'menu');
-
-        // DRIVE section — exports/imports that round-trip through the
-        // user's Google Drive via OAuth (drive.file scope). The section
-        // heading carries a small sync-state badge that mirrors the badge
-        // on the ghost icon, so the user can see at a glance whether
-        // their local copy is in sync with Drive at the moment of action.
-        const driveHeading = document.createElement('div');
-        driveHeading.className = 'settingsMenuSectionHeading';
-        driveHeading.setAttribute('role', 'presentation');
-
-        const driveHeadingLabel = document.createElement('span');
-        driveHeadingLabel.className = 'settingsMenuSectionHeadingLabel';
-        driveHeadingLabel.textContent = 'Drive';
-
-        const driveHeadingBadge = document.createElement('span');
-        driveHeadingBadge.id = 'settingsMenuDriveSyncBadge';
-        driveHeadingBadge.className = 'settingsMenuDriveSyncBadge';
-        driveHeadingBadge.setAttribute('aria-hidden', 'true');
-
-        driveHeading.appendChild(driveHeadingLabel);
-        driveHeading.appendChild(driveHeadingBadge);
-        menu.appendChild(driveHeading);
-
-        // Single state-aware Sync row. Replaces the previous five-row block
-        // (Connect to Drive, Export, Import, Push to Drive overwrite, Pull
-        // from Drive overwrite). The row's label + click handler are derived
-        // from getCurrentSyncState: synced/ahead/behind/failed all route
-        // through performAutoSync (which picks push vs pull on its own),
-        // diverged opens the conflict popover, never runs OAuth then arms
-        // the loop, and in-flight states render the row dimmed + disabled.
-        menu.appendChild(buildDriveSyncRow());
-
-        menu.appendChild(buildSettingsMenuDivider());
 
         // Theme — flips light ↔ dark and persists. Mirrors the inline toggle
         // logic that previously lived in theme.js's createThemeToggleButton:
@@ -2180,11 +1482,10 @@ function component() {
         menu.appendChild(helpItem);
 
         // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
-        // the DRIVE / HELP section pattern: a divider + small heading
-        // followed by the row(s). Tap calls supabase.auth.signOut; the
-        // app-level onAuthStateChange listener installed in index.js
-        // takes care of re-rendering the magic-link modal once the
-        // session clears.
+        // the HELP section pattern: a divider + small heading followed by
+        // the row(s). Tap calls supabase.auth.signOut; the app-level
+        // onAuthStateChange listener installed in index.js takes care of
+        // re-rendering the magic-link modal once the session clears.
         menu.appendChild(buildSettingsMenuDivider());
         const accountHeading = document.createElement('div');
         accountHeading.className = 'settingsMenuSectionHeading';
@@ -2203,13 +1504,6 @@ function component() {
         menu.appendChild(signOutItem);
 
         document.body.appendChild(menu);
-
-        // Paint the DRIVE section header badge to reflect the current
-        // cached sync state. The async refresh below may overwrite it
-        // once Drive responds, but the initial paint keeps the badge from
-        // flashing empty in the gap.
-        paintAllSyncBadges();
-        refreshDriveSyncState();
 
         // Anchor the menu beneath the trigger, right-aligned with it. Clamp
         // to the viewport so the menu always renders fully on-screen.
@@ -4040,21 +3334,10 @@ function component() {
     drawerSettingsBtn.setAttribute('aria-haspopup', 'dialog');
     drawerSettingsBtn.setAttribute('aria-expanded', 'false');
 
-    // Persistent mobile-chrome surface for the Drive sync-state glyph —
-    // mirrors the cloud badge overlaid on the desktop ghost icon. The
-    // desktop ghost icon is hidden at ≤700px (display: none), so the
-    // mobile equivalent lives on the gear/settings entry point so users
-    // see the sync state at a glance without opening the Settings modal.
     const drawerSettingsBtnLabel = document.createElement('span');
     drawerSettingsBtnLabel.className = 'drawerSettingsBtnLabel';
     drawerSettingsBtnLabel.textContent = 'Settings';
     drawerSettingsBtn.appendChild(drawerSettingsBtnLabel);
-
-    const drawerSettingsBtnSyncBadge = document.createElement('span');
-    drawerSettingsBtnSyncBadge.id = 'drawerSettingsBtnSyncBadge';
-    drawerSettingsBtnSyncBadge.className = 'drawerSettingsBtnSyncBadge';
-    drawerSettingsBtnSyncBadge.setAttribute('aria-hidden', 'true');
-    drawerSettingsBtn.appendChild(drawerSettingsBtnSyncBadge);
 
     // Mobile-chrome service-worker update cue — the desktop footer's
     // #footVersion dot is hidden at ≤700px, so the mobile gear/settings
@@ -4154,29 +3437,6 @@ function component() {
         const body = document.createElement('div');
         body.id = 'settingsModalBody';
 
-        // Data section — first in the modal so the Drive sync action is
-        // reachable on mobile, where the desktop ghost menu that houses
-        // the same surface is hidden by the ≤700px breakpoint. A single
-        // state-aware Sync card replaces the prior 2-tile grid (Drive
-        // Export / Drive Import) plus the standalone "LAST DRIVE: X AGO"
-        // caption. Auto-sync handles push/pull on its own; the diverged
-        // conflict path opens the same popover the desktop Sync row
-        // opens. The card re-renders in place on every
-        // driveSyncStateChanged / driveConnectionChanged tick so the
-        // surface tracks live state without requiring a modal reopen.
-        const dataSection = document.createElement('section');
-        dataSection.id = 'settingsDataSection';
-        dataSection.className = 'settingsSection';
-        const dataHeading = document.createElement('div');
-        dataHeading.className = 'settingsSectionHeading';
-        dataHeading.textContent = 'Data';
-        dataSection.appendChild(dataHeading);
-
-        const dataGrid = document.createElement('div');
-        dataGrid.className = 'settingsModalDataGrid';
-        dataGrid.appendChild(buildSettingsModalDriveSyncCard());
-        dataSection.appendChild(dataGrid);
-
         const viewSection = document.createElement('section');
         viewSection.id = 'settingsViewSection';
         viewSection.className = 'settingsSection';
@@ -4263,10 +3523,10 @@ function component() {
         helpSection.appendChild(replayRow);
 
         // Account section — Phase 4 auth gate's sign-out exit. Mirrors
-        // the DRIVE / HELP / About section pattern at the same heading
-        // typography so the row chrome reads consistently. Tap closes
-        // the modal first so the auth modal lands on a clean surface
-        // when the app-level onAuthStateChange listener re-renders it.
+        // the HELP / About section pattern at the same heading typography
+        // so the row chrome reads consistently. Tap closes the modal first
+        // so the auth modal lands on a clean surface when the app-level
+        // onAuthStateChange listener re-renders it.
         const accountSection = document.createElement('section');
         accountSection.id = 'settingsAccountSection';
         accountSection.className = 'settingsSection';
@@ -4280,7 +3540,6 @@ function component() {
         });
         accountSection.appendChild(signOutRow);
 
-        body.appendChild(dataSection);
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
         body.appendChild(aboutSection);
@@ -4296,22 +3555,12 @@ function component() {
         closeX.focus();
         drawerSettingsBtn.setAttribute('aria-expanded', 'true');
 
-        // Live-update the Sync card while the modal is open. Mirrors the
-        // listeners desktop's ghost-menu Sync row already registers. The
-        // teardown happens inside close() so the listeners can't leak
-        // across multiple open/close cycles. Defined as named handlers
-        // so removeEventListener can match against the exact reference.
-        function onDriveSyncStateChangedForModal() {
-            refreshSettingsModalSyncCard();
-        }
-        function onDriveConnectionChangedForModal() {
-            refreshSettingsModalSyncCard();
-        }
+        // Keep the About-section version row's update cue in sync while
+        // the modal is open. The handler reference is held so close() can
+        // remove it without leaking across reopen cycles.
         function onAppUpdateAvailableForModal() {
             paintAboutVersionUpdateCue(versionRow);
         }
-        document.addEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
-        document.addEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
         document.addEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
 
         let closed = false;
@@ -4319,8 +3568,6 @@ function component() {
             if (closed) return;
             closed = true;
             document.removeEventListener('keydown', onKeydown, true);
-            document.removeEventListener('driveSyncStateChanged', onDriveSyncStateChangedForModal);
-            document.removeEventListener('driveConnectionChanged', onDriveConnectionChangedForModal);
             document.removeEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
             if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
             drawerSettingsBtn.setAttribute('aria-expanded', 'false');
@@ -5941,37 +5188,13 @@ function component() {
     // exist before the class can be toggled.
     setTimeout(applyCompanionGhostPreference, 0);
 
-    // Register the host rebuild hook so the auto-sync module's pull
-    // branch can redraw the UI after the silent import commits.
-    registerAutoSyncRebuild(rebuildAfterImport);
-
     // Window-level drag-and-drop import. Dropping a .json file anywhere on
     // the page routes through the same parse → validate → confirm → replace
-    // pipeline as the file picker and the Drive pull, with rebuildAfterImport
-    // as the post-replace UI redraw. Pointer-coarse devices skip the
-    // listeners entirely (the function early-returns).
+    // pipeline as the file picker, with rebuildAfterImport as the
+    // post-replace UI redraw. Pointer-coarse devices skip the listeners
+    // entirely (the function early-returns).
     attachDragDropImport(rebuildAfterImport);
 
-    // Install the background sync triggers — visibilitychange, focus, and a
-    // 60s visible-tab interval poll — so a tab left open notices when
-    // another device has pushed a fresh version to Drive. All three are
-    // gated on getCachedAccessToken() being non-null, so they never open an
-    // OAuth popup; with no cached token they're silent no-ops.
-    installAutoSyncBackgroundTriggers();
-
-    // Boot-time Drive arming + state probe. autoSyncOnAppLoad attempts a
-    // silent re-auth via GIS (prompt: 'none') — if the user has a valid
-    // prior grant on this browser, the cached token is established here
-    // and the indicator paints green within a few hundred ms of load with
-    // zero clicks. If silent re-auth fails (no prior grant, expired,
-    // signed out, offline), it resolves quietly with no toast or console
-    // error. Either way, refreshDriveSyncState runs afterward to paint
-    // the indicator from whatever state landed.
-    // TEMP: disabled during Phase 4–6 backend work — Drive is being removed
-    // setTimeout(function() {
-    //      autoSyncOnAppLoad().catch(function() { /* silent — auth failure ... */ })
-    //          .then(function() { refreshDriveSyncState(); });
-    // }, 0);
     return base;
 
 };
@@ -5984,10 +5207,8 @@ function component() {
 // and accent logic still runs.
 //
 // Passes { fromSync: true } through restoreFromStorage so the post-import
-// per-project sort that addToDos_restore triggers doesn't bump the local
-// mutation marker past the just-written lastDriveSyncedAt and leave the
-// Drive sync indicator stuck on 'ahead'. Boot-time restoreFromStorage()
-// (no opts) keeps its existing behaviour of stamping the marker.
+// per-project sort that addToDos_restore triggers flags itself as
+// reconciliation work and skips per-row Supabase mirror writes.
 //
 // Also passes { deferSave: true } so the per-project sort runs in memory
 // but skips its own storage write — replaceAllProjects already sorted
@@ -6106,10 +5327,9 @@ function collapseAllDescriptions() {
 // so that getElementById calls resolve against the live DOM.
 //
 // `opts.fromSync: true` is threaded through to the auto-selected project's
-// addToDos_restore call so the per-project sort that fires there doesn't
-// bump the local mutation marker past the just-written lastDriveSyncedAt
-// during a post-Drive-import rebuild. The user-triggered re-render paths
-// reached later (project click, rename commit) keep their existing
+// addToDos_restore call so the per-project sort fires as reconciliation
+// work and skips its Supabase mirror writes. The user-triggered re-render
+// paths reached later (project click, rename commit) keep their existing
 // behaviour because they don't read opts.
 function restoreFromStorage(opts) {
 

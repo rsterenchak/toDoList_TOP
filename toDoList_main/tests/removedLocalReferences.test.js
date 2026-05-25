@@ -1,13 +1,12 @@
 // Lint-style static scan: the LOCAL JSON export / import path was removed
 // in an earlier PR, but its helper functions were called from several
-// sites that survived the cull. The first time anyone ran Drive import on
-// a build after the removal, `rebuildAfterImport` threw a ReferenceError
-// on `refreshStaleHint`, which stranded the post-import sync marker and
-// left the Drive sync indicator stuck on amber forever.
+// sites that survived the cull. The original symptom was a
+// ReferenceError on `refreshStaleHint` from inside the post-import
+// rebuild path.
 //
 // To prevent the same class of regression, this file scans the source
-// files that wire Drive sync (main.js, exportImport.js, driveExport.js)
-// and fails CI if any of the removed-LOCAL helper names appear there. A
+// files that wire JSON import/export (main.js, exportImport.js) and
+// fails CI if any of the removed-LOCAL helper names appear there. A
 // future contributor reaching for these helpers will see this test fail
 // before the bug ships.
 
@@ -26,7 +25,7 @@ const GHOST_HELPERS = [
     'writeLastExportedAt',
 ];
 
-const SCANNED_FILES = ['main.js', 'exportImport.js', 'driveExport.js'];
+const SCANNED_FILES = ['main.js', 'exportImport.js'];
 
 
 describe('removed LOCAL helpers — static scan', () => {

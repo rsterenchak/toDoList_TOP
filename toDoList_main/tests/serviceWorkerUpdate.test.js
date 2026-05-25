@@ -258,9 +258,8 @@ describe('mobile update cue — src/main.js wiring', () => {
         });
 
         it('refreshes the .hasUpdate class on the Settings button when appUpdateAvailable fires', () => {
-            // Mirrors the driveSyncStateChanged event pattern the mobile
-            // Sync card uses — a top-level listener that re-paints the
-            // mobile-chrome surface whenever the underlying state flips.
+            // Top-level event listener pattern: re-paint the mobile-chrome
+            // surface whenever the underlying state flips.
             expect(main).toMatch(
                 /document\.addEventListener\(\s*['"]appUpdateAvailable['"]\s*,\s*refreshDrawerSettingsBtnUpdateCue\s*\)/
             );
