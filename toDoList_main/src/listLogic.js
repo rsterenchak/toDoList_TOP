@@ -1927,6 +1927,13 @@ export const listLogic = (function () {
         }
     }
 
+    // Single-flight guard: after magic-link sign-in, hydrateFromSupabase
+    // is invoked twice in the same tick — once by the initial boot path
+    // and once by the SIGNED_IN auth listener — and the overlap can wipe
+    // the sidebar mid-merge. A subsequent (non-overlapping) call still
+    // runs, because `finally` releases the flag.
+    let hydrationInFlight = false;
+
     // Reconcile the offline cache against Supabase. Runs once after the
     // auth gate confirms a session. Strategy:
     //   • Pull all of the user's projects + todos from Supabase
@@ -1940,6 +1947,8 @@ export const listLogic = (function () {
     // items array via sortCompletedInPlace — they never round-trip
     // through Supabase (the filter is inside persistMutation).
     async function hydrateFromSupabase() {
+        if (hydrationInFlight) return;
+        hydrationInFlight = true;
         console.log('[hydrateFromSupabase] called');
         try {
             const sessionResult = await supabase.auth.getSession();
@@ -2077,6 +2086,8 @@ export const listLogic = (function () {
             }
         } catch (e) {
             console.warn('[hydrateFromSupabase] failed:', e);
+        } finally {
+            hydrationInFlight = false;
         }
     }
 
