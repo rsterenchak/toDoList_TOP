@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-25',
         fixed: [
-            "Recurring-task stats drawer's recency-strip caption and date labels now stay inside the drawer's border on narrow phones.",
             "Recurring-task stats now open in a full-screen modal on narrow phones, with the full contributions grid rendered at desktop size instead of a squeezed recency strip.",
             "Mobile todo rows hide the check-off square so titles get more horizontal room — swipe right to complete still works.",
             "Mobile todo rows now have wider screen-edge gutters so titles don't hug the viewport, with task titles slightly compacted on narrow phones to keep room for text.",
             "Mobile todo rows now show due dates as a single color-coded calendar icon — red overdue, amber due soon, purple future, gray unset — freeing horizontal room for the task title; tap the icon to open the date picker.",
+            "Mobile todo rows hide the description chevron so titles get more horizontal room — tapping the row still opens the description.",
         ],
     },
 ];
