@@ -1940,6 +1940,7 @@ export const listLogic = (function () {
     // items array via sortCompletedInPlace — they never round-trip
     // through Supabase (the filter is inside persistMutation).
     async function hydrateFromSupabase() {
+        console.log('[hydrateFromSupabase] called');
         try {
             const sessionResult = await supabase.auth.getSession();
             const session = sessionResult
@@ -2070,6 +2071,7 @@ export const listLogic = (function () {
 
             if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
                 try {
+                    console.log('[hydrateFromSupabase] dispatching listLogicHydrated event');
                     document.dispatchEvent(new CustomEvent('listLogicHydrated'));
                 } catch (_) { /* ignore */ }
             }

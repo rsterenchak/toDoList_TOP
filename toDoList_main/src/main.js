@@ -6054,6 +6054,7 @@ export { component, restoreFromStorage, notifyUpdateAvailable };
 // in sync with the renderer.
 if (typeof document !== 'undefined') {
     document.addEventListener('listLogicHydrated', function onHydrate() {
+        console.log('[main.js] listLogicHydrated listener fired');
         const sideMaDiv = document.getElementById('sideMa');
         const mainListDiv = document.getElementById('mainList');
         if (sideMaDiv) {
