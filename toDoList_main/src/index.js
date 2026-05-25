@@ -7,6 +7,7 @@ import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
+import { maybeMigrateLocalToSupabase } from './migration.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
@@ -24,7 +25,7 @@ document.body.appendChild(component()); // build and attach DOM
 // route data through Supabase, and Phase 6 will migrate the local
 // snapshot to the backend.
 let booted = false;
-function bootApp() {
+function bootApp(userId) {
     if (booted) return;
     booted = true;
     restoreFromStorage();              // now that DOM is live, restore saved projects
@@ -36,6 +37,12 @@ function bootApp() {
     // restoreFromStorage.
     maybeStartFirstRunCarousel();
 
+    // Phase 6: one-shot per-user migration of pre-auth localStorage data
+    // up to Supabase. Marker-gated so subsequent sign-ins on the same
+    // device are a no-op. Sequence is migrate → hydrate → render so the
+    // freshly-uploaded rows are read back through the normal reconciliation
+    // path and the UI re-renders from a single canonical source.
+    //
     // Phase 5: with the offline cache rendered, reconcile against
     // Supabase in the background. The hydrate call awaits the
     // projects + todos pull, picks last-write-wins on `updated_at`
@@ -46,19 +53,21 @@ function bootApp() {
     // UI without a refresh. Errors inside hydrate already get
     // console.warn'd; the .catch() here is belt-and-suspenders so
     // an unexpected rejection can't take down the page load.
-    listLogic.hydrateFromSupabase()
-        .then(function() {
-            listLogic.subscribeToRealtime();
-        })
+    const migratePromise = userId
+        ? maybeMigrateLocalToSupabase(userId)
+        : Promise.resolve();
+    migratePromise
+        .then(function() { return listLogic.hydrateFromSupabase(); })
+        .then(function() { listLogic.subscribeToRealtime(); })
         .catch(function(e) {
-            console.warn('[bootApp] hydrate/subscribe failed:', e);
+            console.warn('[bootApp] migrate/hydrate/subscribe failed:', e);
         });
 }
 
 supabase.auth.getSession().then(function(result) {
     const session = result && result.data && result.data.session;
     if (session) {
-        bootApp();
+        bootApp(session.user && session.user.id);
     } else {
         showAuthModal();
     }
@@ -73,7 +82,7 @@ supabase.auth.getSession().then(function(result) {
 supabase.auth.onAuthStateChange(function(_event, session) {
     if (session) {
         hideAuthModal();
-        bootApp();
+        bootApp(session.user && session.user.id);
     } else {
         // Sign-out (or initial-load with no session). Re-render the
         // modal so the chrome behind it stays gated, and let

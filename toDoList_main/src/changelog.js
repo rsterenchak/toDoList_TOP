@@ -11,13 +11,7 @@ export const changelog = [
             "Sign-in now reliably keeps the freshly loaded sidebar visible on every device, closing a remaining edge case that could blank it out.",
             "The browser console no longer prints hydration debug messages on every sign-in.",
             "Editing an existing todo's title now saves to the cloud — previously the change only persisted locally and could revert on the next refresh.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-24',
-        fixed: [
-            "Long todo titles on mobile no longer get clipped when the row is tapped open — the row now grows to fit the wrapped title.",
+            "First sign-in on a device now uploads your existing local projects to the cloud, and signing out clears the local copy so a shared device can't leak data between users.",
         ],
     },
 ];
