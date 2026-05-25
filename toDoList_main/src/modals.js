@@ -774,6 +774,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('helpModalBackdrop')      ||
         document.getElementById('settingsModalBackdrop')  ||
         document.getElementById('missedDatesModalBackdrop') ||
+        document.getElementById('statsModalBackdrop')     ||
         document.getElementById('authModalBackdrop')      ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
