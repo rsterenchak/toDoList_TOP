@@ -1,6 +1,6 @@
 import './style.css';
 import { toDo } from './toDo.js';
-import { isSampleSeeded, setSampleSeeded, writeLastLocalMutationAt } from './prefs.js';
+import { isSampleSeeded, setSampleSeeded } from './prefs.js';
 import { supabase } from './supabaseClient.js';
 
 
@@ -138,34 +138,18 @@ export const listLogic = (function () {
     // HELPER: persist current state of allProjects to localStorage. This is
     // the single funnel every mutation routes through — adds, removes,
     // edits, completion toggles, reorders, recurrence config, project
-    // colors, sort fixups, and the bulk replace path. Stamp the local
-    // mutation marker here so the Drive sync indicator can spot
-    // "local state has drifted ahead of the last sync" without each call
-    // site having to remember to write it, then signal the indicator's
-    // render loop so it can flip to amber the instant the user edits
-    // anything (no network, just two localStorage reads + a Number
-    // compare in the listener).
+    // colors, sort fixups, and the bulk replace path.
     //
-    // `opts.fromSync: true` suppresses the lastLocalMutationAt bump. The
-    // Drive import pipeline passes this so a restore — which replaces the
-    // data model as a side effect of syncing FROM Drive — doesn't push
-    // the mutation marker past the just-written lastDriveSyncedAt and
-    // leave the indicator stuck on 'ahead'. Storage still persists and
-    // the recompute event still dispatches; only the mutation timestamp
-    // is held.
-    function saveToStorage(opts) {
+    // Accepts an unused `opts` so the sync-safe and defensive-normalize
+    // callers can keep their `saveToStorage(opts)` forwarding shape (the
+    // saveToStorageCallers lint contract). The fromSync flag is interpreted
+    // by callers' persistMutation gates, not here.
+    function saveToStorage(_opts) {
         localStorage.setItem('allProjects', JSON.stringify(allProjects));
-        if (!(opts && opts.fromSync === true)) {
-            writeLastLocalMutationAt(new Date().toISOString());
-        }
         if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
             try {
-                // Legacy event name retained as a backward-compat alias so
-                // any external Drive-era listener still ticks; the new
-                // `dataChanged` name is what Phase 5+ code listens for.
-                document.dispatchEvent(new CustomEvent('driveSyncStateChanged'));
                 document.dispatchEvent(new CustomEvent('dataChanged'));
-            } catch (e) { /* CustomEvent unsupported — indicator refreshes on next menu open */ }
+            } catch (e) { /* CustomEvent unsupported — listeners refresh on next mutation */ }
         }
     }
 
@@ -749,27 +733,21 @@ export const listLogic = (function () {
     // Sort the given project's items so completed entries sit beneath
     // uncompleted ones. Preserves the trailing blank placeholder row.
     //
-    // `opts.fromSync: true` forwards onto saveToStorage so the post-import
-    // rebuild — which restores rows one project at a time and re-sorts each
-    // project on the way through — doesn't bump the local mutation marker
-    // past the just-written lastDriveSyncedAt and leave the indicator
-    // stuck on 'ahead'. The user-mutation callers (checkbox toggle, new
-    // todo commit, drag-reorder finalisation) call this with no opts and
-    // keep their existing behaviour.
+    // `opts.fromSync: true` flags the sort as reconciliation work the
+    // Supabase backend already knows about, so the per-row persistMutation
+    // mirror writes are suppressed.
     //
     // `opts.deferSave: true` runs the sort in memory but skips the
-    // saveToStorage call entirely. The post-Drive-import rebuild path
-    // passes this because replaceAllProjects has already sorted and
-    // persisted every project just upstream, making the rebuild's
-    // per-project re-sort a defensive no-op whose storage write
-    // duplicates work that's already on disk.
+    // saveToStorage call entirely. The post-import rebuild path passes
+    // this because replaceAllProjects has already sorted and persisted
+    // every project just upstream, making the rebuild's per-project
+    // re-sort a defensive no-op whose storage write duplicates work
+    // that's already on disk.
     //
     // Skips the in-memory rewrite AND the saveToStorage call when the
-    // desired order matches the current order position-for-position. Render
-    // entry points (project switch, restoreFromStorage) reach this function
-    // with data that's already correctly sorted on disk, and the historical
-    // unconditional save bumped lastLocalMutationAt and tripped auto-sync
-    // even though nothing actually changed.
+    // desired order matches the current order position-for-position.
+    // Render entry points (project switch, restoreFromStorage) reach
+    // this function with data that's already correctly sorted on disk.
     // @category: defensive-normalize
     function sortCompletedToBottom(project, opts) {
         if (!allProjects[project]) return;
@@ -1677,9 +1655,9 @@ export const listLogic = (function () {
     // to safe defaults on missing fields so a slightly-off import file can't
     // brick the app. Returns the count of projects that were written.
     //
-    // `opts.fromSync: true` forwards the same flag onto saveToStorage so a
-    // sync-initiated replace doesn't bump the local mutation marker past
-    // lastDriveSyncedAt — see saveToStorage for the rationale.
+    // `opts.fromSync: true` flags the replace as reconciliation work the
+    // Supabase backend already knows about, so per-row persistMutation
+    // mirror writes are suppressed.
     // @category: sync-safe
     function replaceAllProjects(projects, opts) {
 

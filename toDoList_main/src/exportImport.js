@@ -3,41 +3,17 @@
 // Vanilla, no backend, no new dependencies. The on-disk file is purely a
 // snapshot; localStorage stays the live store.
 //
-// The validate → confirm → overwrite flow is shared between the legacy
-// file picker (drag-and-drop) and the Drive import path. Validation lives
-// here, not in listLogic.js — once the file is accepted, the data is handed
-// off to listLogic.replaceAllProjects which wipes and rewrites the tree in
-// one pass (no partial-overwrite states).
+// Validation lives here, not in listLogic.js — once the file is accepted,
+// the data is handed off to listLogic.replaceAllProjects which wipes and
+// rewrites the tree in one pass (no partial-overwrite states).
 
 import { listLogic } from './listLogic.js';
 import { showConfirmModal } from './modals.js';
 
 const EXPORT_VERSION = 1;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const MS_PER_MINUTE = 60 * 1000;
-const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-const MS_PER_MONTH = 30 * MS_PER_DAY;
-const MS_PER_YEAR = 365 * MS_PER_DAY;
 
 
 // ── EXPORT PAYLOAD ──
-
-// Local-date YYYY-MM-DD (not UTC). Filename anchors on whatever day the
-// user is on, which is the intuitive label for a "backup taken today".
-function localDateStamp(date) {
-    const d = date || new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + day;
-}
-
-// Pure, side-effect-free date-stamped name used by the Drive upload path so
-// repeated same-day exports land on the same base filename. Drive assigns
-// its own ids so a same-day collision suffix isn't needed.
-export function buildBaseExportFilename(date) {
-    return 'todos-' + localDateStamp(date) + '.json';
-}
 
 export function buildExportPayload(now) {
     return {
@@ -45,35 +21,6 @@ export function buildExportPayload(now) {
         exportedAt: (now || new Date()).toISOString(),
         projects: listLogic.snapshotProjects(),
     };
-}
-
-
-// ── RELATIVE-TIME LABEL ──
-//
-// Surfaces a stored ISO timestamp as a "Synced X ago" string. Reused by
-// the ghost menu DRIVE export row's state pill so the user sees how stale
-// their last Drive sync is at the moment of action.
-
-export function formatRelativeExportedAt(iso, now) {
-    if (!iso) return 'Never synced';
-    const t = Date.parse(iso);
-    if (isNaN(t)) return 'Never synced';
-
-    const ref = (now ? now.getTime() : Date.now());
-    const diff = ref - t;
-
-    // Clock skew or a future-stamped file — treat as fresh.
-    if (diff < MS_PER_MINUTE) return 'Synced just now';
-
-    function plural(n, unit) {
-        return 'Synced ' + n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
-    }
-
-    if (diff < MS_PER_HOUR) return plural(Math.floor(diff / MS_PER_MINUTE), 'minute');
-    if (diff < MS_PER_DAY)  return plural(Math.floor(diff / MS_PER_HOUR), 'hour');
-    if (diff < MS_PER_MONTH) return plural(Math.floor(diff / MS_PER_DAY), 'day');
-    if (diff < MS_PER_YEAR)  return plural(Math.floor(diff / MS_PER_MONTH), 'month');
-    return plural(Math.floor(diff / MS_PER_YEAR), 'year');
 }
 
 
@@ -177,8 +124,7 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) 
     const opts = flowOpts || {};
 
     // Shared apply path — the confirmation modal and the silent branch
-    // both land here. onBeforeReplace runs first so any sync-marker write
-    // precedes replaceAllProjects's driveSyncStateChanged dispatch.
+    // both land here.
     const applyReplace = function() {
         if (typeof opts.onBeforeReplace === 'function') opts.onBeforeReplace();
         const replaceOpts = opts.fromSync === true ? { fromSync: true } : undefined;
@@ -186,10 +132,6 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) 
         if (typeof onAfterReplace === 'function') onAfterReplace();
     };
 
-    // Auto-pull (silent) bypasses the destructive-overwrite confirmation.
-    // Only the Drive auto-sync path sets `silent: true` — the user opted
-    // in by enabling auto-sync, so the confirm step is implicit. All
-    // other callers (manual Drive import, drag-and-drop) keep the modal.
     if (opts.silent === true) {
         applyReplace();
         return;
@@ -213,27 +155,21 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) 
 }
 
 
-// Shared parse → validate → confirm → apply pipeline. Both the drag-and-drop
-// file picker (importFromFile) and the Drive import path route their raw
-// JSON strings through here so the same validation, confirmation prompt,
-// and state-replacement behavior apply to both surfaces. Callers may pass
+// Shared parse → validate → confirm → apply pipeline used by the drag-and-
+// drop file picker (importFromFile). Callers may pass
 // `options.sourceLabel` to prepend a "this is the backup you're about to
-// restore" line to the confirm prompt (Drive uses this to show the
-// discovered filename + modifiedTime); the local file picker leaves it
+// restore" line to the confirm prompt; the local file picker leaves it
 // blank.
 //
 // Errors are reported via the existing inline error toast unless the
 // caller opts out with `options.silentError: true`, in which case the
 // returned descriptor lets the caller surface the message in its own
-// toast (Drive uses this so the failure lands in the unified Drive
-// toast alongside the success message styling).
+// toast.
 //
 // `options.fromSync: true` and `options.onBeforeReplace` are threaded
-// through to the confirm handler so sync-initiated callers (Drive
-// import) can both suppress the lastLocalMutationAt bump and write
-// lastDriveSyncedAt before the replace dispatches its recompute event.
-// Both only fire after the user confirms the destructive overwrite, so
-// a cancelled import leaves every marker untouched.
+// through to the confirm handler so reconciliation-initiated callers can
+// run pre-replace bookkeeping before replaceAllProjects fires its
+// dataChanged event.
 export function importTodosFromString(jsonString, onAfterReplace, options) {
     const opts = options || {};
     const result = parseAndValidateExport(jsonString);

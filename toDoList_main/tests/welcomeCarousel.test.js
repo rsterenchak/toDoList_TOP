@@ -329,9 +329,8 @@ describe('welcome carousel — wired into the app', () => {
         expect(main).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
         expect(main).toMatch(/settingsHelpSection/);
         // The desktop popover HELP heading is the one bound to the
-        // `helpHeading` local (LOCAL and DRIVE section headings reuse
-        // the same class but live on different locals). Match against the
-        // helpHeading-specific wiring so this test stays scoped to HELP.
+        // `helpHeading` local. Match against the helpHeading-specific
+        // wiring so this test stays scoped to HELP.
         expect(main).toMatch(/helpHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
         expect(main).toMatch(/helpHeading\.textContent\s*=\s*['"]Help['"]/);
     });

@@ -1519,11 +1519,11 @@ export function addAllToDo_DOM(items, name) {
 // and by selectProject when a previously visited project becomes active.
 //
 // `opts.fromSync: true` forwards onto listLogic.sortCompletedToBottom so
-// the post-Drive-import rebuild — which re-sorts every project on the way
-// through — doesn't bump the local mutation marker past the just-written
-// lastDriveSyncedAt and leave the sync indicator stuck on 'ahead'. The
-// user-triggered callers (project select, post-rename re-render, app boot)
-// keep their existing behaviour by omitting opts.
+// the post-import rebuild — which re-sorts every project on the way
+// through — flags itself as reconciliation work and skips per-row
+// Supabase mirror writes. The user-triggered callers (project select,
+// post-rename re-render, app boot) keep their existing behaviour by
+// omitting opts.
 export function addToDos_restore(toDoArray, toDoName, opts) {
     if (!toDoArray || toDoArray.length === 0) return;
     listLogic.sortCompletedToBottom(toDoName, opts);

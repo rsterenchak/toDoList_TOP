@@ -10,7 +10,6 @@ import { listLogic } from '../src/listLogic.js';
 import {
     buildExportPayload,
     parseAndValidateExport,
-    formatRelativeExportedAt,
     attachDragDropImport,
 } from '../src/exportImport.js';
 
@@ -93,50 +92,6 @@ describe('exportImport — parseAndValidateExport', () => {
     it('rejects payloads where projects is missing', () => {
         const result = parseAndValidateExport(JSON.stringify({ version: 1 }));
         expect(result.ok).toBe(false);
-    });
-});
-
-
-describe('exportImport — formatRelativeExportedAt', () => {
-    // Drives both the footer's last-exported label and the ghost menu's
-    // Export JSON state pill. The wording ages from "just now" → minutes →
-    // hours → days → months → years so the gap softens into a visible
-    // backup-reminder over time.
-    const now = new Date('2026-05-04T12:00:00Z');
-
-    it('returns "Never synced" when no timestamp is stored', () => {
-        expect(formatRelativeExportedAt(null, now)).toBe('Never synced');
-        expect(formatRelativeExportedAt(undefined, now)).toBe('Never synced');
-        expect(formatRelativeExportedAt('', now)).toBe('Never synced');
-    });
-
-    it('returns "Never synced" when the stored value is unparseable', () => {
-        expect(formatRelativeExportedAt('not-a-date', now)).toBe('Never synced');
-    });
-
-    it('returns "Synced just now" for sub-minute gaps and future-dated stamps', () => {
-        expect(formatRelativeExportedAt('2026-05-04T11:59:30Z', now)).toBe('Synced just now');
-        // Clock skew or future-stamped file — never claim "in the future".
-        expect(formatRelativeExportedAt('2026-05-04T12:30:00Z', now)).toBe('Synced just now');
-    });
-
-    it('formats minute, hour, day, month, and year buckets with correct pluralisation', () => {
-        // 1 minute → singular.
-        expect(formatRelativeExportedAt('2026-05-04T11:59:00Z', now)).toBe('Synced 1 minute ago');
-        // 5 minutes → plural.
-        expect(formatRelativeExportedAt('2026-05-04T11:55:00Z', now)).toBe('Synced 5 minutes ago');
-        // 2 hours.
-        expect(formatRelativeExportedAt('2026-05-04T10:00:00Z', now)).toBe('Synced 2 hours ago');
-        // 1 day → singular.
-        expect(formatRelativeExportedAt('2026-05-03T12:00:00Z', now)).toBe('Synced 1 day ago');
-        // 3 days → plural.
-        expect(formatRelativeExportedAt('2026-05-01T12:00:00Z', now)).toBe('Synced 3 days ago');
-        // ~2 months (60 days).
-        expect(formatRelativeExportedAt('2026-03-05T12:00:00Z', now)).toBe('Synced 2 months ago');
-        // ~1 year.
-        expect(formatRelativeExportedAt('2025-05-04T12:00:00Z', now)).toBe('Synced 1 year ago');
-        // ~2 years.
-        expect(formatRelativeExportedAt('2024-05-04T12:00:00Z', now)).toBe('Synced 2 years ago');
     });
 });
 

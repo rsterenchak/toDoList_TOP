@@ -2,8 +2,7 @@
 //
 // Initialized once at module load and exported as a singleton — every
 // other module that needs to talk to Supabase imports `supabase` from
-// here. Mirrors the pattern driveAuth.js uses for its in-memory token
-// cache: one module owns the lifecycle, everyone else borrows the result.
+// here. One module owns the lifecycle; everyone else borrows the result.
 //
 // ── PROVISIONING ──
 //

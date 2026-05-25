@@ -188,7 +188,7 @@ describe('Sign-out row — desktop ghost menu (showSettingsMenu in main.js)', ()
         const idx = main.indexOf('function showSettingsMenu');
         expect(idx).toBeGreaterThan(-1);
         const fn = main.slice(idx, idx + 20000);
-        // Mirrors the DRIVE / HELP section heading pattern — a
+        // Mirrors the HELP section heading pattern — a
         // settingsMenuSectionHeading div with the label text.
         expect(fn).toMatch(/Account/);
         expect(fn).toMatch(/settingsMenuSectionHeading/);
