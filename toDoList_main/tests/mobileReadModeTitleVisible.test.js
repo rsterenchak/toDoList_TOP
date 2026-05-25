@@ -65,24 +65,26 @@ describe('mobile read-mode keeps the title span visible', () => {
         );
     });
 
-    it('descToggle close handler also clears data-mobile-edit defensively', () => {
+    it('description close also clears data-mobile-edit defensively', () => {
         // Closing the description panel should fully collapse the row
         // back to single-line, regardless of whether the title was in
         // edit mode. This covers the path where the user closes the
-        // description without first blurring the input.
-        const fnIdx = toDoRow.indexOf('function wireToDoRowClick(');
-        const fn = toDoRow.slice(fnIdx);
-        // Locate the descToggle close handler by anchoring on the
-        // existing data-mobile-read removal — the new data-mobile-edit
-        // removal must live in the same handler body, so a window of
-        // characters around that anchor is enough to assert co-location.
-        const readRemovalIdx = fn.indexOf("removeAttribute('data-mobile-read')");
-        expect(readRemovalIdx).toBeGreaterThan(-1);
-        const window = fn.slice(Math.max(0, readRemovalIdx - 300), readRemovalIdx + 600);
-        expect(window).toMatch(
-            /descToggle\.addEventListener\(\s*['"]click['"]/
+        // description without first blurring the input. The cleanup now
+        // lives in the row's __closeDesc helper, so the data-mobile-read
+        // removal and the data-mobile-edit removal must sit together
+        // inside that close function body — scoped to
+        // wireDescriptionPanel so we don't accidentally match the
+        // statsToggle modal's `close()` further down the file.
+        const wireIdx = toDoRow.indexOf('function wireDescriptionPanel(');
+        expect(wireIdx).toBeGreaterThan(-1);
+        const wireBody = toDoRow.slice(wireIdx, wireIdx + 4000);
+        const closeIdx = wireBody.indexOf('function close()');
+        expect(closeIdx).toBeGreaterThan(-1);
+        const closeBody = wireBody.slice(closeIdx, closeIdx + 1200);
+        expect(closeBody).toMatch(
+            /removeAttribute\(\s*['"]data-mobile-read['"]\s*\)/
         );
-        expect(window).toMatch(
+        expect(closeBody).toMatch(
             /removeAttribute\(\s*['"]data-mobile-edit['"]\s*\)/
         );
     });
@@ -94,11 +96,11 @@ describe('mobile read-mode CSS no longer hides the title on :focus-within', () =
     const css = read('style.css');
 
     it('the buggy focus-within hide rule is gone', () => {
-        // Root cause of the original bug. The synthetic descToggle.click()
-        // in the first-tap path landed focus on the toggle button, which
-        // (being inside #toDoChild) made :focus-within match and hid the
-        // span — leaving an empty title band even though the row was
-        // visually marked active.
+        // Root cause of the original bug: when the description toggle
+        // was inside #toDoChild, the synthetic open click landed focus
+        // on the toggle button, which made :focus-within match and hid
+        // the span — leaving an empty title band even though the row
+        // was visually marked active.
         expect(css).not.toMatch(
             /#toDoChild:not\(\[data-original-blank="true"\]\):focus-within\s+\.toDoTitleDisplay/
         );
