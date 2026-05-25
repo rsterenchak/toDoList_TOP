@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Add description editor modal on mobile for drafting TODO.md entries
+- [x] **[MEDIUM]** Add description editor modal on mobile for drafting TODO.md entries
  - Description: On mobile (touch devices, `pointer: coarse`), tapping a todo row body opens a centered modal editor over a backdrop for editing that todo's `desc` field. The intended use is drafting TODO.md backlog entries inside the app, so the editor must preserve markdown formatting (backticks, indentation, multi-line) and offer a one-tap copy-to-clipboard. Match the existing modal pattern (changelog modal): floating dialog padded from screen edges, purple-accented border, header with todo title + close X, monospace `<textarea>` filling the body, toolbar at the bottom.
  - Behavior:
    1. Tap on a todo row body (excluding the checkbox, date pill, and any existing controls) opens the modal for that row's todo.
@@ -28,7 +28,7 @@
    - Textarea font-size is 16px+ on mobile (no iOS auto-zoom on focus).
  - Out of scope: desktop entry point for the editor; structured entry assembly from title + priority + file fields; rich-text or syntax-highlighted markdown editing.
  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
- - Completed: YYYY-MM-DD (PR #<number>)
+ - Completed: 2026-05-25
 
 
 ## Features

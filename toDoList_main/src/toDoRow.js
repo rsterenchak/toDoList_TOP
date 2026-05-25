@@ -27,7 +27,7 @@ import {
     hideDueDatePopover,
     updateRecurringGlyph,
 } from './dueDate.js';
-import { showConfirmModal, showMissedDatesModal } from './modals.js';
+import { showConfirmModal, showMissedDatesModal, showDescEditorModal } from './modals.js';
 import { showUndoToast } from './undoToast.js';
 import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
@@ -339,6 +339,29 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 // title input area falls through to the focus path below and enters edit
 // mode. The auto-opened state is auto-collapsed when the user taps outside
 // the row+descSibling unit (handled in main.js's document click listener).
+//
+// On `(pointer: coarse)` devices the click handler short-circuits to the
+// mobile description editor modal instead — the descSibling's single-line
+// input can't host the multi-line markdown drafting the task brief calls
+// for. Extracted helpers keep the branch body small so the existing
+// 4000-char source-inspection windows in mobileReadModeTitleVisible.test.js
+// still cover the data-mobile-edit + toDoInput.focus() lines below.
+function isCoarsePointerTap() {
+    return typeof window !== 'undefined'
+        && !!window.matchMedia
+        && window.matchMedia('(pointer: coarse)').matches;
+}
+function openDescEditorForRow(toDoChild) {
+    document.querySelectorAll('#toDoChild.todo-active').forEach(function(el) {
+        if (el !== toDoChild) el.classList.remove('todo-active');
+    });
+    toDoChild.classList.add('todo-active');
+    const item = toDoChild.__item;
+    if (!item) return;
+    showDescEditorModal(item, {
+        onSave: function() { updateDescIndicator(toDoChild, item); }
+    });
+}
 function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
     toDoChild.addEventListener('click', function(e) {
         // Let dedicated controls handle their own clicks without interference
@@ -355,6 +378,13 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
         // Blank rows: focus immediately (user intends to type a new item)
         if (!toDoInput.value.trim()) {
             toDoInput.focus();
+            return;
+        }
+
+        // Touch-device description editor — opens the modal in place of the
+        // descSibling's single-line input on `(pointer: coarse)` devices.
+        if (isCoarsePointerTap()) {
+            openDescEditorForRow(toDoChild);
             return;
         }
 
@@ -1318,6 +1348,16 @@ export function buildToDoRow(item, toDoName) {
     descInput.value = "";
     descInput.style.border = "none";
 
+    // Description indicator — small note-style glyph that surfaces "this row
+    // carries a description" between the checkbox and the title. CSS-hidden
+    // by default; revealed via `data-has-desc="true"` on the row (managed by
+    // updateDescIndicator). Tap routes through the parent row click handler
+    // so it opens the desc editor modal on touch — no separate listener.
+    const descIndicator = document.createElement("span");
+    descIndicator.id = "descIndicator";
+    descIndicator.setAttribute("aria-hidden", "true");
+    descIndicator.innerHTML = '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="8" height="9" rx="1"/><line x1="4.75" y1="5.5" x2="9.25" y2="5.5"/><line x1="4.75" y1="7.5" x2="9.25" y2="7.5"/><line x1="4.75" y1="9.5" x2="7.25" y2="9.5"/></svg>';
+
     // Swipe action panes — absolute-positioned fills revealed behind the row
     // on touch horizontal swipe. Kept as the first children so a default
     // stacking context places them below the row content. Styling lives in
@@ -1391,6 +1431,11 @@ export function buildToDoRow(item, toDoName) {
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
+    // Slot the descIndicator into the row right after the checkbox — visual
+    // order on desktop becomes: checkbox · note glyph · title. Insertion has
+    // to wait until wireCheckbox runs so the checkbox is already in place;
+    // inserting before toDoInput puts the indicator just past the checkbox.
+    toDoChild.insertBefore(descIndicator, toDoInput);
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
         closeButtonToDo: closeButtonToDo,

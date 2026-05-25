@@ -14,6 +14,7 @@
 
 import { changelog, getNewestChangelogDate } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
+import { listLogic } from './listLogic.js';
 
 
 // ── CONFIRM MODAL ──
@@ -107,6 +108,194 @@ export function showConfirmModal(options) {
         if (event.target === backdrop) close();
     });
     document.addEventListener('keydown', onKeydown, true);
+}
+
+
+// ── DESC EDITOR MODAL ──
+// Touch-device editor for the per-todo `desc` field. The in-row descSibling
+// pattern uses a single-line `<input>` that's unsuitable for drafting
+// multi-line TODO.md backlog entries on a phone, so on `(pointer: coarse)`
+// we route description editing through this full modal: monospace textarea,
+// 16px font (CLAUDE.md mobile-input rule against iOS auto-zoom), markdown
+// formatting preserved as-is, and a toolbar with a "Copy as TODO.md entry"
+// primary action plus a confirmation-gated "Clear". Save is implicit on
+// close — any close path persists the textarea value back to item.desc and
+// fires the optional refresh callback so the row's indicator stays in sync.
+//
+// Closes on the close X, the backdrop, or Escape (CLAUDE.md modal contract).
+// The Clear destructive-action path routes through showConfirmModal.
+export function showDescEditorModal(item, options) {
+
+    if (!item) return;
+    const opts = options || {};
+
+    const prior = document.getElementById('descEditorModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'descEditorModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'descEditorModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'descEditorModalTitle');
+
+    const header = document.createElement('div');
+    header.id = 'descEditorModalHeader';
+
+    const title = document.createElement('div');
+    title.id = 'descEditorModalTitle';
+    // Truncation handled by CSS — long titles get an ellipsis so the close X
+    // never gets shoved off the header row.
+    title.textContent = (item && item.tit) ? item.tit : 'Description';
+
+    const closeX = document.createElement('button');
+    closeX.id = 'descEditorModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close description editor');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'descEditorModalBody';
+
+    const textarea = document.createElement('textarea');
+    textarea.id = 'descEditorModalTextarea';
+    textarea.setAttribute('aria-label', 'Description text');
+    textarea.spellcheck = false;
+    textarea.autocapitalize = 'off';
+    textarea.autocomplete = 'off';
+    textarea.value = (item && typeof item.desc === 'string') ? item.desc : '';
+    body.appendChild(textarea);
+
+    const actions = document.createElement('div');
+    actions.id = 'descEditorModalActions';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.id = 'descEditorModalClear';
+    clearBtn.type = 'button';
+    clearBtn.className = 'descEditorModalBtn';
+    clearBtn.textContent = 'Clear';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.id = 'descEditorModalCopy';
+    copyBtn.type = 'button';
+    copyBtn.className = 'descEditorModalBtn descEditorModalBtnPrimary';
+    copyBtn.textContent = 'Copy as TODO.md entry';
+
+    actions.appendChild(clearBtn);
+    actions.appendChild(copyBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+
+    let closed = false;
+    function persist() {
+        // Preserve markdown formatting (backticks, indentation, multi-line)
+        // by storing the raw textarea value — no trim, no normalization.
+        // Matches the descInput.blur handler's "treat textarea contents as
+        // the source of truth on save" semantics but without the trim.
+        item.desc = textarea.value;
+        listLogic.saveToStorage();
+        if (typeof opts.onSave === 'function') opts.onSave();
+    }
+
+    function close() {
+        if (closed) return;
+        closed = true;
+        persist();
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        if (previouslyFocused &&
+            typeof previouslyFocused.focus === 'function' &&
+            document.contains(previouslyFocused)) {
+            try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+        }
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    closeX.addEventListener('click', close);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    copyBtn.addEventListener('click', function() {
+        const text = textarea.value;
+        if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(text).then(function() {
+                flashCopyFeedback(copyBtn);
+            }).catch(function() { /* swallow — no feedback flip */ });
+            return;
+        }
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            ta.style.pointerEvents = 'none';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand && document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) flashCopyFeedback(copyBtn);
+        } catch (e) { /* swallow */ }
+    });
+
+    clearBtn.addEventListener('click', function() {
+        // Empty textarea: nothing to confirm, but a no-op feels broken — just
+        // refocus so the user knows the button registered.
+        if (textarea.value.length === 0) {
+            textarea.focus();
+            return;
+        }
+        showConfirmModal({
+            message: 'Clear description? This cannot be undone.',
+            confirmLabel: 'Clear',
+            onConfirm: function() {
+                textarea.value = '';
+                textarea.focus();
+            }
+        });
+    });
+
+    // Mobile keyboards land focus more reliably if the focus call is deferred
+    // a tick — the modal element has just been inserted, and Safari sometimes
+    // races the focus against its own layout pass. Defer so the textarea is
+    // definitely paint-ready.
+    setTimeout(function() {
+        try { textarea.focus(); } catch (e) { /* defensive */ }
+    }, 0);
+}
+
+// Briefly swap the Copy button label to a "Copied!" confirmation. Mirrors
+// the per-row copy-title button's checkmark feedback so the two surfaces
+// feel consistent. Restores after ~1s.
+function flashCopyFeedback(btn) {
+    const original = btn.textContent;
+    if (btn.__copyResetTimer) clearTimeout(btn.__copyResetTimer);
+    btn.textContent = 'Copied!';
+    btn.setAttribute('data-copied', 'true');
+    btn.__copyResetTimer = setTimeout(function() {
+        btn.textContent = original;
+        btn.removeAttribute('data-copied');
+        btn.__copyResetTimer = null;
+    }, 1000);
 }
 
 
@@ -771,6 +960,7 @@ export function isAnyModalOrPopoverOpen() {
     return !!(
         document.getElementById('confirmModalBackdrop')   ||
         document.getElementById('changelogModalBackdrop') ||
+        document.getElementById('descEditorModalBackdrop') ||
         document.getElementById('helpModalBackdrop')      ||
         document.getElementById('settingsModalBackdrop')  ||
         document.getElementById('missedDatesModalBackdrop') ||
