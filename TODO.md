@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Replace inline stats drawer with a modal on mobile
+- [x] **[HIGH]** Replace inline stats drawer with a modal on mobile
   - Description: After multiple attempts to make the inline `#statsSibling` drawer contain its content on phone-width viewports (≤420px) — bigger cells, single-row strip, height fixes — the drawer-in-row pattern keeps fighting both the `#mainList` grid track sizing and visual containment. Switch the mobile experience to a full-screen modal: tap the existing chart-icon button on a recurring row, and a modal opens containing the full stats payload. This sidesteps the grid-track problem entirely (modal lives outside `#mainList`) and gives the contributions grid room to render at desktop size instead of degrading to the truncated `statsFallbackStripMobile`. Desktop keeps the inline drawer unchanged. Modal contents: task title in the header with a close X, a cadence subtitle line, then the existing stat-card strip, window-toggle row, full `buildContributionsGrid` grid, `.statsMissCallout`, and missed-pill list — all reused from the current `renderDrawer()`. Close via X / backdrop / Escape per CLAUDE.md. Window selection resets to 30d on each open. Once landed, remove the dead `statsFallbackStripMobile` builder and its CSS.
   - Behavior:
     1. Viewports ≤420px: tapping chart icon opens a modal (not inline drawer) with the full stats payload.
@@ -27,7 +27,7 @@
     - `statsFallbackStripMobile` class is gone from `toDoRow.js` and `style.css`.
   - Out of scope: desktop drawer changes; contributions grid redesign; new stats beyond what `renderDrawer` already builds; persisting window selection.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/` (new test asserting the modal-vs-drawer viewport branch + that the mobile-strip dead code is gone)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 - [ ] **[MEDIUM]** Hide checkbox on mobile and rely on existing swipe-right to complete
   - Description: On `≤700px` viewports the `#checkToDo` square at the left of each todo row is visually redundant — swipe-right-to-complete is already wired in `toDoRow.js` via `attachToDoDrag`'s `swipeTargets.onRight`, which programmatically toggles `checkToDo.checked` and dispatches its existing `change` event, so the data path and completion micro-interaction are unchanged. Hide the checkbox at the mobile breakpoint in `style.css` (`#checkToDo { display: none; }` inside `@media (max-width: 700px)`) so the title gets the reclaimed horizontal space; the desktop layout keeps the checkbox exactly as today. Don't remove the element from the DOM — `swipeTargets.onRight` guards on `cb.style.display === 'none'` and the swipe path needs `checkToDo` to exist so it can flip `.checked` and fire the change event the persistence layer listens for. Verify swipe-right still completes/uncompletes from a mobile viewport, that the strikethrough + slide-to-Completed animation still plays, and that the completed-section toggle continues to surface re-open via swipe.
