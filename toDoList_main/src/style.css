@@ -7236,35 +7236,44 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     display: inline-flex;
   }
 
-  /* SLIMMED MOBILE DUE PILL — strip the filled outline / uppercase
-     letter-spacing / wide padding so the pill takes a fraction of the
-     horizontal room it owned on desktop. Color coding (overdue / today /
-     future) cascades from the urgency classes on #toDoChild via the
-     existing rules; here we only undo the chrome that made the desktop
-     pill read as a heavy bordered button. The condensed label is rendered
-     by hiding the long .duePillLabel and surfacing the short one via the
-     attr() pseudo-element, so the JS data path doesn't need a mobile
-     branch — the same updateDuePillLabel call writes both labels and CSS
-     picks the one to show. */
+  /* BARE-ICON MOBILE DUE PILL — strip the filled outline / uppercase
+     letter-spacing / inline date text down to the calendar glyph alone,
+     so the pill yields its horizontal footprint back to the title. The
+     date itself stays one tap away through the existing popover; urgency
+     is encoded in the icon's color: red overdue, amber due-soon (≤3
+     days, includes today), purple future, dim gray when no date is set.
+     Hex literals over urgency-token vars because the desktop urgency
+     tokens (text-warning / text-urgent) tune the contrast for text on a
+     bordered pill — the bare icon needs its own scale. The JS path keeps
+     writing data-short-label and the long label span; CSS just hides
+     both so updateDuePillLabel doesn't need a mobile branch. The pill
+     element is sized to a ≥32px tap target around the 16px icon. */
   #duePill {
     background: transparent;
     border: none;
-    padding: 4px 4px;
+    padding: 0;
     letter-spacing: 0;
     text-transform: none;
     font-size: 11px;
     font-weight: 500;
     max-width: none;
-    color: var(--text-secondary);
+    min-width: 32px;
+    min-height: 32px;
+    justify-content: center;
+    color: #9D93EE;
   }
   #duePill:hover,
-  #duePill:focus { background: transparent; color: var(--text-primary); border: none; }
+  #duePill:focus { background: transparent; border: none; }
+  #duePill[data-empty="true"] { color: #5A5A6A; }
   #duePill .duePillLabel { display: none; }
   #duePill .duePillChevron { display: none; }
-  #duePill[data-short-label]::after {
-    content: attr(data-short-label);
-    line-height: 1;
-  }
+  #duePill .duePillIcon { width: 16px; height: 16px; }
+
+  /* Urgency overrides — specificity ties the desktop urgency rules but
+     these come later in source order so they win inside the breakpoint. */
+  #toDoChild.due-soon    #duePill { color: #EF9F27; }
+  #toDoChild.due-overdue #duePill { color: #E24B4A; }
+  #toDoChild.completed   #duePill { color: #5A5A6A; }
 
   /* Hide the IDLE nub chrome on mobile — the bottom tab bar is the
      visual bottom-of-screen anchor and `.sheetSwipeZone` already covers

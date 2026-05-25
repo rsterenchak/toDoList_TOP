@@ -209,18 +209,54 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         expect(hit.body).toMatch(/letter-spacing:\s*0/);
     });
 
-    it('mobile @media block surfaces the data-short-label via attr() on a #duePill pseudo', () => {
-        // The desktop .duePillLabel span is hidden on mobile; the short
-        // text is rendered by content: attr(data-short-label) on a
-        // pseudo-element so the CSS swap stays self-contained.
-        const block = allMobileMediaBlocks().find(b =>
-            /duePill\[data-short-label\]::after/.test(b.text)
+    it('mobile @media block renders the pill as a bare calendar icon with no inline date text', () => {
+        // Bare-icon treatment: both the desktop long label and the previous
+        // short-label pseudo-text are suppressed on mobile so only the
+        // calendar glyph paints. Confirm nothing surfaces date text via an
+        // attr() pseudo on #duePill at the mobile breakpoint.
+        const blocks = allMobileMediaBlocks();
+        const hidesLongLabel = blocks.some(b =>
+            /#duePill\s+\.duePillLabel\s*\{[^}]*display:\s*none/.test(b.text)
         );
-        expect(block).toBeTruthy();
-        expect(block.text).toMatch(/content:\s*attr\(data-short-label\)/);
-        // Long label is hidden on mobile so the short attr text isn't
-        // duplicated next to the desktop string.
-        expect(block.text).toMatch(/#duePill\s+\.duePillLabel\s*\{[^}]*display:\s*none/);
+        expect(hidesLongLabel).toBe(true);
+        const hidesChevron = blocks.some(b =>
+            /#duePill\s+\.duePillChevron\s*\{[^}]*display:\s*none/.test(b.text)
+        );
+        expect(hidesChevron).toBe(true);
+        const surfacesShortLabel = blocks.some(b =>
+            /#duePill\b[^{]*::after\s*\{[^}]*content:\s*attr\(data-short-label\)/.test(b.text)
+        );
+        expect(surfacesShortLabel).toBe(false);
+    });
+
+    it('mobile #duePill keeps a ≥32×32px tap target so the icon stays touch-reachable', () => {
+        const hit = findMobileDuePillRule();
+        expect(hit).not.toBeNull();
+        const minW = hit.body.match(/min-width:\s*(\d+)px/);
+        const minH = hit.body.match(/min-height:\s*(\d+)px/);
+        expect(minW).not.toBeNull();
+        expect(minH).not.toBeNull();
+        expect(parseInt(minW[1], 10)).toBeGreaterThanOrEqual(32);
+        expect(parseInt(minH[1], 10)).toBeGreaterThanOrEqual(32);
+    });
+
+    it('mobile @media block colors the bare icon per urgency (overdue red, soon amber, future purple, empty gray)', () => {
+        // The bare icon's color encodes urgency. Use literal hex values
+        // rather than the desktop urgency tokens because the bare icon
+        // wants its own visual scale independent of the bordered desktop
+        // pill's text-color contrast targets.
+        const blocks = allMobileMediaBlocks();
+        const joined = blocks.map(b => b.text).join('\n');
+        // Future date set (no urgency class): purple #9D93EE on the base
+        // #duePill rule itself.
+        const hit = findMobileDuePillRule();
+        expect(hit.body).toMatch(/color:\s*#9D93EE/i);
+        // Empty (no date set): dim gray #5A5A6A.
+        expect(joined).toMatch(/#duePill\[data-empty="true"\]\s*\{[^}]*color:\s*#5A5A6A/i);
+        // Due-soon: amber #EF9F27.
+        expect(joined).toMatch(/#toDoChild\.due-soon\s+#duePill\s*\{[^}]*color:\s*#EF9F27/i);
+        // Overdue: red #E24B4A.
+        expect(joined).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*#E24B4A/i);
     });
 
     it('desktop top-level #duePill rule keeps its bordered chrome (regression guard for dueDatePillBorder)', () => {
@@ -254,15 +290,12 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         expect(topLevel[1]).toMatch(/display:\s*none/);
     });
 
-    it('mobile #duePill rule preserves the urgency text-color cascade (no override)', () => {
-        // The urgency classes .due-soon / .due-overdue / .completed on
-        // #toDoChild color the pill text via the top-level rules. The
-        // mobile slim-down must NOT specify a color that breaks that
-        // cascade for those states — i.e. the urgency rules still win
-        // because they target #toDoChild.* descendants with higher
-        // specificity than the bare #duePill rule. Lock in the existing
-        // urgency rules so a future refactor doesn't accidentally remove
-        // them.
+    it('desktop urgency cascade for #duePill stays intact at the top level', () => {
+        // The bare-icon mobile pill overrides these in the ≤700px media
+        // block with its own literal-hex colors, but desktop must still
+        // recolor the bordered pill text via the existing urgency tokens.
+        // Lock in the top-level rules so a future refactor doesn't drop
+        // the desktop cascade while reworking the mobile bare-icon path.
         expect(css).toMatch(/#toDoChild\.due-soon\s+#duePill\s*\{[^}]*color:\s*var\(--text-warning\)/);
         expect(css).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*var\(--text-urgent\)/);
     });
