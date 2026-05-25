@@ -5387,7 +5387,8 @@ body.row-dragging * { cursor: grabbing !important; }
    Inline error surfaced under the nav bar when a file fails validation.
    Auto-dismisses after a few seconds; positioned with `position: fixed` so
    it sits above the rest of the chrome without affecting layout. */
-#importErrorToast {
+#importErrorToast,
+#jsonImportExportToast {
   position: fixed;
   top: calc(var(--nav-h) + 8px);
   left: 50%;

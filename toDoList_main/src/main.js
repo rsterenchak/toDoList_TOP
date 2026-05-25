@@ -77,6 +77,7 @@ import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { attachDragDropImport } from './exportImport.js';
+import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
@@ -1480,6 +1481,32 @@ function component() {
             function() { showHelpModal(); }
         );
         menu.appendChild(helpItem);
+
+        // DATA section — manual escape hatch. Export downloads the user's
+        // entire Supabase dataset as a portable JSON file; Import reads
+        // such a file back, shows a destructive confirmation, and replaces
+        // the user's data on confirm. Sits between Help and Account so
+        // the data-management actions cluster together.
+        menu.appendChild(buildSettingsMenuDivider());
+        const dataHeading = document.createElement('div');
+        dataHeading.className = 'settingsMenuSectionHeading';
+        dataHeading.textContent = 'Data';
+        dataHeading.setAttribute('role', 'presentation');
+        menu.appendChild(dataHeading);
+
+        const exportItem = buildSettingsMenuItem(
+            'Export to JSON',
+            '',
+            function() { exportToJson(); }
+        );
+        menu.appendChild(exportItem);
+
+        const importItem = buildSettingsMenuItem(
+            'Import from JSON',
+            '',
+            function() { openImportPicker(rebuildAfterImport); }
+        );
+        menu.appendChild(importItem);
 
         // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP section pattern: a divider + small heading followed by
@@ -3522,6 +3549,28 @@ function component() {
         });
         helpSection.appendChild(replayRow);
 
+        // Data section — manual JSON export / import. Export downloads
+        // the user's Supabase dataset; Import reads such a file back,
+        // shows a destructive confirmation, and replaces the user's data
+        // on confirm. Mirrors the desktop settings menu's Data section.
+        const dataSection = document.createElement('section');
+        dataSection.id = 'settingsDataSection';
+        dataSection.className = 'settingsSection';
+        const dataHeading = document.createElement('div');
+        dataHeading.className = 'settingsSectionHeading';
+        dataHeading.textContent = 'Data';
+        dataSection.appendChild(dataHeading);
+        const exportRow = createDrawerActionRow('Export to JSON', function() {
+            close();
+            exportToJson();
+        });
+        dataSection.appendChild(exportRow);
+        const importRow = createDrawerActionRow('Import from JSON', function() {
+            close();
+            openImportPicker(rebuildAfterImport);
+        });
+        dataSection.appendChild(importRow);
+
         // Account section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP / About section pattern at the same heading typography
         // so the row chrome reads consistently. Tap closes the modal first
@@ -3544,6 +3593,7 @@ function component() {
         body.appendChild(appearanceSection);
         body.appendChild(aboutSection);
         body.appendChild(helpSection);
+        body.appendChild(dataSection);
         body.appendChild(accountSection);
 
         dialog.appendChild(header);
