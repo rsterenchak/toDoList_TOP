@@ -2,14 +2,14 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Make `hydrateFromSupabase` single-flight to fix tables wiping on sign-in
+- [x] **[HIGH]** Make `hydrateFromSupabase` single-flight to fix tables wiping on sign-in
   - Description: After magic-link sign-in lands in a new tab, the sidebar renders correctly for a moment and then wipes itself, leaving the user with zero projects visible despite having data in Supabase. Manual refresh re-renders correctly. Root cause: `hydrateFromSupabase` in `toDoList_main/src/listLogic.js` is being called twice on sign-in — once by `index.js`'s initial boot when the session is present, and again by the `onAuthStateChange` listener firing `SIGNED_IN` (Supabase fires this event even for sessions restored from a magic-link URL hash). Console diagnostic confirms the double-fire and that the second invocation reaches the `listLogicHydrated` listener with `listLogic.listProjectsArray().length === 0`, which causes `restoreFromStorage`'s early-return-with-empty-state branch to wipe the sidebar. The first hydration succeeds (count of 4 projects at listener time); the second wipes (count of 0). This entry is the cheap stopgap — gate `hydrateFromSupabase` with an in-flight flag so a second concurrent call returns immediately without re-running. A separate higher-quality follow-up entry should investigate why `hydrateFromSupabase`'s internal sequencing shows zero projects mid-execution (probably wipes `allProjects` before the fetch completes, opening a window where the dispatch could read empty state) and fix the root cause in index.js — that's tracked separately.
   - Behavior: Sign in via magic link in a new tab. The sidebar renders the user's projects on the first hydration. The second concurrent call to `hydrateFromSupabase` short-circuits and returns immediately. The sidebar stays populated. No manual refresh required.
   - Implementation: In `toDoList_main/src/listLogic.js`, add a module-scoped `let hydrationInFlight = false;` flag declared near `hydrateFromSupabase`. Wrap the existing function body in `if (hydrationInFlight) return;` at the top, set `hydrationInFlight = true;` immediately after, and reset to `false` in a `finally` block wrapping the entire body so concurrent calls during the async fetch return early but a *subsequent* (non-overlapping) call still runs. Do not change the dispatch or the data-fetch logic — only add the guard. Keep the existing console.log calls in place (they remain useful for debugging the double-fire elsewhere in index.js).
   - Acceptance criteria: (1) Sign out and sign in via magic link in a fresh tab — sidebar populates with the user's projects and does not wipe; (2) Console shows `[hydrateFromSupabase] called` exactly once per sign-in (a second call within the same hydration window short-circuits before the log line); (3) Manual refresh still works as before; (4) No regression in initial-boot hydration flow.
   - Out of scope: Diagnosing why `onAuthStateChange` calls hydrate redundantly with the initial boot path (separate entry); fixing the internal sequencing of `hydrateFromSupabase` that exposes empty state mid-execution (separate entry); changing the `listLogicHydrated` listener in main.js.
   - File: `toDoList_main/src/listLogic.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 ## Features
 
