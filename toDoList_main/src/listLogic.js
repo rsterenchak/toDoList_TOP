@@ -1949,7 +1949,6 @@ export const listLogic = (function () {
     async function hydrateFromSupabase() {
         if (hydrationInFlight) return;
         hydrationInFlight = true;
-        console.log('[hydrateFromSupabase] called');
         try {
             const sessionResult = await supabase.auth.getSession();
             const session = sessionResult
@@ -2080,7 +2079,6 @@ export const listLogic = (function () {
 
             if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
                 try {
-                    console.log('[hydrateFromSupabase] dispatching listLogicHydrated event');
                     document.dispatchEvent(new CustomEvent('listLogicHydrated'));
                 } catch (_) { /* ignore */ }
             }

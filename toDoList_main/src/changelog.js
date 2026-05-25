@@ -9,13 +9,13 @@ export const changelog = [
         fixed: [
             "Signing in via magic link no longer briefly wipes the sidebar — your projects stay visible without needing a manual refresh.",
             "Sign-in now reliably keeps the freshly loaded sidebar visible on every device, closing a remaining edge case that could blank it out.",
+            "The browser console no longer prints hydration debug messages on every sign-in.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-24',
         fixed: [
-            "Creating, editing, and reordering todos now reliably syncs across devices, fixing a backend payload mismatch that was silently dropping most writes.",
             "New todos now sync to the cloud the moment you press Enter, instead of waiting for a later refresh to pick them up.",
             "Long todo titles on mobile no longer get clipped when the row is tapped open — the row now grows to fit the wrapped title.",
         ],

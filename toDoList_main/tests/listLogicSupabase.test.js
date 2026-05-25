@@ -402,13 +402,6 @@ describe('listLogic — hydrateFromSupabase single-flight guard', () => {
         // still releases the flag for the next user-initiated hydration.
         expect(body).toMatch(/finally\s*\{[\s\S]*?hydrationInFlight\s*=\s*false[\s\S]*?\}/);
     });
-
-    it('the "called" console.log lives below the guard so a short-circuited call is silent', () => {
-        const guardIdx = body.search(/if\s*\(\s*hydrationInFlight\s*\)\s*return/);
-        const logIdx = body.search(/console\.log\s*\(\s*['"]\[hydrateFromSupabase\] called['"]/);
-        expect(guardIdx).toBeGreaterThanOrEqual(0);
-        expect(logIdx).toBeGreaterThan(guardIdx);
-    });
 });
 
 
