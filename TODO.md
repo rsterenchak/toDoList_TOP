@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Remove description dropdown button from todo rows
+- [x] **[MEDIUM]** Remove description dropdown button from todo rows
   - Description: Each todo row currently ends with a small `▼` chevron that toggles the description panel below the row. Remove that button entirely — focusing the todo row (clicking/tapping the title, or tabbing into it) already opens the description, so the chevron is redundant chrome that costs horizontal space on every row. The description panel itself, its open/close animation, and the focus-driven open behavior all stay; only the explicit toggle button goes away. Keyboard users can still open the description by focusing the row, and a focused row should also close its description on blur as it does today (verify this still works once the chevron is gone — the chevron's click handler may have been the only path to *close* a description in some flows).
   - Behavior:
     1. The `▼` chevron no longer renders on any todo row (initial render, restore-from-storage, newly added rows, completed rows).
@@ -20,7 +20,7 @@
     - No regressions in the description panel's open/close animation or content.
   - Out of scope: Refactoring the four overlapping todo-row builders, changes to the description panel itself, changes to how focus is acquired.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 ## Features
 
