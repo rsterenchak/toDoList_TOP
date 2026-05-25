@@ -4603,6 +4603,29 @@ body.row-dragging * { cursor: grabbing !important; }
 
   #emptyState.emptyStateNoProjects .emptyStateIcon { font-size: 44px; }
   #emptyState.emptyStateNoProjects .emptyStateTitle { font-size: 14px; }
+
+  /* Recurring-task stats drawer — defensive constraints for ≤420px so
+     the drawer's full content (stat cards, window toggle, mobile recency
+     strip with caption + cells + date labels, miss callout, missed-pill
+     list) stays inside #statsSibling's visual border. The drawer is a
+     flex column whose grid track inside #mainList uses
+     grid-auto-rows: minmax(54px, auto) — the `auto` max relies on each
+     flex item contributing its real painted height up to the track.
+     Without the explicit `min-height: 0` here, a flex item with the
+     default `min-height: auto` (= min-content) can stop the grid track
+     from shrink-then-grow in response to a re-rendered drawer. And the
+     explicit `overflow: visible` defeats any cascade quirk where a
+     mobile-only @media addition might later sneak in an overflow clip
+     and re-clip the strip's caption / labels / callout / pill list
+     past the drawer's bottom border. Belt-and-braces on top of the
+     default behaviour. */
+  #statsSibling {
+    overflow: visible;
+    min-height: 0;
+  }
+  .statsFallbackStripMobile {
+    min-height: 0;
+  }
 }
 
 /* ══════════════════════════════════════════
