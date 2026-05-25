@@ -6055,6 +6055,7 @@ export { component, restoreFromStorage, notifyUpdateAvailable };
 if (typeof document !== 'undefined') {
     document.addEventListener('listLogicHydrated', function onHydrate() {
         console.log('[main.js] listLogicHydrated listener fired');
+        console.log('[main.js] projects count at listener time:', listLogic.listProjectsArray().length);
         const sideMaDiv = document.getElementById('sideMa');
         const mainListDiv = document.getElementById('mainList');
         if (sideMaDiv) {
