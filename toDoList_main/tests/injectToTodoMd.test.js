@@ -134,6 +134,35 @@ describe('inject feature — settings modal shell', () => {
         expect(css).toMatch(/#injectWorkerUrlInput[\s\S]{0,200}font-size:\s*16px/);
         expect(css).toMatch(/#injectSharedSecretInput[\s\S]{0,200}font-size:\s*16px/);
     });
+
+    it('wraps Connection, Targets, and Project routing in a scroll container so the modal does not clip on mobile', () => {
+        // Regression for the inject settings modal being clipped at the
+        // bottom of the viewport on phones. The three sections must live
+        // inside a #injectSettingsScroll container that grows to fill the
+        // remaining modal height and scrolls overflow internally.
+        expect(inject).toMatch(/['"]injectSettingsScroll['"]/);
+        const scrollIdx = inject.indexOf("'injectSettingsScroll'");
+        expect(scrollIdx).toBeGreaterThan(-1);
+        const tail = inject.slice(scrollIdx);
+        // The three sections are appended to the scroll wrapper, not the
+        // dialog root.
+        expect(tail).toMatch(/scrollBody\.appendChild\(\s*connSection\s*\)/);
+        expect(tail).toMatch(/scrollBody\.appendChild\(\s*targetsSection\s*\)/);
+        expect(tail).toMatch(/scrollBody\.appendChild\(\s*routingSection\s*\)/);
+        expect(tail).toMatch(/dialog\.appendChild\(\s*scrollBody\s*\)/);
+    });
+
+    it('modal shell CSS caps height and the scroll container holds the overflow', () => {
+        const css = read('style.css');
+        // Modal root caps height and clips so its scroll child handles the overflow.
+        expect(css).toMatch(/#injectSettingsModal[^}]*max-height:\s*85vh/);
+        expect(css).toMatch(/#injectSettingsModal[^}]*overflow:\s*hidden/);
+        // Scroll child grows to fill remaining space and scrolls vertically.
+        expect(css).toMatch(/#injectSettingsScroll[^}]*flex:\s*1\s+1\s+auto/);
+        expect(css).toMatch(/#injectSettingsScroll[^}]*overflow-y:\s*auto/);
+        // Tighter cap on phones.
+        expect(css).toMatch(/@media[^{]*max-width:\s*480px[\s\S]*#injectSettingsModal[^}]*max-height:\s*90vh/);
+    });
 });
 
 describe('inject feature — modal registered in global modal-open guard', () => {
