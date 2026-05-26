@@ -9,7 +9,7 @@
 
 ## Features
 
-- [ ] **[MEDIUM]** Add one-click "Inject to TODO.md" button with per-device settings modal
+- [x] **[MEDIUM]** Add one-click "Inject to TODO.md" button with per-device settings modal
   - Description: Add a button inside the expanded description panel of each todo row (and as a button in the mobile edit modal) that sends the description text to a user-configured Cloudflare Worker endpoint, which commits it as a new entry appended to the end of `TODO.md` in this repo. The button is the user's primary handoff path from "wrote up a TODO.md entry in the app's description field" to "entry is in the repo and the Claude Code pipeline can pick it up" — replacing the current copy/paste workflow. The Worker URL and shared secret are configured per-device through a new "Configure inject" entry in the ghost menu, which opens a dedicated settings modal; configuration is stored in `localStorage` and is not committed to the repo or bundled into the deployed build. Assumes a separately-deployed Worker endpoint exists (tracked separately, not part of this entry); this entry is PWA-side only.
     - Behavior:
       1. Add a "Configure inject" row to the ghost menu. Clicking it opens an "Inject settings" modal.
@@ -45,7 +45,7 @@
       - The Worker is expected to accept `{ test: true }` as a no-op that returns `{ ok: true }` without writing to GitHub. Worker code is out of scope for this PR but the contract is established here.
     - Out of scope: Deploying or configuring the Cloudflare Worker itself; re-injection of already-injected todos; opening a PR instead of committing direct to main; section-based routing within `TODO.md`; viewing the resulting commit from the badge (the timestamp is local-only for now); cross-device config sync (config is intentionally per-device).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
 
 ## In Progress
 
