@@ -73,8 +73,14 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: 2026-05-26
 
-- [ ] **[HIGH]** Fix swipe-right completed todos reappearing on mobile after refresh
+- [x] **[HIGH]** Fix swipe-right completed todos reappearing on mobile after refresh
   - Type: bug
   - Description: On touch devices, swiping a todo right to mark it complete updates the row visually and in the in-memory data model, but the change doesn't survive a page refresh — the todo reappears in its uncompleted state as if the swipe never happened. Expected behavior is for swipe-right completion to be durable across reloads, matching the desktop checkbox flow. The likely cause is that the `touchend` handler in `main.js` that finalizes the swipe-right gesture flips the `completed` flag on the todo object (and possibly calls a logic-layer method) without triggering the `localStorage` write in `listLogic.js` under the `todoapp_` prefix — either the swipe path is mutating the array directly instead of routing through `listLogic.js`, or it's calling a logic method that doesn't itself persist. Investigate the swipe gesture handlers in `main.js` (grep for `touchend`, `swipe`, and the completion-toggle call site with offset/limit since `main.js` exceeds 25k tokens), confirm the swipe-completion path ends in the same persistence write the desktop checkbox uses, and verify the data flowing through `listLogic.js` is what gets serialized. Add a regression test in `listLogic.test.js` asserting that toggling `completed` via the logic-layer method persists to storage.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: 2026-05-26
+
+- [ ] **[LOW]** Route the Today dashboard checkbox toggle through `listLogic.setToDoCompleted`
+  - Type: bug
+  - Description: `handleTodayCheckboxToggle` in `toDoList_main/src/main.js` still mutates `item.completed = checkbox.checked` directly and relies on the follow-up `listLogic.sortCompletedToBottom(project)` to flush the change to localStorage. That sort short-circuits when the partition order is already canonical (e.g. checking the last open task in its project from the Today view), so the toggle survives only in memory and the row comes back unchecked on refresh — the same failure mode that the swipe-right fix already eliminated for the Projects-view checkbox path. Replace the direct mutation with `listLogic.setToDoCompleted(project, item, checkbox.checked)` so the Today-view toggle benefits from the same unconditional persistence + Supabase mirror. No new logic-layer method is needed; the helper added in the swipe-right fix already covers this. Add a regression test in `tests/listLogic.test.js` (or a new `todayDashboardCompletion.test.js`) asserting that toggling a Today-row checkbox writes the new `completed` value to localStorage even when the project's array order would not change.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
