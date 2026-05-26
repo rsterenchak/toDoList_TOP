@@ -2,34 +2,34 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Add description editor modal on mobile for drafting TODO.md entries
- - Description: On mobile (touch devices, `pointer: coarse`), tapping a todo row body opens a centered modal editor over a backdrop for editing that todo's `desc` field. The intended use is drafting TODO.md backlog entries inside the app, so the editor must preserve markdown formatting (backticks, indentation, multi-line) and offer a one-tap copy-to-clipboard. Match the existing modal pattern (changelog modal): floating dialog padded from screen edges, purple-accented border, header with todo title + close X, monospace `<textarea>` filling the body, toolbar at the bottom.
- - Behavior:
-   1. Tap on a todo row body (excluding the checkbox, date pill, and any existing controls) opens the modal for that row's todo.
-   2. Modal renders the current `desc` value in a monospace textarea, font-size 16px (CLAUDE.md mobile-input constraint to avoid iOS auto-zoom), `white-space: pre`, multi-line, no auto-resize on the row itself.
-   3. Toolbar holds two buttons: "Copy as TODO.md entry" (primary, purple) copies the textarea contents to clipboard via `navigator.clipboard.writeText`; "Clear" wipes the textarea contents (with a confirmation step per CLAUDE.md's destructive-action rule, since this throws away saved description text).
-   4. Save commits the textarea value back to the todo via `listLogic.js` (data-model mutations route through here) and closes the modal.
-   5. Modal closes 3 ways per CLAUDE.md: explicit close X, backdrop click, Escape (even though Escape isn't reachable from a soft keyboard, keep it for parity with desktop keyboards on tablets).
-   6. On the todo row, when `desc` is non-empty, render a small purple note-style indicator icon (inline SVG or a CSS-drawn glyph — no new dependencies) between the checkbox and the title so the user can tell at a glance which todos carry descriptions.
- - Implementation notes:
-   - The `desc` field already exists on the `toDo` factory and is already persisted by `listLogic.js` — no data-model changes needed, only UI surface.
-   - Gate the tap-to-open listener on `window.matchMedia('(pointer: coarse)').matches` so desktop behavior is unchanged. The description is silently still on the data model in localStorage on desktop; exposing it on desktop is a follow-up.
-   - Be careful about tap-target collisions: tapping the checkbox, date pill, delete button, or title-edit affordance must NOT open the modal. Wire the listener on the row body element specifically, and stop propagation from the controls.
-   - `main.js` is over 25k tokens — navigate with grep + offset/limit when adding the modal builder and tap handler; don't try to read in full.
-   - No new dependencies (per CLAUDE.md). Use the existing modal-creation helpers and styling tokens in `style.css`.
-   - The "Copy as TODO.md entry" button copies the raw textarea contents as-is — the user is responsible for the markdown shape. (A future iteration could assemble `- [ ] **[PRIORITY]** {title}\n  - Description: {desc}\n  - File: ...` from structured fields, but scope here is just the editor surface.)
- - Acceptance criteria:
-   - Tapping a todo row body on a touch device opens the modal; tapping the checkbox or date pill does not.
-   - Modal preserves markdown formatting on save and on reload from localStorage.
-   - "Copy as TODO.md entry" places the textarea contents on the clipboard.
-   - "Clear" prompts for confirmation before wiping non-empty content.
-   - Modal closes via X, backdrop tap, and Escape.
-   - Rows with non-empty `desc` show the indicator icon; rows with empty `desc` do not.
-   - Textarea font-size is 16px+ on mobile (no iOS auto-zoom on focus).
- - Out of scope: desktop entry point for the editor; structured entry assembly from title + priority + file fields; rich-text or syntax-highlighted markdown editing.
- - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
- - Completed: 2026-05-25
-
+- [ ] **[MEDIUM]** Preserve markdown formatting in description editor (paste + copy)
+  - Description: The description editor modal (from the prior entry, mobile centered modal C) currently strips formatting when markdown text is pasted in, and the "Copy as TODO.md entry" button must emit the textarea contents to the clipboard as raw markdown bytes with no transformation. End goal: the user can paste a TODO.md draft into the modal, edit it, tap "Copy as TODO.md entry", and paste the result directly into their `TODO.md` file with formatting fully intact (bullets, indentation, backticks, newlines, asterisks, brackets).
+  - Behavior:
+    1. Paste into the description textarea preserves the raw clipboard text verbatim — newlines, leading whitespace, asterisks, backticks, dashes, brackets, and Unicode all survive.
+    2. The textarea uses `white-space: pre-wrap` (or `pre`) so indentation and line breaks render visibly while editing.
+    3. The textarea has `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"` so iOS/Android keyboards don't autocorrect markdown punctuation (e.g. turning `--` into `—`, `"foo"` into curly quotes, or auto-capitalizing list items).
+    4. The `desc` field stores the raw string as-is — no `.trim()`, no `.replace()`, no HTML escaping on write.
+    5. "Copy as TODO.md entry" calls `navigator.clipboard.writeText(todo.desc)` with the unmodified string. No template wrapping, no prefix/suffix, no entity encoding — what the user typed is what lands on the clipboard.
+    6. Brief visual confirmation that copy succeeded: button label flips to "Copied ✓" for ~1.2s, then reverts. No toast, no modal.
+    7. On render (modal open, page reload), `desc` is placed into the textarea via `textarea.value = todo.desc` — never `innerHTML` or `innerText`, which would normalize whitespace and entities.
+  - Implementation notes:
+    - The current "Copy as TODO.md entry" button in the description editor modal is the integration point — this entry fixes its behavior, doesn't add a new button.
+    - Investigate why paste currently strips formatting. Likely culprits: (a) the editor surface is `contenteditable` instead of `<textarea>` and `innerText` is normalizing; (b) there's a `paste` event listener calling `e.clipboardData.getData('text/plain')` then mangling; (c) `desc` is being set via `innerHTML` somewhere in the render path. If the editor is currently `contenteditable`, switch to `<textarea>`.
+    - Verify in `listLogic.js` that the `desc` write path doesn't transform the string. `addToDo_` / `updateToDo` / wherever the desc setter lives should assign the raw value.
+    - Inline JS styles override CSS (recurring source of bugs in `main.js`) — if `white-space` is being set inline, change it in JS, not in `style.css`.
+    - Clipboard API requires a secure context (HTTPS) — GitHub Pages already serves over HTTPS, so this works in production. For local `webpack-dev-server`, `navigator.clipboard` works on `localhost` per spec.
+    - Fallback: if `navigator.clipboard` is unavailable (older mobile browsers), fall back to a hidden textarea + `document.execCommand('copy')`. Both paths emit identical bytes.
+    - No new dependencies. No data-model changes — `desc` is already a string.
+  - Acceptance criteria:
+    - Pasting a multi-line markdown TODO.md entry into the description textarea preserves every newline, leading space, and special character.
+    - After save + reload from localStorage, reopening the modal shows the description with identical formatting.
+    - "Copy as TODO.md entry" places exactly `todo.desc` on the clipboard (verified by pasting into a plain text editor — bytes match).
+    - Pasting the copied content into a real `.md` file renders correctly as markdown (bullets nest, code formatting holds, headings work).
+    - iOS Safari does not autocapitalize, autocorrect, or smart-quote-substitute typed content in the textarea.
+    - Copy button shows brief "Copied ✓" confirmation, then reverts.
+  - Out of scope: multi-todo export, project-level export, footer-level export trigger, structured entry assembly (assembling `- [ ] **[PRIORITY]** {title}\n...` from separate fields), markdown preview/rendering inside the modal, syntax highlighting.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
