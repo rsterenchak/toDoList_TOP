@@ -55,11 +55,11 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileDescEditorModal.test.js`
   - Completed: 2026-05-26
 
-- [ ] **[LOW]** Fix Inject button upload-arrow icon misalignment inside desktop description editor
+- [x] **[LOW]** Fix Inject button upload-arrow icon misalignment inside desktop description editor
   - Type: bug
   - Description: On desktop, the "ÃÂ¢ÃÂÃÂ Inject to TODO.md" button rendered inside the inline `descSibling` description editor has its upload-arrow SVG visibly misaligned with the "Inject to TODO.md" text label ÃÂ¢ÃÂÃÂ the icon sits low and pushed toward the left edge of its container instead of centered vertically with the text and snug against the label with consistent spacing. Likely cause is the button using default `display: inline-block` (or no explicit display) with the SVG laid out via the inline baseline, so the SVG's bounding box doesn't share a vertical center with the text. Fix by setting the button to `display: inline-flex; align-items: center; gap: 6px` and giving the inline SVG a fixed `width`/`height` plus `flex-shrink: 0` so it never collapses. If the icon and label are both wrapped in additional spans for styling, ensure those wrappers don't reintroduce baseline alignment (`vertical-align: middle` on the SVG is the inline-context fallback if the flex approach isn't used). Mirror the mobile-modal Inject button's styling (the one in `#descEditorModalActions`) so the two surfaces share visual vocabulary.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
 
 - [x] **[MEDIUM]** Add Configure inject row to mobile ghost menu
   - Type: bug
