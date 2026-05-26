@@ -82,7 +82,13 @@ import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
+import { initInjectConfig, showInjectSettingsModal } from './inject.js';
 import button from './addProj_button.svg';
+
+// Hydrate the inject config cache from localStorage before any inject
+// button gets rendered — buildToDoRow / showDescEditorModal both call
+// isInjectConfigured() at render time, which reads the cached values.
+initInjectConfig();
 
 
 
@@ -1507,6 +1513,17 @@ function component() {
             function() { openImportPicker(rebuildAfterImport); }
         );
         menu.appendChild(importItem);
+
+        // Configure inject — opens the per-device Inject settings modal,
+        // where the user pastes a Cloudflare Worker URL + shared secret so
+        // the "Inject to TODO.md" button on todo description panels has
+        // somewhere to send to. Config is per-device, not synced.
+        const injectConfigItem = buildSettingsMenuItem(
+            'Configure inject',
+            '',
+            function() { showInjectSettingsModal(); }
+        );
+        menu.appendChild(injectConfigItem);
 
         // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP section pattern: a divider + small heading followed by

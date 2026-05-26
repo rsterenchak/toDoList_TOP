@@ -25,8 +25,13 @@ const toDo = (title, description, dueDate, priority, position) => {
         && typeof globalThis.crypto.randomUUID === 'function')
         ? globalThis.crypto.randomUUID()
         : null;
+    // Timestamp (ms since epoch) recorded when the user successfully sent
+    // the description to the configured Cloudflare Worker via the Inject to
+    // TODO.md button. Null means "never injected"; once set, the inject
+    // button on the row renders in the "injected" terminal state.
+    let injectedAt = null;
 
-    return {id, tit, desc, due, pri, pos, completed, recurrence};
+    return {id, tit, desc, due, pri, pos, completed, recurrence, injectedAt};
   };
   
 

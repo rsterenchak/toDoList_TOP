@@ -7944,3 +7944,279 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }
 }
+
+
+/* ── INJECT TO TODO.MD ──
+   Per-row button inside the description panel + per-device settings modal
+   opened from the ghost menu. Sends the row's description text to a
+   user-configured Cloudflare Worker that commits it as a new entry into
+   TODO.md. State is driven entirely by data-state on the button — see
+   inject.js's refreshInjectButton for transitions. */
+.injectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  margin: 0 12px 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.injectBtn:hover:not(:disabled) {
+  background: var(--accent-dim);
+}
+.injectBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectBtn:disabled {
+  cursor: default;
+}
+
+/* Unconfigured state: dimmed outline, clicking opens the settings modal. */
+.injectBtn--unconfigured {
+  border-color: var(--border-bright);
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+.injectBtn--unconfigured:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Injected (terminal) state: green-tinted, disabled — clicking is a no-op. */
+.injectBtn--injected {
+  border-color: var(--type-feature);
+  color: var(--type-feature);
+  background: transparent;
+  opacity: 0.85;
+  cursor: default;
+}
+.injectBtn--injected:hover {
+  background: transparent;
+}
+.injectBtnIcon {
+  flex: 0 0 auto;
+}
+.injectBtnLabel {
+  white-space: nowrap;
+}
+
+/* When the inject button lives inside the mobile description-editor modal's
+   actions row, drop the row-style outer margin (the modal owns its own
+   padding) and match the height of the other modal buttons. */
+#descEditorModalActions .injectBtn {
+  margin: 0;
+  font-size: 13px;
+  padding: 8px 14px;
+  min-height: 36px;
+}
+
+
+/* ── INJECT SETTINGS MODAL ── */
+#injectSettingsBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 220;
+}
+#injectSettingsModal {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  width: min(440px, 92vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+#injectSettingsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#injectSettingsTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+#injectSettingsClose {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+#injectSettingsClose:hover { background: var(--bg-hover); color: var(--text-primary); }
+#injectSettingsClose:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+
+#injectSettingsStatusRow {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: flex-start;
+}
+.injectStatusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.injectStatusPill--unconfigured { color: var(--text-muted); }
+.injectStatusPill--idle         { color: var(--text-secondary); }
+.injectStatusPill--ok {
+  color: var(--type-feature);
+  border-color: var(--type-feature);
+}
+.injectStatusPill--err {
+  color: var(--text-danger);
+  border-color: var(--text-danger);
+}
+
+#injectSettingsBody {
+  padding: 4px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.injectFieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+#injectWorkerUrlInput,
+#injectSharedSecretInput {
+  font-family: inherit;
+  /* 16px font on touch keyboards to avoid iOS Safari auto-zoom on focus —
+     CLAUDE.md mobile input rule. */
+  font-size: 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  width: 100%;
+}
+#injectWorkerUrlInput:focus,
+#injectSharedSecretInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectSecretWrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.injectSecretWrap #injectSharedSecretInput {
+  padding-right: 40px;
+}
+.injectEyeBtn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.injectEyeBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.injectEyeBtn:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+
+#injectSettingsActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+.injectSettingsActionsSpacer { flex: 1; }
+.injectSettingsBtn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.injectSettingsBtn:hover:not(:disabled) { background: var(--bg-hover); }
+.injectSettingsBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectSettingsBtn:disabled { cursor: default; opacity: 0.6; }
+.injectSettingsBtn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.injectSettingsBtn--primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.injectSettingsBtn--danger {
+  color: var(--text-danger);
+  border-color: var(--text-danger);
+  background: transparent;
+}
+.injectSettingsBtn--danger:hover:not(:disabled) {
+  background: var(--text-danger);
+  color: #fff;
+}
+
+@media (max-width: 480px) {
+  #injectSettingsModal { width: 96vw; }
+  .injectSettingsBtn { font-size: 14px; padding: 10px 14px; }
+}
+
+
+/* ── INJECT TOAST ──
+   Drop-in mirror of #jsonImportExportToast's positioning; the variant
+   classes recolor the border for success vs error rather than the single
+   red treatment the existing toast uses. */
+#injectToast {
+  position: fixed;
+  top: calc(var(--nav-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 250;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  max-width: 90vw;
+}
+#injectToast.injectToast--ok    { border-color: var(--type-feature); color: var(--type-feature); }
+#injectToast.injectToast--error { border-color: var(--text-danger);  color: var(--text-danger);  }
