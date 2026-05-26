@@ -17,10 +17,10 @@
     - Inline JS styles override CSS (recurring source of bugs in `main.js`) — if `white-space: normal` is being set inline on the desktop desc element, change it in JS, not just in `style.css`.
     - `main.js` is over 25k tokens — grep for `desc`, `description`, and any "copy" handlers with offset/limit pagination rather than full reads. Look specifically for handlers that ONLY run when `pointer: fine` or behind any `(min-width: …)` gate.
     - Round-trip acceptance test: paste this exact block into the desktop description field, save, reload, copy, paste into a plain text editor:
-  - [ ] **[LOW]** Example todo
-    - Description: First line.
-      - Nested bullet.
-    - Code: `npm install`
+    - [ ] **[LOW]** Example todo
+      - Description: First line.
+        - Nested bullet.
+      - Code: `npm install`
       The pasted-out bytes must match the pasted-in bytes character for character. Run the same test on mobile to confirm parity is maintained.
     - No data-model changes. No dependencies. No mobile path changes.
   - Acceptance criteria:
