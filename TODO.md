@@ -1,13 +1,9 @@
 # TODO List
 
-## Bugs
-
 - [x] **[LOW]** Fix Delete key not removing project or todo on Mac
   - Description: On Mac, pressing the Delete key (the one labeled "Delete" on a MacBook keyboard, which is actually Backspace) on a selected project or selected todo row does nothing â the item isn't removed. The expected behavior matches the existing Windows/Linux flow: with a project or todo selected, hitting Delete removes it (with the existing confirmation step for destructive actions, per `CLAUDE.md`). Likely cause: the keyboard listener in `main.js` is checking `e.key === "Delete"` only, which corresponds to the forward-delete key (keyCode 46) â that key doesn't exist on most Mac laptop keyboards. The "Delete" key on a MacBook fires `e.key === "Backspace"` (keyCode 8). Fix by accepting both keys in the handler: `if (e.key === "Delete" || e.key === "Backspace")`, while still guarding against firing the delete when an input/textarea/contenteditable has focus (so Backspace inside the rename input or a description textarea still just deletes a character). Grep `main.js` for `"Delete"` and `key ===` to find the relevant handlers â there are likely two (one for project selection, one for todo row selection) and both need the same fix. Confirm the existing destructive-action confirmation still triggers from the Backspace path.
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-26
-
-## Features
 
 - [x] **[MEDIUM]** Add one-click "Inject to TODO.md" button with per-device settings modal
   - Description: Add a button inside the expanded description panel of each todo row (and as a button in the mobile edit modal) that sends the description text to a user-configured Cloudflare Worker endpoint, which commits it as a new entry appended to the end of `TODO.md` in this repo. The button is the user's primary handoff path from "wrote up a TODO.md entry in the app's description field" to "entry is in the repo and the Claude Code pipeline can pick it up" â replacing the current copy/paste workflow. The Worker URL and shared secret are configured per-device through a new "Configure inject" entry in the ghost menu, which opens a dedicated settings modal; configuration is stored in `localStorage` and is not committed to the repo or bundled into the deployed build. Assumes a separately-deployed Worker endpoint exists (tracked separately, not part of this entry); this entry is PWA-side only.
@@ -47,12 +43,4 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-26
 
-## In Progress
 
-- [x] Fix API rate limiting issue
-  - Completed: 2024-04-15
-
-- [ ] **[LOW]** Test inject button — safe to delete
-  - Description: This is a test entry created to verify the inject button workflow. Click inject on this todo's description, then check the resulting commit on `main` and delete the entry from TODO.md.
-  - File: N/A
-  - Completed: YYYY-MM-DD (PR #<number>)
