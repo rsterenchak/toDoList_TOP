@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[MEDIUM]** Preserve markdown formatting in description editor (paste + copy)
+- [x] **[MEDIUM]** Preserve markdown formatting in description editor (paste + copy)
   - Description: The description editor modal (from the prior entry, mobile centered modal C) currently strips formatting when markdown text is pasted in, and the "Copy as TODO.md entry" button must emit the textarea contents to the clipboard as raw markdown bytes with no transformation. End goal: the user can paste a TODO.md draft into the modal, edit it, tap "Copy as TODO.md entry", and paste the result directly into their `TODO.md` file with formatting fully intact (bullets, indentation, backticks, newlines, asterisks, brackets).
   - Behavior:
     1. Paste into the description textarea preserves the raw clipboard text verbatim — newlines, leading whitespace, asterisks, backticks, dashes, brackets, and Unicode all survive.
@@ -29,7 +29,7 @@
     - Copy button shows brief "Copied ✓" confirmation, then reverts.
   - Out of scope: multi-todo export, project-level export, footer-level export trigger, structured entry assembly (assembling `- [ ] **[PRIORITY]** {title}\n...` from separate fields), markdown preview/rendering inside the modal, syntax highlighting.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-25
 
 ## Features
 
