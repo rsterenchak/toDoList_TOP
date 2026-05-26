@@ -121,6 +121,24 @@ describe('listLogic — todos', () => {
         expect(listLogic.projectLength('Groceries')).toBe(lengthBefore);
     });
 
+    // Regression guard: deletes must be durable across reloads. The next
+    // page-load reads the in-memory tree back from `localStorage.allProjects`,
+    // so a removeToDoByItem call that doesn't reach saveToStorage would
+    // cause the deleted row to reappear on refresh.
+    it('removeToDoByItem persists the deletion to localStorage', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        listLogic.addToDo('Groceries', 'Bread');
+
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        listLogic.removeToDoByItem('Groceries', milk);
+
+        const storedRaw = localStorage.getItem('allProjects');
+        expect(storedRaw).not.toBeNull();
+        const persistedTitles = JSON.parse(storedRaw).Groceries.items.map(i => i.tit);
+        expect(persistedTitles).not.toContain('Milk');
+        expect(persistedTitles).toContain('Bread');
+    });
+
     // ── insertToDoAt — backs the mobile swipe-delete UNDO recovery path ──
 
     it('insertToDoAt restores a previously-removed item at its original position', () => {

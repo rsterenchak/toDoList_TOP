@@ -67,8 +67,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-26
 
-- [ ] **[HIGH]** Fix deleted todos reappearing after page refresh
+- [x] **[HIGH]** Fix deleted todos reappearing after page refresh
   - Type: bug
   - Description: Todos that the user deletes come back the next time the page loads, meaning the deletion never made it to `localStorage` — only the in-memory data model was updated. Expected behavior is for deletion to be durable: once a todo is removed, it stays gone across reloads. The likely cause is a code path that calls `removeToDoByTitle` (the standard deletion method) without following up with the persistence write in `listLogic.js` — either a UI handler in `main.js` is mutating the array directly instead of routing through `listLogic.js`, or `removeToDoByTitle` itself isn't calling `saveToStorage` (or equivalent) on the relevant `todoapp_`-prefixed key. Investigate the deletion handlers in `main.js` (grep for `removeToDoByTitle` with offset/limit since `main.js` exceeds 25k tokens), confirm every call site is followed by a persistence write, and verify `restoreFromStorage` in `index.js` isn't repopulating from a stale source. Add a regression test in `listLogic.test.js` asserting that after `removeToDoByTitle`, the serialized `localStorage` payload no longer contains the deleted item.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
