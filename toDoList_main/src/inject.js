@@ -11,10 +11,11 @@ import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
 
-const URL_KEY         = 'todoapp_injectWorkerUrl';
-const SECRET_KEY      = 'todoapp_injectSharedSecret';
-const LAST_TESTED_KEY = 'todoapp_injectLastTestedAt';
-const LAST_RESULT_KEY = 'todoapp_injectLastTestResult';
+const URL_KEY              = 'todoapp_injectWorkerUrl';
+const SECRET_KEY           = 'todoapp_injectSharedSecret';
+const LAST_TESTED_KEY      = 'todoapp_injectLastTestedAt';
+const LAST_RESULT_KEY      = 'todoapp_injectLastTestResult';
+const LAST_TESTED_NICK_KEY = 'todoapp_injectLastTestedNickname';
 
 // Module-level cache populated on app boot via initInjectConfig.
 let cachedUrl = '';
@@ -52,14 +53,24 @@ function readLastTest() {
     try {
         const ts = parseInt(localStorage.getItem(LAST_TESTED_KEY) || '0', 10);
         const result = localStorage.getItem(LAST_RESULT_KEY) || '';
-        return { ts: isNaN(ts) ? 0 : ts, result: result };
-    } catch (e) { return { ts: 0, result: '' }; }
+        const nickname = localStorage.getItem(LAST_TESTED_NICK_KEY) || '';
+        return {
+            ts: isNaN(ts) ? 0 : ts,
+            result: result,
+            nickname: nickname,
+        };
+    } catch (e) { return { ts: 0, result: '', nickname: '' }; }
 }
 
-function writeLastTest(result) {
+function writeLastTest(result, nickname) {
     try {
         localStorage.setItem(LAST_TESTED_KEY, String(Date.now()));
         localStorage.setItem(LAST_RESULT_KEY, result || '');
+        if (nickname) {
+            localStorage.setItem(LAST_TESTED_NICK_KEY, nickname);
+        } else {
+            localStorage.removeItem(LAST_TESTED_NICK_KEY);
+        }
     } catch (e) { /* private mode */ }
 }
 
@@ -126,10 +137,15 @@ function describeError(e) {
     return e.message || 'Unknown error';
 }
 
-async function injectDescription(item) {
+async function injectDescription(item, target) {
     if (!item || !item.desc) return { ok: false, reason: 'No description' };
     try {
-        await postToWorker({ entry: item.desc });
+        const body = { entry: item.desc };
+        if (target) {
+            body.repo = target.repo;
+            body.filePath = target.file_path;
+        }
+        await postToWorker(body);
         item.injectedAt = Date.now();
         listLogic.saveToStorage();
         return { ok: true };
@@ -138,14 +154,28 @@ async function injectDescription(item) {
     }
 }
 
+// Test connection sends `{ test: true }` plus repo/filePath when at least
+// one target is defined — the Worker exercises the same route a real
+// inject would take. With no targets defined, the request omits repo/
+// filePath entirely so the Worker falls back to its default target;
+// keeps "Test connection" usable before the user has set up any targets.
 async function testConnection() {
+    const first = (cachedTargets && cachedTargets.length > 0) ? cachedTargets[0] : null;
     try {
-        await postToWorker({ test: true });
-        writeLastTest('ok');
-        return { ok: true, label: 'Connected' };
+        const body = { test: true };
+        if (first) {
+            body.repo = first.repo;
+            body.filePath = first.file_path;
+        }
+        await postToWorker(body);
+        writeLastTest('ok', first ? first.nickname : '');
+        const label = first
+            ? 'Connected (target: ' + first.nickname + ')'
+            : 'Connected';
+        return { ok: true, label: label };
     } catch (e) {
         const label = describeError(e);
-        writeLastTest(label);
+        writeLastTest(label, '');
         return { ok: false, label: label };
     }
 }
@@ -169,6 +199,9 @@ export function makeInjectButton(item, options) {
     btn.type = 'button';
     btn.className = 'injectBtn';
     btn._injectItem = item;
+    btn._injectProjectName = typeof opts.projectName === 'string'
+        ? opts.projectName
+        : '';
 
     // Inline SVG icons — upload arrow for ready/unconfigured, checkmark for
     // injected. Matching the inline-SVG approach used elsewhere in the app
@@ -186,13 +219,19 @@ export function makeInjectButton(item, options) {
             showInjectSettingsModal();
             return;
         }
+        if (state === 'no-target') {
+            showInjectSettingsModal({ focusSection: 'projectRouting' });
+            return;
+        }
         if (state === 'injected') return;
         if (state === 'ready') {
             // Disable immediately to block double-clicks during the in-
             // flight request (acceptance criteria: double-click must not
             // produce two commits).
             btn.disabled = true;
-            const result = await injectDescription(item);
+            const targetId = listLogic.getProjectTargetId(btn._injectProjectName || '');
+            const target = findTargetById(targetId);
+            const result = await injectDescription(item, target);
             if (result.ok) {
                 showInjectToast('Injected to TODO.md');
                 refreshInjectButton(btn, item);
@@ -216,9 +255,54 @@ function injectBtnInnerHTML(state) {
          + '<span class="injectBtnLabel"></span>';
 }
 
-export function refreshInjectButton(btn, item) {
+// State precedence (top wins):
+//   1. unconfigured  — no Worker URL / shared secret on this device
+//   2. no-target     — project has no inject_targets row mapped
+//   3. hidden        — description text is empty
+//   4. injected      — item.injectedAt already set
+//   5. ready         — terminal happy-path state
+// (1) and (2) are visible-but-dimmed call-to-action states that override
+// the empty-desc hide so the user always has a place to fix the missing
+// pre-requisite. Once both are satisfied, the button reverts to the
+// "hides on empty desc" rhythm the description editor depends on.
+export function refreshInjectButton(btn, item, projectName) {
     if (!btn || !item) return;
     btn._injectItem = item;
+    if (typeof projectName === 'string') {
+        btn._injectProjectName = projectName;
+    }
+    const project = btn._injectProjectName || '';
+
+    if (!isInjectConfigured()) {
+        btn.style.display = '';
+        btn.dataset.state = 'unconfigured';
+        btn.disabled = false;
+        btn.classList.add('injectBtn--unconfigured');
+        btn.classList.remove('injectBtn--no-target');
+        btn.classList.remove('injectBtn--injected');
+        btn.innerHTML = injectBtnInnerHTML('unconfigured');
+        const label = btn.querySelector('.injectBtnLabel');
+        if (label) label.textContent = 'Configure inject in settings';
+        btn.setAttribute('aria-label', 'Open inject settings');
+        btn.title = 'Inject is not configured — open settings';
+        return;
+    }
+
+    const targetId = project ? listLogic.getProjectTargetId(project) : null;
+    if (!targetId) {
+        btn.style.display = '';
+        btn.dataset.state = 'no-target';
+        btn.disabled = false;
+        btn.classList.add('injectBtn--no-target');
+        btn.classList.remove('injectBtn--unconfigured');
+        btn.classList.remove('injectBtn--injected');
+        btn.innerHTML = injectBtnInnerHTML('no-target');
+        const noTargetLabel = btn.querySelector('.injectBtnLabel');
+        if (noTargetLabel) noTargetLabel.textContent = 'Set inject target';
+        btn.setAttribute('aria-label', 'Set inject target for this project');
+        btn.title = "This project doesn't have an inject target — open settings";
+        return;
+    }
 
     const hasDesc = !!(item.desc && item.desc.trim().length > 0);
     if (!hasDesc) {
@@ -233,6 +317,7 @@ export function refreshInjectButton(btn, item) {
         btn.dataset.state = 'injected';
         btn.disabled = true;
         btn.classList.remove('injectBtn--unconfigured');
+        btn.classList.remove('injectBtn--no-target');
         btn.classList.add('injectBtn--injected');
         btn.innerHTML = injectBtnInnerHTML('injected');
         btn.setAttribute('aria-label', 'Already injected to TODO.md');
@@ -240,28 +325,37 @@ export function refreshInjectButton(btn, item) {
         return;
     }
 
-    if (!isInjectConfigured()) {
-        btn.dataset.state = 'unconfigured';
-        btn.disabled = false;
-        btn.classList.add('injectBtn--unconfigured');
-        btn.classList.remove('injectBtn--injected');
-        btn.innerHTML = injectBtnInnerHTML('unconfigured');
-        const label = btn.querySelector('.injectBtnLabel');
-        if (label) label.textContent = 'Configure inject in settings';
-        btn.setAttribute('aria-label', 'Open inject settings');
-        btn.title = 'Inject is not configured — open settings';
-        return;
-    }
-
     btn.dataset.state = 'ready';
     btn.disabled = false;
     btn.classList.remove('injectBtn--unconfigured');
+    btn.classList.remove('injectBtn--no-target');
     btn.classList.remove('injectBtn--injected');
     btn.innerHTML = injectBtnInnerHTML('ready');
     const label = btn.querySelector('.injectBtnLabel');
     if (label) label.textContent = 'Inject to TODO.md';
     btn.setAttribute('aria-label', 'Inject description to TODO.md');
     btn.title = 'Send this description to TODO.md';
+}
+
+// Look up a target by id in the module-level cache populated by
+// loadInjectTargets. Returns null when the id doesn't match or the cache
+// is empty (e.g. before initInjectTargets has run). Exported so the click
+// handler can resolve the active project's target_id into a row without
+// re-fetching from Supabase on every inject.
+export function findTargetById(id) {
+    if (!id || !Array.isArray(cachedTargets)) return null;
+    for (let i = 0; i < cachedTargets.length; i++) {
+        if (cachedTargets[i] && cachedTargets[i].id === id) return cachedTargets[i];
+    }
+    return null;
+}
+
+// Warm the targets cache at app boot so inject buttons rendering before
+// the settings modal opens can already resolve their project's
+// target_id. Called from main.js after the Supabase session is ready.
+export async function initInjectTargets() {
+    await loadInjectTargets();
+    refreshAllInjectButtons();
 }
 
 function refreshAllInjectButtons() {
@@ -555,7 +649,13 @@ function showInjectTargetSubModal(options) {
 // Opens the per-device Inject settings dialog. Reads / writes the four
 // localStorage keys above; Save and Clear both refresh every visible
 // inject button so the row UI reflects new config immediately.
-export function showInjectSettingsModal() {
+//
+// `options.focusSection: 'projectRouting'` scrolls the Project routing
+// section into view after the modal mounts. The inject button's
+// no-target state passes this so a user clicking "Set inject target"
+// lands directly on the row table they need to edit.
+export function showInjectSettingsModal(options) {
+    const openOpts = options || {};
     const prior = document.getElementById('injectSettingsBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
@@ -628,7 +728,10 @@ export function showInjectSettingsModal() {
                 pill.textContent = 'Configured · never tested';
                 pill.classList.add('injectStatusPill--idle');
             } else if (lt.result === 'ok') {
-                pill.textContent = 'Connected · last tested ' + relativeTime(lt.ts);
+                const head = lt.nickname
+                    ? 'Connected (target: ' + lt.nickname + ')'
+                    : 'Connected';
+                pill.textContent = head + ' · last tested ' + relativeTime(lt.ts);
                 pill.classList.add('injectStatusPill--ok');
             } else {
                 pill.textContent = lt.result + ' · ' + relativeTime(lt.ts);
@@ -846,8 +949,22 @@ export function showInjectSettingsModal() {
                         showInjectToast(r.reason || 'Delete failed', 'error');
                         return;
                     }
+                    // The DB-side FK is ON DELETE SET NULL, but the client
+                    // cache still holds the now-orphan target_id on every
+                    // project that pointed here — clear them locally so
+                    // the routing dropdowns flip to "None" without
+                    // waiting for the next page reload, and refresh the
+                    // inject buttons so any "Ready" rows demote to
+                    // "Set inject target".
+                    // Pass fromSync so the local cache update doesn't
+                    // also fire a redundant per-project Supabase update —
+                    // the FK ON DELETE SET NULL has already nulled the
+                    // target_id on the server side.
+                    listLogic.clearProjectTargetId(target.id, { fromSync: true });
                     showInjectToast('Target deleted');
                     refreshTargets();
+                    renderProjectRouting();
+                    refreshAllInjectButtons();
                 },
             });
         });
@@ -861,18 +978,140 @@ export function showInjectSettingsModal() {
     async function refreshTargets() {
         await loadInjectTargets();
         renderTargets();
+        renderProjectRouting();
+    }
+
+    // ── Project routing section ──
+    // One row per project the user owns; each row shows the project name
+    // and a target dropdown ("None" + every defined target by nickname).
+    // Dropdown change autosaves to Supabase via listLogic.setProjectTargetId
+    // and shows a brief inline "Saved" confirmation. When no targets exist,
+    // the section collapses to a one-line empty state directing the user
+    // to define a target first.
+    const routingSection = document.createElement('div');
+    routingSection.id = 'injectProjectRoutingSection';
+    routingSection.className = 'injectSettingsSection';
+
+    const routingHeader = document.createElement('div');
+    routingHeader.className = 'injectSettingsSectionHeader';
+    const routingTitle = document.createElement('div');
+    routingTitle.id = 'injectProjectRoutingTitle';
+    routingTitle.className = 'injectSettingsSectionTitle';
+    routingTitle.textContent = 'Project routing';
+    routingHeader.appendChild(routingTitle);
+
+    const routingBody = document.createElement('div');
+    routingBody.id = 'injectProjectRoutingBody';
+    routingBody.className = 'injectSettingsSectionBody';
+
+    routingSection.appendChild(routingHeader);
+    routingSection.appendChild(routingBody);
+
+    function renderProjectRouting() {
+        routingBody.innerHTML = '';
+        if (!cachedTargets || cachedTargets.length === 0) {
+            const empty = document.createElement('div');
+            empty.id = 'injectProjectRoutingEmpty';
+            empty.className = 'injectProjectRoutingEmpty';
+            empty.textContent = 'Define a target first to enable project routing';
+            routingBody.appendChild(empty);
+            return;
+        }
+        const projectNames = listLogic.listProjectsArray();
+        if (!projectNames || projectNames.length === 0) {
+            const empty = document.createElement('div');
+            empty.id = 'injectProjectRoutingEmpty';
+            empty.className = 'injectProjectRoutingEmpty';
+            empty.textContent = 'No projects yet — add one in the sidebar to route it';
+            routingBody.appendChild(empty);
+            return;
+        }
+        const table = document.createElement('div');
+        table.id = 'injectProjectRoutingTable';
+        table.className = 'injectProjectRoutingTable';
+        projectNames.forEach(function(name) {
+            table.appendChild(renderRoutingRow(name));
+        });
+        routingBody.appendChild(table);
+    }
+
+    function renderRoutingRow(projectName) {
+        const row = document.createElement('div');
+        row.className = 'injectProjectRoutingRow';
+        row.dataset.projectName = projectName;
+
+        const nameCell = document.createElement('div');
+        nameCell.className = 'injectProjectRoutingName';
+        nameCell.textContent = projectName;
+        nameCell.title = projectName;
+
+        const select = document.createElement('select');
+        select.className = 'injectProjectRoutingSelect';
+        select.setAttribute('aria-label', 'Inject target for project ' + projectName);
+
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '';
+        noneOpt.textContent = 'None';
+        select.appendChild(noneOpt);
+        cachedTargets.forEach(function(t) {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.nickname;
+            select.appendChild(opt);
+        });
+        const current = listLogic.getProjectTargetId(projectName) || '';
+        select.value = current;
+
+        const savedNote = document.createElement('span');
+        savedNote.className = 'injectProjectRoutingSaved';
+        savedNote.setAttribute('aria-live', 'polite');
+        savedNote.textContent = '';
+
+        let savedTimer = null;
+        select.addEventListener('change', function() {
+            const newId = select.value || null;
+            listLogic.setProjectTargetId(projectName, newId);
+            // Inline "Saved" confirmation per the autosave UX — fades after
+            // 1.5s so a fast operator routing several projects doesn't see
+            // an accumulating wall of confirmations.
+            savedNote.textContent = 'Saved';
+            savedNote.classList.add('is-visible');
+            if (savedTimer) clearTimeout(savedTimer);
+            savedTimer = setTimeout(function() {
+                savedNote.classList.remove('is-visible');
+                savedNote.textContent = '';
+            }, 1500);
+            refreshAllInjectButtons();
+        });
+
+        row.appendChild(nameCell);
+        row.appendChild(select);
+        row.appendChild(savedNote);
+        return row;
     }
 
     dialog.appendChild(header);
     dialog.appendChild(connSection);
     dialog.appendChild(targetsSection);
+    dialog.appendChild(routingSection);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
     renderStatus();
     setConnectionCollapsed(shouldAutoCollapse());
     renderTargets();
+    renderProjectRouting();
     refreshTargets();
+
+    if (openOpts.focusSection === 'projectRouting') {
+        // Defer so the section is laid out before scrolling. The modal
+        // body is the scroll container — scrollIntoView on the section
+        // heading lands the user on the table row they came to edit.
+        setTimeout(function() {
+            try { routingTitle.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+            catch (e) { /* defensive */ }
+        }, 0);
+    }
 
     const previouslyFocused = document.activeElement;
     let closed = false;
@@ -949,6 +1188,7 @@ export function showInjectSettingsModal() {
                 try {
                     localStorage.removeItem(LAST_TESTED_KEY);
                     localStorage.removeItem(LAST_RESULT_KEY);
+                    localStorage.removeItem(LAST_TESTED_NICK_KEY);
                 } catch (e) { /* private mode */ }
                 urlInput.value = '';
                 secretInput.value = '';

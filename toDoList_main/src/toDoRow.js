@@ -359,14 +359,15 @@ function openDescEditorForRow(toDoChild) {
     toDoChild.classList.add('todo-active');
     const item = toDoChild.__item;
     if (!item) return;
+    const projectName = toDoChild.dataset.value || '';
     showDescEditorModal(item, {
+        projectName: projectName,
         onSave: function() { updateDescIndicator(toDoChild, item); },
         onTitleSave: function(newTitle) {
             // Sync the row's visible title cells with the saved value so the
             // rename shows up immediately on modal close, and route the
             // mutation through listLogic so the Supabase persistMutation
             // gate fires (saveToStorage in the modal only writes localStorage).
-            const projectName = toDoChild.dataset.value;
             const toDoInput = toDoChild.querySelector('#toDoInput');
             const toDoTitleDisplay = toDoChild.querySelector('#toDoTitleDisplay');
             if (toDoInput) {
@@ -1174,7 +1175,7 @@ function buildInfoGlyph() {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item) {
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item, projectName) {
 
     let switcher = 0;
 
@@ -1191,7 +1192,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descSibling.appendChild(descSpacer2);
             if (injectBtn) {
                 descSibling.appendChild(injectBtn);
-                refreshInjectButton(injectBtn, item);
+                refreshInjectButton(injectBtn, item, projectName);
             }
             descInput.value = item["desc"] || "";
             // Trigger the textarea's auto-grow handler now that it's in the
@@ -1369,9 +1370,11 @@ export function buildToDoRow(item, toDoName) {
     // panel (after descSpacer2) and posts the description text to a
     // user-configured Cloudflare Worker. Hidden when the description is
     // empty; the keyup/blur handlers below refresh its state. The button
-    // itself manages its four visual states (hidden, unconfigured, ready,
-    // injected) via refreshInjectButton — see inject.js.
-    const injectBtn = makeInjectButton(item);
+    // itself manages its five visual states (hidden, unconfigured,
+    // no-target, ready, injected) via refreshInjectButton — see inject.js.
+    // The project name flows through so the no-target / ready states can
+    // resolve the project's per-project inject target.
+    const injectBtn = makeInjectButton(item, { projectName: toDoName });
     descInput.autocomplete = "off";
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
@@ -1476,7 +1479,7 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item);
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item, toDoName);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
@@ -1663,7 +1666,7 @@ export function buildToDoRow(item, toDoName) {
         listLogic.saveToStorage();
         descInput.style.border = "none";
         updateDescIndicator(toDoChild, item);
-        refreshInjectButton(injectBtn, item);
+        refreshInjectButton(injectBtn, item, toDoName);
         descInput.blur();
     });
 
@@ -1674,7 +1677,7 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
-        refreshInjectButton(injectBtn, item);
+        refreshInjectButton(injectBtn, item, toDoName);
     });
 
     // descInput blur — persist on click-away so cleared values aren't lost.
@@ -1682,7 +1685,7 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
-        refreshInjectButton(injectBtn, item);
+        refreshInjectButton(injectBtn, item, toDoName);
     });
 
     // Escape on the description cancels the in-progress edit by restoring

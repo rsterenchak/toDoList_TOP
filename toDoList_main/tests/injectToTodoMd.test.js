@@ -48,14 +48,22 @@ describe('inject feature — inject.js module shape', () => {
         expect(inject).toMatch(/['"]Authorization['"]\s*:\s*['"]Bearer\s*['"]\s*\+\s*cachedSecret/);
     });
 
-    it('the inject POST body is { entry: <description text verbatim> } — no transform', () => {
+    it('the inject POST body carries the description verbatim under `entry`', () => {
         // The description value is `item.desc` straight from the data
-        // model — markdown formatting must round-trip unchanged.
-        expect(inject).toMatch(/postToWorker\(\s*\{\s*entry\s*:\s*item\.desc\s*\}\s*\)/);
+        // model — markdown formatting must round-trip unchanged. With
+        // per-project routing, the body also carries `repo` and
+        // `filePath` from the resolved target; those are asserted in
+        // projectInjectRouting.test.js.
+        expect(inject).toMatch(/entry\s*:\s*item\.desc/);
+        expect(inject).toMatch(/postToWorker\s*\(\s*body\s*\)/);
     });
 
-    it('the test-connection POST body is { test: true } — Worker should no-op', () => {
-        expect(inject).toMatch(/postToWorker\(\s*\{\s*test\s*:\s*true\s*\}\s*\)/);
+    it('the test-connection POST body always carries `test: true`', () => {
+        // Repo / filePath are optionally added when at least one target
+        // is defined — asserted in projectInjectRouting.test.js. The
+        // `test: true` flag itself stays on the body unconditionally so
+        // the Worker can short-circuit before touching the GitHub API.
+        expect(inject).toMatch(/const\s+body\s*=\s*\{\s*test\s*:\s*true\s*\}/);
     });
 
     it('stamps injectedAt = Date.now() on the item and saves to storage on success', () => {
@@ -201,8 +209,10 @@ describe('inject feature — wired into desktop description panel', () => {
 
     it('buildToDoRow creates an inject button and appends it inside the descSibling panel', () => {
         // injectBtn factory call + appended into descSibling alongside
-        // the existing spacer1, descInput, spacer2.
-        expect(toDoRow).toMatch(/makeInjectButton\(\s*item\s*\)/);
+        // the existing spacer1, descInput, spacer2. The factory call
+        // now also passes a projectName option for per-project routing;
+        // tests of that wiring live in projectInjectRouting.test.js.
+        expect(toDoRow).toMatch(/makeInjectButton\s*\(\s*item\s*,/);
         expect(toDoRow).toMatch(/descSibling\.appendChild\(\s*injectBtn\s*\)/);
     });
 
@@ -231,7 +241,9 @@ describe('inject feature — wired into mobile edit modal', () => {
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = modals.slice(fnIdx);
-        expect(fn).toMatch(/makeInjectButton\(\s*item\s*\)/);
+        // The factory call now takes a projectName option alongside item;
+        // tests of that wiring live in projectInjectRouting.test.js.
+        expect(fn).toMatch(/makeInjectButton\s*\(\s*item\s*,/);
         expect(fn).toMatch(/actions\.appendChild\(\s*injectBtn\s*\)/);
     });
 
