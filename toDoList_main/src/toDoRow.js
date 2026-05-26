@@ -1174,6 +1174,9 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descSibling.appendChild(descInput);
             descSibling.appendChild(descSpacer2);
             descInput.value = item["desc"] || "";
+            // Trigger the textarea's auto-grow handler now that it's in the
+            // DOM — scrollHeight is only meaningful for an attached element.
+            descInput.dispatchEvent(new Event("input"));
             descToggle.classList.add("open");
             switcher = 1;
         } else {
@@ -1214,7 +1217,7 @@ export function buildToDoRow(item, toDoName) {
     const spacer          = document.createElement("div");
     const descSibling     = document.createElement("div");
     const descSpacer1     = document.createElement("div");
-    const descInput       = document.createElement("input");
+    const descInput       = document.createElement("textarea");
     const descSpacer2     = document.createElement("div");
 
     // set IDs and initial styles
@@ -1341,12 +1344,31 @@ export function buildToDoRow(item, toDoName) {
     descSpacer1.id  = "descSpacer1";
     descInput.id    = "descInput";
     descSpacer2.id  = "descSpacer2";
-    descInput.type  = "text";
     descInput.autocomplete = "off";
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
     descInput.value = "";
     descInput.style.border = "none";
+    // Match the mobile desc-editor modal: a textarea preserves multi-line
+    // markdown drafts byte-for-byte through paste / save / reload / copy.
+    // Disabling smart substitutions stops iOS / Safari from rewriting `--`
+    // to em-dash, straight quotes to curly, `...` to ellipsis — all of
+    // which corrupt the markdown a user is drafting for TODO.md.
+    descInput.spellcheck = false;
+    descInput.autocapitalize = "off";
+    descInput.setAttribute("autocorrect", "off");
+    descInput.rows = 1;
+
+    // Auto-grow the textarea to fit its content so a single-line description
+    // looks as compact as the old <input> did, while multi-line markdown
+    // expands the panel to show every line. `scrollHeight` requires the
+    // element to be in the DOM, so wireDescToggle fires a synthetic `input`
+    // event after the panel is first attached and the value is assigned.
+    function autoGrowDescInput() {
+        descInput.style.height = "auto";
+        descInput.style.height = descInput.scrollHeight + "px";
+    }
+    descInput.addEventListener("input", autoGrowDescInput);
 
     // Description indicator — small note-style glyph that surfaces "this row
     // carries a description" between the checkbox and the title. CSS-hidden
@@ -1601,28 +1623,33 @@ export function buildToDoRow(item, toDoName) {
         event.preventDefault();
     });
 
-    // descInput keydown — Enter to save (empty is a valid cleared state)
+    // descInput keydown — Ctrl/Cmd+Enter commits and exits. Plain Enter is
+    // left alone so the textarea inserts a newline naturally — multi-line
+    // markdown drafts (the whole point of this surface) need real \n chars
+    // in the stored desc string, not collapsed whitespace.
     descInput.addEventListener("keydown", function(event) {
         if (event.key !== "Enter") return;
-        const val = descInput.value.trim();
-        descInput.value = val;
-        item.desc = val;
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        item.desc = descInput.value;
         listLogic.saveToStorage();
         descInput.style.border = "none";
         updateDescIndicator(toDoChild, item);
         descInput.blur();
     });
 
-    // descInput keyup — save on every keystroke (empty saves too)
+    // descInput keyup — save on every keystroke (empty saves too). No trim:
+    // leading / trailing newlines and indentation are part of the user's
+    // markdown draft and must survive save → reload round-trips.
     descInput.addEventListener("keyup", function() {
-        item.desc = descInput.value.trim();
+        item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
     });
 
-    // descInput blur — persist on click-away so cleared values aren't lost
+    // descInput blur — persist on click-away so cleared values aren't lost.
     descInput.addEventListener("blur", function() {
-        item.desc = descInput.value.trim();
+        item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
     });

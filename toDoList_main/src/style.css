@@ -3346,13 +3346,25 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #descInput {
   font-size: 12px;
-  font-family: inherit;
+  /* Monospace so multi-line markdown drafts line up cleanly and indentation
+     reads correctly — matches the mobile desc-editor modal textarea. */
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   background: transparent;
   color: var(--text-secondary);
   border: none;
   width: 100%;
   padding: 8px 0;
   letter-spacing: 0.02em;
+  /* Textarea-specific: preserve every newline and run of indentation the
+     user types or pastes, wrap long lines so they stay visible without a
+     horizontal scrollbar, and hide the native resize grip — the JS
+     auto-grow handler keeps the height in sync with content. */
+  white-space: pre-wrap;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+  box-sizing: border-box;
+  display: block;
 }
 #descInput::placeholder { color: var(--text-muted); font-style: italic; }
 #descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
