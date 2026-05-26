@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- [ ] **[HIGH]** Desktop description field collapses newlines when copied (mobile works)
+- [x] **[HIGH]** Desktop description field collapses newlines when copied (mobile works) — Completed: 2026-05-26
   - Description: On mobile, the description editor preserves multi-line markdown formatting correctly through paste → save → reload → copy. On desktop, the same `desc` field collapses all newlines and leading indentation into a single horizontal run of text separated by extra spaces, breaking the TODO.md draft-and-copy workflow. The data layer is shared (`listLogic.js`, same `desc` string field), so the divergence is in the desktop render surface or the desktop copy mechanism — not the underlying data. Goal: bring desktop to formatting parity with mobile so a multi-line markdown entry pasted in on desktop comes back out with identical bytes.
   - Behavior:
     1. The desktop description editing surface must use a `<textarea>` element with `white-space: pre-wrap` and a monospace font — same element type as the mobile modal. Not `contenteditable`, not a `<div>`, not `<span>`, not `innerHTML` on any element.
