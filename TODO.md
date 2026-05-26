@@ -7,10 +7,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: 2026-05-26
 
-- [ ] **[MEDIUM]** Make todo titles editable from the mobile detail modal
+- [x] **[MEDIUM]** Make todo titles editable from the mobile detail modal
   - Description: On desktop, todo titles are renamed inline by double-clicking the title field on the row. On mobile, tapping a todo row opens a detail modal showing title, description, and due date — but the title in that modal is read-only, so there's no way to rename a todo on touch devices without rotating to desktop. Add tap-to-edit behavior to the title inside the mobile modal: render the title as static text with a small pencil affordance (`✎` in the accent color) to signal editability; on tap, swap the static text for an input prefilled with the current value, focused and selected. Commit on Enter or blur, escape on Escape (revert). Reuse the existing `renameHandledByEnter` flag pattern so the Enter `keydown` handler and the `blur` handler don't both run duplicate-check logic against already-updated state. Empty titles revert to the previous value rather than blocking. All mutations route through `listLogic.js` (likely a reuse of the same rename path used by the desktop inline edit) — do not mutate the data model from the modal directly. Note: the input needs `font-size: 16px+` to avoid iOS Safari auto-zoom on focus.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
 
 ## Features
 
