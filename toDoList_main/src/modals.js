@@ -15,6 +15,7 @@
 import { changelog, getNewestChangelogDate } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
+import { makeInjectButton, refreshInjectButton } from './inject.js';
 
 
 // ── CONFIRM MODAL ──
@@ -278,7 +279,15 @@ export function showDescEditorModal(item, options) {
     copyBtn.className = 'descEditorModalBtn descEditorModalBtnPrimary';
     copyBtn.textContent = 'Copy as TODO.md entry';
 
+    // Inject-to-TODO.md button — mirror of the desktop description-panel
+    // affordance. Reuses the same factory so all state transitions (hidden /
+    // unconfigured / ready / injected) flow through one code path. Hidden
+    // by refreshInjectButton when the textarea is empty.
+    const injectBtn = makeInjectButton(item);
+    injectBtn.classList.add('descEditorModalBtn');
+
     actions.appendChild(clearBtn);
+    actions.appendChild(injectBtn);
     actions.appendChild(copyBtn);
 
     dialog.appendChild(header);
@@ -361,9 +370,20 @@ export function showDescEditorModal(item, options) {
             confirmLabel: 'Clear',
             onConfirm: function() {
                 textarea.value = '';
+                item.desc = '';
+                refreshInjectButton(injectBtn, item);
                 textarea.focus();
             }
         });
+    });
+
+    // Keep item.desc in sync on every keystroke so the inject button can
+    // read the current draft (it reads item.desc directly) and so its
+    // empty / non-empty visibility tracks what's actually in the textarea.
+    // persist() on close still does the final localStorage write.
+    textarea.addEventListener('input', function() {
+        item.desc = textarea.value;
+        refreshInjectButton(injectBtn, item);
     });
 
     // Mobile keyboards land focus more reliably if the focus call is deferred
@@ -1058,6 +1078,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('missedDatesModalBackdrop') ||
         document.getElementById('statsModalBackdrop')     ||
         document.getElementById('authModalBackdrop')      ||
+        document.getElementById('injectSettingsBackdrop') ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||

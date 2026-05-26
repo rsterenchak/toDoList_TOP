@@ -37,6 +37,7 @@ import {
     markChainingActive,
     isChainingActive,
 } from './mobileTaskCreate.js';
+import { makeInjectButton, refreshInjectButton } from './inject.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -1173,7 +1174,7 @@ function buildInfoGlyph() {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item) {
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item) {
 
     let switcher = 0;
 
@@ -1188,6 +1189,10 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descSibling.appendChild(descSpacer1);
             descSibling.appendChild(descInput);
             descSibling.appendChild(descSpacer2);
+            if (injectBtn) {
+                descSibling.appendChild(injectBtn);
+                refreshInjectButton(injectBtn, item);
+            }
             descInput.value = item["desc"] || "";
             // Trigger the textarea's auto-grow handler now that it's in the
             // DOM — scrollHeight is only meaningful for an attached element.
@@ -1359,6 +1364,14 @@ export function buildToDoRow(item, toDoName) {
     descSpacer1.id  = "descSpacer1";
     descInput.id    = "descInput";
     descSpacer2.id  = "descSpacer2";
+
+    // Inject-to-TODO.md button — appears at the bottom of the description
+    // panel (after descSpacer2) and posts the description text to a
+    // user-configured Cloudflare Worker. Hidden when the description is
+    // empty; the keyup/blur handlers below refresh its state. The button
+    // itself manages its four visual states (hidden, unconfigured, ready,
+    // injected) via refreshInjectButton — see inject.js.
+    const injectBtn = makeInjectButton(item);
     descInput.autocomplete = "off";
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
@@ -1463,7 +1476,7 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, item);
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
@@ -1650,6 +1663,7 @@ export function buildToDoRow(item, toDoName) {
         listLogic.saveToStorage();
         descInput.style.border = "none";
         updateDescIndicator(toDoChild, item);
+        refreshInjectButton(injectBtn, item);
         descInput.blur();
     });
 
@@ -1660,6 +1674,7 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
+        refreshInjectButton(injectBtn, item);
     });
 
     // descInput blur — persist on click-away so cleared values aren't lost.
@@ -1667,6 +1682,7 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         updateDescIndicator(toDoChild, item);
+        refreshInjectButton(injectBtn, item);
     });
 
     // Escape on the description cancels the in-progress edit by restoring

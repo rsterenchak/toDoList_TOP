@@ -7,10 +7,9 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-26',
         added: [
-            "Swiping a todo right to complete it on a touch device now flashes a large purple checkmark in the center of the screen.",
+            "Each todo's description panel now has an Inject to TODO.md button that sends the text to your configured Cloudflare Worker, with a Configure inject row in the ghost menu for per-device URL and shared secret.",
         ],
         fixed: [
-            "Desktop description editor now preserves multi-line markdown formatting through paste, save, reload, and copy.",
             "A per-project Sort by due toggle reorders the active project's items by ascending due date, with undated items at the bottom and manual drag reordering paused while it is on.",
             "Todo titles can now be renamed from the mobile description editor — tap the pencil next to the title, edit, and press Enter or tap away to commit.",
             "Pressing Backspace on a selected project or todo row now triggers the same delete confirmation as Delete, so the keyboard shortcut works on Mac laptops.",
