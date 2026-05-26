@@ -277,7 +277,7 @@ export function showDescEditorModal(item, options) {
     copyBtn.id = 'descEditorModalCopy';
     copyBtn.type = 'button';
     copyBtn.className = 'descEditorModalBtn descEditorModalBtnPrimary';
-    copyBtn.textContent = 'Copy as TODO.md entry';
+    copyBtn.textContent = 'Copy entry';
 
     // Inject-to-TODO.md button — mirror of the desktop description-panel
     // affordance. Reuses the same factory so all state transitions (hidden /
