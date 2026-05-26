@@ -8021,9 +8021,22 @@ body:has(#musicPopover.open) #helpFab { display: none; }
 }
 .injectBtnIcon {
   flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  display: block;
+  vertical-align: middle;
 }
 .injectBtnLabel {
   white-space: nowrap;
+}
+
+/* #descSibling is a 3-column grid (14px 1fr 14px). Without an explicit
+   placement the inject button — appended after the spacer/input/spacer
+   trio — lands in the 14px gutter column of a new grid row, which crushes
+   it against the left edge and skews the icon. Spanning the full row
+   restores the inline-flex layout the button was designed for. */
+#descSibling .injectBtn {
+  grid-column: 1 / -1;
 }
 
 /* When the inject button lives inside the mobile description-editor modal's
