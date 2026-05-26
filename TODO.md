@@ -1,6 +1,6 @@
 # TODO List
 
-- [ ] **[MEDIUM]** Add inject targets management to the Inject settings modal
+- [x] **[MEDIUM]** Add inject targets management to the Inject settings modal — Completed: 2026-05-26
   - Type: feature
   - Description: Extend the existing Inject settings modal (currently just connection config) with a new "Inject targets" section that lets the user define and manage routing targets stored in Supabase. Each target is `{ nickname, repo, file_path }` in the `inject_targets` table, scoped per-user via RLS. The section is purely additive — targets are stored but not yet consumed by the inject button (that wiring lands in the next entry). Also refactor the existing connection section to collapse once configured, since the modal is growing. **Schema precondition: the `inject_targets` table already exists in Supabase with columns `id uuid pk`, `user_id uuid` (FK to `auth.users`), `nickname text`, `repo text`, `file_path text default 'TODO.md'`, `created_at`, `updated_at`, a unique constraint on `(user_id, nickname)`, and full RLS policies (SELECT/INSERT/UPDATE/DELETE where `user_id = auth.uid()`). No schema changes are part of this entry — only build UI against the existing schema.**
     - Behavior:

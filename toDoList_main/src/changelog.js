@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-05-26',
         added: [
             "Each todo's description panel now has an Inject to TODO.md button that sends the text to your configured Cloudflare Worker, with a Configure inject row in the ghost menu for per-device URL and shared secret.",
+            "Inject settings now lets you manage routing targets — add, edit, and delete repo + file path entries — with the connection section collapsing once configured to keep the modal tidy.",
         ],
         fixed: [
             "A per-project Sort by due toggle reorders the active project's items by ascending due date, with undated items at the bottom and manual drag reordering paused while it is on.",
