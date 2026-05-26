@@ -313,4 +313,29 @@ describe('inject feature — ghost menu Configure inject row', () => {
         const tail = main.slice(rowIdx);
         expect(tail).toMatch(/showInjectSettingsModal\s*\(\s*\)/);
     });
+
+    it('the mobile Settings modal also contains a "Configure inject" row that opens the settings modal', () => {
+        // Parity with the desktop ghost menu row above. The mobile Settings
+        // modal is built by showSettingsModal() and Configure inject must
+        // live in its Data section (next to Export/Import) so the inject
+        // config is reachable from a phone.
+        const fnIdx = main.indexOf('function showSettingsModal()');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const slice = main.slice(fnIdx, fnIdx + 15000);
+        // The Configure inject row is built via createDrawerActionRow, the
+        // same helper the Export/Import rows in the Data section use.
+        expect(slice).toMatch(/createDrawerActionRow\(\s*['"]Configure inject['"]/);
+        // The row's click handler invokes showInjectSettingsModal after
+        // closing the modal — mirrors the Export/Import close()-then-act
+        // pattern so the inject modal lands on a clean surface.
+        const rowIdx = slice.indexOf("createDrawerActionRow('Configure inject'");
+        expect(rowIdx).toBeGreaterThan(-1);
+        const rowSlice = slice.slice(rowIdx, rowIdx + 400);
+        expect(rowSlice).toMatch(/close\(\s*\)/);
+        expect(rowSlice).toMatch(/showInjectSettingsModal\s*\(\s*\)/);
+        // Row is appended to the Data section (next to Export/Import),
+        // not Account or About, so it sits alongside the other data-
+        // management actions.
+        expect(slice).toMatch(/dataSection\.appendChild\(\s*injectRow\s*\)/);
+    });
 });
