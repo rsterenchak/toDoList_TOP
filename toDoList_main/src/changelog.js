@@ -13,13 +13,7 @@ export const changelog = [
             "Desktop description editor now preserves multi-line markdown formatting through paste, save, reload, and copy.",
             "A per-project Sort by due toggle reorders the active project's items by ascending due date, with undated items at the bottom and manual drag reordering paused while it is on.",
             "Todo titles can now be renamed from the mobile description editor — tap the pencil next to the title, edit, and press Enter or tap away to commit.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-25',
-        fixed: [
-            "Mobile description editor no longer lets iOS rewrite markdown punctuation, so TODO.md drafts paste and copy with formatting intact.",
+            "Pressing Backspace on a selected project or todo row now triggers the same delete confirmation as Delete, so the keyboard shortcut works on Mac laptops.",
         ],
     },
 ];

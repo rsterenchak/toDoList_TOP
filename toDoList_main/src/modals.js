@@ -674,7 +674,7 @@ const SHORTCUT_GROUPS = [
         category: 'Editing',
         items: [
             { keys: ['Enter'],  description: 'Commit the current title or description, or edit the focused row' },
-            { keys: ['Delete'], description: 'Delete the focused todo row (with confirmation)' },
+            { keys: ['Delete'], description: 'Delete the focused todo row (with confirmation) — Backspace works the same on Mac keyboards that lack a dedicated Delete key' },
             { keys: ['Ctrl', 'Delete'], description: 'Expand or collapse the description panel of the focused todo' },
         ],
     },
