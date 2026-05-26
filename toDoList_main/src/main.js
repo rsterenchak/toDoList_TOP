@@ -3634,6 +3634,14 @@ function component() {
             openImportPicker(rebuildAfterImport);
         });
         dataSection.appendChild(importRow);
+        // Configure inject — mirrors the desktop ghost menu row. Lives in
+        // the Data section alongside Export/Import so the per-device
+        // Worker URL + shared secret are reachable from a phone too.
+        const injectRow = createDrawerActionRow('Configure inject', function() {
+            close();
+            showInjectSettingsModal();
+        });
+        dataSection.appendChild(injectRow);
 
         // Account section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP / About section pattern at the same heading typography
