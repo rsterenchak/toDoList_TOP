@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-26',
         fixed: [
             "Desktop description editor now preserves multi-line markdown formatting through paste, save, reload, and copy.",
+            "A per-project Sort by due toggle reorders the active project's items by ascending due date, with undated items at the bottom and manual drag reordering paused while it is on.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-25',
         fixed: [
-            "Mobile todo rows now show due dates as a single color-coded calendar icon — red overdue, amber due soon, purple future, gray unset — freeing horizontal room for the task title; tap the icon to open the date picker.",
             "Mobile todo rows hide the description chevron so titles get more horizontal room — tapping the row still opens the description.",
             "Tapping a todo row on a touch device now opens a full-screen description editor with a monospace textarea, a copy-to-clipboard button for drafting TODO.md entries, and a confirmation-gated Clear; rows carrying a description show a small purple note glyph beside the title.",
             "Mobile description editor no longer lets iOS rewrite markdown punctuation, so TODO.md drafts paste and copy with formatting intact.",
