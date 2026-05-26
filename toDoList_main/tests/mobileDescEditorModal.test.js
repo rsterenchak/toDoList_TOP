@@ -297,3 +297,54 @@ describe('mobile desc editor modal — textarea styling', () => {
         expect(css).toMatch(/#descEditorModalTextarea\s*\{[\s\S]{0,800}white-space:\s*pre/);
     });
 });
+
+describe('mobile desc editor modal — iOS-safe input attributes', () => {
+
+    const modals = read('modals.js');
+
+    it('the textarea sets autocapitalize="off" so iOS does not auto-capitalize list items', () => {
+        // Markdown bullets like `- foo` or `* bar` would be auto-capitalized
+        // by iOS Safari, breaking round-trip fidelity into TODO.md.
+        expect(modals).toMatch(/textarea\.autocapitalize\s*=\s*['"]off['"]/);
+    });
+
+    it('the textarea sets autocorrect="off" so iOS does not smart-substitute markdown punctuation', () => {
+        // iOS Safari's smart-substitution pass rewrites `--` → em-dash,
+        // `"foo"` → curly quotes, `...` → ellipsis — all of which corrupt
+        // markdown content. The attribute is iOS-specific (non-standard) so
+        // it must be applied via setAttribute, not a property assignment.
+        expect(modals).toMatch(
+            /textarea\.setAttribute\(\s*['"]autocorrect['"]\s*,\s*['"]off['"]\s*\)/
+        );
+    });
+
+    it('the textarea sets spellcheck=false so squiggle underlines do not nag the user', () => {
+        expect(modals).toMatch(/textarea\.spellcheck\s*=\s*false/);
+    });
+});
+
+describe('mobile desc editor modal — copy feedback label', () => {
+
+    const modals = read('modals.js');
+
+    it('the copy feedback label is "Copied ✓" (checkmark, not exclamation)', () => {
+        // Brief: "button label flips to 'Copied ✓' for ~1.2s, then reverts".
+        // The checkmark mirrors the per-row copyTitleBtn cue so the two
+        // copy surfaces feel consistent.
+        expect(modals).toMatch(/btn\.textContent\s*=\s*['"]Copied\s*✓['"]/);
+        // Negative guard: the prior "Copied!" string must be gone so the
+        // two surfaces don\'t drift in feedback vocabulary.
+        expect(modals).not.toMatch(/btn\.textContent\s*=\s*['"]Copied!['"]/);
+    });
+
+    it('the copy feedback reverts after ~1.2s, not the prior 1s', () => {
+        // The brief asks for "~1.2s" so the checkmark is visible long
+        // enough on a thumb-driven tap to register without lingering.
+        const fnIdx = modals.indexOf('function flashCopyFeedback(');
+        expect(fnIdx).toBeGreaterThan(-1);
+        const fn = modals.slice(fnIdx, fnIdx + 600);
+        const tMatch = fn.match(/setTimeout\([^,]+,\s*(\d+)\s*\)/);
+        expect(tMatch).toBeTruthy();
+        expect(parseInt(tMatch[1], 10)).toBeGreaterThanOrEqual(1100);
+    });
+});
