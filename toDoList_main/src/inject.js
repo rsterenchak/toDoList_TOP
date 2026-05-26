@@ -9,6 +9,7 @@
 
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
+import { supabase } from './supabaseClient.js';
 
 const URL_KEY         = 'todoapp_injectWorkerUrl';
 const SECRET_KEY      = 'todoapp_injectSharedSecret';
@@ -18,6 +19,12 @@ const LAST_RESULT_KEY = 'todoapp_injectLastTestResult';
 // Module-level cache populated on app boot via initInjectConfig.
 let cachedUrl = '';
 let cachedSecret = '';
+
+// Targets cache populated while the settings modal is open. Re-fetched
+// after any add/edit/delete so the list always reflects DB state. No
+// realtime subscription — at this scale a refetch is cheap and avoids
+// extra wiring.
+let cachedTargets = [];
 
 export function initInjectConfig() {
     try {
@@ -266,6 +273,284 @@ function refreshAllInjectButtons() {
 }
 
 
+// ── INJECT TARGETS ──
+// Targets are stored in the `inject_targets` Supabase table, scoped per-
+// user via RLS. The settings modal lists them; an add/edit sub-modal
+// writes through here. The inject button itself does NOT consume these
+// yet — per-project routing lands in a follow-up entry.
+
+async function loadInjectTargets() {
+    try {
+        const res = await supabase
+            .from('inject_targets')
+            .select()
+            .order('created_at');
+        if (res && res.error) {
+            cachedTargets = [];
+            return cachedTargets;
+        }
+        cachedTargets = (res && res.data) || [];
+        return cachedTargets;
+    } catch (e) {
+        cachedTargets = [];
+        return cachedTargets;
+    }
+}
+
+async function insertInjectTarget(values) {
+    try {
+        const sessionResult = await supabase.auth.getSession();
+        const session = sessionResult
+            && sessionResult.data
+            && sessionResult.data.session;
+        if (!session) return { ok: false, reason: 'Not signed in' };
+        const row = {
+            user_id: session.user.id,
+            nickname: values.nickname,
+            repo: values.repo,
+            file_path: values.file_path,
+        };
+        const res = await supabase.from('inject_targets').insert(row);
+        if (res && res.error) return classifyTargetError(res.error);
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, reason: 'Save failed' };
+    }
+}
+
+async function updateInjectTarget(id, values) {
+    try {
+        const res = await supabase
+            .from('inject_targets')
+            .update({
+                nickname: values.nickname,
+                repo: values.repo,
+                file_path: values.file_path,
+            })
+            .eq('id', id);
+        if (res && res.error) return classifyTargetError(res.error);
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, reason: 'Save failed' };
+    }
+}
+
+async function deleteInjectTarget(id) {
+    try {
+        const res = await supabase
+            .from('inject_targets')
+            .delete()
+            .eq('id', id);
+        if (res && res.error) return { ok: false, reason: 'Delete failed' };
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, reason: 'Delete failed' };
+    }
+}
+
+// Map a Supabase error into either a nickname-collision (so the sub-modal
+// can surface it inline against the offending field) or a generic save
+// failure. The unique constraint on (user_id, nickname) is the source of
+// truth for duplicate detection — we just translate its error shape.
+function classifyTargetError(err) {
+    const code = err && err.code;
+    const msg  = (err && err.message) || '';
+    if (code === '23505' || /duplicate|unique/i.test(msg)) {
+        return { ok: false, reason: 'duplicate-nickname' };
+    }
+    return { ok: false, reason: 'Save failed' };
+}
+
+function validateTargetForm(values) {
+    const errors = {};
+    if (!values.nickname) errors.nickname = 'Nickname is required';
+    if (!values.repo) {
+        errors.repo = 'Repo is required';
+    } else if (!/^[^\s/]+\/[^\s/]+$/.test(values.repo)) {
+        errors.repo = 'Use the format owner/repository';
+    }
+    if (!values.file_path) errors.file_path = 'File path is required';
+    return errors;
+}
+
+
+// ── TARGET SUB-MODAL ──
+// Add / edit sub-modal mounted on top of the settings modal. Escape only
+// closes this sub-modal — the parent settings modal stays open. Closes
+// the same 3 ways as the parent (X / backdrop / Escape).
+function showInjectTargetSubModal(options) {
+    const opts = options || {};
+    const existing = opts.target || null;
+    const isEdit = !!existing;
+
+    const prior = document.getElementById('injectTargetSubBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'injectTargetSubBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'injectTargetSubModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'injectTargetSubTitle');
+
+    const header = document.createElement('div');
+    header.id = 'injectTargetSubHeader';
+    const title = document.createElement('div');
+    title.id = 'injectTargetSubTitle';
+    title.textContent = isEdit ? 'Edit inject target' : 'Add inject target';
+    const closeX = document.createElement('button');
+    closeX.id = 'injectTargetSubClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close target editor');
+    closeX.textContent = '×';
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'injectTargetSubBody';
+
+    function makeField(labelText, inputId, placeholder, initial) {
+        const wrap = document.createElement('label');
+        wrap.className = 'injectFieldLabel';
+        wrap.textContent = labelText;
+        const input = document.createElement('input');
+        input.id = inputId;
+        input.className = 'injectTargetSubInput';
+        input.type = 'text';
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        if (placeholder) input.placeholder = placeholder;
+        input.value = initial || '';
+        const err = document.createElement('div');
+        err.className = 'injectTargetSubError';
+        err.id = inputId + 'Error';
+        err.setAttribute('aria-live', 'polite');
+        wrap.appendChild(input);
+        wrap.appendChild(err);
+        body.appendChild(wrap);
+        return { input: input, err: err };
+    }
+
+    const nicknameField = makeField(
+        'Nickname',
+        'injectTargetNicknameInput',
+        '',
+        existing ? existing.nickname : ''
+    );
+    const repoField = makeField(
+        'Repo',
+        'injectTargetRepoInput',
+        'owner/repository',
+        existing ? existing.repo : ''
+    );
+    const filePathField = makeField(
+        'File path',
+        'injectTargetFilePathInput',
+        '',
+        existing ? existing.file_path : 'TODO.md'
+    );
+
+    const actions = document.createElement('div');
+    actions.id = 'injectTargetSubActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'injectTargetSubCancel';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'injectSettingsBtn';
+    cancelBtn.textContent = 'Cancel';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.id = 'injectTargetSubSave';
+    saveBtn.type = 'button';
+    saveBtn.className = 'injectSettingsBtn injectSettingsBtn--primary';
+    saveBtn.textContent = 'Save';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    function clearErrors() {
+        nicknameField.err.textContent = '';
+        repoField.err.textContent = '';
+        filePathField.err.textContent = '';
+    }
+
+    function setError(field, msg) {
+        field.err.textContent = msg || '';
+    }
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    }
+
+    // Capture-phase keydown so Escape closes only the sub-modal and the
+    // parent settings modal's Escape handler never fires for the same
+    // event. stopPropagation prevents the bubble-phase parent handler.
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            event.preventDefault();
+            close();
+        }
+    }
+
+    closeX.addEventListener('click', close);
+    cancelBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    async function onSave() {
+        clearErrors();
+        const values = {
+            nickname: nicknameField.input.value.trim(),
+            repo: repoField.input.value.trim(),
+            file_path: filePathField.input.value.trim(),
+        };
+        const errors = validateTargetForm(values);
+        if (errors.nickname || errors.repo || errors.file_path) {
+            if (errors.nickname) setError(nicknameField, errors.nickname);
+            if (errors.repo) setError(repoField, errors.repo);
+            if (errors.file_path) setError(filePathField, errors.file_path);
+            return;
+        }
+        saveBtn.disabled = true;
+        const result = isEdit
+            ? await updateInjectTarget(existing.id, values)
+            : await insertInjectTarget(values);
+        saveBtn.disabled = false;
+        if (!result.ok) {
+            if (result.reason === 'duplicate-nickname') {
+                setError(nicknameField, 'A target with this nickname already exists');
+            } else {
+                setError(nicknameField, result.reason || 'Save failed');
+            }
+            return;
+        }
+        close();
+        if (typeof opts.onSaved === 'function') opts.onSaved();
+    }
+
+    saveBtn.addEventListener('click', onSave);
+
+    setTimeout(function() {
+        try { nicknameField.input.focus(); } catch (e) { /* defensive */ }
+    }, 0);
+}
+
+
 // ── SETTINGS MODAL ──
 // Opens the per-device Inject settings dialog. Reads / writes the four
 // localStorage keys above; Save and Clear both refresh every visible
@@ -297,9 +582,38 @@ export function showInjectSettingsModal() {
     header.appendChild(title);
     header.appendChild(closeX);
 
-    // Status pill row
+    // ── Connection section (collapsible) ──
+    // A single status pill lives in the section header alongside an edit
+    // (pencil) icon. When the section is collapsed, the inputs + action
+    // row are hidden behind that one-line summary; when expanded, both
+    // appear below. Auto-expanded when not configured or when the last
+    // test wasn't OK — the user shouldn't have to hunt for the edit icon
+    // to fix a broken connection.
+    const connSection = document.createElement('div');
+    connSection.id = 'injectConnectionSection';
+    connSection.className = 'injectSettingsSection';
+
+    const connHeader = document.createElement('div');
+    connHeader.className = 'injectSettingsSectionHeader';
+
+    const connTitle = document.createElement('div');
+    connTitle.className = 'injectSettingsSectionTitle';
+    connTitle.textContent = 'Connection (this device)';
+
     const statusRow = document.createElement('div');
     statusRow.id = 'injectSettingsStatusRow';
+
+    const editBtn = document.createElement('button');
+    editBtn.id = 'injectConnectionEditBtn';
+    editBtn.type = 'button';
+    editBtn.className = 'injectSectionEditBtn';
+    editBtn.setAttribute('aria-label', 'Edit connection');
+    editBtn.title = 'Edit connection';
+    editBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.5l2 2-7 7-2.5.5.5-2.5 7-7z"/></svg>';
+
+    connHeader.appendChild(connTitle);
+    connHeader.appendChild(statusRow);
+    connHeader.appendChild(editBtn);
 
     function renderStatus() {
         statusRow.innerHTML = '';
@@ -405,14 +719,160 @@ export function showInjectSettingsModal() {
     actions.appendChild(spacer);
     actions.appendChild(clearBtn);
 
+    // The collapsible inner — body + actions hide together.
+    const connBodyWrap = document.createElement('div');
+    connBodyWrap.className = 'injectSettingsSectionBody';
+    connBodyWrap.appendChild(body);
+    connBodyWrap.appendChild(actions);
+
+    connSection.appendChild(connHeader);
+    connSection.appendChild(connBodyWrap);
+
+    function setConnectionCollapsed(collapsed) {
+        if (collapsed) {
+            connSection.classList.add('injectSettingsSection--collapsed');
+            editBtn.style.display = '';
+        } else {
+            connSection.classList.remove('injectSettingsSection--collapsed');
+            editBtn.style.display = 'none';
+        }
+    }
+
+    function shouldAutoCollapse() {
+        if (!isInjectConfigured()) return false;
+        const lt = readLastTest();
+        return lt.ts > 0 && lt.result === 'ok';
+    }
+
+    editBtn.addEventListener('click', function() {
+        setConnectionCollapsed(false);
+        setTimeout(function() {
+            try { urlInput.focus(); } catch (e) { /* defensive */ }
+        }, 0);
+    });
+
+    // ── Inject targets section ──
+    const targetsSection = document.createElement('div');
+    targetsSection.id = 'injectTargetsSection';
+    targetsSection.className = 'injectSettingsSection';
+
+    const targetsHeader = document.createElement('div');
+    targetsHeader.className = 'injectSettingsSectionHeader';
+    const targetsTitle = document.createElement('div');
+    targetsTitle.className = 'injectSettingsSectionTitle';
+    targetsTitle.textContent = 'Inject targets';
+    targetsHeader.appendChild(targetsTitle);
+
+    const targetsBody = document.createElement('div');
+    targetsBody.id = 'injectTargetsBody';
+    targetsBody.className = 'injectSettingsSectionBody';
+
+    targetsSection.appendChild(targetsHeader);
+    targetsSection.appendChild(targetsBody);
+
+    function renderTargets() {
+        targetsBody.innerHTML = '';
+        if (!cachedTargets || cachedTargets.length === 0) {
+            const empty = document.createElement('div');
+            empty.id = 'injectTargetsEmpty';
+            empty.className = 'injectTargetsEmpty';
+            empty.textContent = 'No targets defined yet — add one to start routing';
+            targetsBody.appendChild(empty);
+        } else {
+            const list = document.createElement('div');
+            list.id = 'injectTargetsList';
+            list.className = 'injectTargetsList';
+            cachedTargets.forEach(function(target) {
+                list.appendChild(renderTargetRow(target));
+            });
+            targetsBody.appendChild(list);
+        }
+        const addBtn = document.createElement('button');
+        addBtn.id = 'injectAddTargetBtn';
+        addBtn.type = 'button';
+        addBtn.className = 'injectSettingsBtn injectSettingsBtn--primary';
+        addBtn.textContent = '+ Add target';
+        addBtn.addEventListener('click', function() {
+            showInjectTargetSubModal({
+                target: null,
+                onSaved: refreshTargets,
+            });
+        });
+        targetsBody.appendChild(addBtn);
+    }
+
+    function renderTargetRow(target) {
+        const row = document.createElement('div');
+        row.className = 'injectTargetRow';
+        row.dataset.targetId = target.id;
+
+        const info = document.createElement('div');
+        info.className = 'injectTargetInfo';
+        const nick = document.createElement('div');
+        nick.className = 'injectTargetNickname';
+        nick.textContent = target.nickname;
+        const detail = document.createElement('div');
+        detail.className = 'injectTargetDetail';
+        detail.textContent = target.repo + ' · ' + target.file_path;
+        info.appendChild(nick);
+        info.appendChild(detail);
+
+        const editIcon = document.createElement('button');
+        editIcon.type = 'button';
+        editIcon.className = 'injectTargetIconBtn';
+        editIcon.setAttribute('aria-label', 'Edit target ' + target.nickname);
+        editIcon.title = 'Edit';
+        editIcon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 2.5l2 2-7 7-2.5.5.5-2.5 7-7z"/></svg>';
+        editIcon.addEventListener('click', function() {
+            showInjectTargetSubModal({
+                target: target,
+                onSaved: refreshTargets,
+            });
+        });
+
+        const trashIcon = document.createElement('button');
+        trashIcon.type = 'button';
+        trashIcon.className = 'injectTargetIconBtn injectTargetIconBtn--danger';
+        trashIcon.setAttribute('aria-label', 'Delete target ' + target.nickname);
+        trashIcon.title = 'Delete';
+        trashIcon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 4 13 4"/><path d="M5 4v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9"/></svg>';
+        trashIcon.addEventListener('click', function() {
+            showConfirmModal({
+                message: 'Delete target `' + target.nickname + '`? Projects routing to it will become unrouted.',
+                confirmLabel: 'Delete',
+                onConfirm: async function() {
+                    const r = await deleteInjectTarget(target.id);
+                    if (!r.ok) {
+                        showInjectToast(r.reason || 'Delete failed', 'error');
+                        return;
+                    }
+                    showInjectToast('Target deleted');
+                    refreshTargets();
+                },
+            });
+        });
+
+        row.appendChild(info);
+        row.appendChild(editIcon);
+        row.appendChild(trashIcon);
+        return row;
+    }
+
+    async function refreshTargets() {
+        await loadInjectTargets();
+        renderTargets();
+    }
+
     dialog.appendChild(header);
-    dialog.appendChild(statusRow);
-    dialog.appendChild(body);
-    dialog.appendChild(actions);
+    dialog.appendChild(connSection);
+    dialog.appendChild(targetsSection);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
     renderStatus();
+    setConnectionCollapsed(shouldAutoCollapse());
+    renderTargets();
+    refreshTargets();
 
     const previouslyFocused = document.activeElement;
     let closed = false;
@@ -468,8 +928,12 @@ export function showInjectSettingsModal() {
         testBtn.disabled = false;
         testBtn.textContent = orig;
         renderStatus();
-        if (r.ok) showInjectToast('Connection ok');
-        else      showInjectToast('Test failed — ' + r.label, 'error');
+        if (r.ok) {
+            showInjectToast('Connection ok');
+            setConnectionCollapsed(true);
+        } else {
+            showInjectToast('Test failed — ' + r.label, 'error');
+        }
     });
 
     clearBtn.addEventListener('click', function() {
@@ -489,6 +953,7 @@ export function showInjectSettingsModal() {
                 urlInput.value = '';
                 secretInput.value = '';
                 renderStatus();
+                setConnectionCollapsed(false);
                 refreshAllInjectButtons();
                 showInjectToast('Inject config cleared');
             }

@@ -8199,6 +8199,205 @@ body:has(#musicPopover.open) #helpFab { display: none; }
 }
 
 
+/* ── INJECT SETTINGS SECTIONS ──
+   Connection (collapsible) and Inject targets stack inside the modal,
+   separated by a divider. The collapsed Connection state hides the
+   inputs + actions and shows the status pill + edit icon in the header
+   row instead. */
+.injectSettingsSection {
+  display: flex;
+  flex-direction: column;
+  border-top: 0.5px solid var(--border-dim);
+}
+.injectSettingsSection:first-of-type { border-top: none; }
+.injectSettingsSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+.injectSettingsSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+}
+.injectSettingsSection #injectSettingsStatusRow {
+  padding: 0;
+  flex: 0 0 auto;
+}
+.injectSectionEditBtn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+.injectSectionEditBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.injectSectionEditBtn:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+.injectSettingsSection--collapsed .injectSectionEditBtn { display: inline-flex; }
+.injectSettingsSection--collapsed .injectSettingsSectionBody { display: none; }
+.injectSettingsSectionBody { display: flex; flex-direction: column; }
+/* In the collapsed state the section header carries the pill, so the
+   un-collapsed body's separate status row is hidden — pill stays in the
+   header. */
+.injectSettingsSection #injectSettingsBody { padding-top: 0; }
+
+
+/* ── INJECT TARGETS LIST ── */
+#injectTargetsBody {
+  padding: 0 14px 14px;
+  gap: 8px;
+}
+.injectTargetsEmpty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 0;
+  font-style: italic;
+}
+.injectTargetsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.injectTargetRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+.injectTargetInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.injectTargetNickname {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.injectTargetDetail {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.injectTargetIconBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.injectTargetIconBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.injectTargetIconBtn:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+.injectTargetIconBtn--danger:hover { color: var(--text-danger); }
+#injectAddTargetBtn { align-self: flex-start; }
+
+
+/* ── INJECT TARGET SUB-MODAL ──
+   Sub-modal stacked on top of the settings modal for add/edit. Shares
+   surface styling with the parent dialog — same dark background, same
+   border treatment — just smaller. All inputs use 16px to satisfy the
+   iOS Safari auto-zoom rule in CLAUDE.md. */
+#injectTargetSubBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 230;
+}
+#injectTargetSubModal {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  width: min(380px, 92vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+#injectTargetSubHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#injectTargetSubTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+#injectTargetSubClose {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+#injectTargetSubClose:hover { background: var(--bg-hover); color: var(--text-primary); }
+#injectTargetSubClose:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+#injectTargetSubBody {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.injectTargetSubInput {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  width: 100%;
+}
+.injectTargetSubInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectTargetSubError {
+  font-size: 11px;
+  color: var(--text-danger);
+  min-height: 14px;
+  margin-top: 2px;
+}
+.injectTargetSubError:empty { min-height: 0; }
+#injectTargetSubActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+
 /* ── INJECT TOAST ──
    Drop-in mirror of #jsonImportExportToast's positioning; the variant
    classes recolor the border for success vs error rather than the single
