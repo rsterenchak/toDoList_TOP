@@ -1,33 +1,39 @@
 # TODO List
 
-- [x] **[MEDIUM]** Add inject targets management to the Inject settings modal — Completed: 2026-05-26
+- [ ] **[MEDIUM]** Route inject button to per-project targets and add project routing UI
   - Type: feature
-  - Description: Extend the existing Inject settings modal (currently just connection config) with a new "Inject targets" section that lets the user define and manage routing targets stored in Supabase. Each target is `{ nickname, repo, file_path }` in the `inject_targets` table, scoped per-user via RLS. The section is purely additive — targets are stored but not yet consumed by the inject button (that wiring lands in the next entry). Also refactor the existing connection section to collapse once configured, since the modal is growing. **Schema precondition: the `inject_targets` table already exists in Supabase with columns `id uuid pk`, `user_id uuid` (FK to `auth.users`), `nickname text`, `repo text`, `file_path text default 'TODO.md'`, `created_at`, `updated_at`, a unique constraint on `(user_id, nickname)`, and full RLS policies (SELECT/INSERT/UPDATE/DELETE where `user_id = auth.uid()`). No schema changes are part of this entry — only build UI against the existing schema.**
+  - Description: Wire the inject button to send entries to the project's configured target, completing the per-project inject-routing feature. Adds a "Project routing" section in the Inject settings modal where each project gets a target dropdown, updates the inject button's handler to include `repo` and `file_path` in the request body based on the active project's target, and introduces a new "no target" inject button state. Depends on Entry 2a having shipped the targets table UI. **Schema precondition: the `target_id uuid` column already exists on the `projects` table, nullable, with FK to `inject_targets(id)` ON DELETE SET NULL. No schema changes are part of this entry — only build behavior against the existing schema.**
     - Behavior:
-      1. In the Inject settings modal, refactor the existing connection fields into a collapsible "Connection (this device)" section. When no Worker URL or shared secret is configured, the section is auto-expanded. When both are present and the last test succeeded, the section collapses to a one-line summary: status pill + edit icon. Clicking edit re-expands the section. Modal closes 3 ways per `CLAUDE.md` (X / backdrop / Escape).
-      2. Add a new "Inject targets" section below Connection. When zero targets exist for the current user, show empty-state copy ("No targets defined yet — add one to start routing") and a prominent "+ Add target" button. When targets exist, show them as rows: nickname (bold) + repo · file_path (muted) + edit icon + trash icon.
-      3. Clicking "+ Add target" or the edit icon opens a sub-modal ("Add inject target" or "Edit inject target") with three inputs (nickname, repo, file path) plus Save / Cancel. All inputs use `font-size: 16px` minimum (iOS auto-zoom guard per `CLAUDE.md`). The repo input has a placeholder `owner/repository`. The file path defaults to `TODO.md` on the add flow and shows the existing value on the edit flow.
-      4. Save in the sub-modal validates client-side: nickname non-empty, repo matches `owner/name` shape (one slash, no leading/trailing whitespace), file path non-empty. On validation failure, show inline error below the offending field. On success, write to Supabase via the `inject_targets` table; the DB unique constraint catches duplicate nicknames and surfaces as a friendly inline error on the nickname field. Close the sub-modal on success and refresh the targets list in the parent modal.
-      5. Trash icon on a target row triggers a confirmation step per `CLAUDE.md`'s destructive-action rule. Copy: "Delete target `<nickname>`? Projects routing to it will become unrouted." Confirm performs the Supabase DELETE; the FK on `projects.target_id` (added separately in next entry) is configured `ON DELETE SET NULL`, so cascading routing cleanup is handled at the DB layer.
-      6. Both modal and sub-modal must close 3 ways: X, backdrop, Escape. Sub-modal Escape closes only the sub-modal, leaving parent open.
+      1. In the Inject settings modal, add a new "Project routing" section below "Inject targets." The section is a table: one row per project the user owns, columns are project name (left) and target dropdown (right). The dropdown lists "None" + every defined target by nickname, with the project's current `target_id` selection highlighted.
+      2. Changing a project's dropdown immediately writes the new `target_id` to Supabase (no separate Save button — autosave). Brief inline confirmation ("Saved") fades after 1.5s near the row.
+      3. When there are zero defined targets, the Project routing section shows empty-state copy ("Define a target first to enable project routing") instead of the table.
+      4. The inject button on each todo reads the active project's `target_id`. State machine for the button:
+         - **Connection not configured** (no Worker URL/secret on this device) → "Configure inject in settings" state, opens settings modal on click. This precedence is unchanged from existing behavior; takes priority over project-target state.
+         - **Connection configured, project has no target** (`target_id` is NULL) → new state: visible-but-dimmed, label "Set inject target", clicking opens the settings modal scrolled to the Project routing section.
+         - **Connection configured, project has a target, description empty** → invisible (existing behavior).
+         - **Connection configured, project has a target, description present, not injected** → "Ready" state (existing purple outline, label "Inject to TODO.md").
+         - **Already injected** → "Injected" state (existing green/dim, label "Injected", click is a no-op).
+      5. On inject click: resolve the active project's `target_id` to a row from the cached `inject_targets` list, send `{ entry, repo: <target.repo>, filePath: <target.file_path> }` in the POST body with the existing `Authorization: Bearer` header.
+      6. The "Test connection" button in the Connection section sends `{ test: true, repo, filePath }` using the *first defined target's* values. If no targets exist yet, the test omits repo/filePath entirely and the Worker falls back to its default target. The status pill reflects which target was tested: "Connected (target: <nickname>)" on success.
+      7. The `injectedAt` field on todos stays as a simple timestamp — no need to also store which target the inject went to.
     - Acceptance criteria:
-      - The Inject settings modal now has three visible regions: Connection (collapsible), Inject targets (list + add button), and the existing close affordances.
-      - Connection section auto-collapses when both URL and secret are configured and the last test was successful. Edit icon re-expands.
-      - "+ Add target" opens a sub-modal with three fields. Save persists a new row to the `inject_targets` table. Cancel discards.
-      - Edit icon on a target opens the same sub-modal pre-filled with that target's current values. Save updates the row.
-      - Trash icon on a target shows a confirmation, then deletes the row from Supabase on confirm.
-      - Adding a target with a nickname that already exists for the current user shows an inline error and does not save (the DB unique constraint is the source of truth; UI surfaces the error gracefully).
-      - Empty state (no targets) shows the placeholder copy and add button only — no empty target rows.
-      - All inputs in both modals use `font-size: 16px` minimum.
-      - Both modals close via X, backdrop, and Escape. Sub-modal Escape does not close the parent.
-      - As another user (or unauthenticated), the user's targets are not visible — RLS is enforced.
+      - The Inject settings modal now shows a Project routing section listing all of the current user's projects with target dropdowns.
+      - Changing a dropdown immediately persists `target_id` to Supabase without requiring a Save click.
+      - Deleting a target from the Inject targets section sets `target_id` to NULL on any project pointing at it (verifiable by checking the project's dropdown after the delete — should show "None").
+      - The inject button on a todo whose project has no target is visible-but-dimmed with the "Set inject target" label, and clicking opens the settings modal focused on Project routing.
+      - The inject button on a todo whose project has a target sends `{ entry, repo, filePath }` (verifiable by checking the resulting commit lands in the configured repo).
+      - Test connection in the modal correctly indicates which target was tested, and the status pill reflects the target's nickname.
+      - Existing todos with `injectedAt` set continue to render their "injected" state regardless of the new field.
+      - Projects without a `target_id` (i.e., never routed) render the "no target" inject button state on their todos.
+      - As another user (or unauthenticated), the user's project routings are not visible — RLS via the existing projects-table policy is enforced.
     - Implementation notes:
-      - Targets list is fetched on modal open via the Supabase client (`from('inject_targets').select().order('created_at')`), cached in a module-level variable while the modal is open, re-fetched after any add/edit/delete. No realtime subscriptions needed at this scale.
-      - The sub-modal can share styling with the parent modal — same dark surface, same field treatment, just smaller. Reuse existing modal CSS rather than introducing a new variant.
-      - The "Edit" icon for the collapsed Connection section is the existing settings/pencil pattern in the app — match what's already there.
-      - The inject button on each todo row is NOT updated in this entry. The button still POSTs `{ entry }` and the Worker uses its default target (the first entry in `ALLOWED_TARGETS`). Per-project routing lands in the next entry.
-      - No npm dependencies. Use the existing Supabase client wired into the app.
-    - Out of scope: Per-project target selection (next entry); changes to the inject button or inject request body; changes to the Worker; bulk target import/export; reordering targets in the list; cross-device realtime target sync.
+      - State precedence in the inject button: connection-not-configured > project-no-target > description-empty > already-injected > ready. The first applicable state wins. Keeping this explicit prevents confusing "Set inject target" messaging when the deeper issue is missing connection.
+      - The "scrolled to Project routing" focus behavior on the settings modal can be a simple `scrollIntoView` on the section's heading after open. No elaborate focus management needed.
+      - Project routing autosave: dropdowns change on selection rather than typing, so no debounce. Just `await` the Supabase update on change and show the inline "Saved" feedback on resolve.
+      - The Worker is already prepared for this (Entry 1 refactor): unknown repo+filePath combinations return 400, valid ones route correctly. No Worker changes needed.
+      - If the user routes a project to a target whose repo isn't in the Worker's `ALLOWED_TARGETS`, the inject will return 400 at runtime. This is acceptable — the error toast surfaces "Target not in allowlist" and the user knows to update the Worker's allowlist plus the GitHub PAT scope. A tooltip on the dropdown or the empty-state copy can mention this once.
+      - The inject button state machine has grown — consider extracting it into a small helper function (`getInjectButtonState(todo, project, config)` returning a state constant) to keep `main.js` row-render code readable.
+    - Out of scope: Worker-side allowlist management UI; per-target shared secrets (auth stays one secret per Worker); bulk routing operations ("route all projects to target X"); routing history or audit log; surfacing the target nickname on the todo row itself.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
      
