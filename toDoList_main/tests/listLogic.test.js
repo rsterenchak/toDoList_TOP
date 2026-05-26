@@ -1,4 +1,4 @@
-import { listLogic, nextDueDate, sanitizeRecurrence } from '../src/listLogic.js';
+import { listLogic, nextDueDate, sanitizeRecurrence, sortItemsByDueForRender } from '../src/listLogic.js';
 
 // ── PROJECTS ─────────────────────────────────────────────────────────
 describe('listLogic — projects', () => {
@@ -2139,5 +2139,132 @@ describe('listLogic — seedSampleTodos', () => {
         const raw = localStorage.getItem('allProjects');
         const parsed = JSON.parse(raw);
         expect(parsed.Work.items.filter(i => i.tit !== '')).toHaveLength(4);
+    });
+});
+
+
+// ── PER-PROJECT SORT-BY-DUE TOGGLE ──────────────────────────────────
+describe('listLogic — sortByDue preference', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+    });
+
+    it('defaults to false for a freshly created project', () => {
+        expect(listLogic.getProjectSortByDue('Work')).toBe(false);
+    });
+
+    it('setProjectSortByDue persists the flag on the project record', () => {
+        listLogic.setProjectSortByDue('Work', true);
+        expect(listLogic.getProjectSortByDue('Work')).toBe(true);
+
+        const raw = localStorage.getItem('allProjects');
+        const parsed = JSON.parse(raw);
+        expect(parsed.Work.sortByDue).toBe(true);
+    });
+
+    it('setProjectSortByDue accepts being toggled off again', () => {
+        listLogic.setProjectSortByDue('Work', true);
+        listLogic.setProjectSortByDue('Work', false);
+        expect(listLogic.getProjectSortByDue('Work')).toBe(false);
+    });
+
+    it('getProjectSortByDue returns false for unknown projects', () => {
+        expect(listLogic.getProjectSortByDue('Nope')).toBe(false);
+    });
+
+    it('per-project flag does not leak to siblings', () => {
+        listLogic.addProject('Home');
+        listLogic.setProjectSortByDue('Work', true);
+        expect(listLogic.getProjectSortByDue('Work')).toBe(true);
+        expect(listLogic.getProjectSortByDue('Home')).toBe(false);
+    });
+
+    it('does not mutate the underlying items array (manual order survives toggle off)', () => {
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+        listLogic.addToDo('Work', 'C');
+        const items = listLogic.listItems('Work');
+        const a = items.find(i => i.tit === 'A');
+        const b = items.find(i => i.tit === 'B');
+        const c = items.find(i => i.tit === 'C');
+        a.due = '12-31-2099';
+        b.due = '1-1-2099';
+        c.due = '6-15-2099';
+        const orderBefore = items.map(i => i.tit);
+
+        listLogic.setProjectSortByDue('Work', true);
+        expect(listLogic.listItems('Work').map(i => i.tit)).toEqual(orderBefore);
+
+        listLogic.setProjectSortByDue('Work', false);
+        expect(listLogic.listItems('Work').map(i => i.tit)).toEqual(orderBefore);
+    });
+});
+
+
+describe('sortItemsByDueForRender', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+    });
+
+    function setupItems() {
+        listLogic.addToDo('Work', 'Late');
+        listLogic.addToDo('Work', 'Early');
+        listLogic.addToDo('Work', 'Mid');
+        listLogic.addToDo('Work', 'Undated');
+        const items = listLogic.listItems('Work');
+        items.find(i => i.tit === 'Late').due = '12-31-2099';
+        items.find(i => i.tit === 'Early').due = '1-1-2099';
+        items.find(i => i.tit === 'Mid').due = '6-15-2099';
+        // Undated keeps its empty due string.
+        return items;
+    }
+
+    it('pins the blank placeholder to index 0', () => {
+        const items = setupItems();
+        const sorted = sortItemsByDueForRender(items);
+        expect(sorted[0].tit).toBe('');
+    });
+
+    it('sorts uncompleted items ascending by due date', () => {
+        const items = setupItems();
+        const sorted = sortItemsByDueForRender(items);
+        const titles = sorted.map(i => i.tit);
+        // Blank, Early, Mid, Late, Undated (no-due sinks to bottom of group)
+        expect(titles).toEqual(['', 'Early', 'Mid', 'Late', 'Undated']);
+    });
+
+    it('groups completed items at the bottom', () => {
+        const items = setupItems();
+        items.find(i => i.tit === 'Mid').completed = true;
+        const sorted = sortItemsByDueForRender(items);
+        const titles = sorted.map(i => i.tit);
+        // Completed Mid drops below every uncompleted row regardless of its earlier due.
+        expect(titles).toEqual(['', 'Early', 'Late', 'Undated', 'Mid']);
+    });
+
+    it('does not mutate the input array', () => {
+        const items = setupItems();
+        const before = items.map(i => i.tit);
+        sortItemsByDueForRender(items);
+        const after = items.map(i => i.tit);
+        expect(after).toEqual(before);
+    });
+
+    it('returns an empty array for non-array input', () => {
+        expect(sortItemsByDueForRender(null)).toEqual([]);
+        expect(sortItemsByDueForRender(undefined)).toEqual([]);
+    });
+
+    it('keeps undated items in their original relative order (stable sort tiebreaker)', () => {
+        listLogic.addToDo('Work', 'X');
+        listLogic.addToDo('Work', 'Y');
+        listLogic.addToDo('Work', 'Z');
+        // None have due dates set.
+        const items = listLogic.listItems('Work');
+        const sorted = sortItemsByDueForRender(items);
+        const titles = sorted.map(i => i.tit).filter(t => t !== '');
+        expect(titles).toEqual(['X', 'Y', 'Z']);
     });
 });

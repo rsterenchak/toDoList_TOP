@@ -199,15 +199,16 @@ export const listLogic = (function () {
     Object.keys(allProjects).forEach(function(key) {
         const entry = allProjects[key];
         if (Array.isArray(entry)) {
-            allProjects[key] = { id: genId(), items: entry, color: null };
+            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false };
         } else if (!entry || typeof entry !== 'object') {
-            allProjects[key] = { id: genId(), items: [], color: null };
+            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false };
         } else {
             if (!Array.isArray(entry.items)) entry.items = [];
             if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
             if (typeof entry.color === 'string' && PROJECT_COLOR_KEYS.indexOf(entry.color) === -1) {
                 entry.color = null;
             }
+            if (typeof entry.sortByDue !== 'boolean') entry.sortByDue = false;
             // Backfill the persistence-layer id on legacy projects so
             // every entry in the in-memory map has a stable identifier
             // for Supabase round-trips.
@@ -279,7 +280,7 @@ export const listLogic = (function () {
         }
 
         const projectId = genId();
-        allProjects[projectName] = { id: projectId, items: [listItem], color: null };
+        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false };
 
         allProjectsTotal = Object.keys(allProjects).length;
 
@@ -862,6 +863,25 @@ export const listLogic = (function () {
                 ),
             });
         }
+    }
+
+
+    // Per-project auto-sort-by-due-date preference. Render-time only: the
+    // flag controls whether the rendering layer iterates items in sorted
+    // order, but the underlying items array (and each item's `pos`) is
+    // never mutated, so toggling off restores the user's manual order.
+    function getProjectSortByDue(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return false;
+        return !!entry.sortByDue;
+    }
+
+    // @category: user-mutation-only
+    function setProjectSortByDue(projectName, on) {
+        const entry = allProjects[projectName];
+        if (!entry) return;
+        entry.sortByDue = !!on;
+        saveToStorage();
     }
 
 
@@ -1571,7 +1591,7 @@ export const listLogic = (function () {
         ];
 
         const projectId = genId();
-        allProjects[name] = { id: projectId, items: sampleItems, color: null };
+        allProjects[name] = { id: projectId, items: sampleItems, color: null, sortByDue: false };
         allProjectsTotal = Object.keys(allProjects).length;
 
         saveToStorage();
@@ -1702,7 +1722,8 @@ export const listLogic = (function () {
                 if (isNaN(m) || isNaN(d) || isNaN(y)) item.due = '';
             });
 
-            allProjects[name] = { id: genId(), items: items, color: color };
+            const sortByDue = typeof entry.sortByDue === 'boolean' ? entry.sortByDue : false;
+            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue };
             sortCompletedInPlace(allProjects[name].items);
         });
 
@@ -1771,6 +1792,7 @@ export const listLogic = (function () {
                 name: name,
                 items: Array.isArray(entry.items) ? entry.items.slice() : [],
                 color: entry.color || null,
+                sortByDue: !!entry.sortByDue,
             };
         });
     }
@@ -2031,6 +2053,7 @@ export const listLogic = (function () {
                     id: p.id,
                     items: [],
                     color: chosenColor || null,
+                    sortByDue: !!(localEntry && localEntry.sortByDue),
                 };
                 const rows = todosByProjectId[p.id] || [];
                 rows.forEach(function(t) {
@@ -2059,6 +2082,7 @@ export const listLogic = (function () {
                     id: local.id,
                     items: Array.isArray(local.items) ? local.items.slice() : [],
                     color: local.color || null,
+                    sortByDue: !!local.sortByDue,
                 };
                 persistMutation({
                     op: 'insert',
@@ -2158,6 +2182,7 @@ export const listLogic = (function () {
                     id: evt.new.id,
                     items: [],
                     color: evt.new.color || null,
+                    sortByDue: false,
                 };
                 sortCompletedInPlace(allProjects[name].items);
             }
@@ -2258,6 +2283,8 @@ export const listLogic = (function () {
         sortCompletedToBottom,
         getProjectColor,
         setProjectColor,
+        getProjectSortByDue,
+        setProjectSortByDue,
         getProjectIncompleteCount,
         PROJECT_COLOR_KEYS,
         saveToStorage,
@@ -2287,6 +2314,54 @@ export const listLogic = (function () {
 // importable without reaching into the row module.
 function formatMissShortDate(d) {
     return MISS_MONTH_SHORT[d.getMonth()] + ' ' + d.getDate();
+}
+
+
+// Sort-for-render helper used when a project's `sortByDue` toggle is on.
+// Returns a new array (input is not mutated) with the blank placeholder
+// pinned to index 0, uncompleted items sorted ascending by due date, and
+// completed items grouped at the bottom in the same ascending-by-due
+// order. Items without a due date sink to the bottom of their respective
+// group so an unset row never displaces a row that has a date set. The
+// underlying `pos` field is never touched — toggling sortByDue off
+// restores the user's manual order intact.
+export function sortItemsByDueForRender(items) {
+    if (!Array.isArray(items)) return [];
+
+    let blank = null;
+    const uncompleted = [];
+    const completed = [];
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (!it) continue;
+        if (it.tit === '' && !blank) {
+            blank = it;
+            continue;
+        }
+        if (it.completed) completed.push({ item: it, idx: i });
+        else uncompleted.push({ item: it, idx: i });
+    }
+
+    const cmp = function(a, b) {
+        const da = parseDueParts(a.item.due);
+        const db = parseDueParts(b.item.due);
+        if (da && db) {
+            const diff = da.getTime() - db.getTime();
+            if (diff !== 0) return diff;
+            return a.idx - b.idx;
+        }
+        if (da && !db) return -1;
+        if (!da && db) return 1;
+        return a.idx - b.idx;
+    };
+    uncompleted.sort(cmp);
+    completed.sort(cmp);
+
+    const out = [];
+    if (blank) out.push(blank);
+    uncompleted.forEach(function(w) { out.push(w.item); });
+    completed.forEach(function(w) { out.push(w.item); });
+    return out;
 }
 
 

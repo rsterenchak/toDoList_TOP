@@ -17,7 +17,7 @@
 // regard to their position. The ghost-companion singleton is reached through
 // `ensureCompanion()` from companion.js (no deps bag involved).
 
-import { listLogic } from './listLogic.js';
+import { listLogic, sortItemsByDueForRender } from './listLogic.js';
 import { setupRowDrag, isCoarsePointer, prefersReducedMotion } from './dragDrop.js';
 import {
     applyDueUrgency,
@@ -1769,7 +1769,10 @@ export function addAllToDo_DOM(items, name) {
     if (!items) return;
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    items.forEach(function(item) {
+    const renderOrder = listLogic.getProjectSortByDue(name)
+        ? sortItemsByDueForRender(items)
+        : items;
+    renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, name));
     });
     updateCompletedSection(mainListDiv);
@@ -1794,7 +1797,10 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
     const items = listLogic.listItems(toDoName);
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    items.forEach(function(item) {
+    const renderOrder = listLogic.getProjectSortByDue(toDoName)
+        ? sortItemsByDueForRender(items)
+        : items;
+    renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
     updateCompletedSection(mainListDiv);
@@ -1820,7 +1826,10 @@ export function reorderToDoDOM(projectName) {
         if (rows[i].__item) rowsByItem.set(rows[i].__item, rows[i]);
     }
 
-    items.forEach(function(item) {
+    const renderOrder = listLogic.getProjectSortByDue(projectName)
+        ? sortItemsByDueForRender(items)
+        : items;
+    renderOrder.forEach(function(item) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
         // Collect any auxiliary panels that belong to this row (the
@@ -1908,6 +1917,13 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
         container: document.getElementById('mainList'),
         itemSelector: '#toDoChild',
         isDraggable: function() {
+            // Sort-by-due overrides manual order, so drag would reshuffle
+            // to nothing the moment the row re-renders. Pin the row to
+            // non-draggable while the toggle is on.
+            const projectName = (toDoChild.dataset && toDoChild.dataset.value)
+                ? toDoChild.dataset.value
+                : project;
+            if (projectName && listLogic.getProjectSortByDue(projectName)) return false;
             return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
         },
         onReorder: function(fromIdx, toIdx) {
@@ -1928,9 +1944,13 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
     });
 
     function syncDraggable() {
+        const projectName = (toDoChild.dataset && toDoChild.dataset.value)
+            ? toDoChild.dataset.value
+            : project;
+        const sortLocked = projectName && listLogic.getProjectSortByDue(projectName);
         toDoChild.setAttribute(
             'draggable',
-            toDoInput.value.trim().length > 0 ? 'true' : 'false'
+            (!sortLocked && toDoInput.value.trim().length > 0) ? 'true' : 'false'
         );
     }
     syncDraggable();

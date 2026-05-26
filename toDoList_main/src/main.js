@@ -3142,8 +3142,27 @@ function component() {
     // #mainBar so the list can scroll beneath it without dragging the button
     // along. Clicks are dispatched to each row's own #descToggle so the
     // per-row switcher state in wireDescToggle stays in sync with the DOM.
+    //
+    // The per-project "Sort by due" toggle rides in the same wrapper to
+    // the LEFT of Expand All; it persists on the project record via
+    // listLogic and re-renders the active project's rows on flip.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
+
+    const sortByDueLabel = document.createElement('label');
+    sortByDueLabel.id = 'sortByDueToggle';
+    sortByDueLabel.className = 'sortByDueToggle';
+    sortByDueLabel.setAttribute('title', 'Sort items by due date (ascending)');
+    const sortByDueCheckbox = document.createElement('input');
+    sortByDueCheckbox.type = 'checkbox';
+    sortByDueCheckbox.id = 'sortByDueCheckbox';
+    sortByDueCheckbox.className = 'sortByDueCheckbox';
+    const sortByDueText = document.createElement('span');
+    sortByDueText.className = 'sortByDueLabel';
+    sortByDueText.textContent = 'Sort by due';
+    sortByDueLabel.appendChild(sortByDueCheckbox);
+    sortByDueLabel.appendChild(sortByDueText);
+    bulkDescActions.appendChild(sortByDueLabel);
 
     const bulkDescToggleBtn = document.createElement('button');
     bulkDescToggleBtn.type = 'button';
@@ -3171,6 +3190,34 @@ function component() {
             collapseAllDescriptions();
             bulkDescLabel.textContent = 'Expand All';
         }
+    });
+
+    function activeProjectName() {
+        const selected = document.querySelector('.selectedProject');
+        if (!selected) return '';
+        const projInput = selected.querySelector('#projInput');
+        return projInput ? (projInput.value || '').trim() : '';
+    }
+
+    function syncSortByDueToggle() {
+        const activeName = activeProjectName();
+        const hasProject = !!activeName;
+        sortByDueCheckbox.checked = hasProject && listLogic.getProjectSortByDue(activeName);
+        sortByDueCheckbox.disabled = !hasProject;
+        sortByDueLabel.classList.toggle('isDisabled', !hasProject);
+    }
+
+    sortByDueCheckbox.addEventListener('change', function() {
+        const activeName = activeProjectName();
+        if (!activeName) {
+            sortByDueCheckbox.checked = false;
+            return;
+        }
+        listLogic.setProjectSortByDue(activeName, sortByDueCheckbox.checked);
+        const mainListDiv = document.getElementById('mainList');
+        if (!mainListDiv) return;
+        while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
+        addAllToDo_DOM(listLogic.listItems(activeName), activeName);
     });
 
     // ── STACK mobile drawer settings entry + footer ──
@@ -5035,6 +5082,7 @@ function component() {
         footDone.textContent = done + ' DONE';
 
         updateMobileProjHeader(name, open, done);
+        syncSortByDueToggle();
     }
 
     // Resolve the project name at the given index in the authoritative
