@@ -1880,8 +1880,16 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
         onRight: function() {
             const cb = swipeTargets.checkToDo;
             if (!cb || cb.style.display === 'none') return;
+            // Capture direction BEFORE toggling so the center-screen
+            // confirmation flash only fires on the complete direction —
+            // swiping right on an already-completed row to uncomplete it
+            // stays silent.
+            const willComplete = !cb.checked;
             cb.checked = !cb.checked;
             cb.dispatchEvent(new Event('change'));
+            if (willComplete) {
+                document.dispatchEvent(new CustomEvent('todoSwipeRightComplete'));
+            }
         },
         onLeft: function() {
             const btn = swipeTargets.closeButtonToDo;
