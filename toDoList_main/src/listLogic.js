@@ -553,6 +553,40 @@ export const listLogic = (function () {
     }
 
 
+    // Flip a committed todo's completed flag and persist the change. The UI
+    // layer used to mutate `item.completed` directly and lean on the
+    // follow-up `sortCompletedToBottom` to flush the change to storage,
+    // but that sort short-circuits when the array order is already
+    // canonical (toggling the last uncompleted item, or the first
+    // completed item, leaves the partition position-for-position the
+    // same). The mutation then stayed in memory only and the next page
+    // load — including the swipe-right completion path on mobile —
+    // restored the row to its previous state. Routing the toggle through
+    // here makes the localStorage write unconditional and mirrors the
+    // change to Supabase the same way the title-edit path does.
+    // @category: user-mutation-only
+    function setToDoCompleted(projectName, item, completed) {
+
+        if (!projectName || !allProjects[projectName] || !item) return;
+        const next = !!completed;
+        if (item.completed === next) return;
+
+        item.completed = next;
+        saveToStorage();
+
+        if (item.id && item.tit && item.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    item,
+                    allProjects[projectName].id || null
+                ),
+            });
+        }
+    }
+
+
     // @category: user-mutation-only
     function editProject(currentProperty, newProperty) {
 
@@ -2343,6 +2377,7 @@ export const listLogic = (function () {
         insertToDoAt,
         commitBlankPlaceholder,
         editToDoItem,
+        setToDoCompleted,
         editProject,
         listItems,
         projectLength,

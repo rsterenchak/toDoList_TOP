@@ -245,7 +245,21 @@ function wireCheckbox(toDoChild, toDoInput, item) {
             }
         }
 
-        item.completed = checkToDo.checked;
+        // Route the toggle through listLogic so the localStorage write
+        // fires unconditionally. The follow-up sortCompletedToBottom
+        // short-circuits when the array order is already canonical
+        // (e.g. swiping right on the last uncompleted item), so its
+        // built-in persist path can't be relied on to flush this
+        // mutation — the swipe-right completion would survive in memory
+        // but reappear unchecked on the next page load. Falling back to
+        // the direct mutation when no projectName preserves the
+        // pre-existing behaviour for transient rows the data model
+        // doesn't yet own.
+        if (projectName) {
+            listLogic.setToDoCompleted(projectName, item, checkToDo.checked);
+        } else {
+            item.completed = checkToDo.checked;
+        }
         if (checkToDo.checked) {
             toDoChild.classList.add("completed");
         } else {

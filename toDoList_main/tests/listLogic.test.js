@@ -236,6 +236,67 @@ describe('listLogic — completed sorting', () => {
         expect(listLogic.listItems('Work')[0].tit).toBe('');
     });
 
+    it('setToDoCompleted persists the new completed value to localStorage', () => {
+        // Regression guard for the swipe-right completion bug: the UI
+        // change handler used to mutate item.completed directly and lean
+        // on the follow-up sortCompletedToBottom to flush the write, but
+        // sort short-circuits when the array order is already canonical
+        // — toggling the last uncompleted item to completed leaves the
+        // partition position-for-position the same, so the mutation
+        // stayed in memory and the row reappeared unchecked on refresh.
+        // Routing through setToDoCompleted makes the write unconditional.
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+        const itemB = listLogic.listItems('Work').find(i => i.tit === 'B');
+
+        listLogic.setToDoCompleted('Work', itemB, true);
+
+        // In-memory state.
+        expect(itemB.completed).toBe(true);
+
+        // Persisted state: serialized localStorage must reflect the toggle.
+        const raw = localStorage.getItem('allProjects');
+        expect(raw).not.toBeNull();
+        const parsed = JSON.parse(raw);
+        const persistedB = parsed.Work.items.find(i => i.tit === 'B');
+        expect(persistedB.completed).toBe(true);
+    });
+
+    it('setToDoCompleted persists even when sortCompletedToBottom would no-op', () => {
+        // Reproduces the exact swipe-right failure: toggle the last
+        // uncompleted item — the partition order is unchanged so the
+        // follow-up sortCompletedToBottom early-exits without writing.
+        // The new completion state must survive on its own.
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+        const itemB = listLogic.listItems('Work').find(i => i.tit === 'B');
+
+        listLogic.setToDoCompleted('Work', itemB, true);
+        listLogic.sortCompletedToBottom('Work');   // expected no-op write
+
+        const raw = localStorage.getItem('allProjects');
+        const parsed = JSON.parse(raw);
+        const persistedB = parsed.Work.items.find(i => i.tit === 'B');
+        expect(persistedB.completed).toBe(true);
+    });
+
+    it('setToDoCompleted is a no-op when the requested state matches the current state', () => {
+        // Avoid spurious localStorage writes and Supabase mirror calls
+        // on a toggle that doesn't actually change anything.
+        listLogic.addToDo('Work', 'A');
+        const itemA = listLogic.listItems('Work').find(i => i.tit === 'A');
+        // Settle storage so the spy below starts from a clean slate.
+        listLogic.saveToStorage();
+
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        listLogic.setToDoCompleted('Work', itemA, false);
+        const allProjectsWrites = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
+        setItemSpy.mockRestore();
+
+        expect(allProjectsWrites.length).toBe(0);
+        expect(itemA.completed).toBe(false);
+    });
+
     it('sortCompletedToBottom re-creates a blank placeholder when none exists', () => {
         // Regression guard for the blur-and-return placeholder bug: the UI
         // layer's keyup handler mutates the blank row's item.tit as the user
