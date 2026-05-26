@@ -281,9 +281,10 @@ export function showDescEditorModal(item, options) {
 
     // Inject-to-TODO.md button — mirror of the desktop description-panel
     // affordance. Reuses the same factory so all state transitions (hidden /
-    // unconfigured / ready / injected) flow through one code path. Hidden
-    // by refreshInjectButton when the textarea is empty.
-    const injectBtn = makeInjectButton(item);
+    // unconfigured / no-target / ready / injected) flow through one code
+    // path. Hidden by refreshInjectButton when the textarea is empty and
+    // the project already has a routing target.
+    const injectBtn = makeInjectButton(item, { projectName: opts.projectName || '' });
     injectBtn.classList.add('descEditorModalBtn');
 
     actions.appendChild(clearBtn);
@@ -371,7 +372,7 @@ export function showDescEditorModal(item, options) {
             onConfirm: function() {
                 textarea.value = '';
                 item.desc = '';
-                refreshInjectButton(injectBtn, item);
+                refreshInjectButton(injectBtn, item, opts.projectName || '');
                 textarea.focus();
             }
         });
@@ -383,7 +384,7 @@ export function showDescEditorModal(item, options) {
     // persist() on close still does the final localStorage write.
     textarea.addEventListener('input', function() {
         item.desc = textarea.value;
-        refreshInjectButton(injectBtn, item);
+        refreshInjectButton(injectBtn, item, opts.projectName || '');
     });
 
     // Mobile keyboards land focus more reliably if the focus call is deferred

@@ -82,7 +82,7 @@ import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
-import { initInjectConfig, showInjectSettingsModal } from './inject.js';
+import { initInjectConfig, initInjectTargets, showInjectSettingsModal } from './inject.js';
 import button from './addProj_button.svg';
 
 // Hydrate the inject config cache from localStorage before any inject
@@ -5433,6 +5433,15 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
             restoreFromStorage({ fromSync: true });
         } catch (e) {
             console.warn('[listLogicHydrated] re-render failed:', e);
+        }
+        // Warm the inject_targets cache now that the user's session is
+        // ready — without it the inject buttons can't tell "no target
+        // mapped" from "targets just not loaded yet" and stick on the
+        // no-target call-to-action even when a route exists.
+        try {
+            initInjectTargets();
+        } catch (e) {
+            console.warn('[listLogicHydrated] initInjectTargets failed:', e);
         }
     });
 }

@@ -1,6 +1,6 @@
 # TODO List
 
-- [ ] **[MEDIUM]** Route inject button to per-project targets and add project routing UI
+- [x] **[MEDIUM]** Route inject button to per-project targets and add project routing UI
   - Type: feature
   - Description: Wire the inject button to send entries to the project's configured target, completing the per-project inject-routing feature. Adds a "Project routing" section in the Inject settings modal where each project gets a target dropdown, updates the inject button's handler to include `repo` and `file_path` in the request body based on the active project's target, and introduces a new "no target" inject button state. Depends on Entry 2a having shipped the targets table UI. **Schema precondition: the `target_id uuid` column already exists on the `projects` table, nullable, with FK to `inject_targets(id)` ON DELETE SET NULL. No schema changes are part of this entry — only build behavior against the existing schema.**
     - Behavior:
@@ -35,6 +35,6 @@
       - The inject button state machine has grown — consider extracting it into a small helper function (`getInjectButtonState(todo, project, config)` returning a state constant) to keep `main.js` row-render code readable.
     - Out of scope: Worker-side allowlist management UI; per-target shared secrets (auth stays one secret per Worker); bulk routing operations ("route all projects to target X"); routing history or audit log; surfacing the target nickname on the todo row itself.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
      
   

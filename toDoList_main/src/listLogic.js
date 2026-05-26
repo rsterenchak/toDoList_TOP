@@ -79,6 +79,7 @@ function toProjectRowPayload(entry, name, position) {
         name: name,
         color: entry.color || null,
         position: position,
+        target_id: entry.target_id || null,
     };
 }
 
@@ -199,9 +200,9 @@ export const listLogic = (function () {
     Object.keys(allProjects).forEach(function(key) {
         const entry = allProjects[key];
         if (Array.isArray(entry)) {
-            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false };
+            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false, target_id: null };
         } else if (!entry || typeof entry !== 'object') {
-            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false };
+            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, target_id: null };
         } else {
             if (!Array.isArray(entry.items)) entry.items = [];
             if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
@@ -209,6 +210,9 @@ export const listLogic = (function () {
                 entry.color = null;
             }
             if (typeof entry.sortByDue !== 'boolean') entry.sortByDue = false;
+            // Default to null when the field is absent; legacy installs predate
+            // the inject-routing feature and have no per-project target.
+            if (typeof entry.target_id !== 'string') entry.target_id = null;
             // Backfill the persistence-layer id on legacy projects so
             // every entry in the in-memory map has a stable identifier
             // for Supabase round-trips.
@@ -280,7 +284,7 @@ export const listLogic = (function () {
         }
 
         const projectId = genId();
-        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false };
+        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false, target_id: null };
 
         allProjectsTotal = Object.keys(allProjects).length;
 
@@ -863,6 +867,63 @@ export const listLogic = (function () {
                 ),
             });
         }
+    }
+
+
+    // ── PROJECT INJECT-ROUTING ──
+    // Per-project FK to inject_targets.id. NULL means the project has no
+    // routing — its inject button renders in the "Set inject target" state
+    // and the inject POST is blocked. Reads are synchronous (the field
+    // lives on the cached project entry); the setter mirrors the change
+    // to Supabase via the same persistMutation funnel every other project
+    // mutation uses.
+    function getProjectTargetId(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return null;
+        return entry.target_id || null;
+    }
+
+    // @category: user-mutation-only
+    function setProjectTargetId(projectName, targetId) {
+        const entry = allProjects[projectName];
+        if (!entry) return;
+        entry.target_id = (typeof targetId === 'string' && targetId.length > 0)
+            ? targetId
+            : null;
+        saveToStorage();
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
+    }
+
+    // Clear target_id on every project pointing at the given target id.
+    // Called by the inject settings modal after a target delete so the
+    // local cache stays in sync with the FK's ON DELETE SET NULL on the
+    // database side — without it, dropdowns would keep showing the
+    // deleted target's nickname until the next page reload. opts forwards
+    // through to saveToStorage so a future caller wiring this off a
+    // realtime DELETE event can pass `{ fromSync: true }` and suppress
+    // the per-row Supabase mirror writes downstream.
+    // @category: sync-safe
+    function clearProjectTargetId(targetId, opts) {
+        if (!targetId) return;
+        let mutated = false;
+        Object.keys(allProjects).forEach(function(name) {
+            const entry = allProjects[name];
+            if (entry && entry.target_id === targetId) {
+                entry.target_id = null;
+                mutated = true;
+            }
+        });
+        if (mutated) saveToStorage(opts);
     }
 
 
@@ -1591,7 +1652,7 @@ export const listLogic = (function () {
         ];
 
         const projectId = genId();
-        allProjects[name] = { id: projectId, items: sampleItems, color: null, sortByDue: false };
+        allProjects[name] = { id: projectId, items: sampleItems, color: null, sortByDue: false, target_id: null };
         allProjectsTotal = Object.keys(allProjects).length;
 
         saveToStorage();
@@ -1723,7 +1784,7 @@ export const listLogic = (function () {
             });
 
             const sortByDue = typeof entry.sortByDue === 'boolean' ? entry.sortByDue : false;
-            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue };
+            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, target_id: null };
             sortCompletedInPlace(allProjects[name].items);
         });
 
@@ -1793,6 +1854,7 @@ export const listLogic = (function () {
                 items: Array.isArray(entry.items) ? entry.items.slice() : [],
                 color: entry.color || null,
                 sortByDue: !!entry.sortByDue,
+                target_id: entry.target_id || null,
             };
         });
     }
@@ -1847,6 +1909,7 @@ export const listLogic = (function () {
                         name: payload.name,
                         color: payload.color || null,
                         position: payload.position == null ? 0 : payload.position,
+                        target_id: payload.target_id || null,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
@@ -1890,6 +1953,7 @@ export const listLogic = (function () {
                         name: payload.name,
                         color: payload.color || null,
                         position: payload.position == null ? 0 : payload.position,
+                        target_id: payload.target_id || null,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
@@ -2054,6 +2118,7 @@ export const listLogic = (function () {
                     items: [],
                     color: chosenColor || null,
                     sortByDue: !!(localEntry && localEntry.sortByDue),
+                    target_id: p.target_id || null,
                 };
                 const rows = todosByProjectId[p.id] || [];
                 rows.forEach(function(t) {
@@ -2083,6 +2148,7 @@ export const listLogic = (function () {
                     items: Array.isArray(local.items) ? local.items.slice() : [],
                     color: local.color || null,
                     sortByDue: !!local.sortByDue,
+                    target_id: local.target_id || null,
                 };
                 persistMutation({
                     op: 'insert',
@@ -2177,12 +2243,14 @@ export const listLogic = (function () {
             if (existing) {
                 existing.color = evt.new.color || null;
                 existing.id = evt.new.id;
+                existing.target_id = evt.new.target_id || null;
             } else {
                 allProjects[name] = {
                     id: evt.new.id,
                     items: [],
                     color: evt.new.color || null,
                     sortByDue: false,
+                    target_id: evt.new.target_id || null,
                 };
                 sortCompletedInPlace(allProjects[name].items);
             }
@@ -2285,6 +2353,9 @@ export const listLogic = (function () {
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,
+        getProjectTargetId,
+        setProjectTargetId,
+        clearProjectTargetId,
         getProjectIncompleteCount,
         PROJECT_COLOR_KEYS,
         saveToStorage,
