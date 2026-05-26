@@ -43,11 +43,11 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/mobileDescEditorModal.test.js`
   - Completed: 2026-05-26
 
-- [ ] **[MEDIUM]** Fix Inject settings modal getting clipped at the bottom of the viewport on mobile
+- [x] **[MEDIUM]** Fix Inject settings modal getting clipped at the bottom of the viewport on mobile
   - Type: bug
   - Description: The Inject settings modal (opened from the desc editor footer's "Ã¢ÂÂ Configure inject in settings" button, and also accessible from the main Settings panel) grows to its natural content height Ã¢ÂÂ Connection section + Worker URL + Shared secret + Save/Test/Clear row + Inject Targets list + Project Routing dropdowns Ã¢ÂÂ which exceeds the viewport height on phones. The modal has no `max-height` cap and no internal scroll, so the bottom rows of Project Routing get clipped behind the iOS home-indicator area with no way to reach them. Fix by adopting the same shell pattern the other modals use (`#settingsModal`, `#missedDatesModal`, `#statsModal`): give the modal root `max-height: 85vh` (or `90vh` at `Ã¢ÂÂ¤480px`), `display: flex; flex-direction: column; overflow: hidden`, and `width: 100%; max-width: 460px`. Pin the header (title + close X) with no flex-grow, mark the body section `flex: 1 1 auto; overflow-y: auto`, and pin any footer action row (if present) at the bottom outside the scroll region. Mirror the existing modals' three-way close vocabulary (close X / backdrop click / Escape) if not already wired. The backdrop should keep `padding: 24px` and `align-items: center; justify-content: center` so the modal stays centered when content is short and fills toward the viewport edges when content is long. Investigate `main.js` (search for `injectSettings` or the modal-build function) with grep + `offset`/`limit` since the file is over 25k tokens; the modal's CSS rules live in `style.css`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
 
 - [ ] **[MEDIUM]** Fix mobile desc editor footer button overflow on narrow viewports
   - Type: bug
