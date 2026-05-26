@@ -2404,6 +2404,64 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 }
 
+/* Swipe-to-complete confirmation flash (mobile only).
+   Inserted into document.body by main.js when a touch swipe-right
+   crosses the completion threshold on an uncompleted row. The element
+   is pointer-events: none and fixed-centered so it never intercepts
+   taps or scroll while the animation plays. The check pops in with a
+   slight overshoot and a soft purple ring ripples outward; the whole
+   overlay fades out and is removed from the DOM shortly after. */
+.swipeCompleteFlash {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 90px;
+  height: 90px;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+}
+.swipeCompleteFlashCheck {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 90px;
+  line-height: 1;
+  font-weight: 700;
+  color: #6C5DF5;
+  transform: translate(-50%, -50%) scale(0.3);
+  opacity: 0;
+  animation: swipeCompleteFlashPop 1.1s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+.swipeCompleteFlashRipple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px solid #6C5DF5;
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  animation: swipeCompleteFlashRipple 1.1s ease-out forwards;
+}
+@keyframes swipeCompleteFlashPop {
+  0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+  40%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+  75%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0; }
+}
+@keyframes swipeCompleteFlashRipple {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipeCompleteFlash { display: none; }
+}
+
 /* CHECK-OFF CHECKBOX (todo) */
 #checkToDo {
   appearance: none;

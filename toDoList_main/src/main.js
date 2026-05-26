@@ -5398,6 +5398,39 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
     });
 }
 
+// Center-screen confirmation flash for the mobile swipe-to-complete gesture.
+// toDoRow.js dispatches `todoSwipeRightComplete` from its swipe onRight handler
+// when the row goes uncompleted → completed (swiping right to un-complete an
+// already-completed row stays silent). The listener is registered once at
+// module-eval time and guards against double-registration the same way the
+// hydrate listener above does, since main.js evaluates more than once during
+// boot. Each fire spawns a short-lived DOM node that removes itself when the
+// animation ends, so rapid-fire swipes never leak overlapping overlays.
+function playSwipeCompleteCheckmark() {
+    if (prefersReducedMotion()) return;
+    if (typeof document === 'undefined' || !document.body) return;
+    const flash = document.createElement('div');
+    flash.className = 'swipeCompleteFlash';
+    flash.setAttribute('aria-hidden', 'true');
+    const ripple = document.createElement('div');
+    ripple.className = 'swipeCompleteFlashRipple';
+    const check = document.createElement('div');
+    check.className = 'swipeCompleteFlashCheck';
+    check.textContent = '✓';
+    flash.appendChild(ripple);
+    flash.appendChild(check);
+    document.body.appendChild(flash);
+    setTimeout(function() {
+        if (flash.parentNode) flash.parentNode.removeChild(flash);
+    }, 1200);
+}
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__swipeCompleteFlashListenerRegistered) {
+    window.__swipeCompleteFlashListenerRegistered = true;
+    document.addEventListener('todoSwipeRightComplete', playSwipeCompleteCheckmark);
+}
+
+
 // Bulk open/close every committed row's description panel. Clicks the row's
 // own #descToggle so the closure-scoped `switcher` inside wireDescToggle
 // stays in sync with the DOM — individual per-row toggles keep working
