@@ -501,6 +501,30 @@ describe('mobile desc editor modal — editable title', () => {
     });
 });
 
+describe('mobile desc editor modal — desc save persistence', () => {
+
+    const toDoRow = read('toDoRow.js');
+
+    it('the row\'s onSave callback routes the desc write through listLogic.editToDoItem', () => {
+        // Regression: previously the onSave callback only called
+        // updateDescIndicator, so the modal's persist() routine mutated
+        // item.desc + saveToStorage (localStorage only) without firing the
+        // Supabase persistMutation gate. On the next hydrate the canonical
+        // backend snapshot overwrote the local desc edit, making the
+        // user's drafting silently disappear on hard refresh. Titles
+        // already routed through editToDoItem via onTitleSave; the desc
+        // path now mirrors that so localStorage and Supabase stay aligned.
+        const openIdx = toDoRow.indexOf('function openDescEditorForRow(');
+        expect(openIdx).toBeGreaterThan(-1);
+        const fn = toDoRow.slice(openIdx, openIdx + 1600);
+        const onSaveMatch = fn.match(/onSave\s*:\s*function\s*\([^)]*\)\s*\{([\s\S]*?)\}\s*,/);
+        expect(onSaveMatch).toBeTruthy();
+        const body = onSaveMatch[1];
+        expect(body).toMatch(/updateDescIndicator\s*\(/);
+        expect(body).toMatch(/listLogic\.editToDoItem\s*\(/);
+    });
+});
+
 describe('mobile desc editor modal — copy feedback label', () => {
 
     const modals = read('modals.js');
