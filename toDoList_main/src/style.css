@@ -8042,25 +8042,36 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   z-index: 220;
 }
 #injectSettingsModal {
   background: var(--bg-surface);
   border: 0.5px solid var(--border-bright);
   border-radius: var(--radius-md);
-  width: min(440px, 92vw);
-  max-height: 92vh;
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   color: var(--text-primary);
 }
 #injectSettingsHeader {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 8px;
   border-bottom: 0.5px solid var(--border-dim);
+}
+#injectSettingsScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 #injectSettingsTitle {
   font-size: 14px;
@@ -8207,7 +8218,8 @@ body:has(#musicPopover.open) #helpFab { display: none; }
 }
 
 @media (max-width: 480px) {
-  #injectSettingsModal { width: 96vw; }
+  #injectSettingsBackdrop { padding: 16px; }
+  #injectSettingsModal { max-height: 90vh; }
   .injectSettingsBtn { font-size: 14px; padding: 10px 14px; }
 }
 

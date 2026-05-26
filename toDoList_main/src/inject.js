@@ -1090,10 +1090,17 @@ export function showInjectSettingsModal(options) {
         return row;
     }
 
+    // The three stacked sections can exceed viewport height on phones —
+    // wrap them in a scroll container so the modal caps at max-height and
+    // the body scrolls instead of clipping the bottom rows.
+    const scrollBody = document.createElement('div');
+    scrollBody.id = 'injectSettingsScroll';
+    scrollBody.appendChild(connSection);
+    scrollBody.appendChild(targetsSection);
+    scrollBody.appendChild(routingSection);
+
     dialog.appendChild(header);
-    dialog.appendChild(connSection);
-    dialog.appendChild(targetsSection);
-    dialog.appendChild(routingSection);
+    dialog.appendChild(scrollBody);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
