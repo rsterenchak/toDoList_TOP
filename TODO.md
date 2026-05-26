@@ -2,34 +2,10 @@
 
 ## Bugs
 
-- [x] **[MEDIUM]** Preserve markdown formatting in description editor (paste + copy)
-  - Description: The description editor modal (from the prior entry, mobile centered modal C) currently strips formatting when markdown text is pasted in, and the "Copy as TODO.md entry" button must emit the textarea contents to the clipboard as raw markdown bytes with no transformation. End goal: the user can paste a TODO.md draft into the modal, edit it, tap "Copy as TODO.md entry", and paste the result directly into their `TODO.md` file with formatting fully intact (bullets, indentation, backticks, newlines, asterisks, brackets).
-  - Behavior:
-    1. Paste into the description textarea preserves the raw clipboard text verbatim — newlines, leading whitespace, asterisks, backticks, dashes, brackets, and Unicode all survive.
-    2. The textarea uses `white-space: pre-wrap` (or `pre`) so indentation and line breaks render visibly while editing.
-    3. The textarea has `autocapitalize="off"`, `autocorrect="off"`, `spellcheck="false"` so iOS/Android keyboards don't autocorrect markdown punctuation (e.g. turning `--` into `—`, `"foo"` into curly quotes, or auto-capitalizing list items).
-    4. The `desc` field stores the raw string as-is — no `.trim()`, no `.replace()`, no HTML escaping on write.
-    5. "Copy as TODO.md entry" calls `navigator.clipboard.writeText(todo.desc)` with the unmodified string. No template wrapping, no prefix/suffix, no entity encoding — what the user typed is what lands on the clipboard.
-    6. Brief visual confirmation that copy succeeded: button label flips to "Copied ✓" for ~1.2s, then reverts. No toast, no modal.
-    7. On render (modal open, page reload), `desc` is placed into the textarea via `textarea.value = todo.desc` — never `innerHTML` or `innerText`, which would normalize whitespace and entities.
-  - Implementation notes:
-    - The current "Copy as TODO.md entry" button in the description editor modal is the integration point — this entry fixes its behavior, doesn't add a new button.
-    - Investigate why paste currently strips formatting. Likely culprits: (a) the editor surface is `contenteditable` instead of `<textarea>` and `innerText` is normalizing; (b) there's a `paste` event listener calling `e.clipboardData.getData('text/plain')` then mangling; (c) `desc` is being set via `innerHTML` somewhere in the render path. If the editor is currently `contenteditable`, switch to `<textarea>`.
-    - Verify in `listLogic.js` that the `desc` write path doesn't transform the string. `addToDo_` / `updateToDo` / wherever the desc setter lives should assign the raw value.
-    - Inline JS styles override CSS (recurring source of bugs in `main.js`) — if `white-space` is being set inline, change it in JS, not in `style.css`.
-    - Clipboard API requires a secure context (HTTPS) — GitHub Pages already serves over HTTPS, so this works in production. For local `webpack-dev-server`, `navigator.clipboard` works on `localhost` per spec.
-    - Fallback: if `navigator.clipboard` is unavailable (older mobile browsers), fall back to a hidden textarea + `document.execCommand('copy')`. Both paths emit identical bytes.
-    - No new dependencies. No data-model changes — `desc` is already a string.
-  - Acceptance criteria:
-    - Pasting a multi-line markdown TODO.md entry into the description textarea preserves every newline, leading space, and special character.
-    - After save + reload from localStorage, reopening the modal shows the description with identical formatting.
-    - "Copy as TODO.md entry" places exactly `todo.desc` on the clipboard (verified by pasting into a plain text editor — bytes match).
-    - Pasting the copied content into a real `.md` file renders correctly as markdown (bullets nest, code formatting holds, headings work).
-    - iOS Safari does not autocapitalize, autocorrect, or smart-quote-substitute typed content in the textarea.
-    - Copy button shows brief "Copied ✓" confirmation, then reverts.
-  - Out of scope: multi-todo export, project-level export, footer-level export trigger, structured entry assembly (assembling `- [ ] **[PRIORITY]** {title}\n...` from separate fields), markdown preview/rendering inside the modal, syntax highlighting.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-25
+- [ ] **[LOW]** Add center-screen checkmark animation on mobile swipe-to-complete
+  - Description: When a todo row is swiped right past the completion threshold on a touch device, briefly show a large purple checkmark animation in the center of the viewport to confirm the action. Style: a bare ✓ in the accent purple (`#6C5DF5`), roughly 90px tall, that pops in with a slight overshoot (scale 0.3 → 1.2 → 1.0) while a soft circular ripple expands outward from it and fades to transparent. No enclosing circle or background — the check sits over whatever's behind it. Total duration roughly 1.0–1.2s, then the whole thing fades out. Overlay must be `pointer-events: none` and `position: fixed` centered, so it never intercepts taps and the user can keep scrolling or tapping mid-animation. Gate the whole behavior behind the existing touch-device check (`pointer: coarse`) — desktop completion paths don't trigger it. Trigger fires on swipe-release once the completion threshold is crossed (matches the existing swipe-right-to-complete flow), not mid-swipe. Swiping right on an already-completed row to un-complete it does NOT play the animation — only the complete direction does. Respect `prefers-reduced-motion`: when set, skip the animation entirely and just complete the todo silently. Hook into the existing `touchend` handler in `main.js` that finalizes the swipe-complete gesture; the animation should be a small DOM-node-insert-then-remove rather than a long-lived element, so there's no cleanup risk if the user fires it repeatedly in quick succession.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
 
 ## Features
 
