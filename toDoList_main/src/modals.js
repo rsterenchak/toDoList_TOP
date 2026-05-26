@@ -146,9 +146,31 @@ export function showDescEditorModal(item, options) {
 
     const title = document.createElement('div');
     title.id = 'descEditorModalTitle';
-    // Truncation handled by CSS — long titles get an ellipsis so the close X
-    // never gets shoved off the header row.
-    title.textContent = (item && item.tit) ? item.tit : 'Description';
+    // Title shell wraps a static text span, a pencil affordance, and a hidden
+    // input the user can swap to with a tap so titles are renamable from the
+    // touch-device editor (the desktop inline-rename flow is unreachable on
+    // mobile because the row's input never gets focused on `(pointer: coarse)`).
+    const titleText = document.createElement('span');
+    titleText.id = 'descEditorModalTitleText';
+    titleText.textContent = (item && item.tit) ? item.tit : 'Description';
+
+    const titleEdit = document.createElement('span');
+    titleEdit.id = 'descEditorModalTitleEdit';
+    titleEdit.setAttribute('aria-hidden', 'true');
+    titleEdit.textContent = '✎';
+
+    const titleInput = document.createElement('input');
+    titleInput.id = 'descEditorModalTitleInput';
+    titleInput.type = 'text';
+    titleInput.setAttribute('aria-label', 'Todo title');
+    titleInput.autocomplete = 'off';
+    titleInput.spellcheck = false;
+    titleInput.value = (item && item.tit) ? item.tit : '';
+    titleInput.style.display = 'none';
+
+    title.appendChild(titleText);
+    title.appendChild(titleEdit);
+    title.appendChild(titleInput);
 
     const closeX = document.createElement('button');
     closeX.id = 'descEditorModalClose';
@@ -158,6 +180,71 @@ export function showDescEditorModal(item, options) {
 
     header.appendChild(title);
     header.appendChild(closeX);
+
+    // Title rename — tap-to-edit. The static text + pencil flip to an input
+    // prefilled with the current value (focused and selected) on tap. Enter or
+    // blur commits, Escape reverts. Empty titles revert to the previous value
+    // rather than blocking, matching the desktop snap-back semantics in
+    // toDoRow.js's toDoInput blur handler. The renameHandledByEnter flag
+    // mirrors the projChild rename in main.js so Enter's commit path and the
+    // ensuing blur don't both run the same handler.
+    let titleRenameHandledByEnter = false;
+    function enterTitleEditMode() {
+        titleInput.value = item.tit || '';
+        titleText.style.display = 'none';
+        titleEdit.style.display = 'none';
+        titleInput.style.display = '';
+        try {
+            titleInput.focus();
+            titleInput.select();
+        } catch (e) { /* defensive */ }
+    }
+    function exitTitleEditMode() {
+        titleInput.style.display = 'none';
+        titleText.style.display = '';
+        titleEdit.style.display = '';
+    }
+    function commitTitle() {
+        const newVal = titleInput.value.trim();
+        const prior = item.tit || '';
+        if (newVal.length === 0 || newVal === prior) {
+            titleInput.value = prior;
+            exitTitleEditMode();
+            return;
+        }
+        item.tit = newVal;
+        titleText.textContent = newVal;
+        listLogic.saveToStorage();
+        if (typeof opts.onTitleSave === 'function') opts.onTitleSave(newVal);
+        exitTitleEditMode();
+    }
+    titleText.addEventListener('click', enterTitleEditMode);
+    titleEdit.addEventListener('click', enterTitleEditMode);
+    titleInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            titleRenameHandledByEnter = true;
+            commitTitle();
+            return;
+        }
+        if (event.key === 'Escape') {
+            // Reverting the title is a softer cancel than closing the whole
+            // modal — stop the event so the document-level Escape handler
+            // doesn't also fire and tear the modal down.
+            event.preventDefault();
+            event.stopPropagation();
+            titleInput.value = item.tit || '';
+            exitTitleEditMode();
+        }
+    });
+    titleInput.addEventListener('blur', function() {
+        if (titleRenameHandledByEnter) {
+            titleRenameHandledByEnter = false;
+            return;
+        }
+        commitTitle();
+    });
 
     const body = document.createElement('div');
     body.id = 'descEditorModalBody';

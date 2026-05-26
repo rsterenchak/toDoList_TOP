@@ -323,6 +323,184 @@ describe('mobile desc editor modal — iOS-safe input attributes', () => {
     });
 });
 
+describe('mobile desc editor modal — editable title', () => {
+
+    const modals = read('modals.js');
+    const css = read('style.css');
+    const toDoRow = read('toDoRow.js');
+
+    it('renders a static title span next to a pencil affordance and a (hidden) input', () => {
+        // The title shell contains three children so tap-to-edit can swap
+        // from the static display to the input in place. Without the
+        // separate text/affordance/input nodes, the row's title couldn't be
+        // renamed from the mobile editor.
+        expect(modals).toMatch(/['"]descEditorModalTitleText['"]/);
+        expect(modals).toMatch(/['"]descEditorModalTitleEdit['"]/);
+        expect(modals).toMatch(/['"]descEditorModalTitleInput['"]/);
+    });
+
+    it('the pencil affordance is rendered as the U+270E pencil glyph (✎)', () => {
+        // Task brief: "small pencil affordance (✎)".
+        const editIdx = modals.indexOf("'descEditorModalTitleEdit'");
+        expect(editIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(editIdx, editIdx + 400);
+        expect(tail).toMatch(/['"]✎['"]/);
+    });
+
+    it('the pencil affordance is hidden from assistive tech (decorative)', () => {
+        // The whole title is rendered as accessible text already; the pencil
+        // is a visual cue only. Marking it aria-hidden avoids announcing a
+        // decorative glyph on every modal open.
+        const editIdx = modals.indexOf("'descEditorModalTitleEdit'");
+        expect(editIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(editIdx, editIdx + 400);
+        expect(tail).toMatch(/setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
+    });
+
+    it('the title input is labelled for assistive tech ("Todo title")', () => {
+        // Without an aria-label the input collapses to an unlabelled control
+        // when it swaps in over the static text — VoiceOver / TalkBack would
+        // announce "edit text" with no clue what the user is renaming.
+        const inputIdx = modals.indexOf("'descEditorModalTitleInput'");
+        expect(inputIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(inputIdx, inputIdx + 600);
+        expect(tail).toMatch(/setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Todo title['"]\s*\)/);
+    });
+
+    it('the title input is seeded with the item\'s title (no trim) and starts hidden', () => {
+        const inputIdx = modals.indexOf("'descEditorModalTitleInput'");
+        expect(inputIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(inputIdx, inputIdx + 600);
+        expect(tail).toMatch(/titleInput\.value\s*=\s*[^;]*item\.tit/);
+        expect(tail).toMatch(/titleInput\.style\.display\s*=\s*['"]none['"]/);
+    });
+
+    it('clicking the static title text swaps in the input (focused + selected)', () => {
+        // Tap-to-edit affordance: tapping the visible title hands the user a
+        // prefilled input. Without focus + select the user has to manually
+        // tap into the field and select-all before editing.
+        expect(modals).toMatch(
+            /titleText\.addEventListener\(\s*['"]click['"]\s*,\s*enterTitleEditMode\s*\)/
+        );
+        const enterIdx = modals.indexOf('function enterTitleEditMode');
+        expect(enterIdx).toBeGreaterThan(-1);
+        const fn = modals.slice(enterIdx, enterIdx + 500);
+        expect(fn).toMatch(/titleInput\.focus\(/);
+        expect(fn).toMatch(/titleInput\.select\(/);
+    });
+
+    it('clicking the pencil affordance also enters edit mode', () => {
+        expect(modals).toMatch(
+            /titleEdit\.addEventListener\(\s*['"]click['"]\s*,\s*enterTitleEditMode\s*\)/
+        );
+    });
+
+    it('Enter commits the title and uses the renameHandledByEnter flag so blur does not re-run the commit', () => {
+        // Mirrors the projChild rename in main.js: Enter blurs the input, the
+        // blur handler then sees the flag set and skips its own commit path.
+        // Without the flag both handlers would write item.tit twice and dispatch
+        // duplicate saves.
+        expect(modals).toMatch(/let\s+titleRenameHandledByEnter\s*=\s*false/);
+        const keydownIdx = modals.indexOf("titleInput.addEventListener('keydown'");
+        expect(keydownIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(keydownIdx, keydownIdx + 1200);
+        // Enter sets the flag before commitTitle runs.
+        expect(tail).toMatch(
+            /event\.key\s*===\s*['"]Enter['"][\s\S]{0,500}titleRenameHandledByEnter\s*=\s*true[\s\S]{0,200}commitTitle\(/
+        );
+        // The blur handler short-circuits when the flag is set.
+        const blurIdx = modals.indexOf("titleInput.addEventListener('blur'");
+        expect(blurIdx).toBeGreaterThan(-1);
+        const blur = modals.slice(blurIdx, blurIdx + 600);
+        expect(blur).toMatch(/if\s*\(\s*titleRenameHandledByEnter\s*\)\s*\{[\s\S]{0,80}titleRenameHandledByEnter\s*=\s*false/);
+    });
+
+    it('blur (without Enter) commits the title', () => {
+        // Tap-away on mobile is the natural commit gesture. Without a blur
+        // commit, renames typed and tapped-away from would silently drop.
+        const blurIdx = modals.indexOf("titleInput.addEventListener('blur'");
+        expect(blurIdx).toBeGreaterThan(-1);
+        const blur = modals.slice(blurIdx, blurIdx + 600);
+        expect(blur).toMatch(/commitTitle\(/);
+    });
+
+    it('Escape reverts the in-flight edit (does not close the modal)', () => {
+        // The document-level Escape handler closes the modal; the input's
+        // Escape must stopPropagation so a softer cancel (just exit edit
+        // mode and restore the prior value) is possible.
+        const keydownIdx = modals.indexOf("titleInput.addEventListener('keydown'");
+        const tail = modals.slice(keydownIdx, keydownIdx + 1500);
+        expect(tail).toMatch(
+            /event\.key\s*===\s*['"]Escape['"][\s\S]{0,300}stopPropagation\(/
+        );
+        expect(tail).toMatch(
+            /event\.key\s*===\s*['"]Escape['"][\s\S]{0,500}titleInput\.value\s*=\s*[^;]*item\.tit/
+        );
+    });
+
+    it('empty titles revert to the previous value rather than blocking', () => {
+        // Task brief: "Empty titles revert to the previous value rather than
+        // blocking." The commit path must not bail on an empty newVal — it
+        // must restore item.tit and exit edit mode.
+        const commitIdx = modals.indexOf('function commitTitle');
+        expect(commitIdx).toBeGreaterThan(-1);
+        const fn = modals.slice(commitIdx, commitIdx + 800);
+        // newVal length 0 → restore prior, exit
+        expect(fn).toMatch(
+            /newVal\.length\s*===\s*0[\s\S]{0,200}titleInput\.value\s*=\s*prior/
+        );
+        // commitTitle must call exitTitleEditMode on the revert branch too.
+        expect(fn).toMatch(/exitTitleEditMode\(/);
+    });
+
+    it('a real rename updates item.tit, persists via listLogic.saveToStorage, and fires onTitleSave', () => {
+        // CLAUDE.md: mutations route through listLogic. saveToStorage is the
+        // existing path used by descInput.blur for desc edits — title edits
+        // mirror it. onTitleSave is the hook the row uses to refresh its DOM
+        // and trigger the backend sync via editToDoItem.
+        const commitIdx = modals.indexOf('function commitTitle');
+        expect(commitIdx).toBeGreaterThan(-1);
+        const fn = modals.slice(commitIdx, commitIdx + 1000);
+        expect(fn).toMatch(/item\.tit\s*=\s*newVal/);
+        expect(fn).toMatch(/listLogic\.saveToStorage\s*\(\s*\)/);
+        expect(fn).toMatch(/opts\.onTitleSave/);
+    });
+
+    it('the title input uses font-size 16px or larger (iOS no-auto-zoom rule)', () => {
+        // CLAUDE.md: "Text inputs used on mobile must have font-size: 16px
+        // or larger to prevent iOS Safari auto-zoom on focus." The static
+        // title display is 12px (uppercase label styling), but the input
+        // must override that when it swaps in.
+        const ruleMatch = css.match(/#descEditorModalTitleInput\s*\{([\s\S]{0,1000}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        const sizeMatch = body.match(/font-size:\s*(\d+)px/);
+        expect(sizeMatch).toBeTruthy();
+        expect(parseInt(sizeMatch[1], 10)).toBeGreaterThanOrEqual(16);
+    });
+
+    it('the pencil affordance paints in the accent color', () => {
+        // Task brief: "small pencil affordance (✎) in the accent color".
+        expect(css).toMatch(
+            /#descEditorModalTitleEdit\s*\{[\s\S]{0,300}color:\s*var\(--accent[^)]*\)/
+        );
+    });
+
+    it('the row\'s onTitleSave callback refreshes row DOM and routes through listLogic.editToDoItem', () => {
+        // The modal mutates item.tit + saveToStorage, but the row still has
+        // its own DOM cells (toDoInput, toDoTitleDisplay) and the Supabase
+        // sync gate lives behind editToDoItem. The callback bridges them so
+        // the rename appears immediately on close and reaches the backend.
+        const openIdx = toDoRow.indexOf('function openDescEditorForRow(');
+        expect(openIdx).toBeGreaterThan(-1);
+        const fn = toDoRow.slice(openIdx, openIdx + 1600);
+        expect(fn).toMatch(/onTitleSave\s*:/);
+        expect(fn).toMatch(/toDoInput\.value\s*=\s*newTitle/);
+        expect(fn).toMatch(/toDoTitleDisplay\.textContent\s*=\s*newTitle/);
+        expect(fn).toMatch(/listLogic\.editToDoItem\s*\(/);
+    });
+});
+
 describe('mobile desc editor modal — copy feedback label', () => {
 
     const modals = read('modals.js');

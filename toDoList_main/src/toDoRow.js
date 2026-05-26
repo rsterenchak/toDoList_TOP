@@ -359,7 +359,22 @@ function openDescEditorForRow(toDoChild) {
     const item = toDoChild.__item;
     if (!item) return;
     showDescEditorModal(item, {
-        onSave: function() { updateDescIndicator(toDoChild, item); }
+        onSave: function() { updateDescIndicator(toDoChild, item); },
+        onTitleSave: function(newTitle) {
+            // Sync the row's visible title cells with the saved value so the
+            // rename shows up immediately on modal close, and route the
+            // mutation through listLogic so the Supabase persistMutation
+            // gate fires (saveToStorage in the modal only writes localStorage).
+            const projectName = toDoChild.dataset.value;
+            const toDoInput = toDoChild.querySelector('#toDoInput');
+            const toDoTitleDisplay = toDoChild.querySelector('#toDoTitleDisplay');
+            if (toDoInput) {
+                toDoInput.value = newTitle;
+                toDoInput.title = newTitle;
+            }
+            if (toDoTitleDisplay) toDoTitleDisplay.textContent = newTitle;
+            if (projectName) listLogic.editToDoItem(projectName, item);
+        }
     });
 }
 function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
