@@ -362,7 +362,13 @@ function openDescEditorForRow(toDoChild) {
     const projectName = toDoChild.dataset.value || '';
     showDescEditorModal(item, {
         projectName: projectName,
-        onSave: function() { updateDescIndicator(toDoChild, item); },
+        onSave: function() {
+            updateDescIndicator(toDoChild, item);
+            // Route through listLogic so Supabase persistMutation fires —
+            // saveToStorage in the modal only writes localStorage, which
+            // the next hydrate would overwrite with the backend snapshot.
+            if (projectName) listLogic.editToDoItem(projectName, item);
+        },
         onTitleSave: function(newTitle) {
             // Sync the row's visible title cells with the saved value so the
             // rename shows up immediately on modal close, and route the
