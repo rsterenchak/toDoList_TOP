@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-26',
         fixed: [
-            "A per-project Sort by due toggle reorders the active project's items by ascending due date, with undated items at the bottom and manual drag reordering paused while it is on.",
             "Todo titles can now be renamed from the mobile description editor — tap the pencil next to the title, edit, and press Enter or tap away to commit.",
             "Pressing Backspace on a selected project or todo row now triggers the same delete confirmation as Delete, so the keyboard shortcut works on Mac laptops.",
             "Descriptions edited from the mobile todo editor now persist across page refreshes.",
             "Inject settings modal now scrolls instead of clipping on mobile when its content runs taller than the viewport.",
+            "Mobile description editor footer buttons no longer overflow the dialog on narrow viewports.",
         ],
     },
 ];

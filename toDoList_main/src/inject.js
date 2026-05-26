@@ -282,7 +282,7 @@ export function refreshInjectButton(btn, item, projectName) {
         btn.classList.remove('injectBtn--injected');
         btn.innerHTML = injectBtnInnerHTML('unconfigured');
         const label = btn.querySelector('.injectBtnLabel');
-        if (label) label.textContent = 'Configure inject in settings';
+        if (label) label.textContent = 'Inject';
         btn.setAttribute('aria-label', 'Open inject settings');
         btn.title = 'Inject is not configured — open settings';
         return;

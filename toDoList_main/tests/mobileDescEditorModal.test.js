@@ -70,10 +70,10 @@ describe('mobile desc editor modal — toolbar Copy + Clear actions', () => {
     });
 
     it('the Copy button copies the raw textarea contents (not a normalized variant)', () => {
-        // Acceptance criterion: "'Copy as TODO.md entry' places the
-        // textarea contents on the clipboard." The Copy click handler
-        // reads textarea.value into a local `text` and passes it to
-        // writeText — no .trim(), no markdown normalization in between.
+        // Acceptance criterion: "'Copy entry' places the textarea contents
+        // on the clipboard." The Copy click handler reads textarea.value
+        // into a local `text` and passes it to writeText — no .trim(), no
+        // markdown normalization in between.
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = modals.slice(fnIdx);
@@ -522,6 +522,46 @@ describe('mobile desc editor modal — desc save persistence', () => {
         const body = onSaveMatch[1];
         expect(body).toMatch(/updateDescIndicator\s*\(/);
         expect(body).toMatch(/listLogic\.editToDoItem\s*\(/);
+    });
+});
+
+describe('mobile desc editor modal — footer button labels fit narrow viewports', () => {
+
+    const modals = read('modals.js');
+    const inject = read('inject.js');
+    const css = read('style.css');
+
+    it('the Copy button uses the short "Copy entry" label (not the wider "Copy as TODO.md entry")', () => {
+        // Regression: the longer label combined with the Clear button and the
+        // inject button pushed the leftmost button past the dialog's left
+        // edge on iPhone-width viewports. The shorter label keeps the row
+        // within the dialog at narrow widths.
+        expect(modals).toMatch(/copyBtn\.textContent\s*=\s*['"]Copy entry['"]/);
+        expect(modals).not.toMatch(/copyBtn\.textContent\s*=\s*['"]Copy as TODO\.md entry['"]/);
+    });
+
+    it('the inject button\'s unconfigured-state label is the short "Inject" (not "Configure inject in settings")', () => {
+        // The unconfigured label shows in the mobile modal footer when the
+        // user hasn\'t set up a Worker URL yet — the long label was the
+        // primary cause of overflow on narrow viewports.
+        const unconfIdx = inject.search(/dataset\.state\s*=\s*['"]unconfigured['"]/);
+        expect(unconfIdx).toBeGreaterThan(-1);
+        const block = inject.slice(unconfIdx, unconfIdx + 800);
+        expect(block).toMatch(/label\.textContent\s*=\s*['"]Inject['"]/);
+        expect(block).not.toMatch(/label\.textContent\s*=\s*['"]Configure inject in settings['"]/);
+    });
+
+    it('the modal footer buttons never wrap and shrink gracefully on narrow viewports', () => {
+        // Without white-space:nowrap, labels would wrap mid-button and break
+        // the row\'s vertical rhythm. flex:0 1 auto plus min-width:0 lets the
+        // buttons shrink below their content size when the viewport gets
+        // narrower than the natural row width.
+        const ruleMatch = css.match(/\.descEditorModalBtn\s*\{([\s\S]{0,800}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/white-space:\s*nowrap/);
+        expect(body).toMatch(/flex:\s*0\s+1\s+auto/);
+        expect(body).toMatch(/min-width:\s*0/);
     });
 });
 

@@ -49,11 +49,11 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-26
 
-- [ ] **[MEDIUM]** Fix mobile desc editor footer button overflow on narrow viewports
+- [x] **[MEDIUM]** Fix mobile desc editor footer button overflow on narrow viewports
   - Type: bug
   - Description: In the mobile description editor modal (`showDescEditorModal`), the three-button footer `#descEditorModalActions` (Clear, Configure-inject-in-settings, Copy-as-TODO.md-entry) overflows on iPhone-width viewports because the combined label widths plus 14px button padding and 8px gap exceed the dialog width. With `justify-content: flex-end`, the leftmost button (Clear) gets pushed past the dialog's left edge and clipped. Fix in `style.css` by shortening the labels and tightening the spacing: rename the secondary action to `â Inject` (drop "Configure" and "in settings"), rename the primary to `Copy entry` (drop "as TODO.md"), reduce button padding from `8px 14px` to `8px 10px`, reduce the actions gap from `8px` to `6px`, and add `white-space: nowrap` plus `flex: 0 1 auto; min-width: 0` to `.descEditorModalBtn` so labels never wrap and buttons shrink gracefully if the viewport gets even narrower. Update the button `textContent` assignments in `modals.js` to match the new labels. Update the matching label assertions in `tests/mobileDescEditorModal.test.js` (the "Copy as TODO.md entry" string check) to the new label.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileDescEditorModal.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
 
 - [ ] **[LOW]** Fix Inject button upload-arrow icon misalignment inside desktop description editor
   - Type: bug
