@@ -4020,7 +4020,10 @@ function component() {
     // for committed todo rows in the active project. Up/Down move focus to the
     // previous/next committed row (no wrap — boundaries clamp). Enter focuses
     // the row's title input with the caret at the end. Delete fires the same
-    // showConfirmModal flow as the row's `×` button.
+    // showConfirmModal flow as the row's `×` button. Backspace is accepted as
+    // an alias for Delete so the keyboard shortcut works on Mac laptops,
+    // whose only "Delete"-labeled key actually fires e.key === "Backspace"
+    // (forward-delete from a full-size keyboard doesn't exist there).
     //
     // The blank placeholder row at index 0 is intentionally skipped — it's
     // already reachable via "n" and a direct click, and arrow nav is for
@@ -4036,7 +4039,7 @@ function component() {
         const isArrowDown = e.key === 'ArrowDown';
         const isArrow     = isArrowUp || isArrowDown;
         const isEnter     = e.key === 'Enter';
-        const isDelete    = e.key === 'Delete';
+        const isDelete    = e.key === 'Delete' || e.key === 'Backspace';
         if (!isArrow && !isEnter && !isDelete) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (isAnyModalOrPopoverOpen()) return;
@@ -4097,6 +4100,15 @@ function component() {
         if (isDelete) {
             const focusedProjRow = ae && ae.closest && ae.closest('#projChild');
             if (focusedProjRow) {
+                // Backspace-only guard: require the keystroke to have
+                // originated on the project row itself, not bubbled up from
+                // a child. The projInput is already filtered by the
+                // isInputLike bail-out above, but any future sub-control
+                // that wires its own Backspace-to-row exit (mirroring the
+                // todo-row pattern) would otherwise bubble here and fire
+                // delete after focus moved. Delete (the literal forward-
+                // delete key) keeps its from-anywhere behavior.
+                if (e.key === 'Backspace' && e.target !== focusedProjRow) return;
                 const projInput = focusedProjRow.querySelector('#projInput');
                 deleteProjectFlow(focusedProjRow, projInput ? projInput.value : '');
                 e.preventDefault();
@@ -4193,6 +4205,16 @@ function component() {
             // sibling project-row branch above for context.
             const focusedTodoRow = ae && ae.closest && ae.closest('#toDoChild');
             if (!focusedTodoRow || committed.indexOf(focusedTodoRow) === -1) return;
+            // Backspace-only guard: each sub-control (checkbox, duePill,
+            // descToggle, statsToggle, closeButtonToDo) wires its own
+            // Backspace-to-row exit handler that focuses the row before the
+            // event bubbles here. Without this check the bubbled keystroke
+            // would fire delete on the row the user just bounced into,
+            // surprising someone who pressed Backspace only to back out of
+            // edit mode. Delete (the literal forward-delete key) keeps its
+            // from-anywhere behavior so the existing shortcut path is
+            // unchanged for users with full-size keyboards.
+            if (e.key === 'Backspace' && e.target !== focusedTodoRow) return;
             const closeBtn = focusedTodoRow.querySelector('#closeButtonToDo');
             if (closeBtn) closeBtn.click();
             e.preventDefault();
