@@ -2,36 +2,9 @@
 
 ## Bugs
 
-- [x] **[HIGH]** Desktop description field collapses newlines when copied (mobile works) — Completed: 2026-05-26
-  - Description: On mobile, the description editor preserves multi-line markdown formatting correctly through paste → save → reload → copy. On desktop, the same `desc` field collapses all newlines and leading indentation into a single horizontal run of text separated by extra spaces, breaking the TODO.md draft-and-copy workflow. The data layer is shared (`listLogic.js`, same `desc` string field), so the divergence is in the desktop render surface or the desktop copy mechanism — not the underlying data. Goal: bring desktop to formatting parity with mobile so a multi-line markdown entry pasted in on desktop comes back out with identical bytes.
-  - Behavior:
-    1. The desktop description editing surface must use a `<textarea>` element with `white-space: pre-wrap` and a monospace font — same element type as the mobile modal. Not `contenteditable`, not a `<div>`, not `<span>`, not `innerHTML` on any element.
-    2. Value is assigned via `textarea.value = todo.desc` (the property), never `innerHTML`, `innerText`, or `textContent`.
-    3. The desktop copy mechanism reads from `todo.desc` directly (or `textarea.value`) and passes that raw string to `navigator.clipboard.writeText`. No `.innerText` reads, no DOM round-trip, no innerHTML serialization.
-    4. If `desc` is also rendered read-only anywhere on desktop (preview on the row, tooltip, non-editing modal state), that surface uses `white-space: pre-wrap` and is populated via `.textContent` on a whitespace-preserving element — never `innerHTML`.
-    5. Mobile behavior stays unchanged — this is desktop-only catch-up.
-  - Implementation notes:
-    - **Diagnostic step first**: open the desktop description surface in DevTools. Compare to the mobile modal element side-by-side. The element type and `white-space` CSS will reveal the divergence. Likely the desktop path was built before the mobile modal and uses an older render approach.
-    - Check whether desktop and mobile share the same renderer/builder function or use separate paths. If separate, consolidating onto the textarea-based mobile builder is the simplest fix.
-    - The difference between `.innerText` and `.textContent` matters here: `.innerText` collapses whitespace based on CSS (so it returns the collapsed version even if the data is correct), while `.textContent` returns the raw text node. For copy operations, prefer reading `todo.desc` or `textarea.value` directly over either DOM read.
-    - Inline JS styles override CSS (recurring source of bugs in `main.js`) — if `white-space: normal` is being set inline on the desktop desc element, change it in JS, not just in `style.css`.
-    - `main.js` is over 25k tokens — grep for `desc`, `description`, and any "copy" handlers with offset/limit pagination rather than full reads. Look specifically for handlers that ONLY run when `pointer: fine` or behind any `(min-width: …)` gate.
-    - Round-trip acceptance test: paste this exact block into the desktop description field, save, reload, copy, paste into a plain text editor:
-    - [ ] **[LOW]** Example todo
-      - Description: First line.
-        - Nested bullet.
-      - Code: `npm install`
-      The pasted-out bytes must match the pasted-in bytes character for character. Run the same test on mobile to confirm parity is maintained.
-    - No data-model changes. No dependencies. No mobile path changes.
-  - Acceptance criteria:
-    - Pasting a multi-line markdown block into the desktop description editor visually shows the same line breaks and indentation that were pasted in.
-    - After save → reload, the desktop editor still shows the same formatting.
-    - Copying from desktop places bytes on the clipboard that, when pasted into a plain `.md` file, render with all newlines and indentation intact.
-    - Round-trip test (paste markdown → save → reload → copy → paste into text editor) produces bytes identical to the original paste, on desktop.
-    - Mobile round-trip behavior is unchanged (regression check).
-    - No element in the desktop description render or copy path uses `innerHTML` or `.innerText` for desc content.
-  - Out of scope: markdown preview/rendering inside the modal (live-rendered markdown), syntax highlighting, multi-todo export, structured entry assembly, mobile-side changes.
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+- [ ] **[MEDIUM]** Add per-project auto-reorder-by-due-date toggle
+  - Description: Add a small checkbox + "Sort by due" label to the "Todo items" column header, to the right of the title. When checked, the todo rows in the active project render sorted ascending by due date — earliest due first, items with no due date sinking to the bottom, completed items still grouped at the bottom as they are today. When unchecked, rows render in the user's manual order (current behavior). The setting is per-project (each project remembers its own preference) and persisted to `localStorage` under the existing `todoapp_` prefix — extend the project record in `listLogic.js` with a `sortByDue` boolean defaulting to `false`. Sorting is purely a render-time concern: do not mutate `pos` values on the todos themselves, just sort a copy before rendering so toggling the checkbox off restores the original manual order intact. Disable the drag handles on todo rows while the checkbox is on (re-enable when off) so the user can't manually reorder a list that will immediately re-sort itself. All mutations to the project record route through `listLogic.js` per the existing data-model convention. No backend or sync work is needed — this is local UI state; if/when todos move to a backend later, the field rides along on the project row.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
 - [ ] **[MEDIUM]** Make todo titles editable from the mobile detail modal
