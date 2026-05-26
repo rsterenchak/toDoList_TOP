@@ -51,8 +51,3 @@
 
 - [x] Fix API rate limiting issue
   - Completed: 2024-04-15
-
-- [ ] [LOW] Test entry from curl, please delete
-  - Description: This was a Worker setup test. Safe to delete.
-  - File: N/A
-  - Completed: YYYY-MM-DD (PR #<number>)
