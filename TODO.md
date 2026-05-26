@@ -61,8 +61,8 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Add Configure inject row to mobile ghost menu
+- [x] **[MEDIUM]** Add Configure inject row to mobile ghost menu
   - Type: bug
   - Description: The ghost menu's "Configure inject" row — which opens the inject settings modal — is present on desktop but missing from the mobile ghost menu, so there's no way to reach the inject configuration on a phone. Add the row to the mobile ghost menu using the same label, icon, position (near the bottom of the menu), and click handler as the desktop version, so the two menus stay in parity. The row should open the existing inject settings modal — don't introduce a second modal instance. Likely cause is a desktop-only branch in the ghost-menu builder in `main.js`, or a separate mobile ghost-menu template that wasn't updated when the desktop row was added; grep `main.js` for the desktop row's label/handler to find the build site, and check `style.css` for any `pointer: coarse` / mobile media-query rules that might hide it.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26
