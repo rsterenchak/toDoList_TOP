@@ -168,6 +168,11 @@ export function showDescEditorModal(item, options) {
     textarea.spellcheck = false;
     textarea.autocapitalize = 'off';
     textarea.autocomplete = 'off';
+    // iOS Safari honors `autocorrect="off"` to skip the smart-substitution
+    // pass that would otherwise rewrite `--` to em-dash, `"foo"` to curly
+    // quotes, or `...` to an ellipsis — all of which corrupt the markdown a
+    // user is drafting for paste into TODO.md.
+    textarea.setAttribute('autocorrect', 'off');
     textarea.value = (item && typeof item.desc === 'string') ? item.desc : '';
     body.appendChild(textarea);
 
@@ -283,19 +288,19 @@ export function showDescEditorModal(item, options) {
     }, 0);
 }
 
-// Briefly swap the Copy button label to a "Copied!" confirmation. Mirrors
+// Briefly swap the Copy button label to a "Copied ✓" confirmation. Mirrors
 // the per-row copy-title button's checkmark feedback so the two surfaces
-// feel consistent. Restores after ~1s.
+// feel consistent. Restores after ~1.2s.
 function flashCopyFeedback(btn) {
     const original = btn.textContent;
     if (btn.__copyResetTimer) clearTimeout(btn.__copyResetTimer);
-    btn.textContent = 'Copied!';
+    btn.textContent = 'Copied ✓';
     btn.setAttribute('data-copied', 'true');
     btn.__copyResetTimer = setTimeout(function() {
         btn.textContent = original;
         btn.removeAttribute('data-copied');
         btn.__copyResetTimer = null;
-    }, 1000);
+    }, 1200);
 }
 
 
