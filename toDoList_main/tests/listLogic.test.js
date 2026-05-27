@@ -2467,6 +2467,33 @@ describe('listLogic — editable field round-trip through saveToStorage', () => 
 
         expect(allProjectsWrites.length).toBe(0);
     });
+
+    it('description set on a todo in a non-first project survives a localStorage round-trip', async () => {
+        // Regression: descriptions added to todos in any project other
+        // than the first one used to come back empty after a page reload —
+        // the todo itself survived but its `desc` field was lost. This
+        // test creates two projects, mutates the desc on a todo in the
+        // SECOND project, persists, then re-imports listLogic so its
+        // module-init reads from localStorage cleanly. The rehydrated
+        // item must carry the same desc the user typed.
+        listLogic.addProject('Personal');
+        listLogic.addToDo('Personal', 'Buy groceries');
+        const item = listLogic.listItems('Personal').find(i => i.tit === 'Buy groceries');
+        item.desc = 'Eggs, milk, bread — and don\'t forget the cheese.';
+        listLogic.saveToStorage();
+
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+        const fresh = await import('../src/listLogic.js');
+
+        const rehydrated = fresh.listLogic.listItems('Personal').find(i => i.tit === 'Buy groceries');
+        expect(rehydrated).toBeDefined();
+        expect(rehydrated.desc).toBe('Eggs, milk, bread — and don\'t forget the cheese.');
+
+        // Project order is preserved: 'Work' from beforeEach, then 'Personal'.
+        const order = fresh.listLogic.listProjectsArray();
+        expect(order.indexOf('Personal')).toBeGreaterThan(order.indexOf('Work'));
+    });
 });
 
 

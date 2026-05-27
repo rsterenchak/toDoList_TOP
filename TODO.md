@@ -35,8 +35,8 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[HIGH]** Fix todo descriptions vanishing on refresh for non-first projects
+- [x] **[HIGH]** Fix todo descriptions vanishing on refresh for non-first projects
   - Type: bug
   - Description: When a description is added to a todo item in any project other than the first one, the description is not persisted across a page reload — the todo itself survives, but its `desc` field comes back empty after `restoreFromStorage`. Descriptions on todos in the first project persist correctly, which suggests the save or restore path is indexing into the wrong project (e.g., always writing/reading `projects[0]`'s todos, or using a stale project reference instead of `document.querySelector('.selectedProject')`) when the description edit handler fires. Investigate the description edit/commit handler in `main.js` and confirm it routes the mutation through `listLogic.js` against the correct project, and that `restoreFromStorage` rehydrates the `desc` field for every project's todos — not just the active or first one. Add a regression test in `tests/listLogic.test.js` that creates two projects, sets a description on a todo in the second, round-trips through storage, and asserts the description survives.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-27

@@ -1701,9 +1701,19 @@ export function buildToDoRow(item, toDoName) {
     });
 
     // descInput blur — persist on click-away so cleared values aren't lost.
+    // Route the desc write through listLogic.editToDoItem in addition to
+    // saveToStorage so the Supabase mirror fires. Without that, the desc
+    // edit only landed in localStorage and the next hydrateFromSupabase
+    // pull overwrote it with the canonical backend snapshot — i.e. an
+    // empty desc — making the user's draft silently disappear after a
+    // hard refresh. Mirrors the mobile descriptor modal's onSave path.
+    // Ctrl+Enter and Escape both call descInput.blur(), so this single
+    // boundary covers every exit path without flooding Supabase on every
+    // keystroke the way attaching to keyup would.
     descInput.addEventListener("blur", function() {
         item.desc = descInput.value;
         listLogic.saveToStorage();
+        if (toDoName) listLogic.editToDoItem(toDoName, item);
         updateDescIndicator(toDoChild, item);
         refreshInjectButton(injectBtn, item, toDoName);
     });
