@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-27',
         fixed: [
             "Inject to TODO.md now preserves em-dashes, curly quotes, and other non-ASCII characters in the description verbatim.",
+            "Editing a todo's due date while \"Sort by Due\" is active now repositions the row immediately instead of waiting for a manual sort toggle or page reload.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-26',
         fixed: [
-            "Configure inject row is now available in the mobile Settings menu so the inject Worker can be set up from a phone.",
             "Completing a todo by swiping right on mobile now persists across page refreshes.",
             "Inject to TODO.md button in the desktop description editor now shows its upload-arrow icon centered alongside the label.",
             "Completing a todo from the Today dashboard now persists across page refreshes.",

@@ -1,4 +1,5 @@
 import { listLogic, nextDueDate, sanitizeRecurrence, sortItemsByDueForRender } from '../src/listLogic.js';
+import { setItemDue } from '../src/dueDate.js';
 
 // ── PROJECTS ─────────────────────────────────────────────────────────
 describe('listLogic — projects', () => {
@@ -2465,5 +2466,127 @@ describe('listLogic — editable field round-trip through saveToStorage', () => 
         setItemSpy.mockRestore();
 
         expect(allProjectsWrites.length).toBe(0);
+    });
+});
+
+
+// Regression guard for the "auto-resort when due date changes" bug. With
+// Sort by Due active, editing a row's due date used to leave the row in
+// its original DOM position — the list only reflected the new ordering
+// after a manual sort toggle or page reload. The fix routes the due-date
+// popover's commit path through a CustomEvent (`todoDueDateChanged`)
+// so the renderer can rerun its sort-by-due projection without coupling
+// dueDate.js to the rendering layer directly. These tests pin both
+// halves of that contract: the data-model projection reflects the new
+// order, and setItemDue dispatches the event so the renderer hears
+// about the change.
+describe('listLogic — auto-reorder on due-date change when sortByDue is active', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+    });
+
+    it('sortItemsByDueForRender reflects a due-date mutation made while sortByDue is active', () => {
+        listLogic.setProjectSortByDue('Work', true);
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+        listLogic.addToDo('Work', 'C');
+
+        const items = listLogic.listItems('Work');
+        const a = items.find(i => i.tit === 'A');
+        const b = items.find(i => i.tit === 'B');
+        const c = items.find(i => i.tit === 'C');
+        a.due = '1-15-2099';
+        b.due = '6-15-2099';
+        c.due = '12-15-2099';
+
+        const initial = sortItemsByDueForRender(items)
+            .map(i => i.tit)
+            .filter(t => t !== '');
+        expect(initial).toEqual(['A', 'B', 'C']);
+
+        // Edit C's due to land before A. The renderer's projection
+        // must reflect the new order immediately, otherwise the UI
+        // rerender path has nothing to render against.
+        c.due = '1-1-2099';
+
+        const after = sortItemsByDueForRender(items)
+            .map(i => i.tit)
+            .filter(t => t !== '');
+        expect(after).toEqual(['C', 'A', 'B']);
+    });
+
+    it('setItemDue dispatches todoDueDateChanged with the project name so the renderer can reorder', () => {
+        listLogic.setProjectSortByDue('Work', true);
+        listLogic.addToDo('Work', 'Task');
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Task');
+
+        // Fake row carrying its project name in data-value, the same
+        // attribute every real #toDoChild carries (set in buildToDoRow).
+        const toDoChild = document.createElement('div');
+        toDoChild.setAttribute('data-value', 'Work');
+
+        const received = [];
+        function listener(evt) { received.push(evt.detail); }
+        document.addEventListener('todoDueDateChanged', listener);
+
+        try {
+            setItemDue(item, toDoChild, 6, 15, 2099);
+        } finally {
+            document.removeEventListener('todoDueDateChanged', listener);
+        }
+
+        expect(received.length).toBe(1);
+        expect(received[0].project).toBe('Work');
+    });
+
+    it('setItemDue dispatches the event even when sortByDue is off — the listener is the gate', () => {
+        // Decoupling the event from the per-project preference keeps
+        // dueDate.js stateless: the renderer side reads the flag and
+        // decides whether to reorder, so the event itself stays a
+        // simple "this row's due date changed" signal.
+        listLogic.addToDo('Work', 'Task');
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Task');
+
+        const toDoChild = document.createElement('div');
+        toDoChild.setAttribute('data-value', 'Work');
+
+        let fired = false;
+        function listener() { fired = true; }
+        document.addEventListener('todoDueDateChanged', listener);
+
+        try {
+            setItemDue(item, toDoChild, 6, 15, 2099);
+        } finally {
+            document.removeEventListener('todoDueDateChanged', listener);
+        }
+
+        expect(fired).toBe(true);
+    });
+
+    it('setItemDue dispatches the event when the due date is cleared as well', () => {
+        listLogic.setProjectSortByDue('Work', true);
+        listLogic.addToDo('Work', 'Task');
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Task');
+        item.due = '6-15-2099';
+
+        const toDoChild = document.createElement('div');
+        toDoChild.setAttribute('data-value', 'Work');
+
+        let fired = false;
+        function listener() { fired = true; }
+        document.addEventListener('todoDueDateChanged', listener);
+
+        try {
+            // null-arg shape is the "clear" path used by the popover's
+            // Clear button — sortByDue projections rely on the cleared
+            // row sinking to the bottom of the uncompleted group.
+            setItemDue(item, toDoChild, null, null, null);
+        } finally {
+            document.removeEventListener('todoDueDateChanged', listener);
+        }
+
+        expect(fired).toBe(true);
+        expect(item.due).toBe('');
     });
 });

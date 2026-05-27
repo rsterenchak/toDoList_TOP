@@ -44,6 +44,13 @@ export function applyDueUrgency(toDoChild, item) {
 // Write a due date into the data model, persist, and refresh the
 // due-urgency styling + pill label so the row recolors immediately.
 // Pass m/d/y as numbers or null-ish to clear the date.
+//
+// Dispatches `todoDueDateChanged` on document after the write so the
+// renderer can rerun its sort-by-due projection without coupling
+// dueDate.js to the row-rendering layer. Without this signal a row's
+// due-date edit while "Sort by Due" was active stayed in its original
+// DOM slot — the new ordering only surfaced on the next manual sort
+// toggle or page reload.
 export function setItemDue(item, toDoChild, m, d, y) {
     if (m == null || d == null || y == null) {
         item.due = '';
@@ -54,6 +61,17 @@ export function setItemDue(item, toDoChild, m, d, y) {
     if (typeof applyDueUrgency === 'function') applyDueUrgency(toDoChild, item);
     const pill = toDoChild.querySelector('#duePill');
     if (pill) updateDuePillLabel(pill, item);
+
+    const projectName = toDoChild && toDoChild.dataset
+        ? toDoChild.dataset.value || null
+        : null;
+    if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+        try {
+            document.dispatchEvent(new CustomEvent('todoDueDateChanged', {
+                detail: { project: projectName, item: item },
+            }));
+        } catch (e) { /* CustomEvent unsupported — listener-side reorders skipped */ }
+    }
 }
 
 // Set a row's due date to today + offsetDays. Shim retained as the canonical

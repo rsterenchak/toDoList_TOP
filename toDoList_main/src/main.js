@@ -72,6 +72,7 @@ import {
     addToDos_restore,
     focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
+    reorderToDoDOM,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { prefersReducedMotion } from './dragDrop.js';
@@ -5450,6 +5451,27 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
             initInjectTargets();
         } catch (e) {
             console.warn('[listLogicHydrated] initInjectTargets failed:', e);
+        }
+    });
+}
+
+// Reorder the active project's rows whenever a due-date edit lands
+// while "Sort by Due" is on for that project. Without this, the row
+// stayed in its original DOM slot after the user picked a new date
+// and the new ordering only surfaced on the next manual sort toggle
+// or page reload. reorderToDoDOM re-parents existing rows via
+// appendChild so event listeners + open description/stats panels
+// survive the reorder.
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__dueDateChangedListenerRegistered) {
+    window.__dueDateChangedListenerRegistered = true;
+    document.addEventListener('todoDueDateChanged', function onDueChange(evt) {
+        const project = evt && evt.detail && evt.detail.project;
+        if (!project) return;
+        if (!listLogic.getProjectSortByDue(project)) return;
+        try {
+            reorderToDoDOM(project);
+        } catch (e) {
+            console.warn('[todoDueDateChanged] reorder failed:', e);
         }
     });
 }
