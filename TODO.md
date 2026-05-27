@@ -23,8 +23,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[HIGH]** Fix desktop todo edits not persisting through page refresh
+- [x] **[HIGH]** Fix desktop todo edits not persisting through page refresh
   - Type: bug
   - Description: On desktop, after editing one or more fields on a todo (title, description, due date, priority) and then refreshing the page, some of those edits are missing — the row reverts to its pre-edit state for the fields that weren't saved, while other edits from the same session do survive. Expected behavior: every committed edit is written to `localStorage` before the user has any reasonable chance to refresh, and `restoreFromStorage` reconstructs the exact post-edit state. Likely cause is a missing or late `saveAllToStorage` call on one of the desktop edit paths — title rename relies on the `keyup`/`blur` flow (with the `renameHandledByEnter` guard against double-fire), and a blur that doesn't reach the save branch, or an edit handler that mutates the in-memory list without routing through `listLogic.js`, would produce exactly this "some edits stick, some don't" pattern. Investigate each desktop edit commit site in `main.js` (rename `blur`/`keyup`, description edit, due-date popover save, priority change) and confirm each one ends in a `listLogic.js` mutation followed by a storage write; any DOM-only mutation is the bug. Add a regression test in `tests/listLogic.test.js` covering: mutating each editable field through the documented `listLogic` API persists and round-trips through `restoreFromStorage`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-27
