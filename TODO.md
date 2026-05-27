@@ -79,8 +79,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: 2026-05-26
 
-- [ ] **[LOW]** Route the Today dashboard checkbox toggle through `listLogic.setToDoCompleted`
+- [x] **[LOW]** Route the Today dashboard checkbox toggle through `listLogic.setToDoCompleted`
   - Type: bug
   - Description: `handleTodayCheckboxToggle` in `toDoList_main/src/main.js` still mutates `item.completed = checkbox.checked` directly and relies on the follow-up `listLogic.sortCompletedToBottom(project)` to flush the change to localStorage. That sort short-circuits when the partition order is already canonical (e.g. checking the last open task in its project from the Today view), so the toggle survives only in memory and the row comes back unchecked on refresh — the same failure mode that the swipe-right fix already eliminated for the Projects-view checkbox path. Replace the direct mutation with `listLogic.setToDoCompleted(project, item, checkbox.checked)` so the Today-view toggle benefits from the same unconditional persistence + Supabase mirror. No new logic-layer method is needed; the helper added in the swipe-right fix already covers this. Add a regression test in `tests/listLogic.test.js` (or a new `todayDashboardCompletion.test.js`) asserting that toggling a Today-row checkbox writes the new `completed` value to localStorage even when the project's array order would not change.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-26

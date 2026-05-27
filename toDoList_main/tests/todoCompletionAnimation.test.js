@@ -169,10 +169,16 @@ describe('todo completion slide-out fade animation — Today / Calendar wiring',
 
     it('persists the toggled state on the same tick as the checkbox change', () => {
         const body = handleTodayCheckboxToggleBody();
-        // The item.completed assignment and the sortCompletedToBottom
-        // call sit ABOVE the animation branch, so they always run —
-        // animation deferral never blocks persistence.
-        const completedIdx = body.indexOf('item.completed = checkbox.checked');
+        // The setToDoCompleted call and the sortCompletedToBottom
+        // follow-up sit ABOVE the animation branch, so they always run —
+        // animation deferral never blocks persistence. Routing the
+        // toggle through listLogic.setToDoCompleted makes the
+        // localStorage write unconditional even when the
+        // sortCompletedToBottom partition would be a no-op (toggling
+        // the last open task in its project from the Today view).
+        const completedIdx = body.indexOf(
+            'listLogic.setToDoCompleted(project, item, checkbox.checked)'
+        );
         const animateIdx = body.indexOf("'todoCompleting'");
         expect(completedIdx).toBeGreaterThan(-1);
         expect(animateIdx).toBeGreaterThan(-1);

@@ -6206,7 +6206,13 @@ function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
         }
     }
 
-    item.completed = checkbox.checked;
+    // Route through listLogic so the localStorage write fires
+    // unconditionally and the Supabase mirror update runs — the
+    // follow-up sortCompletedToBottom short-circuits when the
+    // partition order is already canonical (e.g. checking the last
+    // open task from the Today view), so its built-in persist path
+    // can't be relied on to flush this mutation on its own.
+    listLogic.setToDoCompleted(project, item, checkbox.checked);
     listLogic.sortCompletedToBottom(project);
 
     // Open → done plays the slide-out fade on the row before the view
