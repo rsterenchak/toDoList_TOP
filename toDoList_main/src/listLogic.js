@@ -1914,6 +1914,18 @@ export const listLogic = (function () {
     const _selfEchoIds = new Set();
     let _realtimeChannels = [];
 
+    // In-flight project INSERT promises keyed by project id. Any todo
+    // operation referencing one of these ids awaits the parent INSERT
+    // before issuing its own request, so the FK relationship is
+    // established on the server before the child row arrives. Without
+    // this gate, a fast "create project → commit todo" sequence on
+    // mobile (where network reordering and tab-suspension are common)
+    // can let the child INSERT reach Supabase first; the server rejects
+    // it with a foreign-key constraint violation and the row is
+    // silently dropped — the user then sees the project rehydrate
+    // empty on the next reload.
+    const _pendingProjectInserts = new Map();
+
     function noteSelfEcho(id) {
         if (!id) return;
         _selfEchoIds.add(id);
@@ -1934,6 +1946,24 @@ export const listLogic = (function () {
             const table = req.table;
             const payload = req.payload || {};
             console.log('[persistMutation] called:', op, table, JSON.stringify(payload));
+
+            // FK ordering gate: serialize child todo writes behind any
+            // in-flight INSERT for the same project so the parent row
+            // always lands first.
+            if (table === 'todos' && payload && payload.project_id) {
+                const pending = _pendingProjectInserts.get(payload.project_id);
+                if (pending) {
+                    try {
+                        await pending;
+                    } catch (_) {
+                        // The project INSERT's own failure is logged
+                        // by its own persistMutation call; let this
+                        // todo write attempt anyway so the rest of the
+                        // mutation path stays uniform.
+                    }
+                }
+            }
+
             if (op === 'insert') {
                 let row;
                 if (table === 'projects') {
@@ -1972,7 +2002,24 @@ export const listLogic = (function () {
                     return;
                 }
                 noteSelfEcho(row.id);
-                const result = await supabase.from(table).insert(row);
+
+                // Wrap the builder in a real Promise so child todo
+                // writes that await this entry via the FK gate hit
+                // cached resolution rather than re-triggering the
+                // underlying request.
+                const insertPromise = Promise.resolve(supabase.from(table).insert(row));
+                if (table === 'projects' && row.id) {
+                    _pendingProjectInserts.set(row.id, insertPromise);
+                }
+
+                let result;
+                try {
+                    result = await insertPromise;
+                } finally {
+                    if (table === 'projects' && row.id) {
+                        _pendingProjectInserts.delete(row.id);
+                    }
+                }
                 if (result && result.error) {
                     console.warn('[persistMutation] insert error:', result.error);
                 }

@@ -29,7 +29,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: 2026-05-27
 
-- [ ] **[HIGH]** Fix new-project todos not rehydrating from Supabase on mobile
+- [x] **[HIGH]** Fix new-project todos not rehydrating from Supabase on mobile
   - Type: bug
   - Description: On mobile, creating a new project and adding todos to it appears to work in-session, but after a reload the project shell rehydrates from Supabase while its todos do not â the project comes back empty. Desktop rehydrates the same data correctly, so the issue is specific to the mobile restore path (or a mobile-specific timing/auth/visibility quirk against the Supabase client). Expected behavior: todos added to a freshly created project persist to Supabase and reappear on reload on mobile, matching desktop. Likely areas to investigate: the `restoreFromStorage` (or Supabase-equivalent restore) code path in `index.js` and the Supabase read/write calls in `listLogic.js` â confirm the new project's id is the same id used when its todos are inserted (no id reassignment between local insert and remote write), check whether the todos write is awaited before the page can be backgrounded on mobile (iOS Safari aggressively suspends tabs and pending `fetch`/Supabase requests can be dropped on app switch / lock screen), and verify the mobile restore query isn't filtering todos by a stale project id or a `user_id`/RLS scope that differs from the one used on insert.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
@@ -39,4 +39,4 @@
   - Type: bug
   - Description: Creating a new project and adding todos to it appears to work in-session on both mobile and desktop, but after a reload the project shell rehydrates from Supabase while its todos do not — the project comes back empty. Expected behavior: todos added to a freshly created project persist to Supabase and reappear on reload across both platforms. Likely areas to investigate: the restore code path in `index.js` and the Supabase read/write calls in `listLogic.js` — confirm the new project's id is the same id used when its todos are inserted (no id reassignment or race between local insert and remote write of the project row, which would leave todos pointing at a project_id that never made it to the projects table), check whether the todos insert is awaited and not dropped, and verify the restore query joins/filters todos by the correct project id and the same `user_id`/RLS scope used on insert. A regression test in `listLogic.test.js` should cover the round-trip: create project → add todos → simulate restore → todos present.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-27
