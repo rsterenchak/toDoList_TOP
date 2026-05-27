@@ -79,6 +79,25 @@ describe('desktop descInput — textarea element + multi-line semantics', () => 
         expect(blurBlock[0]).not.toMatch(/item\.desc\s*=\s*descInput\.value\.trim\(/);
     });
 
+    it('descInput blur handler mirrors the desc edit to Supabase via listLogic.editToDoItem', () => {
+        // Regression: descriptions added to todos in non-first projects
+        // were vanishing on hard refresh because the desktop blur handler
+        // only wrote localStorage. The next hydrateFromSupabase pulled the
+        // canonical backend snapshot — which still had an empty desc since
+        // the edit never reached Supabase — and overwrote the local draft.
+        // Mirrors the mobile descriptor modal's onSave path (see
+        // mobileDescEditorModal.test.js's "the row's onSave callback
+        // routes the desc write through listLogic.editToDoItem" case).
+        // Ctrl+Enter and Escape both call descInput.blur(), so this single
+        // boundary covers every exit path.
+        const blurBlock = toDoRow.match(
+            /descInput\.addEventListener\(\s*["']blur["'][\s\S]{0,600}?\}\s*\)/
+        );
+        expect(blurBlock).toBeTruthy();
+        expect(blurBlock[0]).toMatch(/listLogic\.saveToStorage\s*\(/);
+        expect(blurBlock[0]).toMatch(/listLogic\.editToDoItem\s*\(\s*toDoName\s*,\s*item\s*\)/);
+    });
+
     it('plain Enter falls through (textarea inserts a newline); only Ctrl/Cmd+Enter commits', () => {
         // Locate the FIRST descInput keydown listener — the second one is
         // the Escape handler. The Enter branch must require a modifier so
