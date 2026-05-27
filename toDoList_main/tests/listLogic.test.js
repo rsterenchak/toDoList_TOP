@@ -2347,3 +2347,123 @@ describe('sortItemsByDueForRender', () => {
         expect(titles).toEqual(['X', 'Y', 'Z']);
     });
 });
+
+
+// Regression guard for the "desktop todo edits sometimes don't survive a
+// page refresh" bug. The pattern that produces it is an edit handler that
+// mutates a todo's field in memory but never reaches the saveToStorage
+// branch (or routes through a listLogic call that doesn't persist on its
+// own). The next reload reads the in-memory tree back from
+// localStorage.allProjects, so any mutation that didn't flush to storage
+// is lost.
+//
+// These tests pin down the contract that the UI edit handlers depend on:
+// mutating an editable field on an item and then calling
+// listLogic.saveToStorage() leaves the new value in localStorage, where
+// the next page load's listLogic init can find it.
+describe('listLogic — editable field round-trip through saveToStorage', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+        listLogic.addToDo('Work', 'Original');
+    });
+
+    function persistedItem(title) {
+        const raw = localStorage.getItem('allProjects');
+        const parsed = JSON.parse(raw);
+        return parsed.Work.items.find(i => i.tit === title);
+    }
+
+    it('title edit + saveToStorage persists the new title to localStorage', () => {
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.tit = 'Edited title';
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Edited title');
+        expect(persisted).toBeDefined();
+        expect(persisted.tit).toBe('Edited title');
+    });
+
+    it('description edit + saveToStorage persists the new description to localStorage', () => {
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.desc = 'A multi-line\nnote with `code` and an em-dash —.';
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Original');
+        expect(persisted.desc).toBe('A multi-line\nnote with `code` and an em-dash —.');
+    });
+
+    it('due-date edit + saveToStorage persists the new due date to localStorage', () => {
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.due = '6-15-2026';
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Original');
+        expect(persisted.due).toBe('6-15-2026');
+    });
+
+    it('clearing the due date + saveToStorage persists the empty value to localStorage', () => {
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.due = '6-15-2026';
+        listLogic.saveToStorage();
+        item.due = '';
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Original');
+        expect(persisted.due).toBe('');
+    });
+
+    it('priority edit + saveToStorage persists the new priority to localStorage', () => {
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.pri = 3;
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Original');
+        expect(persisted.pri).toBe(3);
+    });
+
+    it('multiple consecutive field edits all survive in localStorage after saveToStorage', () => {
+        // Mirrors a desktop session where the user edits title, description,
+        // and due date in sequence on the same row — each commit lands its
+        // own saveToStorage. A bug that drops any one write would surface
+        // here as a missing field after the final read.
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+
+        item.tit = 'Renamed';
+        listLogic.saveToStorage();
+        item.desc = 'New notes';
+        listLogic.saveToStorage();
+        item.due = '12-31-2026';
+        listLogic.saveToStorage();
+        item.pri = 2;
+        listLogic.saveToStorage();
+
+        const persisted = persistedItem('Renamed');
+        expect(persisted).toBeDefined();
+        expect(persisted.desc).toBe('New notes');
+        expect(persisted.due).toBe('12-31-2026');
+        expect(persisted.pri).toBe(2);
+    });
+
+    it('editToDoItem requires the caller to have already called saveToStorage for the localStorage write', () => {
+        // editToDoItem is the Supabase-mirror step the desktop title-commit
+        // path runs after saveToStorage; it intentionally does NOT write
+        // localStorage itself (the per-keystroke saveToStorage callers
+        // would double-write). This test pins that contract down so a
+        // future refactor doesn't quietly fold a save into editToDoItem
+        // and double the write traffic, and so callers stay responsible
+        // for the localStorage write.
+        const item = listLogic.listItems('Work').find(i => i.tit === 'Original');
+        item.id = 'fake-id-for-test';
+        // Settle a known baseline so the spy starts from a clean slate.
+        listLogic.saveToStorage();
+
+        item.tit = 'Edited via editToDoItem only';
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        listLogic.editToDoItem('Work', item);
+        const allProjectsWrites = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
+        setItemSpy.mockRestore();
+
+        expect(allProjectsWrites.length).toBe(0);
+    });
+});
