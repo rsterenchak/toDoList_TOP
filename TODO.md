@@ -17,11 +17,11 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-05-27
 
-- [ ] **[MEDIUM]** Auto-resort todo into correct position when its due date changes
+- [x] **[MEDIUM]** Auto-resort todo into correct position when its due date changes
   - Type: bug
   - Description: When a new task is created its due date defaults to one week out, which drops it somewhere in the middle of the list. Editing that due date afterward updates the value but the row stays in its original DOM position, even though "Sort by Due" is active â the list only reflects the new ordering after a manual sort toggle or a page reload. Expected behavior: any due-date change while "Sort by Due" is checked should immediately reposition the row to its correct slot in the sorted order. Likely cause is that the due-date popover's save handler in `main.js` writes the new value through `listLogic.js` but never calls the existing sort-and-rerender path used by the Sort by Due toggle â investigate the popover's confirm/save path (`showDueDatePopover` / due-date save handler) and have it invoke the same sort+rerender used when toggling the sort mode, gated on whether `Sort by Due` is currently active. DOM child count remains the source of truth for blank-row decisions during the rerender. Add a regression test in `tests/listLogic.test.js` covering: with Sort by Due active, mutating a todo's due date reorders it relative to its peers.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-27
 
 - [x] **[HIGH]** Fix desktop todo edits not persisting through page refresh
   - Type: bug
