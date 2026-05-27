@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { vi } from 'vitest';
 import { toDo } from '../src/toDo.js';
+import { initInjectConfig, makeInjectButton } from '../src/inject.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -220,6 +222,67 @@ describe('inject feature — inject button states', () => {
         expect(disableIdx).toBeGreaterThan(-1);
         expect(awaitIdx).toBeGreaterThan(-1);
         expect(disableIdx).toBeLessThan(awaitIdx);
+    });
+});
+
+describe('inject feature — entry payload is clean UTF-8 (no double-encoding)', () => {
+    // Regression for descriptions arriving in TODO.md with double-encoded
+    // byte sequences (`ÃÂ...`) when they contain em-dashes or other non-
+    // ASCII characters. The PWA-side fix is to pass `item.desc` through to
+    // the fetch body verbatim — `JSON.stringify` plus `fetch` already
+    // handle UTF-8 correctly, so any extra `encodeURIComponent` /
+    // `unescape` / `TextEncoder` byte-walk between the description field
+    // and the request body breaks the round-trip. This test locks that
+    // contract in by stubbing fetch, clicking the inject button, and
+    // confirming the body's `entry` parses back to the original string.
+
+    let fetchSpy;
+    let realFetch;
+
+    beforeEach(() => {
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+
+        realFetch = globalThis.fetch;
+        fetchSpy = vi.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({}),
+        }));
+        globalThis.fetch = fetchSpy;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = realFetch;
+        localStorage.clear();
+    });
+
+    it('the fetch body entry field roundtrips em-dashes, curly quotes, ellipses, and emoji through JSON.parse', async () => {
+        const exotic = 'Em-dash —, curly “quotes”, ellipsis…, emoji 🚀';
+        const item = toDo('UTF-8 roundtrip', exotic, '5-27-2026', null, 0);
+        item.id = 'test-utf8-todo-id';
+
+        const btn = makeInjectButton(item, {});
+        // Bypass the state machine so the click hits the POST branch.
+        // Without a configured project target the button would otherwise
+        // sit in "no-target" state and click would open the settings modal
+        // instead of firing a request — that's tested elsewhere.
+        btn.dataset.state = 'ready';
+        btn.disabled = false;
+
+        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        // Flush microtasks: the click listener awaits injectDescription,
+        // which in turn awaits postToWorker before fetch runs. A single
+        // macrotask tick covers both layers.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const opts = fetchSpy.mock.calls[0][1];
+        expect(typeof opts.body).toBe('string');
+        const parsed = JSON.parse(opts.body);
+        expect(parsed.entry).toBe(exotic);
     });
 });
 
