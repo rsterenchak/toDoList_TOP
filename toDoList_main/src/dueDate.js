@@ -104,7 +104,24 @@ export function formatPillAbsolute(m, d) {
 // Inline SVGs use currentColor so they inherit the pill's text color —
 // that keeps urgency recolors (due-soon/overdue/completed) and theme swaps
 // cascading to the icons with no extra rules.
-const CALENDAR_SVG = '<svg class="duePillIcon" viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3" width="11" height="9.5" rx="1.5"/><path d="M4.5 1.5V4"/><path d="M9.5 1.5V4"/><path d="M1.5 6h11"/></svg>';
+const CALENDAR_SVG_OPEN = '<svg class="duePillIcon" viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="3" width="11" height="9.5" rx="1.5"/><path d="M4.5 1.5V4"/><path d="M9.5 1.5V4"/><path d="M1.5 6h11"/>';
+const CALENDAR_SVG = CALENDAR_SVG_OPEN + '</svg>';
+
+// Build the calendar icon markup. When `dayBadge` is a single digit, embed
+// it as a <text> element inside the SVG's own viewBox below the y=6 header
+// line so it lives in the date-grid body of the calendar glyph instead of
+// being overlaid by a CSS pseudo. Drawing inside the viewBox means the
+// digit scales with the icon and cannot escape the frame regardless of how
+// the pill's flex cross-axis resolves. The .duePillIconDayBadge class is
+// hidden on desktop so the digit only surfaces on mobile, matching the
+// bare-icon mobile pill where the text label "Due in Nd" is suppressed.
+function buildCalendarSvg(dayBadge) {
+    if (!dayBadge) return CALENDAR_SVG;
+    return CALENDAR_SVG_OPEN
+        + '<text class="duePillIconDayBadge" x="7" y="11" text-anchor="middle"'
+        + ' font-size="6" font-weight="500" fill="currentColor" stroke="none">'
+        + dayBadge + '</text></svg>';
+}
 const CHEVRON_SVG = '<svg class="duePillChevron" viewBox="0 0 10 10" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4L5 6.5L7.5 4"/></svg>';
 
 // Pill label reflects the item's due state:
@@ -125,11 +142,12 @@ export function updateDuePillLabel(pill, item) {
     const parsed = parseItemDue(item);
     let labelText;
     let shortLabel;
-    // Single-digit count painted inside the yellow calendar icon on
-    // mobile via the @media (max-width: 700px) ::after rule. Only set
-    // when the row is in the 1-3 day "approaching" window — today,
-    // overdue, future, and completed rows leave the attribute off so
-    // the badge stays scoped to the yellow state.
+    // Single-digit count painted inside the yellow calendar icon's SVG
+    // viewBox on mobile. Only set when the row is in the 1-3 day
+    // "approaching" window — today, overdue, future, and completed rows
+    // leave the value empty so the badge stays scoped to the yellow
+    // state. The attribute is also mirrored to data-days-until-due as a
+    // testable state signal.
     let dayBadge = '';
     if (!parsed) {
         pill.setAttribute('data-empty', 'true');
@@ -163,7 +181,7 @@ export function updateDuePillLabel(pill, item) {
         pill.removeAttribute('data-days-until-due');
     }
     pill.innerHTML = '';
-    pill.insertAdjacentHTML('beforeend', CALENDAR_SVG);
+    pill.insertAdjacentHTML('beforeend', buildCalendarSvg(dayBadge));
     const label = document.createElement('span');
     label.className = 'duePillLabel';
     label.textContent = labelText;
