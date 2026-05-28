@@ -5531,11 +5531,17 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
 // (the card is preserved across mainListRendered events that don't
 // change the active project).
 const VIEWER_LASTFETCH_PREFIX = 'todoapp_todomd_lastfetch_';
+const VIEWER_EXPANDED_PREFIX = 'todoapp_todomd_expanded_';
 let viewerActiveTab = 'rendered';
 let viewerActiveProject = null;
+let viewerResizeHandler = null;
 
 function viewerLastFetchKey(projectName) {
     return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
+}
+
+function viewerExpandedKey(projectName) {
+    return VIEWER_EXPANDED_PREFIX + encodeURIComponent(projectName || '');
 }
 
 function readViewerLastFetch(projectName) {
@@ -5550,6 +5556,25 @@ function writeViewerLastFetch(projectName, ts) {
     try {
         localStorage.setItem(viewerLastFetchKey(projectName), String(ts));
     } catch (e) { /* private mode */ }
+}
+
+function readViewerExpanded(projectName) {
+    try {
+        return localStorage.getItem(viewerExpandedKey(projectName)) === '1';
+    } catch (e) { return false; }
+}
+
+function writeViewerExpanded(projectName, expanded) {
+    try {
+        localStorage.setItem(viewerExpandedKey(projectName), expanded ? '1' : '0');
+    } catch (e) { /* private mode */ }
+}
+
+function detachViewerResizeHandler() {
+    if (viewerResizeHandler) {
+        window.removeEventListener('resize', viewerResizeHandler);
+        viewerResizeHandler = null;
+    }
 }
 
 function formatViewerSyncedAgo(ts) {
@@ -5691,8 +5716,28 @@ function buildTodoMdViewerCard(projectName, target) {
     syncBtn.setAttribute('aria-label', 'Sync TODO.md');
     syncBtn.textContent = 'Sync';
 
+    const expandBtn = document.createElement('button');
+    expandBtn.type = 'button';
+    expandBtn.className = 'todoMdViewerExpandBtn';
+
+    const expandIconHtml =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="15 3 21 3 21 9"/>' +
+        '<polyline points="9 21 3 21 3 15"/>' +
+        '<line x1="21" y1="3" x2="14" y2="10"/>' +
+        '<line x1="3" y1="21" x2="10" y2="14"/>' +
+        '</svg>';
+    const collapseIconHtml =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="4 14 10 14 10 20"/>' +
+        '<polyline points="20 10 14 10 14 4"/>' +
+        '<line x1="14" y1="10" x2="21" y2="3"/>' +
+        '<line x1="3" y1="21" x2="10" y2="14"/>' +
+        '</svg>';
+
     meta.appendChild(syncedLabel);
     meta.appendChild(syncBtn);
+    meta.appendChild(expandBtn);
 
     header.appendChild(tabs);
     header.appendChild(meta);
@@ -5771,6 +5816,56 @@ function buildTodoMdViewerCard(projectName, target) {
 
     syncBtn.addEventListener('click', runSync);
 
+    function applyExpandedHeight() {
+        if (!card.classList.contains('todoMdViewerCard--expanded')) {
+            body.style.height = '';
+            return;
+        }
+        const mainListDiv = document.getElementById('mainList');
+        if (!mainListDiv) return;
+        const mainListRect = mainListDiv.getBoundingClientRect();
+        const headerRect = header.getBoundingClientRect();
+        // The card sits inside #mainList (overflow-y: auto). The expanded
+        // body's height needs to be the vertical room left between the
+        // header's bottom edge and the bottom of the mainList viewport —
+        // not relying on flex-grow, since #mainList is a CSS grid and the
+        // card's chain doesn't propagate a flex height.
+        const bottomGap = 16;
+        const available = mainListRect.bottom - headerRect.bottom - bottomGap;
+        const fallback = 240;
+        body.style.height = Math.max(fallback, available) + 'px';
+    }
+
+    function applyExpandedState(expanded) {
+        card.classList.toggle('todoMdViewerCard--expanded', !!expanded);
+        if (expanded) {
+            expandBtn.innerHTML = collapseIconHtml;
+            expandBtn.setAttribute('aria-label', 'Collapse TODO.md viewer');
+            expandBtn.title = 'Collapse';
+        } else {
+            expandBtn.innerHTML = expandIconHtml;
+            expandBtn.setAttribute('aria-label', 'Expand TODO.md viewer');
+            expandBtn.title = 'Expand';
+        }
+        applyExpandedHeight();
+    }
+
+    expandBtn.addEventListener('click', function() {
+        const next = !card.classList.contains('todoMdViewerCard--expanded');
+        writeViewerExpanded(projectName, next);
+        applyExpandedState(next);
+    });
+
+    applyExpandedState(readViewerExpanded(projectName));
+
+    detachViewerResizeHandler();
+    viewerResizeHandler = function() {
+        if (card.classList.contains('todoMdViewerCard--expanded')) {
+            applyExpandedHeight();
+        }
+    };
+    window.addEventListener('resize', viewerResizeHandler);
+
     // Kick off the initial fetch — the card mounts with the cached
     // timestamp in the header and a "Loading…" body, then the body fills
     // in (or flips to an inline error) when the Worker responds.
@@ -5795,6 +5890,7 @@ function updateTodoMdViewerCard() {
 
     if (!projectName) {
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        detachViewerResizeHandler();
         viewerActiveProject = null;
         return;
     }
@@ -5804,6 +5900,7 @@ function updateTodoMdViewerCard() {
 
     if (!target) {
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        detachViewerResizeHandler();
         viewerActiveProject = null;
         return;
     }

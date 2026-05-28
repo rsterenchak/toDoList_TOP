@@ -176,6 +176,90 @@ describe('todo.md viewer — parseTodoMdChecklist', () => {
     });
 });
 
+describe('todo.md viewer — expand/collapse toggle', () => {
+
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('persists expand state per project under the todoapp_ prefix', () => {
+        expect(main).toMatch(/['"]todoapp_todomd_expanded_['"]/);
+        expect(main).toMatch(/function\s+viewerExpandedKey\s*\(\s*projectName\s*\)/);
+        expect(main).toMatch(/function\s+readViewerExpanded\s*\(\s*projectName\s*\)/);
+        expect(main).toMatch(/function\s+writeViewerExpanded\s*\(\s*projectName\s*,\s*expanded\s*\)/);
+    });
+
+    it('renders an expand toggle button in the header', () => {
+        expect(main).toMatch(/expandBtn\s*=\s*document\.createElement\(\s*['"]button['"]\s*\)/);
+        expect(main).toMatch(/expandBtn\.className\s*=\s*['"]todoMdViewerExpandBtn['"]/);
+    });
+
+    it('appends the expand button immediately after the Sync button in the meta row', () => {
+        // Acceptance: "Toggle appears right of Sync." Source-order check
+        // catches the regression of inserting the expand button before
+        // the Sync button or elsewhere in the header.
+        const syncIdx = main.indexOf('meta.appendChild(syncBtn);');
+        const expandIdx = main.indexOf('meta.appendChild(expandBtn);');
+        expect(syncIdx).toBeGreaterThan(-1);
+        expect(expandIdx).toBeGreaterThan(syncIdx);
+    });
+
+    it('restores the per-project expand state on mount and persists on click', () => {
+        // Default-collapsed is enforced by readViewerExpanded returning
+        // false when the key is missing (i.e. !== '1').
+        expect(main).toMatch(/applyExpandedState\s*\(\s*readViewerExpanded\s*\(\s*projectName\s*\)\s*\)/);
+        expect(main).toMatch(/writeViewerExpanded\s*\(\s*projectName\s*,\s*next\s*\)/);
+    });
+
+    it('flips icon and aria-label between expand and collapse on toggle', () => {
+        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Expand TODO\.md viewer['"]/);
+        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Collapse TODO\.md viewer['"]/);
+    });
+
+    it('computes the expanded body height from #mainList and the card header', () => {
+        // The expanded body fills the room from the header's bottom edge
+        // to #mainList's visible bottom edge — keeps the flex-fill from
+        // silently collapsing when the parent chain doesn't propagate a
+        // resolved height (the same root cause as the prior music-vis
+        // bar bug, per task spec).
+        expect(main).toMatch(/function\s+applyExpandedHeight/);
+        expect(main).toMatch(/mainListDiv\.getBoundingClientRect\(\)/);
+        expect(main).toMatch(/header\.getBoundingClientRect\(\)/);
+    });
+
+    it('re-applies height on window resize while expanded', () => {
+        expect(main).toMatch(/window\.addEventListener\s*\(\s*['"]resize['"]\s*,\s*viewerResizeHandler/);
+        expect(main).toMatch(/todoMdViewerCard--expanded/);
+    });
+
+    it('cleans up the resize listener when the card is removed', () => {
+        // Avoid leaking a resize listener every time the user switches
+        // off a project that has a viewer card.
+        expect(main).toMatch(/function\s+detachViewerResizeHandler/);
+        const updateStart = main.indexOf('function updateTodoMdViewerCard');
+        const updateEnd = main.indexOf('function activeProjectNameForViewer', updateStart);
+        const block = main.slice(updateStart, updateEnd === -1 ? main.length : updateEnd);
+        const detachCount = (block.match(/detachViewerResizeHandler\s*\(\s*\)/g) || []).length;
+        expect(detachCount).toBeGreaterThanOrEqual(2);
+    });
+
+    it('styles the expand button to match the Void aesthetic (#161622 fill, #2a2a38 border, #9D93EE icon, ~28px)', () => {
+        const ruleMatch = css.match(/\.todoMdViewerExpandBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/background:\s*#161622/);
+        expect(rule).toMatch(/border:[^;]*#2a2a38/);
+        expect(rule).toMatch(/color:\s*#9D93EE/);
+        expect(rule).toMatch(/width:\s*28px/);
+        expect(rule).toMatch(/height:\s*28px/);
+    });
+
+    it('lifts the body max-height ceiling in the expanded state', () => {
+        // Otherwise the desktop/mobile `max-height` ceilings would cap
+        // the JS-computed inline height and the body would never fill.
+        expect(css).toMatch(/\.todoMdViewerCard--expanded\s+\.todoMdViewerBody\s*\{[\s\S]{0,120}max-height:\s*none/);
+    });
+});
+
 describe('todo.md viewer — style.css', () => {
 
     const css = read('style.css');
