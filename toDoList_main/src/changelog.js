@@ -14,12 +14,8 @@ export const changelog = [
             "Days-remaining digit on the mobile yellow due-date icon no longer overflows the top of the calendar glyph.",
             "Long todo descriptions on desktop now scroll internally instead of pushing into the rows beneath them.",
         ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-27',
-        fixed: [
-            "Descriptions added to todos in non-first projects now survive a page refresh instead of coming back empty.",
+        changed: [
+            "Collapsed mobile todo rows no longer show the ¶ pilcrow before the due-date pill for tasks with descriptions.",
         ],
     },
 ];

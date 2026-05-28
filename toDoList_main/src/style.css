@@ -7594,20 +7594,6 @@ body:has(#musicPopover.open) #helpFab { display: none; }
   /* Hide the floating help FAB while the expanded sheet covers it. */
   body:has(#bottomSheet[data-state="EXPANDED"]) #helpFab { display: none; }
 
-  /* Pilcrow indicator next to the date pill — surfaces "this row has a
-     description" on collapsed rows without expanding the layout into a
-     subtitle line. Mobile-only so desktop's existing expand caret +
-     description sibling continue to do the same job there. The glyph
-     sits before the duePill and inherits the muted token. */
-  #toDoChild[data-has-desc="true"] #duePill::before {
-    content: '¶';
-    margin-right: 6px;
-    color: var(--text-muted, #9b9eb4);
-    font-size: 12px;
-    line-height: 1;
-    opacity: 0.85;
-  }
-
   /* COPY-TITLE BUTTON — revealed at the mobile breakpoint as inline-flex
      between the title input and the due-date pill. Sits in the gap that
      opens up once the slimmed-down pill below releases its border + bg
