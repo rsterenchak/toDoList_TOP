@@ -26,10 +26,14 @@ function dateStringInDays(offset) {
 
 // The mobile bare-icon pill renders a single-digit "days until due" number
 // inside the yellow calendar icon when the row's due date falls 1-3 days
-// out. updateDuePillLabel surfaces the count via a data-days-until-due
-// attribute; the mobile @media block in style.css paints it via a ::after
-// pseudo so desktop stays unaffected. Today, no-date, and overdue states
-// are out of scope per the task brief and must NOT receive the badge.
+// out. updateDuePillLabel surfaces the count both as a data-days-until-due
+// attribute (a testable state signal) and as an SVG <text> element drawn
+// inside the calendar glyph's own viewBox so the digit lives in the
+// date-grid body of the icon instead of being overlaid by a CSS pseudo.
+// Drawing inside the SVG keeps the digit anchored to the glyph regardless
+// of how the pill's flex cross-axis resolves. Today, no-date, and overdue
+// states are out of scope per the task brief and must NOT receive the
+// badge.
 describe('mobile due pill — days-until-due badge attribute', () => {
 
     beforeEach(() => {
@@ -104,6 +108,99 @@ describe('mobile due pill — days-until-due badge attribute', () => {
 });
 
 
+describe('mobile due pill — days-until-due badge rendered inside the SVG', () => {
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 4, 28, 10, 0, 0));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    function findDayBadge(pill) {
+        return pill.querySelector('.duePillIcon .duePillIconDayBadge');
+    }
+
+    it('embeds a <text> element with the digit inside the calendar SVG when due-soon', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: false });
+        const badge = findDayBadge(pill);
+        expect(badge).not.toBeNull();
+        expect(badge.tagName.toLowerCase()).toBe('text');
+        expect(badge.textContent).toBe('2');
+    });
+
+    it('positions the digit below the y=6 header line so it lands in the date-grid body, not on the calendar crossbar', () => {
+        // Regression for the days-until-due digit overflowing the top of
+        // the calendar glyph. The 14×14 viewBox has its header crossbar
+        // at y=6 and the rect bottom at y=12.5 — y must sit strictly
+        // below the header line (y > 6) and inside the rect (y <= 12.5).
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: false });
+        const badge = findDayBadge(pill);
+        expect(badge).not.toBeNull();
+        const y = parseFloat(badge.getAttribute('y'));
+        expect(Number.isFinite(y)).toBe(true);
+        expect(y).toBeGreaterThan(6);
+        expect(y).toBeLessThanOrEqual(12.5);
+    });
+
+    it('centers the digit horizontally in the viewBox via text-anchor="middle"', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: false });
+        const badge = findDayBadge(pill);
+        expect(badge).not.toBeNull();
+        expect(badge.getAttribute('text-anchor')).toBe('middle');
+        const x = parseFloat(badge.getAttribute('x'));
+        // 14-unit viewBox → center is at x=7.
+        expect(x).toBe(7);
+    });
+
+    it('inherits the icon color via fill="currentColor" and disables stroke so the digit reads crisp', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: false });
+        const badge = findDayBadge(pill);
+        expect(badge).not.toBeNull();
+        expect(badge.getAttribute('fill')).toBe('currentColor');
+        expect(badge.getAttribute('stroke')).toBe('none');
+    });
+
+    it('omits the <text> element entirely when the row is outside the 1-3 day yellow window', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(7), completed: false });
+        expect(findDayBadge(pill)).toBeNull();
+    });
+
+    it('omits the <text> element for due-today rows', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(0), completed: false });
+        expect(findDayBadge(pill)).toBeNull();
+    });
+
+    it('omits the <text> element for overdue rows', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(-1), completed: false });
+        expect(findDayBadge(pill)).toBeNull();
+    });
+
+    it('omits the <text> element when the item is completed', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: true });
+        expect(findDayBadge(pill)).toBeNull();
+    });
+
+    it('drops the <text> element on rerender when the date moves out of the yellow window', () => {
+        const pill = mkPill();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(2), completed: false });
+        expect(findDayBadge(pill)).not.toBeNull();
+        updateDuePillLabel(pill, { tit: 'x', due: dateStringInDays(10), completed: false });
+        expect(findDayBadge(pill)).toBeNull();
+    });
+});
+
+
 describe('mobile due pill — days-until-due badge CSS', () => {
 
     const css = read('style.css');
@@ -130,99 +227,57 @@ describe('mobile due pill — days-until-due badge CSS', () => {
         return blocks;
     }
 
-    it('targets the mobile pill via a #duePill[data-days-until-due]::after rule', () => {
+    it('does not paint the digit via a #duePill[data-days-until-due]::after rule (now drawn inside the SVG instead)', () => {
+        // The original ::after overlay rode above the calendar's header
+        // line because the 11×11 icon left no room to anchor an
+        // absolutely-positioned span inside its tiny date-grid body.
+        // The fix moves the digit into the SVG's own viewBox so this
+        // selector should no longer exist in the stylesheet.
         const has = mobileMediaBlocks().some(b =>
             /#duePill\[data-days-until-due\][^{]*::after\s*\{/.test(b)
         );
-        expect(has).toBe(true);
+        expect(has).toBe(false);
     });
 
-    it('reads the digit from the data attribute via content: attr(data-days-until-due)', () => {
+    it('reveals the in-SVG day badge on mobile only via a .duePillIconDayBadge rule inside the mobile media block', () => {
         const has = mobileMediaBlocks().some(b =>
-            /::after\s*\{[^}]*content:\s*attr\(data-days-until-due\)/.test(b)
+            /\.duePillIconDayBadge[^{]*\{[^}]*display:\s*inline/.test(b)
         );
         expect(has).toBe(true);
     });
 
     it('scopes the badge to the yellow .due-soon state so today/overdue/no-date stay icon-only', () => {
-        // The data attribute is already gated to the 1-3 day window by JS,
+        // The <text> element is only emitted in the 1-3 day window by JS,
         // but the CSS selector also requires .due-soon as defense in
-        // depth — if any future caller writes the attribute outside that
-        // window, the badge still won't render.
+        // depth — if any future caller routes a value through
+        // buildCalendarSvg outside that window, the badge still won't
+        // render on mobile.
         const has = mobileMediaBlocks().some(b =>
-            /#toDoChild\.due-soon\s+#duePill\[data-days-until-due\][^{]*::after/.test(b)
+            /#toDoChild\.due-soon\s+#duePill\s+\.duePillIconDayBadge[^{]*\{/.test(b)
         );
         expect(has).toBe(true);
     });
 
-    it('mobile #duePill gets position: relative so the absolutely positioned badge anchors to it', () => {
-        const has = mobileMediaBlocks().some(b =>
-            /#duePill\s*\{[^}]*position:\s*relative/.test(b)
-        );
-        expect(has).toBe(true);
+    it('hides the in-SVG day badge by default so desktop pills stay textual-only', () => {
+        // Desktop already shows the "Due in Nd" label next to the icon,
+        // so a second copy of the digit inside the glyph would be
+        // redundant. The default-scope rule hides .duePillIconDayBadge;
+        // the mobile media block opts it back in.
+        const re = /#duePill\s+\.duePillIconDayBadge\s*\{[^}]*display:\s*none/;
+        expect(re.test(css)).toBe(true);
     });
 
-    it('absolutely positions the badge so it overlays the calendar icon', () => {
-        const has = mobileMediaBlocks().some(b =>
-            /#duePill\[data-days-until-due\][^{]*::after\s*\{[^}]*position:\s*absolute/.test(b)
-        );
-        expect(has).toBe(true);
-    });
-
-    it('styles the digit in Trebuchet MS / Verdana at ~9px weight 500 per the task brief', () => {
+    it('styles the in-SVG digit in Trebuchet MS / Verdana per the task brief so the numeral reads cleanly inside the 14×14 viewBox', () => {
         const blocks = mobileMediaBlocks();
-        const afterRule = blocks
+        const rule = blocks
             .map(b => {
-                const m = b.match(/#duePill\[data-days-until-due\][^{]*::after\s*\{([^}]*)\}/);
+                const m = b.match(/\.duePillIconDayBadge[^{]*\{([^}]*)\}/);
                 return m ? m[1] : '';
             })
             .find(body => body.length > 0);
-        expect(afterRule).toBeTruthy();
-        expect(afterRule).toMatch(/font-family:[^;]*Trebuchet MS/);
-        expect(afterRule).toMatch(/font-family:[^;]*Verdana/);
-        expect(afterRule).toMatch(/font-size:\s*9px/);
-        expect(afterRule).toMatch(/font-weight:\s*500/);
-    });
-
-    it('anchors the badge below the pill\'s vertical center so the digit lands in the calendar\'s date-grid body, not at the header line', () => {
-        // Regression for the days-until-due digit "riding up" at the
-        // y=6 calendar header line on mobile. A pure top: 60% placed
-        // the digit's center on the icon's crossbar once the pill's
-        // flex cross-axis resolved smaller than its 32px min-height,
-        // surfacing it above the date-grid body of the 14×14 viewBox.
-        // The fix anchors the badge at pill-center + a positive pixel
-        // nudge so the digit lands inside the date-grid body
-        // (header at y=6, rect bottom at y=12.5) regardless of pill
-        // height. Accept either an explicit percentage ≥ 65% or a
-        // calc(50% + Npx) with N ≥ 2 — both express "deeper into the
-        // icon body than the buggy 60% anchor".
-        const blocks = mobileMediaBlocks();
-        const afterRule = blocks
-            .map(b => {
-                const m = b.match(/#duePill\[data-days-until-due\][^{]*::after\s*\{([^}]*)\}/);
-                return m ? m[1] : '';
-            })
-            .find(body => body.length > 0);
-        expect(afterRule).toBeTruthy();
-        const topMatch = afterRule.match(/top:\s*([^;}]+)/);
-        expect(topMatch).toBeTruthy();
-        const topVal = topMatch[1].trim();
-        const percent = topVal.match(/^(\d+(?:\.\d+)?)%$/);
-        const calc = topVal.match(/calc\(\s*50%\s*\+\s*(\d+(?:\.\d+)?)px\s*\)/);
-        const placedDeeper = (percent && parseFloat(percent[1]) >= 65) ||
-                             (calc && parseFloat(calc[1]) >= 2);
-        expect(placedDeeper).toBe(true);
-    });
-
-    it('inherits the icon stroke color via currentColor so it matches the yellow urgency tint', () => {
-        const blocks = mobileMediaBlocks();
-        const afterRule = blocks
-            .map(b => {
-                const m = b.match(/#duePill\[data-days-until-due\][^{]*::after\s*\{([^}]*)\}/);
-                return m ? m[1] : '';
-            })
-            .find(body => body.length > 0);
-        expect(afterRule).toBeTruthy();
-        expect(afterRule).toMatch(/color:\s*currentColor/);
+        expect(rule).toBeTruthy();
+        expect(rule).toMatch(/font-family:[^;]*Trebuchet MS/);
+        expect(rule).toMatch(/font-family:[^;]*Verdana/);
+        expect(rule).toMatch(/font-weight:\s*500/);
     });
 });

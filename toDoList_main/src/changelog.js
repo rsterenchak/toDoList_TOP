@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "Days-remaining digit on the mobile yellow due-date icon now centers inside the date-grid body instead of riding up at the calendar's top header line.",
+            "Days-remaining digit on the mobile yellow due-date icon no longer overflows the top of the calendar glyph.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-27',
         fixed: [
-            "Editing a todo's due date while \"Sort by Due\" is active now repositions the row immediately instead of waiting for a manual sort toggle or page reload.",
             "Todos added to a newly created project on mobile now reliably survive a page reload.",
             "Descriptions added to todos in non-first projects now survive a page refresh instead of coming back empty.",
         ],

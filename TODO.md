@@ -53,11 +53,11 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Fix days-until-due number overflowing top of yellow calendar icon â draw it inside the SVG (mobile)
+- [x] **[MEDIUM]** Fix days-until-due number overflowing top of yellow calendar icon — draw it inside the SVG (mobile)
   - Type: bug
   - Description: The days-until-due number on the yellow "due-soon" calendar icon overflows the top of the glyph on mobile. Root cause: the number is an absolutely-positioned element layered over the calendar icon, but that icon is the `CALENDAR_SVG` inside `#duePill` â rendered at only 11Ã11px (`viewBox="0 0 14 14"`), so there is no reliable room to position an overlaid span within its tiny date-grid body, and it rides up over the header crossbar instead. Fix by drawing the digit *inside* the SVG's own coordinate system rather than overlaying it: add a `<text>` element to `CALENDAR_SVG` (or a yellow-state variant of it) positioned in the date-grid body below the y=6 divider line â approximately `x="7" y="11"` with `text-anchor="middle"`, `font-size` ~6 in viewBox units, `fill="currentColor"` and no `stroke` so it inherits the pill's due-soon color and stays crisp. Because the digit then lives in the same viewBox as the calendar rect, it scales and positions with the icon automatically and cannot escape the frame. The digit value is the single-digit days-until-due (yellow state is gated to ~1â3 days via the existing `days <= 3` branch in `updateDuePillLabel` / `daysUntilDue`); reuse that computed `days` value rather than recomputing. Keep scope mobile-only and due-soon-only â the overdue (red) and absolute-date states keep their current icon untouched. Note: `CALENDAR_SVG` is currently a shared const used by every pill state, so either branch to a number-bearing variant only when rendering a due-soon pill on mobile, or build the icon markup per-state in `updateDuePillLabel`.
   - File: `toDoList_main/src/dueDate.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
 
 - [ ] **[MEDIUM]** Cap long todo descriptions on desktop with internal scroll
   - Type: bug
