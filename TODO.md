@@ -41,8 +41,8 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: 2026-05-27
 
-- [ ] **[LOW]** Show days-until-due number inside yellow calendar icon (mobile only)
+- [x] **[LOW]** Show days-until-due number inside yellow calendar icon (mobile only)
   - Type: feature
   - Description: On mobile viewports only, when a todo's due-date calendar icon renders in its yellow "approaching" state, draw the integer number of days until due inside the icon body so users can see how far out a date is without opening the popover. The number is always single-digit since the yellow state is already gated to a small range (~1–5 days). Style: same yellow as the icon stroke, centered horizontally in the icon's lower half (below the calendar's header line), ~9px Trebuchet MS / Verdana, weight 500. Render the number as a `<span>` absolutely positioned over the existing SVG (or as a `<text>` element inside the SVG, whichever fits the current icon implementation) so the icon shape itself is unchanged. Gate visibility via the existing mobile media query in `style.css` (or whichever breakpoint condition the app already uses for mobile-only treatments) — on desktop the icon stays as it is today. Out of scope: today/no-date/overdue states — only the yellow state gets the number; the red overdue icon stays as-is. The day-count computation likely already exists wherever the yellow vs. red vs. plain state is decided — reuse that value rather than recomputing.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
