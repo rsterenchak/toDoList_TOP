@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-28',
         added: [
-            "Days remaining now appear inside the yellow due-date calendar icon on mobile for tasks due in 1-3 days.",
+            "Projects routed to an inject target now show a read-only TODO.md viewer card below Completed, with Rendered and Raw tabs and an on-demand Sync button.",
         ],
         fixed: [
             "Days-remaining digit on the mobile yellow due-date icon now centers inside the date-grid body instead of riding up at the calendar's top header line.",

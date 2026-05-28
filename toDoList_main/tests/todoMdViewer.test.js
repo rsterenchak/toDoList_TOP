@@ -1,0 +1,193 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { parseTodoMdChecklist } from '../src/main.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const srcDir = resolve(here, '../src');
+
+function read(relative) {
+    return readFileSync(resolve(srcDir, relative), 'utf8');
+}
+
+// Source-inspection + unit tests for the read-only TODO.md viewer card.
+// The card mounts below the Completed section for projects routed to an
+// inject target, fetches the target file via the existing Worker, and
+// surfaces two tabs (Rendered / Raw markdown) plus a Sync button. Test
+// strategy mirrors injectToTodoMd / projectInjectRouting (source regex)
+// since the full project-select → fetch path needs jsdom + Worker stub.
+
+describe('todo.md viewer — inject.js worker-read helper', () => {
+
+    const inject = read('inject.js');
+
+    it('exports readTodoMdFromWorker for the viewer to call', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+readTodoMdFromWorker\s*\(/);
+    });
+
+    it('sends `{ read: true, repo, filePath }` to the existing postToWorker', () => {
+        // Reuses the same Worker URL + Bearer secret path the inject
+        // button uses — no new transport, no new config surface.
+        expect(inject).toMatch(
+            /postToWorker\s*\(\s*\{[\s\S]{0,160}read:\s*true[\s\S]{0,160}repo:\s*target\.repo[\s\S]{0,160}filePath:\s*target\.file_path/
+        );
+    });
+
+    it('returns { ok: true, content, sha } on success', () => {
+        expect(inject).toMatch(/ok:\s*true[\s\S]{0,200}content:\s*res\.content[\s\S]{0,80}sha:\s*res\.sha/);
+    });
+
+    it('returns { ok: false, reason } when the target is missing or the call fails', () => {
+        expect(inject).toMatch(/ok:\s*false[\s\S]{0,40}reason:\s*['"]No target['"]/);
+        // Generic catch path funnels through describeError just like the
+        // inject button's failure path, so the inline error label matches
+        // the existing 401 / 403 / network error vocabulary.
+        expect(inject).toMatch(/readTodoMdFromWorker[\s\S]{0,800}catch[\s\S]{0,80}describeError/);
+    });
+});
+
+describe('todo.md viewer — main.js card wiring', () => {
+
+    const main = read('main.js');
+
+    it('imports findTargetById and readTodoMdFromWorker from inject.js', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\bfindTargetById\b[\s\S]*?\breadTodoMdFromWorker\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+    });
+
+    it('persists the last-fetch timestamp under the todoapp_ prefix, keyed by project', () => {
+        // Per task spec: "Persist the per-project last-fetch timestamp
+        // under the `todoapp_` localStorage prefix, keyed by project."
+        expect(main).toMatch(/['"]todoapp_todomd_lastfetch_['"]/);
+        expect(main).toMatch(/function\s+viewerLastFetchKey\s*\(\s*projectName\s*\)/);
+    });
+
+    it('mounts the card with id #todoMdViewerCard', () => {
+        expect(main).toMatch(/['"]todoMdViewerCard['"]/);
+    });
+
+    it('renders two tabs labelled "Rendered" and "Raw markdown"', () => {
+        expect(main).toMatch(/renderedTab\.textContent\s*=\s*['"]Rendered['"]/);
+        expect(main).toMatch(/rawTab\.textContent\s*=\s*['"]Raw markdown['"]/);
+    });
+
+    it('exposes a Sync button that re-fetches on click', () => {
+        expect(main).toMatch(/syncBtn\.textContent\s*=\s*['"]Sync['"]/);
+        expect(main).toMatch(/syncBtn\.addEventListener\s*\(\s*['"]click['"]\s*,\s*runSync\s*\)/);
+    });
+
+    it('reuses readTodoMdFromWorker — no parallel transport in main.js', () => {
+        // The card MUST go through inject.js's helper, not a freestanding
+        // fetch() call, so the Worker URL / Bearer secret / Authorization
+        // header live in exactly one place.
+        expect(main).toMatch(/readTodoMdFromWorker\s*\(\s*target\s*\)/);
+        // No bare fetch( inside the viewer block — search for the
+        // viewer-scoped functions and assert fetch isn't used there.
+        const viewerStart = main.indexOf('VIEWER_LASTFETCH_PREFIX');
+        const viewerEnd = main.indexOf("__todoMdViewerListenerRegistered");
+        expect(viewerStart).toBeGreaterThan(-1);
+        expect(viewerEnd).toBeGreaterThan(viewerStart);
+        const block = main.slice(viewerStart, viewerEnd);
+        expect(block).not.toMatch(/\bfetch\s*\(/);
+    });
+
+    it('hides the card for projects without an inject target', () => {
+        // Acceptance: "Viewer appears only for projects with an inject
+        // target; absent for None-routed projects." Implementation hooks
+        // off listLogic.getProjectTargetId + findTargetById; when the
+        // resolved target is null, any existing card is removed.
+        expect(main).toMatch(/listLogic\.getProjectTargetId\s*\(\s*projectName\s*\)/);
+        expect(main).toMatch(
+            /if\s*\(\s*!target\s*\)\s*\{[\s\S]{0,200}existing\.parentNode\.removeChild\s*\(\s*existing\s*\)/
+        );
+    });
+
+    it('subscribes to the mainListRendered event so re-renders re-place the card idempotently', () => {
+        expect(main).toMatch(/['"]mainListRendered['"]/);
+        expect(main).toMatch(/__todoMdViewerListenerRegistered/);
+    });
+
+    it('tab toggle reuses cached content (no re-fetch on tab swap)', () => {
+        // Acceptance: "Both tabs render correctly; toggling between them
+        // doesn't re-fetch." applyTab() reads card.dataset.content and
+        // never touches readTodoMdFromWorker.
+        const applyTabStart = main.indexOf('function applyTab(');
+        expect(applyTabStart).toBeGreaterThan(-1);
+        const applyTabEnd = main.indexOf('renderedTab.addEventListener', applyTabStart);
+        const body = main.slice(applyTabStart, applyTabEnd);
+        expect(body).toMatch(/card\.dataset\.content/);
+        expect(body).not.toMatch(/readTodoMdFromWorker/);
+    });
+});
+
+describe('todo.md viewer — emptyState.js render event', () => {
+
+    const emptyState = read('emptyState.js');
+
+    it('dispatches mainListRendered from updateCompletedSection so the viewer can re-hook', () => {
+        expect(emptyState).toMatch(/['"]mainListRendered['"]/);
+        // Fires on both code paths — the no-completed early return AND
+        // the normal render — so every #mainList re-render notifies the
+        // viewer regardless of completed-rows state.
+        const matches = emptyState.match(/mainListRendered/g) || [];
+        expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+});
+
+describe('todo.md viewer — parseTodoMdChecklist', () => {
+
+    it('recognises unchecked and checked GFM checkbox rows', () => {
+        const tokens = parseTodoMdChecklist('- [ ] Buy milk\n- [x] Pay bills');
+        expect(tokens).toHaveLength(2);
+        expect(tokens[0]).toMatchObject({ type: 'checkbox', checked: false, text: 'Buy milk' });
+        expect(tokens[1]).toMatchObject({ type: 'checkbox', checked: true, text: 'Pay bills' });
+    });
+
+    it('treats uppercase X as checked', () => {
+        const tokens = parseTodoMdChecklist('- [X] Done');
+        expect(tokens[0]).toMatchObject({ type: 'checkbox', checked: true, text: 'Done' });
+    });
+
+    it('captures heading lines with their level', () => {
+        const tokens = parseTodoMdChecklist('# Big\n## Small');
+        expect(tokens[0]).toMatchObject({ type: 'heading', level: 1, text: 'Big' });
+        expect(tokens[1]).toMatchObject({ type: 'heading', level: 2, text: 'Small' });
+    });
+
+    it('falls back to plain text for non-checklist lines and preserves blanks', () => {
+        const tokens = parseTodoMdChecklist('hello\n\nworld');
+        expect(tokens).toHaveLength(3);
+        expect(tokens[0]).toMatchObject({ type: 'text', text: 'hello' });
+        expect(tokens[1]).toMatchObject({ type: 'text', text: '' });
+        expect(tokens[2]).toMatchObject({ type: 'text', text: 'world' });
+    });
+
+    it('returns an empty array for non-string input', () => {
+        expect(parseTodoMdChecklist(null)).toEqual([]);
+        expect(parseTodoMdChecklist(undefined)).toEqual([]);
+        expect(parseTodoMdChecklist(42)).toEqual([]);
+    });
+
+    it('captures the indent depth of nested checklist items', () => {
+        const tokens = parseTodoMdChecklist('- [ ] top\n  - [ ] nested');
+        expect(tokens[0]).toMatchObject({ checked: false, indent: 0 });
+        expect(tokens[1]).toMatchObject({ checked: false, indent: 2 });
+    });
+});
+
+describe('todo.md viewer — style.css', () => {
+
+    const css = read('style.css');
+
+    it('defines the card surface and tab styling matching the Void aesthetic', () => {
+        expect(css).toMatch(/\.todoMdViewerCard\s*\{/);
+        expect(css).toMatch(/\.todoMdViewerTab\s*\{/);
+        // Purple accent on the active tab underline, per spec.
+        expect(css).toMatch(/\.todoMdViewerTab\.is-active[\s\S]{0,200}#6C5DF5/);
+    });
+
+    it('uses monospace for the raw tab body', () => {
+        expect(css).toMatch(/\.todoMdViewerRaw[\s\S]{0,200}SpaceMono/);
+    });
+});
