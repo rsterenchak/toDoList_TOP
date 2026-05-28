@@ -65,8 +65,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[LOW]** Hide the ¶ description-indicator pilcrow on collapsed todo rows
+- [x] **[LOW]** Hide the ¶ description-indicator pilcrow on collapsed todo rows
   - Type: feature
   - Description: Collapsed mobile todo rows surface a small `¶` pilcrow glyph immediately before the due-date pill whenever the row carries a non-empty description (`data-has-desc="true"`). This indicator should no longer paint — remove it so the row's icon cluster reads cleanly (checkbox · title · copy/expand/recurrence/stats/date icons) without the pilcrow. The glyph is generated entirely in CSS via the `#toDoChild[data-has-desc="true"] #duePill::before` rule (content `'¶'`) inside the `@media (max-width: 700px)` block in `style.css`; remove that rule to hide it. Leave `updateDescIndicator()` in `toDoRow.js` and the `data-has-desc` attribute writes intact — other logic and tests rely on the attribute; only the CSS that paints the `¶` changes. Scope is the pilcrow on `#duePill::before` only — the separate `#descIndicator` inline-SVG element (checkbox · indicator · title) is a different indicator and is out of scope. Update the existing test in `mobileTaskInteractions.test.js` ("CSS surfaces the ¶ glyph only on the mobile breakpoint") to assert the rule's absence instead.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTaskInteractions.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
