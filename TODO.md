@@ -47,8 +47,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Fix days-until-due number sitting too high on yellow calendar icon (mobile)
+- [x] **[MEDIUM]** Fix days-until-due number sitting too high on yellow calendar icon (mobile)
   - Type: bug
   - Description: The days-until-due number drawn inside the yellow "approaching" calendar icon on mobile is positioned too high — it rides up at the calendar's top header line / crossbar so the digit appears to poke out the top of the icon rather than sitting in the date-grid body. Reposition the number's vertical center into the lower portion of the icon, below the calendar's top header band, so it reads as centered within the date area. For the current ~22px icon a 9px digit should sit around `top: 12–13px` (roughly 60–65% of icon height) rather than its current higher placement; keep it horizontally centered. Likely the absolute-positioned `<span>` (or SVG `<text>`) `top`/`y` value set in the original feature is too small — nudge it down and verify against the single-digit range (~1–5 days). Scope stays mobile-only and yellow-state-only, matching the original feature.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
