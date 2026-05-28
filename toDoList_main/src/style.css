@@ -7646,11 +7646,15 @@ body:has(#musicPopover.open) #helpFab { display: none; }
     position: absolute;
     /* Center horizontally over the icon (the icon is the only visible
        pill child on mobile, so the pill's center is the icon's
-       center). The 60% vertical anchor places the digit below the
-       calendar's header line (y=6 in the 14×14 viewBox) and inside
-       the body of the icon. */
+       center). Vertical anchor is pill-center + 4px so the digit lands
+       inside the date-grid body of the 14×14 calendar (header line at
+       y=6, rect bottom at y=12.5) regardless of how the pill's flex
+       cross-axis size resolves. A pure percentage tied the badge's
+       position to the pill's rendered height; the pixel nudge keeps
+       the digit centered in the icon body whether the pill sizes to
+       its 32px min-height or shrinks to its 16px icon content. */
     left: 50%;
-    top: 60%;
+    top: calc(50% + 4px);
     transform: translate(-50%, -50%);
     font-family: 'Trebuchet MS', Verdana, sans-serif;
     font-size: 9px;
