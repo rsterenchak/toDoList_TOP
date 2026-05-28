@@ -59,8 +59,8 @@
   - File: `toDoList_main/src/dueDate.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Cap long todo descriptions on desktop with internal scroll
+- [x] **[MEDIUM]** Cap long todo descriptions on desktop with internal scroll
   - Type: bug
   - Description: A long todo description on desktop expands its row to the full content height and bleeds over the rows beneath it (e.g. a multi-weekend schedule overlapped the rows below). Constrain the expanded description element to a `max-height` with `overflow-y: auto` so the row stops growing and the notes scroll internally instead of overflowing. Pick a max-height that shows a useful chunk of text before scrolling (~8–10 lines, roughly 180–220px) while keeping the row from dominating the list; tune against the existing line-height. Scope is the desktop description/notes area only — the mobile path already uses its own treatment, so gate this behind the existing desktop breakpoint (or leave it unguarded only if the mobile description isn't the same element). Keep the scrollbar styling consistent with the app's existing scroll surfaces if one exists; otherwise the default is fine for now. Out of scope: the modal-window treatment (deferred) — this is the cap-and-scroll interim fix only.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
