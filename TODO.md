@@ -22,8 +22,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Fix completed section overlapping open todo descriptions
+- [x] **[MEDIUM]** Fix completed section overlapping open todo descriptions
   - Type: bug
   - Description: When the COMPLETED section is expanded and a todo's description is open at the same time, the two collide/overlap visually instead of stacking cleanly. The expected behavior is that an open description grows its own row in normal document flow and the COMPLETED block sits fully below it, with no overlap regardless of which is opened first. Likely cause is that one of these expanding regions (the description panel or the COMPLETED accordion contents) is absolutely positioned or has a fixed/clipped height rather than contributing to layout height, so it renders on top of adjacent content instead of pushing it down. Audit the description-toggle and COMPLETED-toggle styling in `style.css` (and any inline height/position writes in `main.js`) and ensure both expanded regions are in normal flow (static positioning, `height: auto`, no negative margins) so siblings reflow around them.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
