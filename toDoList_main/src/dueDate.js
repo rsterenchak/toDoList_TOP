@@ -125,6 +125,12 @@ export function updateDuePillLabel(pill, item) {
     const parsed = parseItemDue(item);
     let labelText;
     let shortLabel;
+    // Single-digit count painted inside the yellow calendar icon on
+    // mobile via the @media (max-width: 700px) ::after rule. Only set
+    // when the row is in the 1-3 day "approaching" window — today,
+    // overdue, future, and completed rows leave the attribute off so
+    // the badge stays scoped to the yellow state.
+    let dayBadge = '';
     if (!parsed) {
         pill.setAttribute('data-empty', 'true');
         labelText = 'Set date';
@@ -144,12 +150,18 @@ export function updateDuePillLabel(pill, item) {
         } else if (days <= 3) {
             labelText = 'Due in ' + days + 'd';
             shortLabel = days + 'd';
+            dayBadge = String(days);
         } else {
             labelText = formatPillAbsolute(parsed.m, parsed.d);
             shortLabel = labelText;
         }
     }
     pill.setAttribute('data-short-label', shortLabel);
+    if (dayBadge) {
+        pill.setAttribute('data-days-until-due', dayBadge);
+    } else {
+        pill.removeAttribute('data-days-until-due');
+    }
     pill.innerHTML = '';
     pill.insertAdjacentHTML('beforeend', CALENDAR_SVG);
     const label = document.createElement('span');
