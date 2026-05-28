@@ -184,6 +184,36 @@ describe('mobile due pill — days-until-due badge CSS', () => {
         expect(afterRule).toMatch(/font-weight:\s*500/);
     });
 
+    it('anchors the badge below the pill\'s vertical center so the digit lands in the calendar\'s date-grid body, not at the header line', () => {
+        // Regression for the days-until-due digit "riding up" at the
+        // y=6 calendar header line on mobile. A pure top: 60% placed
+        // the digit's center on the icon's crossbar once the pill's
+        // flex cross-axis resolved smaller than its 32px min-height,
+        // surfacing it above the date-grid body of the 14×14 viewBox.
+        // The fix anchors the badge at pill-center + a positive pixel
+        // nudge so the digit lands inside the date-grid body
+        // (header at y=6, rect bottom at y=12.5) regardless of pill
+        // height. Accept either an explicit percentage ≥ 65% or a
+        // calc(50% + Npx) with N ≥ 2 — both express "deeper into the
+        // icon body than the buggy 60% anchor".
+        const blocks = mobileMediaBlocks();
+        const afterRule = blocks
+            .map(b => {
+                const m = b.match(/#duePill\[data-days-until-due\][^{]*::after\s*\{([^}]*)\}/);
+                return m ? m[1] : '';
+            })
+            .find(body => body.length > 0);
+        expect(afterRule).toBeTruthy();
+        const topMatch = afterRule.match(/top:\s*([^;}]+)/);
+        expect(topMatch).toBeTruthy();
+        const topVal = topMatch[1].trim();
+        const percent = topVal.match(/^(\d+(?:\.\d+)?)%$/);
+        const calc = topVal.match(/calc\(\s*50%\s*\+\s*(\d+(?:\.\d+)?)px\s*\)/);
+        const placedDeeper = (percent && parseFloat(percent[1]) >= 65) ||
+                             (calc && parseFloat(calc[1]) >= 2);
+        expect(placedDeeper).toBe(true);
+    });
+
     it('inherits the icon stroke color via currentColor so it matches the yellow urgency tint', () => {
         const blocks = mobileMediaBlocks();
         const afterRule = blocks
