@@ -12,8 +12,8 @@ export const changelog = [
             "Long todo descriptions on desktop now scroll internally instead of pushing into the rows beneath them.",
             "Sync button in the TODO.md viewer header no longer overflows past the card edge on narrow mobile screens.",
         ],
-        changed: [
-            "Collapsed mobile todo rows no longer show the ¶ pilcrow before the due-date pill for tasks with descriptions.",
+        added: [
+            "Expand/collapse toggle in the TODO.md viewer header lets the card fill the open space below the Completed section, and remembers the state per project.",
         ],
     },
 ];

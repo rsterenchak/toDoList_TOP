@@ -33,7 +33,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[LOW]** Add expand/collapse toggle to TODO.md viewer card to fill available space
+- [x] **[LOW]** Add expand/collapse toggle to TODO.md viewer card to fill available space
   - Type: feature
   - Description: The TODO.md viewer's content area is currently a fixed-height scroll box, leaving empty card space below it (especially on desktop) while the user scrolls a cramped window inside. Add an expand/collapse icon button in the card header, immediately to the right of the Sync button, that toggles the content area between its default compact fixed height and an expanded height that fills the available open space below the Completed section. Default state is collapsed. The expanded state grows the content area (scrolling only if the file is longer than the expanded height); collapsing returns it to the compact fixed height. Persist the toggle state per-project in localStorage so each project remembers whether its viewer was left expanded. Match the "Void" styling: `#161622` button fill, `#2a2a38` border, `#9D93EE` icon, sized as a compact icon button (~28px) consistent with the header. Use a diagonal-arrows / expand icon when collapsed and a collapse icon when expanded, with an `aria-label` reflecting the action.
   - Behavior:
@@ -53,4 +53,4 @@
     - Expanded view renders correctly (no zero-height collapse) on both mobile and desktop.
   - Out of scope: drag-to-resize / arbitrary heights, remembering scroll position, animating the height transition beyond a simple CSS transition.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
