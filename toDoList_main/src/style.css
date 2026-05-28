@@ -3504,7 +3504,7 @@ body.row-dragging * { cursor: grabbing !important; }
   border: 0.5px solid var(--border-mid);
   border-top: none;
   border-radius: 0 0 6px 6px;
-  margin: -9px 8px 5px;
+  margin: 0 8px 5px;
   min-height: 34px;
   align-items: center;
   border-left: 2px solid var(--accent-dim);
