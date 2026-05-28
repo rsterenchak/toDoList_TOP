@@ -27,8 +27,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
 
-- [ ] **[LOW]** Fix Sync button overflow in TODO.md viewer header by dropping the repo·path label
+- [x] **[LOW]** Fix Sync button overflow in TODO.md viewer header by dropping the repo·path label
   - Type: bug
   - Description: In the TODO.md viewer card's header, the Sync button overflows off the right edge on mobile because the meta row tries to fit the repo·path text, the "synced Xd ago" timestamp, and the Sync button on one line — there isn't enough horizontal room at ~380px, so Sync pushes past the card boundary. Fix by removing the `rsterenchak/toDoList_TOP · TODO.md` repo·path label from the header entirely (it's redundant — the selected project already tells the user which file they're viewing), leaving just the "synced Xd ago" timestamp on the left and the Sync button on the right of the meta row. Apply this layout on both mobile and desktop (single layout, no breakpoint fork) so there's one header style to maintain. Keep the timestamp left-aligned with its clock icon and the labeled Sync button right-aligned, matching the existing "Void" styling (`#161622` button fill, `#2a2a38` border, `#9D93EE` text/icon).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28

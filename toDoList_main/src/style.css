@@ -3655,16 +3655,6 @@ body.row-dragging * { cursor: grabbing !important; }
   min-width: 0;
 }
 
-.todoMdViewerRepo {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 220px;
-}
-
 .todoMdViewerSynced {
   font-size: 11px;
   color: var(--text-secondary);
@@ -4907,23 +4897,12 @@ body.row-dragging * { cursor: grabbing !important; }
   #drawerFooterVersion { color: var(--text-muted); }
   #drawerFooterCount   { color: var(--text-muted); }
 
-  /* TODO.md viewer card — stack the header on narrow screens so the
-     tabs sit above the meta row instead of being squeezed beside it.
-     Repo label loses its max-width cap since the wider stacked row has
-     room to show the full owner/name · file_path. */
+  /* TODO.md viewer card — tighter outer margin on narrow screens; the
+     header keeps its single inline layout (tabs left, timestamp + Sync
+     right) since the repo·path label is gone and the remaining two
+     meta items fit comfortably even at ~380px. */
   .todoMdViewerCard {
     margin: 12px 6px 16px;
-  }
-  .todoMdViewerHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .todoMdViewerMeta {
-    margin-left: 0;
-    justify-content: space-between;
-  }
-  .todoMdViewerRepo {
-    max-width: none;
   }
   .todoMdViewerBody {
     max-height: 240px;

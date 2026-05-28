@@ -190,4 +190,20 @@ describe('todo.md viewer — style.css', () => {
     it('uses monospace for the raw tab body', () => {
         expect(css).toMatch(/\.todoMdViewerRaw[\s\S]{0,200}SpaceMono/);
     });
+
+    it('drops the repo·path label and its mobile-only header fork — the meta row carries only the timestamp + Sync button on every viewport so the button no longer overflows at ~380px', () => {
+        // Bug: at ~380px the meta row tried to fit repo·path, "synced Xd
+        // ago", and the Sync button on one line, pushing Sync off the
+        // card. Fix removes the repo·path label entirely (project name
+        // already tells the user which file they're viewing) and
+        // collapses to a single header layout, no breakpoint fork.
+        const mainJs = read('main.js');
+        expect(mainJs).not.toMatch(/todoMdViewerRepo/);
+        expect(mainJs).not.toMatch(/target\.repo\s*\+\s*['"][^'"]*['"]\s*\+\s*target\.file_path/);
+        expect(css).not.toMatch(/\.todoMdViewerRepo\b/);
+        // Single layout — the previously mobile-only header restack
+        // (flex-direction: column inside @media (max-width: 700px)) is
+        // gone, so there's one style to maintain across viewports.
+        expect(css).not.toMatch(/\.todoMdViewerHeader\s*\{[^}]*flex-direction:\s*column/);
+    });
 });

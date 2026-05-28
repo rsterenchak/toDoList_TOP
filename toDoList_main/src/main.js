@@ -5680,11 +5680,6 @@ function buildTodoMdViewerCard(projectName, target) {
     const meta = document.createElement('div');
     meta.className = 'todoMdViewerMeta';
 
-    const repoLabel = document.createElement('span');
-    repoLabel.className = 'todoMdViewerRepo';
-    repoLabel.textContent = target.repo + ' · ' + target.file_path;
-    repoLabel.title = repoLabel.textContent;
-
     const syncedLabel = document.createElement('span');
     syncedLabel.className = 'todoMdViewerSynced';
     syncedLabel.setAttribute('aria-live', 'polite');
@@ -5696,7 +5691,6 @@ function buildTodoMdViewerCard(projectName, target) {
     syncBtn.setAttribute('aria-label', 'Sync TODO.md');
     syncBtn.textContent = 'Sync';
 
-    meta.appendChild(repoLabel);
     meta.appendChild(syncedLabel);
     meta.appendChild(syncBtn);
 
