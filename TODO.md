@@ -8,9 +8,9 @@
     2. Tapping expand grows the content area to fill the available space below Completed; the inner content scrolls only when it exceeds that height. The icon and `aria-label` flip to the collapse action.
     3. Tapping collapse returns the content area to the compact fixed height.
     4. Persist the expanded/collapsed boolean per-project under the `todoapp_` localStorage prefix (e.g. `todoapp_todomd_expanded`, keyed by project). On project select / reload, restore that project's last state.
-    5. State applies to whichever tab (Rendered / Raw) is active — toggling tabs does not change expand state.
+    5. State applies to whichever tab (Rendered / Raw) is active â toggling tabs does not change expand state.
   - Implementation notes:
-    - The expanded height must flex into a container with a known/resolved height — a bare flex-fill will silently collapse if the parent chain has no explicit height (same root cause as the prior music-visualizer bar issue). Confirm the card's container resolves a height before relying on flex-grow; otherwise compute the available space explicitly (viewport minus fixed footer minus the elements above the content area).
+    - The expanded height must flex into a container with a known/resolved height â a bare flex-fill will silently collapse if the parent chain has no explicit height (same root cause as the prior music-visualizer bar issue). Confirm the card's container resolves a height before relying on flex-grow; otherwise compute the available space explicitly (viewport minus fixed footer minus the elements above the content area).
     - Toggle wiring and the per-project state read/write live in `main.js` alongside the existing viewer card and Sync handler; investigate with grep + offset/limit, not a full read.
     - Reuse the existing per-project localStorage keying pattern already used for the viewer's last-fetch timestamp.
   - Acceptance criteria:
@@ -21,3 +21,9 @@
   - Out of scope: drag-to-resize / arbitrary heights, remembering scroll position, animating the height transition beyond a simple CSS transition.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-28
+
+- [ ] **[MEDIUM]** Fix completed section overlapping open todo descriptions
+  - Type: bug
+  - Description: When the COMPLETED section is expanded and a todo's description is open at the same time, the two collide/overlap visually instead of stacking cleanly. The expected behavior is that an open description grows its own row in normal document flow and the COMPLETED block sits fully below it, with no overlap regardless of which is opened first. Likely cause is that one of these expanding regions (the description panel or the COMPLETED accordion contents) is absolutely positioned or has a fixed/clipped height rather than contributing to layout height, so it renders on top of adjacent content instead of pushing it down. Audit the description-toggle and COMPLETED-toggle styling in `style.css` (and any inline height/position writes in `main.js`) and ensure both expanded regions are in normal flow (static positioning, `height: auto`, no negative margins) so siblings reflow around them.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
