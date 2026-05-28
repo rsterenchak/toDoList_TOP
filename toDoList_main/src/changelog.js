@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             "Days-remaining digit on the mobile yellow due-date icon now centers inside the date-grid body instead of riding up at the calendar's top header line.",
             "Days-remaining digit on the mobile yellow due-date icon no longer overflows the top of the calendar glyph.",
+            "Long todo descriptions on desktop now scroll internally instead of pushing into the rows beneath them.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-27',
         fixed: [
-            "Todos added to a newly created project on mobile now reliably survive a page reload.",
             "Descriptions added to todos in non-first projects now survive a page refresh instead of coming back empty.",
         ],
     },
