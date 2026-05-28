@@ -108,14 +108,13 @@ describe('STACK mobile task interactions — ¶ description indicator', () => {
         expect(enterBlock).toBeTruthy();
     });
 
-    it('CSS surfaces the ¶ glyph only on the mobile breakpoint (≤700px)', () => {
-        // Locate the @media (max-width: 700px) block and verify the
-        // selector and the literal ¶ character live inside it.
-        const media700Idx = css.indexOf('@media (max-width: 700px)');
-        expect(media700Idx).toBeGreaterThan(-1);
-        const mobileBlock = css.slice(media700Idx);
-        expect(mobileBlock).toMatch(/#toDoChild\[data-has-desc="true"\]\s*#duePill::before/);
-        expect(mobileBlock).toMatch(/content:\s*['"]¶['"]/);
+    it('CSS no longer paints the ¶ glyph before the duePill on any breakpoint', () => {
+        // The pilcrow indicator was removed from collapsed mobile rows;
+        // the data-has-desc attribute is still written by toDoRow.js (so
+        // other indicators can react to it), but no CSS rule should be
+        // painting a ¶ via #duePill::before anywhere in the stylesheet.
+        expect(css).not.toMatch(/#toDoChild\[data-has-desc="true"\]\s*#duePill::before/);
+        expect(css).not.toMatch(/#duePill::before[\s\S]{0,200}content:\s*['"]¶['"]/);
     });
 });
 
