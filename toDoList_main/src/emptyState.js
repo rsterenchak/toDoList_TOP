@@ -104,6 +104,9 @@ export function updateCompletedSection(mainListDiv) {
     if (completedRows.length === 0) {
         mainListDiv.classList.remove('completedCollapsed');
         updateEmptyState(mainListDiv);
+        try {
+            document.dispatchEvent(new CustomEvent('mainListRendered'));
+        } catch (e) { /* defensive */ }
         return;
     }
 
@@ -146,6 +149,13 @@ export function updateCompletedSection(mainListDiv) {
 
     mainListDiv.insertBefore(header, completedRows[0]);
     updateEmptyState(mainListDiv);
+    // Notify downstream consumers that #mainList just finished a render
+    // pass. Used by the read-only TODO.md viewer card in main.js to
+    // (re)mount itself for the currently selected project's inject target
+    // without each render-path caller having to opt in by hand.
+    try {
+        document.dispatchEvent(new CustomEvent('mainListRendered'));
+    } catch (e) { /* defensive */ }
 }
 
 

@@ -83,7 +83,13 @@ import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
-import { initInjectConfig, initInjectTargets, showInjectSettingsModal } from './inject.js';
+import {
+    initInjectConfig,
+    initInjectTargets,
+    showInjectSettingsModal,
+    findTargetById,
+    readTodoMdFromWorker,
+} from './inject.js';
 import button from './addProj_button.svg';
 
 // Hydrate the inject config cache from localStorage before any inject
@@ -5506,6 +5512,325 @@ function playSwipeCompleteCheckmark() {
 if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__swipeCompleteFlashListenerRegistered) {
     window.__swipeCompleteFlashListenerRegistered = true;
     document.addEventListener('todoSwipeRightComplete', playSwipeCompleteCheckmark);
+}
+
+
+// ── READ-ONLY TODO.md VIEWER CARD ──
+// For projects routed to an inject target, surface the live contents of
+// that target's TODO.md (or whatever file_path the target points at) in
+// a card mounted below the Completed section. View-only — writes happen
+// through the existing inject button on todo descriptions. Reuses the
+// same Worker URL + shared secret the inject button reads (no separate
+// config surface); reuses the routing config + target lookup so the
+// repo / filePath always match the project's inject destination.
+//
+// The card has two tabs ("Rendered" — parsed checklist; "Raw markdown"
+// — verbatim text), a "synced Xd ago" relative timestamp, and a Sync
+// button that re-fetches on demand. Project switches re-fetch
+// automatically; incremental row mutations on the same project don't
+// (the card is preserved across mainListRendered events that don't
+// change the active project).
+const VIEWER_LASTFETCH_PREFIX = 'todoapp_todomd_lastfetch_';
+let viewerActiveTab = 'rendered';
+let viewerActiveProject = null;
+
+function viewerLastFetchKey(projectName) {
+    return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
+}
+
+function readViewerLastFetch(projectName) {
+    try {
+        const raw = localStorage.getItem(viewerLastFetchKey(projectName));
+        const n = parseInt(raw || '0', 10);
+        return isNaN(n) ? 0 : n;
+    } catch (e) { return 0; }
+}
+
+function writeViewerLastFetch(projectName, ts) {
+    try {
+        localStorage.setItem(viewerLastFetchKey(projectName), String(ts));
+    } catch (e) { /* private mode */ }
+}
+
+function formatViewerSyncedAgo(ts) {
+    if (!ts) return 'never synced';
+    const diff = Date.now() - ts;
+    if (diff < 0) return 'synced just now';
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return 'synced just now';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return 'synced ' + min + 'm ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return 'synced ' + hr + 'h ago';
+    const d = Math.floor(hr / 24);
+    return 'synced ' + d + 'd ago';
+}
+
+// Vanilla checklist parser — no markdown library per CLAUDE.md. Splits
+// the file into ordered tokens so the rendered tab can lay them out as
+// rows. Recognised shapes:
+//   `- [ ] foo` / `- [x] foo` → checkbox row (checked = x | X)
+//   `# foo` / `## foo` ...     → heading (level = leading # count)
+//   anything else             → plain text line (preserves blank lines)
+export function parseTodoMdChecklist(text) {
+    if (typeof text !== 'string') return [];
+    const lines = text.split('\n');
+    return lines.map(function(raw) {
+        const cb = raw.match(/^(\s*)- \[( |x|X)\]\s?(.*)$/);
+        if (cb) {
+            return {
+                type: 'checkbox',
+                checked: cb[2].toLowerCase() === 'x',
+                text: cb[3],
+                indent: cb[1].length,
+            };
+        }
+        const h = raw.match(/^(#{1,6})\s+(.*)$/);
+        if (h) {
+            return { type: 'heading', level: h[1].length, text: h[2] };
+        }
+        return { type: 'text', text: raw };
+    });
+}
+
+function buildViewerRenderedBody(text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'todoMdViewerRendered';
+    const tokens = parseTodoMdChecklist(text);
+    tokens.forEach(function(tok) {
+        if (tok.type === 'heading') {
+            const h = document.createElement('div');
+            h.className = 'todoMdViewerHeading todoMdViewerHeading--h' + tok.level;
+            h.textContent = tok.text;
+            wrap.appendChild(h);
+            return;
+        }
+        if (tok.type === 'checkbox') {
+            const row = document.createElement('div');
+            row.className = 'todoMdViewerCheckRow';
+            if (tok.checked) row.classList.add('todoMdViewerCheckRow--done');
+            if (tok.indent > 0) row.style.paddingLeft = (12 + tok.indent * 4) + 'px';
+            const box = document.createElement('span');
+            box.className = 'todoMdViewerCheckBox';
+            box.setAttribute('aria-hidden', 'true');
+            box.textContent = tok.checked ? '✓' : '';
+            const label = document.createElement('span');
+            label.className = 'todoMdViewerCheckText';
+            label.textContent = tok.text;
+            row.appendChild(box);
+            row.appendChild(label);
+            wrap.appendChild(row);
+            return;
+        }
+        const line = document.createElement('div');
+        line.className = 'todoMdViewerTextLine';
+        if (tok.text === '') line.classList.add('todoMdViewerTextLine--blank');
+        line.textContent = tok.text;
+        wrap.appendChild(line);
+    });
+    return wrap;
+}
+
+function buildViewerRawBody(text) {
+    const pre = document.createElement('pre');
+    pre.className = 'todoMdViewerRaw';
+    pre.textContent = typeof text === 'string' ? text : '';
+    return pre;
+}
+
+function placeViewerCard(card, mainListDiv) {
+    const spacer = mainListDiv.querySelector('#projectsGhostSpacer');
+    if (spacer && spacer.parentNode === mainListDiv) {
+        if (card.nextSibling !== spacer) mainListDiv.insertBefore(card, spacer);
+    } else if (card.parentNode !== mainListDiv) {
+        mainListDiv.appendChild(card);
+    }
+}
+
+function buildTodoMdViewerCard(projectName, target) {
+    const card = document.createElement('div');
+    card.id = 'todoMdViewerCard';
+    card.className = 'todoMdViewerCard';
+    card.dataset.projectName = projectName;
+
+    const header = document.createElement('div');
+    header.className = 'todoMdViewerHeader';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'todoMdViewerTabs';
+    tabs.setAttribute('role', 'tablist');
+
+    const renderedTab = document.createElement('button');
+    renderedTab.type = 'button';
+    renderedTab.className = 'todoMdViewerTab';
+    renderedTab.dataset.tab = 'rendered';
+    renderedTab.setAttribute('role', 'tab');
+    renderedTab.textContent = 'Rendered';
+
+    const rawTab = document.createElement('button');
+    rawTab.type = 'button';
+    rawTab.className = 'todoMdViewerTab';
+    rawTab.dataset.tab = 'raw';
+    rawTab.setAttribute('role', 'tab');
+    rawTab.textContent = 'Raw markdown';
+
+    tabs.appendChild(renderedTab);
+    tabs.appendChild(rawTab);
+
+    const meta = document.createElement('div');
+    meta.className = 'todoMdViewerMeta';
+
+    const repoLabel = document.createElement('span');
+    repoLabel.className = 'todoMdViewerRepo';
+    repoLabel.textContent = target.repo + ' · ' + target.file_path;
+    repoLabel.title = repoLabel.textContent;
+
+    const syncedLabel = document.createElement('span');
+    syncedLabel.className = 'todoMdViewerSynced';
+    syncedLabel.setAttribute('aria-live', 'polite');
+    syncedLabel.textContent = formatViewerSyncedAgo(readViewerLastFetch(projectName));
+
+    const syncBtn = document.createElement('button');
+    syncBtn.type = 'button';
+    syncBtn.className = 'todoMdViewerSyncBtn';
+    syncBtn.setAttribute('aria-label', 'Sync TODO.md');
+    syncBtn.textContent = 'Sync';
+
+    meta.appendChild(repoLabel);
+    meta.appendChild(syncedLabel);
+    meta.appendChild(syncBtn);
+
+    header.appendChild(tabs);
+    header.appendChild(meta);
+
+    const body = document.createElement('div');
+    body.className = 'todoMdViewerBody';
+    body.dataset.state = 'loading';
+    const loadingNote = document.createElement('div');
+    loadingNote.className = 'todoMdViewerNote';
+    loadingNote.textContent = 'Loading…';
+    body.appendChild(loadingNote);
+
+    card.appendChild(header);
+    card.appendChild(body);
+
+    function applyTab(tab) {
+        viewerActiveTab = tab === 'raw' ? 'raw' : 'rendered';
+        renderedTab.classList.toggle('is-active', viewerActiveTab === 'rendered');
+        renderedTab.setAttribute('aria-selected', viewerActiveTab === 'rendered' ? 'true' : 'false');
+        rawTab.classList.toggle('is-active', viewerActiveTab === 'raw');
+        rawTab.setAttribute('aria-selected', viewerActiveTab === 'raw' ? 'true' : 'false');
+        const text = card.dataset.content || '';
+        if (card.dataset.state !== 'ready') return;
+        body.innerHTML = '';
+        body.appendChild(
+            viewerActiveTab === 'raw'
+                ? buildViewerRawBody(text)
+                : buildViewerRenderedBody(text)
+        );
+    }
+
+    renderedTab.addEventListener('click', function() { applyTab('rendered'); });
+    rawTab.addEventListener('click', function() { applyTab('raw'); });
+    applyTab(viewerActiveTab);
+
+    function renderError(reason) {
+        card.dataset.state = 'error';
+        body.dataset.state = 'error';
+        body.innerHTML = '';
+        const err = document.createElement('div');
+        err.className = 'todoMdViewerError';
+        err.textContent = 'Couldn’t load TODO.md — ' + (reason || 'unknown error');
+        body.appendChild(err);
+    }
+
+    function renderContent(content) {
+        card.dataset.state = 'ready';
+        card.dataset.content = content;
+        body.dataset.state = 'ready';
+        body.innerHTML = '';
+        body.appendChild(
+            viewerActiveTab === 'raw'
+                ? buildViewerRawBody(content)
+                : buildViewerRenderedBody(content)
+        );
+    }
+
+    async function runSync() {
+        if (syncBtn.disabled) return;
+        syncBtn.disabled = true;
+        syncBtn.classList.add('todoMdViewerSyncBtn--loading');
+        try {
+            const res = await readTodoMdFromWorker(target);
+            if (res.ok) {
+                writeViewerLastFetch(projectName, Date.now());
+                syncedLabel.textContent = formatViewerSyncedAgo(Date.now());
+                renderContent(res.content);
+            } else {
+                renderError(res.reason || 'fetch failed');
+            }
+        } finally {
+            syncBtn.disabled = false;
+            syncBtn.classList.remove('todoMdViewerSyncBtn--loading');
+        }
+    }
+
+    syncBtn.addEventListener('click', runSync);
+
+    // Kick off the initial fetch — the card mounts with the cached
+    // timestamp in the header and a "Loading…" body, then the body fills
+    // in (or flips to an inline error) when the Worker responds.
+    runSync();
+
+    return card;
+}
+
+function activeProjectNameForViewer() {
+    const selected = document.querySelector('.selectedProject');
+    if (!selected) return '';
+    const projInput = selected.querySelector('#projInput');
+    return projInput ? (projInput.value || '').trim() : '';
+}
+
+function updateTodoMdViewerCard() {
+    const mainListDiv = document.getElementById('mainList');
+    if (!mainListDiv) return;
+
+    const projectName = activeProjectNameForViewer();
+    const existing = mainListDiv.querySelector('#todoMdViewerCard');
+
+    if (!projectName) {
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        viewerActiveProject = null;
+        return;
+    }
+
+    const targetId = listLogic.getProjectTargetId(projectName);
+    const target = targetId ? findTargetById(targetId) : null;
+
+    if (!target) {
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        viewerActiveProject = null;
+        return;
+    }
+
+    if (existing && existing.dataset.projectName === projectName) {
+        placeViewerCard(existing, mainListDiv);
+        return;
+    }
+
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    const card = buildTodoMdViewerCard(projectName, target);
+    placeViewerCard(card, mainListDiv);
+    viewerActiveProject = projectName;
+}
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__todoMdViewerListenerRegistered) {
+    window.__todoMdViewerListenerRegistered = true;
+    document.addEventListener('mainListRendered', function() {
+        try { updateTodoMdViewerCard(); }
+        catch (e) { console.warn('[mainListRendered] viewer update failed:', e); }
+    });
 }
 
 

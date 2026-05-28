@@ -154,6 +154,34 @@ async function injectDescription(item, target) {
     }
 }
 
+// Read a file from the configured Worker. Mirrors postToWorker's wiring
+// (same URL, same Bearer secret, same `Content-Type: application/json`)
+// but sends `{ read: true, repo, filePath }` so the Worker fetches the
+// file through GitHub and echoes its contents back. Returns
+// `{ ok: true, content, sha }` on success, or `{ ok: false, reason }`
+// on any failure. Used by the read-only TODO.md viewer card in main.js;
+// callers pass the resolved inject_targets row so the repo/filePath
+// match the project's routing.
+export async function readTodoMdFromWorker(target) {
+    if (!target || !target.repo || !target.file_path) {
+        return { ok: false, reason: 'No target' };
+    }
+    try {
+        const res = await postToWorker({
+            read: true,
+            repo: target.repo,
+            filePath: target.file_path,
+        });
+        if (!res || typeof res.content !== 'string') {
+            return { ok: false, reason: 'Empty response' };
+        }
+        return { ok: true, content: res.content, sha: res.sha };
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Test connection sends `{ test: true }` plus repo/filePath when at least
 // one target is defined — the Worker exercises the same route a real
 // inject would take. With no targets defined, the request omits repo/
@@ -364,6 +392,14 @@ function refreshAllInjectButtons() {
         const item = btn._injectItem;
         if (item) refreshInjectButton(btn, item);
     });
+    // Inject-cache state changed (targets loaded, routing toggled,
+    // config saved/cleared) — give the read-only TODO.md viewer card
+    // in main.js a chance to re-evaluate against the new state. Reusing
+    // the existing mainListRendered event keeps the viewer's wiring to
+    // a single listener.
+    try {
+        document.dispatchEvent(new CustomEvent('mainListRendered'));
+    } catch (e) { /* defensive */ }
 }
 
 

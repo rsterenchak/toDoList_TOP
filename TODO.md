@@ -71,7 +71,7 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTaskInteractions.test.js`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Add read-only TODO.md viewer card below the Completed section
+- [x] **[MEDIUM]** Add read-only TODO.md viewer card below the Completed section
   - Type: feature
   - Description: For projects that have an inject target assigned (via the Configure Inject modal's project routing), render a card in the empty space below the "Completed (N)" section that displays the current contents of that project's mapped TODO.md, fetched live from the todo-injector-worker. The card has a tabbed header — "Rendered" (parsed checklist view) and "Raw markdown" (monospace plaintext, preserving the file's newlines) — a "synced Xd ago" timestamp reflecting the last successful viewer fetch, and a "Sync" button that re-fetches on demand. View-only for now (no write-back / editing). Match the dark "Void" aesthetic: near-black card surface, `#1e1e2a` borders, `#6C5DF5`/`#9D93EE` purple accents, active tab underlined in `#6C5DF5`, Trebuchet MS body / monospace for the raw tab. The card mirrors the Completed section's placement and only appears when the selected project routes to a target — hide entirely for None-routed projects (Notes, Idea dump, Work/Study).
   - Behavior:
@@ -96,4 +96,4 @@
     - Timestamp persists across reloads and reflects last read, not last write.
   - Out of scope: editing/writing TODO.md from the viewer, syntax highlighting beyond the priority-tag accent, auto-refresh polling, viewing MEDO.md (TODO.md only for now).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
