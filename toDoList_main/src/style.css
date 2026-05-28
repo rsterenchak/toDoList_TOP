@@ -4949,6 +4949,17 @@ body.row-dragging * { cursor: grabbing !important; }
   #drawerSettingsBtn,
   #drawerFooter { display: none; }
   #mobileCreateChips { display: none; }
+
+  /* Cap a long description so it doesn't push the row's height into the
+     todos below it. The JS auto-grow handler keeps writing scrollHeight
+     into descInput.style.height; this max-height clamps the rendered
+     height while overflow-y: auto reveals a scrollbar for the rest of
+     the text. Mobile uses its own full-screen desc-editor modal so the
+     cap stays desktop-only. */
+  #descInput {
+    max-height: 200px;
+    overflow-y: auto;
+  }
 }
 
 /* ══════════════════════════════════════════
