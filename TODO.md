@@ -46,7 +46,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[HIGH]** Fix the failing settingsDropdown test that blocks the full suite
+- [x] **[HIGH]** Fix the failing settingsDropdown test that blocks the full suite
   - Type: bug
   - Description: `tests/settingsDropdown.test.js` has a failing assertion at line 53 in the test "renders a ghost glyph (not a kebab) inside the trigger". The test asserts the settings trigger's `innerHTML` is set to markup containing `ghostIcon` AND does NOT contain a `<circle` (the old kebab three-circle SVG). The full suite (`npm run test:run`) fails on this, which blocks every routine PR from opening since a green suite is required. This test is unrelated to recent viewer/run-button work — it covers the nav settings dropdown's ghost-glyph trigger — so it needs its own fix.
   - Behavior:
@@ -63,4 +63,4 @@
     - Prefer the smallest change that makes the suite green without loosening what the test actually guards. If the source is correct, fixing the test's regex scoping is the right call; if the source regressed, fix the source.
   - Out of scope: any change to the settings dropdown's behavior, items, or styling beyond what's needed to make the trigger emit the ghost glyph without a kebab `<circle`. Adding new settings-dropdown tests beyond fixing the failing one.
   - File: `toDoList_main/tests/settingsDropdown.test.js`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
