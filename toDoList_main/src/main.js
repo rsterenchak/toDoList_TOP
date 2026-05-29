@@ -89,6 +89,8 @@ import {
     showInjectSettingsModal,
     findTargetById,
     readTodoMdFromWorker,
+    dispatchRun,
+    showInjectToast,
 } from './inject.js';
 import button from './addProj_button.svg';
 
@@ -5715,6 +5717,17 @@ function buildTodoMdViewerCard(projectName, target) {
     syncedLabel.setAttribute('aria-live', 'polite');
     syncedLabel.textContent = formatViewerSyncedAgo(readViewerLastFetch(projectName));
 
+    const runBacklogBtn = document.createElement('button');
+    runBacklogBtn.type = 'button';
+    runBacklogBtn.className = 'todoMdViewerRunBtn';
+    runBacklogBtn.setAttribute('aria-label', 'Run backlog automation');
+    runBacklogBtn.title = 'Trigger the automation routine in backlog mode';
+    runBacklogBtn.innerHTML =
+        '<svg class="todoMdViewerRunIcon" viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true">' +
+        '<polygon points="6 4 20 12 6 20"/>' +
+        '</svg>' +
+        '<span class="todoMdViewerRunLabel">Run backlog</span>';
+
     const syncBtn = document.createElement('button');
     syncBtn.type = 'button';
     syncBtn.className = 'todoMdViewerSyncBtn';
@@ -5741,6 +5754,7 @@ function buildTodoMdViewerCard(projectName, target) {
         '</svg>';
 
     meta.appendChild(syncedLabel);
+    meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
     meta.appendChild(expandBtn);
 
@@ -5820,6 +5834,33 @@ function buildTodoMdViewerCard(projectName, target) {
     }
 
     syncBtn.addEventListener('click', runSync);
+
+    async function runBacklog() {
+        if (runBacklogBtn.disabled) return;
+        runBacklogBtn.disabled = true;
+        runBacklogBtn.classList.add('todoMdViewerRunBtn--loading');
+        try {
+            const correlationId =
+                (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                    ? crypto.randomUUID()
+                    : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+            const res = await dispatchRun({
+                mode: 'backlog',
+                correlationId: correlationId,
+                target: target,
+            });
+            if (res.ok) {
+                showInjectToast('Backlog run dispatched');
+            } else {
+                showInjectToast('Run failed — ' + (res.reason || 'unknown error'), 'error');
+            }
+        } finally {
+            runBacklogBtn.disabled = false;
+            runBacklogBtn.classList.remove('todoMdViewerRunBtn--loading');
+        }
+    }
+
+    runBacklogBtn.addEventListener('click', runBacklog);
 
     function applyExpandedHeight() {
         if (!card.classList.contains('todoMdViewerCard--expanded')) {

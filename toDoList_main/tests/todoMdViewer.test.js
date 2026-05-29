@@ -260,6 +260,82 @@ describe('todo.md viewer — expand/collapse toggle', () => {
     });
 });
 
+describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
+
+    const inject = read('inject.js');
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('exports dispatchRun from inject.js', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+dispatchRun\s*\(/);
+    });
+
+    it('dispatchRun POSTs `{ dispatch: true, mode, entry_id, correlation_id, repo, filePath }` through postToWorker', () => {
+        // Reuses the same Worker URL + Bearer secret path as inject/read —
+        // the client never calls GitHub directly or holds a token.
+        expect(inject).toMatch(
+            /postToWorker\s*\(\s*\{[\s\S]{0,260}dispatch:\s*true[\s\S]{0,260}mode:\s*opts\.mode[\s\S]{0,260}entry_id:[\s\S]{0,260}correlation_id:\s*opts\.correlationId/
+        );
+    });
+
+    it('dispatchRun funnels failures through describeError like the other helpers', () => {
+        expect(inject).toMatch(/dispatchRun[\s\S]{0,600}catch[\s\S]{0,80}describeError/);
+    });
+
+    it('main.js imports dispatchRun and showInjectToast from inject.js', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\bdispatchRun\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\bshowInjectToast\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+    });
+
+    it('builds a Run backlog button with the todoMdViewerRunBtn class and a play-glyph label', () => {
+        expect(main).toMatch(/runBacklogBtn\.className\s*=\s*['"]todoMdViewerRunBtn['"]/);
+        expect(main).toMatch(/Run backlog/);
+    });
+
+    it('places the Run backlog button immediately left of the Sync button in the meta row', () => {
+        // Acceptance: button sits to the left of Sync.
+        const runIdx = main.indexOf('meta.appendChild(runBacklogBtn);');
+        const syncIdx = main.indexOf('meta.appendChild(syncBtn);');
+        expect(runIdx).toBeGreaterThan(-1);
+        expect(syncIdx).toBeGreaterThan(runIdx);
+    });
+
+    it('dispatches a backlog run on click with a fresh correlation id', () => {
+        expect(main).toMatch(/runBacklogBtn\.addEventListener\s*\(\s*['"]click['"]\s*,\s*runBacklog\s*\)/);
+        expect(main).toMatch(/mode:\s*['"]backlog['"]/);
+        expect(main).toMatch(/crypto\.randomUUID\s*\(\s*\)/);
+    });
+
+    it('disables the button while a dispatch is in flight to block double-clicks', () => {
+        const start = main.indexOf('async function runBacklog');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1200);
+        expect(block).toMatch(/runBacklogBtn\.disabled\s*=\s*true/);
+        expect(block).toMatch(/todoMdViewerRunBtn--loading/);
+        expect(block).toMatch(/finally[\s\S]{0,160}runBacklogBtn\.disabled\s*=\s*false/);
+    });
+
+    it('shows a transient confirmation on success and an error variant on failure', () => {
+        const start = main.indexOf('async function runBacklog');
+        const block = main.slice(start, start + 1200);
+        expect(block).toMatch(/showInjectToast\([^)]*dispatched/i);
+        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+    });
+
+    it('styles the Run backlog button to match the spec (#161622 fill, #2a2a38 border, #9D93EE text)', () => {
+        const ruleMatch = css.match(/\.todoMdViewerRunBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/background:\s*#161622/);
+        expect(rule).toMatch(/border:[^;]*#2a2a38/);
+        expect(rule).toMatch(/color:\s*#9D93EE/);
+    });
+});
+
 describe('todo.md viewer — style.css', () => {
 
     const css = read('style.css');

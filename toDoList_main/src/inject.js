@@ -78,7 +78,7 @@ function writeLastTest(result, nickname) {
 // ── TOAST ──
 // Self-contained mirror of the jsonImportExport.js pattern. A single toast
 // node is reused — any prior one is yanked before the new one appears.
-function showInjectToast(message, variant) {
+export function showInjectToast(message, variant) {
     const prior = document.getElementById('injectToast');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
@@ -176,6 +176,35 @@ export async function readTodoMdFromWorker(target) {
             return { ok: false, reason: 'Empty response' };
         }
         return { ok: true, content: res.content, sha: res.sha };
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
+// Dispatch a Claude Code automation run through the same Worker the inject
+// and read flows already use (same URL, same Bearer secret). Sends
+// `{ dispatch: true, mode, entry_id, correlation_id, repo, filePath }` so the
+// Worker triggers the routine in the requested mode. `backlog` mode lets the
+// routine pick the next eligible task; `entry` mode targets a specific TODO.md
+// entry by id. The Worker's dispatch branch returns `{ ok: true, dispatched:
+// true, ... }` on success — that whole payload is spread onto the result so
+// callers can surface an Actions-run link when the Worker provides one.
+// Returns `{ ok: false, reason }` via describeError on any failure, matching
+// the inject button's error vocabulary.
+export async function dispatchRun(options) {
+    const opts = options || {};
+    const target = opts.target || null;
+    try {
+        const res = await postToWorker({
+            dispatch: true,
+            mode: opts.mode,
+            entry_id: opts.entryId || '',
+            correlation_id: opts.correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
     } catch (e) {
         return { ok: false, reason: describeError(e) };
     }
