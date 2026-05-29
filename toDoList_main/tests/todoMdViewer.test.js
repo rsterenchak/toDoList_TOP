@@ -336,6 +336,144 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
     });
 });
 
+describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
+
+    const inject = read('inject.js');
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('exports pollRunStatus from inject.js', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+pollRunStatus\s*\(/);
+    });
+
+    it('pollRunStatus POSTs `{ status: true, correlation_id, repo, filePath }` through postToWorker', () => {
+        // Reuses the same Worker URL + Bearer secret path as dispatch/read —
+        // the client never calls GitHub directly or holds a token.
+        expect(inject).toMatch(
+            /postToWorker\s*\(\s*\{[\s\S]{0,200}status:\s*true[\s\S]{0,200}correlation_id:\s*opts\.correlationId[\s\S]{0,200}repo:[\s\S]{0,200}filePath:/
+        );
+    });
+
+    it('pollRunStatus funnels failures through describeError like the other helpers', () => {
+        expect(inject).toMatch(/pollRunStatus[\s\S]{0,800}catch[\s\S]{0,80}describeError/);
+    });
+
+    it('main.js imports pollRunStatus from inject.js', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\bpollRunStatus\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+    });
+
+    it('swaps the Run backlog button for a status pill only on a successful dispatch', () => {
+        // The dispatch handler records the correlation id only when the
+        // Worker accepts the run, then starts the pill in its finally block.
+        expect(main).toMatch(/dispatchedId\s*=\s*correlationId/);
+        expect(main).toMatch(/if\s*\(\s*dispatchedId\s*\)\s*startRunPill\s*\(\s*dispatchedId\s*\)/);
+    });
+
+    it('mounts the pill in place of the button, swapping it into the meta slot', () => {
+        expect(main).toMatch(/runPill\.className\s*=\s*['"]todoMdViewerRunPill['"]/);
+        expect(main).toMatch(/runBacklogBtn\.parentNode\.replaceChild\s*\(\s*runPill\s*,\s*runBacklogBtn\s*\)/);
+    });
+
+    it('polls the Worker every 5 seconds via pollRunStatus', () => {
+        expect(main).toMatch(/RUN_POLL_INTERVAL_MS\s*=\s*5000/);
+        expect(main).toMatch(/viewerRunPollInterval\s*=\s*setInterval\(/);
+        expect(main).toMatch(/setInterval\([\s\S]{0,160}RUN_POLL_INTERVAL_MS\s*\)/);
+        expect(main).toMatch(/pollRunStatus\s*\(\s*\{\s*correlationId:/);
+    });
+
+    it('starts in a label-only "Starting…" state for the post-dispatch race window', () => {
+        const start = main.indexOf('function startRunPill');
+        const block = main.slice(start, start + 1200);
+        expect(block).toMatch(/state:\s*['"]starting['"][\s\S]{0,80}label:\s*['"]Starting…['"][\s\S]{0,40}spinner:\s*true/);
+    });
+
+    it('maps Worker status responses to the documented pill states', () => {
+        const start = main.indexOf('async function pollRunOnce');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1400);
+        // found:false keeps the race-window "Starting…" state.
+        expect(block).toMatch(/res\.found\s*===\s*false[\s\S]{0,160}Starting…/);
+        // completed + success → success pill; any other conclusion → failure.
+        expect(block).toMatch(/res\.conclusion\s*===\s*['"]success['"]\s*\)\s*showRunSuccess\(\)/);
+        expect(block).toMatch(/else\s+showRunFailure\(/);
+        // queued vs in-progress.
+        expect(block).toMatch(/res\.status\s*===\s*['"]queued['"][\s\S]{0,120}Queued/);
+        expect(block).toMatch(/Running…/);
+    });
+
+    it('auto-dismisses the success pill after ~5s, restoring the button', () => {
+        const start = main.indexOf('function showRunSuccess');
+        const block = main.slice(start, start + 700);
+        expect(block).toMatch(/state:\s*['"]success['"]/);
+        expect(block).toMatch(/setTimeout\([\s\S]{0,260}restoreRunButton\(\)[\s\S]{0,120}5000\s*\)/);
+    });
+
+    it('persists the failure pill with an Actions link and tap-to-dismiss', () => {
+        const start = main.indexOf('function showRunFailure');
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/state:\s*['"]failure['"]/);
+        expect(block).toMatch(/dismissible:\s*true/);
+        // Tap anywhere but the link dismisses; the link opens Actions.
+        expect(main).toMatch(/if\s*\(\s*event\.target\.closest\(\s*['"]a['"]\s*\)\s*\)\s*return/);
+        expect(main).toMatch(/dataset\.dismissible\s*===\s*['"]1['"]\s*\)\s*restoreRunButton\(\)/);
+    });
+
+    it('gives up after 10 minutes with a neutral "still running" state, not a failure', () => {
+        expect(main).toMatch(/RUN_GIVE_UP_MS\s*=\s*10\s*\*\s*60\s*\*\s*1000/);
+        const start = main.indexOf('function showRunTimeout');
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/state:\s*['"]timeout['"]/);
+        expect(block).toMatch(/check Actions/);
+    });
+
+    it('clears the poll interval when the viewer card is torn down', () => {
+        expect(main).toMatch(/function stopViewerRunPoll[\s\S]{0,160}clearInterval\(\s*viewerRunPollInterval\s*\)/);
+        expect(main).toMatch(/function detachViewerResizeHandler[\s\S]{0,400}stopViewerRunPoll\(\)/);
+    });
+
+    it('never renders the correlation id — the pill label is driven only by static state text', () => {
+        // The correlation_id is internal plumbing for the dispatch/status
+        // calls; the pill label always comes from opts.label, and the id is
+        // only ever passed to dispatchRun / pollRunStatus / startRunPill.
+        expect(main).toMatch(/\.textContent\s*=\s*opts\.label/);
+        expect(main).not.toMatch(/textContent\s*=\s*correlationId/);
+        expect(main).not.toMatch(/innerHTML\s*=\s*[^;]*correlationId/);
+    });
+
+    it('styles the in-flight pill quiet (muted) and only colors the terminal states', () => {
+        const baseMatch = css.match(/\.todoMdViewerRunPill\s*\{[^}]*\}/);
+        expect(baseMatch).not.toBeNull();
+        const base = baseMatch[0];
+        expect(base).toMatch(/background:\s*#161622/);
+        expect(base).toMatch(/border:[^;]*#2a2a38/);
+        expect(base).toMatch(/color:\s*#8a8699/);
+
+        const success = css.match(/\.todoMdViewerRunPill--success\s*\{[^}]*\}/);
+        expect(success).not.toBeNull();
+        expect(success[0]).toMatch(/#0f2a20/);
+        expect(success[0]).toMatch(/#1d6e56/);
+        expect(success[0]).toMatch(/#5dcaa5/);
+
+        const failure = css.match(/\.todoMdViewerRunPill--failure\s*\{[^}]*\}/);
+        expect(failure).not.toBeNull();
+        expect(failure[0]).toMatch(/#2a1414/);
+        expect(failure[0]).toMatch(/#a32d2d/);
+        expect(failure[0]).toMatch(/#f09595/);
+
+        const timeout = css.match(/\.todoMdViewerRunPill--timeout\s*\{[^}]*\}/);
+        expect(timeout).not.toBeNull();
+        expect(timeout[0]).toMatch(/#444441/);
+        expect(timeout[0]).toMatch(/#888780/);
+
+        const spinner = css.match(/\.todoMdViewerRunPillSpinner\s*\{[^}]*\}/);
+        expect(spinner).not.toBeNull();
+        expect(spinner[0]).toMatch(/#534AB7/);
+        expect(spinner[0]).toMatch(/#cdc9ee/);
+    });
+});
+
 describe('todo.md viewer — style.css', () => {
 
     const css = read('style.css');
