@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-29',
         added: [
-            "After a backlog run is dispatched, the TODO.md viewer header shows a live status pill that tracks the run from queued to done, turning green on success or red with a link to the run on failure.",
             "Each task in the TODO.md viewer now has a Run this entry button that dispatches the automation routine for just that entry.",
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         fixed: [
             "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
             "The TODO.md viewer's run-status pill now survives switching projects and reloading the page, re-attaching to an in-progress run instead of losing track of it.",
+            "The TODO.md viewer now opens full-screen on mobile instead of as a partial bottom sheet, so the underlying page no longer peeks through behind it.",
         ],
     },
 ];
