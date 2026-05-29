@@ -175,9 +175,9 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
         expect(toDoRow).toMatch(/attachMobileCreateChips\(toDoChild,\s*item\)/);
     });
 
-    it('applies the chosen date inside the title-commit handler before the today+7 fallback', () => {
+    it('applies the chosen date inside the title-commit handler before the default fallback', () => {
         // The chip-stamp must happen before the default-fallback math so
-        // a chip-chosen Today/Tomorrow lands instead of today+7. Anchor
+        // a chip-chosen Today/Tomorrow lands instead of the default. Anchor
         // on the fallback CALL inside the commit handler (the `const
         // fallback = defaultDueParts();` line), not the top-of-file
         // function declaration.
@@ -189,8 +189,14 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
     });
 
     it('only applies the chip stamp at the ≤700px breakpoint', () => {
-        // The chip flow is mobile-specific; desktop keeps today+7.
+        // The chip flow is mobile-specific; desktop relies on the default fallback.
         expect(toDoRow).toMatch(/window\.innerWidth\s*<=\s*700[\s\S]*?applyChosenDueToItem/);
+    });
+
+    it('defaults an untouched new task to today (offset 0) so desktop matches mobile', () => {
+        // Regression: desktop previously stamped today + 7 on commit-without-date,
+        // diverging from mobile's today default. The commit fallback offset must be 0.
+        expect(toDoRow).toMatch(/const\s+DEFAULT_DUE_OFFSET_DAYS\s*=\s*0\s*;/);
     });
 
     it('marks chaining active on every mobile commit', () => {
