@@ -28,8 +28,8 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
   - Completed: 2026-05-28
 
-- [ ] **[MEDIUM]** Auto-collapse completed section and open descriptions to prevent overlap
+- [x] **[MEDIUM]** Auto-collapse completed section and open descriptions to prevent overlap
   - Type: bug
   - Description: When the COMPLETED section is expanded and a todo's description is also open, the two regions still collide and overlap onto each other's rows (the prior reflow attempt didn't resolve it — the description panel renders over the rows below instead of pushing them down). Switch to a mutually exclusive behavior: opening any todo description collapses the COMPLETED section if it's open, and expanding the COMPLETED section collapses any currently open todo descriptions. Only one of {any open description, the COMPLETED section} can be expanded at a time, so they can never visually collide. Wire the cross-toggle in `main.js` — when the description-toggle handler fires open, call the same collapse path the COMPLETED chevron uses (and vice versa); reuse the existing animation/state rather than introducing a new "exclusive accordion" abstraction. The EXPAND ALL control should still expand everything (it's an explicit user override) — only single-row toggles trigger the auto-collapse. `main.js` is over 25k tokens, so grep for the description-toggle and COMPLETED-toggle handlers with offset/limit rather than reading the file in full.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-28
