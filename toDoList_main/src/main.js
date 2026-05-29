@@ -5540,6 +5540,10 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
 // change the active project).
 const VIEWER_LASTFETCH_PREFIX = 'todoapp_todomd_lastfetch_';
 const VIEWER_EXPANDED_PREFIX = 'todoapp_todomd_expanded_';
+// Single-slot record for the one in-flight automation run the pill tracks.
+// It survives project navigation and full reloads so the pill can re-attach
+// and resume polling on the project the run was launched from.
+const ACTIVE_RUN_KEY = 'todoapp_activeRun';
 let viewerActiveTab = 'rendered';
 let viewerActiveProject = null;
 let viewerResizeHandler = null;
@@ -5576,6 +5580,28 @@ function readViewerExpanded(projectName) {
 function writeViewerExpanded(projectName, expanded) {
     try {
         localStorage.setItem(viewerExpandedKey(projectName), expanded ? '1' : '0');
+    } catch (e) { /* private mode */ }
+}
+
+function readActiveRun() {
+    try {
+        const raw = localStorage.getItem(ACTIVE_RUN_KEY);
+        if (!raw) return null;
+        const rec = JSON.parse(raw);
+        if (!rec || typeof rec.correlationId !== 'string' || !rec.correlationId) return null;
+        return rec;
+    } catch (e) { return null; }
+}
+
+function writeActiveRun(rec) {
+    try {
+        localStorage.setItem(ACTIVE_RUN_KEY, JSON.stringify(rec));
+    } catch (e) { /* private mode */ }
+}
+
+function clearActiveRun() {
+    try {
+        localStorage.removeItem(ACTIVE_RUN_KEY);
     } catch (e) { /* private mode */ }
 }
 
@@ -5919,6 +5945,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function showRunSuccess() {
         stopViewerRunPoll();
+        clearActiveRun();
         renderRunPill({ state: 'success', label: 'Done', glyph: runPillCheckGlyph });
         const successPill = runPill;
         // Auto-dismiss ~5s after success, restoring the Run backlog button —
@@ -5934,6 +5961,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function showRunFailure(url) {
         stopViewerRunPoll();
+        clearActiveRun();
         renderRunPill({
             state: 'failure',
             label: 'Failed',
@@ -5945,6 +5973,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function showRunTimeout() {
         stopViewerRunPoll();
+        clearActiveRun();
         renderRunPill({
             state: 'timeout',
             label: 'Still running? — check Actions',
@@ -6007,10 +6036,18 @@ function buildTodoMdViewerCard(projectName, target) {
             meta.insertBefore(runPill, syncBtn);
         }
         renderRunPill({ state: 'starting', label: 'Starting…', spinner: true });
-        const startedAt = Date.now();
+        // Give-up is measured against the PERSISTED dispatch timestamp, so a
+        // reload or project switch mid-run does not reset the 10-minute clock.
+        // Falls back to now for the rare case the record is missing.
+        const rec = readActiveRun();
+        const startedAt = (rec && typeof rec.dispatchedAt === 'number') ? rec.dispatchedAt : Date.now();
         viewerRunPollInterval = setInterval(function() {
             pollRunOnce(correlationId, startedAt);
         }, RUN_POLL_INTERVAL_MS);
+        // Poll once immediately so a re-attached run that already finished
+        // lands straight on its terminal state instead of waiting a full
+        // interval (and never flashing "running" first).
+        pollRunOnce(correlationId, startedAt);
     }
 
     async function runBacklog() {
@@ -6030,6 +6067,14 @@ function buildTodoMdViewerCard(projectName, target) {
             });
             if (res.ok) {
                 dispatchedId = correlationId;
+                // Persist the run so the pill can re-attach after a project
+                // switch or full reload (single slot, overwritten each dispatch).
+                writeActiveRun({
+                    correlationId: correlationId,
+                    project: projectName,
+                    target: target ? { repo: target.repo, file_path: target.file_path } : null,
+                    dispatchedAt: Date.now(),
+                });
                 showInjectToast('Backlog run dispatched');
             } else {
                 showInjectToast('Run failed — ' + (res.reason || 'unknown error'), 'error');
@@ -6109,6 +6154,19 @@ function buildTodoMdViewerCard(projectName, target) {
         }
     };
     window.addEventListener('resize', viewerResizeHandler);
+
+    // Re-attach an in-flight run's pill if one was launched from THIS
+    // project and hasn't resolved yet. This fires on every card mount —
+    // both project switches and a full page reload — so the run's tracking
+    // survives navigation. Runs launched from other projects stay hidden
+    // (the pill only re-appears on its launching project). startRunPill
+    // reads the persisted dispatch timestamp for the give-up clock and polls
+    // once immediately, so an already-finished run lands on its terminal
+    // state without flashing "running".
+    const activeRun = readActiveRun();
+    if (activeRun && activeRun.project === projectName) {
+        startRunPill(activeRun.correlationId);
+    }
 
     // Kick off the initial fetch — the card mounts with the cached
     // timestamp in the header and a "Loading…" body, then the body fills

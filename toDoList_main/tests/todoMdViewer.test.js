@@ -313,7 +313,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
     it('disables the button while a dispatch is in flight to block double-clicks', () => {
         const start = main.indexOf('async function runBacklog');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 1200);
+        const block = main.slice(start, start + 2000);
         expect(block).toMatch(/runBacklogBtn\.disabled\s*=\s*true/);
         expect(block).toMatch(/todoMdViewerRunBtn--loading/);
         expect(block).toMatch(/finally[\s\S]{0,160}runBacklogBtn\.disabled\s*=\s*false/);
@@ -321,7 +321,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
 
     it('shows a transient confirmation on success and an error variant on failure', () => {
         const start = main.indexOf('async function runBacklog');
-        const block = main.slice(start, start + 1200);
+        const block = main.slice(start, start + 2000);
         expect(block).toMatch(/showInjectToast\([^)]*dispatched/i);
         expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
     });
@@ -471,6 +471,72 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
         expect(spinner).not.toBeNull();
         expect(spinner[0]).toMatch(/#534AB7/);
         expect(spinner[0]).toMatch(/#cdc9ee/);
+    });
+});
+
+describe('todo.md viewer — run-status pill persistence across navigation/reload', () => {
+
+    const main = read('main.js');
+
+    it('stores the active run in a single localStorage slot under the todoapp_ prefix', () => {
+        expect(main).toMatch(/ACTIVE_RUN_KEY\s*=\s*['"]todoapp_activeRun['"]/);
+    });
+
+    it('defines read/write/clear helpers for the active-run record', () => {
+        expect(main).toMatch(/function\s+readActiveRun\s*\(/);
+        expect(main).toMatch(/function\s+writeActiveRun\s*\(/);
+        expect(main).toMatch(/function\s+clearActiveRun\s*\(/);
+        // The record persists via localStorage keyed by ACTIVE_RUN_KEY.
+        expect(main).toMatch(/localStorage\.getItem\(\s*ACTIVE_RUN_KEY\s*\)/);
+        expect(main).toMatch(/localStorage\.setItem\(\s*ACTIVE_RUN_KEY\s*,/);
+        expect(main).toMatch(/localStorage\.removeItem\(\s*ACTIVE_RUN_KEY\s*\)/);
+    });
+
+    it('readActiveRun rejects records without a usable correlation id', () => {
+        const start = main.indexOf('function readActiveRun');
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/typeof\s+rec\.correlationId\s*!==\s*['"]string['"]/);
+    });
+
+    it('writes the record on a successful dispatch with project, target and dispatch timestamp', () => {
+        const start = main.indexOf('async function runBacklog');
+        const block = main.slice(start, start + 2000);
+        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
+        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}project:\s*projectName/);
+        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}dispatchedAt:\s*Date\.now\(\)/);
+    });
+
+    it('re-attaches the pill on mount only when the active run belongs to this project', () => {
+        // Fires on every card mount (project switch AND full page reload).
+        expect(main).toMatch(
+            /const\s+activeRun\s*=\s*readActiveRun\(\)[\s\S]{0,200}activeRun\.project\s*===\s*projectName[\s\S]{0,80}startRunPill\(\s*activeRun\.correlationId\s*\)/
+        );
+    });
+
+    it('computes the 10-minute give-up against the persisted dispatch timestamp, not the re-attach time', () => {
+        const start = main.indexOf('function startRunPill');
+        const block = main.slice(start, start + 1400);
+        // startedAt comes from the persisted record's dispatchedAt.
+        expect(block).toMatch(/readActiveRun\(\)/);
+        expect(block).toMatch(/rec\.dispatchedAt[\s\S]{0,60}rec\.dispatchedAt/);
+        expect(block).toMatch(/startedAt\s*=\s*\(rec[\s\S]{0,80}rec\.dispatchedAt/);
+    });
+
+    it('polls once immediately on (re)start so an already-finished run skips the running flash', () => {
+        const start = main.indexOf('function startRunPill');
+        const block = main.slice(start, start + 2200);
+        // An immediate poll exists in addition to the setInterval poll.
+        const polls = block.match(/pollRunOnce\(\s*correlationId\s*,\s*startedAt\s*\)/g) || [];
+        expect(polls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('clears the persisted record on every terminal outcome so a stale record cannot re-attach a finished run', () => {
+        for (const fn of ['showRunSuccess', 'showRunFailure', 'showRunTimeout']) {
+            const start = main.indexOf('function ' + fn);
+            expect(start).toBeGreaterThan(-1);
+            const block = main.slice(start, start + 500);
+            expect(block).toMatch(/clearActiveRun\(\)/);
+        }
     });
 });
 
