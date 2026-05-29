@@ -474,6 +474,90 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
     });
 });
 
+describe('todo.md viewer — per-entry "Run this entry" control', () => {
+
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('attaches a full-line marker id to the top-level entry it belongs to', () => {
+        const md = '- [ ] Task A\n  - Type: feature\n  <!-- id: abc-123 -->\n- [ ] Task B';
+        const tokens = parseTodoMdChecklist(md);
+        expect(tokens[0]).toMatchObject({ type: 'checkbox', indent: 0, text: 'Task A', id: 'abc-123' });
+        // Task B has no marker — no id, so no control will be offered for it.
+        expect(tokens[3]).toMatchObject({ type: 'checkbox', text: 'Task B' });
+        expect(tokens[3].id).toBeUndefined();
+    });
+
+    it('ignores a marker embedded in prose rather than on its own line', () => {
+        // This very TODO.md mentions `<!-- id: <ENTRY_ID> -->` inside its
+        // implementation notes; that must not resolve to a runnable id.
+        const md = '- [ ] Task A\n  - Description: the form is `<!-- id: NOPE -->` exactly\n- [ ] Task B';
+        const tokens = parseTodoMdChecklist(md);
+        expect(tokens[0].id).toBeUndefined();
+    });
+
+    it('does not leak an id across entry boundaries', () => {
+        const md = '- [ ] Task A\n- [ ] Task B\n  <!-- id: belongs-to-b -->';
+        const tokens = parseTodoMdChecklist(md);
+        expect(tokens[0].id).toBeUndefined();
+        expect(tokens[1].id).toBe('belongs-to-b');
+    });
+
+    it('renders the control only for an entry with a resolved id', () => {
+        // buildRunEntryButton is gated on `tok.indent === 0 && tok.id`.
+        expect(main).toMatch(/function\s+buildRunEntryButton\s*\(/);
+        expect(main).toMatch(/tok\.indent\s*===\s*0\s*&&\s*tok\.id\s*&&\s*runEntryCtx/);
+        expect(main).toMatch(/todoMdViewerRunEntryBtn/);
+        expect(main).toMatch(/Run this entry/);
+    });
+
+    it('dispatches an entry-mode run and starts the shared header pill', () => {
+        const start = main.indexOf('async function runEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1400);
+        expect(block).toMatch(/mode:\s*['"]entry['"]/);
+        expect(block).toMatch(/entryId:\s*entryId/);
+        expect(block).toMatch(/crypto\.randomUUID\s*\(\s*\)/);
+        expect(block).toMatch(/startRunPill\s*\(\s*dispatchedId\s*\)/);
+        expect(block).toMatch(/showInjectToast\([^)]*dispatched/i);
+        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+    });
+
+    it('disables per-entry controls while a run is already active', () => {
+        // Single-run model: once the header pill is showing, no second
+        // dispatch may fire. runActive gates both the click handler and the
+        // rendered button's disabled state.
+        expect(main).toMatch(/function\s+setRunActive\s*\(\s*active\s*\)/);
+        expect(main).toMatch(/if\s*\(\s*runActive\s*\|\|/);
+        expect(main).toMatch(/enabled:\s*function\(\)\s*\{\s*return\s*!runActive/);
+        // The pill lifecycle flips the gate on at dispatch and off on restore.
+        const startPill = main.indexOf('function startRunPill');
+        expect(main.slice(startPill, startPill + 1500)).toMatch(/setRunActive\(true\)/);
+        const restore = main.indexOf('function restoreRunButton');
+        expect(main.slice(restore, restore + 400)).toMatch(/setRunActive\(false\)/);
+    });
+
+    it('never renders the correlation id for the per-entry path either', () => {
+        // Same invariant as the header pill: the correlation_id is internal
+        // plumbing handed only to dispatchRun / startRunPill.
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 1400);
+        expect(block).not.toMatch(/textContent\s*=\s*correlationId/);
+        expect(block).not.toMatch(/innerHTML\s*=\s*[^;]*correlationId/);
+    });
+
+    it('styles the control to match the inject/run button vocabulary', () => {
+        const ruleMatch = css.match(/\.todoMdViewerRunEntryBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/background:\s*#161622/);
+        expect(rule).toMatch(/border:[^;]*#2a2a38/);
+        expect(rule).toMatch(/color:\s*#9D93EE/);
+        // A disabled/active state is visually distinct.
+        expect(css).toMatch(/\.todoMdViewerRunEntryBtn--disabled/);
+    });
+});
+
 describe('todo.md viewer — style.css', () => {
 
     const css = read('style.css');

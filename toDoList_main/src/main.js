@@ -5619,7 +5619,7 @@ function formatViewerSyncedAgo(ts) {
 export function parseTodoMdChecklist(text) {
     if (typeof text !== 'string') return [];
     const lines = text.split('\n');
-    return lines.map(function(raw) {
+    const tokens = lines.map(function(raw) {
         const cb = raw.match(/^(\s*)- \[( |x|X)\]\s?(.*)$/);
         if (cb) {
             return {
@@ -5635,9 +5635,49 @@ export function parseTodoMdChecklist(text) {
         }
         return { type: 'text', text: raw };
     });
+    // Attach the routine's `<!-- id: … -->` marker to each top-level entry
+    // (indent-0 checkbox) so the viewer can offer a per-entry "Run this
+    // entry" control. The marker sits on its own line within the entry's
+    // block, so scan forward from each entry until the next top-level entry
+    // or heading. Only a full-line marker counts — a marker mentioned inside
+    // prose (e.g. this file's own implementation notes) must not be matched,
+    // and the form is exactly `<!-- id: <id> -->` to match the routine/Worker.
+    const markerRe = /^\s*<!-- id: (\S+) -->\s*$/;
+    for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        if (tok.type !== 'checkbox' || tok.indent !== 0) continue;
+        for (let j = i + 1; j < tokens.length; j++) {
+            const next = tokens[j];
+            if (next.type === 'heading') break;
+            if (next.type === 'checkbox' && next.indent === 0) break;
+            const m = lines[j].match(markerRe);
+            if (m) { tok.id = m[1]; break; }
+        }
+    }
+    return tokens;
 }
 
-function buildViewerRenderedBody(text) {
+function buildRunEntryButton(entryId, runEntryCtx) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'todoMdViewerRunEntryBtn';
+    btn.title = 'Run the automation routine against this entry';
+    btn.setAttribute('aria-label', 'Run this entry');
+    btn.innerHTML =
+        '<svg class="todoMdViewerRunEntryIcon" viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true">' +
+        '<polygon points="6 4 20 12 6 20"/>' +
+        '</svg>' +
+        '<span class="todoMdViewerRunEntryLabel">Run this entry</span>';
+    const blocked = !runEntryCtx.enabled();
+    btn.disabled = blocked;
+    if (blocked) btn.classList.add('todoMdViewerRunEntryBtn--disabled');
+    btn.addEventListener('click', function() {
+        runEntryCtx.dispatch(entryId, btn);
+    });
+    return btn;
+}
+
+function buildViewerRenderedBody(text, runEntryCtx) {
     const wrap = document.createElement('div');
     wrap.className = 'todoMdViewerRendered';
     const tokens = parseTodoMdChecklist(text);
@@ -5663,6 +5703,13 @@ function buildViewerRenderedBody(text) {
             label.textContent = tok.text;
             row.appendChild(box);
             row.appendChild(label);
+            // Per-entry "Run this entry" control — only offered for a
+            // top-level entry whose `<!-- id: … -->` marker resolved. Never
+            // shown without a concrete id, so it can't silently fall back to
+            // a backlog run against the wrong task.
+            if (tok.indent === 0 && tok.id && runEntryCtx) {
+                row.appendChild(buildRunEntryButton(tok.id, runEntryCtx));
+            }
             wrap.appendChild(row);
             return;
         }
@@ -5784,6 +5831,27 @@ function buildTodoMdViewerCard(projectName, target) {
     card.appendChild(header);
     card.appendChild(body);
 
+    // Whether a run is currently being tracked by the header pill. Only one
+    // run is tracked at a time, so while it's active every per-entry "Run
+    // this entry" control is disabled to stop a second dispatch orphaning
+    // the first run's tracking. runEntry / setRunActive are function
+    // declarations defined below and hoisted into this scope.
+    let runActive = false;
+    const runEntryCtx = {
+        enabled: function() { return !runActive; },
+        dispatch: function(entryId, btn) { runEntry(entryId, btn); },
+    };
+
+    function setRunActive(active) {
+        runActive = active;
+        const controls = body.querySelectorAll('.todoMdViewerRunEntryBtn');
+        controls.forEach(function(btn) {
+            if (btn.classList.contains('todoMdViewerRunEntryBtn--loading')) return;
+            btn.disabled = active;
+            btn.classList.toggle('todoMdViewerRunEntryBtn--disabled', active);
+        });
+    }
+
     function applyTab(tab) {
         viewerActiveTab = tab === 'raw' ? 'raw' : 'rendered';
         renderedTab.classList.toggle('is-active', viewerActiveTab === 'rendered');
@@ -5796,7 +5864,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(text)
-                : buildViewerRenderedBody(text)
+                : buildViewerRenderedBody(text, runEntryCtx)
         );
     }
 
@@ -5822,7 +5890,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(content)
-                : buildViewerRenderedBody(content)
+                : buildViewerRenderedBody(content, runEntryCtx)
         );
     }
 
@@ -5915,6 +5983,7 @@ function buildTodoMdViewerCard(projectName, target) {
             runPill.parentNode.replaceChild(runBacklogBtn, runPill);
         }
         runPill = null;
+        setRunActive(false);
     }
 
     function showRunSuccess() {
@@ -6007,6 +6076,7 @@ function buildTodoMdViewerCard(projectName, target) {
             meta.insertBefore(runPill, syncBtn);
         }
         renderRunPill({ state: 'starting', label: 'Starting…', spinner: true });
+        setRunActive(true);
         const startedAt = Date.now();
         viewerRunPollInterval = setInterval(function() {
             pollRunOnce(correlationId, startedAt);
@@ -6044,6 +6114,43 @@ function buildTodoMdViewerCard(projectName, target) {
     }
 
     runBacklogBtn.addEventListener('click', runBacklog);
+
+    // Per-entry run: dispatches the routine in ENTRY mode against one
+    // specific entry id (resolved from its `<!-- id: … -->` marker), then
+    // hands the correlation id to the same header pill the Run backlog
+    // button uses. The correlation_id is internal plumbing and is never
+    // rendered in the UI.
+    async function runEntry(entryId, btn) {
+        if (runActive || !entryId || btn.disabled) return;
+        btn.disabled = true;
+        btn.classList.add('todoMdViewerRunEntryBtn--loading');
+        let dispatchedId = null;
+        try {
+            const correlationId =
+                (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                    ? crypto.randomUUID()
+                    : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+            const res = await dispatchRun({
+                mode: 'entry',
+                entryId: entryId,
+                correlationId: correlationId,
+                target: target,
+            });
+            if (res.ok) {
+                dispatchedId = correlationId;
+                showInjectToast('Entry run dispatched');
+            } else {
+                showInjectToast('Run failed — ' + (res.reason || 'unknown error'), 'error');
+            }
+        } finally {
+            btn.classList.remove('todoMdViewerRunEntryBtn--loading');
+            // On success, startRunPill flips runActive on and disables every
+            // per-entry control (including this one). On failure, re-enable
+            // just this button so the user can retry.
+            if (dispatchedId) startRunPill(dispatchedId);
+            else btn.disabled = false;
+        }
+    }
 
     function applyExpandedHeight() {
         if (!card.classList.contains('todoMdViewerCard--expanded')) {
