@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-29',
         fixed: [
-            "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
             "The TODO.md viewer's run-status pill now survives switching projects and reloading the page, re-attaching to an in-progress run instead of losing track of it.",
             "The TODO.md viewer now opens full-screen on mobile instead of as a partial bottom sheet, so the underlying page no longer peeks through behind it.",
             "On mobile the full-screen TODO.md viewer now stretches its rendered content to the bottom edge instead of leaving empty space below it.",
             "The TODO.md viewer card no longer collapses to a thin sliver when a project has many completed items.",
+            "The TODO.md viewer card now stays full-height on a project with no open todos but many completed items, instead of collapsing to a sliver.",
         ],
     },
 ];

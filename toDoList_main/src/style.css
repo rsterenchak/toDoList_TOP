@@ -2284,10 +2284,15 @@ body:has(#settingsMenu) #helpFab {
 }
 
 /* Completed section, when present alongside the empty-state, shouldn't
-   stretch — it should hug its own content at the bottom of the column. */
+   stretch — it should hug its own content at the bottom of the column.
+   The TODO.md viewer card sits below the completed rows in the same flex
+   column; without pinning it too, the shrink deficit from many
+   non-shrinkable completed rows would collapse its min-height:0 +
+   overflow:hidden body to a sliver. */
 #mainList.emptyStatePresent #completedHeader,
 #mainList.emptyStatePresent #toDoChild.completed,
-#mainList.emptyStatePresent #descSibling {
+#mainList.emptyStatePresent #descSibling,
+#mainList.emptyStatePresent #todoMdViewerCard {
   flex: 0 0 auto;
 }
 
