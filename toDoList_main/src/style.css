@@ -5089,6 +5089,14 @@ body.row-dragging * { cursor: grabbing !important; }
   .todoMdViewerBody {
     max-height: 240px;
   }
+  /* The expand/collapse toggle adds little value on small screens (the
+     viewer opens as a slide-up sheet here, not a fixed-height inline box)
+     and just clutters the header — hide it on mobile. The card and its
+     button are moved into the bottom sheet on open, so this class-scoped
+     rule covers both the inline and in-sheet instances. */
+  .todoMdViewerExpandBtn {
+    display: none;
+  }
 }
 
 /* SETTINGS MODAL — opened by #drawerSettingsBtn at the bottom of the

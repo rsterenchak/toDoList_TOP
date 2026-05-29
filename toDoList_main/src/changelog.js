@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "Tapping the TODO.md viewer on mobile now opens it as a slide-up bottom sheet so the rendered markdown and Rendered / Raw tabs are easier to read on touch.",
         ],
+        changed: [
+            "The TODO.md viewer's expand/collapse button is now hidden on mobile to reduce header clutter.",
+        ],
         fixed: [
             "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
         ],
@@ -17,7 +20,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-28',
         fixed: [
-            "Sync button in the TODO.md viewer header no longer overflows past the card edge on narrow mobile screens.",
             "Open todo descriptions and the expanded Completed section no longer overlap each other.",
             "Opening a todo description now auto-collapses the Completed section, and vice versa, so the two never overlap.",
         ],
