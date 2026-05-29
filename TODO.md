@@ -146,7 +146,7 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTodoMdViewerBottomSheet.test.js`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Inline TODO.md launcher still clips its bottom on mobile when the project list is full
+- [x] **[MEDIUM]** Inline TODO.md launcher still clips its bottom on mobile when the project list is full
   - Type: bug
   - Description: Follow-up to the mobile launcher fix. The inline TODO.md launcher (`#todoMdViewerCard` while inline in `#mainList` at the ≤700px breakpoint) now renders as a compact "TODO.md · Run backlog · Sync" row, but on a project long enough to fill the viewport its bottom edge is still clipped — the label and button text are shaved off along the baseline. Same root cause as before, smaller blast radius: `#mainList` uses `grid-auto-rows: minmax(54px, auto)` with `align-content: start` in a fixed-height container, so a row only grows past the 54px floor using the grid's leftover free space. When the list is short the launcher's track grows to fit its content (clean — confirmed on the other project). When the list fills `#mainList`, free space is exhausted, the launcher's track is pinned at the 54px floor, and because the launcher's intrinsic content row is a touch taller than 54px, the card's `overflow: hidden` clips the overflow. The launcher must be sized to fit *within* the floor so it never relies on the track growing — mirror the todo-row height rhythm and vertically center the content.
   - Behavior: On mobile, the inline launcher occupies exactly one floored row track with its content (TODO.md label left, Run backlog + Sync right) vertically centered and fully visible — no baseline clipping — whether the project list is short or long enough to overflow `#mainList`. Tapping it still opens the full-screen bottom sheet. Desktop unchanged.
@@ -154,4 +154,4 @@
   - Acceptance criteria: On a mobile viewport, a project whose open + completed list overflows `#mainList` shows the inline launcher with its label and both controls fully visible and vertically centered — zero baseline clipping. A short-list project shows the identical launcher (no visual regression). The launcher's height matches the todo-row rhythm so it reads as one row. Tapping opens the full-screen bottom sheet. Desktop inline rendering unchanged.
   - Out of scope: the global `grid-auto-rows: minmax(54px, auto)` floor for normal rows; growing or re-architecting the grid track sizing; the bottom-sheet card; desktop layout; the empty-state flex path.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTodoMdViewerBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
