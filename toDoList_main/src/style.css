@@ -5257,6 +5257,40 @@ body.row-dragging * { cursor: grabbing !important; }
   .todoMdViewerBody {
     max-height: 240px;
   }
+
+  /* Inline-card launcher mode. The inline #mainList card is redundant on
+     mobile — tapping it opens the full-screen bottom sheet that holds the
+     real (full) view. Rendered inline at full height it fought #mainList's
+     grid: a long list exhausts the grid's free space, every auto-row pins to
+     the 54px floor, and the card (overflow:hidden) clips to a sliver and
+     overlaps the ghost spacer below. So collapse the inline card to a single
+     launcher row that fits the floored track — a "TODO.md" label on the left,
+     Run backlog + Sync on the right — and cap its height so it can never
+     clip. Scoped via `#mainList > #todoMdViewerCard` so the bottom-sheet copy
+     (#todoMdViewerMobileSheet .todoMdViewerCard, flex:1 1 auto / min-height:0)
+     keeps rendering full height with its body. */
+  #mainList > #todoMdViewerCard {
+    min-height: 0;
+    max-height: 54px;
+    overflow: hidden;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerTabs,
+  #mainList > #todoMdViewerCard .todoMdViewerBody,
+  #mainList > #todoMdViewerCard .todoMdViewerSynced {
+    display: none;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerHeader {
+    flex-wrap: nowrap;
+    border-bottom: 0;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerHeader::before {
+    content: 'TODO.md';
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
   /* The expand/collapse toggle adds little value on small screens (the
      viewer opens as a slide-up sheet here, not a fixed-height inline box)
      and just clutters the header — hide it on mobile. The card and its
