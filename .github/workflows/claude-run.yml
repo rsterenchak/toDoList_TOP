@@ -48,9 +48,13 @@ jobs:
           # Subscription auth (Pro/Max) — NOT anthropic_api_key. If an
           # ANTHROPIC_API_KEY is also present in the env it wins and bills API.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Guardrails: cap turns; pair with the job timeout above. Default
-          # model is Sonnet — add --model claude-opus-4-8 if you want Opus.
-          claude_args: "--max-turns 40"
+          # Default model is Opus 4.8. Note: Opus draws on your plan quota
+          # faster than Sonnet, and shares that quota with interactive use.
+          claude_args: "--max-turns 40 --model claude-opus-4-8"
+          # Temporary: surface the agent's full output (incl. its summary and
+          # any permission denials) so we can see what the run actually did.
+          # Remove this line once the routine is landing PRs cleanly.
+          show_full_output: true
           prompt: |
             You are running an automated code-development routine for this repository.
             Run mode: ${{ inputs.mode }}
