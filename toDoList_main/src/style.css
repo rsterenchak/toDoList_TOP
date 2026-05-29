@@ -5289,6 +5289,23 @@ body.row-dragging * { cursor: grabbing !important; }
     color: #fff;
     border-color: #6C5DF5;
   }
+
+  /* Fill the full-screen sheet: with the sheet at height:100dvh the
+     container is full-height, but the inner content sized to itself and
+     left dead space below. Propagate the height down the flex chain —
+     sheet body → viewer card (already flex:1 1 auto above) → viewer body —
+     so each link grows and may shrink (min-height:0), and the body scrolls
+     within the remaining height instead of capping at a fixed max-height. */
+  #todoMdViewerMobileSheet .completedMobileSheetBody {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #todoMdViewerMobileSheet .todoMdViewerBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
 }
 
 /* SETTINGS MODAL — opened by #drawerSettingsBtn at the bottom of the
