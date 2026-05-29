@@ -98,7 +98,7 @@ After every meaningful change during implementation:
 
 2. Commit format:
      `[Claude] <type>: <imperative description>`
-   The implementation commit includes both the code change AND any project bookkeeping update from <post_task_bookkeeping> — these travel together so the bookkeeping can never drift from the code. Split into multiple commits only when changes are logically separable; a bookkeeping update is never separable from the work it describes.
+   The implementation commit includes both the code change AND any project bookkeeping update from <post_task_bookkeeping> — these travel together so the bookkeeping can never drift from the code. Split into multiple commits only when changes are logically separable; a bookkeeping update is never separable from the work it describes. If you add a co-author trailer, use exactly `Co-Authored-By: Claude <noreply@anthropic.com>` with NO model version number — do not invent or guess a version string (e.g. "Opus 4.7"), as it will be wrong and go stale. Omitting the trailer entirely is also acceptable.
 
 3. After implementation commits, update TODO.md: change `- [ ]` to `- [x]` for the completed task, and optionally append ` — Completed: YYYY-MM-DD (PR #<number>)` to match the existing convention. Commit separately:
      `[Claude] chore: mark task complete in TODO.md`
@@ -147,5 +147,10 @@ After every meaningful change during implementation:
 </hard_constraints>
 
 <output>
+<<<<<<< HEAD
 End the run with a one-paragraph summary: run mode, task selected, any tasks skipped as vague or as missing/malformed Type, branch name, PR URL, merge result (merged successfully / merge blocked with reason / aborted before PR), test result (e.g. "24/24 passed" or "aborted after 3 failing iterations — see test names below"), whether a base re-sync in step 4 was clean or required a trivial auto-resolve (and on which file), the project bookkeeping update made (or skipped, with reason), any bullets pruned, and any follow-up items added to TODO.md.
 </output>
+=======
+End the run with a one-paragraph summary: run mode, task selected, any tasks skipped as vague or as missing/malformed Type, branch name, PR URL, merge result (merged successfully / merge blocked with reason / aborted before PR), test result (e.g. "24/24 passed" or "aborted after 3 failing iterations — see test names below"), the project bookkeeping update made (or skipped, with reason), any bullets pruned, and any follow-up items added to TODO.md.
+</output>
+>>>>>>> b577f778 (modified routine-base)
