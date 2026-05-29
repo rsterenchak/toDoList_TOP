@@ -65,7 +65,7 @@
   - File: `toDoList_main/tests/settingsDropdown.test.js`, `toDoList_main/src/main.js`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Add a per-entry "Run this entry" control to the TODO.md viewer
+- [x] **[MEDIUM]** Add a per-entry "Run this entry" control to the TODO.md viewer
   - Type: feature
   - Description: In the TODO.md viewer's rendered checklist, allow running the automation routine in entry mode against a single specific entry, rather than letting the routine pick the next backlog task itself. The control lives in the per-entry expanded description panel, beside the existing Inject button (the same place per-entry actions already live). Tapping it dispatches an entry-mode run targeting that entry's id and reuses the existing header run-status pill to track it â no new status UI, one run tracked at a time. Like every other client action, it goes through the Cloudflare Worker; the client never calls GitHub directly or holds a token.
   - Behavior:
@@ -83,7 +83,7 @@
     - Use native `fetch` only via the existing `postToWorker` (no new deps).
   - Out of scope: writing or generating a marker into TODO.md for entries that lack one (if an entry has no id, the control simply isn't offered â adding marker-write capability is a separate, larger feature). Tracking more than one concurrent run. Any change to the backlog Run button or the pill's state machine beyond calling the existing `startRunPill` entry point. Per-entry status indicators on individual rows (status stays in the shared header pill).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
 
 - [x] **[HIGH]** Persist the run-status pill across project navigation and reload
   - Type: bug
