@@ -85,7 +85,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[HIGH]** Persist the run-status pill across project navigation and reload
+- [x] **[HIGH]** Persist the run-status pill across project navigation and reload
   - Type: bug
   - Description: The run-status pill loses its state when the user navigates to another project (and on a full page reload). The pill's run state lives in the viewer card's scope, so when the card is torn down and rebuilt on a project switch, the active run's tracking evaporates — the pill flickers back to a default/"running" state or reverts to the Run backlog button, even though the GitHub Action is still running. The run itself continues on GitHub; only the UI's memory of it is lost. Fix: persist the active run to localStorage keyed by the launching project, and re-attach the pill (resuming polling) only when the user is viewing the project the run was launched from. The run must survive a full page reload too.
   - Behavior:
@@ -103,4 +103,4 @@
     - The correlation_id is internal plumbing — persisting it to localStorage is fine, but it is still never rendered in the UI.
   - Out of scope: tracking more than one concurrent run (still a single slot). Cross-device persistence (localStorage is per-device, like the inject config). Changing the pill's visual states or the 5s/10-min constants. Showing run status on a project other than the one it was launched from (by design — the pill only re-appears on the launching project).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
