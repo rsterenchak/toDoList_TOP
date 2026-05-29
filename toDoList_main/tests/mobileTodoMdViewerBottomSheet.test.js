@@ -215,3 +215,90 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         expect(inMobileMediaBlock(activeRuleIdx)).toBe(true);
     });
 });
+
+// Pins the mobile-only "compact launcher" contract for the INLINE viewer
+// card (the copy that lives in #mainList, not the bottom-sheet copy). On
+// mobile the inline card used to render its full header + body, which a
+// long todo list squeezed into the grid's floored 54px track — the card
+// clipped to a sliver and overlapped the ghost spacer below it. The fix
+// hides the tabs + body inline and collapses the header to a single
+// launcher row that fits the track, while the bottom sheet keeps the full
+// view. Source-inspection (CSS only) because the behavior is purely
+// stylistic and main.js is too large to instantiate in jsdom (per CLAUDE.md).
+describe('Mobile inline TODO.md viewer launcher', () => {
+    const css = read('style.css');
+
+    // True when `pos` falls inside a @media (max-width: 700px) block.
+    function inMobileMediaBlock(pos) {
+        const mediaIdx = css.lastIndexOf('@media (max-width: 700px)', pos);
+        if (mediaIdx === -1) return false;
+        let depth = 0;
+        let openSeen = false;
+        for (let i = css.indexOf('{', mediaIdx); i < css.length; i++) {
+            if (css[i] === '{') { depth++; openSeen = true; }
+            else if (css[i] === '}') {
+                depth--;
+                if (openSeen && depth === 0) return pos <= i;
+            }
+        }
+        return false;
+    }
+
+    it('hides the inline markdown body, scoped to #mainList so the sheet copy keeps its body', () => {
+        // Any rule that hides .todoMdViewerBody MUST be scoped to the inline
+        // #mainList card — a global `.todoMdViewerBody { display: none }`
+        // would blank the bottom sheet too.
+        const hideBlocks = [...css.matchAll(/([^{}]*\.todoMdViewerBody[^{}]*)\{([^}]*)\}/g)]
+            .filter((m) => /display:\s*none/.test(m[2]));
+        expect(hideBlocks.length).toBeGreaterThan(0);
+        for (const m of hideBlocks) {
+            expect(m[1]).toMatch(/#mainList/);
+        }
+        const idx = css.search(/#mainList\s*>\s*#todoMdViewerCard[^{]*\.todoMdViewerBody[^{]*\{[^}]*display:\s*none/);
+        expect(idx).toBeGreaterThan(-1);
+        expect(inMobileMediaBlock(idx)).toBe(true);
+    });
+
+    it('hides the inline Rendered/Raw tabs, scoped to #mainList', () => {
+        const hideBlocks = [...css.matchAll(/([^{}]*\.todoMdViewerTabs[^{}]*)\{([^}]*)\}/g)]
+            .filter((m) => /display:\s*none/.test(m[2]));
+        expect(hideBlocks.length).toBeGreaterThan(0);
+        for (const m of hideBlocks) {
+            expect(m[1]).toMatch(/#mainList/);
+        }
+        const idx = css.search(/#mainList\s*>\s*#todoMdViewerCard[^{]*\.todoMdViewerTabs[^{]*\{[^}]*display:\s*none/);
+        expect(idx).toBeGreaterThan(-1);
+        expect(inMobileMediaBlock(idx)).toBe(true);
+    });
+
+    it('constrains the inline card to a single launcher row that fits the 54px grid track', () => {
+        // The inline card must not exceed its floored grid track, so it can
+        // never clip to a sliver: cap its height and let overflow hide any
+        // spillover. Scoped to the inline card via the child combinator so
+        // the bottom-sheet copy (flex:1 1 auto / min-height:0) is untouched.
+        const block = css.match(/#mainList\s*>\s*#todoMdViewerCard\s*\{([^}]*)\}/);
+        expect(block).toBeTruthy();
+        expect(block[1]).toMatch(/max-height:\s*54px/);
+        expect(block[1]).toMatch(/overflow:\s*hidden/);
+        const idx = css.indexOf(block[0]);
+        expect(inMobileMediaBlock(idx)).toBe(true);
+    });
+
+    it('shows a "TODO.md" launcher label on the inline header', () => {
+        // With the tabs hidden the header needs a label so the launcher is
+        // self-describing; a ::before on the inline header supplies it
+        // without touching main.js.
+        const idx = css.search(/#mainList\s*>\s*#todoMdViewerCard[^{]*\.todoMdViewerHeader::before\s*\{[^}]*content:\s*['"]TODO\.md['"]/);
+        expect(idx).toBeGreaterThan(-1);
+        expect(inMobileMediaBlock(idx)).toBe(true);
+    });
+
+    it('leaves the bottom-sheet copy rendering its full body (no inline hide bleeds into the sheet)', () => {
+        // Guard against regressions: the sheet's body rule must still set it
+        // to fill + scroll, never display:none.
+        const sheetBody = css.match(/#todoMdViewerMobileSheet\s+\.todoMdViewerBody\s*\{([^}]*)\}/);
+        expect(sheetBody).toBeTruthy();
+        expect(sheetBody[1]).not.toMatch(/display:\s*none/);
+        expect(sheetBody[1]).toMatch(/overflow-y:\s*auto/);
+    });
+});
