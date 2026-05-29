@@ -8,9 +8,9 @@
     2. Tapping expand grows the content area to fill the available space below Completed; the inner content scrolls only when it exceeds that height. The icon and `aria-label` flip to the collapse action.
     3. Tapping collapse returns the content area to the compact fixed height.
     4. Persist the expanded/collapsed boolean per-project under the `todoapp_` localStorage prefix (e.g. `todoapp_todomd_expanded`, keyed by project). On project select / reload, restore that project's last state.
-    5. State applies to whichever tab (Rendered / Raw) is active â toggling tabs does not change expand state.
+    5. State applies to whichever tab (Rendered / Raw) is active Ã¢ÂÂ toggling tabs does not change expand state.
   - Implementation notes:
-    - The expanded height must flex into a container with a known/resolved height â a bare flex-fill will silently collapse if the parent chain has no explicit height (same root cause as the prior music-visualizer bar issue). Confirm the card's container resolves a height before relying on flex-grow; otherwise compute the available space explicitly (viewport minus fixed footer minus the elements above the content area).
+    - The expanded height must flex into a container with a known/resolved height Ã¢ÂÂ a bare flex-fill will silently collapse if the parent chain has no explicit height (same root cause as the prior music-visualizer bar issue). Confirm the card's container resolves a height before relying on flex-grow; otherwise compute the available space explicitly (viewport minus fixed footer minus the elements above the content area).
     - Toggle wiring and the per-project state read/write live in `main.js` alongside the existing viewer card and Sync handler; investigate with grep + offset/limit, not a full read.
     - Reuse the existing per-project localStorage keying pattern already used for the viewer's last-fetch timestamp.
   - Acceptance criteria:
@@ -27,3 +27,9 @@
   - Description: When the COMPLETED section is expanded and a todo's description is open at the same time, the two collide/overlap visually instead of stacking cleanly. The expected behavior is that an open description grows its own row in normal document flow and the COMPLETED block sits fully below it, with no overlap regardless of which is opened first. Likely cause is that one of these expanding regions (the description panel or the COMPLETED accordion contents) is absolutely positioned or has a fixed/clipped height rather than contributing to layout height, so it renders on top of adjacent content instead of pushing it down. Audit the description-toggle and COMPLETED-toggle styling in `style.css` (and any inline height/position writes in `main.js`) and ensure both expanded regions are in normal flow (static positioning, `height: auto`, no negative margins) so siblings reflow around them.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
   - Completed: 2026-05-28
+
+- [ ] **[MEDIUM]** Auto-collapse completed section and open descriptions to prevent overlap
+  - Type: bug
+  - Description: When the COMPLETED section is expanded and a todo's description is also open, the two regions still collide and overlap onto each other's rows (the prior reflow attempt didn't resolve it — the description panel renders over the rows below instead of pushing them down). Switch to a mutually exclusive behavior: opening any todo description collapses the COMPLETED section if it's open, and expanding the COMPLETED section collapses any currently open todo descriptions. Only one of {any open description, the COMPLETED section} can be expanded at a time, so they can never visually collide. Wire the cross-toggle in `main.js` — when the description-toggle handler fires open, call the same collapse path the COMPLETED chevron uses (and vice versa); reuse the existing animation/state rather than introducing a new "exclusive accordion" abstraction. The EXPAND ALL control should still expand everything (it's an explicit user override) — only single-row toggles trigger the auto-collapse. `main.js` is over 25k tokens, so grep for the description-toggle and COMPLETED-toggle handlers with offset/limit rather than reading the file in full.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
