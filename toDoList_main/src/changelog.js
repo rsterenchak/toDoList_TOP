@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-29',
-        changed: [
-            "On mobile the TODO.md viewer now stacks its synced status onto its own line and gives the run control and Sync button a roomier full-width row instead of crowding them beside the tabs.",
-        ],
         fixed: [
             "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
             "The TODO.md viewer's run-status pill now survives switching projects and reloading the page, re-attaching to an in-progress run instead of losing track of it.",
             "The TODO.md viewer now opens full-screen on mobile instead of as a partial bottom sheet, so the underlying page no longer peeks through behind it.",
             "On mobile the full-screen TODO.md viewer now stretches its rendered content to the bottom edge instead of leaving empty space below it.",
+            "The TODO.md viewer card no longer collapses to a thin sliver when a project has many completed items.",
         ],
     },
 ];
