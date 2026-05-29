@@ -190,6 +190,11 @@ function component() {
     projButton.setAttribute('aria-label', 'Add new project');
 
     mainList.id = 'mainList';
+    // Bridge description panels and the COMPLETED section so they can't
+    // simultaneously expand and visually collide. See the helper for the
+    // full contract — the listener attaches in capture phase so it can run
+    // before the original descToggle / completedHeader click handlers.
+    wireExclusiveCompletedDescCollapse(mainList);
 
     sidebarToggle.id        = 'sidebarToggle';
     sidebarToggle.type      = 'button';
@@ -5930,21 +5935,94 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
 // stays in sync with the DOM — individual per-row toggles keep working
 // after a bulk action. Blank placeholder rows hide their #descToggle
 // (display: none), so filtering on that skips them.
+//
+// The dataset.bulkDescToggle marker tells the exclusive-collapse listener
+// (see wireExclusiveCompletedDescCollapse) that synthetic clicks emitted
+// from this loop are an explicit user override and should NOT auto-collapse
+// the COMPLETED section. The marker is cleared in a finally so an
+// in-iteration throw can't leave it stuck on.
 function expandAllDescriptions() {
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
-        if (toggle.style.display === 'none') return;
-        if (!toggle.classList.contains('open')) toggle.click();
-    });
+    mainListDiv.dataset.bulkDescToggle = '1';
+    try {
+        mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
+            if (toggle.style.display === 'none') return;
+            if (!toggle.classList.contains('open')) toggle.click();
+        });
+    } finally {
+        delete mainListDiv.dataset.bulkDescToggle;
+    }
 }
 
 function collapseAllDescriptions() {
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
-        if (toggle.classList.contains('open')) toggle.click();
-    });
+    mainListDiv.dataset.bulkDescToggle = '1';
+    try {
+        mainListDiv.querySelectorAll('#descToggle').forEach(function(toggle) {
+            if (toggle.classList.contains('open')) toggle.click();
+        });
+    } finally {
+        delete mainListDiv.dataset.bulkDescToggle;
+    }
+}
+
+
+// Mutually-exclusive collapse between todo description panels and the
+// COMPLETED section. Without this guard, an open description panel and an
+// expanded Completed block can visually collide because both regions claim
+// the same vertical space in the list — the prior CSS-reflow fix wasn't
+// enough on its own. The contract: only one of {any open description, the
+// COMPLETED section} is allowed to be expanded at a time. Opening one
+// auto-collapses the other.
+//
+// Wired in capture phase on #mainList so we run BEFORE the original
+// descToggle / completedHeader click handlers. That lets us synthesize a
+// click on the "other" affordance (header.click() to collapse Completed, or
+// the bulk collapseAllDescriptions helper) before the just-clicked target
+// flips, reusing the existing animation/state writers rather than
+// introducing a separate "exclusive accordion" abstraction.
+//
+// The bulk EXPAND ALL control sets mainListDiv.dataset.bulkDescToggle for
+// the duration of its iteration; this listener bails when the marker is
+// present so "expand everything" remains an explicit user override that
+// does not nuke the open Completed section. The same marker protects
+// against synthetic re-entry from the synthesized header.click() /
+// collapseAllDescriptions() calls below.
+function wireExclusiveCompletedDescCollapse(mainListDiv) {
+    if (!mainListDiv) return;
+    mainListDiv.addEventListener('click', function(event) {
+        if (mainListDiv.dataset.bulkDescToggle === '1') return;
+        const target = event.target;
+        if (!target || typeof target.closest !== 'function') return;
+
+        const dt = target.closest('#descToggle');
+        if (dt && mainListDiv.contains(dt)) {
+            // descToggle.click that is about to OPEN (not currently .open).
+            // Blank placeholder rows hide their descToggle (display: none)
+            // so a click can only reach this branch on a committed row.
+            if (!dt.classList.contains('open') && isCompletedSectionOpen()) {
+                const header = mainListDiv.querySelector('#completedHeader');
+                if (header) {
+                    mainListDiv.dataset.bulkDescToggle = '1';
+                    try { header.click(); }
+                    finally { delete mainListDiv.dataset.bulkDescToggle; }
+                }
+            }
+            return;
+        }
+
+        const ch = target.closest('#completedHeader');
+        if (ch && mainListDiv.contains(ch)) {
+            // completedHeader click that is about to OPEN (current persisted
+            // flag is false). Close every open description so the expanded
+            // Completed block can sit cleanly below the open todo rows.
+            if (!isCompletedSectionOpen()) {
+                collapseAllDescriptions();
+            }
+        }
+    }, true);
 }
 
 
