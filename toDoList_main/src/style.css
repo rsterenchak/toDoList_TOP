@@ -5245,6 +5245,50 @@ body.row-dragging * { cursor: grabbing !important; }
   .todoMdViewerExpandBtn {
     display: none;
   }
+
+  /* In the full-screen mobile sheet the header action row used to cram the
+     synced caption, run-state control, and Sync onto one line beside the
+     tabs. Stack it instead by making the tabs and the meta row each span the
+     full width — the header's existing flex-wrap drops them onto their own
+     lines, so no flex-direction restack is needed (the inline card header
+     stays a single row). Inside meta the synced caption takes its own line
+     directly under the tabs, then the run-state control and Sync split the
+     final row 50/50 with touch-sized targets. Scoped to the sheet so the
+     desktop inline card is untouched. */
+  #todoMdViewerMobileSheet .todoMdViewerTabs {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+  #todoMdViewerMobileSheet .todoMdViewerMeta {
+    margin-left: 0;
+    flex: 0 0 100%;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Caption on its own line directly under the tabs. */
+  #todoMdViewerMobileSheet .todoMdViewerSynced {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+  /* Run-state control (button or its in-flight pill swap-in) and Sync share
+     the row 50/50, each at least 44px tall for touch. */
+  #todoMdViewerMobileSheet .todoMdViewerRunBtn,
+  #todoMdViewerMobileSheet .todoMdViewerRunPill,
+  #todoMdViewerMobileSheet .todoMdViewerSyncBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+  /* Sync is the primary action in the sheet. */
+  #todoMdViewerMobileSheet .todoMdViewerSyncBtn {
+    background: #6C5DF5;
+    color: #fff;
+    border-color: #6C5DF5;
+  }
 }
 
 /* SETTINGS MODAL — opened by #drawerSettingsBtn at the bottom of the

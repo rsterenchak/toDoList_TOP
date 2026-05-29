@@ -105,7 +105,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Rework TODO.md viewer sheet action row for mobile
+- [x] **[MEDIUM]** Rework TODO.md viewer sheet action row for mobile — Completed: 2026-05-29
   - Type: feature
   - Description: On mobile the TODO.md viewer sheet (`todoMdViewerMobileSheet`) crams the sync status, run-state indicator, and Sync button onto one line beside the tabs, leaving each cramped. Rework the action area at the mobile breakpoint (`max-width: 700px`): move the "synced just now" status onto its own caption line directly below the Rendered / Raw markdown tabs, then place the run-state control and the Sync button on a single full-width row split 50/50. The run-state button shows the spinner + "Runningâ¦" while a sync/run is in flight and its idle label otherwise; Sync is the primary (purple `#6C5DF5`) action. Keep both buttons at least 44px tall for touch, and leave the desktop layout untouched.
   - File: `<file paths>`
