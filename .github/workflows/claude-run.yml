@@ -24,6 +24,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write   # required: the action authenticates via OIDC
 
 concurrency:
   # one run at a time; a second dispatch queues rather than overlapping
