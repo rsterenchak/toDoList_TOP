@@ -57,8 +57,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-29
 
-- [ ] **[LOW]** Hide TODO.md viewer expand button on mobile
+- [x] **[LOW]** Hide TODO.md viewer expand button on mobile
   - Type: feature
   - Description: The `todoMdViewerExpandBtn` adds little value on small screens and just clutters the mobile layout — hide it below the existing mobile breakpoint. Add a `display: none` rule scoped to the current mobile media query in `style.css` targeting `#todoMdViewerExpandBtn` (reuse the existing breakpoint rather than introducing a new one). Watch for an inline `style.display` / `style.cssText` write on the button in `main.js` — inline styles override the stylesheet, so if visibility is set from JS the media query won't take effect; in that case either gate the inline write by viewport width or move it to a class the CSS can override.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
