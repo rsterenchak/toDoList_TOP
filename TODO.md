@@ -156,7 +156,7 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTodoMdViewerBottomSheet.test.js`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Make the default due date for new todo creation "today" on both desktop and mobile
+- [x] **[MEDIUM]** Make the default due date for new todo creation "today" on both desktop and mobile
   - Type: bug
   - Description: New-todo creation uses different default due dates per platform. Desktop stamps today + 7 days when a row is committed without a user-chosen date (`DEFAULT_DUE_OFFSET_DAYS = 7` in `toDoRow.js`, applied via `defaultDueParts()`); mobile's inline-create chip flow already defaults to today (the default chip is Today, and `applyChosenDueToItem` stamps today when no chip is tapped). The two should match. Standardize the default for an untouched new task to today (today + 0) on both platforms. This is a default only — the Today/Tomorrow mobile chips and the due-date popover still let the user pick any date; we're only changing what a task lands on when the user commits without choosing. Mobile is already today, so the substantive change is desktop dropping its +7 offset to 0; the rest is verifying every creation path agrees and locking it with tests.
   - Behavior: Committing a new todo with no explicit date chosen sets its due date to today's date ("M-D-YYYY") on both desktop and mobile, so the row reads "DUE TODAY". The mobile Today/Tomorrow chips remain, with Today pre-selected/highlighted (matching the new default); tapping Tomorrow or using the popover still overrides. Existing todos are unaffected.
@@ -164,4 +164,4 @@
   - Acceptance criteria: On desktop, committing a new task without picking a date sets due = today (row shows DUE TODAY), not today + 7. On mobile, the same commit (no chip tapped) sets due = today, with the Today chip shown selected. Tapping the Tomorrow chip or choosing a date in the popover still overrides on both platforms. The empty-state first-task input and the top add-task bar also default to today. No change to existing todos' dates.
   - Out of scope: the Today/Tomorrow chips themselves (kept); the due-date popover behavior; recurrence `nextDueDate` advancement logic; any blank-placeholder preview that intentionally shows a different date.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/mobileInlineExpandCreate.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29

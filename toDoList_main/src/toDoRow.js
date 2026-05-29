@@ -41,8 +41,9 @@ import { makeInjectButton, refreshInjectButton } from './inject.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
-// date. Matches the legacy placeholder behavior (today + 7 days).
-const DEFAULT_DUE_OFFSET_DAYS = 7;
+// date. A new task with no chosen date lands on today (today + 0), matching
+// the mobile inline-create default so both platforms agree.
+const DEFAULT_DUE_OFFSET_DAYS = 0;
 
 function defaultDueParts() {
     const future = new Date();
@@ -1568,7 +1569,7 @@ export function buildToDoRow(item, toDoName) {
         if (window.innerWidth <= 700 && !parseItemDue(item)) {
             applyChosenDueToItem(item, toDoChild);
         }
-        // If no due date is set yet, default to today + 7 days so the urgency
+        // If no due date is set yet, default to today so the urgency
         // classes and footer counter have something meaningful to key off.
         if (!parseItemDue(item)) {
             const fallback = defaultDueParts();
