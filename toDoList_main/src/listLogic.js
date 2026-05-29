@@ -2170,6 +2170,16 @@ export const listLogic = (function () {
                 remoteById[p.id] = p;
             });
 
+            // Index local entries by their stable id so reconciliation can
+            // match a remote row to its local counterpart even after a
+            // rename (when name no longer agrees but id still does). Keying
+            // by name here is what produced the cross-device duplicate.
+            const localById = {};
+            Object.keys(allProjects).forEach(function(name) {
+                const e = allProjects[name];
+                if (e && e.id) localById[e.id] = { name: name, entry: e };
+            });
+
             const todosByProjectId = {};
             remoteTodos.forEach(function(t) {
                 if (!todosByProjectId[t.project_id]) {
@@ -2185,7 +2195,10 @@ export const listLogic = (function () {
             // sides. updated_at comparison drives the pick; the loser is
             // mirrored back into Supabase so the two sides converge.
             remoteProjects.forEach(function(p) {
-                const localEntry = allProjects[p.name];
+                // Match by stable id first (survives a rename), falling
+                // back to name for rows that predate id-stamping.
+                const byId = localById[p.id];
+                const localEntry = byId ? byId.entry : allProjects[p.name];
                 const remoteUpdatedAt = p.updated_at ? Date.parse(p.updated_at) : 0;
                 const localUpdatedAt = (localEntry && localEntry.updated_at)
                     ? Date.parse(localEntry.updated_at)
@@ -2223,6 +2236,12 @@ export const listLogic = (function () {
             Object.keys(allProjects).forEach(function(name) {
                 if (remoteByName[name]) return;
                 const local = allProjects[name];
+                // A renamed project is adopted above under its new remote
+                // name; its old local name reaches here as "local-only".
+                // Skip it when its id already exists remotely so it is not
+                // re-INSERTed (which would collide on the id primary key
+                // and leave a duplicate under the stale name).
+                if (local.id && remoteById[local.id]) return;
                 if (!local.id) local.id = genId();
                 merged[name] = {
                     id: local.id,
@@ -2320,11 +2339,30 @@ export const listLogic = (function () {
         if (evt.eventType === 'INSERT' || evt.eventType === 'UPDATE') {
             const name = evt.new && evt.new.name;
             if (!name) return;
-            const existing = allProjects[name];
-            if (existing) {
+            // Locate the existing entry by stable id first so a rename
+            // (same id, new name) updates in place rather than spawning a
+            // second entry under the new name and orphaning the old one.
+            // Fall back to name for rows that predate id-stamping.
+            let existingName = null;
+            const keys = Object.keys(allProjects);
+            for (let i = 0; i < keys.length; i++) {
+                if (allProjects[keys[i]].id === evt.new.id) {
+                    existingName = keys[i];
+                    break;
+                }
+            }
+            if (existingName === null && allProjects[name]) existingName = name;
+            if (existingName !== null) {
+                const existing = allProjects[existingName];
                 existing.color = evt.new.color || null;
                 existing.id = evt.new.id;
                 existing.target_id = evt.new.target_id || null;
+                if (existingName !== name) {
+                    // Rename in place: move the entry (with its items) to
+                    // the new name key and drop the stale one.
+                    delete allProjects[existingName];
+                    allProjects[name] = existing;
+                }
             } else {
                 allProjects[name] = {
                     id: evt.new.id,
