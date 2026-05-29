@@ -706,6 +706,20 @@ describe('todo.md viewer — style.css', () => {
         expect(ruleMatch[0]).toMatch(/min-height:\s*max-content/);
     });
 
+    it('pins the viewer card to flex: 0 0 auto when #mainList is in empty-state flex mode so it cannot be squeezed to a sliver', () => {
+        // Bug: on a project with no open todos #mainList gets
+        // .emptyStatePresent, switching it to a flex column. The completed
+        // rows are pinned flex: 0 0 auto but #todoMdViewerCard was left at
+        // the default shrinkable flex: 0 1 auto. With many completed rows the
+        // shrink deficit collapses the card (min-height:0 + overflow:hidden)
+        // to a one-line sliver. The card must join the pinned group.
+        const ruleMatch = css.match(
+            /#mainList\.emptyStatePresent\s+#completedHeader[\s\S]*?\{\s*flex:\s*0\s+0\s+auto;\s*\}/
+        );
+        expect(ruleMatch).not.toBeNull();
+        expect(ruleMatch[0]).toMatch(/#mainList\.emptyStatePresent\s+#todoMdViewerCard\b/);
+    });
+
     it('drops the repo·path label and its mobile-only header fork — the meta row carries only the timestamp + Sync button on every viewport so the button no longer overflows at ~380px', () => {
         // Bug: at ~380px the meta row tried to fit repo·path, "synced Xd
         // ago", and the Sync button on one line, pushing Sync off the
