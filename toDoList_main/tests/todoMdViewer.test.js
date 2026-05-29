@@ -692,6 +692,20 @@ describe('todo.md viewer — style.css', () => {
         expect(css).toMatch(/\.todoMdViewerRaw[\s\S]{0,200}SpaceMono/);
     });
 
+    it('keeps the inline #mainList card sized to content so it cannot collapse to the 54px grid floor', () => {
+        // Bug: #mainList uses grid-auto-rows: minmax(54px, auto). The card's
+        // base rule has `min-height: 0` + `overflow: hidden`, which zeroes its
+        // grid-track minimum contribution. Once a project has many completed
+        // rows the grid overflows (no free space to maximize tracks), the
+        // card's auto track resolves to the 54px floor, and overflow:hidden
+        // crops it to a sliver. The inline card must declare an explicit
+        // `min-height: max-content` so its minimum contribution is its real
+        // content height and the track always grows to fit.
+        const ruleMatch = css.match(/#mainList\s+\.todoMdViewerCard\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        expect(ruleMatch[0]).toMatch(/min-height:\s*max-content/);
+    });
+
     it('drops the repo·path label and its mobile-only header fork — the meta row carries only the timestamp + Sync button on every viewport so the button no longer overflows at ~380px', () => {
         // Bug: at ~380px the meta row tried to fit repo·path, "synced Xd
         // ago", and the Sync button on one line, pushing Sync off the

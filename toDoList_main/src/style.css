@@ -3751,6 +3751,21 @@ body.row-dragging * { cursor: grabbing !important; }
   overflow: hidden;
 }
 
+/* Keep the inline #mainList card sized to its content even when the project
+   has many completed rows. #mainList uses grid-auto-rows: minmax(54px, auto);
+   with `min-height: 0` + `overflow: hidden` the card's grid-track minimum
+   contribution is 0, so once the grid overflows (no free space to maximize
+   tracks) the track collapses to the 54px floor and overflow:hidden crops the
+   card to a sliver. An explicit `min-height: max-content` makes the minimum
+   contribution the card's real content height (the auto-min override that
+   overflow:hidden triggers only applies when min-height is `auto`), so the
+   track always grows to fit. Scoped to the inline card — the mobile bottom
+   sheet (#todoMdViewerMobileSheet) keeps its own flex:1 1 auto / min-height:0
+   fill behavior. */
+#mainList .todoMdViewerCard {
+  min-height: max-content;
+}
+
 .todoMdViewerHeader {
   display: flex;
   flex-wrap: wrap;
