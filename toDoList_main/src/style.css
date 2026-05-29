@@ -3682,6 +3682,54 @@ body.row-dragging * { cursor: grabbing !important; }
   padding: 6px 0 12px;
 }
 
+/* ── MOBILE TODO.MD VIEWER BOTTOM SHEET ──
+   Same slide-up shell as the COMPLETED sheet above; the inner header /
+   handle / close button reuse the .completedMobileSheet* classes so the
+   palette and dimensions stay in sync. Only the IDs are duplicated
+   because the backdrop + sheet shell are styled by ID. */
+#todoMdViewerMobileSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 4000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+#todoMdViewerMobileSheetBackdrop.is-open {
+  opacity: 1;
+}
+#todoMdViewerMobileSheet {
+  width: 100%;
+  max-height: 85vh;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-dim);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+#todoMdViewerMobileSheetBackdrop.is-open #todoMdViewerMobileSheet {
+  transform: translateY(0);
+}
+/* Inside the sheet the viewer card no longer needs its own card chrome
+   — the sheet is the chrome — so drop the outer margin / border /
+   radius so the markdown body fills the sheet edge-to-edge. */
+#todoMdViewerMobileSheet .todoMdViewerCard {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  cursor: default;
+}
+
 /* ── READ-ONLY TODO.md VIEWER CARD ──
    Mounted below the Completed section in #mainList when the active project
    routes to an inject target. View-only mirror of the target file with two
@@ -5028,9 +5076,15 @@ body.row-dragging * { cursor: grabbing !important; }
   /* TODO.md viewer card — tighter outer margin on narrow screens; the
      header keeps its single inline layout (tabs left, timestamp + Sync
      right) since the repo·path label is gone and the remaining two
-     meta items fit comfortably even at ~380px. */
-  .todoMdViewerCard {
+     meta items fit comfortably even at ~380px. The card itself is a
+     tap target that opens the viewer in a slide-up sheet, so it reads
+     as interactive (pointer cursor + pressed background feedback). */
+  #mainList .todoMdViewerCard {
     margin: 12px 6px 16px;
+    cursor: pointer;
+  }
+  #mainList .todoMdViewerCard:active {
+    background: var(--bg-hover);
   }
   .todoMdViewerBody {
     max-height: 240px;
