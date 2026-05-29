@@ -45,7 +45,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Make todoMdViewer tappable to open as a bottom sheet on mobile
+- [x] **[MEDIUM]** Make todoMdViewer tappable to open as a bottom sheet on mobile
   - Type: feature
   - Description: On mobile, make the whole `todoMdViewer` a tap target that opens its contents as a bottom sheet, mirroring the COMPLETED-header bottom-sheet treatment. Tapping the viewer slides up a sheet from the bottom of the viewport containing the rendered markdown and the existing Rendered / Raw markdown toggle, instead of trying to display the full viewer inline where it's cramped/unreliable on touch. Reuse the app's existing bottom-sheet machinery (drag handle + slide-up transition, same pattern as the paste-URL/music sheet and the COMPLETED-section sheet) rather than building a new overlay primitive. To find the viewer markup, its tap wiring, and the shared sheet open/close helpers, grep `main.js` with offset/limit (todoMdViewer, todoMdViewerHeader, the sheet open/close functions) — don't read it in full.
   - Behavior:
@@ -55,4 +55,4 @@
     4. The viewer's tap target should read as interactive (cursor/pressed feedback) so it's discoverable as tappable.
   - Out of scope: desktop behavior — keep the existing inline viewer on wider breakpoints; this change is scoped to the mobile breakpoint only. If the COMPLETED-section sheet entry lands first, share the same sheet helper rather than duplicating it.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
