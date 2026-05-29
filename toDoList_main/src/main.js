@@ -90,6 +90,7 @@ import {
     findTargetById,
     readTodoMdFromWorker,
     dispatchRun,
+    pollRunStatus,
     showInjectToast,
 } from './inject.js';
 import button from './addProj_button.svg';
@@ -5542,6 +5543,7 @@ const VIEWER_EXPANDED_PREFIX = 'todoapp_todomd_expanded_';
 let viewerActiveTab = 'rendered';
 let viewerActiveProject = null;
 let viewerResizeHandler = null;
+let viewerRunPollInterval = null;
 
 function viewerLastFetchKey(projectName) {
     return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
@@ -5581,6 +5583,16 @@ function detachViewerResizeHandler() {
     if (viewerResizeHandler) {
         window.removeEventListener('resize', viewerResizeHandler);
         viewerResizeHandler = null;
+    }
+    // Clear any in-flight run-status poll so a leaked interval can't keep
+    // firing against a pill whose card was torn down or re-rendered.
+    stopViewerRunPoll();
+}
+
+function stopViewerRunPoll() {
+    if (viewerRunPollInterval) {
+        clearInterval(viewerRunPollInterval);
+        viewerRunPollInterval = null;
     }
 }
 
@@ -5835,10 +5847,177 @@ function buildTodoMdViewerCard(projectName, target) {
 
     syncBtn.addEventListener('click', runSync);
 
+    // ── Run-status pill ──
+    // After a successful dispatch the Run backlog button is swapped out for
+    // a status pill that polls the Worker every 5s and reflects the run's
+    // lifecycle (starting → queued → running → terminal). The pill occupies
+    // the button's slot in `meta`; only one run is tracked at a time. The
+    // correlation_id is internal plumbing for the dispatch/status calls and
+    // is NEVER rendered in the UI.
+    const RUN_POLL_INTERVAL_MS = 5000;
+    const RUN_GIVE_UP_MS = 10 * 60 * 1000;
+
+    const runPillCheckGlyph =
+        '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 7.5 6 10.5 11 4.5"/></svg>';
+    const runPillAlertGlyph =
+        '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5l6 11H1z"/><line x1="7" y1="5.5" x2="7" y2="8.5"/><line x1="7" y1="10.6" x2="7" y2="10.7"/></svg>';
+    const runPillClockGlyph =
+        '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5.5"/><polyline points="7 4 7 7 9.5 8.5"/></svg>';
+    const runPillLinkGlyph =
+        '<svg viewBox="0 0 14 14" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 2.5H2.5v9h9v-3"/><polyline points="8 2.5 11.5 2.5 11.5 6"/><line x1="6" y1="8" x2="11.5" y2="2.5"/></svg>';
+
+    let runPill = null;
+    let runPillLastUrl = null;
+
+    function actionsFallbackUrl() {
+        return target && target.repo
+            ? 'https://github.com/' + target.repo + '/actions'
+            : '';
+    }
+
+    function renderRunPill(opts) {
+        if (!runPill) return;
+        runPill.className = 'todoMdViewerRunPill todoMdViewerRunPill--' + opts.state;
+        runPill.dataset.dismissible = opts.dismissible ? '1' : '0';
+        runPill.innerHTML = '';
+        if (opts.spinner) {
+            const sp = document.createElement('span');
+            sp.className = 'todoMdViewerRunPillSpinner';
+            sp.setAttribute('aria-hidden', 'true');
+            runPill.appendChild(sp);
+        } else if (opts.glyph) {
+            const g = document.createElement('span');
+            g.className = 'todoMdViewerRunPillGlyph';
+            g.setAttribute('aria-hidden', 'true');
+            g.innerHTML = opts.glyph;
+            runPill.appendChild(g);
+        }
+        const label = document.createElement('span');
+        label.className = 'todoMdViewerRunPillLabel';
+        label.textContent = opts.label;
+        runPill.appendChild(label);
+        if (opts.url) {
+            const link = document.createElement('a');
+            link.className = 'todoMdViewerRunPillLink';
+            link.href = opts.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.setAttribute('aria-label', 'Open the run in GitHub Actions');
+            link.title = 'Open in GitHub Actions';
+            link.innerHTML = runPillLinkGlyph;
+            runPill.appendChild(link);
+        }
+    }
+
+    function restoreRunButton() {
+        stopViewerRunPoll();
+        if (runPill && runPill.parentNode) {
+            runPill.parentNode.replaceChild(runBacklogBtn, runPill);
+        }
+        runPill = null;
+    }
+
+    function showRunSuccess() {
+        stopViewerRunPoll();
+        renderRunPill({ state: 'success', label: 'Done', glyph: runPillCheckGlyph });
+        const successPill = runPill;
+        // Auto-dismiss ~5s after success, restoring the Run backlog button —
+        // but only if this same pill is still mounted in the success state
+        // (a later run or a teardown may have replaced it).
+        setTimeout(function() {
+            if (runPill && runPill === successPill &&
+                runPill.classList.contains('todoMdViewerRunPill--success')) {
+                restoreRunButton();
+            }
+        }, 5000);
+    }
+
+    function showRunFailure(url) {
+        stopViewerRunPoll();
+        renderRunPill({
+            state: 'failure',
+            label: 'Failed',
+            glyph: runPillAlertGlyph,
+            url: url || runPillLastUrl || actionsFallbackUrl(),
+            dismissible: true,
+        });
+    }
+
+    function showRunTimeout() {
+        stopViewerRunPoll();
+        renderRunPill({
+            state: 'timeout',
+            label: 'Still running? — check Actions',
+            glyph: runPillClockGlyph,
+            url: runPillLastUrl || actionsFallbackUrl(),
+            dismissible: true,
+        });
+    }
+
+    async function pollRunOnce(correlationId, startedAt) {
+        // Give-up timeout: stop watching after 10 minutes without a terminal
+        // status. The run may still be going on GitHub; the client just
+        // stops polling and offers a link to check.
+        if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
+            showRunTimeout();
+            return;
+        }
+        const res = await pollRunStatus({ correlationId: correlationId, target: target });
+        if (!runPill) return; // torn down mid-flight
+        if (!res || res.ok === false) {
+            // Transient error (network blip / not-yet-surfaced) — keep the
+            // current state and keep polling.
+            return;
+        }
+        if (res.runUrl) runPillLastUrl = res.runUrl;
+        if (res.found === false) {
+            // Post-dispatch race window: the run hasn't surfaced yet.
+            renderRunPill({ state: 'starting', label: 'Starting…', spinner: true });
+            return;
+        }
+        if (res.status === 'completed') {
+            if (res.conclusion === 'success') showRunSuccess();
+            else showRunFailure(res.runUrl);
+            return;
+        }
+        if (res.status === 'queued') {
+            renderRunPill({ state: 'queued', label: 'Queued', spinner: true });
+        } else {
+            renderRunPill({ state: 'running', label: 'Running…', spinner: true });
+        }
+    }
+
+    function startRunPill(correlationId) {
+        stopViewerRunPoll();
+        runPillLastUrl = null;
+        runPill = document.createElement('div');
+        runPill.className = 'todoMdViewerRunPill';
+        runPill.setAttribute('role', 'status');
+        runPill.setAttribute('aria-live', 'polite');
+        // Tap-to-dismiss for the persistent terminal states (failure /
+        // timeout). The link affordance opens in a new tab and must not
+        // also dismiss the pill.
+        runPill.addEventListener('click', function(event) {
+            if (event.target.closest('a')) return;
+            if (runPill && runPill.dataset.dismissible === '1') restoreRunButton();
+        });
+        if (runBacklogBtn.parentNode) {
+            runBacklogBtn.parentNode.replaceChild(runPill, runBacklogBtn);
+        } else {
+            meta.insertBefore(runPill, syncBtn);
+        }
+        renderRunPill({ state: 'starting', label: 'Starting…', spinner: true });
+        const startedAt = Date.now();
+        viewerRunPollInterval = setInterval(function() {
+            pollRunOnce(correlationId, startedAt);
+        }, RUN_POLL_INTERVAL_MS);
+    }
+
     async function runBacklog() {
         if (runBacklogBtn.disabled) return;
         runBacklogBtn.disabled = true;
         runBacklogBtn.classList.add('todoMdViewerRunBtn--loading');
+        let dispatchedId = null;
         try {
             const correlationId =
                 (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -5850,6 +6029,7 @@ function buildTodoMdViewerCard(projectName, target) {
                 target: target,
             });
             if (res.ok) {
+                dispatchedId = correlationId;
                 showInjectToast('Backlog run dispatched');
             } else {
                 showInjectToast('Run failed — ' + (res.reason || 'unknown error'), 'error');
@@ -5857,6 +6037,9 @@ function buildTodoMdViewerCard(projectName, target) {
         } finally {
             runBacklogBtn.disabled = false;
             runBacklogBtn.classList.remove('todoMdViewerRunBtn--loading');
+            // On a successful dispatch, swap the button for the status pill
+            // and begin polling with the same correlation id.
+            if (dispatchedId) startRunPill(dispatchedId);
         }
     }
 

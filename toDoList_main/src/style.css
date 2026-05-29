@@ -3868,6 +3868,74 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: none;
 }
 
+/* Run-status pill — swaps in for the Run backlog button after dispatch.
+   In-flight states (starting / queued / running) all share the quiet muted
+   base; color is introduced only on the terminal states. */
+.todoMdViewerRunPill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #161622;
+  color: #8a8699;
+  border: 1px solid #2a2a38;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.todoMdViewerRunPill[data-dismissible="1"] {
+  cursor: pointer;
+}
+.todoMdViewerRunPillSpinner {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #534AB7;
+  border-top-color: #cdc9ee;
+  animation: todoMdViewerRunSpin 0.7s linear infinite;
+}
+.todoMdViewerRunPillGlyph {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+.todoMdViewerRunPillLabel {
+  min-width: 0;
+}
+.todoMdViewerRunPillLink {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  opacity: 0.8;
+  transition: opacity 0.12s ease;
+}
+.todoMdViewerRunPillLink:hover {
+  opacity: 1;
+}
+.todoMdViewerRunPill--success {
+  background: #0f2a20;
+  border-color: #1d6e56;
+  color: #5dcaa5;
+}
+.todoMdViewerRunPill--failure {
+  background: #2a1414;
+  border-color: #a32d2d;
+  color: #f09595;
+}
+.todoMdViewerRunPill--timeout {
+  background: #161622;
+  border-color: #444441;
+  color: #888780;
+}
+@keyframes todoMdViewerRunSpin {
+  to { transform: rotate(360deg); }
+}
+
 .todoMdViewerExpandBtn {
   appearance: none;
   display: inline-flex;

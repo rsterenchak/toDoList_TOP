@@ -211,6 +211,33 @@ export async function dispatchRun(options) {
 }
 
 
+// Poll a dispatched run's status through the same Worker the dispatch and
+// read flows already use (same URL, same Bearer secret). Sends
+// `{ status: true, correlation_id, repo, filePath }` so the Worker matches
+// the run by correlation id and echoes back its lifecycle. The parsed
+// response — `{ found, status, conclusion, runUrl, runId }` — is spread onto
+// an `{ ok: true }` envelope so the viewer header pill can map it to a state.
+// Returns `{ ok: false, reason }` via describeError on any failure, matching
+// the vocabulary dispatchRun and the inject button already use. The
+// correlation_id is internal plumbing for this call only — it is never shown
+// in the UI.
+export async function pollRunStatus(options) {
+    const opts = options || {};
+    const target = opts.target || null;
+    try {
+        const res = await postToWorker({
+            status: true,
+            correlation_id: opts.correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Test connection sends `{ test: true }` plus repo/filePath when at least
 // one target is defined — the Worker exercises the same route a real
 // inject would take. With no targets defined, the request omits repo/
