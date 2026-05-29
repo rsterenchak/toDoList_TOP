@@ -6,11 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-29',
-        added: [
-            "Each task in the TODO.md viewer now has a Run this entry button that dispatches the automation routine for just that entry.",
-        ],
         changed: [
             "The TODO.md viewer's expand/collapse button is now hidden on mobile to reduce header clutter.",
+            "On mobile the TODO.md viewer now stacks its synced status onto its own line and gives the run control and Sync button a roomier full-width row instead of crowding them beside the tabs.",
         ],
         fixed: [
             "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
