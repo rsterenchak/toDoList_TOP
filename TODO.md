@@ -166,7 +166,7 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/mobileInlineExpandCreate.test.js`
   - Completed: 2026-05-29
 
-- [ ] **[HIGH]** Fix project rename creating a duplicate project across devices
+- [x] **[HIGH]** Fix project rename creating a duplicate project across devices
   - Type: bug
   - Description: Renaming a project on one device leaves a duplicate (the original name plus the new name, both sharing one stable id) on any other device that syncs. The rename push itself is correct — `editProject` issues `UPDATE … .eq('id', payload.id)`, preserving the project's stable id. The duplication is born on the receiving side because both reconcilers in `listLogic.js` key projects by **name** instead of id. In `hydrateFromSupabase`, the remote walk matches `allProjects[p.name]` and the local-only walk skips on `remoteByName[name]`, so after a rename the remote (new name) is adopted fresh while the local entry (old name, same id) is treated as local-only — kept *and* re-INSERTed, which then collides on the `id` primary key with a silent 409. In `handleProjectsRealtime`, an incoming INSERT/UPDATE is looked up by `allProjects[evt.new.name]`; a renamed project misses the name key and falls into the `else` branch that creates a new entry, orphaning the old-named one. Fix both paths to reconcile by stable id (the DELETE branches in both realtime handlers already do this — mirror that pattern).
   - Behavior:
@@ -180,4 +180,4 @@
     - Regression tests added to `toDoList_main/tests/listLogicSupabase.test.js` covering (a) hydrate-merge id-match on a renamed remote project and (b) the realtime UPDATE rename-in-place path.
   - Out of scope: changing the in-memory `allProjects` structure away from name-keyed objects (the data model stays name-keyed; only the reconciliation lookups switch to id); rename conflict resolution when two devices rename the same project to different names concurrently (last-write-wins on the existing path is acceptable for now).
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogicSupabase.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
