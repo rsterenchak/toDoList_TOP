@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-29',
+        fixed: [
+            "Tapping the Completed header on mobile now opens a slide-up bottom sheet with the completed list and the Rendered / Raw markdown viewer.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-28',
         fixed: [
-            "Days-remaining digit on the mobile yellow due-date icon no longer overflows the top of the calendar glyph.",
             "Long todo descriptions on desktop now scroll internally instead of pushing into the rows beneath them.",
             "Sync button in the TODO.md viewer header no longer overflows past the card edge on narrow mobile screens.",
             "Open todo descriptions and the expanded Completed section no longer overlap each other.",
