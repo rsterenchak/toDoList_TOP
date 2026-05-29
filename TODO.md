@@ -111,7 +111,7 @@
   - File: `<file paths>`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Make TODO.md viewer sheet full-screen on mobile
+- [x] **[MEDIUM]** Make TODO.md viewer sheet full-screen on mobile — Completed: 2026-05-29
   - Type: bug
   - Description: On mobile the TODO.md viewer sheet (`todoMdViewerMobileSheet`) doesn't cover the whole screen — it renders as a partial bottom sheet, so the underlying page peeks through and the rendered-markdown content area is shorter than it should be. It should take over the full viewport edge-to-edge: full height and full width with no backdrop peek. Likely cause is a capped height (a `vh`/`max-height` or bottom-sheet height value) or non-fullscreen positioning on the sheet element — switch it to `height: 100dvh` at the mobile breakpoint (dynamic viewport unit so the mobile address bar doesn't clip the bottom) and drop the backdrop strip. Because a full-screen takeover has no backdrop to tap, confirm dismissal still works via an explicit close (X) button and Escape, and pad content with `env(safe-area-inset-*)` so nothing sits under the notch or home indicator.
   - File: `<file paths>`

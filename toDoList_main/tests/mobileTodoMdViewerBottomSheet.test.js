@@ -136,6 +136,25 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         expect(css).toMatch(/#todoMdViewerMobileSheetBackdrop\.is-open\s+#todoMdViewerMobileSheet\s*\{[\s\S]*?transform:\s*translateY\(0\)/);
     });
 
+    it('takes over the full viewport (height:100dvh, no capped bottom-sheet height) with safe-area padding on the top and bottom edges', () => {
+        const sheetBlock = css.match(/#todoMdViewerMobileSheet\s*\{[^}]*\}/);
+        expect(sheetBlock).toBeTruthy();
+        // Full dynamic-viewport height so the mobile address bar can't clip
+        // the bottom and the underlying page can't peek through the top.
+        expect(sheetBlock[0]).toMatch(/height:\s*100dvh/);
+        // The old partial bottom-sheet cap that left the page peeking is gone.
+        expect(sheetBlock[0]).not.toMatch(/max-height:\s*85vh/);
+        // Notch + home-indicator padding so content clears the safe areas.
+        expect(sheetBlock[0]).toMatch(/padding-top:\s*env\(safe-area-inset-top/);
+        expect(sheetBlock[0]).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/);
+
+        // Backdrop no longer paints a dark strip — the full-screen sheet
+        // covers the viewport, so no darkened page shows through behind it.
+        const backdropBlock = css.match(/#todoMdViewerMobileSheetBackdrop\s*\{[^}]*\}/);
+        expect(backdropBlock).toBeTruthy();
+        expect(backdropBlock[0]).not.toMatch(/background:\s*rgba\(/);
+    });
+
     it('reads as interactive on mobile via cursor + pressed feedback', () => {
         // The viewer card sits inline below #completedHeader on mobile;
         // it must read as tappable (cursor + :active feedback) so the
