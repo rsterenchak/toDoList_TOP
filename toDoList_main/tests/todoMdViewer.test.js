@@ -174,6 +174,50 @@ describe('todo.md viewer — parseTodoMdChecklist', () => {
         expect(tokens[0]).toMatchObject({ checked: false, indent: 0 });
         expect(tokens[1]).toMatchObject({ checked: false, indent: 2 });
     });
+
+    it('attaches the entry id from a marker on a following line within the entry block', () => {
+        const text = [
+            '- [ ] Add a thing',
+            '    - Type: feature',
+            '    <!-- id: 11111111-2222-3333-4444-555555555555 -->',
+        ].join('\n');
+        const tokens = parseTodoMdChecklist(text);
+        expect(tokens[0]).toMatchObject({
+            type: 'checkbox',
+            indent: 0,
+            entryId: '11111111-2222-3333-4444-555555555555',
+        });
+    });
+
+    it('attaches the entry id from a marker inline on the checkbox line', () => {
+        const tokens = parseTodoMdChecklist('- [ ] Inline task <!-- id: abc-123 -->');
+        expect(tokens[0].entryId).toBe('abc-123');
+    });
+
+    it('does not attach an id when the entry has no marker', () => {
+        const tokens = parseTodoMdChecklist('- [ ] No marker here\n    - Type: bug');
+        expect(tokens[0].entryId).toBeUndefined();
+    });
+
+    it('scopes a marker to its own entry — it does not bleed onto a later entry', () => {
+        const text = [
+            '- [ ] First',
+            '    <!-- id: first-id -->',
+            '- [ ] Second',
+            '    - Type: feature',
+        ].join('\n');
+        const tokens = parseTodoMdChecklist(text);
+        const checkboxes = tokens.filter((t) => t.type === 'checkbox');
+        expect(checkboxes[0].entryId).toBe('first-id');
+        expect(checkboxes[1].entryId).toBeUndefined();
+    });
+
+    it('only matches the exact `<!-- id: <id> -->` marker form', () => {
+        // Wrong spacing must not resolve — the dedup guard / Worker rely on
+        // the exact one-space-each-side shape.
+        const tokens = parseTodoMdChecklist('- [ ] Task\n    <!--id:nope-->');
+        expect(tokens[0].entryId).toBeUndefined();
+    });
 });
 
 describe('todo.md viewer — expand/collapse toggle', () => {
@@ -537,6 +581,99 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
             const block = main.slice(start, start + 500);
             expect(block).toMatch(/clearActiveRun\(\)/);
         }
+    });
+});
+
+describe('todo.md viewer — per-entry "Run this entry" control', () => {
+
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('passes an onRunEntry callback into the rendered-body builder', () => {
+        // The rendered body is rebuilt on tab swap and on sync; both pass the
+        // card-scoped runEntry handler so per-entry controls can dispatch.
+        const matches = main.match(/buildViewerRenderedBody\([^)]*onRunEntry:\s*runEntry/g) || [];
+        expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('renders the control only for top-level entries that resolved a marker id', () => {
+        const start = main.indexOf('function buildViewerRenderedBody');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 2600);
+        expect(block).toMatch(/onRunEntry\s*&&\s*tok\.indent\s*===\s*0\s*&&\s*tok\.entryId/);
+        expect(block).toMatch(/todoMdViewerRunEntryBtn/);
+        expect(block).toMatch(/Run this entry/);
+    });
+
+    it('dispatches an entry-mode run with the resolved id and a fresh correlation id', () => {
+        const start = main.indexOf('async function runEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 2000);
+        expect(block).toMatch(/mode:\s*['"]entry['"]/);
+        expect(block).toMatch(/entryId:\s*entryId/);
+        expect(block).toMatch(/crypto\.randomUUID\s*\(\s*\)/);
+    });
+
+    it('hands a successful dispatch to the shared header pill via startRunPill', () => {
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 2000);
+        expect(block).toMatch(/dispatchedId\s*=\s*correlationId/);
+        expect(block).toMatch(/if\s*\(\s*dispatchedId\s*\)\s*startRunPill\s*\(\s*dispatchedId\s*\)/);
+    });
+
+    it('persists the active-run record on an entry dispatch so the pill survives navigation', () => {
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 2000);
+        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
+        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}project:\s*projectName/);
+    });
+
+    it('refuses to dispatch a second run while one is already tracked (single-run model)', () => {
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 600);
+        expect(block).toMatch(/if\s*\(\s*runPill\s*\|\|\s*viewerRunPollInterval\s*\)\s*return/);
+    });
+
+    it('disables every per-entry control while the pill is active', () => {
+        expect(main).toMatch(/function\s+syncRunEntryButtonsDisabled\s*\(/);
+        const start = main.indexOf('function syncRunEntryButtonsDisabled');
+        const block = main.slice(start, start + 500);
+        expect(block).toMatch(/const\s+active\s*=\s*!!runPill/);
+        expect(block).toMatch(/todoMdViewerRunEntryBtn/);
+        // Toggled on both pill start and teardown.
+        const pillStart = main.indexOf('function startRunPill');
+        const pillEnd = main.indexOf('async function runBacklog', pillStart);
+        expect(main.slice(pillStart, pillEnd)).toMatch(/syncRunEntryButtonsDisabled\(\)/);
+        const restoreStart = main.indexOf('function restoreRunButton');
+        const restoreEnd = main.indexOf('function syncRunEntryButtonsDisabled', restoreStart);
+        expect(main.slice(restoreStart, restoreEnd)).toMatch(/syncRunEntryButtonsDisabled\(\)/);
+    });
+
+    it('shows the inject/run error toast variant on a failed dispatch', () => {
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 2000);
+        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+    });
+
+    it('never renders the marker comment as visible content', () => {
+        // Marker-only lines are suppressed and an inline marker is stripped
+        // from the row label — the id is internal plumbing.
+        const start = main.indexOf('function buildViewerRenderedBody');
+        const end = main.indexOf('function buildViewerRawBody', start);
+        const block = main.slice(start, end === -1 ? start + 3200 : end);
+        // Inline marker stripped from the row label.
+        expect(block).toMatch(/replace\(\s*TODO_MD_ID_MARKER_RE/);
+        // Marker-only lines suppressed from the rendered output.
+        expect(block).toMatch(/<!-- id: \\S\+ -->/);
+    });
+
+    it('styles the control with the inject/run vocabulary (#161622 fill, #2a2a38 border, #9D93EE text)', () => {
+        const ruleMatch = css.match(/\.todoMdViewerRunEntryBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/background:\s*#161622/);
+        expect(rule).toMatch(/border:[^;]*#2a2a38/);
+        expect(rule).toMatch(/color:\s*#9D93EE/);
     });
 });
 

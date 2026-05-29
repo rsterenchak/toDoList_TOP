@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-29',
         added: [
-            "A Run backlog button in the TODO.md viewer header dispatches the automation routine to pick up the next task.",
             "After a backlog run is dispatched, the TODO.md viewer header shows a live status pill that tracks the run from queued to done, turning green on success or red with a link to the run on failure.",
+            "Each task in the TODO.md viewer now has a Run this entry button that dispatches the automation routine for just that entry.",
         ],
         changed: [
             "The TODO.md viewer's expand/collapse button is now hidden on mobile to reduce header clutter.",
