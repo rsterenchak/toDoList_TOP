@@ -34,7 +34,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Open completed-items section as a bottom sheet on mobile
+- [x] **[MEDIUM]** Open completed-items section as a bottom sheet on mobile
   - Type: bug
   - Description: On mobile, tapping the `todoMdViewerHeader` ("COMPLETED (93)") doesn't open the section correctly — the inline accordion expansion fails to render/expand properly, so the completed-items list (with its Rendered / Raw markdown tabs) is unreachable on touch. Replace the inline accordion behavior on mobile with a bottom sheet: tapping the header slides up a sheet from the bottom of the viewport containing the completed list and the existing Rendered / Raw markdown toggle. Reuse the app's existing bottom-sheet machinery (drag handle + slide-up transition, the same pattern as the paste-URL/music sheet) rather than building a new overlay primitive. To locate the current header wiring and the existing sheet helpers, grep `main.js` with offset/limit (todoMdViewerHeader, the sheet open/close functions) — don't read it in full.
   - Behavior:
@@ -43,4 +43,4 @@
     3. Touch swipe-down must be wired with `touchstart`/`touchmove`/`touchend` (native drag events don't fire reliably on touch).
   - Out of scope: desktop behavior — keep the existing inline accordion on wider breakpoints; this change is scoped to the mobile breakpoint only.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-05-28
+  - Completed: 2026-05-29
