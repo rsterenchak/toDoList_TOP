@@ -48,9 +48,15 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
 
     it('renders a ghost glyph (not a kebab) inside the trigger', () => {
         // The trigger's icon is a pixel-art ghost. The kebab three-circle
-        // SVG it replaced should be gone from the trigger markup.
-        expect(main).toMatch(/settingsToggle\.innerHTML\s*=\s*[\s\S]*?ghostIcon/);
-        expect(main).not.toMatch(/settingsToggle\.innerHTML\s*=\s*[\s\S]*?<circle/);
+        // SVG it replaced should be gone from the trigger markup. Scope the
+        // assertions to the captured `settingsToggle.innerHTML` value (up to
+        // its terminating `;`) so an unrelated `<circle` elsewhere in main.js
+        // can't be picked up by an unanchored match.
+        const assignment = main.match(/settingsToggle\.innerHTML\s*=\s*([\s\S]*?);/);
+        expect(assignment).not.toBeNull();
+        const triggerMarkup = assignment[1];
+        expect(triggerMarkup).toMatch(/ghostIcon/);
+        expect(triggerMarkup).not.toMatch(/<circle/);
     });
 
     it('removes the previous save/import icon cluster from the nav', () => {
