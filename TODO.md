@@ -1,6 +1,6 @@
 # TODO List
 
-- [ ] **[MEDIUM]** Add a "Run backlog" button to the TODO.md viewer card header
+- [x] **[MEDIUM]** Add a "Run backlog" button to the TODO.md viewer card header
   - Type: feature
   - Description: Add a "Run backlog" text button to the TODO.md viewer card header, placed immediately left of the existing Sync button and styled to match it (`#161622` fill, `#2a2a38` border, `#9D93EE` text, compact, with a leading play glyph). On click it triggers the Claude Code automation routine in backlog mode (the routine selects the next eligible task). It fires by POSTing to the same Cloudflare Worker the existing inject/sync flow already uses — the client never calls GitHub directly or holds a token.
   - Behavior:
@@ -16,4 +16,4 @@
     - On mobile the viewer card is moved into the bottom sheet (DOM move preserving listeners), so the click handler keeps working there automatically. Style the button with a class the existing viewer-header rule covers in both the inline and in-sheet instances, the same way `todoMdViewerSyncBtn` is handled.
   - Out of scope: any per-todo "Run this entry" / entry-mode control (deferred to a separate entry — the app has no per-row overflow menu to host it, so that work needs its own design pass and mount point). The full queued → running → PR-opened status pill and its polling (separate entry — this entry only shows a transient "dispatched" confirmation). The Worker-side dispatch endpoint, status branch, dedup guard, and token scope are already built and deployed.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
