@@ -155,6 +155,32 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         expect(backdropBlock[0]).not.toMatch(/background:\s*rgba\(/);
     });
 
+    it('propagates flex height down the sheet chain so the viewer body fills the full-screen sheet and scrolls', () => {
+        // After the sheet became height:100dvh the container is full-height
+        // but the inner content sized to itself, leaving dead space below.
+        // The flex chain — sheet body → viewer card → viewer body — must each
+        // grow (flex:1 1 auto), be allowed to shrink (min-height:0), and the
+        // body must scroll within the remaining height (overflow-y:auto, no
+        // max-height cap). Scoped to the sheet so the inline desktop card is
+        // untouched.
+        const sheetBody = css.match(/#todoMdViewerMobileSheet\s+\.completedMobileSheetBody\s*\{[^}]*\}/);
+        expect(sheetBody).toBeTruthy();
+        expect(sheetBody[0]).toMatch(/flex:\s*1\s+1\s+auto/);
+        expect(sheetBody[0]).toMatch(/min-height:\s*0/);
+
+        const card = css.match(/#todoMdViewerMobileSheet\s+\.todoMdViewerCard\s*\{[^}]*\}/);
+        expect(card).toBeTruthy();
+        expect(card[0]).toMatch(/flex:\s*1\s+1\s+auto/);
+        expect(card[0]).toMatch(/min-height:\s*0/);
+
+        const viewerBody = css.match(/#todoMdViewerMobileSheet\s+\.todoMdViewerBody\s*\{[^}]*\}/);
+        expect(viewerBody).toBeTruthy();
+        expect(viewerBody[0]).toMatch(/flex:\s*1\s+1\s+auto/);
+        expect(viewerBody[0]).toMatch(/min-height:\s*0/);
+        expect(viewerBody[0]).toMatch(/overflow-y:\s*auto/);
+        expect(viewerBody[0]).toMatch(/max-height:\s*none/);
+    });
+
     it('reads as interactive on mobile via cursor + pressed feedback', () => {
         // The viewer card sits inline below #completedHeader on mobile;
         // it must read as tappable (cursor + :active feedback) so the
