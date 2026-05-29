@@ -5268,20 +5268,37 @@ body.row-dragging * { cursor: grabbing !important; }
      Run backlog + Sync on the right — and cap its height so it can never
      clip. Scoped via `#mainList > #todoMdViewerCard` so the bottom-sheet copy
      (#todoMdViewerMobileSheet .todoMdViewerCard, flex:1 1 auto / min-height:0)
-     keeps rendering full height with its body. */
+     keeps rendering full height with its body.
+
+     Sizing follow-up: capping with max-height alone wasn't enough. The card's
+     12px/16px outer margin plus its content pushed card-height-plus-margin past
+     the 54px floor, and with no free space left in the overflowing grid the
+     track stayed pinned at 54px while overflow:hidden shaved the content's
+     baseline. Mirror the todo-row rhythm instead — an explicit
+     `height: var(--item-h)` (44px) with `margin: 5px 8px` totals exactly the
+     54px track, so the launcher fits the floor without ever depending on the
+     track growing. */
   #mainList > #todoMdViewerCard {
     min-height: 0;
+    height: var(--item-h);
     max-height: 54px;
+    margin: 5px 8px;
     overflow: hidden;
+    justify-content: center;
   }
   #mainList > #todoMdViewerCard .todoMdViewerTabs,
   #mainList > #todoMdViewerCard .todoMdViewerBody,
   #mainList > #todoMdViewerCard .todoMdViewerSynced {
     display: none;
   }
+  /* Single centered row: drop the header's vertical padding so the label and
+     the Run backlog / Sync buttons sit on one line, vertically centered within
+     the floored height by the card's justify-content above. */
   #mainList > #todoMdViewerCard .todoMdViewerHeader {
     flex-wrap: nowrap;
     border-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
   }
   #mainList > #todoMdViewerCard .todoMdViewerHeader::before {
     content: 'TODO.md';

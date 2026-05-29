@@ -284,6 +284,25 @@ describe('Mobile inline TODO.md viewer launcher', () => {
         expect(inMobileMediaBlock(idx)).toBe(true);
     });
 
+    it('sizes the launcher to the todo-row rhythm so it fits the floor without the track growing', () => {
+        // max-height alone left the card's outer margin + content over the 54px
+        // floor; with no free space in an overflowing grid the track stayed
+        // pinned and overflow:hidden shaved the baseline. The fix mirrors the
+        // todo-row box: an explicit height of var(--item-h) plus a small
+        // vertical margin so height + margin never exceeds the floor, and the
+        // header's vertical padding is trimmed so the single row centers.
+        const block = css.match(/#mainList\s*>\s*#todoMdViewerCard\s*\{([^}]*)\}/);
+        expect(block).toBeTruthy();
+        expect(block[1]).toMatch(/height:\s*var\(--item-h\)/);
+        expect(block[1]).toMatch(/margin:\s*5px\s+8px/);
+        expect(block[1]).toMatch(/justify-content:\s*center/);
+        const header = css.match(/#mainList\s*>\s*#todoMdViewerCard\s+\.todoMdViewerHeader\s*\{([^}]*)\}/);
+        expect(header).toBeTruthy();
+        expect(header[1]).toMatch(/padding-top:\s*0/);
+        expect(header[1]).toMatch(/padding-bottom:\s*0/);
+        expect(inMobileMediaBlock(css.indexOf(block[0]))).toBe(true);
+    });
+
     it('shows a "TODO.md" launcher label on the inline header', () => {
         // With the tabs hidden the header needs a label so the launcher is
         // self-describing; a ::before on the inline header supplies it
