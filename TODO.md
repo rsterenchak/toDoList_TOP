@@ -18,7 +18,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
   - Completed: 2026-05-29
 
-- [ ] **[MEDIUM]** Add a run-status pill to the TODO.md viewer header
+- [x] **[MEDIUM]** Add a run-status pill to the TODO.md viewer header
   - Type: feature
   - Description: After the "Run backlog" button dispatches a run, replace the button in the viewer card header with a status pill that polls the Cloudflare Worker and reflects the run's lifecycle (starting â queued â running â terminal). The pill uses the quiet style: a muted spinner pill for all in-flight states that only swaps its label, with color introduced only on the terminal states (success green, failure red, timed-out grey). On success the pill auto-dismisses after ~5s and the header reverts to the "Run backlog" button; on failure or timeout the pill persists with a link to the run's Actions page until the user dismisses it. Polling, dispatch, and the status read all go through the same Worker the run button already uses â the client never calls GitHub directly or holds a token.
   - Behavior:
@@ -44,7 +44,7 @@
     - Visual reference (Void theme): in-flight pill is `#161622` fill / `#2a2a38` border / muted `#8a8699` text with a small `#534AB7`/`#cdc9ee` spinner; success is a dark-green fill (e.g. `#0f2a20` / `#1d6e56` border / `#5dcaa5` text); failure is dark-red (`#2a1414` / `#a32d2d` / `#f09595`); timeout is neutral (`#161622` / `#444441` / `#888780`). Match the existing purple accents (`#6C5DF5`/`#9D93EE`).
   - Out of scope: any per-todo "Run this entry" / entry-mode control (separate deferred entry â no per-row menu exists to host it). Tracking more than one concurrent run. Persisting pill state across a full page reload (if the user reloads mid-run the pill resets to the button; the run continues on GitHub regardless). The Worker dispatch/status endpoints, dedup guard, and token scope are already built and deployed. The correlation_id is internal plumbing and is never surfaced in the UI.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-29
 
 - [x] **[HIGH]** Fix the failing settingsDropdown test that blocks the full suite
   - Type: bug
