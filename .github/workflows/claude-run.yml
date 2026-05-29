@@ -56,7 +56,7 @@ jobs:
           claude_args: "--max-turns 40 --model claude-opus-4-8 --dangerously-skip-permissions"
           # Temporary: surface the agent's full output while we verify a real
           # task run end-to-end. Remove once it's landing PRs cleanly.
-          show_full_output: true
+          # show_full_output: true
           prompt: |
             You are running an automated code-development routine for this repository.
             Run mode: ${{ inputs.mode }}
