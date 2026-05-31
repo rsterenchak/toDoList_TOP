@@ -55,9 +55,9 @@
   - Completed: 2026-05-31
   <!-- id: c4c29e68-daf9-4c96-9b12-641c1ad99796 -->
 
-- [ ] **[MEDIUM]** Add layoutInspect.js — serialize an element's live computed layout
+- [x] **[MEDIUM]** Add layoutInspect.js — serialize an element's live computed layout
   - Type: feature
   - Description: New module `toDoList_main/src/layoutInspect.js` exporting `serializeLayout(selector)` for the Claude sheet's iterate flow. Given a CSS selector, resolve it with `document.querySelector`; if nothing matches, return `{ found: false, selector }` so the caller can surface "not currently visible". When matched, walk a bounded subtree — the element, its parent, and its direct children (one level up, one level down) — and for each node emit a curated, layout-relevant snapshot: tag, id, abbreviated class list, the rendered box from `getBoundingClientRect` (x/y/width/height rounded), and a whitelist of `getComputedStyle` properties (display, position, top/left/right/bottom, flex-direction, justify-content, align-items, gap, padding, margin, width, height, font-size, line-height, text-align, overflow). Do NOT dump the full computed style — only the whitelist, to keep the payload small. Critically, report COMPUTED values (these reflect runtime inline styles set in main.js, which is what makes them diagnostic against the stylesheet). Return a compact JSON-serializable object `{ found: true, selector, node, parent, children: [...] }`. Pure function, no DOM mutation, no network. 
   - File: `toDoList_main/src/layoutInspect.js`, `toDoList_main/tests/layoutInspect.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: f702827e-a71c-47a9-acb6-d0578004a2ac -->
