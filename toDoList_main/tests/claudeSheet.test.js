@@ -421,6 +421,136 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     });
 });
 
+// The iterate door: tapping a SHIPPED run record opens the Chat tab and fires
+// turn 1 carrying the run's entry id so the Worker seeds the conversation from
+// that merged change. Follow-up drafts flow through the same author-flow card.
+describe('Claude sheet — iterate from a shipped run', () => {
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            let httpStatus = 200;
+            let httpOk = true;
+            if (body.chat) {
+                chatBodies.push(body);
+                json = { reply: 'Here is the diff context. What should change?\n```md\n- [ ] **[LOW]** Tweak the sparkle\n  - Type: feature\n```' };
+            }
+            return Promise.resolve({
+                ok: httpOk,
+                status: httpStatus,
+                json: () => Promise.resolve(json),
+            });
+        });
+    }
+
+    function seedShippedRun() {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'entry-42', correlationId: 'corr-1', title: 'Add a sparkle', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]));
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    it('marks a shipped run row as an iterable button', () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        expect(row.classList.contains('claudeRunRow--iterable')).toBe(true);
+        expect(row.getAttribute('role')).toBe('button');
+        expect(row.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('does not make a queued run row iterable', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Pending', status: 'QUEUED', dispatchedAt: Date.now() },
+        ]));
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        expect(row.classList.contains('claudeRunRow--iterable')).toBe(false);
+        expect(row.getAttribute('role')).toBe(null);
+    });
+
+    it('tapping a shipped run opens Chat and sends turn 1 with the entry id', async () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        // Lands on the Chat tab.
+        expect(document.getElementById('claudeSheet').getAttribute('data-tab')).toBe('chat');
+        // Turn 1 carried the entry id alongside the chat contract.
+        expect(chatBodies.length).toBe(1);
+        expect(chatBodies[0].chat).toBe(true);
+        expect(chatBodies[0].entry_id).toBe('entry-42');
+        // The seeded reply renders as an assistant bubble.
+        expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('diff context');
+    });
+
+    it('omits the entry id on the next (manual) turn', async () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'make it bigger';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        expect(chatBodies.length).toBe(2);
+        expect(chatBodies[1].entry_id).toBeUndefined();
+    });
+
+    it('surfaces the follow-up drafted-entry card from the seeded reply', async () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        const card = document.querySelector('.claudeDraftCard');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.claudeDraftEntry').textContent).toContain('Tweak the sparkle');
+    });
+
+    it('shows a gentle "nothing to iterate on" note when the seed 404s', async () => {
+        // Worker has no merged PR carrying this entry's marker → 404.
+        globalThis.fetch = vi.fn(() => Promise.resolve({
+            ok: false,
+            status: 404,
+            json: () => Promise.resolve({}),
+        }));
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        const assistant = document.querySelector('.claudeMsg--assistant');
+        expect(assistant.classList.contains('claudeMsg--note')).toBe(true);
+        expect(assistant.textContent).toContain('Nothing to iterate on yet');
+        expect(document.querySelector('.claudeMsg--error')).toBe(null);
+    });
+});
+
 describe('Claude sheet — author-flow module surface and styling', () => {
     const here2 = dirname(fileURLToPath(import.meta.url));
     const srcDir2 = resolve(here2, '../src');

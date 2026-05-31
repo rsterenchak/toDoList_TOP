@@ -12,6 +12,12 @@
 // routine run. Each dispatch becomes a Runs-tab record that polls QUEUED →
 // RUNNING → SHIPPED. Run records persist in localStorage so they survive a
 // reload.
+//
+// A SHIPPED run record is the door into iterate mode: tapping it opens the
+// Chat tab and fires turn 1 carrying the run's entry id, so the Worker
+// resolves that entry's merged diff and seeds the conversation. Follow-ups
+// flow through the same drafted-entry card → Inject & run path as the author
+// flow — fixing forward as a brand-new entry with a fresh id.
 
 import {
     chatWithWorker,
@@ -220,14 +226,29 @@ async function sendChatTurn() {
     chatHistory.push({ role: 'user', content: text });
     appendMessageBubble('user', text);
     input.value = '';
+
+    // Manual turns never carry an entry id — the iterate seed (turn 1) is the
+    // only place it's sent; the Worker assembles the diff context from there.
+    await requestAssistantReply();
+}
+
+// Send the running history to the Worker, render the assistant reply in place
+// of a pending bubble, and surface a drafted-entry card when the reply carries
+// a fenced ```md block. Shared by the manual chat turn and the iterate seed.
+// `entryId` is only supplied on an iterate session's first turn; a Worker 404
+// for that seed means no merged PR carries the entry's marker yet, so it's
+// shown as a gentle "nothing to iterate on" note rather than an error.
+async function requestAssistantReply(entryId) {
+    const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
+    const send = sheetEl && sheetEl.querySelector('#claudeComposerSend');
     if (send) send.disabled = true;
-    input.disabled = true;
+    if (input) input.disabled = true;
 
     let pending = appendMessageBubble('assistant', '…');
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const reply = await chatWithWorker(chatHistory);
+        const reply = await chatWithWorker(chatHistory, entryId);
         chatHistory.push({ role: 'assistant', content: reply });
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
@@ -238,14 +259,39 @@ async function sendChatTurn() {
     } catch (e) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
-            pending.classList.add('claudeMsg--error');
-            pending.textContent = 'Chat failed — ' + (e && e.reason ? e.reason : 'error');
+            if (entryId && e && e.status === 404) {
+                pending.classList.add('claudeMsg--note');
+                pending.textContent = 'Nothing to iterate on yet — this run shipped before iterate tracking, so there’s no merged change to build on.';
+            } else {
+                pending.classList.add('claudeMsg--error');
+                pending.textContent = 'Chat failed — ' + (e && e.reason ? e.reason : 'error');
+            }
         }
     } finally {
         if (send) send.disabled = false;
-        input.disabled = false;
-        try { input.focus(); } catch (err) { /* defensive */ }
+        if (input) {
+            input.disabled = false;
+            try { input.focus(); } catch (err) { /* defensive */ }
+        }
     }
+}
+
+// Seed an iterate chat from a SHIPPED run: switch to the Chat tab, reset the
+// conversation, and fire turn 1 carrying the run's entry id so the Worker
+// resolves that entry's merged diff and replies with iterate context. Later
+// turns omit the id (handled by sendChatTurn). Tapping a non-shipped or
+// id-less run is a no-op — iterate needs a merged change to build on.
+async function startIterateFromRun(rec) {
+    if (!rec || rec.status !== 'SHIPPED' || !rec.entryId) return;
+    setActiveTab('chat');
+    if (!isClaudeSheetOpen()) openClaudeSheet();
+
+    chatHistory = [];
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
+
+    appendMessageBubble('note', 'Iterating on “' + (rec.title || 'this run') + '” — pulling the shipped change…');
+    await requestAssistantReply(rec.entryId);
 }
 
 // ── DRAFTED ENTRY CARD ──
@@ -447,6 +493,23 @@ function buildRunRow(rec) {
 
     row.appendChild(title);
     row.appendChild(badge);
+
+    // A SHIPPED run has a merged change behind it, so its row becomes the
+    // door into an iterate chat. Non-shipped rows stay inert.
+    if (status === 'SHIPPED' && rec.entryId) {
+        row.classList.add('claudeRunRow--iterable');
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-label', 'Iterate on ' + (rec.title || 'this run'));
+        row.title = 'Iterate on this shipped change';
+        row.addEventListener('click', function() { startIterateFromRun(rec); });
+        row.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                startIterateFromRun(rec);
+            }
+        });
+    }
     return row;
 }
 
