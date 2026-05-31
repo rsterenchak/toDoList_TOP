@@ -41,9 +41,9 @@
   - Completed: 2026-05-30
   <!-- id: 4e1a4e11-b0cc-4b23-acf5-1bba4ecdd213 -->
 
-- [ ] **[MEDIUM]** Wire the iterate door — seed a chat from a shipped run and inject the follow-up
+- [x] **[MEDIUM]** Wire the iterate door — seed a chat from a shipped run and inject the follow-up
   - Type: feature
   - Description: Make a SHIPPED run record in the Claude sheet's Runs list tappable to open an iterate chat seeded from that entry (builds on the author flow already in `claudeSheet.js`). On tapping a run whose status is SHIPPED, open the Chat tab and send the first turn as `{ chat: true, entry_id: <record.entryId>, messages: [...] }` via a new `chatWithWorker` overload (or an added `entryId` argument) — the Worker's iterate seed handles resolving the diff and assembling context, so the client just passes the id on turn 1 and omits it on every later turn. Render the seeded reply normally. Telemetry is deferred to a later turn, not turn 1: when Claude's reply asks the user to confirm which element is affected, surface a lightweight "attach live layout" affordance that, when used, serializes the relevant element's computed layout and sends it as ordinary user-message content on the next turn (the serializer itself is a separate entry — for now the affordance can be stubbed or omitted, and iterate works on diff + words alone, which is already proven useful). The follow-up entry Claude drafts flows through the exact same drafted-entry card + Inject & run + confirm path the author flow uses — fix-forward as a new entry with a new id. Handle the Worker's 404 ("no merged PR carries this entry's marker") gracefully: show "nothing to iterate on yet" rather than an error, for runs that shipped before the marker existed.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: eb1edc1f-8a94-4afc-8b7b-e990ccce7fef -->
