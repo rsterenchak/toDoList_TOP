@@ -52,11 +52,14 @@ describe('inject feature — inject.js module shape', () => {
 
     it('the inject POST body carries the description verbatim under `entry`', () => {
         // The description value is `item.desc` straight from the data
-        // model — markdown formatting must round-trip unchanged. With
-        // per-project routing, the body also carries `repo` and
-        // `filePath` from the resolved target; those are asserted in
+        // model — markdown formatting must round-trip unchanged. The entry
+        // is built by the shared embedEntryMarker helper, which trails the
+        // id marker without otherwise altering item.desc; the verbatim
+        // round-trip itself is asserted through fetch further below. With
+        // per-project routing, the body also carries `repo` and `filePath`
+        // from the resolved target; those are asserted in
         // projectInjectRouting.test.js.
-        expect(inject).toMatch(/entry\s*:\s*item\.desc/);
+        expect(inject).toMatch(/entry\s*:\s*embedEntryMarker\s*\(\s*item\.desc/);
         expect(inject).toMatch(/postToWorker\s*\(\s*body\s*\)/);
     });
 

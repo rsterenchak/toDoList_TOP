@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { vi } from 'vitest';
 import {
     mountClaudeSheet,
     openClaudeSheet,
     closeClaudeSheet,
     isClaudeSheetOpen,
+    extractDraftedEntry,
 } from '../src/claudeSheet.js';
+import { initInjectConfig } from '../src/inject.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -119,11 +122,11 @@ describe('Claude sheet shell + launcher', () => {
         expect(newBtn.textContent).toBe('+ New');
     });
 
-    it('the Chat composer is an inert placeholder (disabled input + send)', () => {
+    it('the Chat composer is functional (enabled input + send)', () => {
         const input = document.getElementById('claudeComposerInput');
         const send = document.getElementById('claudeComposerSend');
-        expect(input.disabled).toBe(true);
-        expect(send.disabled).toBe(true);
+        expect(input.disabled).toBe(false);
+        expect(send.disabled).toBe(false);
     });
 });
 
@@ -202,5 +205,236 @@ describe('Claude sheet — module surface and styling', () => {
         expect(main.slice(idx, idx + 400)).toMatch(/showHelpModal\s*\(\s*\)/);
         // showHelpModal still exists in modals.js for that menu item + `?` key.
         expect(modals).toMatch(/export\s+function\s+showHelpModal\s*\(/);
+    });
+});
+
+// The author flow: a functional Chat tab that talks to the Worker, detects a
+// fenced ```md drafted entry, and — behind an inline confirm — injects it and
+// dispatches an entry-mode run tracked in the Runs tab.
+const tick = () => new Promise((r) => setTimeout(r, 0));
+async function flush(n = 4) {
+    for (let i = 0; i < n; i++) await tick();
+}
+
+describe('Claude sheet — drafted entry detection', () => {
+    it('extracts the inner text of a fenced ```md block', () => {
+        const reply = 'Here you go:\n```md\n- [ ] **[LOW]** Do a thing\n  - Type: feature\n```\nLet me know.';
+        const entry = extractDraftedEntry(reply);
+        expect(entry).toContain('- [ ] **[LOW]** Do a thing');
+        expect(entry).toContain('Type: feature');
+        expect(entry).not.toContain('```');
+    });
+
+    it('returns null when the reply has no fenced md block', () => {
+        expect(extractDraftedEntry('Just a plain reply, no entry.')).toBe(null);
+        expect(extractDraftedEntry('```js\nconst x = 1;\n```')).toBe(null);
+        expect(extractDraftedEntry('')).toBe(null);
+    });
+});
+
+describe('Claude sheet — author flow (chat, draft card, inject & run)', () => {
+    let realFetch;
+    let fetchSpy;
+    let statusJson;
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) {
+                json = { reply: 'Sure:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```' };
+            } else if (body.dispatch) {
+                json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
+            } else if (body.status) {
+                json = statusJson;
+            }
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve(json),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        statusJson = { found: false };
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        // Remounting against an empty store stops any interval pollers a test
+        // left running, keeping them from leaking into later tests.
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('enables the composer (no longer an inert placeholder)', () => {
+        expect(document.getElementById('claudeComposerInput').disabled).toBe(false);
+        expect(document.getElementById('claudeComposerSend').disabled).toBe(false);
+    });
+
+    it('renders user + assistant bubbles and POSTs { chat: true, messages }', async () => {
+        await sendMessage('Add a sparkle feature');
+        const chatCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect(chatCall).toBeTruthy();
+        const sent = JSON.parse(chatCall[1].body);
+        expect(sent.chat).toBe(true);
+        expect(Array.isArray(sent.messages)).toBe(true);
+        expect(sent.messages[0]).toEqual({ role: 'user', content: 'Add a sparkle feature' });
+
+        const bubbles = document.querySelectorAll('.claudeMsg');
+        expect(bubbles.length).toBeGreaterThanOrEqual(2);
+        expect(document.querySelector('.claudeMsg--user').textContent).toBe('Add a sparkle feature');
+        expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('Sure');
+    });
+
+    it('surfaces a drafted-entry card when the reply contains a fenced md block', async () => {
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.claudeDraftEntry').textContent).toContain('Add a sparkle');
+        expect(card.querySelector('.claudeDraftInject').textContent).toBe('Inject & run');
+    });
+
+    it('Inject & run reveals an inline confirm; Cancel reverts it', async () => {
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        const injectBtn = card.querySelector('.claudeDraftInject');
+        injectBtn.click();
+        const confirm = card.querySelector('.claudeDraftConfirm');
+        expect(confirm.hidden).toBe(false);
+        expect(card.querySelector('.claudeDraftConfirmWarn').textContent)
+            .toBe('This ships to main and deploys to your live app.');
+        expect(card.querySelector('.claudeDraftShip').textContent).toBe('Ship it');
+        card.querySelector('.claudeDraftCancel').click();
+        expect(confirm.hidden).toBe(true);
+        expect(injectBtn.hidden).toBe(false);
+    });
+
+    it('Ship it injects with an id marker, dispatches an entry run, and records it as QUEUED', async () => {
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        // Inject call carries the marker-embedded entry and matching id.
+        const injectCall = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && b.entry;
+        });
+        expect(injectCall).toBeTruthy();
+        const injectBody = JSON.parse(injectCall[1].body);
+        expect(injectBody.entry).toContain('<!-- id: ' + injectBody.id + ' -->');
+
+        // Dispatch is entry-mode, targeting the injected id with a separate
+        // correlation id.
+        const dispatchCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).dispatch);
+        expect(dispatchCall).toBeTruthy();
+        const dispatchBody = JSON.parse(dispatchCall[1].body);
+        expect(dispatchBody.mode).toBe('entry');
+        expect(dispatchBody.entry_id).toBe(injectBody.id);
+        expect(dispatchBody.correlation_id).toBeTruthy();
+        expect(dispatchBody.correlation_id).not.toBe(injectBody.id);
+
+        // A QUEUED run record appears in the Runs tab and is persisted.
+        const sheet = document.getElementById('claudeSheet');
+        expect(sheet.getAttribute('data-tab')).toBe('runs');
+        const row = document.querySelector('.claudeRunRow');
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.claudeRunBadge').textContent).toBe('Queued');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored.length).toBe(1);
+        expect(stored[0].status).toBe('QUEUED');
+        expect(stored[0].entryId).toBe(injectBody.id);
+        expect(stored[0].correlationId).toBe(dispatchBody.correlation_id);
+    });
+
+    it('flips the run record to SHIPPED when the status poll reports success', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('flips the run record to FAILED when the status poll reports a non-success conclusion', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'failure' };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+    });
+
+    it('re-renders persisted run records on a fresh mount (survive reload)', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Persisted task', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const rows = document.querySelectorAll('.claudeRunRow');
+        expect(rows.length).toBe(1);
+        expect(rows[0].querySelector('.claudeRunTitle').textContent).toBe('Persisted task');
+        expect(rows[0].querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+    });
+});
+
+describe('Claude sheet — author-flow module surface and styling', () => {
+    const here2 = dirname(fileURLToPath(import.meta.url));
+    const srcDir2 = resolve(here2, '../src');
+    const claude = readFileSync(resolve(srcDir2, 'claudeSheet.js'), 'utf8');
+    const inject = readFileSync(resolve(srcDir2, 'inject.js'), 'utf8');
+    const css = readFileSync(resolve(srcDir2, 'style.css'), 'utf8');
+
+    it('inject.js exports the shared helpers and chat/inject Worker calls', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+chatWithWorker\s*\(/);
+        expect(inject).toMatch(/export\s+async\s+function\s+injectEntry\s*\(/);
+        expect(inject).toMatch(/export\s+function\s+mintEntryId\s*\(/);
+        expect(inject).toMatch(/export\s+function\s+embedEntryMarker\s*\(/);
+        // chatWithWorker POSTs the { chat: true, messages } contract.
+        expect(inject).toMatch(/chat:\s*true,\s*messages/);
+    });
+
+    it('claudeSheet.js imports the author-flow helpers from inject.js', () => {
+        expect(claude).toMatch(/from\s*['"]\.\/inject\.js['"]/);
+        expect(claude).toMatch(/chatWithWorker/);
+        expect(claude).toMatch(/injectEntry/);
+        expect(claude).toMatch(/dispatchRun/);
+        expect(claude).toMatch(/pollRunStatus/);
+    });
+
+    it('persists run records under the todoapp_ prefixed key', () => {
+        expect(claude).toMatch(/todoapp_claudeRuns/);
+    });
+
+    it('styles the drafted-entry card, message bubbles, and run badges', () => {
+        expect(css).toMatch(/\.claudeDraftCard\s*\{/);
+        expect(css).toMatch(/\.claudeMsg--user\s*\{/);
+        expect(css).toMatch(/\.claudeMsg--assistant\s*\{/);
+        expect(css).toMatch(/\.claudeRunBadge--shipped\s*\{/);
     });
 });
