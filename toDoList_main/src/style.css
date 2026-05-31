@@ -4325,6 +4325,38 @@ body.row-dragging * { cursor: grabbing !important; }
   outline-offset: 2px;
 }
 
+.todoMdViewerCollapseBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: #161622;
+  color: #9D93EE;
+  border: 1px solid #2a2a38;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.todoMdViewerCollapseBtn:hover {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+  border-color: #6C5DF5;
+}
+.todoMdViewerCollapseBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Collapsed state — hide the body so only the fixed header bar remains.
+   Scoped to the inline #mainList card so the mobile bottom-sheet copy
+   (moved out of #mainList) keeps its body even if the card was collapsed. */
+#mainList .todoMdViewerCard.collapsed .todoMdViewerBody {
+  display: none;
+}
+
 .todoMdViewerBody {
   padding: 12px 14px;
   max-height: 280px;
