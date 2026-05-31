@@ -137,22 +137,32 @@ function describeError(e) {
     return e.message || 'Unknown error';
 }
 
+// Mint a stable entry id. Prefers crypto.randomUUID with a Date.now()+random
+// fallback for environments without it. Shared by the inject button and the
+// Claude sheet's author flow so both stamp ids the Worker's dedup-by-id and
+// the routine's entry-mode lookup can rely on.
+export function mintEntryId() {
+    return (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+        ? crypto.randomUUID()
+        : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+}
+
+// Trail an entry's text with the `<!-- id: <id> -->` marker. Marker format is
+// exactly one space each side of the id to match the Worker, the routine's
+// entry-mode lookup, and TODO_MD_ID_MARKER_RE in main.js. The source text is
+// never mutated — trailing whitespace is trimmed only on the returned copy.
+export function embedEntryMarker(text, id) {
+    return String(text || '').replace(/\s+$/, '') + '\n  <!-- id: ' + id + ' -->';
+}
+
 async function injectDescription(item, target) {
     if (!item || !item.desc) return { ok: false, reason: 'No description' };
     try {
         // Mint once and reuse on re-inject so the Worker's dedup-by-id makes
         // a repeat a no-op and the entry traces back to its merged PR.
-        if (!item.entryId) {
-            item.entryId =
-                (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-                    ? crypto.randomUUID()
-                    : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-        }
-        // Marker format is exactly one space each side of the id to match the
-        // Worker, the routine's entry-mode lookup, and TODO_MD_ID_MARKER_RE.
-        // Trails item.desc without mutating the stored value.
+        if (!item.entryId) item.entryId = mintEntryId();
         const body = {
-            entry: item.desc.replace(/\s+$/, '') + '\n  <!-- id: ' + item.entryId + ' -->',
+            entry: embedEntryMarker(item.desc, item.entryId),
             id: item.entryId,
         };
         if (target) {
@@ -165,6 +175,51 @@ async function injectDescription(item, target) {
         return { ok: true };
     } catch (e) {
         return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Inject a ready-made TODO.md entry through the same Worker the inject button
+// uses (same URL + Bearer secret). Unlike injectDescription, this takes a raw
+// entry string and an id directly — the Claude sheet's author flow mints the
+// id and embeds the marker via mintEntryId/embedEntryMarker, then hands the
+// finished entry here. Posts `{ entry, id }` (plus repo/filePath when a target
+// is supplied) and returns `{ ok: true, id }` on success or `{ ok: false,
+// reason }` via describeError on failure.
+export async function injectEntry(options) {
+    const opts = options || {};
+    if (!opts.entry) return { ok: false, reason: 'No entry' };
+    const id = opts.id || mintEntryId();
+    try {
+        const body = { entry: opts.entry, id: id };
+        if (opts.target) {
+            body.repo = opts.target.repo;
+            body.filePath = opts.target.file_path;
+        }
+        await postToWorker(body);
+        return { ok: true, id: id };
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Hold a chat turn with Claude through the same Worker the inject/dispatch
+// flows use (same URL + Bearer secret). Mirrors postToWorker's wiring but
+// POSTs `{ chat: true, messages }` — the running conversation history — and
+// returns the assistant's reply text. Tolerates a couple of response shapes
+// (`{ reply }`, `{ text }`, or a bare string). Lets postToWorker's error
+// throw so the caller can surface it; the thrown error carries a `reason`
+// from describeError matching the inject button's vocabulary.
+export async function chatWithWorker(messages) {
+    try {
+        const res = await postToWorker({ chat: true, messages: messages });
+        if (res && typeof res.reply === 'string') return res.reply;
+        if (res && typeof res.text === 'string') return res.text;
+        if (typeof res === 'string') return res;
+        return '';
+    } catch (e) {
+        const err = new Error(describeError(e));
+        err.reason = describeError(e);
+        throw err;
     }
 }
 

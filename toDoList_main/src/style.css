@@ -1520,6 +1520,161 @@ body:has(#settingsMenu) #claudeLauncher {
   cursor: pointer;
 }
 
+/* CLAUDE CHAT — message bubbles, drafted-entry card, run rows. */
+.claudeMsg {
+  max-width: 90%;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.claudeMsg--user {
+  margin-left: auto;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border: 0.5px solid var(--accent-text);
+}
+.claudeMsg--assistant {
+  margin-right: auto;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-mid);
+}
+.claudeMsg--pending {
+  color: var(--text-muted);
+}
+.claudeMsg--error {
+  background: #2a1414;
+  border-color: #a32d2d;
+  color: #f09595;
+}
+
+.claudeDraftCard {
+  margin: 0 0 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #0f2a20;
+  border: 0.5px solid #1d6e56;
+}
+.claudeDraftCard--shipped {
+  opacity: 0.75;
+}
+.claudeDraftEntry {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #c8f0df;
+}
+.claudeDraftActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.claudeDraftInject,
+.claudeDraftShip {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: #1d6e56;
+  color: #eafff6;
+  border: 0.5px solid #5dcaa5;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.claudeDraftConfirmWarn {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #f0caa0;
+}
+.claudeDraftConfirmRow {
+  display: flex;
+  gap: 8px;
+}
+.claudeDraftCancel {
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-mid);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.claudeDraftShip:disabled,
+.claudeDraftCancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.claudeDraftError {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #f09595;
+}
+.claudeDraftShippedNote {
+  margin: 0;
+  font-size: 12px;
+  color: #5dcaa5;
+}
+
+.claudeRunRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+}
+.claudeRunTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.claudeRunBadge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 0.5px solid var(--border-mid);
+  color: var(--text-secondary);
+}
+.claudeRunBadge--queued {
+  background: #161622;
+  border-color: #444441;
+  color: #b8b6ac;
+}
+.claudeRunBadge--running {
+  background: var(--accent-dim);
+  border-color: var(--accent-text);
+  color: var(--accent-text);
+}
+.claudeRunBadge--shipped {
+  background: #0f2a20;
+  border-color: #1d6e56;
+  color: #5dcaa5;
+}
+.claudeRunBadge--failed {
+  background: #2a1414;
+  border-color: #a32d2d;
+  color: #f09595;
+}
+
 /* MAIN BAR */
 #mainBar {
   display: grid;
