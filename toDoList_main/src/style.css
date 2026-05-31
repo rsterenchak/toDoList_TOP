@@ -1656,6 +1656,28 @@ body:has(#settingsMenu) #claudeLauncher {
   color: #5dcaa5;
 }
 
+.claudeInspectAttach {
+  margin: -2px 0 12px;
+}
+.claudeInspectBtn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border: 0.5px solid var(--accent-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.claudeInspectNotice {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
 .claudeRunRow {
   display: flex;
   align-items: center;
