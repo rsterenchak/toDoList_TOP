@@ -89,9 +89,9 @@
   - Completed: 2026-05-31
   <!-- id: f10f9427-f5b3-43d1-aa8b-3b9b2c0f1d5b -->
 
-- [ ] **[MEDIUM]** Resume run-status polling on load so stale records reconcile
+- [x] **[MEDIUM]** Resume run-status polling on load so stale records reconcile
   - Type: bug
   - Description: Run records in the Claude sheet's Runs tab freeze at whatever status they held when last in memory — a record dispatched as QUEUED/RUNNING persists to localStorage and is read back by `loadRunRecords()` at that same status, but the mount path never re-attaches a status poll, so records that actually completed in a prior session display as "Running" forever. This makes the Runs list untrustworthy and leaves genuinely-shipped runs stuck non-tappable (iterate requires `status === 'SHIPPED'`). Fix: after `loadRunRecords()` on mount, iterate the loaded records and for each one whose status is NOT terminal (use the existing `isTerminalStatus()` — i.e. not SHIPPED/FAILED), re-attach a status poll via the existing `pollRunStatus`/correlationId path (the same poll a fresh dispatch uses), so it reconciles to its true current status and re-renders the list when it resolves. Guard against double-polling a correlationId already in the in-flight poll map. Records with no correlationId (or too old to resolve) should fail gracefully — if a poll can't resolve a record after a reasonable bound, mark it FAILED rather than leaving it Running indefinitely, so the list never shows a permanently-stuck Running row. Re-render the Runs list as statuses settle.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: 3d01f181-a589-4f12-a474-7ba5637e9c33 -->
