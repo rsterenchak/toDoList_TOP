@@ -20,9 +20,9 @@
   - Completed: 2026-05-30
   <!-- id: 877a5efe-c491-4927-8024-92911f51f1fd -->
 
-- [ ] **[MEDIUM]** Wire the Claude sheet's author flow — chat, drafted-entry card, inject-with-confirm
+- [x] **[MEDIUM]** Wire the Claude sheet's author flow — chat, drafted-entry card, inject-with-confirm
   - Type: feature
   - Description: Make the Chat tab functional in author mode (builds on the shell from the sheet-shell entry). Add a `chatWithWorker(messages)` helper to `inject.js` mirroring `postToWorker` (same cached URL + Bearer secret) that POSTs `{ chat: true, messages }` and returns the reply text. In `claudeSheet.js`, hold the conversation in memory, send the running history on each turn, and render assistant replies. When a reply contains a fenced ```md entry, detect it and render it as a distinct green "drafted entry" card below the message. The card's single action is "Inject & run", which first shows an inline confirm ("This ships to main and deploys to your live app." → Ship it / Cancel). On confirm: mint a stable entry id and embed the `<!-- id: <uuid> -->` marker (reuse the id-mint + marker-embed pattern from the injectDescription change; factor it into a shared `inject.js` helper if not already), call inject with `{ entry, id }`, then `dispatchRun({ mode: 'entry', entryId, correlationId })` with a fresh `crypto.randomUUID()` correlation id, and push a run record `{ entryId, correlationId, title, status }` into the Runs list rendered as QUEUED. Reuse the existing status-polling path to flip the record QUEUED → RUNNING → SHIPPED. Keep run records in `localStorage` so they survive a reload.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-30
   <!-- id: 41d5301f-f8d1-4fb3-b6bb-34d599cbd407 -->
