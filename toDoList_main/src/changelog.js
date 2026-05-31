@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-05-30',
+        added: [
+            "Injecting a todo now tags its TODO.md entry with a stable id, so re-injecting the same item won't create a duplicate.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-05-29',
         fixed: [
-            "The TODO.md viewer card now stays full-height on a project with no open todos but many completed items, instead of collapsing to a sliver.",
             "On mobile the inline TODO.md viewer is now a compact tappable launcher, so it no longer clips to a sliver or overlaps the list when a project has many items.",
             "On mobile the inline TODO.md launcher no longer clips its bottom edge when a project's list fills the screen.",
             "New todos committed without a chosen date now default to today on desktop, matching mobile, so the row reads DUE TODAY.",

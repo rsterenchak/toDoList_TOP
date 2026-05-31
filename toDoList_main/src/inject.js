@@ -140,7 +140,21 @@ function describeError(e) {
 async function injectDescription(item, target) {
     if (!item || !item.desc) return { ok: false, reason: 'No description' };
     try {
-        const body = { entry: item.desc };
+        // Mint once and reuse on re-inject so the Worker's dedup-by-id makes
+        // a repeat a no-op and the entry traces back to its merged PR.
+        if (!item.entryId) {
+            item.entryId =
+                (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                    ? crypto.randomUUID()
+                    : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+        }
+        // Marker format is exactly one space each side of the id to match the
+        // Worker, the routine's entry-mode lookup, and TODO_MD_ID_MARKER_RE.
+        // Trails item.desc without mutating the stored value.
+        const body = {
+            entry: item.desc.replace(/\s+$/, '') + '\n  <!-- id: ' + item.entryId + ' -->',
+            id: item.entryId,
+        };
         if (target) {
             body.repo = target.repo;
             body.filePath = target.file_path;

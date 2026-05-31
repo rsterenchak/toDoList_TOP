@@ -144,7 +144,7 @@ describe('project inject routing — POST body shape', () => {
 
     it('injectDescription posts the assembled body via postToWorker', () => {
         expect(inject).toMatch(
-            /async\s+function\s+injectDescription\s*\(\s*item\s*,\s*target\s*\)[\s\S]{0,400}postToWorker\s*\(\s*body\s*\)/
+            /async\s+function\s+injectDescription\s*\(\s*item\s*,\s*target\s*\)[\s\S]{0,1200}postToWorker\s*\(\s*body\s*\)/
         );
     });
 

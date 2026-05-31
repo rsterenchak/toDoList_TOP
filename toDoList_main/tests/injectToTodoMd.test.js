@@ -282,7 +282,77 @@ describe('inject feature — entry payload is clean UTF-8 (no double-encoding)',
         const opts = fetchSpy.mock.calls[0][1];
         expect(typeof opts.body).toBe('string');
         const parsed = JSON.parse(opts.body);
-        expect(parsed.entry).toBe(exotic);
+        // The entry now trails a `<!-- id: <uuid> -->` marker; strip it and
+        // confirm the description portion still round-trips byte-for-byte.
+        const entryWithoutMarker = parsed.entry.replace(/\n\s*<!-- id: \S+ -->$/, '');
+        expect(entryWithoutMarker).toBe(exotic);
+    });
+});
+
+describe('inject feature — entry-id marker minting', () => {
+
+    let fetchSpy;
+    let realFetch;
+
+    beforeEach(() => {
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+
+        realFetch = globalThis.fetch;
+        fetchSpy = vi.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({}),
+        }));
+        globalThis.fetch = fetchSpy;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = realFetch;
+        localStorage.clear();
+    });
+
+    function clickReady(btn) {
+        // Bypass the state machine so the click hits the POST branch even
+        // without a configured project target, then flush the awaited chain.
+        btn.dataset.state = 'ready';
+        btn.disabled = false;
+        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    it('appends a `<!-- id: <uuid> -->` marker after the description and sends the same id under body.id', async () => {
+        const item = toDo('Marker', 'A description', '5-27-2026', null, 0);
+        const btn = makeInjectButton(item, {});
+        await clickReady(btn);
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        const parsed = JSON.parse(fetchSpy.mock.calls[0][1].body);
+        expect(item.entryId).toBeTruthy();
+        expect(parsed.entry).toBe('A description\n  <!-- id: ' + item.entryId + ' -->');
+        expect(parsed.id).toBe(item.entryId);
+        expect(/<!-- id: \S+ -->$/.test(parsed.entry)).toBe(true);
+    });
+
+    it('mints item.entryId once and reuses it on re-inject so the Worker dedup makes a repeat a no-op', async () => {
+        const item = toDo('Reuse', 'Persist me', '5-27-2026', null, 0);
+        const btn = makeInjectButton(item, {});
+        await clickReady(btn);
+        const firstId = item.entryId;
+        expect(firstId).toBeTruthy();
+
+        await clickReady(btn);
+        expect(item.entryId).toBe(firstId);
+        const secondParsed = JSON.parse(fetchSpy.mock.calls[1][1].body);
+        expect(secondParsed.id).toBe(firstId);
+    });
+
+    it('does not mutate the stored item.desc when appending the marker', async () => {
+        const item = toDo('No mutate', 'Original desc', '5-27-2026', null, 0);
+        const btn = makeInjectButton(item, {});
+        await clickReady(btn);
+        expect(item.desc).toBe('Original desc');
     });
 });
 
