@@ -103,10 +103,10 @@
   - Completed: 2026-05-31 (already implemented by an earlier run; entry was injected after the fix landed)
   <!-- id: 0c9353f8-c933-4258-b183-059463b93720 -->
 
-- [ ] **[HIGH]** Fix stale "reload required" banner showing false positive on Runs tab
+- [x] **[HIGH]** Fix stale "reload required" banner showing false positive on Runs tab
 
   - Type: bug
   - Description: The dismissible "reload required" alert at the top of the Runs sheet incorrectly appears when no reload is actually needed. The banner likely reads a cached or stale merge-status value rather than fetching a fresh status from the todo-inject-worker at render time. The fix should ensure the merge-status check is re-evaluated on each Runs tab open/render and that stale state is cleared before the banner visibility decision is made.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: 890c8b2a-788b-4ce5-b612-97b8be48c9a6 -->
