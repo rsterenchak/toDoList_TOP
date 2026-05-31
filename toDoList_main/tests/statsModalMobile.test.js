@@ -131,9 +131,9 @@ describe('recurring-task stats use a full-screen modal on phone viewports', () =
         expect(fn).toMatch(/statsModalBackdrop/);
     });
 
-    it('the help FAB hides while the stats modal is open', () => {
+    it('the Claude launcher hides while the stats modal is open', () => {
         // The body:has(#statsModalBackdrop) selector must appear in the
-        // help-FAB hide rule alongside the other modal backdrops.
-        expect(css).toMatch(/body:has\(#statsModalBackdrop\)\s+#helpFab/);
+        // launcher hide rule alongside the other modal backdrops.
+        expect(css).toMatch(/body:has\(#statsModalBackdrop\)\s+#claudeLauncher/);
     });
 });

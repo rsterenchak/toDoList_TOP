@@ -57,9 +57,9 @@ import {
     notifyUpdateAvailable,
     applyPendingUpdate,
     hasPendingUpdate,
-    createHelpFab,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
+import { mountClaudeSheet } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
@@ -1659,12 +1659,13 @@ function component() {
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
 
-    // Floating help FAB — pinned to the bottom-right of the viewport. Opens
-    // the help modal (topic sections + keyboard shortcuts). CSS hides it on
-    // coarse-pointer devices (touch viewports) and while another modal /
-    // popover is open via the body:has(...) rules in style.css.
-    const helpFab = createHelpFab();
-    base.appendChild(helpFab);
+    // Claude assistant launcher + sheet — the `⋯` launcher takes the
+    // bottom-right slot the help `?` FAB used to hold. Help itself stays
+    // reachable through the ghost menu's "Help" item and the global `?`
+    // keypress. The launcher opens a bottom sheet on mobile and a docked
+    // right-hand panel on wider viewports; CSS hides the launcher while
+    // another modal / popover is open via the body:has(...) rules.
+    mountClaudeSheet(base);
 
     // ── Mobile bottom sheet utility surface ──
     // Bottom-anchored sheet for STACK mobile (≤700px) that houses the
