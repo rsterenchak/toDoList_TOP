@@ -42,6 +42,7 @@ let sheetEl = null;
 let backdropEl = null;
 let keydownHandler = null;
 let appUpdateHandler = null;
+let appAppliedHandler = null;
 
 // True once a newer build's service worker is installed-and-waiting (the
 // `appUpdateAvailable` event fired) but the page is still running the old
@@ -557,7 +558,14 @@ function buildRunsView() {
     nudgeBtn.type = 'button';
     nudgeBtn.className = 'claudeUpdateReload';
     nudgeBtn.textContent = 'Reload';
-    nudgeBtn.addEventListener('click', function() { applyPendingUpdate(); });
+    nudgeBtn.addEventListener('click', function() {
+        // If there's nothing left to apply, the cue is stale — clear it and
+        // hide the nudge instead of leaving a dead button on screen.
+        if (!applyPendingUpdate()) {
+            updatePending = false;
+            renderUpdateNudge();
+        }
+    });
     nudge.appendChild(nudgeText);
     nudge.appendChild(nudgeBtn);
 
@@ -589,7 +597,11 @@ function buildRunsView() {
 // the `appUpdateAvailable` listener.
 function renderUpdateNudge() {
     const nudge = sheetEl && sheetEl.querySelector('#claudeUpdateNudge');
-    if (nudge) nudge.hidden = !updatePending;
+    if (!nudge) return;
+    // Show only when the flag is set AND a worker is genuinely waiting. Gating
+    // on hasPendingUpdate() keeps a stale flag from surfacing a Reload button
+    // that would no-op once the update has already applied.
+    nudge.hidden = !(updatePending && hasPendingUpdate());
 }
 
 // ── RUNS LIST ──
@@ -840,6 +852,17 @@ export function mountClaudeSheet(parent) {
         renderUpdateNudge();
     };
     document.addEventListener('appUpdateAvailable', appUpdateHandler);
+
+    // The new build is now controlling the page (index.js fires this on the SW
+    // `controllerchange`), so the pending cue is obsolete — clear it and hide
+    // the nudge so it never lingers past the update it announced.
+    if (appAppliedHandler) document.removeEventListener('appUpdateApplied', appAppliedHandler);
+    appAppliedHandler = function() {
+        updatePending = false;
+        renderUpdateNudge();
+    };
+    document.addEventListener('appUpdateApplied', appAppliedHandler);
+
     updatePending = hasPendingUpdate();
     renderUpdateNudge();
 

@@ -784,10 +784,47 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
         const nudge = document.getElementById('claudeUpdateNudge');
         expect(nudge.hidden).toBe(true);
 
-        document.dispatchEvent(new CustomEvent('appUpdateAvailable'));
+        // notifyUpdateAvailable both registers the waiting worker and fires the
+        // appUpdateAvailable event, matching the real dispatch path the nudge
+        // now gates on (hasPendingUpdate()).
+        notifyUpdateAvailable({ waiting: { postMessage() {} }, installing: null });
         expect(nudge.hidden).toBe(false);
         expect(nudge.querySelector('.claudeUpdateNudgeText').textContent)
             .toContain('A newer build is ready');
+    });
+
+    it('keeps the nudge hidden when the flag is set but no worker is waiting', () => {
+        document.getElementById('claudeTabRuns').click();
+        const nudge = document.getElementById('claudeUpdateNudge');
+        // Bare event with no pending registration: updatePending flips true but
+        // hasPendingUpdate() is false, so the defensive gate keeps it hidden
+        // rather than surfacing a Reload button that would no-op.
+        document.dispatchEvent(new CustomEvent('appUpdateAvailable'));
+        expect(nudge.hidden).toBe(true);
+    });
+
+    it('clears the nudge when appUpdateApplied fires (new build took control)', () => {
+        notifyUpdateAvailable({ waiting: { postMessage() {} }, installing: null });
+        const nudge = document.getElementById('claudeUpdateNudge');
+        expect(nudge.hidden).toBe(false);
+
+        // index.js dispatches this on the SW controllerchange once the new
+        // build is controlling — the cue is obsolete and must disappear.
+        document.dispatchEvent(new CustomEvent('appUpdateApplied'));
+        expect(nudge.hidden).toBe(true);
+    });
+
+    it('clears the nudge when Reload finds nothing left to apply', () => {
+        // A worker was waiting (nudge shown) but has since activated, so the
+        // registration is gone: applyPendingUpdate() returns false. The button
+        // must clear the flag and hide the nudge instead of silently no-opping.
+        notifyUpdateAvailable({ waiting: { postMessage() {} }, installing: null });
+        const nudge = document.getElementById('claudeUpdateNudge');
+        expect(nudge.hidden).toBe(false);
+
+        notifyUpdateAvailable(null); // worker activated — nothing left to apply
+        document.getElementById('claudeUpdateReload').click();
+        expect(nudge.hidden).toBe(true);
     });
 
     it('the reload nudge button drives applyPendingUpdate (posts SKIP_WAITING)', () => {
@@ -887,6 +924,19 @@ describe('Claude sheet — freshness-gate module surface', () => {
         expect(claude).toMatch(
             /document\.addEventListener\(\s*['"]appUpdateAvailable['"]/
         );
+    });
+
+    it('listens for appUpdateApplied to clear the update-pending flag', () => {
+        expect(claude).toMatch(
+            /document\.addEventListener\(\s*['"]appUpdateApplied['"]/
+        );
+    });
+
+    it('index.js dispatches appUpdateApplied on the SW controllerchange', () => {
+        expect(index).toMatch(
+            /dispatchEvent\(\s*new\s+CustomEvent\(\s*['"]appUpdateApplied['"]/
+        );
+        expect(index).toMatch(/addEventListener\(\s*['"]controllerchange['"]/);
     });
 });
 

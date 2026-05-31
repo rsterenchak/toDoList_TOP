@@ -82,9 +82,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b89e4ca8-abef-4be0-bb07-e96864cf2f85 -->
 
-- [ ] **[MEDIUM]** Clear the stale update nudge after the new build activates
+- [x] **[MEDIUM]** Clear the stale update nudge after the new build activates
   - Type: bug
   - Description: After the freshness gate ships a build, the "A newer build is ready — reload to see your change" nudge in the Runs tab persists even once the new service worker has already activated, and its Reload button then does nothing because `applyPendingUpdate()` finds no waiting worker (`registration.waiting` is false). The `updatePending` flag in `claudeSheet.js` gets set on `appUpdateAvailable` but is never cleared once the update applies. Fix: (1) clear `updatePending` and hide the nudge on the service worker `controllerchange` event in `index.js` (dispatch an `appUpdateApplied` event or call a small exported reset); (2) defensively gate nudge rendering on `registration.waiting` being truthy so a stale flag never surfaces a dead button; (3) if the nudge's Reload button calls `applyPendingUpdate()` and it returns falsy, clear the flag and hide the nudge rather than silently no-op. Net effect: the nudge appears only when a reload would actually do something and disappears once the build is live.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: f10f9427-f5b3-43d1-aa8b-3b9b2c0f1d5b -->
