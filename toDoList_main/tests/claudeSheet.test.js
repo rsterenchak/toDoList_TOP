@@ -421,6 +421,40 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(rows[0].querySelector('.claudeRunTitle').textContent).toBe('Persisted task');
         expect(rows[0].querySelector('.claudeRunBadge').textContent).toBe('Shipped');
     });
+
+    it('fails a non-terminal record with no correlation id on mount (never polls to a stuck row)', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', title: 'No correlation id', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('FAILED');
+    });
+
+    it('reconciles a record dispatched past the give-up window to FAILED on mount', async () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Stale running', status: 'RUNNING', dispatchedAt: Date.now() - 11 * 60 * 1000 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('FAILED');
+    });
+
+    it('keeps polling a recent non-terminal record with a correlation id (not prematurely failed)', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Fresh running', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        // Status response is unresolved ({ found: false }); the record stays
+        // RUNNING rather than being marked FAILED while still within the window.
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Running');
+    });
 });
 
 // The iterate door: tapping a SHIPPED run record opens the Chat tab and fires

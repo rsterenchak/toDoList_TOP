@@ -719,8 +719,10 @@ function stopRunPoller(correlationId) {
 
 async function pollRunRecordOnce(correlationId, startedAt) {
     if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
-        // Stop watching after the give-up window; leave the last known
-        // non-terminal status in place rather than guessing a terminal one.
+        // Past the give-up window the run can no longer be reconciled, so a
+        // non-terminal record would otherwise sit "Running" forever. Mark it
+        // FAILED and stop watching so the Runs list never shows a stuck row.
+        setRunRecordStatus(correlationId, 'FAILED');
         stopRunPoller(correlationId);
         return;
     }
@@ -742,9 +744,23 @@ async function pollRunRecordOnce(correlationId, startedAt) {
 // Resume polling for any run record that hasn't reached a terminal status —
 // called on mount so a run dispatched before a reload keeps updating.
 function resumeRunPollers() {
+    let changed = false;
     runRecords.forEach(function(rec) {
-        if (!isTerminalStatus(rec.status)) startRunPoller(rec);
+        if (isTerminalStatus(rec.status)) return;
+        if (!rec.correlationId) {
+            // With no correlation id this record can never be polled to a real
+            // status, so leaving it non-terminal would show a permanently-stuck
+            // "Running" row. Fail it gracefully instead.
+            rec.status = 'FAILED';
+            changed = true;
+            return;
+        }
+        startRunPoller(rec);
     });
+    if (changed) {
+        saveRunRecords();
+        renderRunsList();
+    }
 }
 
 function buildSheet() {
