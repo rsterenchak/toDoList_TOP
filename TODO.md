@@ -96,9 +96,9 @@
   - Completed: 2026-05-31
   <!-- id: 3d01f181-a589-4f12-a474-7ba5637e9c33 -->
 
-- [ ] **[MEDIUM]** Clear the reload nudge by dispatching appUpdateApplied on controllerchange
+- [x] **[MEDIUM]** Clear the reload nudge by dispatching appUpdateApplied on controllerchange
   - Type: bug
   - Description: The Claude sheet's "A newer build is ready — reload" nudge never clears because its self-clear path listens for an `appUpdateApplied` event that nothing dispatches. `claudeSheet.js` sets `updatePending = true` on `appUpdateAvailable` and listens for `appUpdateApplied` to set it false, but neither `index.js`'s service-worker `controllerchange` handler nor `modals.js`'s `applyPendingUpdate()` ever dispatches that event — so the flag, once set, stays set and the nudge lingers with a button that may no-op. Fix: in `index.js`, inside the existing `controllerchange` listener (which currently sets a reload guard and calls `window.location.reload()`), dispatch `document.dispatchEvent(new Event('appUpdateApplied'))` BEFORE the reload, so any listener clears state in the same tick. Additionally, harden `claudeSheet.js` so the nudge never lingers regardless of event timing: (1) when the nudge's Reload button calls `applyPendingUpdate()` and it returns falsy (nothing to apply), it already sets `updatePending = false` and re-renders — keep that; (2) on sheet mount, after seeding `updatePending = hasPendingUpdate()`, if the flag is true but `hasPendingUpdate()` is false, force it false (covers a stale flag persisted from a session whose update already applied). Net: the nudge appears only while a worker is genuinely waiting, and disappears the moment the new build takes control.
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31 (already implemented by an earlier run; entry was injected after the fix landed)
   <!-- id: 0c9353f8-c933-4258-b183-059463b93720 -->
