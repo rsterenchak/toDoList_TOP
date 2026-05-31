@@ -116,7 +116,7 @@ After every meaningful change during implementation:
 5. Open a PR against <BASE_BRANCH>:
    - Title: same as the first commit message.
    - Body, in this order:
-     • **Task** — quote the TODO.md task line.
+     • **Task** — quote the TODO.md task line. If the entry carries a trailing `<!-- id: ... -->` marker, reproduce that marker verbatim on its own line directly beneath the quoted task so the PR can be traced back to its entry.
      • **Changes** — bulleted summary of what changed and why.
      • **Files modified** — list.
      • **Testing** — name the command run (the project test command from the working directory), its result (e.g. "24/24 passed"), and which tests specifically exercise the new or changed behavior. If you added new tests, list them. If the task touches code with no test coverage, say so explicitly: "No existing tests cover this code path; manual review recommended."
