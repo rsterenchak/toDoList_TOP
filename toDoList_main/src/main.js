@@ -3591,6 +3591,10 @@ function component() {
         // .drawerInfoRow child of the About section; paintAboutVersionUpdateCue
         // toggles the pill in lockstep with the appUpdateAvailable event.
         const versionRow = aboutSection.querySelector('.drawerInfoRow');
+        // Hovering the Version row surfaces the full build string the
+        // abbreviated "v1.1" pill stands in for (matches the desktop
+        // footer's "task management v1.1" label).
+        if (versionRow) versionRow.setAttribute('title', 'task management v1.1');
         paintAboutVersionUpdateCue(versionRow);
 
         // HELP section — single Replay welcome tour entry that dispatches

@@ -109,6 +109,18 @@ describe('mobile Settings modal — About section', () => {
             expect(versionRowMatch[1]).toBe('v1.1');
         });
 
+        it('gives the Version row a title attribute with the full build string', () => {
+            const slice = showSettingsModalSlice();
+            // The version row element (captured before paintAboutVersionUpdateCue)
+            // gets a title so hovering reveals the full build string the
+            // abbreviated "v1.1" pill stands in for.
+            const titleMatch = slice.match(
+                /versionRow\.setAttribute\(\s*['"]title['"]\s*,\s*['"]([^'"]+)['"]\s*\)/
+            );
+            expect(titleMatch).not.toBeNull();
+            expect(titleMatch[1]).toMatch(/v1\.1/);
+        });
+
         it('appends a Projects row built from createDrawerInfoRow', () => {
             const slice = showSettingsModalSlice();
             expect(slice).toMatch(
