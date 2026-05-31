@@ -353,10 +353,10 @@ describe('music — main.js wiring', () => {
         expect(parseInt(sizeMatch[1], 10)).toBeGreaterThanOrEqual(16);
     });
 
-    it('hides the help FAB when the music popover is open', () => {
+    it('hides the Claude launcher when the music popover is open', () => {
         // Same vocabulary as the pomodoro popover rule; must check `.open`
         // because the music popover stays in the DOM at rest.
-        expect(css).toMatch(/body:has\(#musicPopover\.open\)\s*#helpFab\s*\{\s*display:\s*none/);
+        expect(css).toMatch(/body:has\(#musicPopover\.open\)\s*#claudeLauncher\s*\{\s*display:\s*none/);
     });
 
     it('adds a Music topic to HELP_TOPICS', () => {

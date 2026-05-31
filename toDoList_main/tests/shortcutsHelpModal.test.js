@@ -9,13 +9,13 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract for the floating `?` help button and the help modal it
-// opens. The FAB is a discoverable surface for the help catalogue, the `?`
-// keystroke duplicates that path for keyboard users, and the "Help" item
-// inside the ghost menu provides a third (touch-friendly) trigger. All
-// three open the same modal — topic-based sections for Tasks, Projects, the
-// Ghost menu, plus a Keyboard Shortcuts table.
-describe('floating help button + help modal', () => {
+// Pins the contract for the help modal and its triggers. The floating `?`
+// FAB was retired when the bottom-right slot became the Claude assistant
+// launcher; help is now reached two ways: the `?` keystroke for keyboard
+// users and the "Help" item inside the ghost menu. Both open the same
+// modal — topic-based sections for Tasks, Projects, the Ghost menu, plus a
+// Keyboard Shortcuts table.
+describe('help modal + triggers', () => {
     const main = read('main.js');
     const modals = read('modals.js');
     const css = read('style.css');
@@ -36,24 +36,20 @@ describe('floating help button + help modal', () => {
         throw new Error(`Top-level rule for "${selector}" not found`);
     }
 
-    it('exports showHelpModal, createHelpFab, and isAnyModalOrPopoverOpen from modals.js', () => {
+    it('exports showHelpModal and isAnyModalOrPopoverOpen from modals.js', () => {
         expect(modals).toMatch(/export\s+function\s+showHelpModal\s*\(/);
-        expect(modals).toMatch(/export\s+function\s+createHelpFab\s*\(/);
         expect(modals).toMatch(/export\s+function\s+isAnyModalOrPopoverOpen\s*\(/);
     });
 
-    it('creates the FAB with id="helpFab", a `?` glyph, and aria metadata', () => {
-        expect(modals).toMatch(/fab\.id\s*=\s*['"]helpFab['"]/);
-        expect(modals).toMatch(/fab\.textContent\s*=\s*['"]\?['"]/);
-        expect(modals).toMatch(/fab\.setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Open help['"]\s*\)/);
-        expect(modals).toMatch(/fab\.setAttribute\(\s*['"]aria-haspopup['"]\s*,\s*['"]dialog['"]\s*\)/);
+    it('no longer ships the retired `?` help FAB', () => {
+        // The bottom-right slot is now the Claude launcher; the help FAB and
+        // its factory are gone so help can't double-mount a stale `?` button.
+        expect(modals).not.toMatch(/createHelpFab/);
+        expect(modals).not.toMatch(/fab\.id\s*=\s*['"]helpFab['"]/);
+        expect(main).not.toMatch(/createHelpFab/);
     });
 
-    it('appends the FAB to the DOM and wires the global `?` keydown in main.js', () => {
-        // FAB is created and attached during component()
-        expect(main).toMatch(/createHelpFab\b/);
-        expect(main).toMatch(/base\.appendChild\(\s*helpFab\s*\)/);
-
+    it('wires the global `?` keydown in main.js', () => {
         // The ? keydown is a separate handler (not coalesced with the n shortcut)
         // so its guards remain easy to reason about.
         const blocks = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?\}\);/g) || [];
@@ -179,39 +175,6 @@ describe('floating help button + help modal', () => {
         expect(modals).toMatch(/getElementById\(\s*['"]helpModalBackdrop['"]\s*\)/);
     });
 
-    it('styles the FAB as a 36×36 circle pinned to the bottom-right with a border and shadow', () => {
-        const rule = extractTopLevelRule('#helpFab');
-        expect(rule).toMatch(/position:\s*fixed/);
-        expect(rule).toMatch(/right:\s*\d+px/);
-        expect(rule).toMatch(/bottom:\s*\d+px/);
-        expect(rule).toMatch(/width:\s*36px/);
-        expect(rule).toMatch(/height:\s*36px/);
-        expect(rule).toMatch(/border-radius:\s*50%/);
-        expect(rule).toMatch(/border:[^;]*var\(--border-bright\)/);
-        expect(rule).toMatch(/box-shadow:/);
-    });
-
-    it('hides the FAB on pointer:coarse viewports', () => {
-        const coarseBlocks = css.match(/@media\s*\(\s*pointer:\s*coarse\s*\)\s*\{([\s\S]*?)\n\}/g) || [];
-        const hides = coarseBlocks.some(function(block) {
-            return /#helpFab\s*\{[^}]*display:\s*none/.test(block);
-        });
-        expect(hides).toBe(true);
-    });
-
-    it('hides the FAB whenever another modal, popover, or context menu is in the DOM', () => {
-        // CSS :has() drives the visibility — no JS bookkeeping needed since the
-        // backdrop / popover elements own their own lifecycle.
-        ['#confirmModalBackdrop',
-         '#changelogModalBackdrop',
-         '#helpModalBackdrop',
-         '#dueDatePopover',
-         '#projContextMenu'].forEach(function(sel) {
-            const re = new RegExp('body:has\\(\\s*' + sel.replace(/[.#]/g, '\\$&') + '\\s*\\)\\s*#helpFab');
-            expect(css).toMatch(re);
-        });
-    });
-
     it('styles the topic sections with uppercase accent labels and a bullet list', () => {
         const labelRule = extractTopLevelRule('.helpTopicLabel');
         expect(labelRule).toMatch(/text-transform:\s*uppercase/);
@@ -221,8 +184,8 @@ describe('floating help button + help modal', () => {
     });
 
     it('does not persist a "seen" marker for the help modal', () => {
-        // The FAB itself is the discoverable surface; there is no first-run
-        // pulse / dot / localStorage flag to track whether the user opened it.
+        // Help has no first-run pulse / dot / localStorage flag tracking
+        // whether the user opened it; the menu item + `?` key are the surfaces.
         expect(modals).not.toMatch(/helpLastSeen|todoapp_help/i);
     });
 });

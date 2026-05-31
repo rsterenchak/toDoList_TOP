@@ -1092,16 +1092,3 @@ export function isAnyModalOrPopoverOpen() {
     );
 }
 
-export function createHelpFab() {
-    const fab = document.createElement('button');
-    fab.id = 'helpFab';
-    fab.type = 'button';
-    fab.setAttribute('aria-label', 'Open help');
-    fab.setAttribute('aria-haspopup', 'dialog');
-    fab.title = 'Help (?)';
-    fab.textContent = '?';
-    fab.addEventListener('click', function() {
-        showHelpModal();
-    });
-    return fab;
-}

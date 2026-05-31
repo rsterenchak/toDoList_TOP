@@ -156,8 +156,8 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         expect(modals).toMatch(/document\.getElementById\(\s*['"]settingsMenu['"]\s*\)/);
     });
 
-    it('hides the FAB while the settings menu is open', () => {
-        expect(css).toMatch(/body:has\(#settingsMenu\)\s+#helpFab/);
+    it('hides the Claude launcher while the settings menu is open', () => {
+        expect(css).toMatch(/body:has\(#settingsMenu\)\s+#claudeLauncher/);
     });
 
     it('styles #settingsToggle as a 36×36 transparent icon button pushed flush right of the nav', () => {

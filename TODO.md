@@ -13,11 +13,11 @@
   - Completed: 2026-05-30
   <!-- id: bbc0f6cb-06d6-47c8-8422-e77346e5c3a0 -->
 
-- [ ] **[MEDIUM]** Add Claude sheet shell + launcher, relocating help off the ? FAB
+- [x] **[MEDIUM]** Add Claude sheet shell + launcher, relocating help off the ? FAB
   - Type: feature
   - Description: Build the container for the in-app Claude assistant â a new module `claudeSheet.js` exporting a mount/open/close API, styled to the Void theme. On mobile (â¤700px) it's a bottom sheet at ~86% height; on wider viewports it docks as a right-hand panel (~380px, full height) leaving the app visible beside it. Inside: a grab handle (mobile), a `CHAT` | `RUNS` segmented toggle, and two views â an empty Chat surface (inert composer placeholder, no wiring yet) and a Runs list showing a "No runs yet â tap + New to start" empty state plus a "+ New" affordance. Open via a new â¦ launcher that REPLACES the existing `?`/help FAB in the bottom-right; close via launcher re-tap, backdrop tap, or swipe-down (mobile). Because the `?` FAB currently launches the Replay welcome tour, relocate that trigger atomically into the ghost/settings menu next to the existing "Configure inject" row (see `showInjectSettingsModal` wiring and the HELP-section welcome-tour entry in `main.js`) so help stays reachable and is never orphaned. No chat or inject logic in this entry â shell, launcher, tabs, empty states, and the help relocation only.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/index.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-30
   <!-- id: 877a5efe-c491-4927-8024-92911f51f1fd -->
 
 - [ ] **[MEDIUM]** Wire the Claude sheet's author flow — chat, drafted-entry card, inject-with-confirm
