@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-05-30',
         added: [
             "Injecting a todo now tags its TODO.md entry with a stable id, so re-injecting the same item won't create a duplicate.",
+            "Hovering the version label in Settings now reveals the full build string.",
         ],
     },
     {
         version: '1.1',
         date: '2026-05-29',
         fixed: [
-            "On mobile the inline TODO.md viewer is now a compact tappable launcher, so it no longer clips to a sliver or overlaps the list when a project has many items.",
             "On mobile the inline TODO.md launcher no longer clips its bottom edge when a project's list fills the screen.",
             "New todos committed without a chosen date now default to today on desktop, matching mobile, so the row reads DUE TODAY.",
             "Renaming a project on one device no longer leaves a duplicate copy on your other devices after they sync.",
