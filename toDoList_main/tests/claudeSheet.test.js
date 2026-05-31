@@ -11,6 +11,7 @@ import {
     extractInspectDirective,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
+import { notifyUpdateAvailable } from '../src/modals.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -681,6 +682,211 @@ describe('Claude sheet — layout inspector attach flow', () => {
         // The composed turn is visible in the thread.
         const userBubbles = document.querySelectorAll('.claudeMsg--user');
         expect(userBubbles[userBubbles.length - 1].textContent).toContain('Live layout for');
+    });
+});
+
+// The freshness gate: after a fix ships, the installed PWA may still serve the
+// old cached bundle. A SHIPPED transition forces an immediate SW update check;
+// once a newer build is waiting, the Runs tab shows a reload nudge and the
+// layout inspector refuses to measure the stale DOM.
+describe('Claude sheet — freshness gate (SW update after ship)', () => {
+    let realFetch;
+    let fetchSpy;
+    let statusJson;
+    let chatBodies;
+    let replyText;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) {
+                chatBodies.push(body);
+                json = { reply: replyText };
+            } else if (body.dispatch) {
+                json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
+            } else if (body.status) {
+                json = statusJson;
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        statusJson = { found: false };
+        replyText = 'Where is it?\nINSPECT: #target';
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        // Clear any pending-update registration this test set so the flag
+        // doesn't leak into the next mount via hasPendingUpdate().
+        notifyUpdateAvailable(null);
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('dispatches requestSwUpdateCheck exactly once when a run reaches SHIPPED', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        replyText = 'Sure:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```';
+        let fired = 0;
+        const onCheck = () => { fired++; };
+        document.addEventListener('requestSwUpdateCheck', onCheck);
+
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+        document.removeEventListener('requestSwUpdateCheck', onCheck);
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        expect(fired).toBe(1);
+    });
+
+    it('does not dispatch requestSwUpdateCheck for a non-shipped (failed) run', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'failure' };
+        replyText = 'Sure:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```';
+        let fired = 0;
+        const onCheck = () => { fired++; };
+        document.addEventListener('requestSwUpdateCheck', onCheck);
+
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+        document.removeEventListener('requestSwUpdateCheck', onCheck);
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        expect(fired).toBe(0);
+    });
+
+    it('shows the Runs reload nudge when appUpdateAvailable fires (hidden before)', () => {
+        document.getElementById('claudeTabRuns').click();
+        const nudge = document.getElementById('claudeUpdateNudge');
+        expect(nudge.hidden).toBe(true);
+
+        document.dispatchEvent(new CustomEvent('appUpdateAvailable'));
+        expect(nudge.hidden).toBe(false);
+        expect(nudge.querySelector('.claudeUpdateNudgeText').textContent)
+            .toContain('A newer build is ready');
+    });
+
+    it('the reload nudge button drives applyPendingUpdate (posts SKIP_WAITING)', () => {
+        const posted = [];
+        const fakeReg = { waiting: { postMessage: (m) => posted.push(m) }, installing: null };
+        // notifyUpdateAvailable sets the pending registration AND fires the
+        // appUpdateAvailable event the sheet listens for.
+        notifyUpdateAvailable(fakeReg);
+
+        const nudge = document.getElementById('claudeUpdateNudge');
+        expect(nudge.hidden).toBe(false);
+        document.getElementById('claudeUpdateReload').click();
+        expect(posted.some((m) => m && m.type === 'SKIP_WAITING')).toBe(true);
+    });
+
+    it('seeds the nudge from hasPendingUpdate() on a fresh mount', () => {
+        const fakeReg = { waiting: { postMessage() {} }, installing: null };
+        notifyUpdateAvailable(fakeReg); // pending registration now set in modals
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        // Even though the event fired before this mount, the new mount reads
+        // hasPendingUpdate() and surfaces the nudge.
+        expect(document.getElementById('claudeUpdateNudge').hidden).toBe(false);
+    });
+
+    it('blocks the layout inspector while an update is pending and offers reload', async () => {
+        // Element is on screen, so a non-gated capture WOULD succeed — proving
+        // the pending flag is what blocks it.
+        const target = document.createElement('div');
+        target.id = 'target';
+        document.body.appendChild(target);
+
+        await sendMessage('why is it misaligned?');
+        const before = chatBodies.length;
+        document.dispatchEvent(new CustomEvent('appUpdateAvailable'));
+
+        document.querySelector('.claudeInspectBtn').click();
+        await flush();
+
+        const notice = document.querySelector('.claudeInspectNotice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.textContent).toContain("older build");
+        expect(document.querySelector('.claudeInspectReload').hidden).toBe(false);
+        // No layout turn was sent.
+        expect(chatBodies.length).toBe(before);
+
+        document.body.removeChild(target);
+    });
+
+    it('captures and sends normally when no update is pending', async () => {
+        const target = document.createElement('div');
+        target.id = 'target';
+        document.body.appendChild(target);
+
+        await sendMessage('why is it misaligned?');
+        const before = chatBodies.length;
+        replyText = 'Thanks, I can see it now.';
+        document.querySelector('.claudeInspectBtn').click();
+        await flush();
+
+        expect(chatBodies.length).toBe(before + 1);
+        const sent = chatBodies[chatBodies.length - 1];
+        expect(sent.messages[sent.messages.length - 1].content).toContain('Live layout for');
+
+        document.body.removeChild(target);
+    });
+});
+
+describe('Claude sheet — freshness-gate module surface', () => {
+    const claude = read('claudeSheet.js');
+    const index = read('index.js');
+
+    it('index.js exposes requestUpdateCheck and listens for requestSwUpdateCheck', () => {
+        expect(index).toMatch(/export\s+function\s+requestUpdateCheck\s*\(/);
+        expect(index).toMatch(/requestUpdateCheck[\s\S]*?\.update\(\s*\)/);
+        expect(index).toMatch(
+            /document\.addEventListener\(\s*['"]requestSwUpdateCheck['"]\s*,\s*requestUpdateCheck\s*\)/
+        );
+    });
+
+    it('claudeSheet.js dispatches requestSwUpdateCheck on the SHIPPED transition', () => {
+        expect(claude).toMatch(
+            /dispatchEvent\(\s*new\s+CustomEvent\(\s*['"]requestSwUpdateCheck['"]/
+        );
+    });
+
+    it('claudeSheet.js imports the SW-update helpers from modals.js', () => {
+        const importMatch = claude.match(
+            /import\s*\{([\s\S]*?)\}\s*from\s*['"]\.\/modals\.js['"]/
+        );
+        expect(importMatch).not.toBeNull();
+        expect(importMatch[1]).toMatch(/applyPendingUpdate/);
+        expect(importMatch[1]).toMatch(/hasPendingUpdate/);
+    });
+
+    it('listens for appUpdateAvailable to flip the update-pending flag', () => {
+        expect(claude).toMatch(
+            /document\.addEventListener\(\s*['"]appUpdateAvailable['"]/
+        );
     });
 });
 

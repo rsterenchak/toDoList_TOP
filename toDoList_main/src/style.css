@@ -1677,6 +1677,49 @@ body:has(#settingsMenu) #claudeLauncher {
   font-style: italic;
   color: var(--text-muted);
 }
+.claudeInspectReload {
+  align-self: flex-start;
+  margin: 8px 0 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: 0.5px solid var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Reload nudge above the Runs list when a newer build is waiting. */
+.claudeUpdateNudge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent-text);
+}
+.claudeUpdateNudgeText {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--accent-text);
+}
+.claudeUpdateReload {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: 0.5px solid var(--accent);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 .claudeRunRow {
   display: flex;

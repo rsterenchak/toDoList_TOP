@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             "Tap a shipped run in the Claude assistant to open an iterate chat seeded from that change, then draft and ship a follow-up the same way.",
             "When the Claude assistant asks to inspect an element, an Attach layout button captures its live on-screen layout and sends it back in one tap.",
+            "After a change ships, the Claude assistant nudges you to reload to the freshly deployed build and won't measure layout against a stale one.",
         ],
         fixed: [
             "Tapping a shipped run to iterate now opens the chat instead of failing.",
@@ -17,9 +18,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-05-30',
-        added: [
-            "The TODO.md viewer panel can now be collapsed to just its header bar and expanded again with a header toggle.",
-        ],
         fixed: [
             "The Claude assistant panel can now be dismissed with a close button on desktop.",
         ],

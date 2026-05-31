@@ -114,9 +114,30 @@ supabase.auth.onAuthStateChange(function(_event, session) {
 // installed PWAs that stay open in the background for hours/days still
 // discover new builds. Navigation alone is not enough on mobile, where
 // users frequently re-foreground the app without ever doing a full load.
+// A module-level handle to the active SW registration so callers outside the
+// register() promise can force an immediate update check rather than waiting
+// for the next visibility/hourly poll. Stored alongside the closure
+// `registration` the periodic checks use so the exported helper has something
+// to act on.
+let swRegistration = null;
+
+// Force an immediate `registration.update()` on the stored registration so a
+// freshly-deployed worker is discovered now instead of on the next poll. A
+// no-op until a registration exists (or where service workers aren't
+// supported). The Claude assistant calls this — via a `requestSwUpdateCheck`
+// document event so it needn't import this entry module — the moment a run
+// ships, so the client stops serving the old cached bundle promptly.
+export function requestUpdateCheck() {
+    if (swRegistration && typeof swRegistration.update === 'function') {
+        try { swRegistration.update(); } catch (_) { /* update() can reject on quota / network */ }
+    }
+}
+document.addEventListener('requestSwUpdateCheck', requestUpdateCheck);
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (registration) {
+            swRegistration = registration;
             if (registration.waiting) {
                 notifyUpdateAvailable(registration);
             }

@@ -28,6 +28,7 @@ import {
     pollRunStatus,
 } from './inject.js';
 import { serializeLayout } from './layoutInspect.js';
+import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 
 const MOBILE_MAX_WIDTH = 700;
 const SWIPE_CLOSE_PX = 60;
@@ -40,6 +41,14 @@ let launcherEl = null;
 let sheetEl = null;
 let backdropEl = null;
 let keydownHandler = null;
+let appUpdateHandler = null;
+
+// True once a newer build's service worker is installed-and-waiting (the
+// `appUpdateAvailable` event fired) but the page is still running the old
+// bundle. While set, the rendered DOM is stale: the Runs/iterate UI shows a
+// reload nudge and the layout inspector refuses to measure (a snapshot of the
+// old build would mislead the Worker).
+let updatePending = false;
 
 // Conversation history sent to the Worker on each turn: [{ role, content }].
 let chatHistory = [];
@@ -320,7 +329,29 @@ function renderAttachLayoutButton(selector) {
     notice.className = 'claudeInspectNotice';
     notice.hidden = true;
 
+    // Reload affordance, surfaced only when the capture is blocked because a
+    // newer build is waiting. Reuses the same skipWaiting + reload path the
+    // Runs-tab nudge drives.
+    const reloadBtn = document.createElement('button');
+    reloadBtn.type = 'button';
+    reloadBtn.className = 'claudeInspectReload';
+    reloadBtn.textContent = 'Reload';
+    reloadBtn.hidden = true;
+    reloadBtn.addEventListener('click', function() { applyPendingUpdate(); });
+
     btn.addEventListener('click', function() {
+        // Gate on the update-pending flag first: when a newer build is waiting,
+        // the on-screen DOM is the OLD bundle (the new SW is installed but not
+        // yet controlling), so a measurement would feed the Worker stale
+        // telemetry. Refuse to capture and point the user at a reload instead.
+        if (updatePending) {
+            notice.hidden = false;
+            notice.textContent =
+                "You're viewing an older build — reload first so the measurement reflects the shipped change";
+            reloadBtn.hidden = false;
+            return; // do not send a turn
+        }
+        reloadBtn.hidden = true;
         const result = serializeLayout(selector);
         if (!result || result.found === false) {
             notice.hidden = false;
@@ -336,6 +367,7 @@ function renderAttachLayoutButton(selector) {
 
     wrap.appendChild(btn);
     wrap.appendChild(notice);
+    wrap.appendChild(reloadBtn);
     surface.appendChild(wrap);
     surface.scrollTop = surface.scrollHeight;
     return wrap;
@@ -511,6 +543,24 @@ function buildRunsView() {
     view.setAttribute('role', 'tabpanel');
     view.hidden = true;
 
+    // Reload nudge — hidden until a newer build is waiting. Sits above the run
+    // list so the user sees it the moment they open Runs after a ship.
+    const nudge = document.createElement('div');
+    nudge.id = 'claudeUpdateNudge';
+    nudge.className = 'claudeUpdateNudge';
+    nudge.hidden = true;
+    const nudgeText = document.createElement('span');
+    nudgeText.className = 'claudeUpdateNudgeText';
+    nudgeText.textContent = 'A newer build is ready — reload to see your change';
+    const nudgeBtn = document.createElement('button');
+    nudgeBtn.id = 'claudeUpdateReload';
+    nudgeBtn.type = 'button';
+    nudgeBtn.className = 'claudeUpdateReload';
+    nudgeBtn.textContent = 'Reload';
+    nudgeBtn.addEventListener('click', function() { applyPendingUpdate(); });
+    nudge.appendChild(nudgeText);
+    nudge.appendChild(nudgeBtn);
+
     const list = document.createElement('div');
     list.id = 'claudeRunsList';
     list.className = 'claudeRunsList';
@@ -528,9 +578,18 @@ function buildRunsView() {
         if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
     });
 
+    view.appendChild(nudge);
     view.appendChild(list);
     view.appendChild(newBtn);
     return view;
+}
+
+// Toggle the Runs-tab reload nudge to mirror the update-pending flag. Called on
+// mount (to catch a worker that was already waiting before this mount) and from
+// the `appUpdateAvailable` listener.
+function renderUpdateNudge() {
+    const nudge = sheetEl && sheetEl.querySelector('#claudeUpdateNudge');
+    if (nudge) nudge.hidden = !updatePending;
 }
 
 // ── RUNS LIST ──
@@ -607,6 +666,18 @@ function setRunRecordStatus(correlationId, status) {
     if (changed) {
         saveRunRecords();
         renderRunsList();
+        // A run reaching SHIPPED means a new build just deployed. Force an
+        // immediate SW update check now so the installed PWA discovers the new
+        // worker rather than waiting for the next hourly/visibility poll —
+        // otherwise "check the live result" and the layout inspector would run
+        // against the stale cached bundle. index.js owns the registration and
+        // listens for this event (dispatched here so this module needn't import
+        // the entry point).
+        if (status === 'SHIPPED') {
+            try {
+                document.dispatchEvent(new CustomEvent('requestSwUpdateCheck'));
+            } catch (e) { /* defensive: CustomEvent unsupported */ }
+        }
     }
 }
 
@@ -757,6 +828,20 @@ export function mountClaudeSheet(parent) {
         }
     };
     document.addEventListener('keydown', keydownHandler);
+
+    // Track the SW update-pending state so the Runs nudge and the inspector
+    // gate stay in sync. Seed from hasPendingUpdate() to cover a worker that
+    // was already waiting before this mount, then keep it current via the
+    // event modals.js dispatches. Drop any prior mount's listener first so
+    // remounts don't stack handlers.
+    if (appUpdateHandler) document.removeEventListener('appUpdateAvailable', appUpdateHandler);
+    appUpdateHandler = function() {
+        updatePending = true;
+        renderUpdateNudge();
+    };
+    document.addEventListener('appUpdateAvailable', appUpdateHandler);
+    updatePending = hasPendingUpdate();
+    renderUpdateNudge();
 
     // Fresh mount starts a fresh conversation and drops any pollers a prior
     // mount left running.
