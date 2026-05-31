@@ -13,13 +13,7 @@ export const changelog = [
         ],
         fixed: [
             "Tapping a shipped run to iterate now opens the chat instead of failing.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-30',
-        fixed: [
-            "The Claude assistant panel can now be dismissed with a close button on desktop.",
+            "The \"newer build is ready\" reload prompt now clears once the new build is live instead of lingering with a dead Reload button.",
         ],
     },
 ];

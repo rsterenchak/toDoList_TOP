@@ -170,6 +170,10 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', function () {
             if (reloading) return;
             reloading = true;
+            // The new build is now controlling the page, so any "update ready"
+            // nudge is obsolete. Announce that the update applied before we
+            // reload so listeners clear the cue and a stale flag never outlives it.
+            document.dispatchEvent(new CustomEvent('appUpdateApplied'));
             window.location.reload();
         });
     });
