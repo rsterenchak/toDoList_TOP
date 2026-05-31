@@ -34,9 +34,9 @@
   - Completed: 2026-05-30
   <!-- id: 3e0701df-5cef-479c-8682-de8492de8bae -->
 
-- [ ] **[MEDIUM]** Implement collapse/expand toggle on the todo viewer panel
+- [x] **[MEDIUM]** Implement collapse/expand toggle on the todo viewer panel
   - Type: feature
   - Description: When the existing collapse button is clicked, the todo viewer body content (todo rows and any non-header elements) should hide immediately, leaving only the fixed header bar visible. Clicking the button again should show the body content again. A CSS class (e.g. `collapsed`) should be toggled on the viewer container to hide the body via `display: none` or `visibility: hidden`, and the button's icon/label should reflect the current state. Collapse state should not persist across reloads unless already stored.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-30
   <!-- id: 4e1a4e11-b0cc-4b23-acf5-1bba4ecdd213 -->
