@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "Tap a shipped run in the Claude assistant to open an iterate chat seeded from that change, then draft and ship a follow-up the same way.",
         ],
+        fixed: [
+            "Tapping a shipped run to iterate now opens the chat instead of failing.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-05-30',
         added: [
-            "A new bottom-right button opens an in-app Claude assistant panel with Chat and Runs tabs.",
             "Chat with Claude in the assistant panel to draft a TODO entry, then ship it with one confirmation while the Runs tab tracks its progress.",
             "The TODO.md viewer panel can now be collapsed to just its header bar and expanded again with a header toggle.",
         ],

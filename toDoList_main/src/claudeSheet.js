@@ -291,6 +291,14 @@ async function startIterateFromRun(rec) {
     if (surface) surface.innerHTML = '';
 
     appendMessageBubble('note', 'Iterating on “' + (rec.title || 'this run') + '” — pulling the shipped change…');
+
+    // The Worker requires a non-empty messages array even when entry_id is
+    // present (the id only adds diff/code context to the system field, it's not
+    // a turn), so seed turn 1 with a synthesized opening user message.
+    const seedPrompt = 'Walk me through what shipped for this entry and whether it matches the intent.';
+    chatHistory.push({ role: 'user', content: seedPrompt });
+    appendMessageBubble('user', seedPrompt);
+
     await requestAssistantReply(rec.entryId);
 }
 

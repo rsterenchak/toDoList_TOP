@@ -506,6 +506,22 @@ describe('Claude sheet — iterate from a shipped run', () => {
         expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('diff context');
     });
 
+    it('sends a non-empty messages array on the iterate seed turn', async () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        // The Worker rejects an empty messages array (HTTP 400), so turn 1
+        // must carry a synthesized opening user message alongside entry_id.
+        expect(Array.isArray(chatBodies[0].messages)).toBe(true);
+        expect(chatBodies[0].messages.length).toBeGreaterThan(0);
+        expect(chatBodies[0].messages[0].role).toBe('user');
+        expect(chatBodies[0].messages[0].content.trim()).not.toBe('');
+        // The opening user turn is visible in the thread.
+        expect(document.querySelector('.claudeMsg--user')).toBeTruthy();
+    });
+
     it('omits the entry id on the next (manual) turn', async () => {
         seedShippedRun();
         mountClaudeSheet(document.body);
