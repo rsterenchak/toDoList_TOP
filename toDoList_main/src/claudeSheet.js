@@ -74,6 +74,10 @@ function setActiveTab(tab) {
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
     if (chatView) chatView.hidden = tab !== 'chat';
     if (runsView) runsView.hidden = tab !== 'runs';
+    // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
+    // a worker that activated without dispatching appUpdateApplied can't surface
+    // a false-positive banner — the visibility decision reads live worker state.
+    if (tab === 'runs') renderUpdateNudge();
 }
 
 export function openClaudeSheet() {

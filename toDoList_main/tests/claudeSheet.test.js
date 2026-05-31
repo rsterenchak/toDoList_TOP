@@ -861,6 +861,27 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
         expect(nudge.hidden).toBe(true);
     });
 
+    it('re-checks worker state when the Runs tab is reopened, hiding a stale nudge', () => {
+        // Worker was waiting and the nudge rendered visible on the Runs tab.
+        notifyUpdateAvailable({ waiting: { postMessage() {} }, installing: null });
+        document.getElementById('claudeTabRuns').click();
+        const nudge = document.getElementById('claudeUpdateNudge');
+        expect(nudge.hidden).toBe(false);
+
+        // The new build took control elsewhere: the registration is gone
+        // (hasPendingUpdate() is now false) but no appUpdateApplied event
+        // reached this document, so the nudge DOM is left showing — a stale
+        // false positive that the event-driven paths never cleared.
+        notifyUpdateAvailable(null);
+        nudge.hidden = false;
+
+        // Reopening the Runs tab must re-evaluate against the live worker state
+        // and clear the stale banner rather than trusting the last render.
+        document.getElementById('claudeTabChat').click();
+        document.getElementById('claudeTabRuns').click();
+        expect(nudge.hidden).toBe(true);
+    });
+
     it('the reload nudge button drives applyPendingUpdate (posts SKIP_WAITING)', () => {
         const posted = [];
         const fakeReg = { waiting: { postMessage: (m) => posted.push(m) }, installing: null };
