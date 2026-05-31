@@ -100,7 +100,7 @@ import button from './addProj_button.svg';
 // isInjectConfigured() at render time, which reads the cached values.
 initInjectConfig();
 
-// touch: verify SW revisioning 2026-05-31
+// touch: verify SW revisioning 2026-05-31 //
 
 // Apply the saved theme during import, before component() — sets data-theme
 // on <html> before any rendering happens. See theme.js for the persistence
