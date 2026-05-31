@@ -62,7 +62,8 @@
   - Completed: 2026-05-31
   <!-- id: f702827e-a71c-47a9-acb6-d0578004a2ac -->
 
-- [ ] **[MEDIUM]** Wire the layout inspector into iterate chat — detect INSPECT directives, one-tap attach
+- [x] **[MEDIUM]** Wire the layout inspector into iterate chat — detect INSPECT directives, one-tap attach
+  - Completed: 2026-05-31
   - Type: feature
   - Description: Complete the inspector flow in `claudeSheet.js` by handling the `INSPECT: <selector>` directive the worker now emits in iterate mode. When rendering an assistant reply, detect a line matching `/^INSPECT:\s*(.+)$/m`: strip that line out of the displayed message text (so the user sees clean prose, not a literal "INSPECT: ..." line) and instead render an "Attach layout" button beneath the message, labeled with the captured selector. On tap, call `serializeLayout(selector)` from `layoutInspect.js`. If it returns `{ found: false }`, show an inline notice under the button ("Couldn't find that element on screen — navigate to where it's visible, then tap again") and leave the button tappable for retry; do not send a turn. If found, send the result as the next user turn — content formatted as `Live layout for \`<selector>\`:` followed by a fenced
   <!-- id: 07977e1b-9d6b-432a-b63c-60621ed55bcb -->

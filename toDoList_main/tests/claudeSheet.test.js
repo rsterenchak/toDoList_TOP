@@ -8,6 +8,7 @@ import {
     closeClaudeSheet,
     isClaudeSheetOpen,
     extractDraftedEntry,
+    extractInspectDirective,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 
@@ -564,6 +565,122 @@ describe('Claude sheet — iterate from a shipped run', () => {
         expect(assistant.classList.contains('claudeMsg--note')).toBe(true);
         expect(assistant.textContent).toContain('Nothing to iterate on yet');
         expect(document.querySelector('.claudeMsg--error')).toBe(null);
+    });
+});
+
+// The layout inspector: when an assistant reply carries an `INSPECT: <selector>`
+// directive, the chat strips it from the visible prose and offers a one-tap
+// "Attach layout" button that serializes the live element and sends it back.
+describe('Claude sheet — INSPECT directive detection', () => {
+    it('captures the selector from an INSPECT directive line', () => {
+        expect(extractInspectDirective('Let me look.\nINSPECT: #claudeSheet .claudeMsg'))
+            .toBe('#claudeSheet .claudeMsg');
+    });
+
+    it('trims whitespace around the captured selector', () => {
+        expect(extractInspectDirective('INSPECT:    .foo   ')).toBe('.foo');
+    });
+
+    it('returns null when no directive line is present', () => {
+        expect(extractInspectDirective('Just prose, no directive.')).toBe(null);
+        expect(extractInspectDirective('')).toBe(null);
+    });
+});
+
+describe('Claude sheet — layout inspector attach flow', () => {
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+    let replyText;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) {
+                chatBodies.push(body);
+                json = { reply: replyText };
+            }
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve(json),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        replyText = 'Where is the message?\nINSPECT: #target';
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('strips the INSPECT line from the visible reply and renders an Attach layout button', async () => {
+        await sendMessage('why is it misaligned?');
+        const assistant = document.querySelector('.claudeMsg--assistant');
+        expect(assistant.textContent).toContain('Where is the message?');
+        expect(assistant.textContent).not.toContain('INSPECT:');
+        const btn = document.querySelector('.claudeInspectBtn');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toContain('#target');
+    });
+
+    it('shows a retry notice without sending a turn when the element is not on screen', async () => {
+        await sendMessage('why is it misaligned?');
+        const before = chatBodies.length;
+        document.querySelector('.claudeInspectBtn').click();
+        await flush();
+        const notice = document.querySelector('.claudeInspectNotice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.textContent).toContain("Couldn't find that element on screen");
+        // No additional chat turn was sent, and the button stays tappable.
+        expect(chatBodies.length).toBe(before);
+        expect(document.querySelector('.claudeInspectBtn').disabled).toBeFalsy();
+    });
+
+    it('sends the serialized layout as the next user turn when the element is found', async () => {
+        const target = document.createElement('div');
+        target.id = 'target';
+        document.body.appendChild(target);
+
+        await sendMessage('why is it misaligned?');
+        const before = chatBodies.length;
+        // Clean follow-up reply so the new turn doesn't re-trigger the inspector.
+        replyText = 'Thanks, I can see it now.';
+        document.querySelector('.claudeInspectBtn').click();
+        await flush();
+
+        expect(chatBodies.length).toBe(before + 1);
+        const sent = chatBodies[chatBodies.length - 1];
+        const lastUser = sent.messages[sent.messages.length - 1];
+        expect(lastUser.role).toBe('user');
+        expect(lastUser.content).toContain('Live layout for `#target`');
+        expect(lastUser.content).toContain('```json');
+        expect(lastUser.content).toContain('"found": true');
+        // The composed turn is visible in the thread.
+        const userBubbles = document.querySelectorAll('.claudeMsg--user');
+        expect(userBubbles[userBubbles.length - 1].textContent).toContain('Live layout for');
     });
 });
 

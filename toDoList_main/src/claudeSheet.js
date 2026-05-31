@@ -27,6 +27,7 @@ import {
     dispatchRun,
     pollRunStatus,
 } from './inject.js';
+import { serializeLayout } from './layoutInspect.js';
 
 const MOBILE_MAX_WIDTH = 700;
 const SWIPE_CLOSE_PX = 60;
@@ -215,6 +216,25 @@ export function extractDraftedEntry(reply) {
     return entry.trim() ? entry : null;
 }
 
+// Detect an `INSPECT: <selector>` directive line the Worker emits in iterate
+// mode to ask for a live layout snapshot of an on-screen element. Returns the
+// captured selector (trimmed), or null when no directive line is present.
+export function extractInspectDirective(reply) {
+    const m = String(reply || '').match(/^INSPECT:\s*(.+)$/m);
+    if (!m) return null;
+    const selector = m[1].trim();
+    return selector || null;
+}
+
+// Strip the INSPECT directive line from a reply so the user sees clean prose
+// instead of a literal "INSPECT: ..." line, collapsing the blank gap it leaves.
+function stripInspectDirective(reply) {
+    return String(reply || '')
+        .replace(/^INSPECT:\s*.+$\n?/m, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 async function sendChatTurn() {
     const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
     const send = sheetEl && sheetEl.querySelector('#claudeComposerSend');
@@ -250,10 +270,12 @@ async function requestAssistantReply(entryId) {
     try {
         const reply = await chatWithWorker(chatHistory, entryId);
         chatHistory.push({ role: 'assistant', content: reply });
+        const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
-            pending.textContent = reply;
+            pending.textContent = inspectSelector ? stripInspectDirective(reply) : reply;
         }
+        if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         const draft = extractDraftedEntry(reply);
         if (draft) renderDraftedEntryCard(draft);
     } catch (e) {
@@ -274,6 +296,58 @@ async function requestAssistantReply(entryId) {
             try { input.focus(); } catch (err) { /* defensive */ }
         }
     }
+}
+
+// ── LAYOUT INSPECTOR ──
+// Beneath an assistant reply that carried an `INSPECT: <selector>` directive,
+// render an "Attach layout" button labeled with the selector. On tap it
+// serializes the live layout for that selector: when the element isn't on
+// screen it surfaces a retry notice without sending a turn; when found it sends
+// the snapshot as the next user turn so the Worker can diagnose against it.
+function renderAttachLayoutButton(selector) {
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    if (!surface) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeInspectAttach';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeInspectBtn';
+    btn.textContent = 'Attach layout: ' + selector;
+
+    const notice = document.createElement('p');
+    notice.className = 'claudeInspectNotice';
+    notice.hidden = true;
+
+    btn.addEventListener('click', function() {
+        const result = serializeLayout(selector);
+        if (!result || result.found === false) {
+            notice.hidden = false;
+            notice.textContent =
+                "Couldn't find that element on screen — navigate to where it's visible, then tap again";
+            return; // leave the button tappable for retry; do not send a turn
+        }
+        notice.hidden = true;
+        const content = 'Live layout for `' + selector + '`:\n```json\n' +
+            JSON.stringify(result, null, 2) + '\n```';
+        sendInspectTurn(content);
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(notice);
+    surface.appendChild(wrap);
+    surface.scrollTop = surface.scrollHeight;
+    return wrap;
+}
+
+// Send a serialized layout snapshot as the next user turn — mirrors a manual
+// chat turn (no entry id) but with content the inspector composed rather than
+// the composer.
+async function sendInspectTurn(content) {
+    chatHistory.push({ role: 'user', content: content });
+    appendMessageBubble('user', content);
+    await requestAssistantReply();
 }
 
 // Seed an iterate chat from a SHIPPED run: switch to the Chat tab, reset the
