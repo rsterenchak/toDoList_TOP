@@ -536,6 +536,16 @@ function buildSheet() {
     handle.setAttribute('aria-label', 'Close Claude assistant');
     handle.addEventListener('click', closeClaudeSheet);
 
+    // Close `×` — surfaced on the desktop panel only (CSS hides it at ≤700px,
+    // where backdrop-tap and swipe-down already dismiss). Reuses the same close
+    // path as the launcher and backdrop; not a second close route.
+    const closeX = document.createElement('button');
+    closeX.id = 'claudeSheetClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close Claude panel');
+    closeX.textContent = '×';
+    closeX.addEventListener('click', closeClaudeSheet);
+
     const tabs = document.createElement('div');
     tabs.id = 'claudeSheetTabs';
     tabs.className = 'claudeSheetTabs';
@@ -548,6 +558,7 @@ function buildSheet() {
     tabs.appendChild(runsTab);
 
     sheet.appendChild(handle);
+    sheet.appendChild(closeX);
     sheet.appendChild(tabs);
     sheet.appendChild(buildChatView());
     sheet.appendChild(buildRunsView());

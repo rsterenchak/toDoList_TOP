@@ -27,9 +27,9 @@
   - Completed: 2026-05-30
   <!-- id: 41d5301f-f8d1-4fb3-b6bb-34d599cbd407 -->
 
-- [ ] **[MEDIUM]** Add a close X to the Claude sheet header on desktop
+- [x] **[MEDIUM]** Add a close X to the Claude sheet header on desktop
   - Type: bug
   - Description: The Claude sheet shipped without a reachable close affordance on desktop. The mobile bottom sheet closes via backdrop tap and swipe-down, but the desktop right-hand companion panel is non-blocking (no backdrop) and has no swipe, so there's currently no way to dismiss it short of re-tapping the corner launcher — a poor target. Add a close button (`×`) to the sheet header, mirroring the existing modal close-X convention in `inject.js` (`injectSettingsClose` / `injectTargetSubClose`: a `<button type="button">` with `textContent = '×'`, an `aria-label` like "Close Claude panel", appended to the header, wired with `addEventListener('click', …)` to the sheet's existing close handler). Scope it to the desktop/panel layout only — hide it at the mobile breakpoint (≤700px) via CSS, since the bottom sheet already has backdrop-tap and swipe-down and a header X there would be redundant. Reuse the existing close routine the launcher and backdrop already call; do not introduce a second close path.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-30
   <!-- id: 3e0701df-5cef-479c-8682-de8492de8bae -->
