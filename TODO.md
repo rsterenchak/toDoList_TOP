@@ -48,9 +48,9 @@
   - Completed: 2026-05-31
   <!-- id: eb1edc1f-8a94-4afc-8b7b-e990ccce7fef -->
 
-- [ ] **[HIGH]** Fix iterate door sending an empty messages array (HTTP 400)
+- [x] **[HIGH]** Fix iterate door sending an empty messages array (HTTP 400)
   - Type: bug
   - Description: Tapping a SHIPPED run to iterate fails with "Chat failed — HTTP 400" because the seed request sends `entry_id` with an empty `messages` array, and the Worker requires a non-empty `messages` array (the `entry_id` only adds diff/code context to the system field — it is not itself a conversational turn). Fix the iterate-open path in `claudeSheet.js` to send a synthesized opening user message on turn 1 alongside `entry_id`, e.g. `{ chat: true, entry_id: <record.entryId>, messages: [{ role: 'user', content: 'Walk me through what shipped for this entry and whether it matches the intent.' }] }`. Render that opening turn in the thread (or hide it but show Claude's reply) so the user sees the conversation start, then let them type follow-ups normally. Continue to send `entry_id` ONLY on this first turn; subsequent turns send just the accumulated `messages` (no `entry_id`) so the Worker doesn't re-resolve and re-bill the heavy context each message.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-05-31
   <!-- id: c4c29e68-daf9-4c96-9b12-641c1ad99796 -->
