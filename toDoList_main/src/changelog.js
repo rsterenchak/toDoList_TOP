@@ -12,12 +12,8 @@ export const changelog = [
             "A new bottom-right button opens an in-app Claude assistant panel with Chat and Runs tabs.",
             "Chat with Claude in the assistant panel to draft a TODO entry, then ship it with one confirmation while the Runs tab tracks its progress.",
         ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-29',
         fixed: [
-            "Renaming a project on one device no longer leaves a duplicate copy on your other devices after they sync.",
+            "The Claude assistant panel can now be dismissed with a close button on desktop.",
         ],
     },
 ];

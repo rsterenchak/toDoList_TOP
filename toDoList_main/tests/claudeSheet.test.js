@@ -87,6 +87,16 @@ describe('Claude sheet shell + launcher', () => {
         expect(isClaudeSheetOpen()).toBe(false);
     });
 
+    it('renders a desktop close `×` that dismisses the panel', () => {
+        const closeX = document.getElementById('claudeSheetClose');
+        expect(closeX).toBeTruthy();
+        expect(closeX.textContent).toBe('×');
+        expect(closeX.getAttribute('aria-label')).toBe('Close Claude panel');
+        openClaudeSheet();
+        closeX.click();
+        expect(isClaudeSheetOpen()).toBe(false);
+    });
+
     it('closes on Escape when open and ignores Escape when already closed', () => {
         openClaudeSheet();
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -181,6 +191,14 @@ describe('Claude sheet — module surface and styling', () => {
         expect(css).toMatch(/#claudeSheet\s*\{[^}]*bottom:\s*0/);
         // The grab handle only surfaces on mobile.
         expect(css).toMatch(/#claudeSheetHandle\s*\{[^}]*display:\s*block/);
+        // The desktop close `×` is hidden on mobile (backdrop + swipe suffice).
+        expect(css).toMatch(/#claudeSheetClose\s*\{[^}]*display:\s*none/);
+    });
+
+    it('styles the desktop close `×` as a positioned header affordance', () => {
+        const rule = extractTopLevelRule('#claudeSheetClose');
+        expect(rule).toMatch(/position:\s*absolute/);
+        expect(rule).toMatch(/right:\s*\d+px/);
     });
 
     it('pins the launcher to the bottom-right and hides it under other modals', () => {

@@ -1426,6 +1426,28 @@ body:has(#settingsMenu) #claudeLauncher {
   pointer-events: auto;
 }
 #claudeSheetHandle { display: none; }
+#claudeSheetClose {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 6px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+#claudeSheetClose:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
 .claudeSheetTabs {
   display: flex;
   gap: 4px;
@@ -7995,6 +8017,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
   #claudeSheet.open {
     transform: translateY(0);
+  }
+  #claudeSheetClose {
+    display: none;
   }
   #claudeSheetHandle {
     display: block;
