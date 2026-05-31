@@ -304,6 +304,39 @@ describe('todo.md viewer — expand/collapse toggle', () => {
     });
 });
 
+describe('todo.md viewer — body collapse toggle', () => {
+
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('renders a body-collapse toggle button in the header meta row', () => {
+        expect(main).toMatch(/collapseBodyBtn\s*=\s*document\.createElement\(\s*['"]button['"]\s*\)/);
+        expect(main).toMatch(/collapseBodyBtn\.className\s*=\s*['"]todoMdViewerCollapseBtn['"]/);
+        expect(main).toMatch(/meta\.appendChild\(collapseBodyBtn\);/);
+    });
+
+    it('toggles a `collapsed` class on the viewer card when clicked', () => {
+        expect(main).toMatch(/collapseBodyBtn\.addEventListener\(\s*['"]click['"]/);
+        expect(main).toMatch(/card\.classList\.toggle\(\s*['"]collapsed['"]/);
+    });
+
+    it('flips icon and aria-label between collapse and expand on toggle', () => {
+        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Collapse panel['"]/);
+        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Expand panel['"]/);
+    });
+
+    it('defaults to expanded on mount and does not persist collapse state', () => {
+        // The card always mounts expanded — collapse is in-memory only,
+        // so there is no localStorage key for it.
+        expect(main).toMatch(/applyCollapsedState\(\s*false\s*\)/);
+        expect(main).not.toMatch(/todoapp_todomd_collapsed/);
+    });
+
+    it('hides the body via display:none when the card carries the collapsed class', () => {
+        expect(css).toMatch(/\.todoMdViewerCard\.collapsed\s+\.todoMdViewerBody\s*\{[\s\S]{0,80}display:\s*none/);
+    });
+});
+
 describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
 
     const inject = read('inject.js');

@@ -7,10 +7,10 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-30',
         added: [
-            "Injecting a todo now tags its TODO.md entry with a stable id, so re-injecting the same item won't create a duplicate.",
             "Hovering the version label in Settings now reveals the full build string.",
             "A new bottom-right button opens an in-app Claude assistant panel with Chat and Runs tabs.",
             "Chat with Claude in the assistant panel to draft a TODO entry, then ship it with one confirmation while the Runs tab tracks its progress.",
+            "The TODO.md viewer panel can now be collapsed to just its header bar and expanded again with a header toggle.",
         ],
         fixed: [
             "The Claude assistant panel can now be dismissed with a close button on desktop.",

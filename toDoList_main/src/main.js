@@ -5858,10 +5858,29 @@ function buildTodoMdViewerCard(projectName, target) {
         '<line x1="3" y1="21" x2="10" y2="14"/>' +
         '</svg>';
 
+    // Body collapse toggle — hides everything below the header (todo rows
+    // and any non-header content) so only the fixed header bar remains.
+    // Distinct from the fullscreen expandBtn above, which resizes the body
+    // rather than hiding it. State is in-memory only (default expanded);
+    // it intentionally does not persist across reloads.
+    const collapseBodyBtn = document.createElement('button');
+    collapseBodyBtn.type = 'button';
+    collapseBodyBtn.className = 'todoMdViewerCollapseBtn';
+
+    const bodyExpandedGlyph =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="6 15 12 9 18 15"/>' +
+        '</svg>';
+    const bodyCollapsedGlyph =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="6 9 12 15 18 9"/>' +
+        '</svg>';
+
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
     meta.appendChild(expandBtn);
+    meta.appendChild(collapseBodyBtn);
 
     header.appendChild(tabs);
     header.appendChild(meta);
@@ -6265,6 +6284,25 @@ function buildTodoMdViewerCard(projectName, target) {
     });
 
     applyExpandedState(readViewerExpanded(projectName));
+
+    function applyCollapsedState(collapsed) {
+        card.classList.toggle('collapsed', !!collapsed);
+        if (collapsed) {
+            collapseBodyBtn.innerHTML = bodyCollapsedGlyph;
+            collapseBodyBtn.setAttribute('aria-label', 'Expand panel');
+            collapseBodyBtn.title = 'Expand panel';
+        } else {
+            collapseBodyBtn.innerHTML = bodyExpandedGlyph;
+            collapseBodyBtn.setAttribute('aria-label', 'Collapse panel');
+            collapseBodyBtn.title = 'Collapse panel';
+        }
+    }
+
+    collapseBodyBtn.addEventListener('click', function() {
+        applyCollapsedState(!card.classList.contains('collapsed'));
+    });
+
+    applyCollapsedState(false);
 
     // Mobile: tapping the card body anywhere outside its own buttons /
     // tabs opens the viewer in a slide-up bottom sheet. The inline card
