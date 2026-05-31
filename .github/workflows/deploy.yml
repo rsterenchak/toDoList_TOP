@@ -23,6 +23,11 @@ jobs:
         working-directory: toDoList_main
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+      - name: Generate source manifest
+        run: node scripts/gen-src-manifest.js
+        working-directory: toDoList_main
+        env:
+          GITHUB_SHA: ${{ github.sha }}
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
