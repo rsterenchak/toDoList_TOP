@@ -6,8 +6,9 @@
   - File: `toDoList_main/src/inject.js`
   - Completed: 2026-05-30
 
-- [ ] **[LOW]** Add a hover tooltip to the version label in the About section
+- [x] **[LOW]** Add a hover tooltip to the version label in the About section
   - Type: feature
   - Description: Add a title attribute to the version label element in the Settings About section so hovering shows the full build string. Self-contained, no behavior change.
   - File: `toDoList_main/src/main.js`
+  - Completed: 2026-05-30
   <!-- id: bbc0f6cb-06d6-47c8-8422-e77346e5c3a0 -->
