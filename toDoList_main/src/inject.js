@@ -208,10 +208,18 @@ export async function injectEntry(options) {
 // returns the assistant's reply text. Tolerates a couple of response shapes
 // (`{ reply }`, `{ text }`, or a bare string). Lets postToWorker's error
 // throw so the caller can surface it; the thrown error carries a `reason`
-// from describeError matching the inject button's vocabulary.
-export async function chatWithWorker(messages) {
+// from describeError matching the inject button's vocabulary, plus the HTTP
+// `status` when one is available so callers can special-case it (e.g. the
+// iterate flow treats a 404 as "nothing to iterate on yet").
+//
+// `entryId` is optional and only passed on the FIRST turn of an iterate
+// session: it makes the Worker resolve the merged diff for that entry's
+// marker and assemble the seed context. Every later turn omits it.
+export async function chatWithWorker(messages, entryId) {
     try {
-        const res = await postToWorker({ chat: true, messages: messages });
+        const payload = { chat: true, messages: messages };
+        if (entryId) payload.entry_id = entryId;
+        const res = await postToWorker(payload);
         if (res && typeof res.reply === 'string') return res.reply;
         if (res && typeof res.text === 'string') return res.text;
         if (typeof res === 'string') return res;
@@ -219,6 +227,7 @@ export async function chatWithWorker(messages) {
     } catch (e) {
         const err = new Error(describeError(e));
         err.reason = describeError(e);
+        if (e && typeof e.status === 'number') err.status = e.status;
         throw err;
     }
 }
