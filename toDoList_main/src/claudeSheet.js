@@ -109,6 +109,10 @@ function setActiveTab(tab) {
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
     if (chatView) chatView.hidden = tab !== 'chat';
     if (runsView) runsView.hidden = tab !== 'runs';
+    // The attach button now lives in the header, so it no longer hides with the
+    // chat view automatically — gate it explicitly to the Chat tab.
+    const attachBtn = sheetEl.querySelector('#claudeComposerAttach');
+    if (attachBtn) attachBtn.hidden = tab !== 'chat';
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
@@ -323,12 +327,6 @@ function buildChatView() {
     input.className = 'claudeComposerInput';
     input.setAttribute('placeholder', 'Ask Claude…');
     input.setAttribute('rows', '1');
-    const attach = document.createElement('button');
-    attach.id = 'claudeComposerAttach';
-    attach.type = 'button';
-    attach.className = 'claudeComposerAttach';
-    attach.textContent = '📎';
-    attach.setAttribute('aria-label', 'Attach files');
     const send = document.createElement('button');
     send.id = 'claudeComposerSend';
     send.type = 'button';
@@ -336,10 +334,8 @@ function buildChatView() {
     send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
     composer.appendChild(input);
-    composer.appendChild(attach);
     composer.appendChild(send);
 
-    attach.addEventListener('click', function() { toggleAttachPanel(); });
     send.addEventListener('click', function() { sendChatTurn(); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
@@ -1468,6 +1464,18 @@ function buildSheet() {
     tabs.appendChild(chatTab);
     tabs.appendChild(runsTab);
     tabs.appendChild(buildWorkspace());
+
+    // File-picker button — a header-level control grouped with the tabs and
+    // workspace pill. It toggles the attach panel that lives in the chat view;
+    // setActiveTab hides it on the Runs tab since attachments are chat-only.
+    const attach = document.createElement('button');
+    attach.id = 'claudeComposerAttach';
+    attach.type = 'button';
+    attach.className = 'claudeComposerAttach';
+    attach.textContent = '📎';
+    attach.setAttribute('aria-label', 'Attach files');
+    attach.addEventListener('click', function() { toggleAttachPanel(); });
+    tabs.appendChild(attach);
 
     sheet.appendChild(handle);
     sheet.appendChild(closeX);
