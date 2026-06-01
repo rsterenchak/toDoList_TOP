@@ -7,8 +7,10 @@
 // served at https://<pages-host>/src-manifest.json and read by the Worker with
 // a short TTL cache.
 //
-// Pure Node, no dependencies. Lists .js/.css files under src/, sorted, with a
-// generated-at timestamp and the commit SHA (from GITHUB_SHA when present).
+// Pure Node, no dependencies. Lists JS / JSX / TS / TSX / CSS files under src/,
+// sorted, with a generated-at timestamp and the commit SHA (from GITHUB_SHA
+// when present). The widened extension list lets the same script work for
+// vanilla-JS projects (toDoList_TOP) and React/Vite projects (matchingGame-test).
 
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +20,7 @@ const distDir = path.resolve(__dirname, '..', 'dist');
 
 const files = fs
   .readdirSync(srcDir)
-  .filter((f) => /\.(js|css)$/.test(f))
+  .filter((f) => /\.(?:jsx?|tsx?|css)$/.test(f))
   .sort();
 
 fs.mkdirSync(distDir, { recursive: true });
