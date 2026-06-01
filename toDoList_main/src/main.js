@@ -6302,7 +6302,7 @@ function buildTodoMdViewerCard(projectName, target) {
         applyCollapsedState(!card.classList.contains('collapsed'));
     });
 
-    applyCollapsedState(false);
+    applyCollapsedState(true);
 
     // Mobile: tapping the card body anywhere outside its own buttons /
     // tabs opens the viewer in a slide-up bottom sheet. The inline card
