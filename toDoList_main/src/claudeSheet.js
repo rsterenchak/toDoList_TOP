@@ -38,6 +38,13 @@ const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
 const RUN_GIVE_UP_MS = 10 * 60 * 1000;
 
+// Repos the file-attach picker can pull source from. Mirrors the Worker's
+// ALLOWED_TARGETS. The default repo is the only one with a published
+// `src-manifest.json`, so it gets the browsable file list; others fall back to
+// a free-text path input since there's no manifest to render.
+const DEFAULT_ATTACH_REPO = 'rsterenchak/toDoList_TOP';
+const ATTACH_REPOS = [DEFAULT_ATTACH_REPO, 'rsterenchak/matchingGame-test'];
+
 let launcherEl = null;
 let sheetEl = null;
 let backdropEl = null;
@@ -59,6 +66,15 @@ let chatHistory = [];
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
 // the Runs-tab "+ New" affordance.
 let attachedFiles = [];
+// The repo all current attachments belong to. The Worker loads from a single
+// repo per request, so every chip in a conversation must share this value;
+// null while the attachment set is empty. Sent as `repo` alongside
+// `attach_files` on each turn.
+let attachedRepo = null;
+// Which repo the picker is currently browsing. Drives whether the picker shows
+// the manifest-driven file list (default repo) or a free-text path input (any
+// other repo). Reset to the default on a fresh conversation.
+let selectedAttachRepo = DEFAULT_ATTACH_REPO;
 // Short cache of the repo's source file list, fetched once from
 // `src-manifest.json` and reused while the module stays loaded.
 let srcManifestCache = null;
@@ -195,11 +211,30 @@ function buildChatView() {
     surface.className = 'claudeChatSurface';
 
     // File-picker panel — opens above the composer when the attach button is
-    // tapped. Holds a filter input and a scrollable list of repo source files.
+    // tapped. Holds a repo selector, then either a manifest-driven file list
+    // (default repo) or a free-text path input (any other repo).
     const panel = document.createElement('div');
     panel.id = 'claudeAttachPanel';
     panel.className = 'claudeAttachPanel';
     panel.hidden = true;
+
+    // Repo selector — picks which repo the attachments come from. Switching to
+    // a repo different from the current chip set is refused with a notice.
+    const repoSelect = document.createElement('select');
+    repoSelect.id = 'claudeAttachRepo';
+    repoSelect.className = 'claudeAttachRepo';
+    repoSelect.setAttribute('aria-label', 'Attachment repository');
+    ATTACH_REPOS.forEach(function(repo) {
+        const opt = document.createElement('option');
+        opt.value = repo;
+        opt.textContent = repo;
+        repoSelect.appendChild(opt);
+    });
+    repoSelect.value = selectedAttachRepo;
+    repoSelect.addEventListener('change', function() { onAttachRepoChange(repoSelect.value); });
+    panel.appendChild(repoSelect);
+
+    // Manifest-driven browse mode (default repo only): filter + scrollable list.
     const search = document.createElement('input');
     search.id = 'claudeAttachSearch';
     search.className = 'claudeAttachSearch';
@@ -211,6 +246,40 @@ function buildChatView() {
     search.addEventListener('input', function() { renderAttachList(search.value); });
     panel.appendChild(search);
     panel.appendChild(fileList);
+
+    // Free-text mode (non-default repos, which have no published manifest):
+    // type a repo-relative path and tap Add to attach it as a chip.
+    const pathRow = document.createElement('div');
+    pathRow.id = 'claudeAttachPathRow';
+    pathRow.className = 'claudeAttachPathRow';
+    pathRow.hidden = true;
+    const pathInput = document.createElement('input');
+    pathInput.id = 'claudeAttachPathInput';
+    pathInput.className = 'claudeAttachPathInput';
+    pathInput.type = 'text';
+    pathInput.setAttribute('placeholder', 'Enter file path, e.g. src/MainSection.jsx');
+    const pathAdd = document.createElement('button');
+    pathAdd.id = 'claudeAttachPathAdd';
+    pathAdd.type = 'button';
+    pathAdd.className = 'claudeAttachPathAdd';
+    pathAdd.textContent = 'Add';
+    pathAdd.addEventListener('click', function() { addFreeTextAttachment(); });
+    pathInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addFreeTextAttachment();
+        }
+    });
+    pathRow.appendChild(pathInput);
+    pathRow.appendChild(pathAdd);
+    panel.appendChild(pathRow);
+
+    // Inline notice for cross-repo attempts; hidden until one occurs.
+    const notice = document.createElement('p');
+    notice.id = 'claudeAttachNotice';
+    notice.className = 'claudeAttachNotice';
+    notice.hidden = true;
+    panel.appendChild(notice);
 
     // Selected-attachment chips — sit directly above the composer.
     const chips = document.createElement('div');
@@ -292,18 +361,84 @@ function currentAttachFilter() {
     return search ? search.value : '';
 }
 
-// Toggle the file-picker panel. On open, hydrate the manifest (cached after the
-// first fetch) and render the list filtered by the current search value.
+// Toggle the file-picker panel. On open, sync the picker to the current repo
+// selection (which mode is shown) and, in manifest mode, hydrate + render the
+// list filtered by the current search value.
 async function toggleAttachPanel() {
     const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
     if (!panel) return;
     if (panel.hidden) {
         panel.hidden = false;
-        await loadSrcManifest();
-        renderAttachList(currentAttachFilter());
+        renderAttachPickerMode();
+        if (selectedAttachRepo === DEFAULT_ATTACH_REPO) {
+            await loadSrcManifest();
+            renderAttachList(currentAttachFilter());
+        }
     } else {
         panel.hidden = true;
     }
+}
+
+// A non-default repo short name for chip/notice display, e.g.
+// 'rsterenchak/matchingGame-test' -> 'matchingGame-test'.
+function repoShortName(repo) {
+    const parts = String(repo || '').split('/');
+    return parts[parts.length - 1] || String(repo || '');
+}
+
+// Show or clear the cross-repo inline notice inside the picker.
+function showAttachNotice() {
+    const notice = sheetEl && sheetEl.querySelector('#claudeAttachNotice');
+    if (!notice) return;
+    notice.textContent = 'Attachments must come from one repo per conversation. Clear current chips or start a + New chat to switch repos.';
+    notice.hidden = false;
+}
+
+function clearAttachNotice() {
+    const notice = sheetEl && sheetEl.querySelector('#claudeAttachNotice');
+    if (!notice) return;
+    notice.hidden = true;
+    notice.textContent = '';
+}
+
+// Respond to a repo-selector change. Switching to a repo different from the
+// current chip set is refused: the notice surfaces, the selector reverts to the
+// chips' repo, and nothing else changes. Otherwise the picker swaps modes.
+function onAttachRepoChange(repo) {
+    if (attachedFiles.length && attachedRepo && repo !== attachedRepo) {
+        showAttachNotice();
+        const select = sheetEl && sheetEl.querySelector('#claudeAttachRepo');
+        if (select) select.value = attachedRepo;
+        return;
+    }
+    selectedAttachRepo = repo;
+    clearAttachNotice();
+    renderAttachPickerMode();
+}
+
+// Swap the picker between manifest-browse mode (default repo) and free-text
+// path mode (any other repo) based on the current selection. Loads + renders
+// the manifest list lazily when entering browse mode.
+function renderAttachPickerMode() {
+    const search = sheetEl && sheetEl.querySelector('#claudeAttachSearch');
+    const list = sheetEl && sheetEl.querySelector('#claudeAttachList');
+    const pathRow = sheetEl && sheetEl.querySelector('#claudeAttachPathRow');
+    const isManifest = selectedAttachRepo === DEFAULT_ATTACH_REPO;
+    if (search) search.hidden = !isManifest;
+    if (list) list.hidden = !isManifest;
+    if (pathRow) pathRow.hidden = isManifest;
+    if (isManifest) {
+        loadSrcManifest().then(function() { renderAttachList(currentAttachFilter()); });
+    }
+}
+
+// Attach the path typed into the free-text input (non-default repos).
+function addFreeTextAttachment() {
+    const input = sheetEl && sheetEl.querySelector('#claudeAttachPathInput');
+    if (!input) return;
+    const path = (input.value || '').trim();
+    if (!path) return;
+    if (addAttachment(path, selectedAttachRepo)) input.value = '';
 }
 
 function renderAttachList(filter) {
@@ -329,32 +464,52 @@ function renderAttachList(filter) {
         if (attachedFiles.indexOf(path) !== -1) {
             item.classList.add('claudeAttachItem--selected');
         }
-        item.addEventListener('click', function() { addAttachment(path); });
+        item.addEventListener('click', function() { addAttachment(path, DEFAULT_ATTACH_REPO); });
         list.appendChild(item);
     });
 }
 
-function addAttachment(path) {
-    if (!path || attachedFiles.indexOf(path) !== -1) return;
+// Attach a path from `repo`. Every chip in a conversation must share one repo
+// (the Worker loads from a single repo per request), so a path from a different
+// repo than the existing chips is refused with the inline notice and no state
+// change. Returns true when the path was actually added.
+function addAttachment(path, repo) {
+    if (!path) return false;
+    repo = repo || DEFAULT_ATTACH_REPO;
+    if (attachedFiles.length && attachedRepo && repo !== attachedRepo) {
+        showAttachNotice();
+        return false;
+    }
+    if (attachedFiles.indexOf(path) !== -1) return false;
     attachedFiles.push(path);
+    attachedRepo = repo;
+    clearAttachNotice();
     renderAttachChips();
     renderAttachIntro();
     renderAttachList(currentAttachFilter());
+    return true;
 }
 
 function removeAttachment(path) {
     const before = attachedFiles.length;
     attachedFiles = attachedFiles.filter(function(p) { return p !== path; });
     if (attachedFiles.length === before) return;
+    // Releasing the last chip unlocks the repo so the picker can switch freely.
+    if (!attachedFiles.length) attachedRepo = null;
     renderAttachChips();
     renderAttachIntro();
     renderAttachList(currentAttachFilter());
 }
 
 // Reset attachments for a fresh conversation: drop the list, clear the chips
-// and intro row, and collapse the picker panel.
+// and intro row, reset the repo selector to default, and collapse the picker.
 function clearAttachments() {
     attachedFiles = [];
+    attachedRepo = null;
+    selectedAttachRepo = DEFAULT_ATTACH_REPO;
+    const select = sheetEl && sheetEl.querySelector('#claudeAttachRepo');
+    if (select) select.value = DEFAULT_ATTACH_REPO;
+    clearAttachNotice();
     renderAttachChips();
     renderAttachIntro();
     const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
@@ -372,7 +527,11 @@ function renderAttachChips() {
         chip.dataset.path = path;
         const label = document.createElement('span');
         label.className = 'claudeAttachChipLabel';
-        label.textContent = fileBasename(path);
+        // Default-repo chips read as a bare basename; chips from any other repo
+        // carry their repo subtly so a mixed-looking set stays unambiguous.
+        label.textContent = (attachedRepo && attachedRepo !== DEFAULT_ATTACH_REPO)
+            ? repoShortName(attachedRepo) + ': ' + path
+            : fileBasename(path);
         const x = document.createElement('button');
         x.type = 'button';
         x.className = 'claudeAttachChipRemove';
@@ -479,7 +638,7 @@ async function requestAssistantReply(entryId) {
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles);
+        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles, attachedRepo);
         chatHistory.push({ role: 'assistant', content: reply });
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
@@ -1228,6 +1387,8 @@ export function mountClaudeSheet(parent) {
     // mount left running.
     chatHistory = [];
     attachedFiles = [];
+    attachedRepo = null;
+    selectedAttachRepo = DEFAULT_ATTACH_REPO;
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,

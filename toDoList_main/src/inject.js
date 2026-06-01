@@ -221,12 +221,18 @@ export async function injectEntry(options) {
 // and prepends its content to the system field — giving the assistant the
 // actual source to reason over. The current attachment set is sent on every
 // turn (per-conversation accumulation) so later turns retain that context.
-export async function chatWithWorker(messages, entryId, attachFiles) {
+//
+// `repo` is the owner/name the attached files belong to. The Worker is
+// multi-repo aware (validates against ALLOWED_TARGETS); when attachments come
+// from a non-default repo this tells it where to fetch them. Sent alongside
+// `attach_files` only when there are files to fetch.
+export async function chatWithWorker(messages, entryId, attachFiles, repo) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
         if (Array.isArray(attachFiles) && attachFiles.length) {
             payload.attach_files = attachFiles.slice();
+            if (repo) payload.repo = repo;
         }
         const res = await postToWorker(payload);
         if (res && typeof res.reply === 'string') return res.reply;

@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         added: [
-            "A \"Clear completed\" action on the Runs tab removes shipped, failed, and unconfirmed runs after a quick confirm, while in-progress runs stay.",
             "Attach repo source files to a Claude chat so the assistant can reason over the actual code; attached files stay in context across the whole conversation.",
+            "Pick which repo to attach files from in the Claude chat picker, with a free-text path field for repos that have no browsable file list.",
         ],
         changed: [
             "A run wrongly marked failed now corrects itself to shipped when its change is confirmed merged, so the Runs list stops showing false failures.",
