@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-01',
         added: [
             "A \"Clear completed\" action on the Runs tab removes shipped, failed, and unconfirmed runs after a quick confirm, while in-progress runs stay.",
+            "Attach repo source files to a Claude chat so the assistant can reason over the actual code; attached files stay in context across the whole conversation.",
         ],
         changed: [
             "A run wrongly marked failed now corrects itself to shipped when its change is confirmed merged, so the Runs list stops showing false failures.",
@@ -15,13 +16,6 @@ export const changelog = [
         ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-05-31',
-        fixed: [
-            "The reload nudge now fully disappears when no new build is waiting instead of lingering on screen.",
         ],
     },
 ];

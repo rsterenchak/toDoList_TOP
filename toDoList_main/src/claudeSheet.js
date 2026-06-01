@@ -54,6 +54,14 @@ let updatePending = false;
 
 // Conversation history sent to the Worker on each turn: [{ role, content }].
 let chatHistory = [];
+// Repo-relative source paths attached to the CURRENT conversation. Sent as
+// `attach_files` on every turn (per-conversation accumulation), so the model
+// keeps the source context across follow-ups. Cleared on a fresh mount and by
+// the Runs-tab "+ New" affordance.
+let attachedFiles = [];
+// Short cache of the repo's source file list, fetched once from
+// `src-manifest.json` and reused while the module stays loaded.
+let srcManifestCache = null;
 // Run records, newest-first: [{ entryId, correlationId, title, status,
 // dispatchedAt }]. Mirrored to localStorage so they survive a reload.
 let runRecords = [];
@@ -186,6 +194,29 @@ function buildChatView() {
     surface.id = 'claudeChatSurface';
     surface.className = 'claudeChatSurface';
 
+    // File-picker panel — opens above the composer when the attach button is
+    // tapped. Holds a filter input and a scrollable list of repo source files.
+    const panel = document.createElement('div');
+    panel.id = 'claudeAttachPanel';
+    panel.className = 'claudeAttachPanel';
+    panel.hidden = true;
+    const search = document.createElement('input');
+    search.id = 'claudeAttachSearch';
+    search.className = 'claudeAttachSearch';
+    search.type = 'text';
+    search.setAttribute('placeholder', 'Filter files…');
+    const fileList = document.createElement('div');
+    fileList.id = 'claudeAttachList';
+    fileList.className = 'claudeAttachList';
+    search.addEventListener('input', function() { renderAttachList(search.value); });
+    panel.appendChild(search);
+    panel.appendChild(fileList);
+
+    // Selected-attachment chips — sit directly above the composer.
+    const chips = document.createElement('div');
+    chips.id = 'claudeAttachChips';
+    chips.className = 'claudeAttachChips';
+
     const composer = document.createElement('div');
     composer.id = 'claudeComposer';
     composer.className = 'claudeComposer';
@@ -194,6 +225,12 @@ function buildChatView() {
     input.className = 'claudeComposerInput';
     input.setAttribute('placeholder', 'Ask Claude…');
     input.setAttribute('rows', '1');
+    const attach = document.createElement('button');
+    attach.id = 'claudeComposerAttach';
+    attach.type = 'button';
+    attach.className = 'claudeComposerAttach';
+    attach.textContent = '📎';
+    attach.setAttribute('aria-label', 'Attach files');
     const send = document.createElement('button');
     send.id = 'claudeComposerSend';
     send.type = 'button';
@@ -201,8 +238,10 @@ function buildChatView() {
     send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
     composer.appendChild(input);
+    composer.appendChild(attach);
     composer.appendChild(send);
 
+    attach.addEventListener('click', function() { toggleAttachPanel(); });
     send.addEventListener('click', function() { sendChatTurn(); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
@@ -213,8 +252,157 @@ function buildChatView() {
     });
 
     view.appendChild(surface);
+    view.appendChild(panel);
+    view.appendChild(chips);
     view.appendChild(composer);
     return view;
+}
+
+// ── FILE ATTACHMENTS ──
+// Repo-relative source paths display their basename in chips and the intro
+// row, but the full path is what travels in `attach_files` so the Worker can
+// fetch the file.
+function fileBasename(path) {
+    const parts = String(path || '').split('/');
+    return parts[parts.length - 1] || String(path || '');
+}
+
+// Fetch the repo's source file list from `src-manifest.json` once and cache it.
+// Tolerates either a bare JSON array of paths or an object with a `files`
+// array. Any failure (missing file, network, parse) yields an empty list so the
+// picker degrades to a "no files" state rather than throwing.
+async function loadSrcManifest() {
+    if (srcManifestCache) return srcManifestCache;
+    try {
+        const res = await fetch('src-manifest.json');
+        if (!res || !res.ok) { srcManifestCache = []; return srcManifestCache; }
+        const data = await res.json();
+        const files = Array.isArray(data)
+            ? data
+            : (data && Array.isArray(data.files) ? data.files : []);
+        srcManifestCache = files.filter(function(p) { return typeof p === 'string' && p; });
+    } catch (e) {
+        srcManifestCache = [];
+    }
+    return srcManifestCache;
+}
+
+function currentAttachFilter() {
+    const search = sheetEl && sheetEl.querySelector('#claudeAttachSearch');
+    return search ? search.value : '';
+}
+
+// Toggle the file-picker panel. On open, hydrate the manifest (cached after the
+// first fetch) and render the list filtered by the current search value.
+async function toggleAttachPanel() {
+    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    if (!panel) return;
+    if (panel.hidden) {
+        panel.hidden = false;
+        await loadSrcManifest();
+        renderAttachList(currentAttachFilter());
+    } else {
+        panel.hidden = true;
+    }
+}
+
+function renderAttachList(filter) {
+    const list = sheetEl && sheetEl.querySelector('#claudeAttachList');
+    if (!list) return;
+    list.innerHTML = '';
+    const q = String(filter || '').trim().toLowerCase();
+    const all = srcManifestCache || [];
+    const files = q ? all.filter(function(p) { return p.toLowerCase().indexOf(q) !== -1; }) : all;
+    if (!files.length) {
+        const empty = document.createElement('p');
+        empty.className = 'claudeAttachEmpty';
+        empty.textContent = all.length ? 'No files match' : 'No files available';
+        list.appendChild(empty);
+        return;
+    }
+    files.forEach(function(path) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'claudeAttachItem';
+        item.dataset.path = path;
+        item.textContent = path;
+        if (attachedFiles.indexOf(path) !== -1) {
+            item.classList.add('claudeAttachItem--selected');
+        }
+        item.addEventListener('click', function() { addAttachment(path); });
+        list.appendChild(item);
+    });
+}
+
+function addAttachment(path) {
+    if (!path || attachedFiles.indexOf(path) !== -1) return;
+    attachedFiles.push(path);
+    renderAttachChips();
+    renderAttachIntro();
+    renderAttachList(currentAttachFilter());
+}
+
+function removeAttachment(path) {
+    const before = attachedFiles.length;
+    attachedFiles = attachedFiles.filter(function(p) { return p !== path; });
+    if (attachedFiles.length === before) return;
+    renderAttachChips();
+    renderAttachIntro();
+    renderAttachList(currentAttachFilter());
+}
+
+// Reset attachments for a fresh conversation: drop the list, clear the chips
+// and intro row, and collapse the picker panel.
+function clearAttachments() {
+    attachedFiles = [];
+    renderAttachChips();
+    renderAttachIntro();
+    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    if (panel) panel.hidden = true;
+    renderAttachList('');
+}
+
+function renderAttachChips() {
+    const chips = sheetEl && sheetEl.querySelector('#claudeAttachChips');
+    if (!chips) return;
+    chips.innerHTML = '';
+    attachedFiles.forEach(function(path) {
+        const chip = document.createElement('span');
+        chip.className = 'claudeAttachChip';
+        chip.dataset.path = path;
+        const label = document.createElement('span');
+        label.className = 'claudeAttachChipLabel';
+        label.textContent = fileBasename(path);
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'claudeAttachChipRemove';
+        x.setAttribute('aria-label', 'Remove ' + fileBasename(path));
+        x.textContent = '✕';
+        x.addEventListener('click', function() { removeAttachment(path); });
+        chip.appendChild(label);
+        chip.appendChild(x);
+        chips.appendChild(chip);
+    });
+}
+
+// A single intro row pinned to the top of the thread that names the attached
+// files, so the user can see what source context the assistant has. Updated in
+// place; removed entirely when no attachments remain.
+function renderAttachIntro() {
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    if (!surface) return;
+    let intro = surface.querySelector('#claudeAttachIntro');
+    if (!attachedFiles.length) {
+        if (intro && intro.parentNode) intro.parentNode.removeChild(intro);
+        return;
+    }
+    if (!intro) {
+        intro = document.createElement('div');
+        intro.id = 'claudeAttachIntro';
+        intro.className = 'claudeAttachIntro';
+        surface.insertBefore(intro, surface.firstChild);
+    }
+    intro.textContent = '📎 Attached: ' + attachedFiles.map(fileBasename).join(', ');
 }
 
 // ── CHAT ──
@@ -291,7 +479,7 @@ async function requestAssistantReply(entryId) {
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const reply = await chatWithWorker(chatHistory, entryId);
+        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles);
         chatHistory.push({ role: 'assistant', content: reply });
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
@@ -409,6 +597,7 @@ async function startIterateFromRun(rec) {
     chatHistory = [];
     const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
+    clearAttachments();
 
     appendMessageBubble('note', 'Iterating on “' + (rec.title || 'this run') + '” — pulling the shipped change…');
 
@@ -595,6 +784,7 @@ function buildRunsView() {
     // there and focuses the composer so they can start drafting an entry.
     newBtn.addEventListener('click', function() {
         setActiveTab('chat');
+        clearAttachments();
         const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
         if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
     });
@@ -1037,6 +1227,7 @@ export function mountClaudeSheet(parent) {
     // Fresh mount starts a fresh conversation and drops any pollers a prior
     // mount left running.
     chatHistory = [];
+    attachedFiles = [];
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,
