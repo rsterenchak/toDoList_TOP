@@ -1541,6 +1541,44 @@ body:has(#settingsMenu) #claudeLauncher {
   font-weight: 600;
   cursor: pointer;
 }
+.claudeRunsClearWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+.claudeRunsClearBtn,
+.claudeRunsClearCancel {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.claudeRunsClearConfirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.claudeRunsClearConfirmWarn {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.claudeRunsClearYes {
+  padding: 0;
+  background: none;
+  border: none;
+  color: #f09595;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* CLAUDE CHAT — message bubbles, drafted-entry card, run rows. */
 .claudeMsg {

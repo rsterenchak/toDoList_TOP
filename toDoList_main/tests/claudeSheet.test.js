@@ -684,6 +684,111 @@ describe('Claude sheet — iterate from a shipped run', () => {
     });
 });
 
+// Clear-completed: a low-emphasis affordance at the foot of the Runs list that
+// removes terminal records (SHIPPED / FAILED / unconfirmed) after an inline
+// confirm, while leaving in-flight (RUNNING / QUEUED) records untouched.
+describe('Claude sheet — clear completed runs', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+    });
+
+    function seed(records) {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify(records));
+        mountClaudeSheet(document.body);
+    }
+
+    it('hides the clear button when no terminal records exist', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Pending', status: 'QUEUED', dispatchedAt: Date.now() },
+            { entryId: 'e2', correlationId: 'c2', title: 'Working', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]);
+        expect(document.getElementById('claudeRunsClear')).toBe(null);
+    });
+
+    it('shows the clear button when at least one terminal record exists', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Done', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]);
+        expect(document.getElementById('claudeRunsClear')).toBeTruthy();
+    });
+
+    it('confirms before clearing — first tap reveals the confirm, records untouched', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Done', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]);
+        const btn = document.getElementById('claudeRunsClear');
+        const confirm = document.querySelector('.claudeRunsClearConfirm');
+        expect(confirm.hidden).toBe(true);
+        btn.click();
+        expect(btn.hidden).toBe(true);
+        expect(confirm.hidden).toBe(false);
+        // The confirm prompt names the count and reassures about in-flight runs.
+        const warn = document.querySelector('.claudeRunsClearConfirmWarn').textContent;
+        expect(warn).toContain('1');
+        expect(warn).toContain('In-flight runs stay.');
+        // Nothing removed yet — rows and storage are intact until confirmed.
+        expect(document.querySelectorAll('.claudeRunRow').length).toBe(1);
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns')).length).toBe(1);
+    });
+
+    it('cancel dismisses the confirm and keeps the records', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Done', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]);
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearCancel').click();
+        expect(document.querySelector('.claudeRunsClearConfirm').hidden).toBe(true);
+        expect(document.getElementById('claudeRunsClear').hidden).toBe(false);
+        expect(document.querySelectorAll('.claudeRunRow').length).toBe(1);
+    });
+
+    it('clears SHIPPED, FAILED, and unconfirmed records but preserves RUNNING and QUEUED', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Shipped one', status: 'SHIPPED', dispatchedAt: Date.now() },
+            { entryId: 'e2', correlationId: 'c2', title: 'Failed one', status: 'FAILED', dispatchedAt: Date.now() },
+            { entryId: 'e3', correlationId: 'c3', title: 'Unknown one', status: 'RUNNING', unconfirmed: true, dispatchedAt: Date.now() },
+            { entryId: 'e4', correlationId: 'c4', title: 'Running one', status: 'RUNNING', dispatchedAt: Date.now() },
+            { entryId: 'e5', correlationId: 'c5', title: 'Queued one', status: 'QUEUED', dispatchedAt: Date.now() },
+        ]);
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearYes').click();
+
+        const titles = Array.from(document.querySelectorAll('.claudeRunTitle'))
+            .map(function(el) { return el.textContent; });
+        expect(titles).toEqual(['Running one', 'Queued one']);
+    });
+
+    it('reflects the cleared state in localStorage after confirming', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Shipped one', status: 'SHIPPED', dispatchedAt: Date.now() },
+            { entryId: 'e2', correlationId: 'c2', title: 'Running one', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]);
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearYes').click();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored.length).toBe(1);
+        expect(stored[0].correlationId).toBe('c2');
+        expect(stored[0].status).toBe('RUNNING');
+    });
+
+    it('removes the clear button once only in-flight records remain', () => {
+        seed([
+            { entryId: 'e1', correlationId: 'c1', title: 'Shipped one', status: 'SHIPPED', dispatchedAt: Date.now() },
+            { entryId: 'e2', correlationId: 'c2', title: 'Running one', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]);
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearYes').click();
+        expect(document.getElementById('claudeRunsClear')).toBe(null);
+    });
+});
+
 // The layout inspector: when an assistant reply carries an `INSPECT: <selector>`
 // directive, the chat strips it from the visible prose and offers a one-tap
 // "Attach layout" button that serializes the live element and sends it back.
