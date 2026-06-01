@@ -70,9 +70,9 @@
   - Completed: 2026-06-01
   <!-- id: 4c5b7214-2cc4-4450-aa6e-7ab718e3106b -->
 
-- [x] **[MEDIUM]** Move `.claudeWorkspace` pill out of `#claudeSheetTabs` and into its own div below the tablist
+- [ ] **[MEDIUM]** Move `.claudeWorkspace` pill out of `#claudeSheetTabs` and into its own div below the tablist
   - Type: feature
   - Description: Currently `.claudeWorkspace` (the repo pill + dropdown menu) lives inside `#claudeSheetTabs[role="tablist"]`, which mixes a non-tab control into the tab navigation. Extract the `.claudeWorkspace` div from inside `#claudeSheetTabs` and re-insert it in its own wrapper div immediately after `#claudeSheetTabs` in the DOM. Update `claudeSheet.js` where the sheet HTML is constructed/injected to reflect the new structure, and add/adjust styles in `style.css` so the pill row sits cleanly below the tab bar (aligned right or full-width as appropriate).
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: 2026-06-01
+  - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b292ab86-9c1f-40fb-8c35-06f5bc9b49df -->
