@@ -35,9 +35,9 @@
   - Completed: 2026-06-01
   <!-- id: 4c0f0023-6c98-4749-bf77-46cee79b0342 -->
 
-- [ ] **[LOW]** Add a "Clear completed" action to the Claude sheet's Runs tab
+- [x] **[LOW]** Add a "Clear completed" action to the Claude sheet's Runs tab
   - Type: feature
   - Description: The Runs tab accumulates run records indefinitely — every author + iterate dispatch persists a record to `todoapp_claudeRuns` in localStorage — so over time the list grows visually noisy with old terminal rows. Add a small "Clear completed" affordance at the bottom of the Runs list (only rendered when at least one terminal record exists), styled as a low-emphasis text-link button (`.claudeRunsClearBtn`, muted color, small, right-aligned beneath the last run row). On tap, show an inline confirm ("Clear N completed runs? In-flight runs stay."); on confirm, remove from `runRecords` and from localStorage every record whose status is terminal — SHIPPED, FAILED, or `unconfirmed: true` (the "Unknown" pill case from the positive-proof reconcile fix). Records with status RUNNING or QUEUED are NEVER cleared — they represent work still in flight and clearing them would lose visibility into ongoing dispatches. Re-render the list immediately. This is a destructive client-only action; no server call, no PR, no TODO.md edit. Tests must cover: (1) the button hides when no terminal records exist, (2) confirms before clearing, (3) clears SHIPPED/FAILED/unconfirmed records, (4) preserves RUNNING/QUEUED records untouched, (5) the localStorage value reflects the cleared state after the action.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: 8e733844-1972-49ed-836d-9a4383b91f1c -->
