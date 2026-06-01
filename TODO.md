@@ -75,11 +75,11 @@
   - Completed: 2026-05-31
   <!-- id: e67bd9e9-20af-4551-9a5c-8fe67c93caa5 -->
 
-- [ ] **[MEDIUM]** Clear the stale update nudge after the new build activates
+- [x] **[MEDIUM]** Clear the stale update nudge after the new build activates
   - Type: bug
   - Description: After the freshness gate ships a build, the "A newer build is ready ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ reload to see your change" nudge in the Runs tab persists even once the new service worker has already activated, and its Reload button then does nothing because `applyPendingUpdate()` finds no waiting worker (confirmed: `registration.waiting` is false, the new sw.js is already the active one). The `updatePending` flag in `claudeSheet.js` gets set on `appUpdateAvailable` but is never cleared once the update applies. Fix: (1) clear `updatePending` and hide/remove the reload nudge on the service worker `controllerchange` event (the moment the new SW takes control ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the update has applied, so the nudge is obsolete); expose this from `index.js` if the controllerchange listener lives there (it does ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ it currently sets a `reloading` flag and reloads), e.g. dispatch a `appUpdateApplied` event or call a small exported reset. (2) Defensively, when rendering or showing the nudge, only show it if a worker is actually pending ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ check `hasPendingUpdate()` / `registration.waiting` so a stale flag never surfaces a dead button. (3) The reload nudge's button should call `applyPendingUpdate()` as it does now, but if that returns falsy (nothing to apply), clear the flag and hide the nudge rather than silently no-opping. Net effect: the nudge appears only when a reload would actually do something, and disappears once the build is live.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01 (already implemented by an earlier run; entry was injected after the fix landed)
   <!-- id: b89e4ca8-abef-4be0-bb07-e96864cf2f85 -->
 
 - [x] **[MEDIUM]** Clear the stale update nudge after the new build activates
