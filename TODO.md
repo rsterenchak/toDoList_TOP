@@ -98,7 +98,7 @@
   - Completed: 2026-06-01
   <!-- id: a018e3da-2ecd-4875-bede-4c056cfff98e -->
 
-- [ ] **[MEDIUM]** Add an integration test for the chat → inject flow to catch UI-structural regressions
+- [x] **[MEDIUM]** Add an integration test for the chat → inject flow to catch UI-structural regressions — Completed: 2026-06-01
   - Type: feature
   - Description: The chat → inject flow (user authors an entry through Sonnet in the chat tab, then taps "Inject & run" to ship it to TODO.md and dispatch a Claude run) is the most load-bearing flow in the in-app Claude assistant — every entry the system processes starts here. The recent "move workspace pill to its own row" entry shipped through this flow, then BROKE this flow by detaching state wiring the inject path depended on. The existing tests in `claudeSheet.test.js` didn't catch it because they only assert piece-by-piece behavior in isolation (pill renders, menu opens, etc.) — there's no integration test that exercises the complete authoring path end-to-end. Add one. Test outline: (1) mount the Claude sheet via the existing mount helper used by other tests; (2) ensure the Chat tab is active and the composer is rendered; (3) seed a chat history by directly inserting an assistant message containing a properly-formatted fenced
   <!-- id: c1b1e9d4-b08e-4ae8-a40e-159093a2b4b4 -->

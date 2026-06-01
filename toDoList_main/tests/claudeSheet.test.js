@@ -556,6 +556,121 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     });
 });
 
+// An end-to-end integration test for the chat → inject flow — the single most
+// load-bearing path in the assistant (author an entry in chat, then ship it to
+// TODO.md and dispatch a run). The other author-flow tests assert each piece in
+// isolation (the pill renders, the draft card surfaces, ship records a run);
+// none walk the WHOLE path in one shot. So a structural change that detaches the
+// state the inject path depends on — e.g. relocating the workspace pill to its
+// own row, which previously broke this flow while every piecewise test still
+// passed — slips through. This test exercises mount → chat → draft → inject →
+// ship → run record continuously, with assertions on the structural wiring (the
+// pill living in the tab row, the active workspace repo riding the chat turn) so
+// that class of regression fails here.
+describe('Claude sheet — chat → inject integration (end-to-end author path)', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    let realFetch;
+    let fetchSpy;
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) {
+                json = { reply: 'On it:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```' };
+            } else if (body.dispatch) {
+                json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
+            } else if (body.status) {
+                json = { found: false };
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    it('walks mount → chat → draft → inject → ship → run record without a broken link', async () => {
+        // (1) Freshly mounted: the Chat tab is active and the composer is usable —
+        // the entry point for the whole flow.
+        const sheet = document.getElementById('claudeSheet');
+        expect(sheet.getAttribute('data-tab')).toBe('chat');
+        const input = document.getElementById('claudeComposerInput');
+        const send = document.getElementById('claudeComposerSend');
+        expect(input.disabled).toBe(false);
+        expect(send.disabled).toBe(false);
+        // The workspace pill lives in the tab row. A prior change moved it to its
+        // own row and detached the inject wiring; pinning its location here makes
+        // that structural drift visible.
+        const pill = document.getElementById('claudeWorkspacePill');
+        expect(pill).toBeTruthy();
+        expect(document.getElementById('claudeSheetTabs').contains(pill)).toBe(true);
+
+        // (2) Author a turn; the seeded reply carries a fenced ```md draft.
+        input.value = 'draft me a sparkle feature';
+        send.click();
+        await flush();
+        // The chat turn carried the active workspace repo — the wiring that
+        // regressed when the pill moved rows.
+        const chatCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect(chatCall).toBeTruthy();
+        expect(JSON.parse(chatCall[1].body).repo).toBe(DEFAULT_REPO);
+
+        // (3) The drafted-entry card surfaces from that reply.
+        const card = document.querySelector('.claudeDraftCard');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.claudeDraftEntry').textContent).toContain('Add a sparkle');
+
+        // (4) Inject & run → Ship it drives the inject + entry-mode dispatch calls.
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        const injectCall = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && b.entry;
+        });
+        expect(injectCall).toBeTruthy();
+        const injectBody = JSON.parse(injectCall[1].body);
+        expect(injectBody.entry).toContain('<!-- id: ' + injectBody.id + ' -->');
+
+        const dispatchCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).dispatch);
+        expect(dispatchCall).toBeTruthy();
+        const dispatchBody = JSON.parse(dispatchCall[1].body);
+        expect(dispatchBody.mode).toBe('entry');
+        expect(dispatchBody.entry_id).toBe(injectBody.id);
+
+        // (5) The flow lands on the Runs tab with a persisted QUEUED record whose
+        // id matches the just-injected entry — proving the chain held end to end.
+        expect(sheet.getAttribute('data-tab')).toBe('runs');
+        const row = document.querySelector('.claudeRunRow');
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.claudeRunBadge').textContent).toBe('Queued');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored.length).toBe(1);
+        expect(stored[0].status).toBe('QUEUED');
+        expect(stored[0].entryId).toBe(injectBody.id);
+    });
+});
+
 // The iterate door: tapping a SHIPPED run record opens the Chat tab and fires
 // turn 1 carrying the run's entry id so the Worker seeds the conversation from
 // that merged change. Follow-up drafts flow through the same author-flow card.
