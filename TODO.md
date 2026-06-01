@@ -56,9 +56,9 @@
   - Completed: 2026-06-01
   <!-- id: bdcee697-1365-4043-9a31-d1c732e3f7b2 -->
 
-- [ ] **[MEDIUM]** Picker reads src-manifest.json from any allowed repo, not just toDoList_TOP
+- [x] **[MEDIUM]** Picker reads src-manifest.json from any allowed repo, not just toDoList_TOP
   - Type: feature
   - Description: The Claude assistant's file-attach picker currently only renders a manifest-driven file list for the default repo (toDoList_TOP) and falls back to a free-text path input for any other allowed repo. Now that matchingGame-test publishes its own `src-manifest.json` at `https://rsterenchak.github.io/matchingGame-test/src-manifest.json` (via a manifest step in its deploy.yml mirroring toDoList_TOP's), the picker should fetch each repo's manifest by convention and show a real file list when one exists. Generalize the picker's manifest fetch in `claudeSheet.js`: instead of a hardcoded URL for toDoList_TOP, derive the manifest URL from the currently-selected repo as `https://<owner>.github.io/<name>/src-manifest.json` (split the `owner/name` repo string on `/`). Attempt to fetch that URL with a short cache; on success, render the manifest-driven file list (existing behavior). On failure (404, network error, or malformed JSON), fall back to the existing free-text path input — graceful degradation, so any repo without a published manifest still works. Cache fetched manifests per-repo for the session so switching back to a previously-loaded repo is instant. Tests must cover: (1) the manifest-driven list renders for toDoList_TOP (unchanged behavior), (2) the manifest-driven list renders for matchingGame-test (or any allowed repo with a fetchable manifest), (3) the free-text input is the fallback when fetch fails (mock a 404), (4) switching repos in the picker swaps the list without leaking state from the previous repo, (5) the per-repo cache hits on repeat selections.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: ebb5c773-566e-4226-adc1-c02e93014c38 -->
