@@ -50,6 +50,7 @@ let sheetEl = null;
 let backdropEl = null;
 let keydownHandler = null;
 let workspaceClickHandler = null;
+let attachClickHandler = null;
 let appUpdateHandler = null;
 let appAppliedHandler = null;
 
@@ -279,6 +280,11 @@ function buildAttach() {
     panel.className = 'claudeAttachPanel';
     panel.setAttribute('role', 'menu');
     panel.hidden = true;
+    // Keep clicks inside the panel from reaching the document-level outside-click
+    // handler — selecting a file rebuilds the list, detaching the clicked row,
+    // which would otherwise read as a click "outside" and close the panel
+    // prematurely (mirrors the workspace menu's guard).
+    panel.addEventListener('click', function(event) { event.stopPropagation(); });
 
     // Manifest-driven browse mode (repos with a published manifest): filter +
     // scrollable list.
@@ -1573,6 +1579,18 @@ export function mountClaudeSheet(parent) {
         if (wrap && !wrap.contains(event.target)) closeWorkspaceMenu();
     };
     document.addEventListener('click', workspaceClickHandler);
+
+    // Close the file-picker panel on any click outside it. The panel stops its
+    // own clicks from bubbling here, and the picker button shares the
+    // .claudeAttach wrap, so tapping the button toggles rather than closes.
+    if (attachClickHandler) document.removeEventListener('click', attachClickHandler);
+    attachClickHandler = function(event) {
+        const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+        if (!panel || panel.hidden) return;
+        const wrap = sheetEl && sheetEl.querySelector('.claudeAttach');
+        if (wrap && !wrap.contains(event.target)) setAttachPanelHidden(true);
+    };
+    document.addEventListener('click', attachClickHandler);
 
     // Track the SW update-pending state so the Runs nudge and the inspector
     // gate stay in sync. Seed from hasPendingUpdate() to cover a worker that

@@ -901,6 +901,26 @@ describe('Claude sheet — file attachments', () => {
         expect(composer.contains(panel)).toBe(false);
     });
 
+    it('closes the picker panel on a click outside it', async () => {
+        await openPicker();
+        const panel = document.getElementById('claudeAttachPanel');
+        expect(panel.hidden).toBe(false);
+        document.body.click();
+        expect(panel.hidden).toBe(true);
+    });
+
+    it('keeps the picker panel open on clicks inside it (filter input, file row)', async () => {
+        await openPicker();
+        const panel = document.getElementById('claudeAttachPanel');
+        // Typing in / clicking the filter input must not be read as "outside".
+        document.getElementById('claudeAttachSearch').click();
+        expect(panel.hidden).toBe(false);
+        // Selecting a file rebuilds the list (detaching the clicked row), yet the
+        // panel must stay open — only an outside click closes it.
+        selectFile('toDoList_main/src/claudeSheet.js');
+        expect(panel.hidden).toBe(false);
+    });
+
     it('filters the file list by the search input', async () => {
         await openPicker();
         const search = document.getElementById('claudeAttachSearch');
