@@ -215,10 +215,19 @@ export async function injectEntry(options) {
 // `entryId` is optional and only passed on the FIRST turn of an iterate
 // session: it makes the Worker resolve the merged diff for that entry's
 // marker and assemble the seed context. Every later turn omits it.
-export async function chatWithWorker(messages, entryId) {
+//
+// `attachFiles` is an optional array of repo-relative source paths. When
+// non-empty it rides along as `attach_files` so the Worker fetches each file
+// and prepends its content to the system field — giving the assistant the
+// actual source to reason over. The current attachment set is sent on every
+// turn (per-conversation accumulation) so later turns retain that context.
+export async function chatWithWorker(messages, entryId, attachFiles) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
+        if (Array.isArray(attachFiles) && attachFiles.length) {
+            payload.attach_files = attachFiles.slice();
+        }
         const res = await postToWorker(payload);
         if (res && typeof res.reply === 'string') return res.reply;
         if (res && typeof res.text === 'string') return res.text;

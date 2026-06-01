@@ -789,6 +789,164 @@ describe('Claude sheet — clear completed runs', () => {
     });
 });
 
+// File attachments: a composer paperclip opens a picker sourced from
+// src-manifest.json; selecting files adds chips whose paths ride along as
+// `attach_files` on every chat turn (per-conversation accumulation), with a
+// thread intro row naming them and a "+ New" reset.
+describe('Claude sheet — file attachments', () => {
+    const MANIFEST = [
+        'toDoList_main/src/claudeSheet.js',
+        'toDoList_main/src/layoutInspect.js',
+        'toDoList_main/src/inject.js',
+    ];
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve(MANIFEST),
+                });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ reply: 'ok' }),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function openPicker() {
+        document.getElementById('claudeComposerAttach').click();
+        await flush();
+    }
+
+    function selectFile(path) {
+        document.querySelector('.claudeAttachItem[data-path="' + path + '"]').click();
+    }
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('opens the picker from the composer and lists files from the manifest', async () => {
+        expect(document.getElementById('claudeAttachPanel').hidden).toBe(true);
+        await openPicker();
+        expect(document.getElementById('claudeAttachPanel').hidden).toBe(false);
+        const items = Array.from(document.querySelectorAll('.claudeAttachItem'));
+        expect(items.map((el) => el.dataset.path)).toEqual(MANIFEST);
+    });
+
+    it('filters the file list by the search input', async () => {
+        await openPicker();
+        const search = document.getElementById('claudeAttachSearch');
+        search.value = 'layout';
+        search.dispatchEvent(new Event('input'));
+        const items = Array.from(document.querySelectorAll('.claudeAttachItem'));
+        expect(items.map((el) => el.dataset.path)).toEqual(['toDoList_main/src/layoutInspect.js']);
+    });
+
+    it('adds a chip showing the basename when a file is selected', async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        const chips = document.querySelectorAll('.claudeAttachChip');
+        expect(chips.length).toBe(1);
+        expect(chips[0].dataset.path).toBe('toDoList_main/src/claudeSheet.js');
+        expect(chips[0].querySelector('.claudeAttachChipLabel').textContent).toBe('claudeSheet.js');
+    });
+
+    it('renders a single thread intro row naming the attached files', async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        selectFile('toDoList_main/src/layoutInspect.js');
+        const intro = document.getElementById('claudeAttachIntro');
+        expect(intro).toBeTruthy();
+        expect(intro.textContent).toBe('📎 Attached: claudeSheet.js, layoutInspect.js');
+        // The intro is the first node in the thread surface.
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.firstChild).toBe(intro);
+    });
+
+    it("sends attach_files matching the current chip set on send", async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        selectFile('toDoList_main/src/inject.js');
+        await sendMessage('walk me through the runs list');
+        expect(chatBodies.length).toBe(1);
+        expect(chatBodies[0].attach_files).toEqual([
+            'toDoList_main/src/claudeSheet.js',
+            'toDoList_main/src/inject.js',
+        ]);
+    });
+
+    it('removing a chip drops the file from the next request body', async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        selectFile('toDoList_main/src/inject.js');
+        // Remove the first chip via its ✕.
+        const firstChip = document.querySelector('.claudeAttachChip[data-path="toDoList_main/src/claudeSheet.js"]');
+        firstChip.querySelector('.claudeAttachChipRemove').click();
+        await sendMessage('and now?');
+        expect(chatBodies[0].attach_files).toEqual(['toDoList_main/src/inject.js']);
+    });
+
+    it('keeps attachments attached across turns in the same conversation', async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/layoutInspect.js');
+        await sendMessage('first');
+        await sendMessage('second');
+        expect(chatBodies.length).toBe(2);
+        expect(chatBodies[0].attach_files).toEqual(['toDoList_main/src/layoutInspect.js']);
+        expect(chatBodies[1].attach_files).toEqual(['toDoList_main/src/layoutInspect.js']);
+    });
+
+    it('omits attach_files entirely when nothing is attached', async () => {
+        await sendMessage('no attachments here');
+        expect(chatBodies[0].attach_files).toBeUndefined();
+    });
+
+    it('clears the attachment list when "+ New" is tapped', async () => {
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
+        // "+ New" lives on the Runs tab.
+        document.getElementById('claudeTabRuns').click();
+        document.getElementById('claudeRunsNew').click();
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(0);
+        expect(document.getElementById('claudeAttachIntro')).toBe(null);
+        await sendMessage('fresh start');
+        expect(chatBodies[0].attach_files).toBeUndefined();
+    });
+});
+
 // The layout inspector: when an assistant reply carries an `INSPECT: <selector>`
 // directive, the chat strips it from the visible prose and offers a one-tap
 // "Attach layout" button that serializes the live element and sends it back.
@@ -1195,6 +1353,15 @@ describe('Claude sheet — author-flow module surface and styling', () => {
         expect(inject).toMatch(/export\s+function\s+embedEntryMarker\s*\(/);
         // chatWithWorker POSTs the { chat: true, messages } contract.
         expect(inject).toMatch(/chat:\s*true,\s*messages/);
+        // …and carries attach_files when the conversation has attachments.
+        expect(inject).toMatch(/attach_files/);
+    });
+
+    it('styles the attachment picker, chips, and thread intro row', () => {
+        expect(css).toMatch(/\.claudeAttachPanel\s*\{/);
+        expect(css).toMatch(/\.claudeAttachChip\s*\{/);
+        expect(css).toMatch(/\.claudeAttachIntro\s*\{/);
+        expect(css).toMatch(/\.claudeComposerAttach\s*\{/);
     });
 
     it('claudeSheet.js imports the author-flow helpers from inject.js', () => {
