@@ -26,6 +26,7 @@ import {
     embedEntryMarker,
     dispatchRun,
     pollRunStatus,
+    resolveEntryByMarker,
 } from './inject.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
@@ -793,9 +794,34 @@ async function pollRunRecordOnce(correlationId, startedAt) {
 
 // Resume polling for any run record that hasn't reached a terminal status —
 // called on mount so a run dispatched before a reload keeps updating.
+// Retroactively re-check a FAILED record against its entry-id marker. A FAILED
+// row may have been over-asserted by an earlier reconcile; if that entry's
+// marker turns up in a merged PR (resolve → found:true with a merge_commit_sha)
+// that IS positive proof the work shipped, so promote it to SHIPPED. found:false
+// (no merged PR carries the marker) leaves the row FAILED — never a false
+// promotion. The attempt is cached on the record so each FAILED row is rechecked
+// at most once per session (no busy-looping). SHIPPED stays a hard terminal
+// state and is never demoted here.
+async function promoteFailedRecordIfShipped(rec) {
+    rec.resolveAttempted = true;
+    saveRunRecords();
+    const res = await resolveEntryByMarker(rec.entryId);
+    if (res && res.found === true && res.merge_commit_sha) {
+        setRunRecordStatus(rec.correlationId, 'SHIPPED');
+    }
+}
+
 function resumeRunPollers() {
     let changed = false;
     runRecords.forEach(function(rec) {
+        // FAILED is terminal for polling, but a FAILED record carrying an
+        // entryId may have been over-asserted: its marker could be present in a
+        // merged PR, which is positive proof of a ship. Re-check it once per
+        // session and promote to SHIPPED on a positive marker match.
+        if (rec.status === 'FAILED' && rec.entryId && !rec.resolveAttempted) {
+            promoteFailedRecordIfShipped(rec);
+            return;
+        }
         if (isTerminalStatus(rec.status)) return;
         // Already flagged unconfirmed: its outcome can't be polled to anything
         // more definite, so don't restart a poller that would just re-flag it.
