@@ -947,11 +947,12 @@ describe('Claude sheet — file attachments', () => {
     });
 });
 
-// Repo selector in the attach picker: the picker can pull source from one of
-// several allowed repos. The default repo (toDoList_TOP) keeps the manifest
-// browse list; any other repo swaps to a free-text path input. All chips in a
-// conversation must share one repo, and the request carries that repo.
-describe('Claude sheet — attach picker repo selector', () => {
+// Picker mode follows the active workspace: the default repo (toDoList_TOP)
+// keeps the manifest browse list; any other repo without a fetchable manifest
+// swaps to a free-text path input. Repo selection itself lives at the chat
+// level now (the workspace pill), so the picker no longer renders its own
+// selector, and every send carries the active workspace's repo.
+describe('Claude sheet — attach picker mode follows the workspace', () => {
     const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
     const OTHER_REPO = 'rsterenchak/matchingGame-test';
     const MANIFEST = [
@@ -1013,10 +1014,11 @@ describe('Claude sheet — attach picker repo selector', () => {
         await flush();
     }
 
-    async function selectRepo(repo) {
-        const sel = document.getElementById('claudeAttachRepo');
-        sel.value = repo;
-        sel.dispatchEvent(new Event('change'));
+    // Switch the chat-level workspace through the pill → menu → confirm flow.
+    async function switchWorkspace(repo) {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
         await flush();
     }
 
@@ -1033,18 +1035,12 @@ describe('Claude sheet — attach picker repo selector', () => {
         await flush();
     }
 
-    it('renders the repo selector with at least two options, defaulting to toDoList_TOP', async () => {
+    it('no longer renders its own repo selector', async () => {
         await openPicker();
-        const sel = document.getElementById('claudeAttachRepo');
-        expect(sel).toBeTruthy();
-        const opts = Array.from(sel.options).map((o) => o.value);
-        expect(opts.length).toBeGreaterThanOrEqual(2);
-        expect(opts).toContain(DEFAULT_REPO);
-        expect(opts).toContain(OTHER_REPO);
-        expect(sel.value).toBe(DEFAULT_REPO);
+        expect(document.getElementById('claudeAttachRepo')).toBe(null);
     });
 
-    it('shows the manifest-driven file list for the default repo', async () => {
+    it('shows the manifest-driven file list for the default workspace', async () => {
         await openPicker();
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
@@ -1053,17 +1049,17 @@ describe('Claude sheet — attach picker repo selector', () => {
         expect(items.map((el) => el.dataset.path)).toContain('toDoList_main/src/inject.js');
     });
 
-    it('shows the free-text path input for any other repo', async () => {
+    it('shows the free-text path input for a workspace with no manifest', async () => {
         await openPicker();
-        await selectRepo(OTHER_REPO);
+        await switchWorkspace(OTHER_REPO);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
         expect(document.getElementById('claudeAttachList').hidden).toBe(true);
     });
 
-    it('attaches a free-text path as a chip carrying its repo', async () => {
+    it('attaches a free-text path as a chip carrying the active workspace repo', async () => {
+        await switchWorkspace(OTHER_REPO);
         await openPicker();
-        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         const chips = document.querySelectorAll('.claudeAttachChip');
         expect(chips.length).toBe(1);
@@ -1074,9 +1070,9 @@ describe('Claude sheet — attach picker repo selector', () => {
         expect(document.getElementById('claudeAttachPathInput').value).toBe('');
     });
 
-    it('sends repo matching the chip set on send (non-default repo)', async () => {
+    it('sends the active workspace repo on send, with attachments (non-default)', async () => {
+        await switchWorkspace(OTHER_REPO);
         await openPicker();
-        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         await sendMessage('walk me through PlayPage');
         expect(chatBodies.length).toBe(1);
@@ -1084,7 +1080,7 @@ describe('Claude sheet — attach picker repo selector', () => {
         expect(chatBodies[0].attach_files).toEqual(['src/PlayPage.jsx']);
     });
 
-    it('sends repo matching the chip set on send (default repo)', async () => {
+    it('sends the active workspace repo on send, with attachments (default)', async () => {
         await openPicker();
         document.querySelector('.claudeAttachItem[data-path="toDoList_main/src/inject.js"]').click();
         await sendMessage('explain inject');
@@ -1092,40 +1088,141 @@ describe('Claude sheet — attach picker repo selector', () => {
         expect(chatBodies[0].attach_files).toEqual(['toDoList_main/src/inject.js']);
     });
 
-    it('surfaces a notice on a cross-repo attempt and leaves state unchanged', async () => {
-        await openPicker();
-        await selectRepo(OTHER_REPO);
-        addPath('src/PlayPage.jsx');
-        // Now try to switch back to the default repo while a matchingGame chip exists.
-        await selectRepo(DEFAULT_REPO);
-        const notice = document.getElementById('claudeAttachNotice');
-        expect(notice.hidden).toBe(false);
-        expect(notice.textContent).toMatch(/one repo per conversation/i);
-        // Chip set is untouched and the selector reverts to the chips' repo.
-        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
-        expect(document.getElementById('claudeAttachRepo').value).toBe(OTHER_REPO);
-        // The free-text mode is still showing matchingGame, not the manifest list.
-        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
-        // And a send still carries only the original repo + path.
-        await sendMessage('still here?');
-        expect(chatBodies[0].repo).toBe(OTHER_REPO);
-        expect(chatBodies[0].attach_files).toEqual(['src/PlayPage.jsx']);
+    it('sends the active workspace repo on send even with no attachments', async () => {
+        await sendMessage('no attachments');
+        expect(chatBodies[0].repo).toBe(DEFAULT_REPO);
+        expect(chatBodies[0].attach_files).toBeUndefined();
+        await switchWorkspace(OTHER_REPO);
+        await sendMessage('still no attachments');
+        expect(chatBodies[1].repo).toBe(OTHER_REPO);
+        expect(chatBodies[1].attach_files).toBeUndefined();
     });
 
-    it('clears chips and resets the repo selector to default on "+ New"', async () => {
+    it('keeps the workspace but clears chips on "+ New"', async () => {
+        await switchWorkspace(OTHER_REPO);
         await openPicker();
-        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
         // "+ New" lives on the Runs tab.
         document.getElementById('claudeTabRuns').click();
         document.getElementById('claudeRunsNew').click();
         expect(document.querySelectorAll('.claudeAttachChip').length).toBe(0);
-        expect(document.getElementById('claudeAttachRepo').value).toBe(DEFAULT_REPO);
         expect(document.getElementById('claudeAttachNotice').hidden).toBe(true);
+        // The workspace is unchanged, so a fresh send still carries it.
         await sendMessage('fresh start');
         expect(chatBodies[0].attach_files).toBeUndefined();
-        expect(chatBodies[0].repo).toBeUndefined();
+        expect(chatBodies[0].repo).toBe(OTHER_REPO);
+    });
+});
+
+// The chat-level workspace pill: a low-emphasis selector in the tab row that
+// names the repo the conversation is anchored to. Tapping it lists all allowed
+// repos; choosing a different one (behind a confirm) clears the chat and
+// switches the active workspace.
+describe('Claude sheet — chat-level workspace pill', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    let realFetch;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('renders the pill naming the current (default) workspace', () => {
+        const pill = document.getElementById('claudeWorkspacePill');
+        expect(pill).toBeTruthy();
+        expect(pill.textContent).toContain('toDoList_TOP');
+    });
+
+    it('opens a menu listing every allowed repo when tapped', () => {
+        document.getElementById('claudeWorkspacePill').click();
+        const menu = document.getElementById('claudeWorkspaceMenu');
+        expect(menu.hidden).toBe(false);
+        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
+        expect(repos).toContain(DEFAULT_REPO);
+        expect(repos).toContain(OTHER_REPO);
+        // The active repo is checkmarked.
+        const active = document.querySelector('.claudeWorkspaceItem[data-repo="' + DEFAULT_REPO + '"]');
+        expect(active.getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('selecting a different repo asks to confirm before switching', () => {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        const warn = document.querySelector('.claudeWorkspaceConfirmWarn');
+        expect(warn).toBeTruthy();
+        expect(warn.textContent).toMatch(/matchingGame-test/);
+        expect(warn.textContent).toMatch(/clears the current chat/i);
+        // Nothing switched yet — the pill still names the old workspace.
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
+    });
+
+    it('confirming clears the chat, updates the pill, and reframes the next send', async () => {
+        await sendMessage('hello in the default workspace');
+        expect(document.querySelectorAll('.claudeMsg--user').length).toBe(1);
+
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+
+        // Chat is wiped and the pill names the new workspace.
+        expect(document.querySelectorAll('.claudeMsg--user').length).toBe(0);
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
+        // The menu closed after confirming.
+        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
+
+        await sendMessage('hello in the new workspace');
+        const lastBody = chatBodies[chatBodies.length - 1];
+        expect(lastBody.repo).toBe(OTHER_REPO);
+    });
+
+    it('cancelling the confirm leaves the workspace untouched', () => {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmCancel').click();
+        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
+    });
+
+    it('choosing the already-active repo just closes the menu', () => {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + DEFAULT_REPO + '"]').click();
+        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
+        expect(document.querySelector('.claudeWorkspaceConfirmWarn')).toBe(null);
     });
 });
 
@@ -1194,10 +1291,12 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
         await flush();
     }
 
-    async function selectRepo(repo) {
-        const sel = document.getElementById('claudeAttachRepo');
-        sel.value = repo;
-        sel.dispatchEvent(new Event('change'));
+    // Switch the chat-level workspace through the pill → menu → confirm flow.
+    // When the picker is open it re-syncs to the new workspace's manifest.
+    async function switchWorkspace(repo) {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
         await flush();
     }
 
@@ -1214,7 +1313,7 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
 
     it('renders the manifest-driven list for another repo with a fetchable manifest', async () => {
         await openPicker();
-        await selectRepo(OTHER_REPO);
+        await switchWorkspace(OTHER_REPO);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
         expect(listPaths()).toEqual(GAME_MANIFEST);
@@ -1225,7 +1324,7 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
     it('falls back to the free-text input when the manifest fetch 404s', async () => {
         manifestByRepo['matchingGame-test'] = null;
         await openPicker();
-        await selectRepo(OTHER_REPO);
+        await switchWorkspace(OTHER_REPO);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
         expect(document.getElementById('claudeAttachList').hidden).toBe(true);
@@ -1234,18 +1333,18 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
     it('swaps the list when switching repos without leaking the previous repo files', async () => {
         await openPicker();
         expect(listPaths()).toEqual(TODO_MANIFEST);
-        await selectRepo(OTHER_REPO);
+        await switchWorkspace(OTHER_REPO);
         expect(listPaths()).toEqual(GAME_MANIFEST);
         // Switching back shows the default repo's list again, not a mix.
-        await selectRepo(DEFAULT_REPO);
+        await switchWorkspace(DEFAULT_REPO);
         expect(listPaths()).toEqual(TODO_MANIFEST);
     });
 
     it('caches each repo manifest so re-selecting it does not re-fetch', async () => {
         await openPicker();
-        await selectRepo(OTHER_REPO);
-        await selectRepo(DEFAULT_REPO);
-        await selectRepo(OTHER_REPO);
+        await switchWorkspace(OTHER_REPO);
+        await switchWorkspace(DEFAULT_REPO);
+        await switchWorkspace(OTHER_REPO);
         const gameFetches = manifestFetches.filter((u) => u.indexOf('matchingGame-test') !== -1);
         const todoFetches = manifestFetches.filter((u) => u.indexOf('toDoList_TOP') !== -1);
         expect(gameFetches.length).toBe(1);
