@@ -210,8 +210,9 @@ function buildTab(id, label, selected) {
     return tab;
 }
 
-// The chat-level workspace pill + its dropdown menu. Sits in the tab row,
-// low-emphasis, naming the repo the conversation is anchored to.
+// The chat-level workspace pill + its dropdown menu. Sits in its own row
+// below the tab bar, low-emphasis, naming the repo the conversation is
+// anchored to.
 function buildWorkspace() {
     const wrap = document.createElement('div');
     wrap.className = 'claudeWorkspace';
@@ -1467,11 +1468,16 @@ function buildSheet() {
     runsTab.addEventListener('click', function() { setActiveTab('runs'); });
     tabs.appendChild(chatTab);
     tabs.appendChild(runsTab);
-    tabs.appendChild(buildWorkspace());
+
+    const workspaceRow = document.createElement('div');
+    workspaceRow.id = 'claudeWorkspaceRow';
+    workspaceRow.className = 'claudeWorkspaceRow';
+    workspaceRow.appendChild(buildWorkspace());
 
     sheet.appendChild(handle);
     sheet.appendChild(closeX);
     sheet.appendChild(tabs);
+    sheet.appendChild(workspaceRow);
     sheet.appendChild(buildChatView());
     sheet.appendChild(buildRunsView());
 

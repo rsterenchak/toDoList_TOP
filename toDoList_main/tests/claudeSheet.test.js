@@ -1167,6 +1167,19 @@ describe('Claude sheet — chat-level workspace pill', () => {
         expect(pill.textContent).toContain('toDoList_TOP');
     });
 
+    it('places the workspace pill in its own row directly below the tablist, not inside it', () => {
+        const tabs = document.getElementById('claudeSheetTabs');
+        const row = document.getElementById('claudeWorkspaceRow');
+        const workspace = document.querySelector('.claudeWorkspace');
+        // The workspace no longer lives inside the tablist.
+        expect(tabs.querySelector('.claudeWorkspace')).toBe(null);
+        // It now sits inside its own row wrapper.
+        expect(row).toBeTruthy();
+        expect(row.contains(workspace)).toBe(true);
+        // And that row is the element immediately after the tablist.
+        expect(tabs.nextElementSibling).toBe(row);
+    });
+
     it('opens a menu listing every allowed repo when tapped', () => {
         document.getElementById('claudeWorkspacePill').click();
         const menu = document.getElementById('claudeWorkspaceMenu');
