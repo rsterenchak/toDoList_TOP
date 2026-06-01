@@ -7,9 +7,9 @@
   - Completed: 2026-05-31
   <!-- id: 3f4e47de-5d58-4df5-b131-b2e18a8d92ee -->
 
-- [ ] **[HIGH]** Stop marking unconfirmed runs as Failed — never assert failure without positive proof
+- [x] **[HIGH]** Stop marking unconfirmed runs as Failed — never assert failure without positive proof
   - Type: bug
   - Description: The run-status reconcile on mount is over-eagerly marking persisted runs as `FAILED` when their status can't be positively confirmed, mislabeling genuinely-shipped work. The Runs list currently shows "Freshness gate" and both "Clear the stale update nudge" entries as `Failed` even though all three demonstrably shipped (their changes are live in the running app). The reconcile's fallback for unresolvable runs was meant to prevent eternal `Running` rows, but treating "couldn't confirm" as "failed" makes the list lie about success, which is worse than the frozen-Running state it replaced. Fix the reconcile logic in `claudeSheet.js`: only assert `status = 'FAILED'` when the GitHub workflow lookup returns a positive failure signal (`conclusion: 'failure' | 'cancelled' | 'timed_out'`). For runs that can't be resolved at all (aged out of the API window, correlation_id not matched, network error, no merged PR carrying the marker), do NOT downgrade to FAILED — instead, if the run record has a merged PR / completed correlation that can be cross-checked via the existing `resolve` route (`found:true` with a merge_commit_sha), promote it to SHIPPED; otherwise leave it in its last known state and mark with a separate `unconfirmed` flag the UI can render distinctly (e.g. dim the status pill or show "Unknown") so the user can tell "this finished but I can't verify" from "this actually failed." Also: any run whose `<!-- id: <entry_id> -->` marker is found in a merged PR via `resolve` should be confidently marked SHIPPED regardless of the workflow-run window — that marker IS positive proof of merge. Net: SHIPPED rows mean shipped, FAILED rows mean truly failed, unconfirmed is its own state. The list never lies.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: 764b65fb-1852-4f29-bd03-02d71cb75f8d -->
