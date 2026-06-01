@@ -325,10 +325,10 @@ describe('todo.md viewer — body collapse toggle', () => {
         expect(main).toMatch(/aria-label['"]\s*,\s*['"]Expand panel['"]/);
     });
 
-    it('defaults to expanded on mount and does not persist collapse state', () => {
-        // The card always mounts expanded — collapse is in-memory only,
+    it('defaults to collapsed on mount and does not persist collapse state', () => {
+        // The card always mounts collapsed — collapse is in-memory only,
         // so there is no localStorage key for it.
-        expect(main).toMatch(/applyCollapsedState\(\s*false\s*\)/);
+        expect(main).toMatch(/applyCollapsedState\(\s*true\s*\)/);
         expect(main).not.toMatch(/todoapp_todomd_collapsed/);
     });
 

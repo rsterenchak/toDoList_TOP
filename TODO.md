@@ -28,9 +28,9 @@
   - Completed: 2026-06-01
   <!-- id: 2b52ef04-b304-4c6f-a8ea-a0e142245a85 -->
 
-- [ ] **[MEDIUM]** Initialize todo viewer panel as collapsed by default
+- [x] **[MEDIUM]** Initialize todo viewer panel as collapsed by default
   - Type: feature
   - Description: The todo viewer (toggled by `todoMdViewerHeader`) currently renders open on load. The initial state should be collapsed so the content area is hidden (e.g. `display:none` or zero height) until the user clicks the header. Find where the viewer's open/closed state is set on render/init in `claudeSheet.js` and flip the default to closed.
   - File: `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: 4c0f0023-6c98-4749-bf77-46cee79b0342 -->

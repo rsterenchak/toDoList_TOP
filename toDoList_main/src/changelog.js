@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-01',
         changed: [
             "A run wrongly marked failed now corrects itself to shipped when its change is confirmed merged, so the Runs list stops showing false failures.",
+            "The TODO.md viewer panel now starts collapsed, keeping its content hidden until you open it.",
         ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-31',
         fixed: [
-            "Run rows reconcile to their true status when you reopen the app, and a run that can no longer be resolved is marked failed instead of showing \"Running\" forever.",
             "The Claude assistant's Runs tab re-checks for a waiting build when opened, so a stale reload prompt no longer lingers when none is needed.",
             "The reload nudge now fully disappears when no new build is waiting instead of lingering on screen.",
         ],
