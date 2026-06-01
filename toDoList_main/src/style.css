@@ -1473,12 +1473,17 @@ body:has(#settingsMenu) #claudeLauncher {
   border-color: var(--accent-text);
 }
 
-/* CLAUDE WORKSPACE — chat-level repo pill + dropdown menu. */
+/* CLAUDE WORKSPACE — chat-level repo pill + dropdown menu, in its own row
+   below the tab bar. */
+.claudeWorkspaceRow {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 12px 12px;
+}
 .claudeWorkspace {
   position: relative;
   display: flex;
   align-items: center;
-  margin-left: auto;
 }
 .claudeWorkspacePill {
   background: transparent;
