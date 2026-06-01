@@ -1623,16 +1623,28 @@ body:has(#settingsMenu) #claudeLauncher {
   cursor: not-allowed;
 }
 
-/* CLAUDE ATTACHMENTS — file picker panel, chips, and thread intro row. */
+/* CLAUDE ATTACHMENTS — file picker dropdown, chips, and thread intro row. */
+.claudeAttach {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 .claudeAttachPanel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  width: 280px;
+  max-width: calc(100vw - 24px);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 200px;
-  margin-bottom: 8px;
+  max-height: 240px;
   border: 0.5px solid var(--border-mid);
   border-radius: 6px;
   background: var(--bg-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 5;
 }
 .claudeAttachPanel[hidden] { display: none; }
 .claudeAttachPathRow {
