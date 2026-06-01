@@ -616,6 +616,11 @@ const RUN_STATUS_LABEL = {
     FAILED: 'Failed',
 };
 
+// The only GitHub workflow conclusions that are positive proof of failure.
+// Any other completed conclusion (success aside) leaves the outcome
+// unconfirmed rather than asserting FAILED.
+const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
+
 function renderRunsList() {
     const list = sheetEl && sheetEl.querySelector('#claudeRunsList');
     if (!list) return;
@@ -645,8 +650,17 @@ function buildRunRow(rec) {
 
     const badge = document.createElement('span');
     const status = rec.status || 'QUEUED';
-    badge.className = 'claudeRunBadge claudeRunBadge--' + status.toLowerCase();
-    badge.textContent = RUN_STATUS_LABEL[status] || status;
+    if (rec.unconfirmed) {
+        // The run finished or aged out but its outcome couldn't be positively
+        // verified. Render a distinct, dimmed "Unknown" pill so it never passes
+        // as either Shipped or Failed.
+        badge.className = 'claudeRunBadge claudeRunBadge--unconfirmed';
+        badge.textContent = 'Unknown';
+        badge.title = 'This run finished but its outcome couldn’t be confirmed.';
+    } else {
+        badge.className = 'claudeRunBadge claudeRunBadge--' + status.toLowerCase();
+        badge.textContent = RUN_STATUS_LABEL[status] || status;
+    }
 
     row.appendChild(title);
     row.appendChild(badge);
@@ -697,6 +711,26 @@ function setRunRecordStatus(correlationId, status) {
     }
 }
 
+// Flag a run as unconfirmed without asserting an outcome: its last-known status
+// is preserved so the row keeps whatever it last legitimately showed, but the
+// UI renders an "Unknown" pill so the user can tell "this finished but I can't
+// verify it" apart from a genuine failure. Used when a run ages out of the poll
+// window or completes with a conclusion that's neither success nor a recognized
+// failure signal.
+function markRunRecordUnconfirmed(correlationId) {
+    let changed = false;
+    for (let i = 0; i < runRecords.length; i++) {
+        if (runRecords[i].correlationId === correlationId && !runRecords[i].unconfirmed) {
+            runRecords[i].unconfirmed = true;
+            changed = true;
+        }
+    }
+    if (changed) {
+        saveRunRecords();
+        renderRunsList();
+    }
+}
+
 // ── RUN POLLING ──
 // Reuses inject.js's pollRunStatus — the same path the TODO.md viewer's
 // header pill drives — to flip a run record QUEUED → RUNNING → SHIPPED
@@ -723,10 +757,12 @@ function stopRunPoller(correlationId) {
 
 async function pollRunRecordOnce(correlationId, startedAt) {
     if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
-        // Past the give-up window the run can no longer be reconciled, so a
-        // non-terminal record would otherwise sit "Running" forever. Mark it
-        // FAILED and stop watching so the Runs list never shows a stuck row.
-        setRunRecordStatus(correlationId, 'FAILED');
+        // Past the give-up window the run can no longer be reconciled. We can't
+        // see a positive outcome either way, so "couldn't confirm" is NOT
+        // "failed" — flag it unconfirmed (keeping its last-known status) and
+        // stop watching so the row neither lies about failure nor sits
+        // "Running" forever.
+        markRunRecordUnconfirmed(correlationId);
         stopRunPoller(correlationId);
         return;
     }
@@ -734,7 +770,17 @@ async function pollRunRecordOnce(correlationId, startedAt) {
     if (!res || res.ok === false) return; // transient — keep polling
     if (res.found === false) return; // run not surfaced yet — stay QUEUED
     if (res.status === 'completed') {
-        setRunRecordStatus(correlationId, res.conclusion === 'success' ? 'SHIPPED' : 'FAILED');
+        // Only assert FAILED on a positive failure signal. A success conclusion
+        // ships; a recognized failure conclusion fails; anything else completed
+        // (neutral, skipped, action_required, or no conclusion) is unconfirmed
+        // rather than asserted-failed.
+        if (res.conclusion === 'success') {
+            setRunRecordStatus(correlationId, 'SHIPPED');
+        } else if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
+            setRunRecordStatus(correlationId, 'FAILED');
+        } else {
+            markRunRecordUnconfirmed(correlationId);
+        }
         stopRunPoller(correlationId);
         return;
     }
@@ -751,11 +797,15 @@ function resumeRunPollers() {
     let changed = false;
     runRecords.forEach(function(rec) {
         if (isTerminalStatus(rec.status)) return;
+        // Already flagged unconfirmed: its outcome can't be polled to anything
+        // more definite, so don't restart a poller that would just re-flag it.
+        if (rec.unconfirmed) return;
         if (!rec.correlationId) {
             // With no correlation id this record can never be polled to a real
-            // status, so leaving it non-terminal would show a permanently-stuck
-            // "Running" row. Fail it gracefully instead.
-            rec.status = 'FAILED';
+            // status. That's "couldn't confirm", not "failed" — flag it
+            // unconfirmed (keeping its last-known status) so the row reads
+            // "Unknown" instead of falsely claiming failure.
+            rec.unconfirmed = true;
             changed = true;
             return;
         }
