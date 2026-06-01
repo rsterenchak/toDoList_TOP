@@ -72,12 +72,15 @@ let attachedFiles = [];
 // `attach_files` on each turn.
 let attachedRepo = null;
 // Which repo the picker is currently browsing. Drives whether the picker shows
-// the manifest-driven file list (default repo) or a free-text path input (any
-// other repo). Reset to the default on a fresh conversation.
+// the manifest-driven file list (any repo with a fetchable manifest) or a
+// free-text path input (repos without one). Reset to the default on a fresh
+// conversation.
 let selectedAttachRepo = DEFAULT_ATTACH_REPO;
-// Short cache of the repo's source file list, fetched once from
-// `src-manifest.json` and reused while the module stays loaded.
-let srcManifestCache = null;
+// Per-repo manifest cache: repo string -> { ok, files }. `ok` records whether
+// the repo published a fetchable `src-manifest.json` (drives browse vs.
+// free-text mode); `files` is its path list (empty when not ok). Cached for the
+// module's lifetime so re-selecting a repo never re-fetches.
+let srcManifestCache = {};
 // Run records, newest-first: [{ entryId, correlationId, title, status,
 // dispatchedAt }]. Mirrored to localStorage so they survive a reload.
 let runRecords = [];
@@ -212,7 +215,8 @@ function buildChatView() {
 
     // File-picker panel — opens above the composer when the attach button is
     // tapped. Holds a repo selector, then either a manifest-driven file list
-    // (default repo) or a free-text path input (any other repo).
+    // (repos with a published manifest) or a free-text path input (repos
+    // without one).
     const panel = document.createElement('div');
     panel.id = 'claudeAttachPanel';
     panel.className = 'claudeAttachPanel';
@@ -234,7 +238,8 @@ function buildChatView() {
     repoSelect.addEventListener('change', function() { onAttachRepoChange(repoSelect.value); });
     panel.appendChild(repoSelect);
 
-    // Manifest-driven browse mode (default repo only): filter + scrollable list.
+    // Manifest-driven browse mode (repos with a published manifest): filter +
+    // scrollable list.
     const search = document.createElement('input');
     search.id = 'claudeAttachSearch';
     search.className = 'claudeAttachSearch';
@@ -247,8 +252,8 @@ function buildChatView() {
     panel.appendChild(search);
     panel.appendChild(fileList);
 
-    // Free-text mode (non-default repos, which have no published manifest):
-    // type a repo-relative path and tap Add to attach it as a chip.
+    // Free-text mode (repos with no published manifest): type a repo-relative
+    // path and tap Add to attach it as a chip.
     const pathRow = document.createElement('div');
     pathRow.id = 'claudeAttachPathRow';
     pathRow.className = 'claudeAttachPathRow';
@@ -336,24 +341,50 @@ function fileBasename(path) {
     return parts[parts.length - 1] || String(path || '');
 }
 
-// Fetch the repo's source file list from `src-manifest.json` once and cache it.
+// The GitHub Pages manifest URL for a repo, by convention:
+// 'owner/name' -> 'https://owner.github.io/name/src-manifest.json'.
+function manifestUrlForRepo(repo) {
+    const parts = String(repo || '').split('/');
+    const owner = parts[0] || '';
+    const name = parts[1] || '';
+    return 'https://' + owner + '.github.io/' + name + '/src-manifest.json';
+}
+
+// Fetch a repo's `src-manifest.json` once and cache the result per repo.
 // Tolerates either a bare JSON array of paths or an object with a `files`
-// array. Any failure (missing file, network, parse) yields an empty list so the
-// picker degrades to a "no files" state rather than throwing.
-async function loadSrcManifest() {
-    if (srcManifestCache) return srcManifestCache;
+// array. Returns { ok, files }: `ok` is true only when a manifest was actually
+// fetched and parsed (so the picker shows the browse list); any failure (404,
+// network, parse) yields { ok: false, files: [] } so the picker degrades to the
+// free-text path input rather than throwing.
+async function loadManifest(repo) {
+    if (srcManifestCache[repo]) return srcManifestCache[repo];
+    let result;
     try {
-        const res = await fetch('src-manifest.json');
-        if (!res || !res.ok) { srcManifestCache = []; return srcManifestCache; }
-        const data = await res.json();
-        const files = Array.isArray(data)
-            ? data
-            : (data && Array.isArray(data.files) ? data.files : []);
-        srcManifestCache = files.filter(function(p) { return typeof p === 'string' && p; });
+        const res = await fetch(manifestUrlForRepo(repo));
+        if (!res || !res.ok) {
+            result = { ok: false, files: [] };
+        } else {
+            const data = await res.json();
+            const files = Array.isArray(data)
+                ? data
+                : (data && Array.isArray(data.files) ? data.files : []);
+            result = {
+                ok: true,
+                files: files.filter(function(p) { return typeof p === 'string' && p; }),
+            };
+        }
     } catch (e) {
-        srcManifestCache = [];
+        result = { ok: false, files: [] };
     }
-    return srcManifestCache;
+    srcManifestCache[repo] = result;
+    return result;
+}
+
+// The cached manifest paths for the repo the picker is currently browsing, or
+// an empty list when that repo has no fetchable manifest.
+function currentManifestFiles() {
+    const entry = srcManifestCache[selectedAttachRepo];
+    return entry && entry.ok ? entry.files : [];
 }
 
 function currentAttachFilter() {
@@ -362,18 +393,14 @@ function currentAttachFilter() {
 }
 
 // Toggle the file-picker panel. On open, sync the picker to the current repo
-// selection (which mode is shown) and, in manifest mode, hydrate + render the
-// list filtered by the current search value.
+// selection: fetch its manifest and either show the browse list or fall back to
+// the free-text path input.
 async function toggleAttachPanel() {
     const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
     if (!panel) return;
     if (panel.hidden) {
         panel.hidden = false;
-        renderAttachPickerMode();
-        if (selectedAttachRepo === DEFAULT_ATTACH_REPO) {
-            await loadSrcManifest();
-            renderAttachList(currentAttachFilter());
-        }
+        await refreshAttachPickerMode();
     } else {
         panel.hidden = true;
     }
@@ -413,23 +440,31 @@ function onAttachRepoChange(repo) {
     }
     selectedAttachRepo = repo;
     clearAttachNotice();
-    renderAttachPickerMode();
+    refreshAttachPickerMode();
 }
 
-// Swap the picker between manifest-browse mode (default repo) and free-text
-// path mode (any other repo) based on the current selection. Loads + renders
-// the manifest list lazily when entering browse mode.
-function renderAttachPickerMode() {
+// Show or hide the browse controls vs. the free-text path input. Browse mode is
+// for repos with a fetchable manifest; free-text is the fallback.
+function applyAttachPickerMode(isManifest) {
     const search = sheetEl && sheetEl.querySelector('#claudeAttachSearch');
     const list = sheetEl && sheetEl.querySelector('#claudeAttachList');
     const pathRow = sheetEl && sheetEl.querySelector('#claudeAttachPathRow');
-    const isManifest = selectedAttachRepo === DEFAULT_ATTACH_REPO;
     if (search) search.hidden = !isManifest;
     if (list) list.hidden = !isManifest;
     if (pathRow) pathRow.hidden = isManifest;
-    if (isManifest) {
-        loadSrcManifest().then(function() { renderAttachList(currentAttachFilter()); });
-    }
+}
+
+// Fetch the selected repo's manifest and swap the picker into the matching
+// mode: browse list when a manifest is available, free-text input otherwise.
+// Guards against a stale selection — if the user switches repos again before
+// the fetch resolves, the late result is dropped so a previous repo's list can
+// never leak into the current view.
+async function refreshAttachPickerMode() {
+    const repo = selectedAttachRepo;
+    const result = await loadManifest(repo);
+    if (repo !== selectedAttachRepo) return;
+    applyAttachPickerMode(result.ok);
+    if (result.ok) renderAttachList(currentAttachFilter());
 }
 
 // Attach the path typed into the free-text input (non-default repos).
@@ -446,7 +481,7 @@ function renderAttachList(filter) {
     if (!list) return;
     list.innerHTML = '';
     const q = String(filter || '').trim().toLowerCase();
-    const all = srcManifestCache || [];
+    const all = currentManifestFiles();
     const files = q ? all.filter(function(p) { return p.toLowerCase().indexOf(q) !== -1; }) : all;
     if (!files.length) {
         const empty = document.createElement('p');
@@ -464,7 +499,7 @@ function renderAttachList(filter) {
         if (attachedFiles.indexOf(path) !== -1) {
             item.classList.add('claudeAttachItem--selected');
         }
-        item.addEventListener('click', function() { addAttachment(path, DEFAULT_ATTACH_REPO); });
+        item.addEventListener('click', function() { addAttachment(path, selectedAttachRepo); });
         list.appendChild(item);
     });
 }
@@ -1389,6 +1424,7 @@ export function mountClaudeSheet(parent) {
     attachedFiles = [];
     attachedRepo = null;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;
+    srcManifestCache = {};
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,

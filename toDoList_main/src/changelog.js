@@ -7,12 +7,12 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         added: [
-            "Attach repo source files to a Claude chat so the assistant can reason over the actual code; attached files stay in context across the whole conversation.",
             "Pick which repo to attach files from in the Claude chat picker, with a free-text path field for repos that have no browsable file list.",
         ],
         changed: [
             "A run wrongly marked failed now corrects itself to shipped when its change is confirmed merged, so the Runs list stops showing false failures.",
             "The TODO.md viewer panel now starts collapsed, keeping its content hidden until you open it.",
+            "The Claude chat file picker now shows a browsable file list for any repo that publishes one, not just the default repo, falling back to free-text paths elsewhere.",
         ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
