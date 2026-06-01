@@ -256,6 +256,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     let realFetch;
     let fetchSpy;
     let statusJson;
+    let resolveJson;
 
     function makeFetch() {
         return vi.fn((url, opts) => {
@@ -267,6 +268,8 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
                 json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
             } else if (body.status) {
                 json = statusJson;
+            } else if (body.resolve) {
+                json = resolveJson;
             }
             return Promise.resolve({
                 ok: true,
@@ -283,6 +286,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
         statusJson = { found: false };
+        resolveJson = { found: false };
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
         globalThis.fetch = fetchSpy;
@@ -490,6 +494,47 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         // Status response is unresolved ({ found: false }); the record stays
         // RUNNING rather than being marked FAILED while still within the window.
         expect(document.querySelector('.claudeRunBadge').textContent).toBe('Running');
+    });
+
+    it('promotes a FAILED record to SHIPPED on mount when its marker resolves to a merged PR', async () => {
+        // A record over-asserted as FAILED still carries its entry-id marker.
+        // That marker turning up in a merged PR (resolve → found:true with a
+        // merge_commit_sha) is positive proof the work shipped, so the
+        // reconcile must retroactively correct the row to SHIPPED.
+        resolveJson = { found: true, pr_number: 1, merge_commit_sha: 'abc' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'False failure', status: 'FAILED', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
+        // The resolve check is attempted at most once per session, no busy-loop.
+        expect(stored[0].resolveAttempted).toBe(true);
+        const resolveCalls = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).resolve);
+        expect(resolveCalls.length).toBe(1);
+        expect(JSON.parse(resolveCalls[0][1].body).entry_id).toBe('e1');
+    });
+
+    it('leaves a FAILED record FAILED on mount when its marker does not resolve to a merged PR', async () => {
+        // No merged PR carries the marker (resolve → found:false): there is no
+        // positive proof of a ship, so the row must stay FAILED — never a false
+        // promotion.
+        resolveJson = { found: false };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Real failure', status: 'FAILED', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('FAILED');
+        expect(stored[0].resolveAttempted).toBe(true);
     });
 });
 

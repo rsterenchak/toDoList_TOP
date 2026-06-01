@@ -316,6 +316,26 @@ export async function pollRunStatus(options) {
 }
 
 
+// Cross-check whether an entry's marker is present in a merged PR through the
+// same Worker the dispatch and status flows already use (same URL, same Bearer
+// secret). Sends `{ resolve: true, entry_id }` so the Worker searches merged PR
+// bodies for the entry's `<!-- id: entry_id -->` marker and echoes back
+// `{ found, pr_number, merge_commit_sha }`. A `found:true` carrying a
+// `merge_commit_sha` is positive proof the entry shipped — used to retroactively
+// promote a run record that was over-asserted as FAILED back to SHIPPED.
+// Returns `{ ok: false, reason }` via describeError on any failure, matching the
+// vocabulary dispatchRun and pollRunStatus already use.
+export async function resolveEntryByMarker(entryId) {
+    if (!entryId) return { ok: false, reason: 'No entry id' };
+    try {
+        const res = await postToWorker({ resolve: true, entry_id: entryId });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Test connection sends `{ test: true }` plus repo/filePath when at least
 // one target is defined — the Worker exercises the same route a real
 // inject would take. With no targets defined, the request omits repo/
