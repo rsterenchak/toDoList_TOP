@@ -1702,6 +1702,9 @@ body:has(#settingsMenu) #claudeLauncher {
   background: var(--accent-dim);
   border: 0.5px solid var(--accent-text);
 }
+.claudeUpdateNudge[hidden] {
+  display: none;
+}
 .claudeUpdateNudgeText {
   flex: 1;
   min-width: 0;

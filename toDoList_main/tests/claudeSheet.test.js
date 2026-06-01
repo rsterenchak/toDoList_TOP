@@ -1029,4 +1029,12 @@ describe('Claude sheet — author-flow module surface and styling', () => {
         expect(css).toMatch(/\.claudeMsg--assistant\s*\{/);
         expect(css).toMatch(/\.claudeRunBadge--shipped\s*\{/);
     });
+
+    it('lets the hidden attribute win over the nudge display so hiding hides', () => {
+        // The base .claudeUpdateNudge rule sets display: flex, which would
+        // otherwise override the HTML hidden attribute's UA display: none.
+        // A [hidden] rule with display: none must restore the expected behavior
+        // so renderUpdateNudge() setting nudge.hidden = true actually hides it.
+        expect(css).toMatch(/\.claudeUpdateNudge\[hidden\]\s*\{[^}]*display:\s*none/);
+    });
 });
