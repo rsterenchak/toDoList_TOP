@@ -961,14 +961,24 @@ describe('Claude sheet — attach picker repo selector', () => {
     let realFetch;
     let chatBodies;
 
+    // Only the default repo publishes a manifest here; any other repo's manifest
+    // 404s so the picker falls back to the free-text path input these tests
+    // exercise. (Multi-repo manifest fetching has its own describe block below.)
     function makeFetch() {
         chatBodies = [];
         return vi.fn((url, opts) => {
             if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                if (url.indexOf('toDoList_TOP') !== -1) {
+                    return Promise.resolve({
+                        ok: true,
+                        status: 200,
+                        json: () => Promise.resolve(MANIFEST),
+                    });
+                }
                 return Promise.resolve({
-                    ok: true,
-                    status: 200,
-                    json: () => Promise.resolve(MANIFEST),
+                    ok: false,
+                    status: 404,
+                    json: () => Promise.resolve(null),
                 });
             }
             const body = JSON.parse(opts.body);
@@ -1003,10 +1013,11 @@ describe('Claude sheet — attach picker repo selector', () => {
         await flush();
     }
 
-    function selectRepo(repo) {
+    async function selectRepo(repo) {
         const sel = document.getElementById('claudeAttachRepo');
         sel.value = repo;
         sel.dispatchEvent(new Event('change'));
+        await flush();
     }
 
     function addPath(path) {
@@ -1044,7 +1055,7 @@ describe('Claude sheet — attach picker repo selector', () => {
 
     it('shows the free-text path input for any other repo', async () => {
         await openPicker();
-        selectRepo(OTHER_REPO);
+        await selectRepo(OTHER_REPO);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
         expect(document.getElementById('claudeAttachList').hidden).toBe(true);
@@ -1052,7 +1063,7 @@ describe('Claude sheet — attach picker repo selector', () => {
 
     it('attaches a free-text path as a chip carrying its repo', async () => {
         await openPicker();
-        selectRepo(OTHER_REPO);
+        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         const chips = document.querySelectorAll('.claudeAttachChip');
         expect(chips.length).toBe(1);
@@ -1065,7 +1076,7 @@ describe('Claude sheet — attach picker repo selector', () => {
 
     it('sends repo matching the chip set on send (non-default repo)', async () => {
         await openPicker();
-        selectRepo(OTHER_REPO);
+        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         await sendMessage('walk me through PlayPage');
         expect(chatBodies.length).toBe(1);
@@ -1083,10 +1094,10 @@ describe('Claude sheet — attach picker repo selector', () => {
 
     it('surfaces a notice on a cross-repo attempt and leaves state unchanged', async () => {
         await openPicker();
-        selectRepo(OTHER_REPO);
+        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         // Now try to switch back to the default repo while a matchingGame chip exists.
-        selectRepo(DEFAULT_REPO);
+        await selectRepo(DEFAULT_REPO);
         const notice = document.getElementById('claudeAttachNotice');
         expect(notice.hidden).toBe(false);
         expect(notice.textContent).toMatch(/one repo per conversation/i);
@@ -1103,7 +1114,7 @@ describe('Claude sheet — attach picker repo selector', () => {
 
     it('clears chips and resets the repo selector to default on "+ New"', async () => {
         await openPicker();
-        selectRepo(OTHER_REPO);
+        await selectRepo(OTHER_REPO);
         addPath('src/PlayPage.jsx');
         expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
         // "+ New" lives on the Runs tab.
@@ -1115,6 +1126,130 @@ describe('Claude sheet — attach picker repo selector', () => {
         await sendMessage('fresh start');
         expect(chatBodies[0].attach_files).toBeUndefined();
         expect(chatBodies[0].repo).toBeUndefined();
+    });
+});
+
+// Multi-repo manifest fetching: the picker derives each repo's manifest URL by
+// convention (https://<owner>.github.io/<name>/src-manifest.json) and shows a
+// real file list whenever one is fetchable — not just for the default repo.
+// Repos without a published manifest gracefully fall back to free-text input,
+// and fetched manifests are cached per repo for the session.
+describe('Claude sheet — attach picker multi-repo manifest', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    const TODO_MANIFEST = [
+        'toDoList_main/src/claudeSheet.js',
+        'toDoList_main/src/inject.js',
+    ];
+    const GAME_MANIFEST = [
+        'src/PlayPage.jsx',
+        'src/MainSection.jsx',
+    ];
+    let realFetch;
+    let chatBodies;
+    let manifestFetches;
+    // Per-repo manifest payloads keyed by a substring of the repo's URL. A null
+    // value makes that repo's manifest 404 so the free-text fallback engages.
+    let manifestByRepo;
+
+    function makeFetch() {
+        chatBodies = [];
+        manifestFetches = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                manifestFetches.push(url);
+                const key = url.indexOf('toDoList_TOP') !== -1 ? 'toDoList_TOP' : 'matchingGame-test';
+                const files = manifestByRepo[key];
+                if (!files) {
+                    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+                }
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(files) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        manifestByRepo = { toDoList_TOP: TODO_MANIFEST, 'matchingGame-test': GAME_MANIFEST };
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function openPicker() {
+        document.getElementById('claudeComposerAttach').click();
+        await flush();
+    }
+
+    async function selectRepo(repo) {
+        const sel = document.getElementById('claudeAttachRepo');
+        sel.value = repo;
+        sel.dispatchEvent(new Event('change'));
+        await flush();
+    }
+
+    function listPaths() {
+        return Array.from(document.querySelectorAll('.claudeAttachItem')).map((el) => el.dataset.path);
+    }
+
+    it('renders the manifest-driven list for the default repo', async () => {
+        await openPicker();
+        expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
+        expect(listPaths()).toEqual(TODO_MANIFEST);
+    });
+
+    it('renders the manifest-driven list for another repo with a fetchable manifest', async () => {
+        await openPicker();
+        await selectRepo(OTHER_REPO);
+        expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
+        expect(listPaths()).toEqual(GAME_MANIFEST);
+        // The manifest URL was derived by convention from the repo string.
+        expect(manifestFetches.some((u) => u === 'https://rsterenchak.github.io/matchingGame-test/src-manifest.json')).toBe(true);
+    });
+
+    it('falls back to the free-text input when the manifest fetch 404s', async () => {
+        manifestByRepo['matchingGame-test'] = null;
+        await openPicker();
+        await selectRepo(OTHER_REPO);
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
+        expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
+        expect(document.getElementById('claudeAttachList').hidden).toBe(true);
+    });
+
+    it('swaps the list when switching repos without leaking the previous repo files', async () => {
+        await openPicker();
+        expect(listPaths()).toEqual(TODO_MANIFEST);
+        await selectRepo(OTHER_REPO);
+        expect(listPaths()).toEqual(GAME_MANIFEST);
+        // Switching back shows the default repo's list again, not a mix.
+        await selectRepo(DEFAULT_REPO);
+        expect(listPaths()).toEqual(TODO_MANIFEST);
+    });
+
+    it('caches each repo manifest so re-selecting it does not re-fetch', async () => {
+        await openPicker();
+        await selectRepo(OTHER_REPO);
+        await selectRepo(DEFAULT_REPO);
+        await selectRepo(OTHER_REPO);
+        const gameFetches = manifestFetches.filter((u) => u.indexOf('matchingGame-test') !== -1);
+        const todoFetches = manifestFetches.filter((u) => u.indexOf('toDoList_TOP') !== -1);
+        expect(gameFetches.length).toBe(1);
+        expect(todoFetches.length).toBe(1);
     });
 });
 
