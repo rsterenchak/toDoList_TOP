@@ -947,6 +947,177 @@ describe('Claude sheet — file attachments', () => {
     });
 });
 
+// Repo selector in the attach picker: the picker can pull source from one of
+// several allowed repos. The default repo (toDoList_TOP) keeps the manifest
+// browse list; any other repo swaps to a free-text path input. All chips in a
+// conversation must share one repo, and the request carries that repo.
+describe('Claude sheet — attach picker repo selector', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    const MANIFEST = [
+        'toDoList_main/src/claudeSheet.js',
+        'toDoList_main/src/inject.js',
+    ];
+    let realFetch;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve(MANIFEST),
+                });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ reply: 'ok' }),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function openPicker() {
+        document.getElementById('claudeComposerAttach').click();
+        await flush();
+    }
+
+    function selectRepo(repo) {
+        const sel = document.getElementById('claudeAttachRepo');
+        sel.value = repo;
+        sel.dispatchEvent(new Event('change'));
+    }
+
+    function addPath(path) {
+        const input = document.getElementById('claudeAttachPathInput');
+        input.value = path;
+        document.getElementById('claudeAttachPathAdd').click();
+    }
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('renders the repo selector with at least two options, defaulting to toDoList_TOP', async () => {
+        await openPicker();
+        const sel = document.getElementById('claudeAttachRepo');
+        expect(sel).toBeTruthy();
+        const opts = Array.from(sel.options).map((o) => o.value);
+        expect(opts.length).toBeGreaterThanOrEqual(2);
+        expect(opts).toContain(DEFAULT_REPO);
+        expect(opts).toContain(OTHER_REPO);
+        expect(sel.value).toBe(DEFAULT_REPO);
+    });
+
+    it('shows the manifest-driven file list for the default repo', async () => {
+        await openPicker();
+        expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
+        const items = Array.from(document.querySelectorAll('.claudeAttachItem'));
+        expect(items.length).toBeGreaterThan(0);
+        expect(items.map((el) => el.dataset.path)).toContain('toDoList_main/src/inject.js');
+    });
+
+    it('shows the free-text path input for any other repo', async () => {
+        await openPicker();
+        selectRepo(OTHER_REPO);
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
+        expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
+        expect(document.getElementById('claudeAttachList').hidden).toBe(true);
+    });
+
+    it('attaches a free-text path as a chip carrying its repo', async () => {
+        await openPicker();
+        selectRepo(OTHER_REPO);
+        addPath('src/PlayPage.jsx');
+        const chips = document.querySelectorAll('.claudeAttachChip');
+        expect(chips.length).toBe(1);
+        expect(chips[0].dataset.path).toBe('src/PlayPage.jsx');
+        expect(chips[0].querySelector('.claudeAttachChipLabel').textContent)
+            .toBe('matchingGame-test: src/PlayPage.jsx');
+        // The free-text input clears after a successful add.
+        expect(document.getElementById('claudeAttachPathInput').value).toBe('');
+    });
+
+    it('sends repo matching the chip set on send (non-default repo)', async () => {
+        await openPicker();
+        selectRepo(OTHER_REPO);
+        addPath('src/PlayPage.jsx');
+        await sendMessage('walk me through PlayPage');
+        expect(chatBodies.length).toBe(1);
+        expect(chatBodies[0].repo).toBe(OTHER_REPO);
+        expect(chatBodies[0].attach_files).toEqual(['src/PlayPage.jsx']);
+    });
+
+    it('sends repo matching the chip set on send (default repo)', async () => {
+        await openPicker();
+        document.querySelector('.claudeAttachItem[data-path="toDoList_main/src/inject.js"]').click();
+        await sendMessage('explain inject');
+        expect(chatBodies[0].repo).toBe(DEFAULT_REPO);
+        expect(chatBodies[0].attach_files).toEqual(['toDoList_main/src/inject.js']);
+    });
+
+    it('surfaces a notice on a cross-repo attempt and leaves state unchanged', async () => {
+        await openPicker();
+        selectRepo(OTHER_REPO);
+        addPath('src/PlayPage.jsx');
+        // Now try to switch back to the default repo while a matchingGame chip exists.
+        selectRepo(DEFAULT_REPO);
+        const notice = document.getElementById('claudeAttachNotice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.textContent).toMatch(/one repo per conversation/i);
+        // Chip set is untouched and the selector reverts to the chips' repo.
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
+        expect(document.getElementById('claudeAttachRepo').value).toBe(OTHER_REPO);
+        // The free-text mode is still showing matchingGame, not the manifest list.
+        expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
+        // And a send still carries only the original repo + path.
+        await sendMessage('still here?');
+        expect(chatBodies[0].repo).toBe(OTHER_REPO);
+        expect(chatBodies[0].attach_files).toEqual(['src/PlayPage.jsx']);
+    });
+
+    it('clears chips and resets the repo selector to default on "+ New"', async () => {
+        await openPicker();
+        selectRepo(OTHER_REPO);
+        addPath('src/PlayPage.jsx');
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
+        // "+ New" lives on the Runs tab.
+        document.getElementById('claudeTabRuns').click();
+        document.getElementById('claudeRunsNew').click();
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(0);
+        expect(document.getElementById('claudeAttachRepo').value).toBe(DEFAULT_REPO);
+        expect(document.getElementById('claudeAttachNotice').hidden).toBe(true);
+        await sendMessage('fresh start');
+        expect(chatBodies[0].attach_files).toBeUndefined();
+        expect(chatBodies[0].repo).toBeUndefined();
+    });
+});
+
 // The layout inspector: when an assistant reply carries an `INSPECT: <selector>`
 // directive, the chat strips it from the visible prose and offers a one-tap
 // "Attach layout" button that serializes the live element and sends it back.

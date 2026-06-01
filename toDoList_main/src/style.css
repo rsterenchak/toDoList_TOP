@@ -1540,6 +1540,52 @@ body:has(#settingsMenu) #claudeLauncher {
   background: var(--bg-surface);
 }
 .claudeAttachPanel[hidden] { display: none; }
+.claudeAttachRepo {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: none;
+  border-bottom: 0.5px solid var(--border-dim);
+  border-radius: 6px 6px 0 0;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.claudeAttachPathRow {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+}
+.claudeAttachPathRow[hidden] { display: none; }
+.claudeAttachPathInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 16px;
+}
+.claudeAttachPathAdd {
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.claudeAttachNotice {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-top: 0.5px solid var(--border-dim);
+}
+.claudeAttachNotice[hidden] { display: none; }
 .claudeAttachSearch {
   background: var(--bg-surface);
   color: var(--text-primary);
