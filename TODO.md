@@ -21,9 +21,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c786da08-db15-4144-8230-4ee63159648e -->
 
-- [ ] **[MEDIUM]** Regression test: a FAILED record with a merged-PR marker reconciles to SHIPPED
+- [x] **[MEDIUM]** Regression test: a FAILED record with a merged-PR marker reconciles to SHIPPED
   - Type: feature
   - Description: A previous agent-shipped PR for retroactive FAILED→SHIPPED promotion landed as a no-op — the entry asked for the reconcile loop in `claudeSheet.js` to call `resolveEntryByMarker` for FAILED records and promote them to SHIPPED on `found:true`, but the merged code still short-circuits with `if (isTerminalStatus(rec.status)) return;` and the change never happened. The test suite passed because no test covered the new behavior, so the green CI gate failed to catch a no-op masquerading as a fix. Add a regression test in `claudeSheet.test.js` that locks down the intended behavior: seed `localStorage` with a run record `{status:'FAILED', entryId:'<uuid>', correlationId:'<id>'}`, mock the worker so a `resolve`-style request for that `entryId` returns `{found:true, pr_number:1, merge_commit_sha:'abc'}`, mount the Claude sheet, and assert that after the reconcile pass the record's status is `SHIPPED`. Add a sister test for the negative case: same setup but the worker returns `{found:false}` for that `entryId` — assert the record stays `FAILED` (no false promotion). The tests should fail against the current code (which doesn't promote), then implement the retroactive promotion to make them pass: in `claudeSheet.js`'s reconcile / `resumeRunPollers` path, when a record is FAILED but has an `entryId`, dispatch a `resolve` request via `inject.js`; on `found:true` set status to SHIPPED via the existing `setRunRecordStatus` helper; otherwise leave it FAILED. Cache the resolve attempt on the record (e.g. `rec.resolveAttempted = true`) so each FAILED record is rechecked at most once per session, no busy-looping. Net: the no-op pattern is impossible to ship again (the test would fail), AND any future false-FAILED row is retroactively corrected on next mount.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: 2b52ef04-b304-4c6f-a8ea-a0e142245a85 -->
