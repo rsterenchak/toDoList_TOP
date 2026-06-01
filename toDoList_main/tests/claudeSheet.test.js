@@ -140,6 +140,24 @@ describe('Claude sheet shell + launcher', () => {
         expect(input.disabled).toBe(false);
         expect(send.disabled).toBe(false);
     });
+
+    it('mounts the file-picker button in the sheet header, not the composer', () => {
+        const attach = document.getElementById('claudeComposerAttach');
+        const header = document.getElementById('claudeSheetTabs');
+        const composer = document.getElementById('claudeComposer');
+        expect(attach).toBeTruthy();
+        expect(header.contains(attach)).toBe(true);
+        expect(composer.contains(attach)).toBe(false);
+    });
+
+    it('hides the header file-picker button on the Runs tab and restores it on Chat', () => {
+        const attach = document.getElementById('claudeComposerAttach');
+        expect(attach.hidden).toBe(false);
+        document.getElementById('claudeTabRuns').click();
+        expect(attach.hidden).toBe(true);
+        document.getElementById('claudeTabChat').click();
+        expect(attach.hidden).toBe(false);
+    });
 });
 
 describe('Claude sheet — module surface and styling', () => {

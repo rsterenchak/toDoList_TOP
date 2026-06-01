@@ -77,9 +77,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b292ab86-9c1f-40fb-8c35-06f5bc9b49df -->
 
-- [ ] **[MEDIUM]** Move file picker button from composer to sheet header in claudeSheet.js
+- [x] **[MEDIUM]** Move file picker button from composer to sheet header in claudeSheet.js
   - Type: feature
   - Description: The file picker button currently lives inside the composer area of the Claude assistant sheet. Move it into the sheet header so it is visually grouped with header-level controls rather than the text input area. The following cross-cutting behaviors must be preserved after the move: (a) the click listener that triggers the hidden file `<input>` must still fire correctly from its new header parent; (b) the file-selection handler that reads the picked file and pipes content into the chat/inject flow must not rely on DOM traversal relative to the old composer parent — update any parent/sibling queries accordingly; (c) any visibility or enabled/disabled gating logic (e.g. hidden on Runs tab, disabled when no session is active) must still apply from the header context; (d) any loading/spinner state on the button must still render correctly; (e) ARIA label and keyboard focus order must be updated to reflect the button's new position in the header region rather than the composer region.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-01
   <!-- id: 25b13c20-d103-4696-bd18-c61809f7e7a9 -->
