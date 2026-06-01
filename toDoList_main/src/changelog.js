@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         changed: [
-            "The TODO.md viewer panel now starts collapsed, keeping its content hidden until you open it.",
             "The Claude chat file picker now shows a browsable file list for any repo that publishes one, not just the default repo, falling back to free-text paths elsewhere.",
             "A workspace pill in the Claude chat header now switches the whole conversation between repos and starts a fresh chat on change, replacing the file picker's own repo selector.",
             "The file-picker button now sits in the Claude chat sheet header alongside the tabs instead of in the message composer.",
         ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
+            "The Claude chat file picker now drops down directly beneath its header button instead of opening at the bottom of the sheet.",
         ],
     },
 ];

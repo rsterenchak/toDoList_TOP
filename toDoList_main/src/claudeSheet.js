@@ -109,10 +109,12 @@ function setActiveTab(tab) {
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
     if (chatView) chatView.hidden = tab !== 'chat';
     if (runsView) runsView.hidden = tab !== 'runs';
-    // The attach button now lives in the header, so it no longer hides with the
-    // chat view automatically — gate it explicitly to the Chat tab.
+    // The attach button and its dropdown now live in the header, so they no
+    // longer hide with the chat view automatically — gate the button to the Chat
+    // tab and collapse the panel when leaving Chat so it never floats over Runs.
     const attachBtn = sheetEl.querySelector('#claudeComposerAttach');
     if (attachBtn) attachBtn.hidden = tab !== 'chat';
+    if (tab !== 'chat') setAttachPanelHidden(true);
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
@@ -246,24 +248,36 @@ function buildWorkspace() {
     return wrap;
 }
 
-function buildChatView() {
-    const view = document.createElement('div');
-    view.id = 'claudeChatView';
-    view.className = 'claudeView';
-    view.setAttribute('role', 'tabpanel');
+// The header-level file-picker button + its dropdown panel. The panel anchors
+// directly below the button (like the workspace pill's menu) and overlays the
+// chat surface and composer rather than displacing them, so tapping the
+// top-right button drops the picker down right where it lives.
+function buildAttach() {
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeAttach';
 
-    const surface = document.createElement('div');
-    surface.id = 'claudeChatSurface';
-    surface.className = 'claudeChatSurface';
+    // File-picker button — a header-level control grouped with the tabs and
+    // workspace pill. It toggles the attach panel that drops down beneath it;
+    // setActiveTab hides it on the Runs tab since attachments are chat-only.
+    const attach = document.createElement('button');
+    attach.id = 'claudeComposerAttach';
+    attach.type = 'button';
+    attach.className = 'claudeComposerAttach';
+    attach.textContent = '📎';
+    attach.setAttribute('aria-label', 'Attach files');
+    attach.setAttribute('aria-haspopup', 'menu');
+    attach.setAttribute('aria-expanded', 'false');
+    attach.addEventListener('click', function() { toggleAttachPanel(); });
 
-    // File-picker panel — opens above the composer when the attach button is
-    // tapped. Shows either a manifest-driven file list (repos with a published
-    // manifest) or a free-text path input (repos without one), for whichever
-    // workspace is active. The repo itself is chosen at the chat level via the
-    // workspace pill, not here.
+    // File-picker panel — drops down below the button when tapped. Shows either
+    // a manifest-driven file list (repos with a published manifest) or a
+    // free-text path input (repos without one), for whichever workspace is
+    // active. The repo itself is chosen at the chat level via the workspace
+    // pill, not here.
     const panel = document.createElement('div');
     panel.id = 'claudeAttachPanel';
     panel.className = 'claudeAttachPanel';
+    panel.setAttribute('role', 'menu');
     panel.hidden = true;
 
     // Manifest-driven browse mode (repos with a published manifest): filter +
@@ -314,6 +328,21 @@ function buildChatView() {
     notice.hidden = true;
     panel.appendChild(notice);
 
+    wrap.appendChild(attach);
+    wrap.appendChild(panel);
+    return wrap;
+}
+
+function buildChatView() {
+    const view = document.createElement('div');
+    view.id = 'claudeChatView';
+    view.className = 'claudeView';
+    view.setAttribute('role', 'tabpanel');
+
+    const surface = document.createElement('div');
+    surface.id = 'claudeChatSurface';
+    surface.className = 'claudeChatSurface';
+
     // Selected-attachment chips — sit directly above the composer.
     const chips = document.createElement('div');
     chips.id = 'claudeAttachChips';
@@ -346,7 +375,6 @@ function buildChatView() {
     });
 
     view.appendChild(surface);
-    view.appendChild(panel);
     view.appendChild(chips);
     view.appendChild(composer);
     return view;
@@ -419,11 +447,21 @@ async function toggleAttachPanel() {
     const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
     if (!panel) return;
     if (panel.hidden) {
-        panel.hidden = false;
+        setAttachPanelHidden(false);
         await refreshAttachPickerMode();
     } else {
-        panel.hidden = true;
+        setAttachPanelHidden(true);
     }
+}
+
+// Show or hide the dropdown panel and keep the picker button's aria-expanded in
+// sync, so the button correctly advertises the panel's open state to assistive
+// tech now that it owns the dropdown.
+function setAttachPanelHidden(hidden) {
+    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    if (panel) panel.hidden = hidden;
+    const btn = sheetEl && sheetEl.querySelector('#claudeComposerAttach');
+    if (btn) btn.setAttribute('aria-expanded', String(!hidden));
 }
 
 // A non-default repo short name for chip/notice display, e.g.
@@ -551,8 +589,7 @@ function clearAttachments() {
     clearAttachNotice();
     renderAttachChips();
     renderAttachIntro();
-    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
-    if (panel) panel.hidden = true;
+    setAttachPanelHidden(true);
     renderAttachList('');
 }
 
@@ -721,7 +758,7 @@ function confirmWorkspaceSwitch(repo) {
     closeWorkspaceMenu();
 
     if (pickerWasOpen && panel) {
-        panel.hidden = false;
+        setAttachPanelHidden(false);
         refreshAttachPickerMode();
     }
 }
@@ -1464,18 +1501,7 @@ function buildSheet() {
     tabs.appendChild(chatTab);
     tabs.appendChild(runsTab);
     tabs.appendChild(buildWorkspace());
-
-    // File-picker button — a header-level control grouped with the tabs and
-    // workspace pill. It toggles the attach panel that lives in the chat view;
-    // setActiveTab hides it on the Runs tab since attachments are chat-only.
-    const attach = document.createElement('button');
-    attach.id = 'claudeComposerAttach';
-    attach.type = 'button';
-    attach.className = 'claudeComposerAttach';
-    attach.textContent = '📎';
-    attach.setAttribute('aria-label', 'Attach files');
-    attach.addEventListener('click', function() { toggleAttachPanel(); });
-    tabs.appendChild(attach);
+    tabs.appendChild(buildAttach());
 
     sheet.appendChild(handle);
     sheet.appendChild(closeX);

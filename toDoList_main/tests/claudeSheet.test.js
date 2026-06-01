@@ -883,6 +883,24 @@ describe('Claude sheet — file attachments', () => {
         expect(items.map((el) => el.dataset.path)).toEqual(MANIFEST);
     });
 
+    it('anchors the open picker panel below the header button, not the composer', async () => {
+        await openPicker();
+        const panel = document.getElementById('claudeAttachPanel');
+        const button = document.getElementById('claudeComposerAttach');
+        const header = document.getElementById('claudeSheetTabs');
+        const chatView = document.getElementById('claudeChatView');
+        const composer = document.getElementById('claudeComposer');
+        // The panel shares the button's header container (the picker dropdown
+        // wrapper) and lives in the header tab row — never back in the chat view
+        // or composer it used to anchor to.
+        const container = button.closest('.claudeAttach');
+        expect(container).toBeTruthy();
+        expect(container.contains(panel)).toBe(true);
+        expect(header.contains(panel)).toBe(true);
+        expect(chatView.contains(panel)).toBe(false);
+        expect(composer.contains(panel)).toBe(false);
+    });
+
     it('filters the file list by the search input', async () => {
         await openPicker();
         const search = document.getElementById('claudeAttachSearch');
