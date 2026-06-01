@@ -124,6 +124,14 @@ function isTerminalStatus(status) {
     return status === 'SHIPPED' || status === 'FAILED';
 }
 
+// A run is "completed" for the Clear-completed action when it can no longer be
+// in flight: a positively terminal SHIPPED/FAILED status, or an unconfirmed
+// record (finished or aged out, outcome unknown). RUNNING/QUEUED records that
+// are not unconfirmed are still in flight and are never cleared.
+function isClearableRun(rec) {
+    return !!rec.unconfirmed || isTerminalStatus(rec.status);
+}
+
 // Derive a short, human title from a drafted entry's markdown. Uses the first
 // non-empty line, stripping a leading `- [ ]` checkbox, a `**[PRIORITY]**`
 // marker, and any trailing id marker so the Runs list reads cleanly.
@@ -637,6 +645,70 @@ function renderRunsList() {
     runRecords.forEach(function(rec) {
         list.appendChild(buildRunRow(rec));
     });
+    const clearableCount = runRecords.filter(isClearableRun).length;
+    if (clearableCount) {
+        list.appendChild(buildClearCompleted(clearableCount));
+    }
+}
+
+// Low-emphasis "Clear completed" affordance pinned beneath the last run row.
+// Rendered only when at least one clearable record exists. Tapping it swaps to
+// an inline confirm so a stray tap can't wipe rows; confirming removes every
+// clearable record (SHIPPED/FAILED/unconfirmed), leaving in-flight runs intact.
+function buildClearCompleted(count) {
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeRunsClearWrap';
+
+    const btn = document.createElement('button');
+    btn.id = 'claudeRunsClear';
+    btn.type = 'button';
+    btn.className = 'claudeRunsClearBtn';
+    btn.textContent = 'Clear completed';
+
+    const confirm = document.createElement('div');
+    confirm.className = 'claudeRunsClearConfirm';
+    confirm.hidden = true;
+
+    const warn = document.createElement('span');
+    warn.className = 'claudeRunsClearConfirmWarn';
+    warn.textContent = 'Clear ' + count + ' completed run' +
+        (count === 1 ? '' : 's') + '? In-flight runs stay.';
+
+    const yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'claudeRunsClearYes';
+    yesBtn.textContent = 'Clear';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'claudeRunsClearCancel';
+    cancelBtn.textContent = 'Cancel';
+
+    confirm.appendChild(warn);
+    confirm.appendChild(yesBtn);
+    confirm.appendChild(cancelBtn);
+
+    btn.addEventListener('click', function() {
+        btn.hidden = true;
+        confirm.hidden = false;
+    });
+    cancelBtn.addEventListener('click', function() {
+        confirm.hidden = true;
+        btn.hidden = false;
+    });
+    yesBtn.addEventListener('click', clearCompletedRuns);
+
+    wrap.appendChild(btn);
+    wrap.appendChild(confirm);
+    return wrap;
+}
+
+// Drop every clearable record from memory and localStorage, then re-render.
+// In-flight (RUNNING/QUEUED, non-unconfirmed) records survive untouched.
+function clearCompletedRuns() {
+    runRecords = runRecords.filter(function(rec) { return !isClearableRun(rec); });
+    saveRunRecords();
+    renderRunsList();
 }
 
 function buildRunRow(rec) {

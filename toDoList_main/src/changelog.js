@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-01',
+        added: [
+            "A \"Clear completed\" action on the Runs tab removes shipped, failed, and unconfirmed runs after a quick confirm, while in-progress runs stay.",
+        ],
         changed: [
             "A run wrongly marked failed now corrects itself to shipped when its change is confirmed merged, so the Runs list stops showing false failures.",
             "The TODO.md viewer panel now starts collapsed, keeping its content hidden until you open it.",
@@ -18,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-05-31',
         fixed: [
-            "The Claude assistant's Runs tab re-checks for a waiting build when opened, so a stale reload prompt no longer lingers when none is needed.",
             "The reload nudge now fully disappears when no new build is waiting instead of lingering on screen.",
         ],
     },
