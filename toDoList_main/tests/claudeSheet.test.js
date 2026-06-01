@@ -422,27 +422,63 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(rows[0].querySelector('.claudeRunBadge').textContent).toBe('Shipped');
     });
 
-    it('fails a non-terminal record with no correlation id on mount (never polls to a stuck row)', () => {
+    it('marks a non-terminal record with no correlation id as unconfirmed on mount (never asserts FAILED)', () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { entryId: 'e1', title: 'No correlation id', status: 'RUNNING', dispatchedAt: Date.now() },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
-        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        // A record that can never be polled isn't proof of failure — it's
+        // unconfirmed. The pill reads "Unknown", not "Failed".
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Unknown');
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
-        expect(stored[0].status).toBe('FAILED');
+        expect(stored[0].status).not.toBe('FAILED');
+        expect(stored[0].unconfirmed).toBe(true);
     });
 
-    it('reconciles a record dispatched past the give-up window to FAILED on mount', async () => {
+    it('marks a record dispatched past the give-up window as unconfirmed on mount (never asserts FAILED)', async () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { entryId: 'e1', correlationId: 'c1', title: 'Stale running', status: 'RUNNING', dispatchedAt: Date.now() - 11 * 60 * 1000 },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
         await flush();
-        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        // Aged out of the poll window with no resolution = couldn't confirm,
+        // not confirmed failure. Leave the last-known status, flag unconfirmed.
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Unknown');
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
-        expect(stored[0].status).toBe('FAILED');
+        expect(stored[0].status).not.toBe('FAILED');
+        expect(stored[0].unconfirmed).toBe(true);
+    });
+
+    it('marks the run unconfirmed when the poll reports completed with a non-failure conclusion', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'neutral' };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+        // 'neutral' is neither success nor a positive failure signal, so the
+        // outcome can't be asserted either way — it's unconfirmed.
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Unknown');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).not.toBe('FAILED');
+        expect(stored[0].unconfirmed).toBe(true);
+    });
+
+    it('flips to FAILED for cancelled and timed_out conclusions (positive failure signals)', async () => {
+        for (const conclusion of ['cancelled', 'timed_out']) {
+            localStorage.clear();
+            document.body.innerHTML = '';
+            mountClaudeSheet(document.body);
+            statusJson = { found: true, status: 'completed', conclusion };
+            await sendMessage('draft me an entry');
+            const card = document.querySelector('.claudeDraftCard');
+            card.querySelector('.claudeDraftInject').click();
+            card.querySelector('.claudeDraftShip').click();
+            await flush();
+            expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        }
     });
 
     it('keeps polling a recent non-terminal record with a correlation id (not prematurely failed)', () => {
@@ -1028,6 +1064,7 @@ describe('Claude sheet — author-flow module surface and styling', () => {
         expect(css).toMatch(/\.claudeMsg--user\s*\{/);
         expect(css).toMatch(/\.claudeMsg--assistant\s*\{/);
         expect(css).toMatch(/\.claudeRunBadge--shipped\s*\{/);
+        expect(css).toMatch(/\.claudeRunBadge--unconfirmed\s*\{/);
     });
 
     it('lets the hidden attribute win over the nudge display so hiding hides', () => {

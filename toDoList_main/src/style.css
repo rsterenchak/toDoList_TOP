@@ -1783,6 +1783,12 @@ body:has(#settingsMenu) #claudeLauncher {
   border-color: #a32d2d;
   color: #f09595;
 }
+.claudeRunBadge--unconfirmed {
+  background: #1c1c1c;
+  border-color: #555550;
+  color: #9a988e;
+  border-style: dashed;
+}
 
 /* MAIN BAR */
 #mainBar {
