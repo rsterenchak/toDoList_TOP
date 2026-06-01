@@ -222,17 +222,18 @@ export async function injectEntry(options) {
 // actual source to reason over. The current attachment set is sent on every
 // turn (per-conversation accumulation) so later turns retain that context.
 //
-// `repo` is the owner/name the attached files belong to. The Worker is
-// multi-repo aware (validates against ALLOWED_TARGETS); when attachments come
-// from a non-default repo this tells it where to fetch them. Sent alongside
-// `attach_files` only when there are files to fetch.
+// `repo` is the owner/name the conversation's workspace is anchored to. The
+// Worker is multi-repo aware (validates against ALLOWED_TARGETS) and reframes
+// its system prompt around this repo, so it rides on every turn — not just when
+// files are attached. When attachments are present they come from this same
+// repo, so the Worker knows where to fetch them.
 export async function chatWithWorker(messages, entryId, attachFiles, repo) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
+        if (repo) payload.repo = repo;
         if (Array.isArray(attachFiles) && attachFiles.length) {
             payload.attach_files = attachFiles.slice();
-            if (repo) payload.repo = repo;
         }
         const res = await postToWorker(payload);
         if (res && typeof res.reply === 'string') return res.reply;

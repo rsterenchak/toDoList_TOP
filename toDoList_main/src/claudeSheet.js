@@ -49,6 +49,7 @@ let launcherEl = null;
 let sheetEl = null;
 let backdropEl = null;
 let keydownHandler = null;
+let workspaceClickHandler = null;
 let appUpdateHandler = null;
 let appAppliedHandler = null;
 
@@ -71,10 +72,16 @@ let attachedFiles = [];
 // null while the attachment set is empty. Sent as `repo` alongside
 // `attach_files` on each turn.
 let attachedRepo = null;
-// Which repo the picker is currently browsing. Drives whether the picker shows
-// the manifest-driven file list (any repo with a fetchable manifest) or a
-// free-text path input (repos without one). Reset to the default on a fresh
-// conversation.
+// The chat-level "workspace": the repo the whole conversation is framed
+// around. Sent as `repo` on every turn so the Worker reframes its system
+// prompt, and it's the single source of truth the picker reads from. Switching
+// it clears the current chat. Reset to the default on a fresh mount.
+let activeChatRepo = DEFAULT_ATTACH_REPO;
+// Which repo the picker is currently browsing. Kept in sync with
+// `activeChatRepo` (the workspace governs repo selection now), so it always
+// equals the active workspace. Drives whether the picker shows the
+// manifest-driven file list (any repo with a fetchable manifest) or a free-text
+// path input (repos without one).
 let selectedAttachRepo = DEFAULT_ATTACH_REPO;
 // Per-repo manifest cache: repo string -> { ok, files }. `ok` records whether
 // the repo published a fetchable `src-manifest.json` (drives browse vs.
@@ -203,6 +210,38 @@ function buildTab(id, label, selected) {
     return tab;
 }
 
+// The chat-level workspace pill + its dropdown menu. Sits in the tab row,
+// low-emphasis, naming the repo the conversation is anchored to.
+function buildWorkspace() {
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeWorkspace';
+
+    const pill = document.createElement('button');
+    pill.id = 'claudeWorkspacePill';
+    pill.type = 'button';
+    pill.className = 'claudeWorkspacePill';
+    pill.setAttribute('aria-haspopup', 'menu');
+    pill.setAttribute('aria-expanded', 'false');
+    pill.addEventListener('click', function(event) {
+        event.stopPropagation();
+        toggleWorkspaceMenu();
+    });
+
+    const menu = document.createElement('div');
+    menu.id = 'claudeWorkspaceMenu';
+    menu.className = 'claudeWorkspaceMenu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    // Keep clicks inside the menu from reaching the document-level outside-click
+    // handler — a menu item that rebuilds the menu detaches its own node, which
+    // would otherwise read as a click "outside" and close the menu prematurely.
+    menu.addEventListener('click', function(event) { event.stopPropagation(); });
+
+    wrap.appendChild(pill);
+    wrap.appendChild(menu);
+    return wrap;
+}
+
 function buildChatView() {
     const view = document.createElement('div');
     view.id = 'claudeChatView';
@@ -214,29 +253,14 @@ function buildChatView() {
     surface.className = 'claudeChatSurface';
 
     // File-picker panel — opens above the composer when the attach button is
-    // tapped. Holds a repo selector, then either a manifest-driven file list
-    // (repos with a published manifest) or a free-text path input (repos
-    // without one).
+    // tapped. Shows either a manifest-driven file list (repos with a published
+    // manifest) or a free-text path input (repos without one), for whichever
+    // workspace is active. The repo itself is chosen at the chat level via the
+    // workspace pill, not here.
     const panel = document.createElement('div');
     panel.id = 'claudeAttachPanel';
     panel.className = 'claudeAttachPanel';
     panel.hidden = true;
-
-    // Repo selector — picks which repo the attachments come from. Switching to
-    // a repo different from the current chip set is refused with a notice.
-    const repoSelect = document.createElement('select');
-    repoSelect.id = 'claudeAttachRepo';
-    repoSelect.className = 'claudeAttachRepo';
-    repoSelect.setAttribute('aria-label', 'Attachment repository');
-    ATTACH_REPOS.forEach(function(repo) {
-        const opt = document.createElement('option');
-        opt.value = repo;
-        opt.textContent = repo;
-        repoSelect.appendChild(opt);
-    });
-    repoSelect.value = selectedAttachRepo;
-    repoSelect.addEventListener('change', function() { onAttachRepoChange(repoSelect.value); });
-    panel.appendChild(repoSelect);
 
     // Manifest-driven browse mode (repos with a published manifest): filter +
     // scrollable list.
@@ -428,21 +452,6 @@ function clearAttachNotice() {
     notice.textContent = '';
 }
 
-// Respond to a repo-selector change. Switching to a repo different from the
-// current chip set is refused: the notice surfaces, the selector reverts to the
-// chips' repo, and nothing else changes. Otherwise the picker swaps modes.
-function onAttachRepoChange(repo) {
-    if (attachedFiles.length && attachedRepo && repo !== attachedRepo) {
-        showAttachNotice();
-        const select = sheetEl && sheetEl.querySelector('#claudeAttachRepo');
-        if (select) select.value = attachedRepo;
-        return;
-    }
-    selectedAttachRepo = repo;
-    clearAttachNotice();
-    refreshAttachPickerMode();
-}
-
 // Show or hide the browse controls vs. the free-text path input. Browse mode is
 // for repos with a fetchable manifest; free-text is the fallback.
 function applyAttachPickerMode(isManifest) {
@@ -537,13 +546,12 @@ function removeAttachment(path) {
 }
 
 // Reset attachments for a fresh conversation: drop the list, clear the chips
-// and intro row, reset the repo selector to default, and collapse the picker.
+// and intro row, and collapse the picker. The active workspace is unchanged —
+// a fresh chat stays in the same workspace — so the picker re-syncs to it.
 function clearAttachments() {
     attachedFiles = [];
     attachedRepo = null;
-    selectedAttachRepo = DEFAULT_ATTACH_REPO;
-    const select = sheetEl && sheetEl.querySelector('#claudeAttachRepo');
-    if (select) select.value = DEFAULT_ATTACH_REPO;
+    selectedAttachRepo = activeChatRepo;
     clearAttachNotice();
     renderAttachChips();
     renderAttachIntro();
@@ -597,6 +605,129 @@ function renderAttachIntro() {
         surface.insertBefore(intro, surface.firstChild);
     }
     intro.textContent = '📎 Attached: ' + attachedFiles.map(fileBasename).join(', ');
+}
+
+// ── WORKSPACE (chat-level repo selector) ──
+// The workspace pill names the repo the whole conversation is framed around.
+// Tapping it opens a menu of all allowed repos; choosing a different one (behind
+// an inline confirm, since it wipes the chat) switches the active workspace.
+
+function setActiveChatRepo(repo) {
+    activeChatRepo = repo;
+    selectedAttachRepo = repo;
+}
+
+// Paint the pill with the active workspace's short name, e.g. "📂 toDoList_TOP ▾".
+function renderWorkspacePill() {
+    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    if (!pill) return;
+    pill.textContent = '📂 ' + repoShortName(activeChatRepo) + ' ▾';
+    pill.title = 'Workspace: ' + activeChatRepo;
+}
+
+function isWorkspaceMenuOpen() {
+    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    return !!(menu && !menu.hidden);
+}
+
+function openWorkspaceMenu() {
+    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    if (!menu) return;
+    buildWorkspaceMenu();
+    menu.hidden = false;
+    if (pill) pill.setAttribute('aria-expanded', 'true');
+}
+
+function closeWorkspaceMenu() {
+    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    if (menu) { menu.hidden = true; menu.innerHTML = ''; }
+    if (pill) pill.setAttribute('aria-expanded', 'false');
+}
+
+function toggleWorkspaceMenu() {
+    if (isWorkspaceMenuOpen()) closeWorkspaceMenu();
+    else openWorkspaceMenu();
+}
+
+// Render one radio menu item per allowed repo, the active one checkmarked.
+function buildWorkspaceMenu() {
+    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    if (!menu) return;
+    menu.innerHTML = '';
+    ATTACH_REPOS.forEach(function(repo) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'claudeWorkspaceItem';
+        item.setAttribute('role', 'menuitemradio');
+        item.dataset.repo = repo;
+        const active = repo === activeChatRepo;
+        item.setAttribute('aria-checked', String(active));
+        if (active) item.classList.add('claudeWorkspaceItem--active');
+        item.textContent = (active ? '✓ ' : '') + repoShortName(repo);
+        item.addEventListener('click', function() { onWorkspaceItemClick(repo); });
+        menu.appendChild(item);
+    });
+}
+
+// Choosing the active repo is a no-op (just close); a different one asks to
+// confirm first, because switching wipes the current chat.
+function onWorkspaceItemClick(repo) {
+    if (repo === activeChatRepo) { closeWorkspaceMenu(); return; }
+    showWorkspaceConfirm(repo);
+}
+
+function showWorkspaceConfirm(repo) {
+    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    if (!menu) return;
+    menu.innerHTML = '';
+    const confirm = document.createElement('div');
+    confirm.className = 'claudeWorkspaceConfirm';
+    const warn = document.createElement('p');
+    warn.className = 'claudeWorkspaceConfirmWarn';
+    warn.textContent = 'Switch to ' + repoShortName(repo) + '? This clears the current chat.';
+    const row = document.createElement('div');
+    row.className = 'claudeWorkspaceConfirmRow';
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'claudeWorkspaceConfirmYes';
+    yes.textContent = 'Switch';
+    yes.addEventListener('click', function() { confirmWorkspaceSwitch(repo); });
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'claudeWorkspaceConfirmCancel';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', function() { closeWorkspaceMenu(); });
+    row.appendChild(yes);
+    row.appendChild(cancel);
+    confirm.appendChild(warn);
+    confirm.appendChild(row);
+    menu.appendChild(confirm);
+}
+
+// Commit the workspace switch: adopt the new repo, wipe the conversation (same
+// effect as + New), repaint the pill, and re-sync the picker to the new repo if
+// it's open.
+function confirmWorkspaceSwitch(repo) {
+    setActiveChatRepo(repo);
+
+    chatHistory = [];
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
+
+    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    const pickerWasOpen = !!(panel && !panel.hidden);
+
+    clearAttachments();
+
+    renderWorkspacePill();
+    closeWorkspaceMenu();
+
+    if (pickerWasOpen && panel) {
+        panel.hidden = false;
+        refreshAttachPickerMode();
+    }
 }
 
 // ── CHAT ──
@@ -673,7 +804,7 @@ async function requestAssistantReply(entryId) {
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles, attachedRepo);
+        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo);
         chatHistory.push({ role: 'assistant', content: reply });
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
@@ -1336,6 +1467,7 @@ function buildSheet() {
     runsTab.addEventListener('click', function() { setActiveTab('runs'); });
     tabs.appendChild(chatTab);
     tabs.appendChild(runsTab);
+    tabs.appendChild(buildWorkspace());
 
     sheet.appendChild(handle);
     sheet.appendChild(closeX);
@@ -1387,11 +1519,26 @@ export function mountClaudeSheet(parent) {
     parent.appendChild(launcherEl);
 
     keydownHandler = function(event) {
-        if (event.key === 'Escape' && isClaudeSheetOpen()) {
-            closeClaudeSheet();
+        if (event.key !== 'Escape') return;
+        // Escape peels back one layer: an open workspace menu first, then the
+        // whole sheet — so dismissing the menu never also closes the panel.
+        if (isWorkspaceMenuOpen()) {
+            closeWorkspaceMenu();
+            return;
         }
+        if (isClaudeSheetOpen()) closeClaudeSheet();
     };
     document.addEventListener('keydown', keydownHandler);
+
+    // Close the workspace menu on any click outside it (the pill stops its own
+    // click from bubbling here, so tapping the pill toggles rather than closes).
+    if (workspaceClickHandler) document.removeEventListener('click', workspaceClickHandler);
+    workspaceClickHandler = function(event) {
+        if (!isWorkspaceMenuOpen()) return;
+        const wrap = sheetEl && sheetEl.querySelector('.claudeWorkspace');
+        if (wrap && !wrap.contains(event.target)) closeWorkspaceMenu();
+    };
+    document.addEventListener('click', workspaceClickHandler);
 
     // Track the SW update-pending state so the Runs nudge and the inspector
     // gate stay in sync. Seed from hasPendingUpdate() to cover a worker that
@@ -1423,8 +1570,10 @@ export function mountClaudeSheet(parent) {
     chatHistory = [];
     attachedFiles = [];
     attachedRepo = null;
+    activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;
     srcManifestCache = {};
+    renderWorkspacePill();
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,
