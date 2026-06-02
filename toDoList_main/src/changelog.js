@@ -6,11 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-01',
-        added: [
-            "Claude chat now offers one-tap chips to attach files the assistant suggests it needs.",
-        ],
         changed: [
             "The file-picker button now sits in the Claude chat sheet header alongside the tabs instead of in the message composer.",
+            "Claude's suggested-file chips now appear above the message box with your other attachments, instead of beneath the assistant's reply.",
         ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",

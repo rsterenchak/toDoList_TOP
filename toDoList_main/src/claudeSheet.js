@@ -73,6 +73,11 @@ let attachedFiles = [];
 // `suggested_attach_files` and get the Worker's tighter 20KB suggestion cap
 // rather than the 40KB manual-attach budget. Cleared alongside `attachedFiles`.
 let suggestedAttachedFiles = [];
+// Worker-proposed paths the user has NOT yet accepted or dismissed. They render
+// as the distinct "suggested" chip variant in the composer chip area; accepting
+// moves a path into `suggestedAttachedFiles`, dismissing drops it. Cleared
+// alongside `attachedFiles`.
+let pendingSuggestedFiles = [];
 // The repo all current attachments belong to. The Worker loads from a single
 // repo per request, so every chip in a conversation must share this value;
 // null while the attachment set is empty. Sent as `repo` alongside
@@ -596,6 +601,7 @@ function removeAttachment(path) {
 function clearAttachments() {
     attachedFiles = [];
     suggestedAttachedFiles = [];
+    pendingSuggestedFiles = [];
     attachedRepo = null;
     selectedAttachRepo = activeChatRepo;
     clearAttachNotice();
@@ -605,31 +611,74 @@ function clearAttachments() {
     renderAttachList('');
 }
 
+// Render the composer-area chip strip. Order is intentional: manual attachments
+// first (the user-curated set takes visual precedence), then accepted
+// suggestions (integrated to look like regular chips), then pending suggestions
+// (the distinct "suggested" variant the user can accept with one tap or
+// dismiss). All three live in `#claudeAttachChips` above the input bar.
 function renderAttachChips() {
     const chips = sheetEl && sheetEl.querySelector('#claudeAttachChips');
     if (!chips) return;
     chips.innerHTML = '';
     attachedFiles.forEach(function(path) {
-        const chip = document.createElement('span');
-        chip.className = 'claudeAttachChip';
-        chip.dataset.path = path;
-        const label = document.createElement('span');
-        label.className = 'claudeAttachChipLabel';
         // Default-repo chips read as a bare basename; chips from any other repo
         // carry their repo subtly so a mixed-looking set stays unambiguous.
-        label.textContent = (attachedRepo && attachedRepo !== DEFAULT_ATTACH_REPO)
+        const text = (attachedRepo && attachedRepo !== DEFAULT_ATTACH_REPO)
             ? repoShortName(attachedRepo) + ': ' + path
             : fileBasename(path);
-        const x = document.createElement('button');
-        x.type = 'button';
-        x.className = 'claudeAttachChipRemove';
-        x.setAttribute('aria-label', 'Remove ' + fileBasename(path));
-        x.textContent = '✕';
-        x.addEventListener('click', function() { removeAttachment(path); });
-        chip.appendChild(label);
-        chip.appendChild(x);
-        chips.appendChild(chip);
+        chips.appendChild(buildAttachChip(path, text, removeAttachment));
     });
+    suggestedAttachedFiles.forEach(function(path) {
+        // Accepted suggestions are visually integrated — a regular chip whose ✕
+        // removes from the suggestion channel only, never from `attachedFiles`.
+        chips.appendChild(buildAttachChip(path, fileBasename(path), removeSuggestedAttachment));
+    });
+    pendingSuggestedFiles.forEach(function(path) {
+        chips.appendChild(buildSuggestionChip(path));
+    });
+}
+
+// A regular (manual or accepted-suggestion) chip: a static label and a ✕ that
+// runs `onRemove(path)`.
+function buildAttachChip(path, text, onRemove) {
+    const chip = document.createElement('span');
+    chip.className = 'claudeAttachChip';
+    chip.dataset.path = path;
+    const label = document.createElement('span');
+    label.className = 'claudeAttachChipLabel';
+    label.textContent = text;
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'claudeAttachChipRemove';
+    x.setAttribute('aria-label', 'Remove ' + fileBasename(path));
+    x.textContent = '✕';
+    x.addEventListener('click', function() { onRemove(path); });
+    chip.appendChild(label);
+    chip.appendChild(x);
+    return chip;
+}
+
+// A pending-suggestion chip: distinct ✦-prefixed variant whose label accepts the
+// suggestion on tap and whose ✕ dismisses it without accepting.
+function buildSuggestionChip(path) {
+    const chip = document.createElement('span');
+    chip.className = 'claudeAttachChip claudeAttachChip--suggested';
+    chip.dataset.path = path;
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'claudeAttachChipLabel';
+    label.textContent = '✦ ' + fileBasename(path);
+    label.setAttribute('aria-label', 'Attach suggested file ' + fileBasename(path));
+    label.addEventListener('click', function() { acceptSuggestedFile(path); });
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'claudeAttachChipRemove';
+    x.setAttribute('aria-label', 'Dismiss suggestion ' + fileBasename(path));
+    x.textContent = '✕';
+    x.addEventListener('click', function() { dismissSuggestedFile(path); });
+    chip.appendChild(label);
+    chip.appendChild(x);
+    return chip;
 }
 
 // A single intro row pinned to the top of the thread that names the attached
@@ -653,67 +702,58 @@ function renderAttachIntro() {
 }
 
 // ── WORKER FILE SUGGESTIONS ("Lever 4") ──
-// When the Worker's chat reply names files it would like to see, it returns
-// them as `suggested_files`. Each becomes a one-tap "📎 Attach <file>?" chip
-// below the assistant message; accepting adds the path to
-// `suggestedAttachedFiles` (a separate channel from manual attachments), which
-// rides under `suggested_attach_files` on later turns. Queries
-// `#claudeChatSurface` directly so it survives structural moves of the composer.
-function renderSuggestedFilesRow(files) {
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
-    if (!surface || !Array.isArray(files) || !files.length) return null;
+// When the Worker's chat reply names files it would like to see, it returns them
+// as `suggested_files`. Each becomes a "suggested" chip in the composer chip
+// area (above the input bar, beside any manual-attach chips) so the proposal
+// sits where the user is about to type. Accepting moves the path onto
+// `suggestedAttachedFiles` — a separate channel from manual attachments — which
+// rides under `suggested_attach_files` on later turns and gets the Worker's
+// tighter 20KB cap. Dismissing drops the proposal without attaching anything.
 
-    const row = document.createElement('div');
-    row.className = 'claudeSuggestionRow';
-
+// Queue Worker-proposed paths as pending suggestions, skipping any already
+// attached, already accepted, or already pending so a repeated suggestion never
+// stacks duplicate chips. An empty/absent list is a no-op, which respects a
+// `suggested_files: []` turn (no stale chips re-rendered).
+function addSuggestedFiles(files) {
+    if (!Array.isArray(files) || !files.length) return;
     files.forEach(function(path) {
-        const chip = document.createElement('span');
-        chip.className = 'claudeSuggestionChip';
-        chip.dataset.path = path;
-
-        const label = document.createElement('button');
-        label.type = 'button';
-        label.className = 'claudeSuggestionChipLabel';
-        label.textContent = '📎 Attach ' + fileBasename(path) + '?';
-        label.addEventListener('click', function() { acceptSuggestedFile(path); });
-
-        const dismiss = document.createElement('button');
-        dismiss.type = 'button';
-        dismiss.className = 'claudeSuggestionChipDismiss';
-        dismiss.setAttribute('aria-label', 'Dismiss suggestion ' + fileBasename(path));
-        dismiss.textContent = '✕';
-        dismiss.addEventListener('click', function() {
-            if (chip.parentNode) chip.parentNode.removeChild(chip);
-        });
-
-        chip.appendChild(label);
-        chip.appendChild(dismiss);
-        row.appendChild(chip);
+        if (!path) return;
+        if (attachedFiles.indexOf(path) !== -1) return;
+        if (suggestedAttachedFiles.indexOf(path) !== -1) return;
+        if (pendingSuggestedFiles.indexOf(path) !== -1) return;
+        pendingSuggestedFiles.push(path);
     });
-
-    surface.appendChild(row);
-    surface.scrollTop = surface.scrollHeight;
-    return row;
+    renderAttachChips();
 }
 
-// Accept a Worker-suggested file: record it on the suggestion channel so it
-// rides `suggested_attach_files` on later turns, and flip the chip to a
-// confirmed, non-interactive "✓ Attached <file>" state.
+// Accept a pending suggestion: move it onto the suggestion channel (so it rides
+// `suggested_attach_files`) and re-render so its chip integrates as a regular
+// attach chip rather than the distinct suggested variant.
 function acceptSuggestedFile(path) {
     if (!path) return;
+    pendingSuggestedFiles = pendingSuggestedFiles.filter(function(p) { return p !== path; });
     if (suggestedAttachedFiles.indexOf(path) === -1) {
         suggestedAttachedFiles.push(path);
     }
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
-    const chip = surface && surface.querySelector('.claudeSuggestionChip[data-path="' + path + '"]');
-    if (chip) {
-        chip.innerHTML = '';
-        chip.classList.add('claudeSuggestionChip--accepted');
-        const label = document.createElement('span');
-        label.className = 'claudeSuggestionChipLabel';
-        label.textContent = '✓ Attached ' + fileBasename(path);
-        chip.appendChild(label);
-    }
+    renderAttachChips();
+}
+
+// Dismiss a pending suggestion: drop it from the pending list only, never
+// touching `attachedFiles` or accepted suggestions.
+function dismissSuggestedFile(path) {
+    const before = pendingSuggestedFiles.length;
+    pendingSuggestedFiles = pendingSuggestedFiles.filter(function(p) { return p !== path; });
+    if (pendingSuggestedFiles.length === before) return;
+    renderAttachChips();
+}
+
+// Remove an accepted suggestion: drop it from the suggestion channel only, never
+// touching the manual `attachedFiles` set.
+function removeSuggestedAttachment(path) {
+    const before = suggestedAttachedFiles.length;
+    suggestedAttachedFiles = suggestedAttachedFiles.filter(function(p) { return p !== path; });
+    if (suggestedAttachedFiles.length === before) return;
+    renderAttachChips();
 }
 
 // ── WORKSPACE (chat-level repo selector) ──
@@ -931,7 +971,7 @@ async function requestAssistantReply(entryId) {
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         const draft = extractDraftedEntry(reply);
         if (draft) renderDraftedEntryCard(draft);
-        if (suggestedFiles.length) renderSuggestedFilesRow(suggestedFiles);
+        if (suggestedFiles.length) addSuggestedFiles(suggestedFiles);
     } catch (e) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
@@ -1701,6 +1741,7 @@ export function mountClaudeSheet(parent) {
     chatHistory = [];
     attachedFiles = [];
     suggestedAttachedFiles = [];
+    pendingSuggestedFiles = [];
     attachedRepo = null;
     activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;
