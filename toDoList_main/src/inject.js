@@ -227,7 +227,16 @@ export async function injectEntry(options) {
 // its system prompt around this repo, so it rides on every turn — not just when
 // files are attached. When attachments are present they come from this same
 // repo, so the Worker knows where to fetch them.
-export async function chatWithWorker(messages, entryId, attachFiles, repo) {
+//
+// `suggestedAttachFiles` is an optional array of repo-relative paths the user
+// accepted from a Worker file suggestion. It rides as `suggested_attach_files`
+// so the Worker applies its tighter 20KB suggestion cap, separate from the
+// manual `attach_files` budget.
+//
+// Returns `{ reply, suggestedFiles }`: `reply` is the assistant's text, and
+// `suggestedFiles` is the array of paths the Worker proposed attaching this
+// turn (empty when none).
+export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
@@ -235,11 +244,21 @@ export async function chatWithWorker(messages, entryId, attachFiles, repo) {
         if (Array.isArray(attachFiles) && attachFiles.length) {
             payload.attach_files = attachFiles.slice();
         }
+        // Worker-suggested files ("Lever 4") ride a separate field so the Worker
+        // applies its tighter 20KB suggestion cap to them, never co-mingling
+        // them with the 40KB manual-attach budget.
+        if (Array.isArray(suggestedAttachFiles) && suggestedAttachFiles.length) {
+            payload.suggested_attach_files = suggestedAttachFiles.slice();
+        }
         const res = await postToWorker(payload);
-        if (res && typeof res.reply === 'string') return res.reply;
-        if (res && typeof res.text === 'string') return res.text;
-        if (typeof res === 'string') return res;
-        return '';
+        const suggestedFiles = res && Array.isArray(res.suggested_files)
+            ? res.suggested_files.slice()
+            : [];
+        let reply = '';
+        if (res && typeof res.reply === 'string') reply = res.reply;
+        else if (res && typeof res.text === 'string') reply = res.text;
+        else if (typeof res === 'string') reply = res;
+        return { reply: reply, suggestedFiles: suggestedFiles };
     } catch (e) {
         const err = new Error(describeError(e));
         err.reason = describeError(e);

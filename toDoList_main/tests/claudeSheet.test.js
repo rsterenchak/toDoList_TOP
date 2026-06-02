@@ -1168,6 +1168,119 @@ describe('Claude sheet — file attachments', () => {
     });
 });
 
+// "Lever 4": when the Worker's chat reply carries `suggested_files`, each
+// becomes a one-tap "📎 Attach <file>?" chip below the assistant message.
+// Accepting routes the path through the separate `suggested_attach_files`
+// channel (20KB cap); dismissing drops it silently.
+describe('Claude sheet — worker file suggestions (Lever 4)', () => {
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+    // What the next chat response should advertise as suggested_files.
+    let nextSuggested;
+
+    function makeFetch() {
+        chatBodies = [];
+        nextSuggested = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve([]),
+                });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ reply: 'ok', suggested_files: nextSuggested.slice() }),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('renders one chip per suggested file below the assistant message', async () => {
+        nextSuggested = ['toDoList_main/src/claudeSheet.js'];
+        await sendMessage('what does the runs tab do?');
+        const chips = document.querySelectorAll('.claudeSuggestionChip');
+        expect(chips.length).toBe(1);
+        expect(chips[0].dataset.path).toBe('toDoList_main/src/claudeSheet.js');
+        expect(chips[0].querySelector('.claudeSuggestionChipLabel').textContent)
+            .toBe('📎 Attach claudeSheet.js?');
+        // The chip lives in the chat surface, paired with the reply.
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.querySelector('.claudeSuggestionRow')).toBeTruthy();
+    });
+
+    it('accepting a chip sends suggested_attach_files on the next turn and confirms the chip', async () => {
+        nextSuggested = ['toDoList_main/src/claudeSheet.js'];
+        await sendMessage('first');
+        nextSuggested = [];
+        document.querySelector('.claudeSuggestionChipLabel').click();
+        const chip = document.querySelector('.claudeSuggestionChip');
+        expect(chip.classList.contains('claudeSuggestionChip--accepted')).toBe(true);
+        expect(chip.querySelector('.claudeSuggestionChipLabel').textContent)
+            .toBe('✓ Attached claudeSheet.js');
+        await sendMessage('second');
+        expect(chatBodies.length).toBe(2);
+        expect(chatBodies[1].suggested_attach_files).toEqual(['toDoList_main/src/claudeSheet.js']);
+    });
+
+    it('dismissing a chip removes it without adding to the suggestion channel', async () => {
+        nextSuggested = ['toDoList_main/src/inject.js'];
+        await sendMessage('first');
+        nextSuggested = [];
+        document.querySelector('.claudeSuggestionChipDismiss').click();
+        expect(document.querySelectorAll('.claudeSuggestionChip').length).toBe(0);
+        await sendMessage('second');
+        expect(chatBodies[1].suggested_attach_files).toBeUndefined();
+    });
+
+    it('"+ New" clears accepted suggestions so they do not persist across conversations', async () => {
+        nextSuggested = ['toDoList_main/src/claudeSheet.js'];
+        await sendMessage('first');
+        document.querySelector('.claudeSuggestionChipLabel').click();
+        nextSuggested = [];
+        document.getElementById('claudeTabRuns').click();
+        document.getElementById('claudeRunsNew').click();
+        await sendMessage('fresh');
+        expect(chatBodies[chatBodies.length - 1].suggested_attach_files).toBeUndefined();
+    });
+
+    it('renders no suggestion chips when the worker returns no suggested_files', async () => {
+        nextSuggested = [];
+        await sendMessage('plain turn');
+        expect(document.querySelectorAll('.claudeSuggestionChip').length).toBe(0);
+        expect(document.querySelectorAll('.claudeSuggestionRow').length).toBe(0);
+    });
+});
+
 // Picker mode follows the active workspace: the default repo (toDoList_TOP)
 // keeps the manifest browse list; any other repo without a fetchable manifest
 // swaps to a free-text path input. Repo selection itself lives at the chat

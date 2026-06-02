@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         added: [
-            "The Claude chat now shows an Inject & run card for entries you paste directly into the composer, not just ones the assistant drafts.",
+            "Claude chat now offers one-tap chips to attach files the assistant suggests it needs.",
         ],
         changed: [
             "The file-picker button now sits in the Claude chat sheet header alongside the tabs instead of in the message composer.",
