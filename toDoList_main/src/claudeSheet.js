@@ -43,7 +43,7 @@ const RUN_GIVE_UP_MS = 10 * 60 * 1000;
 // `src-manifest.json`, so it gets the browsable file list; others fall back to
 // a free-text path input since there's no manifest to render.
 const DEFAULT_ATTACH_REPO = 'rsterenchak/toDoList_TOP';
-const ATTACH_REPOS = [DEFAULT_ATTACH_REPO, 'rsterenchak/matchingGame-test'];
+const ATTACH_REPOS = [DEFAULT_ATTACH_REPO, 'rsterenchak/matchingGame-test', 'rsterenchak/BookHavenBookstore_Sophia'];
 
 let launcherEl = null;
 let sheetEl = null;

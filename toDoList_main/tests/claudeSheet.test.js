@@ -1653,6 +1653,22 @@ describe('Claude sheet — chat-level workspace pill', () => {
         expect(active.getAttribute('aria-checked')).toBe('true');
     });
 
+    it('lists BookHavenBookstore_Sophia and reframes the next send when selected', async () => {
+        const BOOKHAVEN_REPO = 'rsterenchak/BookHavenBookstore_Sophia';
+        document.getElementById('claudeWorkspacePill').click();
+        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
+        expect(repos).toContain(BOOKHAVEN_REPO);
+
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + BOOKHAVEN_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
+
+        await sendMessage('hello in the BookHaven workspace');
+        const lastBody = chatBodies[chatBodies.length - 1];
+        expect(lastBody.repo).toBe(BOOKHAVEN_REPO);
+    });
+
     it('selecting a different repo asks to confirm before switching', () => {
         document.getElementById('claudeWorkspacePill').click();
         document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();

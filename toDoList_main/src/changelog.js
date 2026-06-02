@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-02',
+        added: [
+            "BookHavenBookstore_Sophia is now selectable as a workspace in the Claude chat.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-01',
         changed: [
-            "The file-picker button now sits in the Claude chat sheet header alongside the tabs instead of in the message composer.",
             "Claude's suggested-file chips now appear above the message box with your other attachments, instead of beneath the assistant's reply.",
         ],
         fixed: [
