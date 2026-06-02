@@ -27,6 +27,7 @@ import {
     dispatchRun,
     pollRunStatus,
     resolveEntryByMarker,
+    fetchAllowedRepos,
 } from './inject.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
@@ -38,12 +39,15 @@ const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
 const RUN_GIVE_UP_MS = 10 * 60 * 1000;
 
-// Repos the file-attach picker can pull source from. Mirrors the Worker's
-// ALLOWED_TARGETS. The default repo is the only one with a published
+// Repos the file-attach picker can pull source from. The list is sourced from
+// the Worker's `ALLOWED_TARGETS` at runtime (via `loadWorkspaceRepos`) so the
+// app never drifts from the Worker's allowlist. Until that fetch resolves — and
+// if it fails — the list holds a safe fallback of just the default repo, so the
+// chat is always usable. The default repo is the only one with a published
 // `src-manifest.json`, so it gets the browsable file list; others fall back to
 // a free-text path input since there's no manifest to render.
 const DEFAULT_ATTACH_REPO = 'rsterenchak/toDoList_TOP';
-const ATTACH_REPOS = [DEFAULT_ATTACH_REPO, 'rsterenchak/matchingGame-test', 'rsterenchak/BookHavenBookstore_Sophia'];
+let attachRepos = [DEFAULT_ATTACH_REPO];
 
 let launcherEl = null;
 let sheetEl = null;
@@ -772,6 +776,25 @@ function setActiveChatRepo(repo) {
     selectedAttachRepo = repo;
 }
 
+// Source the workspace repo list from the Worker's allowlist so the app never
+// drifts from `ALLOWED_TARGETS`. Fired once per mount. Until it resolves — and
+// if it fails — `attachRepos` keeps its safe fallback (the default repo only),
+// so the chat is usable immediately and degrades gracefully with no error
+// surface. On success the list is replaced and the pill repaints; the menu is
+// rebuilt too if it happens to be open when the fetch lands, so the full set
+// shows without a re-open.
+async function loadWorkspaceRepos() {
+    const result = await fetchAllowedRepos();
+    if (!result || !Array.isArray(result.repos) || !result.repos.length) return;
+    const names = result.repos
+        .map(function(r) { return r && r.repo; })
+        .filter(Boolean);
+    if (!names.length) return;
+    attachRepos = names;
+    renderWorkspacePill();
+    if (isWorkspaceMenuOpen()) buildWorkspaceMenu();
+}
+
 // Paint the pill with the active workspace's short name, e.g. "📂 toDoList_TOP ▾".
 function renderWorkspacePill() {
     const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
@@ -811,7 +834,7 @@ function buildWorkspaceMenu() {
     const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
     if (!menu) return;
     menu.innerHTML = '';
-    ATTACH_REPOS.forEach(function(repo) {
+    attachRepos.forEach(function(repo) {
         const item = document.createElement('button');
         item.type = 'button';
         item.className = 'claudeWorkspaceItem';
@@ -1751,8 +1774,14 @@ export function mountClaudeSheet(parent) {
     attachedRepo = null;
     activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;
+    // Reset to the safe fallback so a fresh mount never inherits a prior mount's
+    // list; loadWorkspaceRepos repopulates it from the Worker when it resolves.
+    attachRepos = [DEFAULT_ATTACH_REPO];
     srcManifestCache = {};
     renderWorkspacePill();
+    // Pull the full workspace list from the Worker's allowlist. Fire-and-forget:
+    // the pill/menu start on the fallback and repaint when this resolves.
+    loadWorkspaceRepos();
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,

@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             "BookHavenBookstore_Sophia is now selectable as a workspace in the Claude chat.",
         ],
+        changed: [
+            "The Claude chat workspace list now updates automatically from the server, so newly added repos appear without an app update.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-01',
-        changed: [
-            "Claude's suggested-file chips now appear above the message box with your other attachments, instead of beneath the assistant's reply.",
-        ],
         fixed: [
             "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
             "The Claude chat file picker now drops down directly beneath its header button instead of opening at the bottom of the sheet.",
