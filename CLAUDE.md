@@ -83,3 +83,36 @@ default limit. Do not attempt to read it in full.
 - Then read only that range with `offset` and `limit` parameters.
 - If you need more context around a match, widen the range — don't read the
   whole file.
+
+## System overview
+
+The app ships with an in-app Claude assistant — a "Claude sheet" the user opens inside the PWA. The full pipeline turns a chat into shipped code through these layers:
+
+1. **Author (Sonnet, conversational planner).** The user opens the Claude sheet's Chat tab and talks to Sonnet to draft a TODO entry. Sonnet is the conversational planner role; its turns run through the Worker and are billed to the Anthropic Console (API). The chat round-trip is implemented by `chatWithWorker` in `toDoList_main/src/inject.js`.
+2. **Inject (Cloudflare Worker).** Tapping "Inject & run" (or the per-todo inject button) POSTs the finished entry to a user-configured Cloudflare Worker — `todo-injector-worker` — which appends it to the target repo's `TODO.md` over the GitHub API. The entry carries a stable `<!-- id: <uuid> -->` marker so the Worker can dedup-by-id and later trace the entry to its merged PR. See `injectEntry` / `dispatchRun` in `inject.js`.
+3. **Dispatch (`claude-run.yml`).** The same Worker fires a `workflow_dispatch` against `.github/workflows/claude-run.yml`, passing `mode` (`backlog` or `entry`), an `entry_id`, and a `correlation_id` echoed into the run name so status polling can find the run.
+4. **Build (Opus, agentic builder).** `claude-run.yml` runs `anthropics/claude-code-action` with Opus (`claude-opus-4-8`), authenticated via the subscription OAuth token (Max plan quota, not an API key). Opus is the agentic builder role: it reads `.claude/routine-base.md` + `.claude/routine.md` and executes exactly one task — implement the change, run tests, open a PR, auto-merge with a merge commit.
+5. **Deploy (`deploy.yml`).** Merging to `main` triggers `.github/workflows/deploy.yml`, which webpack-builds `toDoList_main/`, regenerates `dist/src-manifest.json`, and publishes `dist/` to GitHub Pages.
+
+In short: Sonnet plans (Console-billed), the Worker injects and dispatches, Opus builds (Max-plan-billed), and Pages deploys — all without leaving the PWA.
+
+## Repos and allowlist
+
+The Worker is multi-repo aware. `ALLOWED_TARGETS` in the Worker (`todo-injector-worker`) defines the set of repos the system may inject into, dispatch runs against, and read source from — currently `rsterenchak/toDoList_TOP` and `rsterenchak/matchingGame-test`. Every Worker request that names a repo is validated against this allowlist; the client mirrors it as `ATTACH_REPOS` in `toDoList_main/src/claudeSheet.js`. The Worker source itself lives outside this repo, so treat `ALLOWED_TARGETS` as the Worker-side source of truth (see the Worker project, not this repo).
+
+To add a third repo to the system:
+
+- **(a)** Add a `{ repo, filePath }` entry to `ALLOWED_TARGETS` in the Worker.
+- **(b)** Ensure the GitHub PAT the Worker uses has **Contents: write** and **Actions: read + write** scope on the new repo (Contents for the `TODO.md` append, Actions to dispatch and poll the run workflow).
+- **(c)** Add a `scripts/gen-src-manifest.js` to the new repo plus a deploy.yml step that runs it after the build and before the Pages publish, so the repo publishes its own `src-manifest.json` (the file picker fetches `https://<owner>.github.io/<name>/src-manifest.json` by convention). Use the `.cjs` extension when the repo's `package.json` declares `"type": "module"`, since the manifest script is plain CommonJS.
+- **(d)** Run `npm run deploy` on the Worker to push the updated `ALLOWED_TARGETS`.
+
+This repo's own manifest script is `toDoList_main/scripts/gen-src-manifest.js`, wired into `deploy.yml` — copy it as the template for a new repo.
+
+## Three context modes
+
+The assistant layers three independent context mechanisms, each sent as a distinct field on the Worker request and each invoked from a different UI surface. They compose — a single turn can carry all three.
+
+- **(a) Active-repo reframe** — sent as `body.repo`. Switches the conversation frame so the Worker reframes its system prompt around the named repo. Cheap (~1.7k input tokens). Invoked by the **workspace pill** in the chat tab header (`#claudeWorkspacePill` in `claudeSheet.js`); the active workspace is tracked in `activeChatRepo` and rides on every chat turn, attachments or not.
+- **(b) Attached files** — sent as `body.attach_files` (an array of repo-relative source paths). Loads real source content so the model reasons over actual code rather than guesses. Bounded at **5 files / 40KB each / 80KB total** (Worker-side; see the Worker for the exact enforcement). Typical cost ~5–25k input tokens depending on file sizes. Invoked by the **attach (📎) picker** in the composer; the current chip set accumulates per-conversation and is re-sent on every turn. All chips in one conversation must come from a single repo.
+- **(c) Iterate seed** — the iterate seed is sent as `body.entry_id`, on the **first turn only** of an iterate session. The Worker resolves that entry's marker to a merged PR and assembles a seed: the PR diff plus sliced post-merge source. Typical cost ~12–20k input tokens. Invoked by tapping a **SHIPPED run record** in the Runs tab, which opens an iterate chat seeded from that merged change. Later turns omit `entry_id` (see `chatWithWorker` in `inject.js`).
