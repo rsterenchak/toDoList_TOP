@@ -116,3 +116,38 @@ The assistant layers three independent context mechanisms, each sent as a distin
 - **(a) Active-repo reframe** — sent as `body.repo`. Switches the conversation frame so the Worker reframes its system prompt around the named repo. Cheap (~1.7k input tokens). Invoked by the **workspace pill** in the chat tab header (`#claudeWorkspacePill` in `claudeSheet.js`); the active workspace is tracked in `activeChatRepo` and rides on every chat turn, attachments or not.
 - **(b) Attached files** — sent as `body.attach_files` (an array of repo-relative source paths). Loads real source content so the model reasons over actual code rather than guesses. Bounded at **5 files / 40KB each / 80KB total** (Worker-side; see the Worker for the exact enforcement). Typical cost ~5–25k input tokens depending on file sizes. Invoked by the **attach (📎) picker** in the composer; the current chip set accumulates per-conversation and is re-sent on every turn. All chips in one conversation must come from a single repo.
 - **(c) Iterate seed** — the iterate seed is sent as `body.entry_id`, on the **first turn only** of an iterate session. The Worker resolves that entry's marker to a merged PR and assembles a seed: the PR diff plus sliced post-merge source. Typical cost ~12–20k input tokens. Invoked by tapping a **SHIPPED run record** in the Runs tab, which opens an iterate chat seeded from that merged change. Later turns omit `entry_id` (see `chatWithWorker` in `inject.js`).
+
+## Key files in this repo
+
+The in-app assistant and its supporting pipeline are concentrated in a handful of source files. When working on assistant behavior, these are the files to reach for:
+
+- `toDoList_main/src/claudeSheet.js` — the in-app Claude assistant sheet: chat tab, author flow, Runs tab, iterate, layout-inspector wiring, file-attach picker, and the workspace pill.
+- `toDoList_main/src/inject.js` — all Worker calls: inject, dispatch, chat, status poll, and entry-id minting.
+- `toDoList_main/src/layoutInspect.js` — serializes an element's live computed layout for the inspector.
+- `toDoList_main/src/main.js` — DOM, UI, and event wiring; very large, so grep with `offset`/`limit` rather than reading it in full.
+- `toDoList_main/src/listLogic.js` — the data model; ALL mutations to projects and todo items route through here.
+- `toDoList_main/src/style.css` — all styling and responsive breakpoints.
+- `toDoList_main/scripts/gen-src-manifest.js` — the manifest generator run by `deploy.yml` on each deploy.
+
+## Hard rollback
+
+The pipeline is built to fix forward — iterating on a shipped change through chat cures the large majority of regressions. For the rare case where a shipped change is bad in a way that fix-forward via iterate cannot quickly cure, there is a manual rollback path: open the offending PR in the GitHub mobile app or web UI, tap **Revert**, merge the revert PR, and `deploy.yml` runs automatically — the rollback ships in roughly 2 minutes.
+
+There is **no in-app revert button by design.** With a ~95% fix-forward rate, an in-app safety button would sit unused and decay; for the ~5% case that genuinely needs a rollback, the manual GitHub path above is the supported route.
+
+**Important warning:** when reverting via GitHub mobile, revert ONLY the original feature PR, never a revert PR. Revert PRs share titles with their originals (e.g. `Revert "[Claude] feature: X"`), and reverting a revert re-applies the original change — easy to do by mistake at a glance. Read the PR carefully before tapping Revert.
+
+## Worker location and routes
+
+`todo-injector-worker` is a **separate repo** — it is not part of `toDoList_TOP`. It is deployed via `npm run deploy`, which runs `wrangler deploy` under the hood, so changes to Worker behavior require editing and redeploying the Worker with `wrangler`, not this app.
+
+The Worker exposes these routes:
+
+- `inject` — write an entry to the target repo's `TODO.md`.
+- `dispatch` — start the `claude-run.yml` workflow.
+- `status` — poll a workflow run by `correlation_id`.
+- `read` — read the target repo's `TODO.md`.
+- `chat` — the Sonnet proxy; accepts `messages`, `entry_id`, `attach_files`, `repo`, and `telemetry` fields.
+- `resolve` — find a merged PR by its `<!-- id: ... -->` marker comment.
+
+Note that `SYSTEM_PROMPT` and `ITERATE_PREAMBLE` live in the Worker, NOT in this repo — so changes to chat behavior (the conversational planner's instructions, the iterate framing) require editing and redeploying the Worker, not the app.
