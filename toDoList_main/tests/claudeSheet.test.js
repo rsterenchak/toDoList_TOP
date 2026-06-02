@@ -354,6 +354,56 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(card.querySelector('.claudeDraftInject').textContent).toBe('Inject & run');
     });
 
+    // Find a draft card whose entry text contains the given snippet — needed
+    // because the mock assistant reply always emits its own card too, so a
+    // user-paste turn produces two cards on the surface.
+    function cardContaining(snippet) {
+        return [...document.querySelectorAll('.claudeDraftCard')].find(
+            (c) => c.querySelector('.claudeDraftEntry').textContent.includes(snippet)
+        );
+    }
+
+    it('renders an Inject card from a user-pasted fenced md entry', async () => {
+        await sendMessage('here: ```md\n- [ ] **[LOW]** Pasted thing\n  - Type: feature\n``` thoughts?');
+        const card = cardContaining('Pasted thing');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.claudeDraftInject').textContent).toBe('Inject & run');
+        // The card renders below the user message bubble it came from.
+        const userBubble = document.querySelector('.claudeMsg--user');
+        expect(userBubble.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('ships a user-pasted entry through the same shipDraftedEntry path', async () => {
+        await sendMessage('```md\n- [ ] **[LOW]** Pasted thing\n  - Type: feature\n```');
+        const card = cardContaining('Pasted thing');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        const injectCall = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && b.entry;
+        });
+        expect(injectCall).toBeTruthy();
+        const injectBody = JSON.parse(injectCall[1].body);
+        expect(injectBody.entry).toContain('Pasted thing');
+        expect(injectBody.entry).toContain('<!-- id: ' + injectBody.id + ' -->');
+    });
+
+    it('renders only the first card when a user paste has multiple md blocks', async () => {
+        await sendMessage('```md\n- [ ] **[LOW]** First block\n  - Type: feature\n```\nand\n```md\n- [ ] **[LOW]** Second block\n  - Type: bug\n```');
+        expect(cardContaining('First block')).toBeTruthy();
+        expect(cardContaining('Second block')).toBeFalsy();
+    });
+
+    it('still surfaces the assistant-emitted card when the user message has no md block', async () => {
+        await sendMessage('plain question, no entry');
+        // The user turn contributes no card; only the assistant reply's card shows.
+        const cards = document.querySelectorAll('.claudeDraftCard');
+        expect(cards.length).toBe(1);
+        expect(cards[0].querySelector('.claudeDraftEntry').textContent).toContain('Add a sparkle');
+    });
+
     it('Inject & run reveals an inline confirm; Cancel reverts it', async () => {
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');

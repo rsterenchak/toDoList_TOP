@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-01',
+        added: [
+            "The Claude chat now shows an Inject & run card for entries you paste directly into the composer, not just ones the assistant drafts.",
+        ],
         changed: [
-            "A workspace pill in the Claude chat header now switches the whole conversation between repos and starts a fresh chat on change, replacing the file picker's own repo selector.",
             "The file-picker button now sits in the Claude chat sheet header alongside the tabs instead of in the message composer.",
         ],
         fixed: [

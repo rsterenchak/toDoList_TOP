@@ -822,6 +822,12 @@ async function sendChatTurn() {
     appendMessageBubble('user', text);
     input.value = '';
 
+    // A user can paste a pre-drafted entry straight into the composer; surface
+    // its Inject & run card directly rather than forcing a re-prompt for Sonnet
+    // to re-emit it. Shares extractDraftedEntry with the assistant-reply path.
+    const pastedDraft = extractDraftedEntry(text);
+    if (pastedDraft) renderDraftedEntryCard(pastedDraft);
+
     // Manual turns never carry an entry id — the iterate seed (turn 1) is the
     // only place it's sent; the Worker assembles the diff context from there.
     await requestAssistantReply();
