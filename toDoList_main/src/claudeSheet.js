@@ -68,6 +68,11 @@ let chatHistory = [];
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
 // the Runs-tab "+ New" affordance.
 let attachedFiles = [];
+// Repo-relative paths the user accepted from a Worker file suggestion ("Lever
+// 4"). Kept separate from `attachedFiles` so they travel as
+// `suggested_attach_files` and get the Worker's tighter 20KB suggestion cap
+// rather than the 40KB manual-attach budget. Cleared alongside `attachedFiles`.
+let suggestedAttachedFiles = [];
 // The repo all current attachments belong to. The Worker loads from a single
 // repo per request, so every chip in a conversation must share this value;
 // null while the attachment set is empty. Sent as `repo` alongside
@@ -590,6 +595,7 @@ function removeAttachment(path) {
 // a fresh chat stays in the same workspace — so the picker re-syncs to it.
 function clearAttachments() {
     attachedFiles = [];
+    suggestedAttachedFiles = [];
     attachedRepo = null;
     selectedAttachRepo = activeChatRepo;
     clearAttachNotice();
@@ -644,6 +650,70 @@ function renderAttachIntro() {
         surface.insertBefore(intro, surface.firstChild);
     }
     intro.textContent = '📎 Attached: ' + attachedFiles.map(fileBasename).join(', ');
+}
+
+// ── WORKER FILE SUGGESTIONS ("Lever 4") ──
+// When the Worker's chat reply names files it would like to see, it returns
+// them as `suggested_files`. Each becomes a one-tap "📎 Attach <file>?" chip
+// below the assistant message; accepting adds the path to
+// `suggestedAttachedFiles` (a separate channel from manual attachments), which
+// rides under `suggested_attach_files` on later turns. Queries
+// `#claudeChatSurface` directly so it survives structural moves of the composer.
+function renderSuggestedFilesRow(files) {
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    if (!surface || !Array.isArray(files) || !files.length) return null;
+
+    const row = document.createElement('div');
+    row.className = 'claudeSuggestionRow';
+
+    files.forEach(function(path) {
+        const chip = document.createElement('span');
+        chip.className = 'claudeSuggestionChip';
+        chip.dataset.path = path;
+
+        const label = document.createElement('button');
+        label.type = 'button';
+        label.className = 'claudeSuggestionChipLabel';
+        label.textContent = '📎 Attach ' + fileBasename(path) + '?';
+        label.addEventListener('click', function() { acceptSuggestedFile(path); });
+
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button';
+        dismiss.className = 'claudeSuggestionChipDismiss';
+        dismiss.setAttribute('aria-label', 'Dismiss suggestion ' + fileBasename(path));
+        dismiss.textContent = '✕';
+        dismiss.addEventListener('click', function() {
+            if (chip.parentNode) chip.parentNode.removeChild(chip);
+        });
+
+        chip.appendChild(label);
+        chip.appendChild(dismiss);
+        row.appendChild(chip);
+    });
+
+    surface.appendChild(row);
+    surface.scrollTop = surface.scrollHeight;
+    return row;
+}
+
+// Accept a Worker-suggested file: record it on the suggestion channel so it
+// rides `suggested_attach_files` on later turns, and flip the chip to a
+// confirmed, non-interactive "✓ Attached <file>" state.
+function acceptSuggestedFile(path) {
+    if (!path) return;
+    if (suggestedAttachedFiles.indexOf(path) === -1) {
+        suggestedAttachedFiles.push(path);
+    }
+    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const chip = surface && surface.querySelector('.claudeSuggestionChip[data-path="' + path + '"]');
+    if (chip) {
+        chip.innerHTML = '';
+        chip.classList.add('claudeSuggestionChip--accepted');
+        const label = document.createElement('span');
+        label.className = 'claudeSuggestionChipLabel';
+        label.textContent = '✓ Attached ' + fileBasename(path);
+        chip.appendChild(label);
+    }
 }
 
 // ── WORKSPACE (chat-level repo selector) ──
@@ -849,7 +919,9 @@ async function requestAssistantReply(entryId) {
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const reply = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo);
+        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles);
+        const reply = result.reply;
+        const suggestedFiles = result.suggestedFiles || [];
         chatHistory.push({ role: 'assistant', content: reply });
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
@@ -859,6 +931,7 @@ async function requestAssistantReply(entryId) {
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         const draft = extractDraftedEntry(reply);
         if (draft) renderDraftedEntryCard(draft);
+        if (suggestedFiles.length) renderSuggestedFilesRow(suggestedFiles);
     } catch (e) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
@@ -1627,6 +1700,7 @@ export function mountClaudeSheet(parent) {
     // mount left running.
     chatHistory = [];
     attachedFiles = [];
+    suggestedAttachedFiles = [];
     attachedRepo = null;
     activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;

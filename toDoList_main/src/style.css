@@ -1757,6 +1757,48 @@ body:has(#settingsMenu) #claudeLauncher {
   font-size: 12px;
   word-break: break-word;
 }
+.claudeSuggestionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.claudeSuggestionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 11px;
+  background: var(--bg-surface);
+  color: var(--accent-text);
+  border: 0.5px dashed var(--border-mid);
+  font-size: 11px;
+}
+.claudeSuggestionChip--accepted {
+  border-style: solid;
+  background: var(--accent-dim);
+}
+.claudeSuggestionChipLabel {
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.claudeSuggestionChip--accepted .claudeSuggestionChipLabel {
+  cursor: default;
+}
+.claudeSuggestionChipDismiss {
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
 .claudeRunsList {
   flex: 1;
   min-height: 0;
