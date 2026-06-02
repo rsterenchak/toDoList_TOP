@@ -578,7 +578,7 @@ function addAttachment(path, repo) {
     attachedFiles.push(path);
     attachedRepo = repo;
     clearAttachNotice();
-    renderAttachChips();
+    renderComposerChipArea();
     renderAttachIntro();
     renderAttachList(currentAttachFilter());
     return true;
@@ -590,7 +590,7 @@ function removeAttachment(path) {
     if (attachedFiles.length === before) return;
     // Releasing the last chip unlocks the repo so the picker can switch freely.
     if (!attachedFiles.length) attachedRepo = null;
-    renderAttachChips();
+    renderComposerChipArea();
     renderAttachIntro();
     renderAttachList(currentAttachFilter());
 }
@@ -605,18 +605,21 @@ function clearAttachments() {
     attachedRepo = null;
     selectedAttachRepo = activeChatRepo;
     clearAttachNotice();
-    renderAttachChips();
+    renderComposerChipArea();
     renderAttachIntro();
     setAttachPanelHidden(true);
     renderAttachList('');
 }
 
-// Render the composer-area chip strip. Order is intentional: manual attachments
-// first (the user-curated set takes visual precedence), then accepted
-// suggestions (integrated to look like regular chips), then pending suggestions
-// (the distinct "suggested" variant the user can accept with one tap or
-// dismiss). All three live in `#claudeAttachChips` above the input bar.
-function renderAttachChips() {
+// The single composer-area chip renderer. Every chip source flows through here
+// so the chip strip has one home: future chip types add a loop here rather than
+// a parallel renderer. Order is intentional: manual attachments first (the
+// user-curated set takes visual precedence), then accepted suggestions
+// (integrated to look like regular chips), then pending suggestions (the
+// distinct "suggested" variant the user can accept with one tap or dismiss).
+// All three live in `#claudeAttachChips` above the input bar. Each chip carries
+// a `data-source` ("manual" or "suggestion") so its origin is legible in the DOM.
+function renderComposerChipArea() {
     const chips = sheetEl && sheetEl.querySelector('#claudeAttachChips');
     if (!chips) return;
     chips.innerHTML = '';
@@ -626,12 +629,12 @@ function renderAttachChips() {
         const text = (attachedRepo && attachedRepo !== DEFAULT_ATTACH_REPO)
             ? repoShortName(attachedRepo) + ': ' + path
             : fileBasename(path);
-        chips.appendChild(buildAttachChip(path, text, removeAttachment));
+        chips.appendChild(buildAttachChip(path, text, removeAttachment, 'manual'));
     });
     suggestedAttachedFiles.forEach(function(path) {
         // Accepted suggestions are visually integrated — a regular chip whose ✕
         // removes from the suggestion channel only, never from `attachedFiles`.
-        chips.appendChild(buildAttachChip(path, fileBasename(path), removeSuggestedAttachment));
+        chips.appendChild(buildAttachChip(path, fileBasename(path), removeSuggestedAttachment, 'suggestion'));
     });
     pendingSuggestedFiles.forEach(function(path) {
         chips.appendChild(buildSuggestionChip(path));
@@ -639,11 +642,13 @@ function renderAttachChips() {
 }
 
 // A regular (manual or accepted-suggestion) chip: a static label and a ✕ that
-// runs `onRemove(path)`.
-function buildAttachChip(path, text, onRemove) {
+// runs `onRemove(path)`. `source` tags the chip's origin ("manual" or
+// "suggestion") so the dismiss path is legible from the DOM alone.
+function buildAttachChip(path, text, onRemove, source) {
     const chip = document.createElement('span');
     chip.className = 'claudeAttachChip';
     chip.dataset.path = path;
+    chip.dataset.source = source || 'manual';
     const label = document.createElement('span');
     label.className = 'claudeAttachChipLabel';
     label.textContent = text;
@@ -664,6 +669,7 @@ function buildSuggestionChip(path) {
     const chip = document.createElement('span');
     chip.className = 'claudeAttachChip claudeAttachChip--suggested';
     chip.dataset.path = path;
+    chip.dataset.source = 'suggestion';
     const label = document.createElement('button');
     label.type = 'button';
     label.className = 'claudeAttachChipLabel';
@@ -723,7 +729,7 @@ function addSuggestedFiles(files) {
         if (pendingSuggestedFiles.indexOf(path) !== -1) return;
         pendingSuggestedFiles.push(path);
     });
-    renderAttachChips();
+    renderComposerChipArea();
 }
 
 // Accept a pending suggestion: move it onto the suggestion channel (so it rides
@@ -735,7 +741,7 @@ function acceptSuggestedFile(path) {
     if (suggestedAttachedFiles.indexOf(path) === -1) {
         suggestedAttachedFiles.push(path);
     }
-    renderAttachChips();
+    renderComposerChipArea();
 }
 
 // Dismiss a pending suggestion: drop it from the pending list only, never
@@ -744,7 +750,7 @@ function dismissSuggestedFile(path) {
     const before = pendingSuggestedFiles.length;
     pendingSuggestedFiles = pendingSuggestedFiles.filter(function(p) { return p !== path; });
     if (pendingSuggestedFiles.length === before) return;
-    renderAttachChips();
+    renderComposerChipArea();
 }
 
 // Remove an accepted suggestion: drop it from the suggestion channel only, never
@@ -753,7 +759,7 @@ function removeSuggestedAttachment(path) {
     const before = suggestedAttachedFiles.length;
     suggestedAttachedFiles = suggestedAttachedFiles.filter(function(p) { return p !== path; });
     if (suggestedAttachedFiles.length === before) return;
-    renderAttachChips();
+    renderComposerChipArea();
 }
 
 // ── WORKSPACE (chat-level repo selector) ──

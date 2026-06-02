@@ -1298,6 +1298,129 @@ describe('Claude sheet — worker file suggestions (Lever 4)', () => {
     });
 });
 
+// The composer chip area is rendered by a single consolidated function that
+// reads both the manual-attach and suggestion channels in one pass. These tests
+// pin the consolidated behavior: chip ordering (manual first, then suggestion),
+// the `data-source` tag each chip carries, and that each chip's ✕ routes to its
+// own channel without disturbing the other.
+describe('Claude sheet — consolidated composer chip area', () => {
+    const MANIFEST = [
+        'toDoList_main/src/claudeSheet.js',
+        'toDoList_main/src/inject.js',
+    ];
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+    let nextSuggested;
+
+    function makeFetch() {
+        chatBodies = [];
+        nextSuggested = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve(MANIFEST),
+                });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ reply: 'ok', suggested_files: nextSuggested.slice() }),
+            });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function openPicker() {
+        document.getElementById('claudeComposerAttach').click();
+        await flush();
+    }
+
+    function selectFile(path) {
+        document.querySelector('.claudeAttachItem[data-path="' + path + '"]').click();
+    }
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    // Manually attach one file, then accept one worker suggestion, leaving the
+    // chip area with exactly one manual chip and one accepted-suggestion chip.
+    async function setupMixedChips() {
+        nextSuggested = ['toDoList_main/src/inject.js'];
+        await openPicker();
+        selectFile('toDoList_main/src/claudeSheet.js');
+        await sendMessage('first');
+        nextSuggested = [];
+        // Accept the pending suggestion: it integrates into a regular chip.
+        document.querySelector('.claudeAttachChip--suggested .claudeAttachChipLabel').click();
+    }
+
+    it('renders manual chips before suggestion chips, each tagged with its source', async () => {
+        await setupMixedChips();
+        const chips = document.querySelectorAll('#claudeAttachChips .claudeAttachChip');
+        expect(chips.length).toBe(2);
+        // Manual chip first.
+        expect(chips[0].dataset.source).toBe('manual');
+        expect(chips[0].dataset.path).toBe('toDoList_main/src/claudeSheet.js');
+        // Accepted-suggestion chip second.
+        expect(chips[1].dataset.source).toBe('suggestion');
+        expect(chips[1].dataset.path).toBe('toDoList_main/src/inject.js');
+    });
+
+    it('tapping ✕ on the manual chip removes from the manual channel only', async () => {
+        await setupMixedChips();
+        const manualChip = document.querySelector('.claudeAttachChip[data-source="manual"]');
+        manualChip.querySelector('.claudeAttachChipRemove').click();
+        // The suggestion chip survives.
+        const remaining = document.querySelectorAll('#claudeAttachChips .claudeAttachChip');
+        expect(remaining.length).toBe(1);
+        expect(remaining[0].dataset.source).toBe('suggestion');
+        await sendMessage('after manual remove');
+        const last = chatBodies[chatBodies.length - 1];
+        expect(last.attach_files).toBeUndefined();
+        expect(last.suggested_attach_files).toEqual(['toDoList_main/src/inject.js']);
+    });
+
+    it('tapping ✕ on the suggestion chip removes from the suggestion channel only', async () => {
+        await setupMixedChips();
+        const suggestionChip = document.querySelector('.claudeAttachChip[data-source="suggestion"]');
+        suggestionChip.querySelector('.claudeAttachChipRemove').click();
+        // The manual chip survives.
+        const remaining = document.querySelectorAll('#claudeAttachChips .claudeAttachChip');
+        expect(remaining.length).toBe(1);
+        expect(remaining[0].dataset.source).toBe('manual');
+        await sendMessage('after suggestion remove');
+        const last = chatBodies[chatBodies.length - 1];
+        expect(last.attach_files).toEqual(['toDoList_main/src/claudeSheet.js']);
+        expect(last.suggested_attach_files).toBeUndefined();
+    });
+});
+
 // Picker mode follows the active workspace: the default repo (toDoList_TOP)
 // keeps the manifest browse list; any other repo without a fetchable manifest
 // swaps to a free-text path input. Repo selection itself lives at the chat
