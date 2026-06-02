@@ -151,3 +151,29 @@ The Worker exposes these routes:
 - `resolve` — find a merged PR by its `<!-- id: ... -->` marker comment.
 
 Note that `SYSTEM_PROMPT` and `ITERATE_PREAMBLE` live in the Worker, NOT in this repo — so changes to chat behavior (the conversational planner's instructions, the iterate framing) require editing and redeploying the Worker, not the app.
+
+## Instrumentation & operating lessons
+
+The pipeline looks deceptively simple from the outside — a green "Shipped" badge and a fresh changelog bullet suggest the work landed and works. It doesn't suggest that, and treating it as proof is how regressions slip through. The governing principle: **a green Shipped status plus a changelog entry is NOT proof a fix worked — only behavior on real data is. Always instrument, never trust the surface.** Every operating habit below exists because the surface lied at least once.
+
+A handful of concrete instrumentation techniques carry most of the weight:
+
+- **Worker chat telemetry via `npx wrangler tail`.** Tailing the Worker prints a `chat usage { iterate_seed: true|false, input_tokens, ... }` line per chat turn. This is the fastest way to confirm a turn actually carried the context it was supposed to: a healthy iterate-seed turn (the first turn of an iterate session, which loads the PR diff plus sliced post-merge source) lands around **12–20k input tokens**, while ordinary follow-up turns sit around **1–2k**. If an iterate turn shows 1–2k tokens, the seed silently didn't attach — the surface looked fine, the telemetry told the truth.
+- **Service-worker state from DevTools.** To see whether a new service worker is waiting, installing, or active, paste this into the console (kept in raw, copy-pasteable form on purpose):
+
+  ```js
+  navigator.serviceWorker.getRegistration().then(r => console.log({waiting: !!r.waiting, installing: !!r.installing, active: r.active?.scriptURL}))
+  ```
+
+- **View-source on the live HTML** to read the content-hashed bundle filenames. Because webpack hashes the bundle name on each build, a changed hash in the served HTML proves the deploy produced a new revision (and that the service worker will pick it up) rather than serving a stale cache.
+- **Probe-injection into `todoapp_claudeRuns` localStorage** to exercise the Runs-tab reconcile logic directly — write a synthetic run record into that key and watch how the UI reconciles it, instead of waiting on a full real run to reproduce a state.
+
+Two specific behaviors — **retroactive promotion** (a run record being promoted to Shipped after the fact when its PR is detected merged) and **run dedup** (collapsing duplicate run records for the same dispatch) — each carry a dedicated **regression test**. Both shipped once as a silent no-op: the code looked correct, passed review by eye, and did nothing. We don't trust ourselves to catch the no-op pattern by code review alone, so the invariant is pinned by a test rather than by vigilance.
+
+## Cross-cutting verification discipline for structural UI changes
+
+When a chat turn describes moving, relocating, or restructuring a UI element, the Worker's system prompt now instructs the chat agent to lead with **proactive enumeration** of the cross-cutting concerns attached to that element — its event listeners, the state it reads or writes, any paired UI elements, and its ARIA wiring — **before** drafting a TODO entry. The user's role in that flow is to verify the enumeration is complete, add anything Sonnet missed from local knowledge the model can't see, and confirm. The outcome is a defensive entry whose acceptance criteria spell out exactly which behaviors must survive the move.
+
+This discipline exists because early structural-UI moves broke load-bearing flows. Relocating the **workspace pill** and the **file picker** silently severed flows like injection, because the entries that described those moves named only the visual relocation and never the behaviors that depended on the moved element. The element moved; the wiring didn't come with it; the surface looked correct.
+
+Once the cross-cutting clause was in place, subsequent structural moves shipped clean — because the enumeration forced the entry to name the invariants up front, e.g. "tapping the pill must still open the workspace menu; selecting a repo must still update `activeChatRepo`; the chat → inject flow must still send `body.repo` correctly." Naming the dependencies before the move is what turns a risky relocation into a verifiable one.
