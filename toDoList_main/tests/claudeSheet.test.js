@@ -1457,6 +1457,16 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
                 });
             }
             const body = JSON.parse(opts.body);
+            if (body.repos) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+                    ok: true,
+                    default: DEFAULT_REPO,
+                    repos: [
+                        { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                        { repo: OTHER_REPO, srcPrefix: 'src/' },
+                    ],
+                }) });
+            }
             if (body.chat) chatBodies.push(body);
             return Promise.resolve({
                 ok: true,
@@ -1466,7 +1476,7 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
         });
     }
 
-    beforeEach(() => {
+    beforeEach(async () => {
         document.body.innerHTML = '';
         localStorage.clear();
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
@@ -1475,6 +1485,9 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
+        // The workspace list loads asynchronously from the Worker on mount; let
+        // it resolve so the pill menu lists the non-default repo these tests switch to.
+        await flush();
     });
 
     afterEach(() => {
@@ -1606,12 +1619,23 @@ describe('Claude sheet — chat-level workspace pill', () => {
                 return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
             }
             const body = JSON.parse(opts.body);
+            if (body.repos) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+                    ok: true,
+                    default: DEFAULT_REPO,
+                    repos: [
+                        { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                        { repo: OTHER_REPO, srcPrefix: 'src/' },
+                        { repo: 'rsterenchak/BookHavenBookstore_Sophia', srcPrefix: 'src/' },
+                    ],
+                }) });
+            }
             if (body.chat) chatBodies.push(body);
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
         });
     }
 
-    beforeEach(() => {
+    beforeEach(async () => {
         document.body.innerHTML = '';
         localStorage.clear();
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
@@ -1620,6 +1644,9 @@ describe('Claude sheet — chat-level workspace pill', () => {
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
+        // The repo list is sourced from the Worker asynchronously on mount; let
+        // it resolve so the workspace menu reflects the full allowlist.
+        await flush();
     });
 
     afterEach(() => {
@@ -1716,6 +1743,100 @@ describe('Claude sheet — chat-level workspace pill', () => {
     });
 });
 
+// The workspace repo list is sourced from the Worker's allowlist (the `repos`
+// route) rather than a hardcoded array, so onboarding a new repo never requires
+// an app edit. The list starts on a safe fallback (the default repo only) and is
+// replaced when the fetch resolves; a failed fetch leaves the fallback in place
+// so the chat is always usable. These tests drive the fetch outcome directly.
+describe('Claude sheet — workspace repos sourced from worker', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    const BOOKHAVEN_REPO = 'rsterenchak/BookHavenBookstore_Sophia';
+    let realFetch;
+    let reposResult; // controls what the worker `repos` route returns per test
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.repos) {
+                if (reposResult === 'reject') return Promise.reject(new Error('network'));
+                if (reposResult === 'http500') {
+                    return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve(null) });
+                }
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(reposResult) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    it('renders every repo from the worker once the fetch resolves', async () => {
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
+        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+    });
+
+    it('falls back to the default repo and stays usable when the fetch fails', async () => {
+        reposResult = 'reject';
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
+        expect(repos).toEqual([DEFAULT_REPO]);
+        // The chat is still usable on the fallback repo.
+        expect(document.getElementById('claudeComposerInput').disabled).toBe(false);
+        expect(document.getElementById('claudeComposerSend').disabled).toBe(false);
+    });
+
+    it('selecting a fetched repo sets it as the active workspace', async () => {
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + BOOKHAVEN_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
+    });
+});
+
 // Multi-repo manifest fetching: the picker derives each repo's manifest URL by
 // convention (https://<owner>.github.io/<name>/src-manifest.json) and shows a
 // real file list whenever one is fetchable — not just for the default repo.
@@ -1753,12 +1874,22 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
                 return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(files) });
             }
             const body = JSON.parse(opts.body);
+            if (body.repos) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+                    ok: true,
+                    default: DEFAULT_REPO,
+                    repos: [
+                        { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                        { repo: OTHER_REPO, srcPrefix: 'src/' },
+                    ],
+                }) });
+            }
             if (body.chat) chatBodies.push(body);
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
         });
     }
 
-    beforeEach(() => {
+    beforeEach(async () => {
         document.body.innerHTML = '';
         localStorage.clear();
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
@@ -1768,6 +1899,9 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
+        // The workspace list loads asynchronously from the Worker on mount; let it
+        // resolve so the pill menu lists the non-default repo these tests switch to.
+        await flush();
     });
 
     afterEach(() => {

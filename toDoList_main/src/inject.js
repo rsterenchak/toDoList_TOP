@@ -371,6 +371,23 @@ export async function resolveEntryByMarker(entryId) {
 }
 
 
+// Fetch the Worker's allowlist of repos the chat workspace can target. Mirrors
+// postToWorker's wiring (same URL + Bearer secret) but POSTs `{ repos: true }`,
+// to which the Worker replies `{ ok: true, default, repos: [{ repo, srcPrefix }] }`.
+// Returns the parsed `{ default, repos }` object on success, or null on any
+// failure so the caller can fall back to a hardcoded default and degrade
+// gracefully without surfacing an error.
+export async function fetchAllowedRepos() {
+    try {
+        const res = await postToWorker({ repos: true });
+        if (!res || !Array.isArray(res.repos)) return null;
+        return { default: res.default, repos: res.repos };
+    } catch (e) {
+        return null;
+    }
+}
+
+
 // Test connection sends `{ test: true }` plus repo/filePath when at least
 // one target is defined — the Worker exercises the same route a real
 // inject would take. With no targets defined, the request omits repo/
