@@ -1169,9 +1169,10 @@ describe('Claude sheet — file attachments', () => {
 });
 
 // "Lever 4": when the Worker's chat reply carries `suggested_files`, each
-// becomes a one-tap "📎 Attach <file>?" chip below the assistant message.
-// Accepting routes the path through the separate `suggested_attach_files`
-// channel (20KB cap); dismissing drops it silently.
+// becomes a "suggested" chip in the composer chip area (above the input bar),
+// beside any manual-attach chips — not below the assistant message. Accepting
+// routes the path through the separate `suggested_attach_files` channel (20KB
+// cap); dismissing drops it silently.
 describe('Claude sheet — worker file suggestions (Lever 4)', () => {
     let realFetch;
     let fetchSpy;
@@ -1225,58 +1226,74 @@ describe('Claude sheet — worker file suggestions (Lever 4)', () => {
         await flush();
     }
 
-    it('renders one chip per suggested file below the assistant message', async () => {
+    it('renders one suggested chip in the composer chip area, not below the message', async () => {
         nextSuggested = ['toDoList_main/src/claudeSheet.js'];
         await sendMessage('what does the runs tab do?');
-        const chips = document.querySelectorAll('.claudeSuggestionChip');
+        const container = document.getElementById('claudeAttachChips');
+        const chips = container.querySelectorAll('.claudeAttachChip--suggested');
         expect(chips.length).toBe(1);
         expect(chips[0].dataset.path).toBe('toDoList_main/src/claudeSheet.js');
-        expect(chips[0].querySelector('.claudeSuggestionChipLabel').textContent)
-            .toBe('📎 Attach claudeSheet.js?');
-        // The chip lives in the chat surface, paired with the reply.
+        expect(chips[0].querySelector('.claudeAttachChipLabel').textContent)
+            .toBe('✦ claudeSheet.js');
+        // No chip is rendered into the chat surface anymore.
         const surface = document.getElementById('claudeChatSurface');
-        expect(surface.querySelector('.claudeSuggestionRow')).toBeTruthy();
+        expect(surface.querySelector('.claudeSuggestionRow')).toBeFalsy();
+        expect(surface.querySelector('.claudeAttachChip')).toBeFalsy();
     });
 
-    it('accepting a chip sends suggested_attach_files on the next turn and confirms the chip', async () => {
+    it('accepting a suggested chip sends suggested_attach_files and integrates the chip', async () => {
         nextSuggested = ['toDoList_main/src/claudeSheet.js'];
         await sendMessage('first');
         nextSuggested = [];
-        document.querySelector('.claudeSuggestionChipLabel').click();
-        const chip = document.querySelector('.claudeSuggestionChip');
-        expect(chip.classList.contains('claudeSuggestionChip--accepted')).toBe(true);
-        expect(chip.querySelector('.claudeSuggestionChipLabel').textContent)
-            .toBe('✓ Attached claudeSheet.js');
+        document.querySelector('.claudeAttachChip--suggested .claudeAttachChipLabel').click();
+        // The accepted chip integrates: it loses the suggested variant.
+        expect(document.querySelectorAll('.claudeAttachChip--suggested').length).toBe(0);
+        const chip = document.querySelector('#claudeAttachChips .claudeAttachChip');
+        expect(chip.dataset.path).toBe('toDoList_main/src/claudeSheet.js');
         await sendMessage('second');
         expect(chatBodies.length).toBe(2);
         expect(chatBodies[1].suggested_attach_files).toEqual(['toDoList_main/src/claudeSheet.js']);
     });
 
-    it('dismissing a chip removes it without adding to the suggestion channel', async () => {
+    it('dismissing a suggested chip removes it without adding to the suggestion channel', async () => {
         nextSuggested = ['toDoList_main/src/inject.js'];
         await sendMessage('first');
         nextSuggested = [];
-        document.querySelector('.claudeSuggestionChipDismiss').click();
-        expect(document.querySelectorAll('.claudeSuggestionChip').length).toBe(0);
+        document.querySelector('.claudeAttachChip--suggested .claudeAttachChipRemove').click();
+        expect(document.querySelectorAll('.claudeAttachChip--suggested').length).toBe(0);
         await sendMessage('second');
         expect(chatBodies[1].suggested_attach_files).toBeUndefined();
+    });
+
+    it('removing an accepted suggestion drops it from the suggestion channel only', async () => {
+        nextSuggested = ['toDoList_main/src/claudeSheet.js'];
+        await sendMessage('first');
+        nextSuggested = [];
+        document.querySelector('.claudeAttachChip--suggested .claudeAttachChipLabel').click();
+        // The integrated chip carries a ✕ that removes from the suggestion channel.
+        document.querySelector('#claudeAttachChips .claudeAttachChipRemove').click();
+        expect(document.querySelectorAll('#claudeAttachChips .claudeAttachChip').length).toBe(0);
+        await sendMessage('second');
+        expect(chatBodies[1].suggested_attach_files).toBeUndefined();
+        expect(chatBodies[1].attach_files).toBeUndefined();
     });
 
     it('"+ New" clears accepted suggestions so they do not persist across conversations', async () => {
         nextSuggested = ['toDoList_main/src/claudeSheet.js'];
         await sendMessage('first');
-        document.querySelector('.claudeSuggestionChipLabel').click();
+        document.querySelector('.claudeAttachChip--suggested .claudeAttachChipLabel').click();
         nextSuggested = [];
         document.getElementById('claudeTabRuns').click();
         document.getElementById('claudeRunsNew').click();
         await sendMessage('fresh');
         expect(chatBodies[chatBodies.length - 1].suggested_attach_files).toBeUndefined();
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(0);
     });
 
     it('renders no suggestion chips when the worker returns no suggested_files', async () => {
         nextSuggested = [];
         await sendMessage('plain turn');
-        expect(document.querySelectorAll('.claudeSuggestionChip').length).toBe(0);
+        expect(document.querySelectorAll('.claudeAttachChip--suggested').length).toBe(0);
         expect(document.querySelectorAll('.claudeSuggestionRow').length).toBe(0);
     });
 });
