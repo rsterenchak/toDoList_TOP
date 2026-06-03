@@ -61,3 +61,10 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 54cf97e4-e13a-4f1a-a742-563735ae15a1 -->
+
+- [ ] **[LOW]** Render fenced ```html and ```svg blocks inline in the chat surface
+  - Type: feature
+  - Description: The chat surface in claudeSheet.js currently has no handling for ```html or ```svg fenced code blocks — they appear as raw text rather than rendered. Add inline rendering for both: detect ```html and ```svg fences in assistant messages (the existing fenced-```md detection pattern around line 923 is the model), pipe the content through DOMPurify (npm install dompurify) to sanitize, and insert as inline HTML/SVG in the message bubble. For SVG specifically, also strip <script>, <foreignObject>, and external <image href> refs (the worker prompt already tells Sonnet not to produce these, so the sanitizer is belt-and-suspenders). Once shipped, restore the HTML and SVG mockup options in the worker SYSTEM_PROMPT (currently dropped because they don't render). Test: a structural UI question that produces ```html mockups should render them inline as actual HTML structures; SVG mockups should render as visuals not markup.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/package.json`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ba060097-9d1b-4e47-86e5-776c3471a028 -->
