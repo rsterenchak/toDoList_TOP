@@ -125,9 +125,9 @@ function setActiveTab(tab) {
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
     if (chatView) chatView.hidden = tab !== 'chat';
     if (runsView) runsView.hidden = tab !== 'runs';
-    // The attach button and its dropdown now live in the header, so they no
-    // longer hide with the chat view automatically — gate the button to the Chat
-    // tab and collapse the panel when leaving Chat so it never floats over Runs.
+    // The attach button and its dropdown live in the composer, so they hide with
+    // the chat view on the Runs tab. Still gate the button explicitly and collapse
+    // the panel when leaving Chat so a panel left open can't linger on return.
     const attachBtn = sheetEl.querySelector('#claudeComposerAttach');
     if (attachBtn) attachBtn.hidden = tab !== 'chat';
     if (tab !== 'chat') setAttachPanelHidden(true);
@@ -264,17 +264,18 @@ function buildWorkspace() {
     return wrap;
 }
 
-// The header-level file-picker button + its dropdown panel. The panel anchors
-// directly below the button (like the workspace pill's menu) and overlays the
-// chat surface and composer rather than displacing them, so tapping the
-// top-right button drops the picker down right where it lives.
+// The composer file-picker button + its dropdown panel. The button sits in the
+// composer row between the input and Send; the panel anchors directly above the
+// button (the composer lives at the bottom of the sheet) and overlays the chat
+// surface rather than displacing it, so tapping it drops the picker open right
+// where it lives.
 function buildAttach() {
     const wrap = document.createElement('div');
     wrap.className = 'claudeAttach';
 
-    // File-picker button — a header-level control grouped with the tabs and
-    // workspace pill. It toggles the attach panel that drops down beneath it;
-    // setActiveTab hides it on the Runs tab since attachments are chat-only.
+    // File-picker button — a composer control between the input and Send. It
+    // toggles the attach panel that opens above it; setActiveTab hides it on the
+    // Runs tab since attachments are chat-only.
     const attach = document.createElement('button');
     attach.id = 'claudeComposerAttach';
     attach.type = 'button';
@@ -383,7 +384,12 @@ function buildChatView() {
     send.className = 'claudeComposerSend';
     send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
+    // Composer row reads [input] [📎] [Send]: the attach button + its dropdown
+    // panel sit between the textarea and Send. buildAttach() carries the button's
+    // click listener and the panel, so mounting it here keeps both wired without
+    // the header build path.
     composer.appendChild(input);
+    composer.appendChild(buildAttach());
     composer.appendChild(send);
 
     send.addEventListener('click', function() { sendChatTurn(); });
@@ -1728,7 +1734,6 @@ function buildSheet() {
     tabs.appendChild(chatTab);
     tabs.appendChild(runsTab);
     tabs.appendChild(buildWorkspace());
-    tabs.appendChild(buildAttach());
 
     sheet.appendChild(handle);
     sheet.appendChild(closeRow);
