@@ -1710,6 +1710,13 @@ function buildSheet() {
     closeX.textContent = '×';
     closeX.addEventListener('click', closeClaudeSheet);
 
+    // The `×` lives in its own right-aligned row above the tab list rather than
+    // overlaying the corner, so it never shares a flex container with the tabs.
+    const closeRow = document.createElement('div');
+    closeRow.id = 'claudeSheetCloseRow';
+    closeRow.className = 'claudeSheetCloseRow';
+    closeRow.appendChild(closeX);
+
     const tabs = document.createElement('div');
     tabs.id = 'claudeSheetTabs';
     tabs.className = 'claudeSheetTabs';
@@ -1724,7 +1731,7 @@ function buildSheet() {
     tabs.appendChild(buildAttach());
 
     sheet.appendChild(handle);
-    sheet.appendChild(closeX);
+    sheet.appendChild(closeRow);
     sheet.appendChild(tabs);
     sheet.appendChild(buildChatView());
     sheet.appendChild(buildRunsView());

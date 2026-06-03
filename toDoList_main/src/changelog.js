@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "Mockup HTML and SVG snippets in the Claude chat now render inline as live previews instead of as raw code.",
         ],
+        changed: [
+            "The Claude assistant's close button now sits in its own row above the Chat and Runs tabs.",
+        ],
     },
     {
         version: '1.1',
@@ -24,7 +27,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         fixed: [
-            "The Claude chat file picker now drops down directly beneath its header button instead of opening at the bottom of the sheet.",
             "The Claude chat file picker now closes when you tap outside it, instead of staying open until you tap its button again.",
         ],
     },
