@@ -76,6 +76,27 @@ If `.claude/routine.md` defines bookkeeping rules (for example a changelog or ve
 If `.claude/routine.md` defines no bookkeeping, skip this step entirely. If the task has no user-visible effect and the project's rules provide a skip clause, follow that clause and note it in the PR body.
 </post_task_bookkeeping>
 
+<claude_md_sync>
+After implementing the task and before opening the PR, check whether the change has STRUCTURAL effects that contradict what `CLAUDE.md` (at the repo root) currently says. If so, update CLAUDE.md in the SAME commit/PR as the code change so the description and the reality ship together.
+
+A change is structural — meaning CLAUDE.md may need updating — only if THIS task's diff:
+- adds a new file that is load-bearing (not an internal helper, a test fixture, or a generated artifact),
+- removes a file that CLAUDE.md currently names, or
+- renames or moves a file that CLAUDE.md currently names.
+
+If the change is purely within existing files (logic edits, internal refactors, function/variable renames inside files, dependency bumps, style fixes, doc edits, test additions), do NOT touch CLAUDE.md — those changes do not invalidate what CLAUDE.md describes at its level of abstraction. Internal renames are not structural for this purpose.
+
+When the trigger fires:
+1. Read the current CLAUDE.md.
+2. Identify only the SECTIONS that are factually contradicted by this PR's diff — typically a "Key files" section, a file-map section, or an architecture overview that explicitly names what's moving.
+3. Update only those sections, with the minimum edit needed to reflect the new reality. Do NOT add commentary about the change itself ("Updated X to do Y"). CLAUDE.md describes the *current state* of the repo, not its history — git logs are for history.
+4. Do NOT add new sections, restructure existing ones, or "improve" CLAUDE.md beyond reflecting the structural change. Scope discipline applies to documentation edits exactly as it does to code edits.
+5. If CLAUDE.md does not exist, or exists but contains no section that references the changed file paths, skip the update — there is nothing to keep current.
+
+The CLAUDE.md edit (if any) goes in the same commit as the code change, following the same one-task-per-run discipline.
+</claude_md_sync>
+
+
 <test_verification>
 The test suite is run via the test command from the working directory, both defined in `.claude/routine.md`.
 
@@ -98,7 +119,7 @@ After every meaningful change during implementation:
 
 2. Commit format:
      `[Claude] <type>: <imperative description>`
-   The implementation commit includes both the code change AND any project bookkeeping update from <post_task_bookkeeping> — these travel together so the bookkeeping can never drift from the code. Split into multiple commits only when changes are logically separable; a bookkeeping update is never separable from the work it describes.
+   The implementation commit includes the code change, any project bookkeeping update from <post_task_bookkeeping>, AND any CLAUDE.md update from <claude_md_sync> — these travel together so neither the bookkeeping nor the structural documentation can drift from the code. Split into multiple commits only when changes are logically separable; bookkeeping and CLAUDE.md updates are never separable from the work that caused them.
 
 3. After implementation commits, update TODO.md: change `- [ ]` to `- [x]` for the completed task, and optionally append ` — Completed: YYYY-MM-DD (PR #<number>)` to match the existing convention. Commit separately:
      `[Claude] chore: mark task complete in TODO.md`
