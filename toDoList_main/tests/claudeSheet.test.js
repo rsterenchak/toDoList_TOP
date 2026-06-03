@@ -9,6 +9,8 @@ import {
     isClaudeSheetOpen,
     extractDraftedEntry,
     extractInspectDirective,
+    splitRenderableBlocks,
+    renderAssistantContent,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 import { notifyUpdateAvailable } from '../src/modals.js';
@@ -2419,5 +2421,74 @@ describe('Claude sheet — author-flow module surface and styling', () => {
         // A [hidden] rule with display: none must restore the expected behavior
         // so renderUpdateNudge() setting nudge.hidden = true actually hides it.
         expect(css).toMatch(/\.claudeUpdateNudge\[hidden\]\s*\{[^}]*display:\s*none/);
+    });
+});
+
+// Inline rendering of fenced ```html and ```svg blocks in assistant replies.
+// Prose stays plain text; the fenced markup becomes live, sanitized DOM.
+describe('Inline html/svg rendering in the chat surface', () => {
+    it('splits a reply into ordered text / html / svg segments', () => {
+        const reply = 'Before\n```html\n<div>hi</div>\n```\nmiddle\n```svg\n<svg></svg>\n```\nafter';
+        const segs = splitRenderableBlocks(reply);
+        expect(segs.map(s => s.type)).toEqual(['text', 'html', 'text', 'svg', 'text']);
+        expect(segs[1].value).toContain('<div>hi</div>');
+        expect(segs[3].value).toContain('<svg></svg>');
+    });
+
+    it('treats a fence-free reply as a single text segment (prior behavior)', () => {
+        const segs = splitRenderableBlocks('just prose, no fences');
+        expect(segs).toHaveLength(1);
+        expect(segs[0]).toEqual({ type: 'text', value: 'just prose, no fences' });
+    });
+
+    it('leaves ```md draft blocks inside text — they are not rendered as markup', () => {
+        const reply = 'Here:\n```md\n- [ ] **[LOW]** do a thing\n```';
+        const segs = splitRenderableBlocks(reply);
+        expect(segs).toHaveLength(1);
+        expect(segs[0].type).toBe('text');
+        expect(segs[0].value).toContain('```md');
+    });
+
+    it('renders a ```html block as actual inline HTML structure', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, 'Mockup:\n```html\n<div class="card"><button>Save</button></div>\n```');
+        expect(bubble.querySelector('.card')).toBeTruthy();
+        expect(bubble.querySelector('button').textContent).toBe('Save');
+        expect(bubble.textContent).toContain('Mockup:');
+    });
+
+    it('renders a ```svg block as an actual <svg> visual, not markup text', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, '```svg\n<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>\n```');
+        const svg = bubble.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.querySelector('circle')).toBeTruthy();
+    });
+
+    it('strips <script> from a rendered html block', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, '```html\n<p>ok</p><script>window.__x=1<\/script>\n```');
+        expect(bubble.querySelector('script')).toBeNull();
+        expect(bubble.querySelector('p').textContent).toBe('ok');
+    });
+
+    it('strips <script>, <foreignObject>, and external <image> from a rendered svg block', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(
+            bubble,
+            '```svg\n<svg><script>alert(1)<\/script><foreignObject><body/></foreignObject>' +
+            '<image href="https://evil.example/x.png"/><rect width="4" height="4"/></svg>\n```'
+        );
+        expect(bubble.querySelector('script')).toBeNull();
+        expect(bubble.querySelector('foreignObject')).toBeNull();
+        expect(bubble.querySelector('image')).toBeNull();
+        expect(bubble.querySelector('rect')).toBeTruthy();
+    });
+
+    it('falls back to plain text content when the reply has no fenced blocks', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, 'plain reply');
+        expect(bubble.textContent).toBe('plain reply');
+        expect(bubble.children).toHaveLength(0);
     });
 });
