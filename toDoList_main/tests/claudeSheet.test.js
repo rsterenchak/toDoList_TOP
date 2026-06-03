@@ -101,6 +101,18 @@ describe('Claude sheet shell + launcher', () => {
         expect(isClaudeSheetOpen()).toBe(false);
     });
 
+    it('nests the close `×` in its own row sitting above the tab list', () => {
+        const closeRow = document.getElementById('claudeSheetCloseRow');
+        const closeX = document.getElementById('claudeSheetClose');
+        const tabs = document.getElementById('claudeSheetTabs');
+        expect(closeRow).toBeTruthy();
+        expect(closeRow.contains(closeX)).toBe(true);
+        expect(tabs.contains(closeX)).toBe(false);
+        // The row must precede the tab list in DOM order.
+        expect(closeRow.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+    });
+
     it('closes on Escape when open and ignores Escape when already closed', () => {
         openClaudeSheet();
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -217,10 +229,14 @@ describe('Claude sheet — module surface and styling', () => {
         expect(css).toMatch(/#claudeSheetClose\s*\{[^}]*display:\s*none/);
     });
 
-    it('styles the desktop close `×` as a positioned header affordance', () => {
-        const rule = extractTopLevelRule('#claudeSheetClose');
-        expect(rule).toMatch(/position:\s*absolute/);
-        expect(rule).toMatch(/right:\s*\d+px/);
+    it('styles the desktop close `×` in a right-aligned row above the tabs', () => {
+        const row = extractTopLevelRule('.claudeSheetCloseRow');
+        expect(row).toMatch(/display:\s*flex/);
+        expect(row).toMatch(/justify-content:\s*flex-end/);
+        // The `×` no longer overlays the corner — it sits as a flex child of
+        // the close row, so it must not rely on absolute positioning.
+        const close = extractTopLevelRule('#claudeSheetClose');
+        expect(close).not.toMatch(/position:\s*absolute/);
     });
 
     it('pins the launcher to the bottom-right and hides it under other modals', () => {

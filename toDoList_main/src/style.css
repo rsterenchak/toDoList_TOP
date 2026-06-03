@@ -1426,10 +1426,12 @@ body:has(#settingsMenu) #claudeLauncher {
   pointer-events: auto;
 }
 #claudeSheetHandle { display: none; }
+.claudeSheetCloseRow {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px;
+}
 #claudeSheetClose {
-  position: absolute;
-  top: 10px;
-  right: 12px;
   width: 28px;
   height: 28px;
   display: flex;
@@ -8451,6 +8453,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     transform: translateY(0);
   }
   #claudeSheetClose {
+    display: none;
+  }
+  .claudeSheetCloseRow {
     display: none;
   }
   #claudeSheetHandle {
