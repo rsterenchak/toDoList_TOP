@@ -77,7 +77,7 @@
   - Completed:
   <!-- id: fa2e93cf-99ee-4a4e-8518-a4e4b313ce1d -->
 
-- [ ] **[MEDIUM]** Move the attach (📎) button to sit between the chat input and the Send button in the Claude sheet composer
+- [x] **[MEDIUM]** Move the attach (📎) button to sit between the chat input and the Send button in the Claude sheet composer — Completed: 2026-06-03
 
   - Type: feature
   - Description: Currently the attach button lives above or separate from the main input row in the Claude sheet composer. Relocate it so the composer row reads: [input] [📎] [Send ▶] — the attach button sits directly to the right of the "Ask Claude…" textarea and to the left of the Send button. The file picker panel must re-anchor to open near the button's new position (not its old one) so it doesn't visually orphan. Chips (selected-file pills) must remain visible above the input row in a coherent grouping. The button's click listener and the picker panel's outside-click/dismiss listener must be registered in the new parent's build path — verify they are not silently dropped when the old parent's build function no longer mounts the button. Confirm `body.attach_files` still populates correctly on each `chatWithWorker` turn, and the single-repo-per-conversation guard in the picker still fires after the relocation.
