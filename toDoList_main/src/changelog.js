@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-03',
+        added: [
+            "Mockup HTML and SVG snippets in the Claude chat now render inline as live previews instead of as raw code.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-02',
         added: [
             "BookHavenBookstore_Sophia is now selectable as a workspace in the Claude chat.",
@@ -17,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-01',
         fixed: [
-            "Automated runs whose outcome can't be verified now show \"Unknown\" instead of being falsely marked failed; only confirmed failures read as failed.",
             "The Claude chat file picker now drops down directly beneath its header button instead of opening at the bottom of the sheet.",
             "The Claude chat file picker now closes when you tap outside it, instead of staying open until you tap its button again.",
         ],

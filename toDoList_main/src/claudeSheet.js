@@ -31,6 +31,7 @@ import {
 } from './inject.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
+import DOMPurify from 'dompurify';
 
 const MOBILE_MAX_WIDTH = 700;
 const SWIPE_CLOSE_PX = 60;
@@ -920,6 +921,71 @@ function appendMessageBubble(role, text) {
     return bubble;
 }
 
+// Split an assistant reply into ordered segments so that fenced ```html and
+// ```svg blocks can be rendered inline while everything else stays plain text.
+// Each segment is { type: 'text' | 'html' | 'svg', value }. Fences other than
+// html/svg (e.g. the ```md draft block) are left inside text segments — they're
+// handled elsewhere and must not be rendered as live markup.
+export function splitRenderableBlocks(text) {
+    const src = String(text || '');
+    const re = /```(html|svg)[ \t]*\r?\n([\s\S]*?)```/g;
+    const segments = [];
+    let last = 0;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+        if (m.index > last) segments.push({ type: 'text', value: src.slice(last, m.index) });
+        segments.push({ type: m[1].toLowerCase(), value: m[2] });
+        last = re.lastIndex;
+    }
+    if (last < src.length || !segments.length) {
+        segments.push({ type: 'text', value: src.slice(last) });
+    }
+    return segments;
+}
+
+// Sanitize a ```html block. DOMPurify strips scripts, event handlers, and other
+// XSS vectors by default, so the model's mockup HTML renders as inert structure.
+function sanitizeHtmlBlock(html) {
+    return DOMPurify.sanitize(String(html));
+}
+
+// Sanitize a ```svg block. Belt-and-suspenders even though the Worker prompt
+// tells the model not to emit these: restrict to the SVG profile and explicitly
+// forbid <script>, <foreignObject>, and <image> (the external-href vector).
+function sanitizeSvgBlock(svg) {
+    return DOMPurify.sanitize(String(svg), {
+        USE_PROFILES: { svg: true, svgFilters: true },
+        FORBID_TAGS: ['foreignObject', 'image', 'script'],
+    });
+}
+
+// Render an assistant reply into a bubble, turning fenced ```html and ```svg
+// blocks into live (sanitized) inline markup while keeping the surrounding prose
+// as plain text. When the reply carries no renderable block this is identical to
+// `bubble.textContent = text`, preserving the prior behavior exactly.
+export function renderAssistantContent(bubble, text) {
+    if (!bubble) return bubble;
+    const segments = splitRenderableBlocks(text);
+    if (segments.length === 1 && segments[0].type === 'text') {
+        bubble.textContent = segments[0].value;
+        return bubble;
+    }
+    bubble.textContent = '';
+    for (const seg of segments) {
+        if (seg.type === 'text') {
+            if (seg.value) bubble.appendChild(document.createTextNode(seg.value));
+            continue;
+        }
+        const box = document.createElement('div');
+        box.className = 'claudeMsgRendered claudeMsgRendered--' + seg.type;
+        box.innerHTML = seg.type === 'svg'
+            ? sanitizeSvgBlock(seg.value)
+            : sanitizeHtmlBlock(seg.value);
+        bubble.appendChild(box);
+    }
+    return bubble;
+}
+
 // Detect a fenced ```md … ``` block in an assistant reply and return its inner
 // text (trimmed), or null when none is present. This is the signal that Claude
 // has drafted a TODO.md entry ready to inject.
@@ -995,7 +1061,7 @@ async function requestAssistantReply(entryId) {
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
-            pending.textContent = inspectSelector ? stripInspectDirective(reply) : reply;
+            renderAssistantContent(pending, inspectSelector ? stripInspectDirective(reply) : reply);
         }
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         const draft = extractDraftedEntry(reply);

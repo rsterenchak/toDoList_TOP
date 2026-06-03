@@ -1877,6 +1877,19 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 12px;
   font-style: italic;
 }
+.claudeMsgRendered {
+  margin: 6px 0;
+  padding: 8px;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--bg-elevated, var(--bg-surface));
+  white-space: normal;
+  overflow-x: auto;
+}
+.claudeMsgRendered--svg svg {
+  max-width: 100%;
+  height: auto;
+}
 
 .claudeDraftCard {
   margin: 0 0 12px;
