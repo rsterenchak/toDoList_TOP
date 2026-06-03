@@ -68,3 +68,11 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/package.json`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ba060097-9d1b-4e47-86e5-776c3471a028 -->
+
+- [ ] **[MEDIUM]** Move Claude sheet close button into its own div above the tabs list
+
+  - Type: feature
+  - Description: The close button (`.claudeSheetCloseBtn`) currently lives inside `.claudeSheetTabsList` and uses `margin-left: auto` as a flex-child push-right to reach the right edge of the tab bar. Extract it into a new `.claudeSheetCloseRow` div inserted immediately above `.claudeSheetTabsList` in the sheet's DOM. Style `.claudeSheetCloseRow` as `display: flex; justify-content: flex-end; padding: 4px 8px` so the button aligns to the right edge without relying on a shared flex container with the tabs. Remove `margin-left: auto` from `.claudeSheetCloseBtn` since that rule only works as a flex sibling of the tab buttons — it is inert in the new single-child wrapper. Acceptance criteria: (1) clicking × must still close the sheet (toggle the sheet container's visibility class/state) — verify the click listener survives whether it is bound inline, delegated, or explicitly attached in `claudeSheet.js`; (2) the sheet container's open/close state must continue to toggle correctly after the structural change; (3) confirm the focus trap scopes to the sheet root and not `.claudeSheetTabsList` — if it does scope to the tabs list, expand the trap boundary to include `.claudeSheetCloseRow`; (4) audit `style.css` and `claudeSheet.js` for any selectors of the form `.claudeSheetTabsList .claudeSheetCloseBtn` or other rules that assume the tabs-list parent and update them to target `.claudeSheetCloseRow .claudeSheetCloseBtn` or `.claudeSheetCloseBtn` directly; (5) visually verify the close button sits flush and right-aligned above the Chat/Runs tab row with no unwanted gap or overlap.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: fa2e93cf-99ee-4a4e-8518-a4e4b313ce1d -->
