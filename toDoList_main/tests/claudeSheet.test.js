@@ -155,16 +155,25 @@ describe('Claude sheet shell + launcher', () => {
         expect(send.disabled).toBe(false);
     });
 
-    it('mounts the file-picker button in the sheet header, not the composer', () => {
+    it('mounts the file-picker button in the composer between the input and Send', () => {
         const attach = document.getElementById('claudeComposerAttach');
         const header = document.getElementById('claudeSheetTabs');
         const composer = document.getElementById('claudeComposer');
+        const input = document.getElementById('claudeComposerInput');
+        const send = document.getElementById('claudeComposerSend');
         expect(attach).toBeTruthy();
-        expect(header.contains(attach)).toBe(true);
-        expect(composer.contains(attach)).toBe(false);
+        expect(composer.contains(attach)).toBe(true);
+        expect(header.contains(attach)).toBe(false);
+        // Row order is [input] [📎] [Send]: the attach wrapper follows the input
+        // and precedes Send in document order.
+        const attachWrap = attach.closest('.claudeAttach');
+        expect(input.compareDocumentPosition(attachWrap) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+        expect(attachWrap.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
     });
 
-    it('hides the header file-picker button on the Runs tab and restores it on Chat', () => {
+    it('hides the file-picker button on the Runs tab and restores it on Chat', () => {
         const attach = document.getElementById('claudeComposerAttach');
         expect(attach.hidden).toBe(false);
         document.getElementById('claudeTabRuns').click();
@@ -1066,22 +1075,20 @@ describe('Claude sheet — file attachments', () => {
         expect(items.map((el) => el.dataset.path)).toEqual(MANIFEST);
     });
 
-    it('anchors the open picker panel below the header button, not the composer', async () => {
+    it('anchors the open picker panel to the composer button, not the header', async () => {
         await openPicker();
         const panel = document.getElementById('claudeAttachPanel');
         const button = document.getElementById('claudeComposerAttach');
         const header = document.getElementById('claudeSheetTabs');
-        const chatView = document.getElementById('claudeChatView');
         const composer = document.getElementById('claudeComposer');
-        // The panel shares the button's header container (the picker dropdown
-        // wrapper) and lives in the header tab row — never back in the chat view
-        // or composer it used to anchor to.
+        // The panel shares the button's picker-dropdown wrapper, which now lives
+        // in the composer row — never back in the header tab row it used to
+        // anchor to.
         const container = button.closest('.claudeAttach');
         expect(container).toBeTruthy();
         expect(container.contains(panel)).toBe(true);
-        expect(header.contains(panel)).toBe(true);
-        expect(chatView.contains(panel)).toBe(false);
-        expect(composer.contains(panel)).toBe(false);
+        expect(composer.contains(panel)).toBe(true);
+        expect(header.contains(panel)).toBe(false);
     });
 
     it('closes the picker panel on a click outside it', async () => {
