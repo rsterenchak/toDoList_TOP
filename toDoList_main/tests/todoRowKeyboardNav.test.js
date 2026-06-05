@@ -135,8 +135,8 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
     });
 
     // Reaches into the SECOND global keydown handler — the view-aware one
-    // that branches off #mainBar's data-view for Today / Calendar. Identified
-    // by referencing both #todaySections and #calendarGrid; distinct from
+    // that branches off #mainBar's data-view for Inbox / Calendar. Identified
+    // by referencing both #inboxSections and #calendarGrid; distinct from
     // the Projects-view handler above.
     function extractViewArrowHandler() {
         const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
@@ -151,7 +151,7 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
                     depth--;
                     if (depth === 0) {
                         const body = main.slice(bodyStart + 1, i);
-                        if (/todaySections/.test(body) && /calendarGrid/.test(body)) {
+                        if (/inboxSections/.test(body) && /calendarGrid/.test(body)) {
                             return body;
                         }
                         break;

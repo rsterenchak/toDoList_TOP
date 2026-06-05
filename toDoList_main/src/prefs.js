@@ -82,20 +82,22 @@ export function setSidebarRailOn(on) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── active top-level view (today vs. projects vs. calendar) ──
-// The main panel hosts three top-level views: the Today dashboard, the
+// ── active top-level view (inbox vs. projects vs. calendar) ──
+// The main panel hosts three top-level views: the Inbox view, the
 // project view, and the Calendar month grid. The pill bar in the top
 // nav switches between them; this pref restores the active view across
 // reloads. Default is 'projects' so first-time users (or anyone whose
 // storage was cleared) land on the project list; any stored value
 // other than the three known tokens also falls back to 'projects' so
-// a stale or hand-edited pref can't desync the renderer.
+// a stale or hand-edited pref can't desync the renderer. A legacy
+// stored value of 'today' (from before the Inbox rename) migrates to
+// 'inbox' on read so existing users don't see undefined behavior.
 export function getActiveView() {
     try {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';
         if (v === 'calendar') return 'calendar';
-        if (v === 'today') return 'today';
+        if (v === 'inbox' || v === 'today') return 'inbox';
         return 'projects';
     } catch (e) {
         return 'projects';
@@ -104,8 +106,8 @@ export function getActiveView() {
 
 export function setActiveView(view) {
     try {
-        let stored = 'today';
-        if (view === 'projects') stored = 'projects';
+        let stored = 'projects';
+        if (view === 'inbox') stored = 'inbox';
         else if (view === 'calendar') stored = 'calendar';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }

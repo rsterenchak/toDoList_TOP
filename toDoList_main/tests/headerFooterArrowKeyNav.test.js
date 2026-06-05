@@ -15,7 +15,7 @@ function read(relative) {
 // users can flow between regions without reaching for the mouse:
 //   • ArrowUp from the top project row jumps to sidebarToggle.
 //   • ArrowLeft / ArrowRight cycle across the seven header controls
-//     (hamburger, PROJECTS / TODAY / CALENDAR pills, pomodoro, music,
+//     (hamburger, PROJECTS / INBOX / CALENDAR pills, pomodoro, music,
 //     settings).
 //   • ArrowDown from projButton lands on the footer version button.
 describe('header / footer arrow-key navigation', () => {
@@ -109,11 +109,11 @@ describe('header / footer arrow-key navigation', () => {
     it('nav handler walks all seven header controls in on-screen order', () => {
         const body = extractNavKeydown();
         // Order must mirror the visual layout: hamburger, the three
-        // view-switcher pills (PROJECTS, TODAY, CALENDAR — that's the
+        // view-switcher pills (PROJECTS, INBOX, CALENDAR — that's the
         // sequence #viewSwitcher appendChilds them in), pomodoro, music,
         // settings. A different order would make ArrowRight land on the
         // wrong neighbor relative to where focus appears on screen.
-        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillToday[\s\S]*?viewPillCalendar[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
+        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillInbox[\s\S]*?viewPillCalendar[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
         expect(seq).toBeTruthy();
     });
 
@@ -184,8 +184,8 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/shiftKey/);
     });
 
-    // Reaches into the view-aware Today / Calendar keydown handler —
-    // identified by referencing both #todaySections and #calendarGrid.
+    // Reaches into the view-aware Inbox / Calendar keydown handler —
+    // identified by referencing both #inboxSections and #calendarGrid.
     // Distinct from the Projects-view handler.
     function extractViewArrowHandler() {
         const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
@@ -200,7 +200,7 @@ describe('header / footer arrow-key navigation', () => {
                     depth--;
                     if (depth === 0) {
                         const body = main.slice(bodyStart + 1, i);
-                        if (/todaySections/.test(body) && /calendarGrid/.test(body)) {
+                        if (/inboxSections/.test(body) && /calendarGrid/.test(body)) {
                             return body;
                         }
                         break;
@@ -211,20 +211,20 @@ describe('header / footer arrow-key navigation', () => {
         throw new Error('view-aware arrow-nav keydown handler not found in main.js');
     }
 
-    it('Today: ArrowUp on the first row escapes up to #viewPillToday', () => {
-        // Spatial inverse of dropFocusIntoMainView: the TODAY pill sits
-        // directly above the today list, so ArrowUp out of the first row
+    it('Inbox: ArrowUp on the first row escapes up to #viewPillInbox', () => {
+        // Spatial inverse of dropFocusIntoMainView: the INBOX pill sits
+        // directly above the inbox list, so ArrowUp out of the first row
         // must escape back into the header chrome. Without this exit,
         // keyboard users on mobile (where the sidebar is collapsed and
         // the sideMain → sidebarToggle ladder isn't available) have no
-        // upward escape from the today list.
+        // upward escape from the inbox list.
         const body = extractViewArrowHandler();
-        expect(body).toMatch(/getElementById\(\s*['"]viewPillToday['"]\s*\)/);
+        expect(body).toMatch(/getElementById\(\s*['"]viewPillInbox['"]\s*\)/);
     });
 
-    it('Today: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
+    it('Inbox: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
         const body = extractViewArrowHandler();
-        const idx = body.indexOf("getElementById('viewPillToday')");
+        const idx = body.indexOf("getElementById('viewPillInbox')");
         expect(idx).toBeGreaterThan(-1);
         // Search forward from the lookup site for the guards that gate
         // the focus call — without stopPropagation the cross-pane
@@ -266,8 +266,8 @@ describe('header / footer arrow-key navigation', () => {
         expect(branchMatch[0]).toMatch(/preventDefault\(\s*\)/);
     });
 
-    // Pins the ArrowDown drop-in target for each pill. The TODAY view
-    // rendering was removed, so its branch in firstFocusableInActiveMainView
+    // Pins the ArrowDown drop-in target for each pill. The INBOX view
+    // rendering is not built yet, so its branch in firstFocusableInActiveMainView
     // returns null — there is nothing to focus until the INBOX placeholder
     // ships in a follow-up entry, and the helper must not reach for the
     // now-nonexistent .todayRow rows. CALENDAR must fall back to the first
@@ -282,18 +282,18 @@ describe('header / footer arrow-key navigation', () => {
         return extractBlock("function dropFocusIntoMainView");
     }
 
-    it("TODAY: pill ArrowDown finds no focusable target (view rendering removed)", () => {
+    it("INBOX: pill ArrowDown finds no focusable target (view rendering not built yet)", () => {
         const body = extractFirstFocusableHelper();
-        // With the TODAY dashboard gone, the today branch returns null
+        // With no INBOX dashboard yet, the inbox branch returns null
         // immediately instead of querying for .todayRow rows that the view
-        // no longer renders.
-        const todayBranch = body.match(/view === ['"]today['"][\s\S]*?return null;/);
-        expect(todayBranch).toBeTruthy();
-        expect(todayBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
-        expect(todayBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRowTitle['"]\s*\)/);
+        // does not render.
+        const inboxBranch = body.match(/view === ['"]inbox['"][\s\S]*?return null;/);
+        expect(inboxBranch).toBeTruthy();
+        expect(inboxBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
+        expect(inboxBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRowTitle['"]\s*\)/);
     });
 
-    it("TODAY: pill ArrowDown marks the row .todo-active so the next ArrowDown advances rows", () => {
+    it("INBOX: pill ArrowDown marks the row .todo-active so the next ArrowDown advances rows", () => {
         const body = extractDropFocusHandler();
         // Without the .todo-active marker, the document-level Today nav
         // handler treats the row as "not the current row" on the next
