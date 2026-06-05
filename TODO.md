@@ -184,7 +184,7 @@
   - Completed: 2026-06-05
   <!-- id: b002dad1-c8b4-4f85-aebe-9f563e386dab -->
 
-- [ ] **[MEDIUM]** Pomodoro: expand toggle to show inline countdown when running
+- [x] **[MEDIUM]** Pomodoro: expand toggle to show inline countdown when running
   - Type: feature
   - Description: When a pomodoro session is running (or paused), the existing `pomodoroToggle` button in the header expands to display the live countdown next to the clock icon — e.g., "🕒 18:42" with a purple accent border. The clock icon's existing minute-hand sweep animation stays as ambient feedback. When the session is idle or complete-acked, the button collapses back to just the icon (current behavior). The popover, mode tabs, MM:SS countdown editor, Start/Pause/Reset controls, and underlying pomodoro state machine in `pomodoro.js` are all UNCHANGED — this entry only modifies the toggle button's visual presentation based on the controller's state. The countdown text in the button updates every second while the timer is running, driven by the existing `subscribe` callback that already keeps `syncPomodoroIcon` in sync with the controller.
   - Implementation notes:
@@ -224,5 +224,5 @@
   - Visual reference: `mobile-final-active.svg` and `desktop-final-active.svg` from the design session — the pomodoro chip shows "18:42" next to a small clock icon, with a subtle purple accent border, when a session is running. When idle, the chip is just the icon (current state).
   - Out of scope: any music/radio rework (entry #8), any popover redesign, any pomodoro logic changes, any data model changes, any header layout changes outside the pomodoro toggle's expansion. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: bbe2e9b0-90fd-4a34-ba78-303f108c466a -->
