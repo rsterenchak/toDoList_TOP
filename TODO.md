@@ -183,3 +183,46 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: b002dad1-c8b4-4f85-aebe-9f563e386dab -->
+
+- [ ] **[MEDIUM]** Pomodoro: expand toggle to show inline countdown when running
+  - Type: feature
+  - Description: When a pomodoro session is running (or paused), the existing `pomodoroToggle` button in the header expands to display the live countdown next to the clock icon — e.g., "🕒 18:42" with a purple accent border. The clock icon's existing minute-hand sweep animation stays as ambient feedback. When the session is idle or complete-acked, the button collapses back to just the icon (current behavior). The popover, mode tabs, MM:SS countdown editor, Start/Pause/Reset controls, and underlying pomodoro state machine in `pomodoro.js` are all UNCHANGED — this entry only modifies the toggle button's visual presentation based on the controller's state. The countdown text in the button updates every second while the timer is running, driven by the existing `subscribe` callback that already keeps `syncPomodoroIcon` in sync with the controller.
+  - Implementation notes:
+    - All changes happen in `main.js` (the section that defines `pomodoroToggle` and `syncPomodoroIcon`) and `style.css` (the CSS rules for the toggle button). Do NOT touch `pomodoro.js` — the controller's state machine, durations, alarm logic, and subscribe pattern stay exactly as-is.
+    - **Add a text span inside the toggle button:**
+      - Add a `<span class="pomodoroCountdownInline">` element inside `pomodoroToggle.innerHTML`, positioned after the SVG icon
+      - Initially empty / hidden when idle
+      - Populated with the formatted MM:SS countdown when running or paused
+      - Use the existing `formatMMSS` helper from pomodoro.js (already imported) to format `snap.remainingMs / 1000`
+    - **Update `syncPomodoroIcon` to populate the text span:**
+      - The function already runs on every subscribe-fired update from the controller
+      - Add logic: if `snap.status === 'RUNNING'` or `snap.status === 'PAUSED'`, set the inline span's textContent to the formatted countdown and ensure it's visible; otherwise clear the textContent and hide it
+      - Use CSS classes to control visibility — the button's existing `data-pomo-status` attribute already changes with state, so CSS rules can hide the span when `data-pomo-status` is `IDLE` or `COMPLETE_UNACKED`, and show it when `RUNNING` or `PAUSED`
+    - **CSS changes:**
+      - `.pomodoroCountdownInline` styling: ~12px font, bold, color matching the existing pomodoro accent (`#9D93EE` or whatever the design token is in the codebase)
+      - Hidden by default; visible only when the parent button has `data-pomo-status="RUNNING"` or `data-pomo-status="PAUSED"`
+      - Spacing between the icon and the text: small left margin (e.g., 6px) on the text span
+      - The button itself should expand horizontally to accommodate the text — set `width: auto` (or appropriate padding/min-width) so the layout doesn't clip the countdown
+      - When the button is in the active state (running or paused), apply a purple accent border (e.g., `1px solid #6C5DF5` and `background-color` slightly tinted) — this is the "earns visibility when active" visual the design called for
+      - When idle, the button keeps its current minimal styling
+      - **Critical**: use CSS classes and `data-pomo-status` attribute selectors. Do NOT add inline JS styles for the expansion or accent border.
+    - **The clock icon's existing minute-hand sweep animation stays unchanged.** The transform on `.clockIconHand` driven by `syncPomodoroIcon` is correct; don't touch it.
+    - **Popover behavior is unchanged.** Tapping the toggle still opens/closes the popover. The popover still shows mode tabs, the countdown editor, controls, etc. None of that code is modified.
+    - **Critical**: do NOT change `pomodoro.js`. The state machine, durations, alarm sounds, favicon swap, tab-title flash, and audio coordination with music are all working correctly — leave them alone.
+    - **Critical**: do NOT modify `music.js`, `musicVisualizer.js`, the music button (`musicToggle`), or any music-related code. Entry #8 will rework the music/radio toggle separately.
+    - **Critical**: do NOT modify the TODO.md viewer, the INBOX view, the PROJECTS view, the bottom nav, or any code outside the pomodoro toggle's presentation.
+    - **Critical**: the Ctrl+Space global shortcut handler must continue working unchanged. The status pill it shows in the popover header is unrelated to this entry's button-text work.
+    - **One real edge case to handle:** the button's getBoundingClientRect is used to anchor the popover position. When the button expands to include the countdown, the popover's anchor calculation should still work because it reads the rect at popover-open time. But if the popover is open while the button width changes (e.g., the timer ticks while the popover is visible), the popover stays anchored to its initial position. That's existing behavior and acceptable — do NOT add resize/reposition logic for this.
+    - **Test cases to add:**
+      - (a) When pomodoro state is IDLE, the inline countdown span is hidden (no visible text in the button beyond the icon)
+      - (b) When pomodoro state transitions to RUNNING, the inline countdown span becomes visible and shows the formatted time
+      - (c) The countdown text updates as the controller's `remainingMs` decreases (mock the subscribe callback firing with progressively smaller `remainingMs` values)
+      - (d) When pomodoro is paused, the inline countdown still shows (frozen at the paused time)
+      - (e) When pomodoro completes and the user acknowledges, the inline span returns to hidden
+      - (f) The clock icon's existing animation still works (unchanged behavior)
+      - (g) The popover still opens on toggle click (unchanged behavior)
+  - Visual reference: `mobile-final-active.svg` and `desktop-final-active.svg` from the design session — the pomodoro chip shows "18:42" next to a small clock icon, with a subtle purple accent border, when a session is running. When idle, the chip is just the icon (current state).
+  - Out of scope: any music/radio rework (entry #8), any popover redesign, any pomodoro logic changes, any data model changes, any header layout changes outside the pomodoro toggle's expansion. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bbe2e9b0-90fd-4a34-ba78-303f108c466a -->
