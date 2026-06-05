@@ -2288,6 +2288,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-muted);
 }
 
+/* Inbox "coming soon" placeholder — the only node renderInboxPlaceholder()
+   leaves in #inboxView until the real cross-project ideas view ships.
+   #inboxView is a flex column, so margin:auto centers this single child on
+   both axes within the available view area. */
+.inboxPlaceholder {
+  margin: auto;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 /* Count summary line ─ rendered directly under the date header. Each
    segment carries a small dot (overdue / today) plus a label; upcoming
    skips the dot per spec. Empty segments render in muted text so the
