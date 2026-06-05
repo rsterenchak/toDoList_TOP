@@ -266,15 +266,14 @@ describe('header / footer arrow-key navigation', () => {
         expect(branchMatch[0]).toMatch(/preventDefault\(\s*\)/);
     });
 
-    // Pins the ArrowDown drop-in target for each pill: TODAY must land on
-    // the row container (the tabindex="-1" .todayRow.todoRowCard div), not
-    // on the inner .todayRowTitle button. Landing on the button burns the
-    // next ArrowDown keystroke on the document-level "anchor focus to the
-    // row container" branch instead of advancing rows — the user has to
-    // press ArrowDown twice for the first row step. CALENDAR must fall
-    // back to the first in-month cell when no .isSelected cell exists so
-    // the cold-start case (no prior selection) lands inside the visible
-    // month rather than on a dimmed leading day from the prior month.
+    // Pins the ArrowDown drop-in target for each pill. The TODAY view
+    // rendering was removed, so its branch in firstFocusableInActiveMainView
+    // returns null — there is nothing to focus until the INBOX placeholder
+    // ships in a follow-up entry, and the helper must not reach for the
+    // now-nonexistent .todayRow rows. CALENDAR must fall back to the first
+    // in-month cell when no .isSelected cell exists so the cold-start case
+    // (no prior selection) lands inside the visible month rather than on a
+    // dimmed leading day from the prior month.
     function extractFirstFocusableHelper() {
         return extractBlock("function firstFocusableInActiveMainView");
     }
@@ -283,15 +282,14 @@ describe('header / footer arrow-key navigation', () => {
         return extractBlock("function dropFocusIntoMainView");
     }
 
-    it("TODAY: pill ArrowDown target is the .todayRow.todoRowCard div, not the .todayRowTitle button", () => {
+    it("TODAY: pill ArrowDown finds no focusable target (view rendering removed)", () => {
         const body = extractFirstFocusableHelper();
-        // The today branch must query for the row container, not the inner
-        // title button. The title button as the target would re-trigger the
-        // document handler's "anchor focus to row" branch and waste the
-        // first keystroke after the pill drop-in.
+        // With the TODAY dashboard gone, the today branch returns null
+        // immediately instead of querying for .todayRow rows that the view
+        // no longer renders.
         const todayBranch = body.match(/view === ['"]today['"][\s\S]*?return null;/);
         expect(todayBranch).toBeTruthy();
-        expect(todayBranch[0]).toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
+        expect(todayBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
         expect(todayBranch[0]).not.toMatch(/querySelector\(\s*['"]\.todayRowTitle['"]\s*\)/);
     });
 
