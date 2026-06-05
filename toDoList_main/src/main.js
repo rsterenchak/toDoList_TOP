@@ -75,7 +75,7 @@ import {
     reorderToDoDOM,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
-import { wireStatusLabelDelegation } from './todoStatus.js';
+import { wireStatusLabelDelegation, buildStatusLabel } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
@@ -7265,10 +7265,10 @@ function restoreFromStorage(opts) {
 function firstFocusableInActiveMainView() {
     const view = getActiveView();
     if (view === 'inbox') {
-        // The Inbox view renders only the static "coming soon" placeholder
-        // (renderInboxPlaceholder) — no list, input, or other interactive
-        // surface — so there is no focusable element to hand the keystroke
-        // to. The real cross-project ideas view ships in a follow-up entry.
+        // The Inbox view renders the cross-project ideas list (renderInbox).
+        // Its rows expose a status-label control but no ArrowDown drop-in
+        // target is wired for this view, so there is no focusable element to
+        // hand the keystroke to.
         return null;
     }
     if (view === 'calendar') {
@@ -7305,23 +7305,111 @@ function firstFocusableInActiveMainView() {
     return null;
 }
 
-// Render the Inbox view's placeholder. The real cross-project ideas view
-// is a follow-up entry; until then the Inbox shows a single honest
-// "coming soon" surface. Clears #inboxView of any leftover shell nodes
-// (the inert Today date-header / count-summary / empty-state / ghost
-// spacer carried over from the removed Today view) and drops in one
-// centered .inboxPlaceholder element. Idempotent — a no-op once the
-// placeholder is already mounted, and safe to call before component()
-// has built the shell (missing #inboxView short-circuits).
-function renderInboxPlaceholder() {
+// Build one INBOX row for an idea-status todo. The row mirrors the per-
+// project committed-row contract the entry-#2 status popover depends on:
+// id="toDoChild", a data-value carrying the originating project name, and
+// a live __item reference, plus a `.todoStatusLabel` tap target built by
+// the shared buildStatusLabel. That shared wiring is exactly why the row
+// must carry the LIVE in-memory item (returned by
+// getIdeaTodosAcrossProjects) — the popover routes through
+// listLogic.setToDoStatus, which mutates the item in place. The metadata
+// line reads "○ IDEA · <project>"; the title sits below, muted to match
+// the entry-#2 idea styling via CSS (no inline color).
+function buildInboxRow(item, projectName) {
+    const row = document.createElement('div');
+    row.id = 'toDoChild';
+    row.className = 'inboxRow';
+    row.setAttribute('data-value', projectName);
+    row.__item = item;
+
+    // Non-interactive checkbox-style glyph on the left, echoing the per-
+    // project row affordance. Status changes happen through the label.
+    const check = document.createElement('div');
+    check.className = 'inboxRowCheck';
+    check.setAttribute('aria-hidden', 'true');
+    row.appendChild(check);
+
+    const body = document.createElement('div');
+    body.className = 'inboxRowBody';
+
+    const meta = document.createElement('div');
+    meta.className = 'inboxRowMeta';
+    meta.appendChild(buildStatusLabel(item));
+    const proj = document.createElement('span');
+    proj.className = 'inboxRowProject';
+    proj.textContent = '· ' + projectName;
+    meta.appendChild(proj);
+    body.appendChild(meta);
+
+    const title = document.createElement('div');
+    title.className = 'inboxRowTitle';
+    title.textContent = item.tit;
+    body.appendChild(title);
+
+    row.appendChild(body);
+    return row;
+}
+
+// Defer an INBOX re-render to just after a status-change commits. The
+// shared entry-#2 popover lives on document.body and commits via its own
+// bubble-phase click handler that calls stopPropagation(), so a bubble
+// listener here would never see it — a capture-phase document listener
+// fires first instead. The re-render is queued on a microtask so it runs
+// AFTER the synchronous setToDoStatus mutation has landed, by which point
+// the promoted task no longer matches the status==='idea' filter and drops
+// out of the rebuilt list. Scoped to the INBOX view so per-project status
+// changes are untouched. Installed once (idempotent guard).
+let _inboxStatusRerenderWired = false;
+function ensureInboxStatusRerender() {
+    if (_inboxStatusRerenderWired) return;
+    _inboxStatusRerenderWired = true;
+    document.addEventListener('click', function (event) {
+        const opt = event.target.closest && event.target.closest('.todoStatusOption');
+        if (!opt) return;
+        if (getActiveView() !== 'inbox') return;
+        Promise.resolve().then(renderInbox);
+    }, true);
+}
+
+// Render the INBOX view: a cross-project list of every idea-status todo,
+// newest capture first. Clears #inboxView of any leftover shell nodes (the
+// inert Today date-header / count-summary / empty-state / ghost spacer
+// carried over from the removed Today view) and rebuilds its contents from
+// listLogic.getIdeaTodosAcrossProjects(). When no ideas exist anywhere, a
+// single centered .inboxEmptyState message is shown instead. Reuses the
+// entry-#2 status popover by wiring wireStatusLabelDelegation on the
+// persistent #inboxView container (idempotent) and arming the
+// status-change re-render. Safe to call before component() has built the
+// shell (missing #inboxView short-circuits).
+function renderInbox() {
     const inboxView = document.getElementById('inboxView');
     if (!inboxView) return;
-    if (inboxView.querySelector('.inboxPlaceholder')) return;
+
+    // Reuse the entry-#2 status-change popover on the inbox surface. The
+    // delegated handler reads the tapped row's __item + data-value, so it
+    // behaves identically here as on #mainList. Both calls are idempotent.
+    wireStatusLabelDelegation(inboxView);
+    ensureInboxStatusRerender();
+
     while (inboxView.firstChild) inboxView.removeChild(inboxView.firstChild);
-    const placeholder = document.createElement('div');
-    placeholder.className = 'inboxPlaceholder';
-    placeholder.textContent = 'Inbox coming soon';
-    inboxView.appendChild(placeholder);
+
+    const ideas = listLogic.getIdeaTodosAcrossProjects();
+
+    if (!ideas.length) {
+        const empty = document.createElement('div');
+        empty.className = 'inboxEmptyState';
+        empty.textContent =
+            "Nothing captured yet. Ideas you don't commit to right away end up here.";
+        inboxView.appendChild(empty);
+        return;
+    }
+
+    const sections = document.createElement('div');
+    sections.id = 'inboxSections';
+    ideas.forEach(function (entry) {
+        sections.appendChild(buildInboxRow(entry.item, entry.project));
+    });
+    inboxView.appendChild(sections);
 }
 
 // Apply the top-level Inbox / Projects view. Module-scope so both the
@@ -7385,7 +7473,7 @@ function applyActiveView(view) {
         // return trip to PROJECTS, updateMobileProjHeader re-paints from
         // the still-selected row instead of being stuck with
         // data-empty="true".
-        renderInboxPlaceholder();
+        renderInbox();
     } else if (safe === 'calendar') {
         // Same reasoning as TODAY — keep .selectedProject set so PROJECTS
         // returns to a populated mobile header. CALENDAR owns the main

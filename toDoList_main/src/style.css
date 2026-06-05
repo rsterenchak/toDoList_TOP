@@ -2288,16 +2288,70 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-muted);
 }
 
-/* Inbox "coming soon" placeholder — the only node renderInboxPlaceholder()
-   leaves in #inboxView until the real cross-project ideas view ships.
-   #inboxView is a flex column, so margin:auto centers this single child on
-   both axes within the available view area. */
-.inboxPlaceholder {
+/* INBOX empty state — the only node renderInbox() leaves in #inboxView when
+   no idea-status todos exist anywhere. #inboxView is a flex column, so
+   margin:auto centers this single child on both axes within the view area. */
+.inboxEmptyState {
   margin: auto;
+  max-width: 320px;
   text-align: center;
   font-family: inherit;
   font-size: 14px;
+  line-height: 1.5;
   color: var(--text-muted);
+}
+
+/* INBOX idea rows — one card per cross-project idea capture. The metadata
+   line carries the shared entry-#2 .todoStatusLabel ("○ IDEA") followed by
+   the originating project name; the title sits below, muted to match the
+   idea state. */
+.inboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle, var(--text-muted));
+  border-radius: 10px;
+  background: var(--bg-elevated, transparent);
+  cursor: default;
+}
+
+.inboxRowCheck {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 50%;
+}
+
+.inboxRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.inboxRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inboxRowProject {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.inboxRowTitle {
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  word-break: break-word;
 }
 
 /* Count summary line ─ rendered directly under the date header. Each
