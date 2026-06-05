@@ -179,3 +179,20 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 001d37a4-0a6e-4c33-b7bb-96d81e15d3a2 -->
+
+- [ ] **[LOW]** Remove the hamburger menu button from the mobile header
+  - Type: feature
+  - Description: Remove the hamburger menu button (☰) from the mobile header. It opens the same menu as tapping the project name + chevron, so it's pure redundancy. The project-name-plus-chevron tap target remains the single way to open the menu. The compressed header (from entry #4) gains a small amount of horizontal space on the right side of the row, which can be left empty for now (future entries will add pomodoro/radio chips there). Desktop layout is unchanged — only the mobile compressed header loses the hamburger.
+  - Implementation notes:
+    - Find the hamburger element in `main.js` (likely rendered as `☰` or via a class like `.hamburger-menu` or similar — grep for "menu" or "burger" or the unicode "☰").
+    - Remove the DOM element and its event listener registration. If the element is conditionally rendered, remove the conditional rendering. If it's always-present, remove the markup outright.
+    - Remove or clean up any CSS rules that exclusively styled the hamburger. Don't remove shared/utility rules.
+    - The handler the hamburger called (the menu opener) stays — it's still used by the project-name tap target. Only the hamburger affordance goes.
+    - Verify on desktop that the hamburger is not present there either (if it was a mobile-only element, this might be a no-op for desktop; if it was always-present, desktop loses it too — confirm that's the intended behavior).
+    - **Critical**: do NOT modify the TODO.md viewer or its header. This entry only affects the main app header.
+    - Existing interactions to verify after merge: tapping the project name still opens the menu, the menu has all the same items it did before, the menu dismisses normally (tap outside or item), no console errors about missing element references.
+    - Add tests for: (a) the hamburger element is no longer in the DOM at mobile breakpoint, (b) tapping the project name still opens the menu (regression check).
+  - Out of scope: any other header changes, adding pomodoro/radio chips to the freed space (separate future entry), any layout adjustments beyond removing the one element.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: dd0fa88d-4eb9-4b88-ace8-57ac42586cdc -->
