@@ -75,6 +75,7 @@ import {
     reorderToDoDOM,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
+import { wireStatusLabelDelegation } from './todoStatus.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -198,6 +199,10 @@ function component() {
     // full contract — the listener attaches in capture phase so it can run
     // before the original descToggle / completedHeader click handlers.
     wireExclusiveCompletedDescCollapse(mainList);
+    // Single delegated handler for the per-row status badges. One listener on
+    // the list parent (rather than a per-row binding) avoids the double-fire
+    // that module-level registration can hit under the entry-bundle re-eval.
+    wireStatusLabelDelegation(mainList);
 
     sidebarToggle.id        = 'sidebarToggle';
     sidebarToggle.type      = 'button';
