@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-05',
-        added: [
-            "Dictate into the Claude chat with a new mic button — your speech is transcribed into the message field for you to review and send.",
-        ],
         changed: [
             "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
             "The redundant hamburger button has been removed from the mobile header — tap the project name and chevron to open the menu as before.",
             "The TODAY tab no longer shows its overdue/today/upcoming task dashboard while that view is being reworked.",
             "The bottom-nav tab once labeled TODAY is now labeled INBOX, with a matching inbox tray icon.",
+            "The Pomodoro timer button now expands to show a live countdown next to its clock icon, with a purple accent border, while a session is running or paused.",
         ],
     },
 ];

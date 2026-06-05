@@ -7901,6 +7901,28 @@ html[data-sidebar-rail="off"] #projChild::before {
 #pomodoroToggle[data-pomo-status="PAUSED"] {
   color: var(--accent);
   border-color: var(--accent);
+  /* Earn horizontal space for the inline countdown when a session is in
+     flight; collapses back to the 36×36 icon-only chip when idle. */
+  width: auto;
+  min-width: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--accent);
+  background: var(--bg-hover);
+}
+/* Inline countdown text inside the toggle. Hidden by default; only shown
+   while the session is running or paused (keyed off data-pomo-status). */
+.pomodoroCountdownInline {
+  display: none;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+#pomodoroToggle[data-pomo-status="RUNNING"] .pomodoroCountdownInline,
+#pomodoroToggle[data-pomo-status="PAUSED"] .pomodoroCountdownInline {
+  display: inline;
 }
 /* Pulse the icon briefly when a session completes, then settle into a
    solid-fill accent state held until acknowledged. */

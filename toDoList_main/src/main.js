@@ -260,7 +260,10 @@ function component() {
         '<g class="clockIconHand" transform="rotate(0 12 14)">' +
         '<line x1="12" y1="14" x2="12" y2="9"/>' +
         '</g>' +
-        '</svg>';
+        '</svg>' +
+        // Inline countdown, hidden until a session is running/paused (CSS keys
+        // off the button's data-pomo-status). Populated by syncPomodoroIcon.
+        '<span class="pomodoroCountdownInline" aria-hidden="true"></span>';
 
     function getPomodoroController() {
         return ensurePomodoro();
@@ -284,6 +287,18 @@ function component() {
         progress = Math.max(0, Math.min(1, progress));
         const hand = pomodoroToggle.querySelector('.clockIconHand');
         if (hand) hand.setAttribute('transform', 'rotate(' + (progress * 360).toFixed(2) + ' 12 14)');
+        // Inline countdown: show the live MM:SS next to the icon while a
+        // session is running or paused; clear it otherwise. CSS controls the
+        // span's visibility via the button's data-pomo-status attribute, so we
+        // only need to keep the text content in sync here.
+        const inline = pomodoroToggle.querySelector('.pomodoroCountdownInline');
+        if (inline) {
+            if (snap.status === 'RUNNING' || snap.status === 'PAUSED') {
+                inline.textContent = formatMMSS(Math.round((snap.remainingMs || 0) / 1000));
+            } else {
+                inline.textContent = '';
+            }
+        }
     }
 
     function hidePomodoroPopover() {
