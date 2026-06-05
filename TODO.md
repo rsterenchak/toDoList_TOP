@@ -157,7 +157,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a0b9c04f-6e31-4142-b4e0-30622f0f1309 -->
 
-- [ ] **[MEDIUM]** Compress the mobile header to a single row
+- [x] **[MEDIUM]** Compress the mobile header to a single row — Completed: 2026-06-05
   - Type: feature
   - Description: Replace the current stacked mobile header (large project name on one line, "15 OPEN / 127 DONE" pill counts on a second line, hamburger menu on its own row) with a single compressed row. The new header sits on one row containing: the current project name as the title (full name as stored, e.g., "Task Management App" or "BookHavenBookstore_Sophia") in smaller bold purple, a small dropdown chevron "▼" indicating the workspace picker is still tappable here, the counts inline as plain text with middot separators ("15 open · 127 done"), and the hamburger menu on the far right. Long project names are truncated with ellipsis to fit available width — do NOT introduce a separate "display name" or shorthand layer. Saves approximately 50-60px of vertical space, allowing 1-2 more task rows to be visible without scrolling. The status bar (time, signal) above the header is unchanged. Below the header, the filter pills row (from entry #3) and the compose row remain unchanged. This entry is mobile-only — at desktop breakpoints, the header retains its current larger sizing for now (desktop redesign is a separate future entry, intentionally deferred).
   - Implementation notes:
