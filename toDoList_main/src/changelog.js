@@ -10,6 +10,9 @@ export const changelog = [
             "Tasks now show a workflow-status badge — Active, In Progress, or Idea — and tapping it opens a quick menu to change the status.",
             "Filter pills above the task list (ALL / Active / Ideas) show all tasks, just active work, or just ideas, each with a live count, and your choice is remembered across reloads.",
         ],
+        changed: [
+            "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
+        ],
     },
     {
         version: '1.1',
@@ -19,13 +22,6 @@ export const changelog = [
         ],
         fixed: [
             "The Claude assistant's message box background now reads as a distinct field again instead of blending into the chat area.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-03',
-        changed: [
-            "The attach (📎) button now sits in the Claude chat composer between the message box and the Send button.",
         ],
     },
 ];
