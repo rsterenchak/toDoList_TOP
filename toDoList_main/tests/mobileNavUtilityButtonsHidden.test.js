@@ -10,11 +10,13 @@ function read(relative) {
 }
 
 // Pins the STACK mobile nav contract: at the ≤700px breakpoint the
-// pomodoro, music, and ghost-menu triggers in #navBar are hidden so the
-// nav reads as just the hamburger toggle on the left. The three desktop
-// triggers either migrate to the bottom sheet (pomodoro + music) or are
-// mirrored in the drawer (ghost menu actions), so the icon cluster has
-// no place in the STACK mobile chrome.
+// pomodoro, music, and ghost-menu triggers in #navBar are hidden, and the
+// hamburger (#sidebarToggle) is hidden too — it opened the same drawer as
+// tapping the project name + ▾ chevron in the compressed header, so on
+// mobile it was pure redundancy. The desktop triggers either migrate to
+// the bottom sheet (pomodoro + music) or are mirrored in the drawer (ghost
+// menu actions), so the icon cluster has no place in the STACK mobile
+// chrome.
 describe('STACK mobile nav utility buttons hidden', () => {
     const css = read('style.css');
 
@@ -94,29 +96,13 @@ describe('STACK mobile nav utility buttons hidden', () => {
         expect(hit).not.toBeNull();
     });
 
-    it('#sidebarToggle (hamburger) is NOT unconditionally hidden — it remains the only nav button on mobile when the drawer is closed', () => {
-        // Strip comments so the source narrative around #sidebarToggle
-        // (which can mention "display: none" elsewhere) can't be matched.
-        // The hamburger may be hidden conditionally while the drawer is
-        // open (see stackDrawerHidesHamburger.test.js) — that selector
-        // gates on #sideBar.sidebar-open, so it's not an unconditional
-        // hide and is allowed here.
-        const blocks = allMobileMediaBlocks();
-        for (const block of blocks) {
-            const stripped = block.text.replace(/\/\*[\s\S]*?\*\//g, '');
-            const ruleRe = /([^{}]+)\{([^}]*)\}/g;
-            let match;
-            while ((match = ruleRe.exec(stripped)) !== null) {
-                const selectorList = match[1];
-                const body = match[2];
-                if (!/#sidebarToggle\b/.test(selectorList)) continue;
-                if (!/display:\s*none/.test(body)) continue;
-                if (/#sideBar\.sidebar-open/.test(selectorList)) continue;
-                throw new Error(
-                    'sidebarToggle is unconditionally hidden by mobile rule: ' + selectorList.trim()
-                );
-            }
-        }
+    it('#sidebarToggle (hamburger) is hidden at the mobile breakpoint — the project name + chevron is the sole menu affordance', () => {
+        // The hamburger was redundant on mobile (it opened the same drawer
+        // as tapping the project name + ▾ chevron), so it is now hidden
+        // outright at this breakpoint. Confirm a mobile rule sets it to
+        // display:none.
+        const hit = findHidingBlock('#sidebarToggle');
+        expect(hit, 'expected a mobile display:none rule for #sidebarToggle').not.toBeNull();
     });
 
     it('the mobile hide rules come AFTER the desktop rules so source order wins', () => {

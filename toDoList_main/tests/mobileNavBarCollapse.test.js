@@ -10,11 +10,11 @@ function read(relative) {
 }
 
 // Pins the STACK mobile nav-bar collapse: at the ≤700px breakpoint the
-// dedicated 44px nav band above the project header disappears, and the
-// hamburger toggle re-anchors to the top-right of the viewport visually
-// aligned with PROJECT N OF M. The change is CSS-only — #sidebarToggle
-// stays a child of #navBar in the DOM but is repositioned absolutely so
-// the desktop fallback (701px+) keeps the existing flex-row chrome.
+// dedicated 44px nav band above the project header disappears. The
+// hamburger toggle is hidden on mobile (it was redundant with the project
+// name + ▾ chevron drawer tap), but #sidebarToggle stays a child of
+// #navBar in the DOM so the desktop fallback (701px+) keeps the existing
+// flex-row chrome and the rail toggle.
 describe('STACK mobile nav-bar collapse', () => {
     const css = read('style.css');
 
@@ -52,12 +52,11 @@ describe('STACK mobile nav-bar collapse', () => {
     });
 
     it('#navBar collapses to invisible 0-height chrome on mobile (not display:none)', () => {
-        // display:none on #navBar would also hide the #sidebarToggle child
-        // — so we collapse the box (height:0, no padding/border/background)
-        // and use overflow:visible to let the absolutely-positioned toggle
-        // render outside its 0-height parent. The other navBar children
-        // (pomodoro/music/settings) are already display:none on mobile via
-        // the rules pinned in mobileNavUtilityButtonsHidden.test.js.
+        // The box collapses (height:0, no padding/border/background) with
+        // overflow:visible rather than display:none. All navBar children are
+        // hidden on mobile (hamburger + pomodoro/music/settings via the
+        // rules pinned in mobileNavUtilityButtonsHidden.test.js), but the
+        // box is kept rendering so the desktop fallback is a pure unset.
         const rule = extractMobileRule('#navBar');
         expect(rule).toMatch(/height:\s*0/);
         expect(rule).toMatch(/min-height:\s*0/);
@@ -68,25 +67,14 @@ describe('STACK mobile nav-bar collapse', () => {
         expect(rule).not.toMatch(/display:\s*none/);
     });
 
-    it('#sidebarToggle anchors absolutely at the top-right of the viewport on mobile', () => {
-        // Position resolves against #navBar's existing position:relative
-        // (which sits at top:0 with 0 height after the collapse), so the
-        // top/right offsets land the hamburger at viewport-top coordinates.
-        // safe-area-inset-top tucks it below the iOS Dynamic Island.
+    it('#sidebarToggle is hidden on mobile (redundant with the project-name drawer tap)', () => {
+        // The hamburger opened the same drawer as tapping the project name +
+        // ▾ chevron, so on mobile it is hidden outright. No absolute
+        // positioning or hit-target sizing remains — the rule collapses to
+        // display:none. The desktop rail toggle (701px+) is untouched.
         const rule = extractMobileRule('#sidebarToggle');
-        expect(rule).toMatch(/position:\s*absolute/);
-        expect(rule).toMatch(/top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/);
-        expect(rule).toMatch(/right:\s*12px/);
-        expect(rule).toMatch(/z-index:\s*20/);
-    });
-
-    it('#sidebarToggle remains a ≥44×44 hit target on mobile', () => {
-        // CLAUDE.md mobile rule + STACK acceptance criterion. Desktop is
-        // 36×36; the breakpoint override bumps it to satisfy the touch
-        // target standard.
-        const rule = extractMobileRule('#sidebarToggle');
-        expect(rule).toMatch(/width:\s*44px/);
-        expect(rule).toMatch(/height:\s*44px/);
+        expect(rule).toMatch(/display:\s*none/);
+        expect(rule).not.toMatch(/position:\s*absolute/);
     });
 
     it('#viewSwitcher is display:none on mobile (bottom tab bar is the sole navigator)', () => {

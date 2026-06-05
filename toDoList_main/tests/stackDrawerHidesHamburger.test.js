@@ -9,12 +9,14 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the rule that hides #sidebarToggle while the mobile drawer is
-// open. Without this, the hamburger paints on top of the drawer's
-// surface in the top-right corner — stacking it with the drawer's own
-// X close button. The drawer's three-way close vocabulary (X button,
-// backdrop, Escape) is unaffected; this is purely a visual rule.
-describe('STACK mobile drawer — hides hamburger toggle while open', () => {
+// The hamburger (#sidebarToggle) is now hidden on mobile outright — it
+// opened the same drawer as tapping the project name + ▾ chevron, so it was
+// pure redundancy. That unconditional hide subsumes the old "hide the
+// hamburger only while the drawer is open" rule (which existed so the
+// hamburger wouldn't paint over the open drawer's X close button). This
+// file pins that the unconditional mobile hide is in place and that the
+// now-obsolete drawer-open-gated rule has been removed.
+describe('STACK mobile drawer — hamburger hidden on mobile', () => {
     const css = read('style.css');
 
     function mobileBlock() {
@@ -32,22 +34,14 @@ describe('STACK mobile drawer — hides hamburger toggle while open', () => {
         return css.slice(media, end);
     }
 
-    it('hides #sidebarToggle when #sideBar.sidebar-open is present', () => {
-        const block = mobileBlock();
-        // The :has() selector lets the rule live in CSS alone — no JS
-        // change required to toggle a body class on open/close.
-        expect(block).toMatch(
-            /body:has\(\s*#sideBar\.sidebar-open\s*\)\s*#sidebarToggle\s*\{[^}]*display:\s*none/
-        );
+    it('hides #sidebarToggle unconditionally at the mobile breakpoint', () => {
+        const block = mobileBlock().replace(/\/\*[\s\S]*?\*\//g, '');
+        expect(block).toMatch(/#sidebarToggle\s*\{\s*display:\s*none;?\s*\}/);
     });
 
-    it('rule lives inside the ≤700px breakpoint (desktop layout untouched)', () => {
-        // Confirm the rule does not leak outside the mobile media query
-        // — desktop 701px+ keeps the persistent rail and never hides the
-        // toggle.
-        const fullMatches = css.match(/body:has\(\s*#sideBar\.sidebar-open\s*\)\s*#sidebarToggle/g) || [];
-        const mobileMatches = mobileBlock().match(/body:has\(\s*#sideBar\.sidebar-open\s*\)\s*#sidebarToggle/g) || [];
-        expect(fullMatches.length).toBe(mobileMatches.length);
-        expect(mobileMatches.length).toBeGreaterThanOrEqual(1);
+    it('drops the now-obsolete drawer-open-gated hamburger hide rule', () => {
+        // With the hamburger hidden on mobile outright, a rule gated on
+        // #sideBar.sidebar-open is redundant and must not linger.
+        expect(css).not.toMatch(/body:has\(\s*#sideBar\.sidebar-open\s*\)\s*#sidebarToggle/);
     });
 });
