@@ -134,3 +134,25 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/listLogic.js` (only if a new wrapper is needed; reuse existing update path otherwise), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a8142c2-8e37-42b1-ab03-8cb83c5a06e3 -->
+
+- [ ] **[MEDIUM]** Add filter pills above the task list (ALL / Active / Ideas)
+  - Type: feature
+  - Description: Add three filter pills above the task list that filter the visible rows by status. "ALL" (default, selected on load) shows everything. "Active" shows tasks with status `active` OR `in_progress` (the committed work, regardless of in-flight state). "Ideas" shows tasks with status `idea`. Each pill displays a count of matching tasks in parentheses (e.g., "ALL 15", "Active 6", "Ideas 9"). Tapping a pill switches the filter and updates the visible list immediately (client-side filter, no re-fetch from Supabase). The selected pill is visually distinguished (purple fill for selected, dark fill with subtle border for unselected). Filter state persists across page reloads via localStorage (so if you closed the app while filtered to Ideas, reopening returns you to Ideas).
+  - Implementation notes:
+    - Pill row sits above the compose row ("+ Type the next...") and below the header. Three pills, left-aligned.
+    - Use CSS classes for selected vs unselected states. Selected pill: purple background (#6C5DF5), white/bright text. Unselected: dark background (#15151e), muted text, subtle border (#2a2a3a). Match the design tokens already in use.
+    - Filter logic is client-side — apply a filter to the array of todos in memory before rendering. Do NOT add a new Supabase query or modify existing queries. The filter is a view concern, not a data concern.
+    - "Active" filter means `status === 'active' || status === 'in_progress'`. Not just `active` — in-progress is a subset of active work, and including it matches user intent ("show me what I'm working on or committed to").
+    - "Ideas" filter means `status === 'idea'`.
+    - Counts displayed in the pills are computed from the current full task list (not filtered) — they always show how many tasks would be visible under each filter, regardless of which is selected. This is intentional: the counts inform you about all three states at once.
+    - Selected filter persists to localStorage under a key like `taskFilter` with values `'all'`, `'active'`, `'ideas'`. On app load, read the persisted value and apply (default to `'all'` if missing/unreadable).
+    - **Use event delegation** for pill clicks (same pattern as entry #2's label clicks — avoid module-level listener registration to prevent the multiple-evaluation bug).
+    - **Critical**: do NOT modify the TODO.md viewer or any component reading from `TODO.md`. This entry only affects the Supabase-backed task list (the `todos` table). Different data source, different rendering path, untouched.
+    - Existing row interactions (checkbox toggle, status label tap, copy, calendar icon) must keep working unchanged when filtered. The filter only affects which rows are *visible*, not their interactivity.
+    - Edge case: if the filter would show zero tasks (e.g., "Ideas" selected but you have 0 idea-status tasks), show an empty state — small centered text like "No ideas captured yet" or "Nothing in progress." Don't show a blank list.
+    - Add tests for: (a) each filter shows the correct subset of tasks, (b) counts in pills match the full task list regardless of selected filter, (c) filter state persists across simulated reloads (mock localStorage), (d) selecting a filter doesn't trigger a Supabase re-fetch (verify no new network calls).
+  - Visual reference: `mobile-final-idle.svg` and `mobile-org-C-tagged.svg` — the three pill row at the top of the task list.
+  - Out of scope: any header compression, status indicators (already shipped in entry #2), pomodoro/radio chips, voice mic, any layout changes outside the new pill row. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a0b9c04f-6e31-4142-b4e0-30622f0f1309 -->
