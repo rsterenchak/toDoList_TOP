@@ -139,3 +139,47 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05 — duplicate of id cee67d5f; already shipped via PR #380, no code change needed
   <!-- id: f2f9338d-b189-48f9-862f-1d01df45d4eb -->
+
+- [ ] **[MEDIUM]** Add mic icon to chat input for voice transcription
+  - Type: feature
+  - Description: Add a microphone icon button to the chat input row inside the Claude chat sheet. Tapping the mic starts browser-native speech recognition (`webkitSpeechRecognition` on Safari/iOS, `SpeechRecognition` on Chrome/Android); transcribed text appears in the existing chat input field as the user speaks. The user can edit the transcription before sending or send as-is via the existing send button. This is purely an alternative input modality — voice becomes another way to type into chat. Sonnet handles the resulting message the same way it handles any typed message; there is NO new routing logic, NO separate voice-to-todo pipeline, NO server-side processing. Mic permission is requested when the user first taps the mic button; if denied, the button shows a subtle disabled state and a tooltip explaining the permission. The icon sits inside the chat input row, positioned just before the existing send button.
+  - Implementation notes:
+    - All work happens in `claudeSheet.js` (the chat sheet UI). The chat input row currently has a text input and a send button; this entry adds a mic button between them (closer to the send button than to the text input).
+    - **Feature detection:** check `'webkitSpeechRecognition' in window || 'SpeechRecognition' in window` at module load. If neither exists, the mic button should NOT render at all (silently hide the feature on unsupported browsers, don't show a broken affordance). Most modern browsers support one or the other.
+    - **The mic button DOM element:**
+      - Small circular button (matching the existing send button's visual weight)
+      - Microphone icon (inline SVG, simple — a vertical rounded rectangle with a base stem, or any clear mic glyph)
+      - Three visual states via CSS classes: idle (subtle gray/muted color), recording (purple accent matching the app's design tokens, possibly with a pulse animation), denied (faded with reduced opacity)
+      - `aria-label` of "Voice input" or "Dictate"
+      - Sits inside the chat input row, positioned between the text input and the send button
+    - **Recording behavior:**
+      - First tap: request mic permission via the speech recognition API. If granted, start recording. If denied, set the button to the denied state and show a small inline message or tooltip (handled below).
+      - During recording: the button's state flips to "recording" (visual change), the speech recognition API runs in the background, and as transcribed text arrives via `onresult` events, append (or replace, depending on the API mode) the text into the chat input field. The user sees the transcription appear in real time.
+      - Second tap (while recording): stops recording. The transcribed text remains in the chat input for the user to review/edit/send.
+      - Use `recognition.continuous = false` and `recognition.interimResults = true` for a natural dictation feel — interim results show as the user speaks, final result commits when there's a pause.
+      - Use `recognition.lang = navigator.language || 'en-US'` so it respects the user's browser locale.
+    - **Permission denial UX:**
+      - If `onerror` fires with `'not-allowed'` or `'permission-denied'`, set the mic button to the "denied" CSS state.
+      - Show a small inline message near the chat input (or a tooltip on hover/focus) explaining: "Microphone permission denied. Enable in browser settings to use voice input." Or shorter — your call.
+      - Do NOT block the rest of the chat functionality; text typing must still work normally.
+    - **Critical**: do NOT add any routing logic that distinguishes voice input from typed input. The transcribed text appears in the input field; the user (or auto-send if they choose) sends it like any other message. Sonnet receives it identically.
+    - **Critical**: do NOT add any new API endpoints, new tools, new Supabase tables, or any backend changes. This is a pure frontend feature using browser-native speech recognition.
+    - **Critical**: do NOT auto-send transcribed text. The user must explicitly tap send. Auto-send is a footgun for voice — false starts, background noise, partial transcriptions could all trigger unwanted sends.
+    - **Critical**: do NOT modify the TODO.md viewer, the chat input rendering outside the chat sheet, the workspace pill, the runs tab, the project list view, the INBOX view, any pomodoro / music code, any other surface.
+    - **Critical**: do NOT use inline JS styles for the mic button's states. Use CSS classes (`.micButton`, `.micButton--recording`, `.micButton--denied`).
+    - **iOS PWA gotcha worth handling:** iOS PWAs sometimes require mic permission to be re-granted per session. If `recognition.start()` throws or fails silently, retry once with a fresh permission request. If still failing, set the denied state.
+    - **Cleanup on chat sheet close:** if the chat sheet is dismissed while recording is active, stop the recognition. Don't leave a dangling recording in the background.
+    - Add tests for:
+      - (a) The mic button renders when `webkitSpeechRecognition` is available
+      - (b) The mic button does NOT render when speech recognition is unavailable (feature detection works)
+      - (c) Tapping the button enters the "recording" state (CSS class applied)
+      - (d) Tapping again exits the recording state
+      - (e) Transcribed text populates the chat input field
+      - (f) Permission denial transitions the button to the "denied" state
+      - (g) Closing the chat sheet stops any active recording
+      - (h) The send button still works normally with transcribed text (no special routing)
+  - Visual reference: `mobile-final-chat-expanded.svg` from the design session — the mic icon appears in the chat input row, to the left of the send button, as a small subtle button. When recording, it gets the purple accent color matching the app's design language.
+  - Out of scope: any auto-send of transcribed text, any voice-to-todo direct routing, any AI-based intent classification of voice input, any server-side transcription (Whisper API, etc.), any modifications outside `claudeSheet.js` and the chat input UX. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b002dad1-c8b4-4f85-aebe-9f563e386dab -->
