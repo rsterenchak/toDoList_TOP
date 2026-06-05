@@ -180,7 +180,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 001d37a4-0a6e-4c33-b7bb-96d81e15d3a2 -->
 
-- [ ] **[LOW]** Remove the hamburger menu button from the mobile header
+- [x] **[LOW]** Remove the hamburger menu button from the mobile header — Completed: 2026-06-05
   - Type: feature
   - Description: Remove the hamburger menu button (☰) from the mobile header. It opens the same menu as tapping the project name + chevron, so it's pure redundancy. The project-name-plus-chevron tap target remains the single way to open the menu. The compressed header (from entry #4) gains a small amount of horizontal space on the right side of the row, which can be left empty for now (future entries will add pomodoro/radio chips there). Desktop layout is unchanged — only the mobile compressed header loses the hamburger.
   - Implementation notes:

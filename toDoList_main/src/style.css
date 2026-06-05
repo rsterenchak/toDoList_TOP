@@ -5142,13 +5142,11 @@ body.row-dragging * { cursor: grabbing !important; }
      mode. The footer keeps its bottom inset; the top inset moves to
      #mobileProjHeader (see below) since #navBar collapses on mobile. */
 
-  /* Collapse the desktop nav band to zero-height invisible chrome.
-     #sidebarToggle is the only navBar child still meaningful on mobile
-     (pomodoro / music / settings are display:none here), so we strip
-     navBar's box but keep it rendering — its position:relative anchor
-     and overflow:visible let the absolutely-positioned hamburger child
-     escape the 0-height track. The grid override above also reserves
-     0 for the nav row so #mainSec sits flush at viewport top. */
+  /* Collapse the desktop nav band to zero-height invisible chrome. All
+     navBar children are hidden on mobile (the hamburger via #sidebarToggle
+     below; pomodoro / music / settings are display:none here), so we strip
+     navBar's box but keep it rendering. The grid override above also
+     reserves 0 for the nav row so #mainSec sits flush at viewport top. */
   #navBar {
     padding: 0;
     border: none;
@@ -5158,20 +5156,13 @@ body.row-dragging * { cursor: grabbing !important; }
     overflow: visible;
   }
 
-  /* Hamburger absolute-anchored to the top-right of the viewport,
-     visually aligning with PROJECT N OF M in the project header
-     directly below the collapsed nav. position:absolute resolves
-     against #navBar's position:relative; with navBar at top:0 and
-     0 height, the offsets compute to viewport-top coordinates.
-     Bumped from the desktop 36×36 to 44×44 to meet the touch hit
-     target standard. */
+  /* The hamburger is redundant on mobile: tapping the project name + ▾
+     dropdown chevron in the compressed header opens the same drawer, so
+     the hamburger affordance is hidden entirely at this breakpoint. The
+     desktop nav-anchored hamburger (#sidebarToggle at ≥701px) is
+     unchanged and still toggles the icon rail. */
   #sidebarToggle {
-    position: absolute;
-    top: calc(max(env(safe-area-inset-top, 0px), 24px) + 8px);
-    right: 12px;
-    width: 44px;
-    height: 44px;
-    z-index: 20;
+    display: none;
   }
 
   /* The view-switch pill cluster duplicates the destinations offered
@@ -5286,14 +5277,6 @@ body.row-dragging * { cursor: grabbing !important; }
       #000 calc(100% - 18px),
       transparent
     );
-  }
-
-  /* Hide the hamburger toggle while the drawer is open so the drawer's
-     own X close button is the sole top-right control — otherwise the
-     hamburger paints over the open drawer and stacks two controls in
-     the same corner. */
-  body:has(#sideBar.sidebar-open) #sidebarToggle {
-    display: none;
   }
 
   .dragHandle { opacity: 1; }
@@ -9500,9 +9483,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      name flanked by ‹ ›, separate counts row) into ONE ~40px row: the
      project name + ▾ dropdown chevron on the left, and the open/done
      counts as inline plain text ("15 open · 127 done") pushed to the
-     right. The hamburger stays absolute-positioned at the top-right via
-     #sidebarToggle (unchanged); the header reserves right padding so the
-     inline counts never slide underneath it. The legacy ‹ › carousel
+     right. The hamburger is hidden on mobile (see #sidebarToggle above);
+     the header keeps a right-side gap — formerly the hamburger's slot,
+     now free space for future header chips — so the inline counts sit
+     clear of the right edge. The legacy ‹ › carousel
      chevrons and the PROJECT N OF M label hide here — the dropdown
      chevron's tap-to-open-drawer affordance owns project switching on
      mobile. */
@@ -9511,8 +9495,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     align-items: center;
     gap: 10px;
     min-height: 40px;
-    /* Right padding clears the 44px hamburger anchored at right:12px so
-       the inline counts never slide beneath it. */
+    /* Right padding keeps a gap at the right edge of the row — formerly
+       the hamburger's slot, now free space reserved for future header
+       chips — so the inline counts don't hug the edge. */
     padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 8px) 60px 8px 16px;
   }
 

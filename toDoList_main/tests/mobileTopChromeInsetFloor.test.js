@@ -13,10 +13,11 @@ function read(relative) {
 // On any context where env(safe-area-inset-top) reports 0 — regular browser
 // tabs on iOS Safari / Chrome and any non-notched device — the prior
 // calc(env(..., 0px) + Npx) form collapsed to just the Npx floor, so the
-// browser status bar / URL bar visually clashed with the hamburger and
-// project header. Wrapping the inset in max(env(...), 24px) guarantees
-// breathing room everywhere while still expanding to the real inset on
-// notched standalone PWAs.
+// browser status bar / URL bar visually clashed with the project header.
+// Wrapping the inset in max(env(...), 24px) guarantees breathing room
+// everywhere while still expanding to the real inset on notched standalone
+// PWAs. (The hamburger no longer carries an inset offset — it is hidden on
+// mobile — so the project header and welcome empty state own the floor.)
 describe('Mobile top chrome max() inset floor', () => {
     const css = read('style.css');
 
@@ -42,11 +43,13 @@ describe('Mobile top chrome max() inset floor', () => {
         return match[1];
     }
 
-    it('#sidebarToggle floors the safe-area inset at 24px so it never hugs the viewport top', () => {
+    it('#sidebarToggle is hidden on mobile, so it carries no top-inset offset', () => {
+        // The hamburger is redundant on mobile and hidden outright, so its
+        // former safe-area top offset is gone — the inset floor now lives on
+        // the project header and welcome empty state (asserted below).
         const rule = extractMobileRule('#sidebarToggle');
-        expect(rule).toMatch(
-            /top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/
-        );
+        expect(rule).toMatch(/display:\s*none/);
+        expect(rule).not.toMatch(/top:\s*calc/);
     });
 
     it('#mobileProjHeader floors the safe-area inset at 44px in its top padding to clear iOS status bar / Dynamic Island', () => {

@@ -65,12 +65,13 @@ describe('STACK mobile welcome empty-state safe-area-inset-top', () => {
         );
     });
 
-    it('#sidebarToggle keeps its safe-area-inset-top offset on mobile (hamburger on both screens)', () => {
-        // The hamburger is the only top-bar control on both screens (welcome
-        // empty state and projects-loaded). It must clear the status bar.
+    it('#sidebarToggle is hidden on mobile (no longer a top-bar control on either screen)', () => {
+        // The hamburger was redundant with the project name + ▾ chevron
+        // drawer tap, so it is hidden on mobile. With no painted hamburger,
+        // the status-bar clearance is owned by #mobileProjHeader (projects
+        // screen) and #emptyState.emptyStateNoProjects (welcome screen),
+        // both asserted above.
         const rule = extractMobileRule('#sidebarToggle');
-        expect(rule).toMatch(
-            /top:\s*calc\(\s*max\(\s*env\(safe-area-inset-top[^)]*\)\s*,\s*24px\s*\)\s*\+\s*8px\s*\)/
-        );
+        expect(rule).toMatch(/display:\s*none/);
     });
 });
