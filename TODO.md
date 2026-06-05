@@ -91,3 +91,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4fdde09b-0ac0-4d0e-96f7-838616cfb38a -->
+
+- [ ] **[LOW]** Revert Claude composer textarea background to `#15151e`
+  - Type: bug
+  - Description: The composer input in the Claude sheet was changed from its original background color. Revert the `textarea` (or composer input element) background in the Claude sheet back to `#15151e`, matching the header strip tone so the input reads as a distinct field without a strong color pop. The fix is a one-line CSS change targeting the composer textarea inside `.claudeSheet`. Look for the relevant rule in `toDoList_main/src/style.css` scoped to the Claude sheet composer area.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6a4c1126-c1b8-4c9f-bfd3-f0a2afe17bf7 -->
