@@ -1628,6 +1628,38 @@ body:has(#settingsMenu) #claudeLauncher {
   cursor: not-allowed;
 }
 
+/* Voice dictation button — sits in the composer just before Send. Idle is a
+   muted glyph matching the attach button's weight; recording flips to the
+   purple accent with a pulse; denied fades it back. */
+.micButton {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-mid);
+  cursor: pointer;
+}
+.micButton--recording {
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  animation: micPulse 1.4s ease-in-out infinite;
+}
+.micButton--denied {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+
 /* CLAUDE ATTACHMENTS — file picker dropdown, chips, and thread intro row. */
 .claudeAttach {
   position: relative;
