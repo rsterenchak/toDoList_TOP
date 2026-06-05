@@ -2248,7 +2248,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    Overlays rows 1-2 of #mainBar's grid so it sits in the same area the
    project view would occupy. Hidden by default; #mainBar's data-view
    attribute toggles which surface is visible. */
-#todayView {
+#inboxView {
   grid-row: 1 / -1;
   grid-column: 1;
   display: none;
@@ -2261,18 +2261,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   min-width: 0;
 }
 
-#mainBar[data-view="today"] #todayView {
+#mainBar[data-view="inbox"] #inboxView {
   display: flex;
 }
 
-#mainBar[data-view="today"] #mainList,
-#mainBar[data-view="today"] #mobileProjHeader,
-#mainBar[data-view="today"] #taskFilterBar,
-#mainBar[data-view="today"] #bulkDescActions {
+#mainBar[data-view="inbox"] #mainList,
+#mainBar[data-view="inbox"] #mobileProjHeader,
+#mainBar[data-view="inbox"] #taskFilterBar,
+#mainBar[data-view="inbox"] #bulkDescActions {
   display: none;
 }
 
-#todayDateHeader {
+#inboxDateHeader {
   font-family: inherit;
   font-size: 22px;
   font-weight: 600;
@@ -2281,7 +2281,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   letter-spacing: 0.01em;
 }
 
-#todayEmpty {
+#inboxEmpty {
   font-family: inherit;
   font-size: 15px;
   line-height: 1.5;
@@ -2292,7 +2292,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    segment carries a small dot (overdue / today) plus a label; upcoming
    skips the dot per spec. Empty segments render in muted text so the
    layout stays stable when a bucket has no items. */
-#todayCountSummary {
+#inboxCountSummary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2306,13 +2306,13 @@ button.claudeAttachChipLabel { cursor: pointer; }
   margin: 0 0 20px 0;
 }
 
-#todayCountSummary .todayCountSegment {
+#inboxCountSummary .todayCountSegment {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-#todayCountSummary .todayCountDot {
+#inboxCountSummary .todayCountDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -2320,18 +2320,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: inline-block;
 }
 
-#todayCountSummary .todayCountSep {
+#inboxCountSummary .todayCountSep {
   color: var(--text-muted);
   opacity: 0.6;
 }
 
-#todayCountSummary .todayCountSegment[data-bucket="overdue"]  { color: var(--text-urgent); }
-#todayCountSummary .todayCountSegment[data-bucket="today"]    { color: var(--accent-text); }
-#todayCountSummary .todayCountSegment[data-bucket="upcoming"] { color: var(--text-muted); }
-#todayCountSummary .todayCountSegment[data-empty="true"]      { color: var(--text-muted); }
+#inboxCountSummary .todayCountSegment[data-bucket="overdue"]  { color: var(--text-urgent); }
+#inboxCountSummary .todayCountSegment[data-bucket="today"]    { color: var(--accent-text); }
+#inboxCountSummary .todayCountSegment[data-bucket="upcoming"] { color: var(--text-muted); }
+#inboxCountSummary .todayCountSegment[data-empty="true"]      { color: var(--text-muted); }
 
 /* Sections container — vertical stack of OVERDUE / TODAY / UPCOMING. */
-#todaySections {
+#inboxSections {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -2503,7 +2503,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    small viewports — at ≤700px the panel stacks beneath the grid (see
    the mobile @media block further down). Hidden by default; #mainBar's
    data-view attribute toggles which surface is visible (same hook as
-   #todayView). */
+   #inboxView). */
 #calendarView {
   grid-row: 1 / -1;
   grid-column: 1;
@@ -5882,7 +5882,7 @@ body.row-dragging * { cursor: grabbing !important; }
      padding — without that, the mobile shorthand re-asserted a 16px
      bottom that left the day-detail panel sitting above the tab bar
      instead of flush. */
-  #todayView {
+  #inboxView {
     padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
   }
   /* +64px content offset (vs Today's +24px) lifts the prev/next/month-label
@@ -5907,7 +5907,7 @@ body.row-dragging * { cursor: grabbing !important; }
      purple ghost from the no-projects welcome screen, dimmed to 50%, so
      short item lists no longer leave a large unanchored void above the
      bottom tab bar. flex:1 1 auto lets the spacer fill remaining column
-     space inside #todayView; min-height carves out reserved space inside
+     space inside #inboxView; min-height carves out reserved space inside
      #mainList's grid context where flex-grow doesn't apply. When the list
      grows enough to fill the viewport, the spacer scrolls naturally below
      the visible area — no extra logic is needed to hide it. */
@@ -5954,7 +5954,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* When the existing welcome / no-todos / all-caught-up empty state is
      active, the projects spacer would stack a second ghost on the same
      screen. Hide it so the existing empty state carries the visual weight
-     alone. The Today view keeps the spacer visible alongside #todayEmpty
+     alone. The Today view keeps the spacer visible alongside #inboxEmpty
      since that empty-state is just a single line of text and the slab
      below it would otherwise be unanchored. */
   #mainList.emptyStatePresent #projectsGhostSpacer {
@@ -9595,7 +9595,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      inside #mainBar so the offset is uniform across Projects, Today,
      and Calendar. */
   #mainList,
-  #todayView,
+  #inboxView,
   #calendarView {
     padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }

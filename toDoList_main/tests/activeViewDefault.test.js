@@ -20,9 +20,14 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
-    it("returns 'today' when 'today' is persisted", () => {
-        setActiveView('today');
-        expect(getActiveView()).toBe('today');
+    it("returns 'inbox' when 'inbox' is persisted", () => {
+        setActiveView('inbox');
+        expect(getActiveView()).toBe('inbox');
+    });
+
+    it("migrates a legacy persisted 'today' value to 'inbox' on read", () => {
+        localStorage.setItem(ACTIVE_VIEW_KEY, 'today');
+        expect(getActiveView()).toBe('inbox');
     });
 
     it("returns 'projects' when 'projects' is persisted", () => {

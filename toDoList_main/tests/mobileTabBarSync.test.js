@@ -71,7 +71,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
                 /mobileTabProjects[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
-                /mobileTabToday[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
+                /mobileTabInbox[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
                 /mobileTabCalendar[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
@@ -171,14 +171,13 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(secondArg).toMatch(/^[A-Za-z_$][A-Za-z0-9_$]*$/);
         });
 
-        it('maps view === "projects" to the same normalized value', () => {
-            // The normalization step must preserve 'projects' as
-            // 'projects'. If a future edit drops this branch (or
-            // renames the constant), the projects return trip would
-            // silently fall through to the 'today' default and stick
-            // the header in its hidden state.
+        it('maps view === "inbox" to the same normalized value', () => {
+            // The normalization step must preserve 'inbox' as 'inbox'.
+            // If a future edit drops this branch (or renames the
+            // constant), the inbox tab would silently fall through to
+            // the 'projects' default and never activate.
             expect(body).toMatch(
-                /if\s*\(\s*view\s*===\s*['"]projects['"]\s*\)\s*safe\s*=\s*['"]projects['"]/
+                /if\s*\(\s*view\s*===\s*['"]inbox['"]\s*\)\s*safe\s*=\s*['"]inbox['"]/
             );
         });
 
@@ -188,11 +187,13 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             );
         });
 
-        it('preserves the today default for unknown view values', () => {
+        it('preserves the projects default for unknown view values', () => {
             // Defensive default keeps `safe` a known value when called
             // before getActiveView has resolved (e.g. boot before
-            // localStorage reads).
-            expect(body).toMatch(/let\s+safe\s*=\s*['"]today['"]/);
+            // localStorage reads). PROJECTS is the natural default, so
+            // any unrecognized token (including a legacy 'today') lands
+            // on the project list rather than a blank view.
+            expect(body).toMatch(/let\s+safe\s*=\s*['"]projects['"]/);
         });
 
         it('writes data-view before the view-specific render branches', () => {
@@ -204,16 +205,16 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             const dataViewWriteIdx = body.search(
                 /setAttribute\(\s*['"]data-view['"]/
             );
-            const todayBranchIdx = body.search(
-                /if\s*\(\s*safe\s*===\s*['"]today['"]\s*\)/
+            const inboxBranchIdx = body.search(
+                /if\s*\(\s*safe\s*===\s*['"]inbox['"]\s*\)/
             );
             const calendarBranchIdx = body.search(
                 /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]calendar['"]\s*\)/
             );
             expect(dataViewWriteIdx).toBeGreaterThan(-1);
-            expect(todayBranchIdx).toBeGreaterThan(-1);
+            expect(inboxBranchIdx).toBeGreaterThan(-1);
             expect(calendarBranchIdx).toBeGreaterThan(-1);
-            expect(dataViewWriteIdx).toBeLessThan(todayBranchIdx);
+            expect(dataViewWriteIdx).toBeLessThan(inboxBranchIdx);
             expect(dataViewWriteIdx).toBeLessThan(calendarBranchIdx);
         });
 
@@ -258,8 +259,8 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
             const mainBar = document.getElementById('mainBar');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            applyActiveView('today');
-            expect(mainBar.getAttribute('data-view')).toBe('today');
+            applyActiveView('inbox');
+            expect(mainBar.getAttribute('data-view')).toBe('inbox');
             applyActiveView('projects');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
             applyActiveView('calendar');

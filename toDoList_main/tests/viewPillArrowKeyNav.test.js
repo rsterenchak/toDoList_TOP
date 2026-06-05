@@ -81,12 +81,12 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         throw new Error('todo arrow-nav handler not found in main.js');
     }
 
-    it('wires a keydown listener on viewPillToday that runs the pill-down handler', () => {
+    it('wires a keydown listener on viewPillInbox that runs the pill-down handler', () => {
         // Without a dedicated handler, the document-level todo arrow-nav
         // handler at best lands focus on a stale .todo-active row and at
         // worst silently no-ops — leaving the rendered items unreachable
-        // from the Today pill.
-        expect(main).toMatch(/viewPillToday\.addEventListener\(\s*['"]keydown['"]/);
+        // from the Inbox pill.
+        expect(main).toMatch(/viewPillInbox\.addEventListener\(\s*['"]keydown['"]/);
     });
 
     it('wires a keydown listener on viewPillCalendar that runs the pill-down handler', () => {
@@ -257,7 +257,7 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         // with the two month-nav buttons; otherwise ArrowLeft from
         // calendarPrev would not land on viewPillCalendar and
         // ArrowRight from calendarNext would not land on pomodoroToggle.
-        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillToday[\s\S]*?viewPillCalendar[\s\S]*?calendarPrevBtn[\s\S]*?calendarNextBtn[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
+        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillInbox[\s\S]*?viewPillCalendar[\s\S]*?calendarPrevBtn[\s\S]*?calendarNextBtn[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
         expect(seq).toBeTruthy();
     });
 

@@ -177,7 +177,7 @@ function component() {
     // where the attribute is unset; if any later code path checks the
     // attribute during that window, the mobile tab bar's .active class
     // and the data-view attribute can drift out of sync, leaving
-    // #mobileProjHeader hidden by the [data-view="today"] / "calendar"
+    // #mobileProjHeader hidden by the [data-view="inbox"] / "calendar"
     // rules even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
@@ -1609,7 +1609,7 @@ function component() {
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
-    // → viewPillToday → viewPillCalendar → pomodoroToggle → musicToggle
+    // → viewPillInbox → viewPillCalendar → pomodoroToggle → musicToggle
     // → settingsToggle) so keyboard users can flow across the chrome
     // without tabbing. When the Calendar view is active, the walk also
     // includes calendarPrevBtn and calendarNextBtn between
@@ -1625,7 +1625,7 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar];
+        const order = [sidebarToggle, viewPillProjects, viewPillInbox, viewPillCalendar];
         if (getActiveView() === 'calendar') {
             order.push(calendarPrevBtn, calendarNextBtn);
         }
@@ -2132,7 +2132,7 @@ function component() {
     }
 
     // Inline SVG icons (24×24, currentColor stroke) — no icon library per
-    // CLAUDE.md. List, target, and calendar glyphs. Built from <rect>
+    // CLAUDE.md. List, inbox-tray, and calendar glyphs. Built from <rect>
     // and <path> primitives so the SVG markup stays distinct from the
     // ghost / kebab assertions in unrelated tests.
     const ICON_LIST =
@@ -2144,11 +2144,10 @@ function component() {
         '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
         '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
         '</svg>';
-    const ICON_TARGET =
+    const ICON_INBOX =
         '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M21 12 a9 9 0 1 1 -18 0 a9 9 0 1 1 18 0"/>' +
-        '<path d="M17 12 a5 5 0 1 1 -10 0 a5 5 0 1 1 10 0"/>' +
-        '<rect x="11" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '<path d="M4 13 L8 13 L9.5 16 L14.5 16 L16 13 L20 13"/>' +
+        '<path d="M4 13 L6.5 5 L17.5 5 L20 13 L20 19 L4 19 Z"/>' +
         '</svg>';
     const ICON_CALENDAR =
         '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
@@ -2159,14 +2158,14 @@ function component() {
         '</svg>';
 
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
-    const mobileTabToday    = buildMobileTab('today',    'Today',    ICON_TARGET);
+    const mobileTabInbox    = buildMobileTab('inbox',    'Inbox',    ICON_INBOX);
     const mobileTabCalendar = buildMobileTab('calendar', 'Calendar', ICON_CALENDAR);
     mobileTabProjects.id = 'mobileTabProjects';
-    mobileTabToday.id    = 'mobileTabToday';
+    mobileTabInbox.id    = 'mobileTabInbox';
     mobileTabCalendar.id = 'mobileTabCalendar';
 
     mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabToday);
+    mobileTabBar.appendChild(mobileTabInbox);
     mobileTabBar.appendChild(mobileTabCalendar);
     base.appendChild(mobileTabBar);
 
@@ -2869,13 +2868,13 @@ function component() {
     viewSwitcher.setAttribute('role', 'tablist');
     viewSwitcher.setAttribute('aria-label', 'Switch view');
 
-    const viewPillToday = document.createElement('button');
-    viewPillToday.id = 'viewPillToday';
-    viewPillToday.type = 'button';
-    viewPillToday.className = 'viewPill';
-    viewPillToday.setAttribute('role', 'tab');
-    viewPillToday.setAttribute('aria-pressed', 'false');
-    viewPillToday.textContent = 'TODAY';
+    const viewPillInbox = document.createElement('button');
+    viewPillInbox.id = 'viewPillInbox';
+    viewPillInbox.type = 'button';
+    viewPillInbox.className = 'viewPill';
+    viewPillInbox.setAttribute('role', 'tab');
+    viewPillInbox.setAttribute('aria-pressed', 'false');
+    viewPillInbox.textContent = 'INBOX';
 
     const viewPillProjects = document.createElement('button');
     viewPillProjects.id = 'viewPillProjects';
@@ -2894,11 +2893,11 @@ function component() {
     viewPillCalendar.textContent = 'CALENDAR';
 
     viewSwitcher.appendChild(viewPillProjects);
-    viewSwitcher.appendChild(viewPillToday);
+    viewSwitcher.appendChild(viewPillInbox);
     viewSwitcher.appendChild(viewPillCalendar);
 
-    viewPillToday.addEventListener('click', function() {
-        applyActiveView('today');
+    viewPillInbox.addEventListener('click', function() {
+        applyActiveView('inbox');
     });
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
@@ -2915,7 +2914,7 @@ function component() {
     //   • PROJECTS — the blank-placeholder #toDoInput in #mainList (or
     //     #emptyStateInput when the project is empty, or the first
     //     committed #toDoChild row as a last resort).
-    //   • TODAY    — the first .todayRow.todoRowCard div in #todaySections.
+    //   • TODAY    — the first .todayRow.todoRowCard div in #inboxSections.
     //     Lands on the row container (tabindex="-1"), not the inner
     //     .todayRowTitle button, so the subsequent ArrowDown advances rows
     //     via the document-level Today nav handler instead of being eaten
@@ -2952,7 +2951,7 @@ function component() {
         // nav handler treats it as the current row on the next keystroke
         // instead of re-anchoring from "no current row → first row".
         if (target.classList && target.classList.contains('todayRow')) {
-            const sections = document.getElementById('todaySections');
+            const sections = document.getElementById('inboxSections');
             if (sections) {
                 sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
                     if (el !== target) el.classList.remove('todo-active');
@@ -2963,7 +2962,7 @@ function component() {
         target.focus();
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
-    viewPillToday.addEventListener('keydown', dropFocusIntoMainView);
+    viewPillInbox.addEventListener('keydown', dropFocusIntoMainView);
     viewPillCalendar.addEventListener('keydown', dropFocusIntoMainView);
 
     // ── Today dashboard shell ──
@@ -2972,45 +2971,45 @@ function component() {
     // shell sits in the main panel alongside the project view and
     // toggles via #mainBar's data-view attribute so neither view
     // re-renders the other on switch.
-    const todayView = document.createElement('div');
-    todayView.id = 'todayView';
+    const inboxView = document.createElement('div');
+    inboxView.id = 'inboxView';
 
-    const todayDateHeader = document.createElement('div');
-    todayDateHeader.id = 'todayDateHeader';
+    const inboxDateHeader = document.createElement('div');
+    inboxDateHeader.id = 'inboxDateHeader';
 
-    const todayCountSummary = document.createElement('div');
-    todayCountSummary.id = 'todayCountSummary';
+    const inboxCountSummary = document.createElement('div');
+    inboxCountSummary.id = 'inboxCountSummary';
 
-    const todayEmpty = document.createElement('div');
-    todayEmpty.id = 'todayEmpty';
-    todayEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
+    const inboxEmpty = document.createElement('div');
+    inboxEmpty.id = 'inboxEmpty';
+    inboxEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
 
     // Mobile-only ghost spacer that anchors the Today view when the bucket
     // counts are short. The .viewGhostSpacer rule is gated to ≤700px in
     // style.css, so the element is inert on desktop. flex:1 fills the
-    // remaining vertical column inside #todayView (which is already
+    // remaining vertical column inside #inboxView (which is already
     // flex-direction: column), centering the ghost + caption in whatever
     // space is left below the date header / counts / sections. The
     // companion-ghost preference applies via the body class set in
     // applyCompanionGhostPreference — it hides the painted ghost while
     // leaving the spacer's reserved space intact so the layout doesn't
     // shift when the user toggles it.
-    const todayGhostSpacer = document.createElement('div');
-    todayGhostSpacer.id = 'todayGhostSpacer';
-    todayGhostSpacer.className = 'viewGhostSpacer';
-    todayGhostSpacer.setAttribute('aria-hidden', 'true');
-    const todayGhostMascot = document.createElement('div');
-    todayGhostMascot.className = 'viewGhostMascot';
-    const todayGhostCaption = document.createElement('div');
-    todayGhostCaption.className = 'viewGhostCaption';
-    todayGhostCaption.textContent = 'Nothing else due';
-    todayGhostSpacer.appendChild(todayGhostMascot);
-    todayGhostSpacer.appendChild(todayGhostCaption);
+    const inboxGhostSpacer = document.createElement('div');
+    inboxGhostSpacer.id = 'inboxGhostSpacer';
+    inboxGhostSpacer.className = 'viewGhostSpacer';
+    inboxGhostSpacer.setAttribute('aria-hidden', 'true');
+    const inboxGhostMascot = document.createElement('div');
+    inboxGhostMascot.className = 'viewGhostMascot';
+    const inboxGhostCaption = document.createElement('div');
+    inboxGhostCaption.className = 'viewGhostCaption';
+    inboxGhostCaption.textContent = 'Nothing else due';
+    inboxGhostSpacer.appendChild(inboxGhostMascot);
+    inboxGhostSpacer.appendChild(inboxGhostCaption);
 
-    todayView.appendChild(todayDateHeader);
-    todayView.appendChild(todayCountSummary);
-    todayView.appendChild(todayEmpty);
-    todayView.appendChild(todayGhostSpacer);
+    inboxView.appendChild(inboxDateHeader);
+    inboxView.appendChild(inboxCountSummary);
+    inboxView.appendChild(inboxEmpty);
+    inboxView.appendChild(inboxGhostSpacer);
 
     // ── Calendar view shell ──
     // Month grid on the left + day-detail panel on the right. The grid
@@ -3119,7 +3118,7 @@ function component() {
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
         if (getActiveView() !== 'calendar') return;
-        const order = [sidebarToggle, viewPillProjects, viewPillToday, viewPillCalendar, calendarPrevBtn, calendarNextBtn, pomodoroToggle, musicToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, viewPillInbox, viewPillCalendar, calendarPrevBtn, calendarNextBtn, pomodoroToggle, musicToggle, settingsToggle];
         if (order.indexOf(e.target) === -1) return;
         if (e.key === 'ArrowUp') {
             e.preventDefault();
@@ -3156,7 +3155,7 @@ function component() {
     nav.insertBefore(viewSwitcher, pomodoroToggle);
     const taskFilterBar = buildTaskFilterBar();
 
-    main2.appendChild(todayView);
+    main2.appendChild(inboxView);
     main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
@@ -4284,7 +4283,7 @@ function component() {
     // global listener covers both views without duplicating guards.
     //
     //   • TODAY    — ArrowUp / ArrowDown walk between .todayRow.todoRowCard
-    //                rows inside #todaySections in DOM order, clamping at
+    //                rows inside #inboxSections in DOM order, clamping at
     //                the top and bottom (no wrap). Enter on a focused row
     //                fires the row's click handler (jump to the parent
     //                project) — when focus is on the title button instead,
@@ -4315,17 +4314,17 @@ function component() {
         const mainBar = document.getElementById('mainBar');
         if (!mainBar) return;
         const view = mainBar.getAttribute('data-view');
-        if (view !== 'today' && view !== 'calendar') return;
+        if (view !== 'inbox' && view !== 'calendar') return;
 
         const ae = document.activeElement;
         const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
 
-        if (view === 'today') {
+        if (view === 'inbox') {
             // ArrowLeft / ArrowRight are unused on Today — let them fall
             // through so caret movement in any focused input still works.
             if (isLeft || isRight) return;
 
-            const sections = document.getElementById('todaySections');
+            const sections = document.getElementById('inboxSections');
             if (!sections) return;
             const rows = Array.prototype.slice.call(sections.querySelectorAll('.todayRow.todoRowCard'));
             if (rows.length === 0) return;
@@ -4361,7 +4360,7 @@ function component() {
                 // reaching for the mouse. stopPropagation keeps the cross-pane
                 // ArrowLeft/ArrowRight handler from also firing.
                 if (isUp && currentRow && currentRow === rows[0]) {
-                    const pill = document.getElementById('viewPillToday');
+                    const pill = document.getElementById('viewPillInbox');
                     if (pill) {
                         currentRow.classList.remove('todo-active');
                         pill.focus();
@@ -7238,7 +7237,7 @@ function restoreFromStorage(opts) {
     focusBlankToDoInputIfDesktop();
 
     // Honour the persisted top-level view. When the saved view is
-    // 'today', this also clears the auto-selected last project so the
+    // 'inbox', this also clears the auto-selected last project so the
     // sidebar reads as "no active project" — Today owns the main panel
     // and the project list is just navigation chrome at that point.
     applyActiveView(getActiveView());
@@ -7265,7 +7264,7 @@ function restoreFromStorage(opts) {
 // before component() finishes wiring).
 function firstFocusableInActiveMainView() {
     const view = getActiveView();
-    if (view === 'today') {
+    if (view === 'inbox') {
         // TODAY view rendering was removed; the view renders nothing until
         // the INBOX placeholder ships in a follow-up entry, so there is no
         // focusable element to hand the keystroke to.
@@ -7305,7 +7304,7 @@ function firstFocusableInActiveMainView() {
     return null;
 }
 
-// Apply the top-level Today / Projects view. Module-scope so both the
+// Apply the top-level Inbox / Projects view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
 // localStorage, flips #mainBar's data-view attribute (the CSS show/hide
@@ -7315,8 +7314,8 @@ function firstFocusableInActiveMainView() {
 // run; missing nodes short-circuit silently so the boot order stays
 // flexible.
 function applyActiveView(view) {
-    let safe = 'today';
-    if (view === 'projects') safe = 'projects';
+    let safe = 'projects';
+    if (view === 'inbox') safe = 'inbox';
     else if (view === 'calendar') safe = 'calendar';
     const prevView = getActiveView();
     setActiveView(safe);
@@ -7324,12 +7323,12 @@ function applyActiveView(view) {
     const mainBar = document.getElementById('mainBar');
     if (mainBar) mainBar.setAttribute('data-view', safe);
 
-    const pillToday    = document.getElementById('viewPillToday');
+    const pillInbox    = document.getElementById('viewPillInbox');
     const pillProjects = document.getElementById('viewPillProjects');
     const pillCalendar = document.getElementById('viewPillCalendar');
-    if (pillToday) {
-        pillToday.classList.toggle('active', safe === 'today');
-        pillToday.setAttribute('aria-pressed', safe === 'today' ? 'true' : 'false');
+    if (pillInbox) {
+        pillInbox.classList.toggle('active', safe === 'inbox');
+        pillInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
     }
     if (pillProjects) {
         pillProjects.classList.toggle('active', safe === 'projects');
@@ -7344,22 +7343,22 @@ function applyActiveView(view) {
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
-    const tabToday    = document.getElementById('mobileTabToday');
+    const tabInbox    = document.getElementById('mobileTabInbox');
     const tabCalendar = document.getElementById('mobileTabCalendar');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
     }
-    if (tabToday) {
-        tabToday.classList.toggle('active', safe === 'today');
-        tabToday.setAttribute('aria-pressed', safe === 'today' ? 'true' : 'false');
+    if (tabInbox) {
+        tabInbox.classList.toggle('active', safe === 'inbox');
+        tabInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
     }
     if (tabCalendar) {
         tabCalendar.classList.toggle('active', safe === 'calendar');
         tabCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
 
-    if (safe === 'today') {
+    if (safe === 'inbox') {
         // The sidebar selection persists across view switches. Sidebar
         // and #mobileProjHeader are hidden on TODAY anyway, so the
         // lingering .selectedProject has zero visual effect — and on the

@@ -9,24 +9,26 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract for keyboard navigation on the Today and Calendar
+// Pins the contract for keyboard navigation on the Inbox and Calendar
 // views. The two dashboards share a single global keydown listener that
 // branches off #mainBar's data-view attribute:
-//   • Today    — ArrowUp/Down walk .todayRow.todoRowCard rows in
-//                #todaySections (no wrap, clamp). Enter on a focused row
-//                fires the row click (jump to project).
+//   • Inbox    — ArrowUp/Down walk .todayRow.todoRowCard rows in
+//                #inboxSections (no wrap, clamp). Enter on a focused row
+//                fires the row click (jump to project). (The .todayRow
+//                class is the shared task-row card, also used by the
+//                Calendar day-detail panel.)
 //   • Calendar — .calendarCell elements in #calendarGrid form a 7-column
 //                grid. Left/Right ±1 cell, Up/Down ±7 cells (clamp, no
 //                auto-advance across months). Enter fires the cell click.
 // Guards mirror the Projects-view handler: skip on modifier keys, when a
 // modal/popover is open, and when focus is in an editable surface
 // outside the navigable region.
-describe('view-aware arrow-key navigation — Today and Calendar', () => {
+describe('view-aware arrow-key navigation — Inbox and Calendar', () => {
     const main = read('main.js');
 
-    // Extract the Today/Calendar handler by its distinguishing pattern:
-    // branches on data-view === 'today' / 'calendar' and uses the
-    // calendarGrid + todaySections containers.
+    // Extract the Inbox/Calendar handler by its distinguishing pattern:
+    // branches on data-view === 'inbox' / 'calendar' and uses the
+    // calendarGrid + inboxSections containers.
     function extractViewArrowHandler() {
         const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
         let match;
@@ -40,7 +42,7 @@ describe('view-aware arrow-key navigation — Today and Calendar', () => {
                     depth--;
                     if (depth === 0) {
                         const body = main.slice(bodyStart + 1, i);
-                        if (/todaySections/.test(body) && /calendarGrid/.test(body) && /['"]today['"]/.test(body) && /['"]calendar['"]/.test(body)) {
+                        if (/inboxSections/.test(body) && /calendarGrid/.test(body) && /['"]inbox['"]/.test(body) && /['"]calendar['"]/.test(body)) {
                             return body;
                         }
                         break;
@@ -68,11 +70,11 @@ describe('view-aware arrow-key navigation — Today and Calendar', () => {
         expect(body).toMatch(/['"]Enter['"]/);
     });
 
-    it('branches off #mainBar data-view (today vs calendar)', () => {
+    it('branches off #mainBar data-view (inbox vs calendar)', () => {
         const body = extractViewArrowHandler();
         expect(body).toMatch(/getElementById\(\s*['"]mainBar['"]\s*\)/);
         expect(body).toMatch(/getAttribute\(\s*['"]data-view['"]\s*\)/);
-        expect(body).toMatch(/['"]today['"]/);
+        expect(body).toMatch(/['"]inbox['"]/);
         expect(body).toMatch(/['"]calendar['"]/);
     });
 
@@ -92,20 +94,20 @@ describe('view-aware arrow-key navigation — Today and Calendar', () => {
         expect(body).toMatch(/isContentEditable/);
     });
 
-    it('Today: walks .todayRow.todoRowCard rows inside #todaySections', () => {
+    it('Inbox: walks .todayRow.todoRowCard rows inside #inboxSections', () => {
         const body = extractViewArrowHandler();
-        expect(body).toMatch(/getElementById\(\s*['"]todaySections['"]\s*\)/);
+        expect(body).toMatch(/getElementById\(\s*['"]inboxSections['"]\s*\)/);
         expect(body).toMatch(/\.todayRow\.todoRowCard/);
     });
 
-    it('Today: clamps row navigation at the boundaries (no wrap)', () => {
+    it('Inbox: clamps row navigation at the boundaries (no wrap)', () => {
         const body = extractViewArrowHandler();
         // Up: Math.max(idx - 1, 0); Down: Math.min(idx + 1, rows.length - 1).
         expect(body).toMatch(/Math\.max\(\s*idx\s*-\s*1\s*,\s*0\s*\)/);
         expect(body).toMatch(/Math\.min\(\s*idx\s*\+\s*1\s*,\s*rows\.length\s*-\s*1\s*\)/);
     });
 
-    it('Today: Enter on a focused row fires its click handler', () => {
+    it('Inbox: Enter on a focused row fires its click handler', () => {
         const body = extractViewArrowHandler();
         // Enter should dispatch the row's existing click so the user jumps
         // to the parent project via the same path the mouse uses.

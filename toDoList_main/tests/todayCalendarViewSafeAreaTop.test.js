@@ -66,8 +66,8 @@ describe('Today + Calendar mobile top padding reserves safe-area-inset-top', () 
     const safeAreaCalendarPaddingTopRe =
         /calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*(\d+)px\s*\)/;
 
-    it('#todayView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px)', () => {
-        const rules = extractAllMobileRules(css, '#todayView');
+    it('#inboxView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px)', () => {
+        const rules = extractAllMobileRules(css, '#inboxView');
         expect(rules.length).toBeGreaterThan(0);
         const hasPaddingTop = rules.some(rule =>
             new RegExp(
@@ -179,11 +179,11 @@ describe('#calendarView mobile padding-bottom defers to the tab-bar reservation'
         }
     });
 
-    it('the shared #mainList,#todayView,#calendarView rule sets padding-bottom to the tab-bar reservation (height + home-indicator inset)', () => {
+    it('the shared #mainList,#inboxView,#calendarView rule sets padding-bottom to the tab-bar reservation (height + home-indicator inset)', () => {
         const cleaned = stripCssComments(css);
         // Find the combined rule body for all three selectors.
         const combinedRe =
-            /#mainList\s*,\s*#todayView\s*,\s*#calendarView\s*\{([^}]*)\}/;
+            /#mainList\s*,\s*#inboxView\s*,\s*#calendarView\s*\{([^}]*)\}/;
         const match = cleaned.match(combinedRe);
         expect(match).not.toBeNull();
         // The tab bar now absorbs env(safe-area-inset-bottom) into its
