@@ -54,15 +54,15 @@ describe('STACK mobile layout collapse', () => {
         return match[1];
     }
 
-    it('#mainBar grid uses a two-track layout at the mobile breakpoint', () => {
-        // Desktop's grid is a single 1fr track (just the list — the
-        // view switcher pill bar lives in the top nav). Mobile extends
-        // to two tracks (mobile header / list) so the mobile project
-        // header gets its own row above the list. #mainList is pinned
-        // to the final 1fr track explicitly so source-order placement
-        // can't shift it into the wrong row.
+    it('#mainBar grid uses a three-track layout at the mobile breakpoint', () => {
+        // Desktop's grid is `auto 1fr` (status filter pill row above the
+        // list). Mobile extends to three tracks (mobile header / filter
+        // pills / list) so the mobile project header gets its own row
+        // above the pill row, which sits above the list. #mainList is
+        // pinned to the final 1fr track explicitly so source-order
+        // placement can't shift it into the wrong row.
         const rule = extractMobileRule('#mainBar');
-        expect(rule).toMatch(/grid-template-rows:\s*auto\s+1fr/);
+        expect(rule).toMatch(/grid-template-rows:\s*auto\s+auto\s+1fr/);
     });
 
     it('#bulkDescActions is hidden at the mobile breakpoint', () => {

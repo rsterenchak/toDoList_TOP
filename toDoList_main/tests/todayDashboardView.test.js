@@ -221,15 +221,16 @@ describe('Today dashboard view + view switcher', () => {
     });
 
     describe('CSS surfaces (style.css)', () => {
-        it('uses a single 1fr row for #mainBar so the list (or overlay views) fill the panel', () => {
-            // The pill bar lives in #navBar, and the previous title bar
-            // above the list (#mainTitle) was retired. The Today shell
-            // and Calendar view each overlay the panel via grid-row:
-            // 1 / -1 (see assertion below).
+        it('uses an `auto 1fr` grid for #mainBar — the status filter pill row above the list', () => {
+            // The top `auto` track holds the status filter pill row
+            // (#taskFilterBar); the 1fr track below is the scrollable list.
+            // The Today shell and Calendar view each overlay the panel via
+            // grid-row: 1 / -1 (see assertion below), so they still cover
+            // both tracks when active.
             const idx = css.indexOf('#mainBar {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/grid-template-rows:\s*1fr/);
+            expect(rule).toMatch(/grid-template-rows:\s*auto\s+1fr/);
             expect(rule).not.toMatch(/grid-template-rows:\s*auto\s+var\(--row-h\)/);
         });
 
@@ -279,7 +280,7 @@ describe('Today dashboard view + view switcher', () => {
             expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
         });
 
-        it('mobile #mainBar grid carries mobile header + list (no leading pill row, no title row)', () => {
+        it('mobile #mainBar grid carries mobile header + filter pills + list', () => {
             const mediaStart = css.indexOf('@media (max-width: 700px)');
             expect(mediaStart).toBeGreaterThan(-1);
             // Find the matching close of the @media block.
@@ -293,10 +294,10 @@ describe('Today dashboard view + view switcher', () => {
                 }
             }
             const block = css.slice(mediaStart, mediaEnd);
-            // Two tracks now: mobile project header, list.
-            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+1fr/);
-            // mainList anchored to the final 1fr track explicitly.
-            expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*2/);
+            // Three tracks now: mobile project header, status filter pills, list.
+            expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+auto\s+1fr/);
+            // mainList anchored to the final 1fr track (row 3) explicitly.
+            expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*3/);
         });
     });
 });
