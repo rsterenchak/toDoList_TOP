@@ -38,6 +38,7 @@ import {
     isChainingActive,
 } from './mobileTaskCreate.js';
 import { makeInjectButton, refreshInjectButton } from './inject.js';
+import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -1510,6 +1511,16 @@ export function buildToDoRow(item, toDoName) {
     // to wait until wireCheckbox runs so the checkbox is already in place;
     // inserting before toDoInput puts the indicator just past the checkbox.
     toDoChild.insertBefore(descIndicator, toDoInput);
+
+    // Workflow-status badge — committed rows only. Sits right after the
+    // checkbox, ahead of the title, and is itself the tap target for the
+    // status-change popover (the delegated handler on #mainList resolves the
+    // click). The matching modifier class drives the row's stripe / muting in
+    // CSS. Blank placeholder rows skip both: there is no committed task to tag.
+    if (item.tit) {
+        applyTodoStatusClass(toDoChild, item.status);
+        toDoChild.insertBefore(buildStatusLabel(item), descIndicator);
+    }
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
         closeButtonToDo: closeButtonToDo,
@@ -1594,6 +1605,13 @@ export function buildToDoRow(item, toDoName) {
         // Strip the blank-row affordance cue — once committed, this row is a
         // real todo and the leading `+` glyph would be misleading.
         if (addGlyph && addGlyph.parentElement) addGlyph.remove();
+        // The row was built as a blank placeholder, so it has no status badge
+        // yet — add one now that it's a committed task. Guard against a repeat
+        // insert if the same row somehow re-commits.
+        if (!toDoChild.querySelector('.todoStatusLabel')) {
+            applyTodoStatusClass(toDoChild, item.status);
+            toDoChild.insertBefore(buildStatusLabel(item), descIndicator);
+        }
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the
         // user sees their just-committed task land. Also flips the session

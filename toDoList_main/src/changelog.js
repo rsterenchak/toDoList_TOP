@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-05',
+        added: [
+            "Tasks now show a workflow-status badge — Active, In Progress, or Idea — and tapping it opens a quick menu to change the status.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-04',
         changed: [
             "The Claude assistant's chat area and message box now share the main list's background color for a more unified look.",
@@ -16,9 +23,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-03',
-        added: [
-            "Mockup HTML and SVG snippets in the Claude chat now render inline as live previews instead of as raw code.",
-        ],
         changed: [
             "The Claude assistant's close button now sits in its own row above the Chat and Runs tabs.",
             "The attach (📎) button now sits in the Claude chat composer between the message box and the Send button.",
