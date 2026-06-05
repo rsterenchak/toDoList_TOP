@@ -114,3 +114,23 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d0e378a1-e962-494c-bce0-f6d38ca5414b -->
+
+- [ ] **[MEDIUM]** Render task status indicators + minimal status-change UI
+  - Type: feature
+  - Description: Visually distinguish tasks by their status field (added in entry #1). Each row gets a status label and status-specific styling. Tasks in `in_progress` get a purple left-stripe (3px), slightly lighter background, and a bold "⏵ IN PROGRESS" label above the title. Tasks in `active` get normal styling and a "○ ACTIVE" label. Tasks in `idea` get a muted background, muted text color, and a "○ IDEA" label. Additionally, add a minimal status-change UI: tapping the status label on any row opens a small popover (or bottom-sheet on mobile) with three options ("Active", "In Progress", "Idea"). Selecting an option updates the task's status via the existing listLogic.js update path. No filter pills, no compressed header, no other layout changes in this entry.
+  - Implementation notes:
+    - CSS in `style.css` — add modifier classes like `.todo-row--in_progress`, `.todo-row--active`, `.todo-row--idea` (or match existing BEM-ish naming).
+    - **Critical**: prefer CSS classes over inline JS styles for the status variants. The existing pattern of inline JS background/color settings overriding stylesheets is a known fragile area — if the implementation finds itself setting background colors in JS, stop and use a class instead.
+    - The status label is rendered above the task title, small (9-10px font, bold), with status-appropriate color (purple #9D93EE for in_progress, #6C5DF5 for active, #5a5a6a for idea).
+    - The label itself is the tap target for status change. Do NOT add a separate icon or button — the label both displays and acts.
+    - Status-change popover/menu: small overlay anchored to the tapped label, three options vertically. Tap outside to dismiss; tap an option to update.
+    - Use **event delegation** on a parent container for the label-click handler — main.js has webpack-entry-bundle evaluation issues that cause module-level listener registration to fire multiple times. A single delegated handler on the list parent avoids this cleanly. If the existing code already uses event delegation for other row interactions (checkbox, copy, etc.), follow the same pattern.
+    - Status change goes through the existing listLogic.js CRUD path — same function used for any other todo update. Don't create a parallel update channel.
+    - Realtime sync should propagate automatically (Supabase realtime sends the full row payload; the status column is just another field).
+    - Existing row interactions (checkbox toggle done, copy icon, calendar/date icon) must keep working unchanged. The new label and popover are additive.
+    - Add tests for: (a) each status renders with its appropriate label and CSS class, (b) tapping the label opens the popover, (c) selecting an option triggers the listLogic update with the correct new status, (d) existing row interactions (checkbox) still work after the changes.
+  - Visual reference: `mobile-final-idle.svg` and `mobile-org-C-tagged.svg` (the Option C mockups from earlier design session). Three-state list with IN PROGRESS rows distinct via left-stripe, ACTIVE rows normal, IDEA rows muted.
+  - Out of scope: filter pills (next entry), any header changes, pomodoro/radio chips, voice mic, any other layout changes.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/listLogic.js` (only if a new wrapper is needed; reuse existing update path otherwise), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8a8142c2-8e37-42b1-ab03-8cb83c5a06e3 -->
