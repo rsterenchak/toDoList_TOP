@@ -7265,9 +7265,10 @@ function restoreFromStorage(opts) {
 function firstFocusableInActiveMainView() {
     const view = getActiveView();
     if (view === 'inbox') {
-        // TODAY view rendering was removed; the view renders nothing until
-        // the INBOX placeholder ships in a follow-up entry, so there is no
-        // focusable element to hand the keystroke to.
+        // The Inbox view renders only the static "coming soon" placeholder
+        // (renderInboxPlaceholder) — no list, input, or other interactive
+        // surface — so there is no focusable element to hand the keystroke
+        // to. The real cross-project ideas view ships in a follow-up entry.
         return null;
     }
     if (view === 'calendar') {
@@ -7302,6 +7303,25 @@ function firstFocusableInActiveMainView() {
     }
     if (allRows.length > 0) return allRows[0];
     return null;
+}
+
+// Render the Inbox view's placeholder. The real cross-project ideas view
+// is a follow-up entry; until then the Inbox shows a single honest
+// "coming soon" surface. Clears #inboxView of any leftover shell nodes
+// (the inert Today date-header / count-summary / empty-state / ghost
+// spacer carried over from the removed Today view) and drops in one
+// centered .inboxPlaceholder element. Idempotent — a no-op once the
+// placeholder is already mounted, and safe to call before component()
+// has built the shell (missing #inboxView short-circuits).
+function renderInboxPlaceholder() {
+    const inboxView = document.getElementById('inboxView');
+    if (!inboxView) return;
+    if (inboxView.querySelector('.inboxPlaceholder')) return;
+    while (inboxView.firstChild) inboxView.removeChild(inboxView.firstChild);
+    const placeholder = document.createElement('div');
+    placeholder.className = 'inboxPlaceholder';
+    placeholder.textContent = 'Inbox coming soon';
+    inboxView.appendChild(placeholder);
 }
 
 // Apply the top-level Inbox / Projects view. Module-scope so both the
@@ -7365,7 +7385,7 @@ function applyActiveView(view) {
         // return trip to PROJECTS, updateMobileProjHeader re-paints from
         // the still-selected row instead of being stuck with
         // data-empty="true".
-        // TODAY view removed; placeholder INBOX view ships in a follow-up entry
+        renderInboxPlaceholder();
     } else if (safe === 'calendar') {
         // Same reasoning as TODAY — keep .selectedProject set so PROJECTS
         // returns to a populated mobile header. CALENDAR owns the main

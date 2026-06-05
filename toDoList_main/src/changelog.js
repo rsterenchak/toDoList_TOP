@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-05',
         added: [
-            "Filter pills above the task list (ALL / Active / Ideas) show all tasks, just active work, or just ideas, each with a live count, and your choice is remembered across reloads.",
+            "The Inbox tab now shows an \"Inbox coming soon\" placeholder instead of a blank screen.",
         ],
         changed: [
             "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
