@@ -35,8 +35,14 @@ const toDo = (title, description, dueDate, priority, position) => {
     // TODO.md button. Null means "never injected"; once set, the inject
     // button on the row renders in the "injected" terminal state.
     let injectedAt = null;
+    // ISO capture time, stamped at creation. Mirrors the Supabase
+    // `todos.created_at` column (which the server populates authoritatively
+    // and hydrate copies back over this client estimate). Used to order the
+    // cross-project INBOX view newest-capture-first; legacy cached todos
+    // predating the field read as null and sort last.
+    let created_at = new Date().toISOString();
 
-    return {id, tit, desc, due, pri, pos, completed, status, recurrence, injectedAt};
+    return {id, tit, desc, due, pri, pos, completed, status, recurrence, injectedAt, created_at};
   };
   
 

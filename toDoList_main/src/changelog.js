@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-05',
         added: [
-            "The Inbox tab now shows an \"Inbox coming soon\" placeholder instead of a blank screen.",
+            "The Inbox now lists every idea captured across all your projects, newest first, and tapping one lets you change its status.",
         ],
         changed: [
             "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
