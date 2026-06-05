@@ -24,7 +24,7 @@
   - Completed: 2026-06-05
   <!-- id: 89ab2093-c930-4523-910c-d1af70edaf85 -->
 
-- [ ] **[LOW]** Rename internal TODAY identifiers to INBOX (no visible UI change yet)
+- [x] **[LOW]** Rename internal TODAY identifiers to INBOX (no visible UI change yet)
   - Type: feature
   - Description: Rename all internal references to "today" / "TODAY" to "inbox" / "INBOX" throughout the codebase. This is mechanical rename work: variable names, function names, DOM element IDs, CSS class names, data-view attribute values, localStorage keys (if any), and string identifiers. The visible tab label in the bottom nav is ALSO renamed in this entry from "TODAY" to "INBOX" — this is the only user-visible change. After this entry ships, tapping the INBOX tab does the same thing it did when it was labeled TODAY: it sets `data-view="inbox"`, the routing recognizes it, the main area shows blank (because the actual INBOX view is still the next entry). The intermediate state continues — INBOX is visible in the nav but shows nothing when tapped. The next entry (5a-iii) adds the "Inbox coming soon" placeholder content.
   - Implementation notes:
@@ -56,5 +56,5 @@
     - Add or update tests for: (a) `data-view="inbox"` is the value set when the inbox tab is tapped, (b) `localStorage` reads of stored `'today'` value migrate cleanly (no crash), (c) the bottom nav tab labeled INBOX is present, (d) other views (PROJECTS, CALENDAR) still work as before, (e) no remaining references to "today" / "TODAY" as a view identifier (grep-style check or test assertion).
   - Out of scope: Adding INBOX view content / placeholder (next entry, 5a-iii); the actual cross-project ideas view (entry 5b); CALENDAR rename; any other changes. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: a69f456d-def2-4cca-98cf-53afd5b6fde9 -->
