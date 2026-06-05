@@ -98,3 +98,19 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6a4c1126-c1b8-4c9f-bfd3-f0a2afe17bf7 -->
+
+- [ ] **[MEDIUM]** Add `status` field to task data model
+  - Type: feature
+  - Description: Add a `status` column to the `todos` table in Supabase with values `active` (default), `in_progress`, or `idea`. Update `listLogic.js` to read/write the field on todo objects, default new todos to `active`, and treat any cached todo without `status` as `active` during localStorage hydrate (forward-compatible with existing cached data). The data model change unblocks the next entries (rendering status indicators, filter pills) but produces no visible change on its own. The SQL migration has already been run manually in the Supabase dashboard — the `status` column exists on the `todos` table with default `'active'` and a CHECK constraint limiting values to `active`, `in_progress`, `idea`. Existing todos were auto-migrated by the DB default.
+  - Implementation notes:
+    - The `todos` table already has the `status` column live in Supabase — do NOT add migration files or attempt to run SQL.
+    - `listLogic.js`: add `status` to the Todo shape, include in CRUD operations (insert sets `'active'` by default if not provided; update accepts the field; select reads it through normally).
+    - localStorage hydrate: if a cached todo lacks `status`, treat it as `'active'` (use `todo.status ?? 'active'` or equivalent). Do NOT throw, do NOT drop the cache — old cached data must survive this change.
+    - RLS policies don't need changes — the `todos` table is scoped via the `projects.user_id` relationship, unaffected by the new column.
+    - Realtime subscribers (`handleProjectsRealtime`, equivalent for todos if separate) need to handle the new field in payloads — should be automatic since Supabase realtime payloads include all columns, but verify no field-validation chokes on the new column.
+    - Add tests covering: (a) new todo defaults to `active` when no status is provided, (b) localStorage hydrate of a todo lacking `status` produces a todo with `status: 'active'`, (c) updating a todo's status persists correctly through the CRUD path.
+    - No UI changes in this entry — the field exists in data but nothing renders it yet.
+  - Out of scope: rendering status indicators, filter pills, any UI to change status, any visible change at all.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d0e378a1-e962-494c-bce0-f6d38ca5414b -->
