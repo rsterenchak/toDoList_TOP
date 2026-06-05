@@ -140,7 +140,7 @@
   - Completed: 2026-06-05 — duplicate of id cee67d5f; already shipped via PR #380, no code change needed
   <!-- id: f2f9338d-b189-48f9-862f-1d01df45d4eb -->
 
-- [ ] **[MEDIUM]** Add mic icon to chat input for voice transcription
+- [x] **[MEDIUM]** Add mic icon to chat input for voice transcription
   - Type: feature
   - Description: Add a microphone icon button to the chat input row inside the Claude chat sheet. Tapping the mic starts browser-native speech recognition (`webkitSpeechRecognition` on Safari/iOS, `SpeechRecognition` on Chrome/Android); transcribed text appears in the existing chat input field as the user speaks. The user can edit the transcription before sending or send as-is via the existing send button. This is purely an alternative input modality — voice becomes another way to type into chat. Sonnet handles the resulting message the same way it handles any typed message; there is NO new routing logic, NO separate voice-to-todo pipeline, NO server-side processing. Mic permission is requested when the user first taps the mic button; if denied, the button shows a subtle disabled state and a tooltip explaining the permission. The icon sits inside the chat input row, positioned just before the existing send button.
   - Implementation notes:
@@ -181,5 +181,5 @@
   - Visual reference: `mobile-final-chat-expanded.svg` from the design session — the mic icon appears in the chat input row, to the left of the send button, as a small subtle button. When recording, it gets the purple accent color matching the app's design language.
   - Out of scope: any auto-send of transcribed text, any voice-to-todo direct routing, any AI-based intent classification of voice input, any server-side transcription (Whisper API, etc.), any modifications outside `claudeSheet.js` and the chat input UX. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: b002dad1-c8b4-4f85-aebe-9f563e386dab -->
