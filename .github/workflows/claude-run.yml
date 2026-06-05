@@ -53,7 +53,7 @@ jobs:
           #   human to approve npm/git/gh commands. Safe here: ephemeral
           #   sandboxed runner, work lands via branch + PR, never on main
           #   directly, and the routine's own constraints bound behavior.
-          claude_args: "--max-turns 100 --model claude-opus-4-8 --dangerously-skip-permissions"
+          claude_args: "--max-turns 150 --model claude-opus-4-8 --dangerously-skip-permissions"
           # Temporary: surface the agent's full output while we verify a real
           # task run end-to-end. Remove once it's landing PRs cleanly.
           show_full_output: true
