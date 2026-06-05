@@ -115,7 +115,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d0e378a1-e962-494c-bce0-f6d38ca5414b -->
 
-- [ ] **[MEDIUM]** Render task status indicators + minimal status-change UI
+- [x] **[MEDIUM]** Render task status indicators + minimal status-change UI — Completed: 2026-06-05
   - Type: feature
   - Description: Visually distinguish tasks by their status field (added in entry #1). Each row gets a status label and status-specific styling. Tasks in `in_progress` get a purple left-stripe (3px), slightly lighter background, and a bold "⏵ IN PROGRESS" label above the title. Tasks in `active` get normal styling and a "○ ACTIVE" label. Tasks in `idea` get a muted background, muted text color, and a "○ IDEA" label. Additionally, add a minimal status-change UI: tapping the status label on any row opens a small popover (or bottom-sheet on mobile) with three options ("Active", "In Progress", "Idea"). Selecting an option updates the task's status via the existing listLogic.js update path. No filter pills, no compressed header, no other layout changes in this entry.
   - Implementation notes:
