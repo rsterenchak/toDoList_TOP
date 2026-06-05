@@ -84,7 +84,7 @@
   - Completed: 2026-06-05
   <!-- id: cee67d5f-b368-4d49-b3e2-5558a8477c01 -->
 
-- [ ] **[MEDIUM]** Implement the cross-project INBOX view (replace placeholder)
+- [x] **[MEDIUM]** Implement the cross-project INBOX view (replace placeholder)
   - Type: feature
   - Description: Replace the "Inbox coming soon" placeholder (from entry 5a-iii) with the actual INBOX functionality: a cross-project list of all tasks with `status === 'idea'` across every project the user owns. Each row in INBOX displays the task title, the originating project name as muted metadata, and an "○ IDEA" status label (matching the existing entry #2 styling). The list is sorted by `created_at` descending (newest captures first). Tapping a row opens the existing status-change popover from entry #2 — promoting a task to `active` or `in_progress` immediately removes it from the INBOX view (since it no longer matches the `status='idea'` filter) but keeps it in its original project. When the user has zero `status='idea'` tasks anywhere, render an empty state with the muted text "Nothing captured yet. Ideas you don't commit to right away end up here." No compose row in INBOX (capture happens within projects).
   - Implementation notes:
@@ -137,5 +137,5 @@
   - Visual reference: `mobile-inbox-populated.svg` and `mobile-inbox-empty.svg` from the design session — populated state shows the row layout with metadata line above the title, empty state shows centered muted text.
   - Out of scope: any changes to the per-project task list view, any compose row in INBOX, any new filter pills specific to INBOX, the CALENDAR → SETTINGS rename, any voice mic, pomodoro, or radio work, any other changes outside the INBOX view. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05 — duplicate of id cee67d5f; already shipped via PR #380, no code change needed
   <!-- id: f2f9338d-b189-48f9-862f-1d01df45d4eb -->
