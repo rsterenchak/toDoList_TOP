@@ -59,7 +59,7 @@
   - Completed: 2026-06-05
   <!-- id: a69f456d-def2-4cca-98cf-53afd5b6fde9 -->
 
-- [ ] **[LOW]** Add "Inbox coming soon" placeholder content to the INBOX view
+- [x] **[LOW]** Add "Inbox coming soon" placeholder content to the INBOX view
   - Type: feature
   - Description: Add a minimal placeholder view that renders when the INBOX tab is tapped, replacing the current blank state. The placeholder is a single centered text element reading "Inbox coming soon" (or similar — see styling notes). No list, no compose row, no Supabase query, no interactivity beyond being a visible non-blank surface. This entry closes the visual gap left by 5a-i / 5a-ii: after this ships, tapping INBOX shows something honest about the feature's state rather than an empty pane. The actual cross-project ideas view (querying tasks with status='idea' across all projects, rendering them as a list with project labels, wiring the status-change popover) is the next entry (5b) — not this one.
   - Implementation notes:
@@ -88,5 +88,5 @@
   - Visual reference: similar to a typical empty state — centered muted text, no decoration. The closest reference in your codebase would be any existing "no content yet" message in other views (if one exists). Match that styling for consistency.
   - Out of scope: the actual cross-project ideas view (5b), any data fetching, any list rendering, any compose row, any status-change interactions, any other changes. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: 37b2dcc0-c8a8-4137-a678-9d70ba2cd817 -->
