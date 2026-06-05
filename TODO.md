@@ -156,3 +156,26 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a0b9c04f-6e31-4142-b4e0-30622f0f1309 -->
+
+- [ ] **[MEDIUM]** Compress the mobile header to a single row
+  - Type: feature
+  - Description: Replace the current stacked mobile header (large project name on one line, "15 OPEN / 127 DONE" pill counts on a second line, hamburger menu on its own row) with a single compressed row. The new header sits on one row containing: the current project name as the title (full name as stored, e.g., "Task Management App" or "BookHavenBookstore_Sophia") in smaller bold purple, a small dropdown chevron "▼" indicating the workspace picker is still tappable here, the counts inline as plain text with middot separators ("15 open · 127 done"), and the hamburger menu on the far right. Long project names are truncated with ellipsis to fit available width — do NOT introduce a separate "display name" or shorthand layer. Saves approximately 50-60px of vertical space, allowing 1-2 more task rows to be visible without scrolling. The status bar (time, signal) above the header is unchanged. Below the header, the filter pills row (from entry #3) and the compose row remain unchanged. This entry is mobile-only — at desktop breakpoints, the header retains its current larger sizing for now (desktop redesign is a separate future entry, intentionally deferred).
+  - Implementation notes:
+    - Mobile breakpoint: apply the compressed layout below the current mobile breakpoint (likely 768px or whatever's already in use — check existing media queries in `style.css` and reuse the same breakpoint, don't introduce a new one).
+    - Header height target: ~36-40px (down from the current stacked layout's ~100px+).
+    - Title font: ~14px bold, color `#9D93EE` (lighter purple, matching the design tokens already in use). The previous size was significantly larger; the compression is the point.
+    - **Title truncation**: long project names should truncate with ellipsis. Use CSS: `text-overflow: ellipsis; white-space: nowrap; overflow: hidden;` on the title element with a defined max-width or flex setup that allows the rest of the header (chevron, counts, hamburger) to take their natural width first.
+    - Counts: ~11px, plain text (not pills), color `#6C5DF5` for the "open" count and `#5a5a6a` for the "done" count to subtly indicate which is more salient. Middot separator (·) between the two, dimmer color `#8a8a99`.
+    - The workspace picker (project switcher) remains tappable — anywhere on the title-plus-chevron portion of the header opens the existing project picker dropdown. Do not break this existing interaction.
+    - Hamburger menu sits at far right of the header, unchanged in functionality.
+    - The current header presumably renders via classes in `main.js` and styling in `style.css`. Modify both — replace the stacked structure with a single flex/inline row.
+    - **Critical**: do NOT use inline JS styles for the new sizing/colors. Use CSS classes. The agent should set up the new header structure via class additions, not via style.background/style.fontSize assignments. (This is the known fragile-area pattern from previous work.)
+    - The desktop view should remain visually unchanged. Confirm at a desktop breakpoint that the larger stacked header still renders. If the implementation accidentally applies the compressed layout to desktop, that's a regression.
+    - **Critical**: do NOT modify the TODO.md viewer or its header. This entry only affects the main app header (the persistent header above the task list at the top of the PWA). The TODO.md viewer has its own internal layout that should be untouched.
+    - Existing interactions to preserve and verify: workspace picker dropdown opens, hamburger menu opens, the "15 open" or "127 done" tap behavior (if either is currently tappable — check existing code; if they were tappable, the new inline versions should retain that behavior or it's a regression).
+    - Add tests for: (a) at mobile breakpoint, header renders as a single row, (b) at desktop breakpoint, header retains existing layout, (c) workspace picker still opens on tap, (d) counts display correctly with current data, (e) a long project name truncates with ellipsis at narrow widths.
+  - Visual reference: `mobile-final-idle.svg` — the compressed header at the very top. Compare against the current deployed header to see the gap. Note: the mockup shows "TaskApp" as shorthand; the actual implementation should use the full project name with truncation.
+  - Out of scope: any desktop layout changes, the filter pills row (already shipped in entry #3), the task list rendering, pomodoro/radio chips (a future entry will add those to this same header), voice mic, bottom nav. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 001d37a4-0a6e-4c33-b7bb-96d81e15d3a2 -->
