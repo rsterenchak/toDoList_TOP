@@ -13,13 +13,7 @@ export const changelog = [
         changed: [
             "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
             "The redundant hamburger button has been removed from the mobile header — tap the project name and chevron to open the menu as before.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-04',
-        fixed: [
-            "The Claude assistant's message box background now reads as a distinct field again instead of blending into the chat area.",
+            "The TODAY tab no longer shows its overdue/today/upcoming task dashboard while that view is being reworked.",
         ],
     },
 ];

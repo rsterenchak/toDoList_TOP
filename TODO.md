@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[LOW]** Remove the TODAY view code (keep tab in place for now)
+- [x] **[LOW]** Remove the TODAY view code (keep tab in place for now)
   - Type: feature
   - Description: Remove the TODAY view code from the app without changing the bottom nav or any tab labels. The TODAY view rendering function (`renderTodayDashboard`), the date-header refresh function (`refreshTodayDateHeader`), the `todaySections` DOM container, the `.todayRow.todoRowCard` row markup builder, any TODAY-specific helpers, and any internal references that *exclusively* serve TODAY rendering are removed. The internal `'today'` view identifier in `applyActiveView`, the `viewPillToday` element, the `mobileTabToday` element, the `data-view="today"` CSS branch, and the keyboard navigation handlers for TODAY are LEFT IN PLACE — those will be renamed in the next entry. Tapping the TODAY tab after this entry merges should still set `data-view="today"` and not crash; the view area renders nothing (blank) because the dashboard function it called no longer exists. This intermediate state is intentional — the next entry renames TODAY → INBOX, and the entry after that adds an INBOX placeholder view. Once all three ship, the TODAY tab is gone and INBOX is a working placeholder.
   - Implementation notes:
@@ -21,5 +21,5 @@
     - Add or update tests for: (a) `renderTodayDashboard` is no longer exported / referenced anywhere in the codebase (grep-style check via tests or just verify in PR diff), (b) `applyActiveView('today')` does not crash (it sets `data-view="today"` and the routing recognizes it), (c) other views (PROJECTS, CALENDAR) still render correctly, (d) due-date field on tasks still works.
   - Out of scope: renaming TODAY → INBOX in any identifier, label, or DOM ID (next entry); adding an INBOX placeholder view (the entry after); CALENDAR → SETTINGS rename (much later); any voice mic, pomodoro, radio, or other changes. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: 89ab2093-c930-4523-910c-d1af70edaf85 -->

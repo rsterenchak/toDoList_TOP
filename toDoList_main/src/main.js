@@ -2981,9 +2981,6 @@ function component() {
     const todayCountSummary = document.createElement('div');
     todayCountSummary.id = 'todayCountSummary';
 
-    const todaySections = document.createElement('div');
-    todaySections.id = 'todaySections';
-
     const todayEmpty = document.createElement('div');
     todayEmpty.id = 'todayEmpty';
     todayEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
@@ -3012,7 +3009,6 @@ function component() {
 
     todayView.appendChild(todayDateHeader);
     todayView.appendChild(todayCountSummary);
-    todayView.appendChild(todaySections);
     todayView.appendChild(todayEmpty);
     todayView.appendChild(todayGhostSpacer);
 
@@ -7270,19 +7266,9 @@ function restoreFromStorage(opts) {
 function firstFocusableInActiveMainView() {
     const view = getActiveView();
     if (view === 'today') {
-        const sections = document.getElementById('todaySections');
-        if (sections) {
-            // Target the row container (tabindex="-1") rather than the inner
-            // .todayRowTitle button. Landing on the row div lets the
-            // document-level Today arrow-nav handler advance to the next row
-            // on the subsequent ArrowDown; landing on the title button
-            // triggers its "anchor focus to the row container" branch and
-            // burns the keystroke without moving.
-            const row = sections.querySelector('.todayRow.todoRowCard');
-            if (row) return row;
-            const focusable = sections.querySelector('button, input, [tabindex]:not([tabindex="-1"])');
-            if (focusable) return focusable;
-        }
+        // TODAY view rendering was removed; the view renders nothing until
+        // the INBOX placeholder ships in a follow-up entry, so there is no
+        // focusable element to hand the keystroke to.
         return null;
     }
     if (view === 'calendar') {
@@ -7380,8 +7366,7 @@ function applyActiveView(view) {
         // return trip to PROJECTS, updateMobileProjHeader re-paints from
         // the still-selected row instead of being stuck with
         // data-empty="true".
-        refreshTodayDateHeader();
-        renderTodayDashboard();
+        // TODAY view removed; placeholder INBOX view ships in a follow-up entry
     } else if (safe === 'calendar') {
         // Same reasoning as TODAY — keep .selectedProject set so PROJECTS
         // returns to a populated mobile header. CALENDAR owns the main
@@ -7417,31 +7402,6 @@ function applyViewDefaultSidebar(view) {
     }
 }
 
-// Renders the Today view's date header in the user's locale, e.g.
-// "Tuesday, May 13, 2026". Called on every switch to TODAY so the
-// header reflects the current date even after the tab has been left
-// open across midnight.
-function refreshTodayDateHeader() {
-    const header = document.getElementById('todayDateHeader');
-    if (!header) return;
-    const today = new Date();
-    let text;
-    try {
-        text = today.toLocaleDateString(undefined, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-        });
-    } catch (e) {
-        // Older runtimes without full Intl support fall back to the
-        // default Date#toDateString — still date-shaped, just less
-        // localised.
-        text = today.toDateString();
-    }
-    header.textContent = text;
-}
-
 // Mirror the desktop companion-enabled flag onto body.companion-ghost-off so
 // the mobile empty-state ghost spacers on Today and Projects can hide their
 // painted ghost when the user has the floating companion turned off. The
@@ -7453,96 +7413,6 @@ function applyCompanionGhostPreference() {
     document.body.classList.toggle('companion-ghost-off', !isCompanionEnabled());
 }
 
-
-// ── Today dashboard renderer ──
-// Pulls the aggregated overdue / today / upcoming buckets from
-// listLogic.getTodayAggregation and replaces the contents of the
-// count-summary line and #todaySections. The empty-state element
-// shows only when every bucket is empty.
-function renderTodayDashboard() {
-    const summary  = document.getElementById('todayCountSummary');
-    const sections = document.getElementById('todaySections');
-    const empty    = document.getElementById('todayEmpty');
-    if (!summary || !sections || !empty) return;
-
-    const agg = listLogic.getTodayAggregation();
-    const totalItems = agg.counts.overdue + agg.counts.today + agg.counts.upcoming;
-
-    while (summary.firstChild) summary.removeChild(summary.firstChild);
-    while (sections.firstChild) sections.removeChild(sections.firstChild);
-
-    appendTodayCountSegment(summary, 'overdue', agg.counts.overdue, agg.counts.overdue + ' overdue');
-    appendCountSeparator(summary);
-    appendTodayCountSegment(summary, 'today', agg.counts.today, agg.counts.today + ' today');
-    appendCountSeparator(summary);
-    appendTodayCountSegment(summary, 'upcoming', agg.counts.upcoming, agg.counts.upcoming + ' upcoming');
-
-    empty.style.display = totalItems === 0 ? '' : 'none';
-
-    if (agg.counts.overdue > 0) {
-        sections.appendChild(buildTodaySection('OVERDUE', 'overdue', agg.overdue));
-    }
-    if (agg.counts.today > 0) {
-        sections.appendChild(buildTodaySection('TODAY', 'today', agg.today));
-    }
-    if (agg.counts.upcoming > 0) {
-        sections.appendChild(buildTodaySection('UPCOMING', 'upcoming', agg.upcoming));
-    }
-}
-
-function appendTodayCountSegment(parent, bucket, count, label) {
-    const seg = document.createElement('span');
-    seg.className = 'todayCountSegment';
-    seg.setAttribute('data-bucket', bucket);
-    seg.setAttribute('data-empty', count === 0 ? 'true' : 'false');
-
-    const dot = document.createElement('span');
-    dot.className = 'todayCountDot';
-    dot.setAttribute('aria-hidden', 'true');
-
-    const text = document.createElement('span');
-    text.className = 'todayCountText';
-    text.textContent = label;
-
-    if (bucket === 'upcoming') {
-        // Upcoming has no leading dot in the count summary line — only
-        // overdue and today carry a colored dot. Keep the segment but
-        // skip the dot for visual rhythm matching the spec.
-        seg.appendChild(text);
-    } else {
-        seg.appendChild(dot);
-        seg.appendChild(text);
-    }
-    parent.appendChild(seg);
-}
-
-function appendCountSeparator(parent) {
-    const sep = document.createElement('span');
-    sep.className = 'todayCountSep';
-    sep.textContent = '·';
-    sep.setAttribute('aria-hidden', 'true');
-    parent.appendChild(sep);
-}
-
-function buildTodaySection(label, bucket, entries) {
-    const section = document.createElement('section');
-    section.className = 'todaySection';
-    section.setAttribute('data-bucket', bucket);
-
-    const header = document.createElement('h3');
-    header.className = 'todaySectionHeader';
-    header.textContent = label;
-    section.appendChild(header);
-
-    const list = document.createElement('div');
-    list.className = 'todaySectionList';
-    entries.forEach(function(entry) {
-        list.appendChild(buildTodayRow(entry, bucket));
-    });
-    section.appendChild(list);
-
-    return section;
-}
 
 // Build a single Today-view task row matching the Projects-view row card:
 // checkbox → project pill → title → due pill (right-aligned). The project
@@ -7638,7 +7508,6 @@ function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
         const advanced = listLogic.advanceRecurringTodo(project, item, new Date());
         if (advanced) {
             if (typeof onAfter === 'function') onAfter();
-            else renderTodayDashboard();
             return;
         }
     }
@@ -7666,13 +7535,11 @@ function handleTodayCheckboxToggle(entry, checkbox, onAfter) {
             row.classList.remove('todoCompleting');
             row.removeEventListener('animationend', onSlideEnd);
             if (typeof onAfter === 'function') onAfter();
-            else renderTodayDashboard();
         });
         return;
     }
 
     if (typeof onAfter === 'function') onAfter();
-    else renderTodayDashboard();
 }
 
 // Switch to PROJECTS, select the named project (delegating to its

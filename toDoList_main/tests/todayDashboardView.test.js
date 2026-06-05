@@ -16,9 +16,10 @@ function read(relative) {
 // is persisted in localStorage under `todoapp_active_view` (default
 // 'today'). Switching to TODAY clears any selected project; clicking
 // any project row auto-switches back to PROJECTS so a project context
-// always implies the PROJECTS pill is active. The Today shell only
-// renders a date header and an empty-state line — overdue/today/upcoming
-// aggregation lands in a follow-up task.
+// always implies the PROJECTS pill is active. The TODAY view rendering
+// has since been removed (the tab and routing identifier stay in place);
+// the shell's #todayView / #todayDateHeader / #todayEmpty nodes remain
+// for the follow-up INBOX rename + placeholder entries.
 describe('Today dashboard view + view switcher', () => {
     const main   = read('main.js');
     const prefs  = read('prefs.js');
@@ -116,18 +117,6 @@ describe('Today dashboard view + view switcher', () => {
                 /todayEmpty\.textContent\s*=\s*['"]No items due yet — add a todo from any project to see it here['"]/
             );
         });
-
-        it('formats the date header in the user’s locale on every TODAY switch', () => {
-            const fnIdx = main.indexOf('function refreshTodayDateHeader');
-            expect(fnIdx).toBeGreaterThan(-1);
-            const body = main.slice(fnIdx, fnIdx + 800);
-            expect(body).toMatch(/toLocaleDateString/);
-            // Long, human-readable shape — weekday + month + day + year.
-            expect(body).toMatch(/weekday:\s*['"]long['"]/);
-            expect(body).toMatch(/month:\s*['"]long['"]/);
-            expect(body).toMatch(/day:\s*['"]numeric['"]/);
-            expect(body).toMatch(/year:\s*['"]numeric['"]/);
-        });
     });
 
     describe('applyActiveView', () => {
@@ -181,8 +170,15 @@ describe('Today dashboard view + view switcher', () => {
             );
         });
 
-        it('rebuilds the date header on every TODAY switch', () => {
-            expect(body).toMatch(/refreshTodayDateHeader\(/);
+        it('still recognizes the TODAY view without calling the removed renderers', () => {
+            // The TODAY view code was removed but the routing identifier
+            // stays: switching to TODAY must still flip data-view="today"
+            // (covered above) without invoking the deleted dashboard /
+            // date-header renderers. The INBOX placeholder ships in a
+            // follow-up entry.
+            expect(body).toMatch(/['"]today['"]/);
+            expect(body).not.toMatch(/refreshTodayDateHeader\(/);
+            expect(body).not.toMatch(/renderTodayDashboard\(/);
         });
     });
 
@@ -298,6 +294,42 @@ describe('Today dashboard view + view switcher', () => {
             expect(block).toMatch(/#mainBar\s*\{\s*grid-template-rows:\s*auto\s+auto\s+1fr/);
             // mainList anchored to the final 1fr track (row 3) explicitly.
             expect(block).toMatch(/#mainList\s*\{\s*grid-row:\s*3/);
+        });
+    });
+
+    // The TODAY view rendering was deleted while the tab, routing
+    // identifier, CSS branch, and keyboard-nav handlers were intentionally
+    // left in place (TODAY → INBOX rename + INBOX placeholder ship in
+    // follow-up entries). These guards pin that the renderers are gone but
+    // the shared helpers the Calendar day-detail panel depends on survive.
+    describe('TODAY view code removal', () => {
+        it('drops the renderTodayDashboard renderer and its exclusive helpers', () => {
+            expect(main).not.toMatch(/function\s+renderTodayDashboard\b/);
+            expect(main).not.toMatch(/function\s+appendTodayCountSegment\b/);
+            expect(main).not.toMatch(/function\s+appendCountSeparator\b/);
+            expect(main).not.toMatch(/function\s+buildTodaySection\b/);
+        });
+
+        it('drops the refreshTodayDateHeader date-header renderer', () => {
+            expect(main).not.toMatch(/function\s+refreshTodayDateHeader\b/);
+        });
+
+        it('leaves no dangling calls to the removed renderers', () => {
+            expect(main).not.toMatch(/renderTodayDashboard\s*\(/);
+            expect(main).not.toMatch(/refreshTodayDateHeader\s*\(/);
+        });
+
+        it('removes the #todaySections container from the Today shell', () => {
+            // The render target the deleted dashboard wrote into is gone.
+            // The keyboard-nav handlers still reference it by id (left in
+            // place on purpose) but no longer create the element.
+            expect(main).not.toMatch(/todaySections\.id\s*=\s*['"]todaySections['"]/);
+            expect(main).not.toMatch(/appendChild\(\s*todaySections\s*\)/);
+        });
+
+        it('keeps buildTodayRow and handleTodayCheckboxToggle — shared with the Calendar day-detail panel', () => {
+            expect(main).toMatch(/function\s+buildTodayRow\b/);
+            expect(main).toMatch(/function\s+handleTodayCheckboxToggle\b/);
         });
     });
 });
