@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-05',
         added: [
-            "The Inbox now lists every idea captured across all your projects, newest first, and tapping one lets you change its status.",
+            "Dictate into the Claude chat with a new mic button — your speech is transcribed into the message field for you to review and send.",
         ],
         changed: [
             "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
