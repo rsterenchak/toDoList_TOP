@@ -9,6 +9,9 @@ export const changelog = [
         changed: [
             "The Claude assistant's chat area and message box now share the main list's background color for a more unified look.",
         ],
+        fixed: [
+            "The Claude assistant's message box background now reads as a distinct field again instead of blending into the chat area.",
+        ],
     },
     {
         version: '1.1',
@@ -19,13 +22,6 @@ export const changelog = [
         changed: [
             "The Claude assistant's close button now sits in its own row above the Chat and Runs tabs.",
             "The attach (📎) button now sits in the Claude chat composer between the message box and the Send button.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-02',
-        changed: [
-            "The Claude chat workspace list now updates automatically from the server, so newly added repos appear without an app update.",
         ],
     },
 ];

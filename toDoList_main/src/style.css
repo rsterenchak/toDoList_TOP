@@ -1592,7 +1592,7 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeComposerInput {
   flex: 1;
   resize: none;
-  background: var(--bg-base);
+  background: #15151e;
   color: var(--text-primary);
   border: 0.5px solid var(--border-mid);
   border-radius: 6px;
