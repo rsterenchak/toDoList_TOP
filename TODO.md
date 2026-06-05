@@ -23,3 +23,38 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: 89ab2093-c930-4523-910c-d1af70edaf85 -->
+
+- [ ] **[LOW]** Rename internal TODAY identifiers to INBOX (no visible UI change yet)
+  - Type: feature
+  - Description: Rename all internal references to "today" / "TODAY" to "inbox" / "INBOX" throughout the codebase. This is mechanical rename work: variable names, function names, DOM element IDs, CSS class names, data-view attribute values, localStorage keys (if any), and string identifiers. The visible tab label in the bottom nav is ALSO renamed in this entry from "TODAY" to "INBOX" — this is the only user-visible change. After this entry ships, tapping the INBOX tab does the same thing it did when it was labeled TODAY: it sets `data-view="inbox"`, the routing recognizes it, the main area shows blank (because the actual INBOX view is still the next entry). The intermediate state continues — INBOX is visible in the nav but shows nothing when tapped. The next entry (5a-iii) adds the "Inbox coming soon" placeholder content.
+  - Implementation notes:
+    - This is mechanical rename work — no logic changes. Find and replace, with care for context.
+    - **Internal identifiers to rename:**
+      - `'today'` (string) → `'inbox'` everywhere it appears as a view identifier (e.g., in `applyActiveView`, `getActiveView`, `setActiveView`, the `data-view` attribute value, localStorage keys, conditionals like `if (view === 'today')`)
+      - `viewPillToday` → `viewPillInbox` (DOM ID for the desktop view pill)
+      - `mobileTabToday` → `mobileTabInbox` (DOM ID for the mobile bottom-tab button)
+      - `todaySections` → `inboxSections` (DOM ID for the (now empty) main container)
+      - `.todayRow` and `.todayRow.todoRowCard` → `.inboxRow` and `.inboxRow.todoRowCard` if these CSS class names exist (the row markup was deleted in 5a-i; the CSS rules may or may not still exist depending on what 5a-i removed)
+      - `data-view="today"` → `data-view="inbox"` in CSS selectors, markup, and JS comparisons
+      - Any helper function names that include "today" — e.g., `firstFocusableInActiveMainView`'s internal branch checked `view === 'today'`; that comparison string becomes `'inbox'`. Function names that include "today" (if any survived 5a-i) get renamed too.
+    - **Visible label change:**
+      - The bottom-tab button text "TODAY" → "INBOX"
+      - The desktop view pill text "TODAY" → "INBOX" (if applicable)
+      - Any tooltip, aria-label, or accessibility attribute mentioning "today" view → "inbox"
+      - If the tab icon is "today-specific" (e.g., a sun, calendar-with-today-circle, target icon), replace with an inbox-appropriate icon (inbox tray, download arrow, or similar). Use existing icon library or simple inline SVG/unicode. If you're unsure what icon to use, a simple unicode "📥" or an SVG of an inbox tray is fine — don't over-engineer the icon choice.
+    - **Things to leave alone:**
+      - The due-date field on tasks. The TASK DATA MODEL is untouched.
+      - `dueDate.js` functions (`applyDueUrgency`, `updateDuePillLabel`) — these support due dates generally, not the TODAY view specifically. Leave them.
+      - The CALENDAR view and its identifiers (`calendar`, `viewPillCalendar`, `mobileTabCalendar`, `data-view="calendar"`). Untouched.
+      - The PROJECTS view and its identifiers. Untouched.
+      - Anything in `claudeSheet.js`, `inject.js`, `pomodoro.js`, `music.js`, `listLogic.js` — these don't have view-routing logic, so they shouldn't be touched.
+    - **Default view fallback consideration:** In the previous codebase, `applyActiveView('something_invalid')` defaulted to `'today'` as the safe fallback. After this entry, the default fallback should be `'projects'` (which is the natural default and was the PROJECTS-first design decision in earlier work). Update the `let safe = 'today';` default in `applyActiveView` to `let safe = 'projects';` if that's the pattern in the code.
+    - **localStorage migration:** If there's a localStorage key that stores the user's active view (something like `activeView: 'today'`), users with that value persisted will see undefined behavior after this rename. Add a small migration: when reading the localStorage value, treat any encountered `'today'` value as `'inbox'` (or as `'projects'` — your call; either is acceptable since INBOX is going to be the new equivalent). Pick whichever is simpler in the code.
+    - **Critical**: do NOT add an INBOX view, placeholder content, or rendering function. The view area should still show blank when INBOX is tapped after this entry. That's the next entry.
+    - **Critical**: do NOT modify the TODO.md viewer, the CALENDAR view, the PROJECTS view, pomodoro, music, or anything outside the rename scope.
+    - **Critical**: do NOT touch the due-date data model or due-date capabilities.
+    - Add or update tests for: (a) `data-view="inbox"` is the value set when the inbox tab is tapped, (b) `localStorage` reads of stored `'today'` value migrate cleanly (no crash), (c) the bottom nav tab labeled INBOX is present, (d) other views (PROJECTS, CALENDAR) still work as before, (e) no remaining references to "today" / "TODAY" as a view identifier (grep-style check or test assertion).
+  - Out of scope: Adding INBOX view content / placeholder (next entry, 5a-iii); the actual cross-project ideas view (entry 5b); CALENDAR rename; any other changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a69f456d-def2-4cca-98cf-53afd5b6fde9 -->
