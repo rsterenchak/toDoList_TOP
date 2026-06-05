@@ -99,7 +99,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6a4c1126-c1b8-4c9f-bfd3-f0a2afe17bf7 -->
 
-- [ ] **[MEDIUM]** Add `status` field to task data model
+- [x] **[MEDIUM]** Add `status` field to task data model — Completed: 2026-06-05
   - Type: feature
   - Description: Add a `status` column to the `todos` table in Supabase with values `active` (default), `in_progress`, or `idea`. Update `listLogic.js` to read/write the field on todo objects, default new todos to `active`, and treat any cached todo without `status` as `active` during localStorage hydrate (forward-compatible with existing cached data). The data model change unblocks the next entries (rendering status indicators, filter pills) but produces no visible change on its own. The SQL migration has already been run manually in the Supabase dashboard — the `status` column exists on the `todos` table with default `'active'` and a CHECK constraint limiting values to `active`, `in_progress`, `idea`. Existing todos were auto-migrated by the DB default.
   - Implementation notes:
