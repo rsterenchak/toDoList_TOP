@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-05T04:25:31.012Z",
-  "sha": "9a4feb315559a904b1cfb6ff9d1d75d7dad632f1",
+  "generatedAt": "2026-06-05T05:10:39.582Z",
+  "sha": "47977cca4774add0d2d97528e14e74610e87653b",
   "files": [
     "auth.js",
     "changelog.js",
@@ -29,6 +29,7 @@
     "style.css",
     "supabaseClient.js",
     "sw.js",
+    "taskFilter.js",
     "theme.js",
     "toDo.js",
     "toDoRow.js",
