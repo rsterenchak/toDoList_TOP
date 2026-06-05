@@ -90,3 +90,42 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: 37b2dcc0-c8a8-4137-a678-9d70ba2cd817 -->
+
+- [ ] **[MEDIUM]** Implement the cross-project INBOX view (replace placeholder)
+  - Type: feature
+  - Description: Replace the "Inbox coming soon" placeholder (from entry 5a-iii) with the actual INBOX functionality: a cross-project list of all tasks with `status === 'idea'` across every project the user owns. Each row in INBOX displays the task title, the originating project name as muted metadata, and an "○ IDEA" status label (matching the existing entry #2 styling). The list is sorted by `created_at` descending (newest captures first). Tapping a row opens the existing status-change popover from entry #2 — promoting a task to `active` or `in_progress` immediately removes it from the INBOX view (since it no longer matches the `status='idea'` filter) but keeps it in its original project. When the user has zero `status='idea'` tasks anywhere, render an empty state with the muted text "Nothing captured yet. Ideas you don't commit to right away end up here." No compose row in INBOX (capture happens within projects).
+  - Implementation notes:
+    - **The "Inbox coming soon" placeholder from 5a-iii is REPLACED by this entry.** Remove the placeholder render code (the function and its centered text element). The `inboxSections` container stays; only its contents change.
+    - **Cross-project query function (new, in `listLogic.js`):**
+      - Add a new exported function — e.g., `getIdeaTodosAcrossProjects()` — that queries Supabase for todos with `status === 'idea'`, joined with projects to retrieve the project name. Use a Supabase query like `supabase.from('todos').select('*, projects(name)').eq('status', 'idea').order('created_at', { ascending: false })`.
+      - RLS scoping is automatic via the `projects.user_id` relationship — do NOT add a manual `user_id` filter on todos (the todos table has no user_id column, per the project conventions).
+      - Return shape: array of todo objects with the joined project info accessible (e.g., `todo.projects.name`).
+      - This is a NEW function, not a modification of an existing per-project query. Existing per-project queries stay untouched. Don't extend a per-project function with a "skip the project filter" conditional — that's the tangled approach we want to avoid.
+    - **INBOX render function (in `main.js`):**
+      - Replace the placeholder render function (from 5a-iii) with a new `renderInbox()` function that:
+        - Calls the new cross-project query function from listLogic.js
+        - Clears the `inboxSections` container
+        - If the result is empty, appends an empty-state element with the centered muted text described above
+        - Otherwise, iterates and appends one row per idea
+      - Each row layout:
+        - A small `○ IDEA` label at the top of the row (matching entry #2's styling — same color, same font size, same class names where applicable)
+        - The project name displayed inline next to or below the IDEA label, in muted text (`#8a8a99` or matching design token), e.g., `○ IDEA · Task Management App`
+        - The task title in the row's main content area, muted to match the IDEA state styling from entry #2
+        - A checkbox-like icon on the left (matching existing row patterns, even if not currently interactive)
+      - The row should be tappable — tap opens the existing status-change popover from entry #2.
+    - **Wire up the status-change popover:**
+      - Import or reference the existing popover function from entry #2 — `wireStatusLabelDelegation` or the popover-showing function it uses. Reuse it on the inbox section.
+      - The mainList already has `wireStatusLabelDelegation(mainList)` from entry #2. The inbox sections need similar wiring — call `wireStatusLabelDelegation(inboxSections)` or whatever the equivalent pattern is.
+      - When the user changes a row's status via the popover (e.g., from `idea` to `active`), the existing listLogic update path handles the persistence. The INBOX view should re-render (or remove the affected row) to reflect that the task no longer matches the `status='idea'` filter.
+    - **Re-rendering after status change:**
+      - Use the existing Supabase realtime subscriber pattern — the same one that updates the per-project view should update INBOX. If the realtime payload arrives for a todo whose status changed from 'idea' to something else, the INBOX view should re-render to remove that row.
+      - Simpler alternative if realtime wiring is too tangled: after the status-change popover commits, explicitly call `renderInbox()` again to re-fetch and re-render. This is heavier but more obviously correct.
+    - **Empty state:**
+      - When `getIdeaTodosAcrossProjects()` returns zero rows, render a single centered text element: "Nothing captured yet. Ideas you don't commit to right away end up here."
+      - Use a CSS class (e.g., `.inboxEmptyState`), NOT inline JS styles. Center horizontally and vertically.
+      - Muted text color, ~14px, no icon, no CTA button.
+    - **Sort order:** newest captures first (`created_at DESC`). The cross-project query handles this.
+    - **No compose row in INBOX.** The view is read-only for capture purposes. Status-change interaction is the only mutation that happens via INBOX.
+    - **Critical**: do NOT modify the TODO.md viewer or any component reading from TODO.md.
+    - **Critical**: do NOT modify the per-project task list view, the filter pills (entry #3), the status indicators on per-project rows (entry
+  <!-- id: dc9a3901-4cb6-49c4-baf3-3e05aebb03e1 -->
