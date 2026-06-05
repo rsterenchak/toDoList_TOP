@@ -39,6 +39,7 @@ import {
 } from './mobileTaskCreate.js';
 import { makeInjectButton, refreshInjectButton } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
+import { applyTaskFilter } from './taskFilter.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -1859,6 +1860,7 @@ export function addAllToDo_DOM(items, name) {
         mainListDiv.appendChild(buildToDoRow(item, name));
     });
     updateCompletedSection(mainListDiv);
+    applyTaskFilter();
 }
 
 
@@ -1887,6 +1889,7 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
     updateCompletedSection(mainListDiv);
+    applyTaskFilter();
 }
 
 
@@ -1929,6 +1932,7 @@ export function reorderToDoDOM(projectName) {
     });
 
     updateCompletedSection(mainDiv);
+    applyTaskFilter();
 }
 
 

@@ -2110,12 +2110,90 @@ button.claudeAttachChipLabel { cursor: pointer; }
      the same area when active. The view-switch pill bar lives in the
      top nav, and the title bar that previously sat above the list has
      been retired in favor of the sidebar's project rows + the EXPAND
-     ALL overlay anchored to the add-task row below. */
-  grid-template-rows: 1fr;
+     ALL overlay anchored to the add-task row below. The `auto` track at the
+     top holds the status filter pill row (#taskFilterBar); the 1fr track
+     below is the scrollable list. The Today / Calendar overlays still span
+     1 / -1 so they cover both tracks when active. */
+  grid-template-rows: auto 1fr;
   background: var(--bg-base);
   overflow: hidden;
   min-width: 0;
   position: relative;
+}
+
+/* ── STATUS FILTER PILLS (ALL / Active / Ideas) ──
+   Row of toggle pills above the task list that filter visible rows by their
+   workflow status. Sits in #mainBar's top auto track (grid-row 1), above the
+   compose row inside #mainList. Hidden in the Today / Calendar views. */
+#taskFilterBar {
+  grid-row: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 6px;
+  background: var(--bg-base);
+}
+
+.taskFilterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  background: #15151e;
+  color: var(--text-muted);
+  border: 0.5px solid #2a2a3a;
+  border-radius: 6px;
+  padding: 5px 11px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.taskFilterPill:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-text);
+}
+
+.taskFilterPill:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.taskFilterPill.selected {
+  background: #6C5DF5;
+  color: #fff;
+  border-color: #6C5DF5;
+}
+
+.taskFilterCount {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+/* Rows (and their trailing description / stats drawers) hidden by the active
+   status filter. `!important` lets this single utility class beat the row's
+   own ID-level `display: flex` without naming each ID — a plain class selector
+   would otherwise lose to `#toDoChild` on specificity. */
+.taskFilterHidden {
+  display: none !important;
+}
+
+/* Filter-specific empty state — shown inside #mainList when the active filter
+   hides every task while the project still holds tasks under another filter. */
+.taskFilterEmpty {
+  grid-column: 1 / -1;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
 }
 
 /* ── TOP-LEVEL VIEW SWITCHER ──
@@ -2189,6 +2267,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 #mainBar[data-view="today"] #mainList,
 #mainBar[data-view="today"] #mobileProjHeader,
+#mainBar[data-view="today"] #taskFilterBar,
 #mainBar[data-view="today"] #bulkDescActions {
   display: none;
 }
@@ -2458,6 +2537,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 #mainBar[data-view="calendar"] #mainList,
 #mainBar[data-view="calendar"] #mobileProjHeader,
+#mainBar[data-view="calendar"] #taskFilterBar,
 #mainBar[data-view="calendar"] #bulkDescActions {
   display: none;
 }
@@ -5780,8 +5860,11 @@ body.row-dragging * { cursor: grabbing !important; }
      "Expand all descriptions" toggle calls bulkDescToggleBtn.click()
      directly, so display:none on the overlay button doesn't disable
      the keyboard or drawer path. */
-  #mainBar         { grid-template-rows: auto 1fr; }
-  #mainList        { grid-row: 2; }
+  /* Three tracks at this breakpoint: the mobile project header (row 1), the
+     status filter pill row (row 2), and the scrollable list (row 3). */
+  #mainBar         { grid-template-rows: auto auto 1fr; }
+  #taskFilterBar   { grid-row: 2; }
+  #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and

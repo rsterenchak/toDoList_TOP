@@ -135,7 +135,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a8142c2-8e37-42b1-ab03-8cb83c5a06e3 -->
 
-- [ ] **[MEDIUM]** Add filter pills above the task list (ALL / Active / Ideas)
+- [x] **[MEDIUM]** Add filter pills above the task list (ALL / Active / Ideas) — Completed: 2026-06-05
   - Type: feature
   - Description: Add three filter pills above the task list that filter the visible rows by status. "ALL" (default, selected on load) shows everything. "Active" shows tasks with status `active` OR `in_progress` (the committed work, regardless of in-flight state). "Ideas" shows tasks with status `idea`. Each pill displays a count of matching tasks in parentheses (e.g., "ALL 15", "Active 6", "Ideas 9"). Tapping a pill switches the filter and updates the visible list immediately (client-side filter, no re-fetch from Supabase). The selected pill is visually distinguished (purple fill for selected, dark fill with subtle border for unselected). Filter state persists across page reloads via localStorage (so if you closed the app while filtered to Ideas, reopening returns you to Ideas).
   - Implementation notes:

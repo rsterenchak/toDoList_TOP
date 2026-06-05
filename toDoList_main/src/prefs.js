@@ -18,6 +18,7 @@ export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
 export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
+export const TASK_FILTER_KEY = 'todoapp_taskFilter';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -107,6 +108,29 @@ export function setActiveView(view) {
         if (view === 'projects') stored = 'projects';
         else if (view === 'calendar') stored = 'calendar';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── task status filter (ALL / Active / Ideas) ──
+// The pill row above the task list filters visible rows by their workflow
+// status. 'all' shows everything, 'active' shows active + in_progress work,
+// 'ideas' shows idea-status rows. The choice persists so a filtered session
+// is restored on reload; any stored value other than the three known tokens
+// falls back to 'all' so a stale or hand-edited pref can't desync the list.
+export function getTaskFilter() {
+    try {
+        const v = localStorage.getItem(TASK_FILTER_KEY);
+        if (v === 'active' || v === 'ideas') return v;
+        return 'all';
+    } catch (e) {
+        return 'all';
+    }
+}
+
+export function setTaskFilter(filter) {
+    try {
+        const stored = (filter === 'active' || filter === 'ideas') ? filter : 'all';
+        localStorage.setItem(TASK_FILTER_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

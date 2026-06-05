@@ -76,6 +76,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { wireStatusLabelDelegation } from './todoStatus.js';
+import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -3157,10 +3158,19 @@ function component() {
     calendarNextBtn.addEventListener('keydown', calendarNavArrowKey);
 
     nav.insertBefore(viewSwitcher, pomodoroToggle);
+    const taskFilterBar = buildTaskFilterBar();
+
     main2.appendChild(todayView);
     main2.appendChild(calendarView);
     main2.appendChild(mobileProjHeader);
+    // Status filter pills (ALL / Active / Ideas) sit above the list — below the
+    // mobile project header, above the compose row inside #mainList. Built once
+    // here and never cleared by the list's rebuild cycles; the render paths in
+    // toDoRow.js call applyTaskFilter() after each rebuild to refresh counts and
+    // row visibility.
+    main2.appendChild(taskFilterBar);
     main2.appendChild(mainList);
+    applyTaskFilter();
 
     // ── mobile drawer close (X) button ──
     // Adds an explicit dismiss affordance to the sidebar drawer at the
