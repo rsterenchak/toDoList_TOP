@@ -324,6 +324,80 @@ describe('listLogic — completed sorting', () => {
 });
 
 
+// ── TODO STATUS FIELD ────────────────────────────────────────────────
+// The data model carries a workflow `status` ('active' | 'in_progress' |
+// 'idea') that mirrors the Supabase `todos.status` column. These pin the
+// invariants the downstream status-UI entries depend on: new todos
+// default to 'active', cached todos predating the field hydrate to
+// 'active', and status mutations persist through the CRUD path.
+describe('listLogic — todo status field', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+    });
+
+    it('a new todo defaults to status "active" when none is provided', () => {
+        listLogic.addToDo('Work', 'A');
+        const itemA = listLogic.listItems('Work').find(i => i.tit === 'A');
+        expect(itemA.status).toBe('active');
+    });
+
+    it('setToDoStatus updates the field and persists it to localStorage', () => {
+        listLogic.addToDo('Work', 'A');
+        const itemA = listLogic.listItems('Work').find(i => i.tit === 'A');
+
+        listLogic.setToDoStatus('Work', itemA, 'in_progress');
+
+        // In-memory state.
+        expect(itemA.status).toBe('in_progress');
+
+        // Persisted state: serialized localStorage must reflect the change.
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        const persistedA = parsed.Work.items.find(i => i.tit === 'A');
+        expect(persistedA.status).toBe('in_progress');
+    });
+
+    it('setToDoStatus rejects an out-of-vocabulary value as a no-op', () => {
+        listLogic.addToDo('Work', 'A');
+        const itemA = listLogic.listItems('Work').find(i => i.tit === 'A');
+
+        listLogic.setToDoStatus('Work', itemA, 'bogus');
+
+        expect(itemA.status).toBe('active');
+    });
+
+    it('hydrating a cached todo without a status field yields status "active"', async () => {
+        // Seed an allProjects cache whose todo predates the status field,
+        // then re-import listLogic so its module-init restore pass reads
+        // the legacy shape. The rehydrated item must be normalised to
+        // 'active' rather than carrying an undefined status.
+        const legacy = {
+            Legacy: {
+                id: 'proj-legacy',
+                color: null,
+                sortByDue: false,
+                target_id: null,
+                items: [
+                    { id: 'todo-legacy', tit: 'Old task', desc: '', due: '',
+                      pri: 1, pos: 0, completed: false, recurrence: null },
+                ],
+            },
+        };
+        localStorage.setItem('allProjects', JSON.stringify(legacy));
+
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+        const fresh = await import('../src/listLogic.js');
+
+        const rehydrated = fresh.listLogic.listItems('Legacy').find(i => i.tit === 'Old task');
+        expect(rehydrated).toBeDefined();
+        expect(rehydrated.status).toBe('active');
+
+        localStorage.clear();
+    });
+});
+
+
 // ── REORDERING ───────────────────────────────────────────────────────
 describe('listLogic — reordering', () => {
     beforeEach(() => {

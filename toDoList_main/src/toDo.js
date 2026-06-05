@@ -11,6 +11,11 @@ const toDo = (title, description, dueDate, priority, position) => {
     let pri = priority;
     let pos = position;
     let completed = false;
+    // Workflow status: 'active' (default), 'in_progress', or 'idea'. New
+    // todos start 'active'; the value is persisted to the Supabase `status`
+    // column and round-trips through hydrate/realtime. Legacy cached todos
+    // without the field are normalised to 'active' on load (see listLogic).
+    let status = 'active';
     // null = one-off task. Otherwise an object shaped
     // { pattern, interval, intervalUnit, basis, endDate } — see
     // listLogic.js's nextDueDate for the supported pattern values.
@@ -31,7 +36,7 @@ const toDo = (title, description, dueDate, priority, position) => {
     // button on the row renders in the "injected" terminal state.
     let injectedAt = null;
 
-    return {id, tit, desc, due, pri, pos, completed, recurrence, injectedAt};
+    return {id, tit, desc, due, pri, pos, completed, status, recurrence, injectedAt};
   };
   
 

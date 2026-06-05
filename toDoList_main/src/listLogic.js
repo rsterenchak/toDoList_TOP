@@ -69,8 +69,21 @@ function toTodoRowPayload(item, projectId) {
         priority: item.pri == null ? null : String(item.pri),
         position: item.pos,
         completed: !!item.completed,
+        status: normalizeTodoStatus(item.status),
         recurrence: item.recurrence || null,
     };
+}
+
+// Allowed values for a todo's workflow `status`, mirroring the CHECK
+// constraint on the Supabase `todos.status` column. 'active' is the
+// default for new todos and the fallback for any legacy/corrupt value.
+const TODO_STATUSES = ['active', 'in_progress', 'idea'];
+
+// Coerce an arbitrary status value to a known one. Missing, non-string,
+// or out-of-vocabulary values normalise to 'active' so cached data that
+// predates the field — and any future-unknown value — stays usable.
+function normalizeTodoStatus(value) {
+    return TODO_STATUSES.indexOf(value) === -1 ? 'active' : value;
 }
 
 function toProjectRowPayload(entry, name, position) {
@@ -224,6 +237,10 @@ export const listLogic = (function () {
             if (typeof item.completed !== 'boolean') {
                 item.completed = false;
             }
+            // Backfill the workflow status on todos cached before the field
+            // existed. Anything missing or out-of-vocabulary becomes
+            // 'active' so old caches survive forward-compatibly.
+            item.status = normalizeTodoStatus(item.status);
             // Clean up the recurrence field on load: anything non-object
             // becomes null (one-off task), and a partial object is forced
             // through sanitizeRecurrence so downstream code can trust it.
@@ -572,6 +589,34 @@ export const listLogic = (function () {
         if (item.completed === next) return;
 
         item.completed = next;
+        saveToStorage();
+
+        if (item.id && item.tit && item.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    item,
+                    allProjects[projectName].id || null
+                ),
+            });
+        }
+    }
+
+
+    // Set a committed todo's workflow status ('active' | 'in_progress' |
+    // 'idea') and persist the change. Mirrors setToDoCompleted: writes
+    // localStorage unconditionally and mirrors to Supabase via the same
+    // update path. Out-of-vocabulary values are rejected (no-op) so a bad
+    // caller can't push an illegal value past the column's CHECK constraint.
+    // @category: user-mutation-only
+    function setToDoStatus(projectName, item, status) {
+
+        if (!projectName || !allProjects[projectName] || !item) return;
+        if (TODO_STATUSES.indexOf(status) === -1) return;
+        if (item.status === status) return;
+
+        item.status = status;
         saveToStorage();
 
         if (item.id && item.tit && item.tit !== '') {
@@ -1046,6 +1091,7 @@ export const listLogic = (function () {
             pri: item.pri,
             pos: item.pos,
             completed: true,
+            status: normalizeTodoStatus(item.status),
             recurrence: null,
         };
         arr.push(completedClone);
@@ -1996,6 +2042,7 @@ export const listLogic = (function () {
                         priority: payload.priority == null ? null : String(payload.priority),
                         position: payload.position,
                         completed: !!payload.completed,
+                        status: normalizeTodoStatus(payload.status),
                         recurrence: payload.recurrence || null,
                     };
                 } else {
@@ -2049,6 +2096,7 @@ export const listLogic = (function () {
                         priority: payload.priority == null ? null : String(payload.priority),
                         position: payload.position,
                         completed: !!payload.completed,
+                        status: normalizeTodoStatus(payload.status),
                         recurrence: payload.recurrence || null,
                     };
                 } else {
@@ -2224,6 +2272,7 @@ export const listLogic = (function () {
                         pri: t.priority == null ? 1 : t.priority,
                         pos: t.position == null ? 0 : t.position,
                         completed: !!t.completed,
+                        status: normalizeTodoStatus(t.status),
                         recurrence: t.recurrence || null,
                     });
                 });
@@ -2409,6 +2458,7 @@ export const listLogic = (function () {
                 pri: evt.new.priority == null ? 1 : evt.new.priority,
                 pos: evt.new.position == null ? 0 : evt.new.position,
                 completed: !!evt.new.completed,
+                status: normalizeTodoStatus(evt.new.status),
                 recurrence: evt.new.recurrence || null,
             };
             if (idx === -1) {
@@ -2463,6 +2513,7 @@ export const listLogic = (function () {
         commitBlankPlaceholder,
         editToDoItem,
         setToDoCompleted,
+        setToDoStatus,
         editProject,
         listItems,
         projectLength,
