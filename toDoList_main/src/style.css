@@ -1574,6 +1574,9 @@ body:has(#settingsMenu) #claudeLauncher {
   padding: 12px;
 }
 .claudeView[hidden] { display: none; }
+/* Match the chat message area to #mainList's base background for a unified
+   look. Scoped to the chat view so the Runs/Author tabs are unaffected. */
+#claudeChatView { background: var(--bg-base); }
 .claudeChatSurface {
   flex: 1;
   min-height: 0;
@@ -1589,7 +1592,7 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeComposerInput {
   flex: 1;
   resize: none;
-  background: var(--bg-surface);
+  background: var(--bg-base);
   color: var(--text-primary);
   border: 0.5px solid var(--border-mid);
   border-radius: 6px;
