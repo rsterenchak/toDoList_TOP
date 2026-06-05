@@ -58,3 +58,35 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: a69f456d-def2-4cca-98cf-53afd5b6fde9 -->
+
+- [ ] **[LOW]** Add "Inbox coming soon" placeholder content to the INBOX view
+  - Type: feature
+  - Description: Add a minimal placeholder view that renders when the INBOX tab is tapped, replacing the current blank state. The placeholder is a single centered text element reading "Inbox coming soon" (or similar — see styling notes). No list, no compose row, no Supabase query, no interactivity beyond being a visible non-blank surface. This entry closes the visual gap left by 5a-i / 5a-ii: after this ships, tapping INBOX shows something honest about the feature's state rather than an empty pane. The actual cross-project ideas view (querying tasks with status='idea' across all projects, rendering them as a list with project labels, wiring the status-change popover) is the next entry (5b) — not this one.
+  - Implementation notes:
+    - Create or modify the `inboxSections` DOM container in `component()` (the renamed container from 5a-ii) to contain the placeholder content. If `inboxSections` no longer exists in the markup (because 5a-i may have removed it as TODAY-specific), recreate it as a clean empty container ready to hold the placeholder.
+    - In `applyActiveView`, the `if (safe === 'inbox')` branch (which currently has a comment placeholder where TODAY's render calls used to be): add a call to a new function `renderInboxPlaceholder()` (or whatever naming convention matches the codebase). That function:
+      - Finds the `inboxSections` container
+      - Clears its contents (in case of stale content from a previous render)
+      - Appends a single child element with the placeholder text
+    - The placeholder text element styling:
+      - Text content: "Inbox coming soon" (or a slightly fuller phrasing like "Inbox coming soon — your captured ideas will live here" if the agent prefers; either is fine, keep it under ~50 characters total)
+      - Centered both horizontally and vertically within the available view area
+      - Muted text color (`#5a5a6a` or whatever the existing muted-text design token is in the codebase)
+      - Font size around 14px
+      - Use a CSS class (e.g., `.inboxPlaceholder` or matching the codebase's BEM naming) — NOT inline JS styles. This is critical per the "inline JS styles override CSS" lesson from prior work.
+    - The placeholder element does NOT need:
+      - An icon
+      - A "get started" button
+      - An animation
+      - A skeleton loader
+      - Any interactivity
+    - Update `firstFocusableInActiveMainView` for the `view === 'inbox'` branch: since the placeholder has no focusable elements, return `null` (or whatever the existing pattern is for views with no interactive content).
+    - **Critical**: do NOT implement the actual cross-project ideas view (querying Supabase for `status='idea'` tasks, rendering them as rows, joining to projects for context, wiring the popover). That's entry 5b. This entry is JUST the placeholder.
+    - **Critical**: do NOT modify the TODO.md viewer, the CALENDAR view, the PROJECTS view, the status field, the filter pills, the bottom nav layout, pomodoro, music, or anything outside the INBOX placeholder.
+    - **Critical**: do NOT add a compose row to INBOX. The placeholder is read-only.
+    - Add tests for: (a) tapping INBOX renders the placeholder element with the expected text, (b) the placeholder is centered in the view area (check that the element has the appropriate class), (c) `firstFocusableInActiveMainView` returns null when view is 'inbox' (no focusable elements in the placeholder), (d) switching from INBOX to PROJECTS clears the placeholder and renders PROJECTS correctly.
+  - Visual reference: similar to a typical empty state — centered muted text, no decoration. The closest reference in your codebase would be any existing "no content yet" message in other views (if one exists). Match that styling for consistency.
+  - Out of scope: the actual cross-project ideas view (5b), any data fetching, any list rendering, any compose row, any status-change interactions, any other changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 37b2dcc0-c8a8-4137-a678-9d70ba2cd817 -->
