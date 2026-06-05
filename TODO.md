@@ -196,3 +196,26 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: dd0fa88d-4eb9-4b88-ace8-57ac42586cdc -->
+
+- [ ] **[MEDIUM]** Replace TODAY tab with INBOX (cross-project ideas view)
+  - Type: feature
+  - Description: Replace the TODAY tab in the bottom navigation with a new INBOX tab. The old TODAY view (items due today across all projects, organized by date) is removed entirely. The new INBOX view shows a cross-project list of all tasks with `status === 'idea'` — across every project the user owns, not just the currently-selected project. This is the unified triage surface for captured-but-not-committed thoughts. Each row in INBOX displays the task title and a small label showing which project it came from (e.g., "Task Management App" or "Idea dump"). Tapping a row opens the existing status-change popover (from entry #2) for quick triage — promote to `active` or `in_progress`, or leave as `idea`. Promoting a task from INBOX moves it out of the INBOX view immediately (since it no longer matches the `status='idea'` filter) but keeps it in its original project. The PROJECTS tab remains the default-selected tab on app load. CALENDAR tab is left unchanged for now (a separate future entry will handle CALENDAR → SETTINGS).
+  - Implementation notes:
+    - Bottom nav: rename "TODAY" to "INBOX" in markup and any internal route/state identifiers. Update the icon if there's a today-specific icon (e.g., a target or sun icon) to something more inbox-appropriate (e.g., an inbox tray or download arrow). Use existing icon library if one is in use; otherwise a simple unicode or SVG inline icon.
+    - Remove the old TODAY view code entirely — the date-based filtering logic that produced "items due today." Don't keep it around as dead code.
+    - The due-date field on tasks is NOT removed — tasks can still have due dates as metadata. We're only removing the dedicated date-based view, not the underlying capability.
+    - INBOX view implementation:
+      - Query Supabase for todos with `status = 'idea'`, joined with projects to get the project name. Supabase RLS will scope this to the current user automatically via the `projects.user_id` relationship — no manual user filter needed.
+      - Sort by created_at descending (newest captures first), since this is a triage surface and recent ideas are typically most relevant.
+      - Each row layout: small "○ IDEA" label (matching the existing styling from entry #2), task title, project name in muted text below the title (e.g., 10px, color `#5a5a6a`).
+      - Tap row → open the status-change popover from entry #2 anchored to the row. This is the existing popover; do NOT build a new one.
+    - Empty state: if the user has zero `status='idea'` tasks anywhere, render a small empty-state message centered on the view: "Nothing captured yet. Ideas you don't commit to right away end up here." Small, muted text. Do NOT show a giant illustration or CTA button.
+    - The INBOX view does NOT show a compose row to add new tasks (capture happens within projects, INBOX is for triage). Just the list and the empty state.
+    - **Critical**: do NOT modify the TODO.md viewer or any component reading from `TODO.md`. This entry only affects the Supabase-backed task list and the bottom navigation.
+    - **Critical**: existing per-project task views (the PROJECTS tab) must continue to show ALL statuses of tasks within the selected project, filtered by the per-project filter pills (from entry #3). The new INBOX is a separate view; it doesn't change how the PROJECTS view works.
+    - Add tests for: (a) INBOX renders only `status='idea'` tasks across all projects, (b) tasks in `active` or `in_progress` do not appear in INBOX, (c) each row shows the originating project name, (d) tapping a row opens the existing status-change popover, (e) promoting a task from INBOX removes it from the INBOX view (next render), (f) empty state renders when no ideas exist, (g) the TODAY view code is fully removed (no orphaned routes, no orphaned imports).
+  - Visual reference: not yet mocked specifically — implement based on the description above, matching the visual language of the rest of the app (Void aesthetic, status-tagged rows from entry #2). If unsure about specific styling choices, follow the per-project task list's row styling as the reference.
+  - Out of scope: CALENDAR → SETTINGS rename (separate future entry), any changes to the per-project task list, voice mic, pomodoro/radio chips, any other layout changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js` (for the cross-project ideas query), `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ad7fa58b-0952-4452-8c5f-ad1bb81cb118 -->
