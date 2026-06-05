@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-04',
+        changed: [
+            "The Claude assistant's chat area and message box now share the main list's background color for a more unified look.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-03',
         added: [
             "Mockup HTML and SVG snippets in the Claude chat now render inline as live previews instead of as raw code.",
@@ -17,9 +24,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-02',
-        added: [
-            "BookHavenBookstore_Sophia is now selectable as a workspace in the Claude chat.",
-        ],
         changed: [
             "The Claude chat workspace list now updates automatically from the server, so newly added repos appear without an app update.",
         ],

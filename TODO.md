@@ -85,7 +85,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 54d5b627-4498-4760-878a-289e8cff16c0 -->
 
-- [ ] **[LOW]** Apply mainList background color to claudeChatView and claudeComposerInput
+- [x] **[LOW]** Apply mainList background color to claudeChatView and claudeComposerInput — Completed: 2026-06-04
   - Type: feature
   - Description: The `.claudeChatView` message area and `.claudeComposerInput` textarea currently use their own background values. Apply the `#mainList` div's background color (`#07070c`) to both `.claudeChatView` and `.claudeComposerInput` in CSS. The `.claudeSheetTabs` row must remain unchanged at its current background. No layout, event wiring, or JS changes required — this is a pure CSS update.
   - File: `toDoList_main/src/style.css`
