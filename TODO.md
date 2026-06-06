@@ -465,7 +465,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7a636f5f-df46-4a8c-a726-3c857ef6ff29 -->
 
-- [ ] **[HIGH]** Fix #mobileProjHeader at desktop: render as single row AND restore click-to-open-drawer behavior
+- [x] **[HIGH]** Fix #mobileProjHeader at desktop: render as single row AND restore click-to-open-drawer behavior — Completed: 2026-06-06
   - Type: bug
   - Description: After the desktop header polish entry shipped, two regressions exist in the workspace pill (`#mobileProjHeader`) at desktop widths (≥1024px): (1) the pill renders as two stacked lines — project name on top, dropdown ▾ on a separate line below — instead of the intended single inline row, AND (2) clicking on the pill no longer opens the project drawer. Both regressions almost certainly share a root cause in the polish entry's CSS handling of `#mobileProjHeader` sub-elements. This is a HIGH priority bug because the click regression makes desktop users unable to switch projects via the pill — the primary way they were supposed to navigate after D1c retired the persistent sidebar. Mobile UX is unaffected and must remain identical.
   - Implementation notes:
