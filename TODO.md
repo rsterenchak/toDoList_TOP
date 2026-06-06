@@ -1,3 +1,47 @@
 # TODO LIST
 
-
+- [ ] **[MEDIUM]** D1a: Migrate the responsive breakpoint constant from 700px to 1024px (with paired test updates)
+  - Type: feature
+  - Description: Migrate every occurrence of the literal 700px / 701px breakpoint in source AND in tests to 1023px / 1024px. This is a coordinated constant migration: the source and the tests that pin the source's literal value must change in lockstep so the test suite continues to express truth about the codebase. The visual behavior of the app does not change in terms of *what* layout appears at which width — the mobile layout still appears below the breakpoint, the desktop layout still appears at and above the breakpoint. ONLY the threshold value moves. The persistent left sidebar, the slide-in drawer, the workspace pill, the chat sheet, and all responsive behaviors stay structurally identical post-merge — they just switch between mobile and desktop presentations at 1024px instead of 700px. The pattern unification (drawer-everywhere) and the sidebar removal are deliberately deferred to D1b. This entry is the foundation that makes those later entries possible without test churn.
+  - Implementation notes:
+    - **The agent should treat tests that pin the literal breakpoint as part of the contract being migrated, not as immutable assertions.** Tests that hardcode `@media (max-width: 700px)` or `innerWidth <= 700` or `MOBILE_MAX_WIDTH = 700` exist to lock down "the source has this specific breakpoint value." When the source's breakpoint value migrates, those tests must migrate with it — that's preserving the contract, not weakening it. This is explicit authorization to update those tests as part of this entry, with the constraint that the test's *intent* (what behavior it verifies) must remain the same; only the literal threshold value changes.
+    - **Migration scope (source):**
+      - `style.css`: every `@media (max-width: 700px)` → `@media (max-width: 1023px)`, every `@media (min-width: 701px)` → `@media (min-width: 1024px)`. Per the agent's prior investigation: ~128 occurrences across the codebase, the majority in style.css.
+      - All `.js` source files in `toDoList_main/src/`: every literal `700` / `701` used as a viewport breakpoint → `1023` / `1024`. Examples per the agent's prior investigation: `main.js` (the `isMobile()` definition), `claudeSheet.js` (`MOBILE_MAX_WIDTH`), `coachmark.js`, `welcomeCarousel.js`, `emptyState.js`, `mobileTaskCreate.js`. These are all the same breakpoint serving slightly different surfaces; they all migrate together.
+      - **DO NOT** change `700` / `701` values that are NOT viewport breakpoints (e.g. timeout values like `setTimeout(..., 700)`, animation durations, pixel offsets unrelated to viewport width). Use context to distinguish — viewport breakpoints appear in `@media` queries, `window.innerWidth` comparisons, `MOBILE_MAX_WIDTH`-style constants, and explicit `<= 700` / `>= 701` viewport checks. Other 700s stay.
+    - **Migration scope (tests):**
+      - Per the agent's investigation: ~46 test files pin the breakpoint literal. For each, find every occurrence of `700` / `701` that exists *because it's a viewport breakpoint* and update it to `1023` / `1024`. The contextual signals are the same as for source — `@media` literals in expected strings, viewport-width assertions, breakpoint-constant assertions.
+      - Tests should continue to express the same behavioral intent. If a test asserts "at desktop sizes, the mobile X button is hidden," that assertion stays — it's the *literal width number* that changes, not the intent.
+      - If a test hardcodes a viewport like `Object.defineProperty(window, 'innerWidth', { value: 800 })` to simulate desktop behavior, the value `800` needs to stay valid as desktop. At the new breakpoint, 800 is now *mobile*. Tests like this need their simulated viewport bumped (e.g. to `1100` or some value clearly above 1024). Same for any `value: 500` mobile simulation — those stay mobile under the new breakpoint, so they don't need to change.
+      - **jsdom default `innerWidth = 1024` consideration (per the agent's discovery):** jsdom's default viewport is 1024px. Under the new breakpoint, *the default jsdom environment is now mobile* (1024 is `<= 1023` if we use `<= 1023`, or it's the boundary if we use `< 1024`). Pick `< 1024` semantics for the breakpoint so jsdom's default 1024 viewport is **desktop**, preserving the test environment's identity. Concretely: `isMobile()` should evaluate to `innerWidth < 1024` (not `<= 1023` and not `<= 1024`), and `@media (min-width: 1024px)` is the desktop media query (which matches jsdom's 1024px default). This keeps the default test environment in desktop mode, so the existing desktop-mode tests don't suddenly flip to mobile mode and require rewriting their entire setup.
+      - **DO NOT** weaken tests by removing assertions, skipping tests, or replacing specific assertions with looser ones. The only change to tests is updating the literal breakpoint values in lockstep with source.
+      - **DO NOT** delete tests. If a test no longer makes sense at all under the new breakpoint (genuinely cannot be made to work even with literal value updates), comment it out with a `// TODO: revisit in D1b — breakpoint migration left this test pinning behavior that D1b retires` and explain. But this should be rare; nearly all tests should just need their literal numbers updated.
+    - **What does NOT change in this entry:**
+      - The persistent left sidebar still appears at ≥1024 (desktop). It does NOT become a drawer yet. D1b handles that.
+      - The slide-in drawer still appears at <1024 (mobile). It still opens from the same trigger.
+      - The workspace pill `#mobileProjHeader` still hides at ≥1024. It does NOT appear on desktop yet. D1c handles that.
+      - The chat slide-up sheet still works exactly as it does today, just at the new breakpoint.
+      - All pomodoro, music, INBOX, filter pills, status indicators, voice mic, header layout, bottom nav — all functionality stays identical, just toggling between mobile/desktop presentations at 1024 instead of 700.
+    - **What CAN change visually for the user post-merge:**
+      - If you previously had a browser window between 700 and 1023px wide, you used to see the desktop layout. After this entry, you see the mobile layout. Same for windows ≥1024 — they still see desktop.
+      - The transition between layouts now happens at a different width. That's the *intended* visible change.
+      - Nothing else.
+    - **Critical**: do NOT change the structural presentation of the sidebar (rail vs full vs drawer). That's D1b.
+    - **Critical**: do NOT show the workspace pill on desktop. That's D1c.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT change anything other than the breakpoint constant. This entry is single-purpose: migrate a constant + the tests that pin it.
+    - **Acceptance test scenarios:**
+      - All 1990 tests that previously passed continue to pass after this entry (with the literal-value updates described above).
+      - At browser window width ≥1024px: same desktop layout that appeared at ≥701px before. Sidebar persistent on left, no workspace pill, chat sheet behavior unchanged.
+      - At browser window width <1024px: same mobile layout that appeared at ≤700px before. Drawer, workspace pill visible, mobile chrome.
+      - At browser window width 800px (previously desktop, now mobile): now shows the mobile layout. This is the intended behavior change.
+      - At browser window width 1024px exactly: shows desktop (because of `< 1024` semantics — 1024 is not "less than" 1024).
+      - No regressions to existing functionality. Test suite passes.
+    - **Test additions (new tests, not just updates):**
+      - (a) A test asserting `isMobile()` returns `true` for `innerWidth = 1023` and `false` for `innerWidth = 1024`. This pins the exact boundary semantics.
+      - (b) A test asserting the literal `1024` (or `1023` depending on which direction the comparison runs) appears in the `isMobile()` definition in main.js, so any future drift away from this value gets caught.
+  - Visual reference: no visual change in this entry. The next two entries (D1b, D1c) produce the user-visible desktop redesign.
+  - Out of scope: any structural changes to the sidebar (D1b), any changes to the workspace pill visibility on desktop (D1c), removal of any features, addition of any new UI surfaces, the two-pane chat layout, the chat collapse/expand toggle, and any other change beyond updating the breakpoint constant and the tests that pin it. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/coachmark.js`, `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/` (broadly — many test files migrate together)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: adc9277c-27c3-47a9-b217-20e75bafbd89 -->
