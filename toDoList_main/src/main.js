@@ -1757,9 +1757,23 @@ function component() {
         if (first) first.focus();
     });
 
+    // D2 — desktop two-pane shell. At desktop widths (≥1024px) #mainSplit lays
+    // the main task pane and a persistent Claude chat pane side by side; the
+    // Claude content node is relocated into #desktopChatPane by the sheet's
+    // placeChatContent(). At mobile widths #mainSplit is display:contents, so
+    // #mainSec keeps its #outerContainer grid-row, the chat pane is hidden, and
+    // the chat lives in the slide-up sheet exactly as before.
+    const mainSplit = document.createElement('div');
+    mainSplit.id = 'mainSplit';
+    const desktopChatPane = document.createElement('div');
+    desktopChatPane.id = 'desktopChatPane';
+    desktopChatPane.setAttribute('aria-label', 'Claude assistant');
+    mainSplit.appendChild(main);
+    mainSplit.appendChild(desktopChatPane);
+
     base.appendChild(nav);
     base.appendChild(nowPlayingStrip);
-    base.appendChild(main);
+    base.appendChild(mainSplit);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
 

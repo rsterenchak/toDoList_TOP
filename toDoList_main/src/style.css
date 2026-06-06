@@ -6830,6 +6830,54 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
+   D2 — DESKTOP TWO-PANE CHAT ≥ 1024px
+   ──────────────────────────────────────────
+   #mainSplit wraps the main task pane (#mainSec) and a persistent Claude
+   chat pane (#desktopChatPane). At desktop widths they sit side by side
+   (~60 / 40); the slide-up sheet and its launcher have no presence here —
+   the chat content node (#claudeSheetBody) is relocated into the pane by
+   placeChatContent(). On mobile #mainSplit is display:contents, so #mainSec
+   keeps its #outerContainer grid-row, the pane is hidden, and the chat is
+   the slide-up sheet exactly as before.
+══════════════════════════════════════════ */
+#mainSplit { display: contents; }
+#desktopChatPane { display: none; }
+
+/* The movable chat surface fills whichever container holds it (sheet or
+   pane) and owns its own scroll context. */
+#claudeSheetBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  #mainSplit {
+    grid-row: 3;
+    display: flex;
+    flex-direction: row;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #mainSec { flex: 1 1 60%; min-width: 0; }
+  #desktopChatPane {
+    flex: 0 0 40%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-base);
+    border-left: 0.5px solid var(--border-bright);
+  }
+  /* The persistent pane is the desktop chat surface; the slide-up sheet and
+     its bottom-right launcher are retired here. */
+  #claudeSheet { display: none; }
+  #claudeLauncher { display: none; }
+}
+
+/* ══════════════════════════════════════════
    PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {

@@ -53,6 +53,15 @@ let attachRepos = [DEFAULT_ATTACH_REPO];
 let launcherEl = null;
 let sheetEl = null;
 let backdropEl = null;
+// The movable chat surface (#claudeSheetBody): the tab row + chat/runs views.
+// It is the SAME node at every breakpoint — D2 relocates it between the mobile
+// slide-up sheet (#claudeSheet) and the desktop persistent pane
+// (#desktopChatPane) so handlers, scroll state, and in-flight requests survive
+// the move. All content lookups scope to it (see sheetQuery) so they resolve in
+// whichever container currently holds it.
+let contentEl = null;
+let chatPaneEl = null;
+let resizeHandler = null;
 let keydownHandler = null;
 let workspaceClickHandler = null;
 let attachClickHandler = null;
@@ -122,13 +131,37 @@ export function isClaudeSheetOpen() {
     return !!(sheetEl && sheetEl.classList.contains('open'));
 }
 
+// Scoped lookup for chat content. The content node moves between the slide-up
+// sheet and the desktop pane (placeChatContent), so queries must target the
+// content wrapper rather than a fixed container — otherwise a desktop lookup
+// would miss elements that have been relocated into #desktopChatPane.
+function sheetQuery(selector) {
+    return contentEl ? contentEl.querySelector(selector) : null;
+}
+
+// D2: present the chat as a persistent right-hand pane at desktop widths and a
+// slide-up sheet at mobile widths, sharing one DOM subtree. On mount and on
+// every viewport-crossing resize, the content node is re-parented to whichever
+// container matches the current breakpoint. Moving (not duplicating) the node
+// preserves its event handlers, scroll position, input text, and any in-flight
+// request. Idempotent: a no-op when the content already lives in the right
+// container. Falls back to leaving the content in the sheet when no pane is
+// present (e.g. unit tests that mount only the sheet).
+function placeChatContent() {
+    if (!contentEl) return;
+    const desktop = window.innerWidth > MOBILE_MAX_WIDTH;
+    const target = desktop ? chatPaneEl : sheetEl;
+    if (!target) return;
+    if (contentEl.parentNode !== target) target.appendChild(contentEl);
+}
+
 function setActiveTab(tab) {
     if (!sheetEl) return;
     sheetEl.setAttribute('data-tab', tab);
-    const chatTab = sheetEl.querySelector('#claudeTabChat');
-    const runsTab = sheetEl.querySelector('#claudeTabRuns');
-    const chatView = sheetEl.querySelector('#claudeChatView');
-    const runsView = sheetEl.querySelector('#claudeRunsView');
+    const chatTab = sheetQuery('#claudeTabChat');
+    const runsTab = sheetQuery('#claudeTabRuns');
+    const chatView = sheetQuery('#claudeChatView');
+    const runsView = sheetQuery('#claudeRunsView');
     if (chatTab) chatTab.setAttribute('aria-selected', String(tab === 'chat'));
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
     if (chatView) chatView.hidden = tab !== 'chat';
@@ -136,7 +169,7 @@ function setActiveTab(tab) {
     // The attach button and its dropdown live in the composer, so they hide with
     // the chat view on the Runs tab. Still gate the button explicitly and collapse
     // the panel when leaving Chat so a panel left open can't linger on return.
-    const attachBtn = sheetEl.querySelector('#claudeComposerAttach');
+    const attachBtn = sheetQuery('#claudeComposerAttach');
     if (attachBtn) attachBtn.hidden = tab !== 'chat';
     if (tab !== 'chat') setAttachPanelHidden(true);
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
@@ -460,7 +493,7 @@ function buildMicButton() {
 }
 
 function micButtonEl() {
-    return sheetEl && sheetEl.querySelector('#claudeComposerMic');
+    return sheetQuery('#claudeComposerMic');
 }
 
 // Reflect the current dictation state on the button. `denied` wins over the
@@ -495,7 +528,7 @@ function toggleMicRecording() {
 // before falling back to the denied state.
 function startMicRecording() {
     const Ctor = getSpeechRecognitionCtor();
-    const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
+    const input = sheetQuery('#claudeComposerInput');
     if (!Ctor || !input) return;
 
     micBaseValue = input.value || '';
@@ -627,7 +660,7 @@ function currentManifestFiles() {
 }
 
 function currentAttachFilter() {
-    const search = sheetEl && sheetEl.querySelector('#claudeAttachSearch');
+    const search = sheetQuery('#claudeAttachSearch');
     return search ? search.value : '';
 }
 
@@ -635,7 +668,7 @@ function currentAttachFilter() {
 // selection: fetch its manifest and either show the browse list or fall back to
 // the free-text path input.
 async function toggleAttachPanel() {
-    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    const panel = sheetQuery('#claudeAttachPanel');
     if (!panel) return;
     if (panel.hidden) {
         setAttachPanelHidden(false);
@@ -649,9 +682,9 @@ async function toggleAttachPanel() {
 // sync, so the button correctly advertises the panel's open state to assistive
 // tech now that it owns the dropdown.
 function setAttachPanelHidden(hidden) {
-    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    const panel = sheetQuery('#claudeAttachPanel');
     if (panel) panel.hidden = hidden;
-    const btn = sheetEl && sheetEl.querySelector('#claudeComposerAttach');
+    const btn = sheetQuery('#claudeComposerAttach');
     if (btn) btn.setAttribute('aria-expanded', String(!hidden));
 }
 
@@ -664,14 +697,14 @@ function repoShortName(repo) {
 
 // Show or clear the cross-repo inline notice inside the picker.
 function showAttachNotice() {
-    const notice = sheetEl && sheetEl.querySelector('#claudeAttachNotice');
+    const notice = sheetQuery('#claudeAttachNotice');
     if (!notice) return;
     notice.textContent = 'Attachments must come from one repo per conversation. Clear current chips or start a + New chat to switch repos.';
     notice.hidden = false;
 }
 
 function clearAttachNotice() {
-    const notice = sheetEl && sheetEl.querySelector('#claudeAttachNotice');
+    const notice = sheetQuery('#claudeAttachNotice');
     if (!notice) return;
     notice.hidden = true;
     notice.textContent = '';
@@ -680,9 +713,9 @@ function clearAttachNotice() {
 // Show or hide the browse controls vs. the free-text path input. Browse mode is
 // for repos with a fetchable manifest; free-text is the fallback.
 function applyAttachPickerMode(isManifest) {
-    const search = sheetEl && sheetEl.querySelector('#claudeAttachSearch');
-    const list = sheetEl && sheetEl.querySelector('#claudeAttachList');
-    const pathRow = sheetEl && sheetEl.querySelector('#claudeAttachPathRow');
+    const search = sheetQuery('#claudeAttachSearch');
+    const list = sheetQuery('#claudeAttachList');
+    const pathRow = sheetQuery('#claudeAttachPathRow');
     if (search) search.hidden = !isManifest;
     if (list) list.hidden = !isManifest;
     if (pathRow) pathRow.hidden = isManifest;
@@ -703,7 +736,7 @@ async function refreshAttachPickerMode() {
 
 // Attach the path typed into the free-text input (non-default repos).
 function addFreeTextAttachment() {
-    const input = sheetEl && sheetEl.querySelector('#claudeAttachPathInput');
+    const input = sheetQuery('#claudeAttachPathInput');
     if (!input) return;
     const path = (input.value || '').trim();
     if (!path) return;
@@ -711,7 +744,7 @@ function addFreeTextAttachment() {
 }
 
 function renderAttachList(filter) {
-    const list = sheetEl && sheetEl.querySelector('#claudeAttachList');
+    const list = sheetQuery('#claudeAttachList');
     if (!list) return;
     list.innerHTML = '';
     const q = String(filter || '').trim().toLowerCase();
@@ -795,7 +828,7 @@ function clearAttachments() {
 // All three live in `#claudeAttachChips` above the input bar. Each chip carries
 // a `data-source` ("manual" or "suggestion") so its origin is legible in the DOM.
 function renderComposerChipArea() {
-    const chips = sheetEl && sheetEl.querySelector('#claudeAttachChips');
+    const chips = sheetQuery('#claudeAttachChips');
     if (!chips) return;
     chips.innerHTML = '';
     attachedFiles.forEach(function(path) {
@@ -866,7 +899,7 @@ function buildSuggestionChip(path) {
 // files, so the user can see what source context the assistant has. Updated in
 // place; removed entirely when no attachments remain.
 function renderAttachIntro() {
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (!surface) return;
     let intro = surface.querySelector('#claudeAttachIntro');
     if (!attachedFiles.length) {
@@ -968,20 +1001,20 @@ async function loadWorkspaceRepos() {
 
 // Paint the pill with the active workspace's short name, e.g. "📂 toDoList_TOP ▾".
 function renderWorkspacePill() {
-    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    const pill = sheetQuery('#claudeWorkspacePill');
     if (!pill) return;
     pill.textContent = '📂 ' + repoShortName(activeChatRepo) + ' ▾';
     pill.title = 'Workspace: ' + activeChatRepo;
 }
 
 function isWorkspaceMenuOpen() {
-    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    const menu = sheetQuery('#claudeWorkspaceMenu');
     return !!(menu && !menu.hidden);
 }
 
 function openWorkspaceMenu() {
-    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
-    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    const menu = sheetQuery('#claudeWorkspaceMenu');
+    const pill = sheetQuery('#claudeWorkspacePill');
     if (!menu) return;
     buildWorkspaceMenu();
     menu.hidden = false;
@@ -989,8 +1022,8 @@ function openWorkspaceMenu() {
 }
 
 function closeWorkspaceMenu() {
-    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
-    const pill = sheetEl && sheetEl.querySelector('#claudeWorkspacePill');
+    const menu = sheetQuery('#claudeWorkspaceMenu');
+    const pill = sheetQuery('#claudeWorkspacePill');
     if (menu) { menu.hidden = true; menu.innerHTML = ''; }
     if (pill) pill.setAttribute('aria-expanded', 'false');
 }
@@ -1002,7 +1035,7 @@ function toggleWorkspaceMenu() {
 
 // Render one radio menu item per allowed repo, the active one checkmarked.
 function buildWorkspaceMenu() {
-    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    const menu = sheetQuery('#claudeWorkspaceMenu');
     if (!menu) return;
     menu.innerHTML = '';
     attachRepos.forEach(function(repo) {
@@ -1028,7 +1061,7 @@ function onWorkspaceItemClick(repo) {
 }
 
 function showWorkspaceConfirm(repo) {
-    const menu = sheetEl && sheetEl.querySelector('#claudeWorkspaceMenu');
+    const menu = sheetQuery('#claudeWorkspaceMenu');
     if (!menu) return;
     menu.innerHTML = '';
     const confirm = document.createElement('div');
@@ -1062,10 +1095,10 @@ function confirmWorkspaceSwitch(repo) {
     setActiveChatRepo(repo);
 
     chatHistory = [];
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
 
-    const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+    const panel = sheetQuery('#claudeAttachPanel');
     const pickerWasOpen = !!(panel && !panel.hidden);
 
     clearAttachments();
@@ -1081,7 +1114,7 @@ function confirmWorkspaceSwitch(repo) {
 
 // ── CHAT ──
 function appendMessageBubble(role, text) {
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (!surface) return null;
     const bubble = document.createElement('div');
     bubble.className = 'claudeMsg claudeMsg--' + role;
@@ -1186,8 +1219,8 @@ function stripInspectDirective(reply) {
 }
 
 async function sendChatTurn() {
-    const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
-    const send = sheetEl && sheetEl.querySelector('#claudeComposerSend');
+    const input = sheetQuery('#claudeComposerInput');
+    const send = sheetQuery('#claudeComposerSend');
     if (!input) return;
     const text = (input.value || '').trim();
     if (!text) return;
@@ -1215,8 +1248,8 @@ async function sendChatTurn() {
 // for that seed means no merged PR carries the entry's marker yet, so it's
 // shown as a gentle "nothing to iterate on" note rather than an error.
 async function requestAssistantReply(entryId) {
-    const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
-    const send = sheetEl && sheetEl.querySelector('#claudeComposerSend');
+    const input = sheetQuery('#claudeComposerInput');
+    const send = sheetQuery('#claudeComposerSend');
     if (send) send.disabled = true;
     if (input) input.disabled = true;
 
@@ -1264,7 +1297,7 @@ async function requestAssistantReply(entryId) {
 // screen it surfaces a retry notice without sending a turn; when found it sends
 // the snapshot as the next user turn so the Worker can diagnose against it.
 function renderAttachLayoutButton(selector) {
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (!surface) return null;
 
     const wrap = document.createElement('div');
@@ -1343,7 +1376,7 @@ async function startIterateFromRun(rec) {
     if (!isClaudeSheetOpen()) openClaudeSheet();
 
     chatHistory = [];
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
     clearAttachments();
 
@@ -1365,7 +1398,7 @@ async function startIterateFromRun(rec) {
 // ("This ships to main and deploys to your live app." → Ship it / Cancel)
 // before injecting and dispatching, so a tap can't ship by accident.
 function renderDraftedEntryCard(entryText) {
-    const surface = sheetEl && sheetEl.querySelector('#claudeChatSurface');
+    const surface = sheetQuery('#claudeChatSurface');
     if (!surface) return;
 
     const card = document.createElement('div');
@@ -1533,7 +1566,7 @@ function buildRunsView() {
     newBtn.addEventListener('click', function() {
         setActiveTab('chat');
         clearAttachments();
-        const input = sheetEl && sheetEl.querySelector('#claudeComposerInput');
+        const input = sheetQuery('#claudeComposerInput');
         if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
     });
 
@@ -1547,7 +1580,7 @@ function buildRunsView() {
 // mount (to catch a worker that was already waiting before this mount) and from
 // the `appUpdateAvailable` listener.
 function renderUpdateNudge() {
-    const nudge = sheetEl && sheetEl.querySelector('#claudeUpdateNudge');
+    const nudge = sheetQuery('#claudeUpdateNudge');
     if (!nudge) return;
     // Show only when the flag is set AND a worker is genuinely waiting. Gating
     // on hasPendingUpdate() keeps a stale flag from surfacing a Reload button
@@ -1569,7 +1602,7 @@ const RUN_STATUS_LABEL = {
 const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 
 function renderRunsList() {
-    const list = sheetEl && sheetEl.querySelector('#claudeRunsList');
+    const list = sheetQuery('#claudeRunsList');
     if (!list) return;
     list.innerHTML = '';
     if (!runRecords.length) {
@@ -1899,11 +1932,21 @@ function buildSheet() {
     tabs.appendChild(runsTab);
     tabs.appendChild(buildWorkspace());
 
+    // The interactive surface (tabs + chat/runs views) lives in its own wrapper
+    // so D2 can relocate the whole thing between the mobile sheet and the
+    // desktop pane as a single node, without re-binding handlers. The handle
+    // (mobile grab) and close row (desktop ×) are container chrome and stay with
+    // the sheet. `contentEl` is the canonical query root for chat lookups.
+    const body = document.createElement('div');
+    body.id = 'claudeSheetBody';
+    body.appendChild(tabs);
+    body.appendChild(buildChatView());
+    body.appendChild(buildRunsView());
+    contentEl = body;
+
     sheet.appendChild(handle);
     sheet.appendChild(closeRow);
-    sheet.appendChild(tabs);
-    sheet.appendChild(buildChatView());
-    sheet.appendChild(buildRunsView());
+    sheet.appendChild(body);
 
     attachSwipeToClose(sheet);
     return sheet;
@@ -1951,6 +1994,17 @@ export function mountClaudeSheet(parent) {
     parent.appendChild(sheetEl);
     parent.appendChild(launcherEl);
 
+    // D2: the desktop chat pane is built by main.js as part of the page shell.
+    // Grab it (may be absent in unit mounts) and seat the chat content in the
+    // container that matches the current viewport, then keep it in sync across
+    // the breakpoint on resize. Drop any prior mount's resize listener so
+    // remounts don't stack handlers.
+    chatPaneEl = document.getElementById('desktopChatPane');
+    placeChatContent();
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+    resizeHandler = function() { placeChatContent(); };
+    window.addEventListener('resize', resizeHandler);
+
     keydownHandler = function(event) {
         if (event.key !== 'Escape') return;
         // Escape peels back one layer: an open workspace menu first, then the
@@ -1968,7 +2022,7 @@ export function mountClaudeSheet(parent) {
     if (workspaceClickHandler) document.removeEventListener('click', workspaceClickHandler);
     workspaceClickHandler = function(event) {
         if (!isWorkspaceMenuOpen()) return;
-        const wrap = sheetEl && sheetEl.querySelector('.claudeWorkspace');
+        const wrap = sheetQuery('.claudeWorkspace');
         if (wrap && !wrap.contains(event.target)) closeWorkspaceMenu();
     };
     document.addEventListener('click', workspaceClickHandler);
@@ -1978,9 +2032,9 @@ export function mountClaudeSheet(parent) {
     // .claudeAttach wrap, so tapping the button toggles rather than closes.
     if (attachClickHandler) document.removeEventListener('click', attachClickHandler);
     attachClickHandler = function(event) {
-        const panel = sheetEl && sheetEl.querySelector('#claudeAttachPanel');
+        const panel = sheetQuery('#claudeAttachPanel');
         if (!panel || panel.hidden) return;
-        const wrap = sheetEl && sheetEl.querySelector('.claudeAttach');
+        const wrap = sheetQuery('.claudeAttach');
         if (wrap && !wrap.contains(event.target)) setAttachPanelHidden(true);
     };
     document.addEventListener('click', attachClickHandler);

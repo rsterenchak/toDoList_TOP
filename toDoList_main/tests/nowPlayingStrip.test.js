@@ -43,9 +43,10 @@ describe('now-playing strip — DOM markup', () => {
     it('inserts the strip between the nav and the main section', () => {
         // Ordered appendChild calls on the outer container — the strip sits
         // directly after the nav and before the main pane so it owns its own
-        // horizontal row beneath the header.
+        // horizontal row beneath the header. The main pane is wrapped in the
+        // D2 two-pane split (#mainSplit), so the strip precedes that wrapper.
         expect(main).toMatch(
-            /base\.appendChild\(nav\);\s*base\.appendChild\(nowPlayingStrip\);\s*base\.appendChild\(main\);/
+            /base\.appendChild\(nav\);\s*base\.appendChild\(nowPlayingStrip\);\s*base\.appendChild\(mainSplit\);/
         );
     });
 

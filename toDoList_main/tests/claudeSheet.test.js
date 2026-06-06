@@ -217,12 +217,22 @@ describe('Claude sheet — module surface and styling', () => {
         expect(claude).toMatch(/addEventListener\(\s*['"]touchend['"]/);
     });
 
-    it('docks as a ~380px full-height right-hand panel on wide viewports', () => {
+    it('retires the desktop docked panel — at ≥1024px the sheet and launcher are hidden for the persistent pane', () => {
+        // D2 supersedes the old ~380px right-hand docked sheet: at desktop
+        // widths the slide-up sheet and its bottom-right launcher have no
+        // presence, because the chat content is relocated into the persistent
+        // #desktopChatPane (see placeChatContent / the D2 CSS block).
+        expect(css).toMatch(
+            /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{[\s\S]*?#claudeSheet\s*\{\s*display:\s*none\s*;?\s*\}/
+        );
+        expect(css).toMatch(
+            /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{[\s\S]*?#claudeLauncher\s*\{\s*display:\s*none\s*;?\s*\}/
+        );
+        // The shared sheet base still provides the column flex layout the
+        // mobile bottom sheet relies on.
         const rule = extractTopLevelRule('#claudeSheet');
-        expect(rule).toMatch(/position:\s*fixed/);
-        expect(rule).toMatch(/right:\s*0/);
-        expect(rule).toMatch(/width:\s*380px/);
-        expect(rule).toMatch(/height:\s*100%/);
+        expect(rule).toMatch(/display:\s*flex/);
+        expect(rule).toMatch(/flex-direction:\s*column/);
     });
 
     it('becomes a ~86% bottom sheet under the 1023px breakpoint', () => {
