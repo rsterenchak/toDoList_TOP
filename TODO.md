@@ -781,3 +781,73 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9b393636-0f69-4efc-a7c4-20b2e2711103 -->
+
+- [ ] **[MEDIUM]** Align chat pane sub-header row with task pane view tabs sub-band at desktop widths
+  - Type: bug
+  - Description: At desktop widths (≥1024px), the chat pane and task pane do not share a horizontal coordinate system for their sub-header rows. In the task pane, the view tabs sub-band (PROJECTS/INBOX/CALENDAR) sits directly below the top header. In the chat pane, the collapse `›` button sits on its own row directly below the top header, with the CHAT/RUNS tabs (and the repo workspace pill) placed on a separate row below it. The result: when scanning horizontally across the pane divider, the panes look misaligned — the chat pane's content starts at a different vertical position than the task pane's content. This entry aligns the chat pane's sub-header row with the task pane's view tabs sub-band, so both panes have a peer "first row under the main header" at the same vertical position. Mobile UX is unaffected (mobile uses the slide-up chat sheet, not the desktop pane).
+  - Implementation notes:
+    - **Target alignment:**
+      - Top header (full width): row 1 — workspace pill on left + counts + chips on right (UNCHANGED)
+      - Sub-header row: row 2 — BOTH panes have content at this y-coordinate
+        - Task pane (left of divider): PROJECTS/INBOX/CALENDAR view tabs (already there, UNCHANGED)
+        - Chat pane (right of divider): collapse `›` + CHAT/RUNS tabs + repo workspace pill — all on the same row, sitting at the same vertical position as the task pane's view tabs
+      - Below sub-header: each pane has its own content
+        - Task pane: filter pills row, compose row, task rows, COMPLETED, TODO.md viewer
+        - Chat pane: messages area, input row at bottom
+    - **Likely DOM structure to verify (the agent should inspect the actual code):**
+      - The chat pane's outer container is likely `#desktopChatPane`. Currently its first child is likely the collapse button OR a header container that holds collapse + tabs + repo pill in vertically stacked sub-elements.
+      - The fix: ensure the chat pane's top section is a single horizontal flex row containing: collapse button (left) + CHAT/RUNS tabs (left-center) + repo workspace pill (right, pushed via `margin-left: auto`).
+      - Match this row's height to the task pane's view tabs sub-band height (likely ~32-36px).
+      - Vertical positioning: this row sits immediately below the main header, with the SAME `margin-top` (or `padding-top`) as the task pane's view tabs sub-band — ideally 0 or minimal so both rows start at the same y-coordinate.
+    - **CSS changes (at `@media (min-width: 1024px)`):**
+      - The chat pane's top region needs to be a single flex row:
+    .chat-pane-top-row { /* or whatever the actual selector is */
+      display: flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 16px;
+      margin-top: 0; /* or matching the task pane sub-band's offset */
+      gap: 12px;
+    }
+      - Collapse button sits inline (no longer on its own row)
+      - CHAT/RUNS tabs sit inline next to collapse button
+      - Repo workspace pill pushed to the right via `margin-left: auto` or `justify-self: flex-end`
+    - **Vertical position alignment:**
+      - The task pane's view tabs sub-band currently sits at some y-coordinate `Y1` below the top header
+      - The chat pane's sub-header row must also sit at `Y1`, not some larger value
+      - If the chat pane has any padding/margin pushing its content down (e.g. `padding-top: 16px`), reduce or remove it so the sub-header row sits flush below the main header
+      - Use the dev tools to measure: the task pane's view tabs row's `getBoundingClientRect().top` should approximately equal the chat pane's sub-header row's `getBoundingClientRect().top` (within a few pixels for natural padding differences)
+    - **What stays the same:**
+      - All chat content rendering — message history, voice input, send, mic, popovers
+      - All chat behavior — sending messages, the chat collapse/expand toggle
+      - Task pane — view tabs, filter pills, compose, task list, COMPLETED, TODO.md viewer
+      - Mobile UX completely unchanged (mobile uses chat sheet, not pane)
+      - The breakpoint constant, drawer, project picker dropdown, all previously-shipped contracts
+      - The two-pane structure itself (just the chat pane's internal sub-header layout changes)
+      - The chat pane width / split ratio
+    - **Critical**: do NOT modify mobile UX. Verify by testing at `innerWidth = 500`.
+    - **Critical**: do NOT modify the task pane's layout — the view tabs sub-band stays where it is. Only the chat pane's internal sub-header restructures to align with it.
+    - **Critical**: do NOT change the collapse/expand toggle's behavior — it should still hide/show the chat pane via the existing localStorage flag. Only its visual position changes (moves into the sub-header row).
+    - **Critical**: do NOT modify the project picker dropdown.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT change the chat content (messages area, input row) — only the chat pane's top section restructures.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - When inspecting the DOM, the chat pane's sub-header row contains: collapse button, CHAT/RUNS tabs, and the repo workspace pill — all in a single horizontal flex row
+        - The y-coordinate of the chat pane's sub-header row's top edge matches the y-coordinate of the task pane's view tabs sub-band top edge (within ~4px tolerance)
+        - The CHAT/RUNS tabs are visible at the same height as the PROJECTS/INBOX/CALENDAR tabs
+        - The collapse button still toggles the chat pane open/closed (D3 behavior)
+        - The repo workspace pill still opens its dropdown when clicked
+        - The chat pane's content area (messages + input) is unchanged in behavior
+      - At `innerWidth < 1024`:
+        - Chat sheet (not pane) behavior identical to current — mobile UX unchanged
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the chat pane's sub-header row and the task pane's view tabs sub-band have approximately equal `top` values (use `getBoundingClientRect()`)
+      - (b) At `innerWidth = 1280`, the chat pane's collapse button is on the same row as the CHAT/RUNS tabs (verify via parent element or y-coordinate)
+      - (c) At `innerWidth = 1280`, the chat collapse button still toggles the chat pane visibility (click + verify state)
+      - (d) At `innerWidth = 500`, chat sheet behavior unchanged (regression guard)
+  - Visual reference: `two-pane-alignment.svg` from the design session — both panes' sub-header rows align horizontally; chat pane's collapse button, tabs, and repo pill all on the same row.
+  - Out of scope: any task pane layout changes (the view tabs sub-band stays where it is), any chat content changes (messages, input row), the cycle pill UI (separate entry if pursued), any mobile UX changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if DOM restructuring is needed), possibly `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 29b70b21-f014-46f3-8132-62f429b3f38b -->
