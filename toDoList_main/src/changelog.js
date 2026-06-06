@@ -15,13 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "The Claude chat panel on wide screens now shows its content on first load instead of appearing empty.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-05',
-        fixed: [
-            "The first-run welcome tour now opens the projects drawer when spotlighting the sample project and the add-project button, so those steps highlight the real controls instead of empty screen edge.",
+            "On wide screens the workspace pill again shows the project name and ▾ on a single line and opens the projects drawer when you click anywhere on it.",
         ],
     },
 ];

@@ -6801,6 +6801,12 @@ body.row-dragging * { cursor: grabbing !important; }
   .mobileProjChev { display: none; }
 
   #mobileProjTitleRow {
+    /* The base mobile `display: flex` lives in the max-width:1023px block, so
+       it doesn't reach desktop — without this the row falls back to block flow
+       and the block-level #mobileProjName + ▾ chevron stack onto two lines.
+       Re-declare flex/row here so the name and ▾ sit inline. */
+    display: flex;
+    flex-direction: row;
     flex: 0 1 auto;
     min-width: 0;
     min-height: 0;

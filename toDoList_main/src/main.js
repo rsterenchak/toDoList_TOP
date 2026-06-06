@@ -3014,6 +3014,19 @@ function component() {
     mobileProjName.addEventListener('click', openMobileDrawer);
     mobileProjChevron.addEventListener('click', openMobileDrawer);
 
+    // Make the whole pill clickable, not just the name + ▾ glyphs. At desktop
+    // the header is a padded pill (D1c) whose body looked clickable (cursor:
+    // pointer) but had no handler, so clicks landing on the padding / pill
+    // background did nothing. Bind the drawer-open to the header itself —
+    // openMobileDrawer is idempotent, so clicks that also hit the name/▾ (which
+    // bubble up here) are harmless. The ‹ › carousel chevrons navigate prev/
+    // next project at mobile and must NOT open the drawer, so ignore clicks
+    // originating from them.
+    mobileProjHeader.addEventListener('click', function(event) {
+        if (event.target.closest && event.target.closest('.mobileProjChev')) return;
+        openMobileDrawer();
+    });
+
     // ── top-level view switcher (Today / Projects) ──
     // Pill bar in the top nav (anchored immediately right of the
     // hamburger) toggles between the Today dashboard shell and the
