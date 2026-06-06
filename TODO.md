@@ -631,3 +631,64 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, possibly `toDoList_main/src/listLogic.js` (if a new helper for project counts is needed), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4a48a7ee-ecdd-4b7e-9f4d-95713e1dc19f -->
+
+- [ ] **[HIGH]** Fix project picker dropdown click handler — only opens "sometimes" due to event race condition
+  - Type: bug
+  - Description: After the dropdown picker shipped, clicking the workspace pill at desktop widths sometimes opens the dropdown and sometimes does nothing visible (or causes a brief flash). The behavior is non-deterministic, indicating an event handler race condition rather than a logic bug. This is HIGH priority because the dropdown is the primary way users switch projects at desktop after the drawer was retired — unreliable behavior makes the pill effectively broken. Mobile UX is unaffected and must remain identical.
+  - Implementation notes:
+    - **Diagnosis (the agent should verify before patching):**
+      - Open the desktop view in browser devtools. Click the workspace pill repeatedly. Observe:
+        - Does the dropdown briefly appear and disappear (open + close in same tick)?
+        - Are multiple click handlers registered on `#mobileProjHeader`? Check Event Listeners in devtools.
+        - Is the document-level click-outside listener attached BEFORE the dropdown becomes visible (synchronous registration), or AFTER (deferred via setTimeout/RAF)?
+      - Search `main.js` (or wherever the dropdown click handler lives) for:
+        - The click handler on `#mobileProjHeader` — confirm it's registered exactly once and uses the `window.__hydrateListenerRegistered` one-shot guard pattern (or equivalent) to prevent multi-bundle double-registration
+        - The document-level click-outside dismiss handler — confirm how/when it's attached
+        - The Escape key dismiss handler — confirm proper registration
+    - **Most likely root cause: click-outside handler catches the opening click.**
+      - When the pill is clicked, the pill's click handler runs first (opens dropdown), then the event bubbles to document. If the document-level "click outside dropdown → close" handler is already attached, it sees the click and may interpret it as "outside the dropdown" because the dropdown JUST appeared and the click target was the pill (not the dropdown content), triggering close.
+      - **Two correct fixes (pick one — DO NOT do both):**
+        - (a) **Defer click-outside attachment to the next tick.** When the dropdown opens, attach the document click-outside listener via `setTimeout(() => { document.addEventListener('click', closeHandler) }, 0)` OR `requestAnimationFrame(() => { document.addEventListener('click', closeHandler) })`. This ensures the opening click has fully bubbled and resolved before the dismiss listener is live.
+        - (b) **Check the click target in the dismiss handler.** In the document click-outside handler, explicitly check if `event.target` is `#mobileProjHeader` or any descendant of it. If yes, ignore the click (the pill handler is responsible). If no, proceed with dismissal. Use `event.target.closest('#mobileProjHeader')` for a clean check.
+      - The agent should pick (a) OR (b) — whichever fits the existing code structure better. Don't apply both; they're alternative solutions to the same problem.
+    - **Multi-bundle double-registration check:**
+      - Per CLAUDE.md, the codebase has a known issue where `main.js` evaluates more than once due to multiple webpack entry bundles. If the dropdown click handler is registered at module level WITHOUT a one-shot guard, it will be registered N times where N is the number of bundles.
+      - Verify the dropdown handler uses the existing `window.__hydrateListenerRegistered` (or similar) one-shot pattern. If not, wrap the registration:
+```js
+        if (!window.__dropdownListenerRegistered) {
+          window.__dropdownListenerRegistered = true;
+          // ... register handler
+        }
+```
+      - Apply the same pattern to the click-outside handler and the Escape key handler if they have the same issue.
+    - **Toggle behavior verification:**
+      - The original entry asked for "click pill while dropdown is open → close it." This should still work after the fix.
+      - In the pill's click handler, check if dropdown is currently open: if open, close it; if closed, open it. This is toggle logic.
+      - Make sure the click-outside handler doesn't also fire on this same toggle-close click, causing a "close then immediately re-open" loop.
+    - **Critical**: do NOT modify the dropdown's content, styling, or visual design — only the event handler logic.
+    - **Critical**: do NOT modify mobile drawer behavior. Verify by testing at `innerWidth = 500`.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT touch any other component (chat pane, view tabs, filter pills, etc.).
+    - **Critical**: do NOT reintroduce the drawer at desktop — the dropdown is the desktop pattern now.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - Clicking the pill opens the dropdown — every single time, with no flashing or partial states
+        - Clicking the pill while the dropdown is open closes it (toggle works)
+        - Clicking outside the dropdown closes it
+        - Pressing Escape closes the dropdown
+        - Clicking a project row closes the dropdown and switches projects
+        - Repeated rapid clicking (e.g. 10 clicks in a row) produces consistent toggle behavior — no stuck states
+      - At `innerWidth < 1024`:
+        - Drawer behavior identical to current (verified working)
+        - Dropdown never shown
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, simulating a click on `#mobileProjHeader` makes `#projectPickerDropdown` visible AND it remains visible after the click event completes (catches the "opens then immediately closes" race)
+      - (b) At `innerWidth = 1280`, simulating a click on `#mobileProjHeader` while the dropdown IS visible makes it hidden (toggle works)
+      - (c) At `innerWidth = 1280`, simulating a click on `document.body` while the dropdown is open closes it
+      - (d) The click handler on `#mobileProjHeader` is registered exactly once (use a counter or check window.__dropdownListenerRegistered flag is set)
+      - (e) At `innerWidth = 500`, the same click handler routes to drawer-open, not dropdown-open (regression guard for mobile)
+  - Visual reference: `project-picker-dropdown.svg` from the design session — dropdown behavior should be reliable, not intermittent.
+  - Out of scope: any visual changes to the dropdown, any drawer behavior changes, any other component. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, possibly `toDoList_main/src/style.css` (only if a `pointer-events` adjustment is needed), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: f28db964-3307-45c4-a9db-a3a07c1a9ec0 -->
