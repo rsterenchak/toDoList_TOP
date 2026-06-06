@@ -31,6 +31,8 @@ import {
     setMusicVisualizerEnabled,
     getMusicVisualizerStyle,
     setMusicVisualizerStyle,
+    isChatPaneCollapsed,
+    setChatPaneCollapsed,
 } from './prefs.js';
 import {
     VISUALIZER_STYLES,
@@ -1768,12 +1770,42 @@ function component() {
     const desktopChatPane = document.createElement('div');
     desktopChatPane.id = 'desktopChatPane';
     desktopChatPane.setAttribute('aria-label', 'Claude assistant');
+
+    // D3 — collapse/expand for the desktop chat pane. The collapse `›` seats at
+    // the top-left of the pane (ahead of the relocated chat content); the expand
+    // `‹` is a fixed tab on the right viewport edge, shown only while collapsed.
+    // State rides body.chatPaneCollapsed and persists via prefs. Both controls
+    // and the collapsed layout are desktop-only via CSS, so the class is inert at
+    // mobile widths (the slide-up sheet ignores it). No resize handler is needed —
+    // the media-query-scoped CSS does the breakpoint gating.
+    const chatCollapseBtn = document.createElement('button');
+    chatCollapseBtn.id = 'chatCollapseButton';
+    chatCollapseBtn.type = 'button';
+    chatCollapseBtn.setAttribute('aria-label', 'Collapse chat pane');
+    chatCollapseBtn.textContent = '›';
+    const chatExpandBtn = document.createElement('button');
+    chatExpandBtn.id = 'chatExpandButton';
+    chatExpandBtn.type = 'button';
+    chatExpandBtn.setAttribute('aria-label', 'Expand chat pane');
+    chatExpandBtn.textContent = '‹';
+    function applyChatPaneCollapsed(collapsed) {
+        document.body.classList.toggle('chatPaneCollapsed', collapsed);
+        setChatPaneCollapsed(collapsed);
+    }
+    chatCollapseBtn.addEventListener('click', function() { applyChatPaneCollapsed(true); });
+    chatExpandBtn.addEventListener('click', function() { applyChatPaneCollapsed(false); });
+    // Seed the body class from the persisted pref before first paint so a
+    // collapsed pane doesn't flash open on reload.
+    document.body.classList.toggle('chatPaneCollapsed', isChatPaneCollapsed());
+
+    desktopChatPane.appendChild(chatCollapseBtn);
     mainSplit.appendChild(main);
     mainSplit.appendChild(desktopChatPane);
 
     base.appendChild(nav);
     base.appendChild(nowPlayingStrip);
     base.appendChild(mainSplit);
+    base.appendChild(chatExpandBtn);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
 

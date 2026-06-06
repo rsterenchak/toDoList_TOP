@@ -18,6 +18,7 @@ export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 export const TASK_FILTER_KEY = 'todoapp_taskFilter';
+export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -174,6 +175,26 @@ export function setSampleSeeded(seeded) {
         } else {
             localStorage.removeItem(SAMPLE_SEEDED_KEY);
         }
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── desktop chat pane collapsed/expanded ──
+// At desktop widths (≥1024px) the persistent chat pane can be collapsed so the
+// task pane fills the viewport. Default is expanded (false) so a fresh install
+// shows the two-pane layout. The value is purely cosmetic — at mobile widths
+// the slide-up sheet ignores it — so a stale or hand-edited value can't break
+// anything; any non-'true' value reads as expanded.
+export function isChatPaneCollapsed() {
+    try {
+        return localStorage.getItem(CHAT_PANE_COLLAPSED_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setChatPaneCollapsed(collapsed) {
+    try {
+        localStorage.setItem(CHAT_PANE_COLLAPSED_KEY, collapsed ? 'true' : 'false');
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
