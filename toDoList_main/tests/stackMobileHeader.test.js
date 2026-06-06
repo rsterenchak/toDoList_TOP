@@ -143,12 +143,13 @@ describe('STACK mobile project header', () => {
         expect(css).not.toMatch(/mobileProjOverflow/);
     });
 
-    it('exposes only the mobile header at the ≤1023px breakpoint', () => {
-        // The mobile header is in the DOM at all viewports so the JS path
-        // is single-branch; CSS hides it at ≥1024px to keep the desktop
-        // chrome unchanged.
-        const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[^@]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/);
-        expect(desktop).toBeTruthy();
+    it('reveals the header as the desktop project pill at the ≥1024px breakpoint (D1c)', () => {
+        // The mobile header is in the DOM at all viewports so the JS path is
+        // single-branch. Before D1c it was hidden at ≥1024px; D1c now reveals
+        // it there as the compact project pill (an inline-flex drawer
+        // trigger), so the old desktop-hide rule must be gone.
+        expect(css).not.toMatch(/@media \(min-width:\s*1024px\)\s*\{[^@]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/);
+        expect(css).toMatch(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{[\s\S]*?display:\s*inline-flex/);
     });
 
     it('assembles the title row into the header and mounts the header into main2', () => {

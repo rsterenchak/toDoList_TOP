@@ -89,11 +89,17 @@ describe('Compressed single-row mobile header', () => {
         expect(before).toMatch(/color:\s*#8a8a99/i);
     });
 
-    it('keeps the desktop header hidden at the ≥1024px breakpoint (no desktop layout change)', () => {
-        // The compressed layout is mobile-only; desktop still hides the
-        // mobile header entirely so its larger chrome is untouched.
-        expect(css).toMatch(
+    it('reveals the header as the project pill at the ≥1024px breakpoint (D1c)', () => {
+        // The compressed single-row layout is mobile-only, but D1c no longer
+        // hides #mobileProjHeader at desktop — it is revealed there as the
+        // compact project pill (an inline-flex drawer trigger), not
+        // display:none. This pins that the old desktop-hide rule is gone and
+        // the pill is shown.
+        expect(css).not.toMatch(
             /@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/
+        );
+        expect(css).toMatch(
+            /@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{[\s\S]*?display:\s*inline-flex/
         );
     });
 
