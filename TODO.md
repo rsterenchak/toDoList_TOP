@@ -733,3 +733,51 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fc8d7d8a-1ea6-4d27-bcb9-157d2f3864d9 -->
+
+- [ ] **[LOW]** Remove sub-band background to eliminate visible color stripe between view tabs and filter pills
+  - Type: bug
+  - Description: At desktop widths (≥1024px), the view tab sub-band (containing PROJECTS/INBOX/CALENDAR) has a slightly different background color than the page (`#08080d` vs `#07070c`). With the recent spacing changes adding gap between the sub-band and the filter pills row, the sub-band's distinct background is now visible as a horizontal "stripe" of slightly-lighter color extending below the tabs. This entry removes the sub-band's distinct background so the tabs sit directly on the page background — no stripe, no visible color shift. The tabs themselves and their underline indicator remain visually identical; only the band's background color is removed.
+  - Implementation notes:
+    - **The change is small and surgical:**
+      - Locate the CSS rule for the desktop view tab sub-band container (likely `#desktopViewSubBand`, `.desktop-view-tabs-band`, or similar — agent should grep the codebase for the recent sub-band styling and find the actual selector).
+      - In the rule(s) scoped to `@media (min-width: 1024px)`, REMOVE:
+        - `background: #08080d` (or whatever the distinct background color is)
+        - Any `border-top` or `border-bottom` properties on the band container (the visible thin borders were paired with the background to mark the band region)
+      - DO NOT remove or modify:
+        - The tab elements themselves (PROJECTS/INBOX/CALENDAR text)
+        - The active tab's purple text color
+        - The active tab's purple underline indicator
+        - The tabs' click handlers
+        - The padding/positioning of the tabs within the band area — they should still sit where they sit today, just without the band's distinct background
+    - **At mobile widths (<1024px):**
+      - If the mobile view doesn't use a similar sub-band (mobile uses the bottom nav for view tabs), this change has no mobile effect.
+      - If for any reason the mobile UI shares the same selector, ensure the mobile styling is preserved — only the desktop background should change.
+    - **What stays the same:**
+      - All other components: workspace pill, counts, chips, filter pills, sort/expand, compose row, task list, chat pane, all of it
+      - The tabs' click behavior, active state, underline indicator
+      - The vertical spacing between sections (the recent spacing entry's changes stay intact)
+      - Mobile UX completely unaffected
+      - The breakpoint constant, drawer, two-pane structure, all previously-shipped contracts
+    - **Critical**: do NOT modify any element other than the sub-band container's background and borders.
+    - **Critical**: do NOT change the vertical spacing — that's the previous entry's contract.
+    - **Critical**: do NOT modify the tabs' styling beyond removing the parent container's background.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT modify mobile UX in any way.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - The PROJECTS/INBOX/CALENDAR tabs are visible (text + underline indicator on active)
+        - The area around the tabs has the same background color as the rest of the page (no visible color stripe)
+        - The clickable area for each tab is unchanged (clicking PROJECTS still routes to projects view, etc.)
+        - The active tab's purple text + underline still indicate the active state
+        - No visible horizontal stripe between the tab row and the filter pills row
+      - At `innerWidth < 1024`:
+        - Mobile UX completely unchanged
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the computed `background-color` of the sub-band container is transparent OR matches the page background (`#07070c` or equivalent rgba)
+      - (b) At `innerWidth = 1280`, the sub-band container's `border-top` and `border-bottom` are both `none` or `0`
+      - (c) At `innerWidth = 1280`, the tabs themselves still render with their existing colors (the active tab's text color is unchanged)
+  - Visual reference: `subband-spacing-options.svg` Option A from the design session — tabs sit directly on the page background with no distinct band.
+  - Out of scope: any tab styling changes, any spacing changes (kept from previous entry), any chrome element changes, any mobile UX changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9b393636-0f69-4efc-a7c4-20b2e2711103 -->
