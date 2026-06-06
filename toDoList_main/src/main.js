@@ -853,6 +853,94 @@ function component() {
         musicToggle.setAttribute('data-music-status', snap.status);
     }
 
+    // NOW-PLAYING STRIP — a thin horizontal row that lives directly below the
+    // header and only earns its space while music is PLAYING or BUFFERING. It
+    // mirrors the music controller's status through the same subscribe pattern
+    // syncMusicIcon uses; when the status is anything else (PAUSED / IDLE) the
+    // strip is hidden entirely and the musicToggle button alone signals state.
+    // The strip never owns visibility state of its own — it always follows the
+    // controller — so pomodoro auto-pause/resume reflows it for free.
+    const nowPlayingStrip = document.createElement('div');
+    nowPlayingStrip.id = 'nowPlayingStrip';
+    nowPlayingStrip.className = 'nowPlayingStrip';
+    nowPlayingStrip.setAttribute('role', 'status');
+    nowPlayingStrip.setAttribute('aria-live', 'polite');
+
+    const nowPlayingIcon = document.createElement('span');
+    nowPlayingIcon.className = 'nowPlayingStripIcon';
+    nowPlayingIcon.setAttribute('aria-hidden', 'true');
+    nowPlayingIcon.innerHTML =
+        '<svg viewBox="0 0 12 12" width="12" height="12" fill="currentColor" aria-hidden="true">' +
+        '<path d="M3 2.25v7.5l6-3.75z"/>' +
+        '</svg>';
+
+    const nowPlayingName = document.createElement('span');
+    nowPlayingName.className = 'nowPlayingStripName';
+
+    const nowPlayingSep = document.createElement('span');
+    nowPlayingSep.className = 'nowPlayingStripSep';
+    nowPlayingSep.setAttribute('aria-hidden', 'true');
+    nowPlayingSep.textContent = '·';
+
+    const nowPlayingStatus = document.createElement('span');
+    nowPlayingStatus.className = 'nowPlayingStripStatus';
+
+    const nowPlayingControls = document.createElement('div');
+    nowPlayingControls.className = 'nowPlayingStripControls';
+
+    const nowPlayingPause = document.createElement('button');
+    nowPlayingPause.type = 'button';
+    nowPlayingPause.className = 'nowPlayingStripPause';
+    nowPlayingPause.setAttribute('aria-label', 'Pause music');
+    nowPlayingPause.title = 'Pause';
+    nowPlayingPause.textContent = '⏸';
+
+    const nowPlayingDismiss = document.createElement('button');
+    nowPlayingDismiss.type = 'button';
+    nowPlayingDismiss.className = 'nowPlayingStripDismiss';
+    nowPlayingDismiss.setAttribute('aria-label', 'Dismiss now playing');
+    nowPlayingDismiss.title = 'Dismiss';
+    nowPlayingDismiss.textContent = '×';
+
+    nowPlayingControls.appendChild(nowPlayingPause);
+    nowPlayingControls.appendChild(nowPlayingDismiss);
+
+    nowPlayingStrip.appendChild(nowPlayingIcon);
+    nowPlayingStrip.appendChild(nowPlayingName);
+    nowPlayingStrip.appendChild(nowPlayingSep);
+    nowPlayingStrip.appendChild(nowPlayingStatus);
+    nowPlayingStrip.appendChild(nowPlayingControls);
+
+    // Pause reuses the controller's pause() — the exact call the popover's
+    // primary control makes when PLAYING. The subscribe callback then flips
+    // status to PAUSED and hides the strip on its own.
+    nowPlayingPause.addEventListener('click', function() {
+        const ctl = getMusicController();
+        if (ctl) ctl.pause();
+    });
+
+    // Dismiss is a stronger "hide this now" action: it pauses AND collapses
+    // the strip immediately rather than waiting for the subscribe callback.
+    nowPlayingDismiss.addEventListener('click', function() {
+        const ctl = getMusicController();
+        if (ctl) ctl.pause();
+        nowPlayingStrip.classList.remove('nowPlayingStrip--visible');
+    });
+
+    function syncNowPlayingStrip() {
+        const ctl = getMusicController();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        if (snap.status === 'PLAYING' || snap.status === 'BUFFERING') {
+            const station = getStationById(snap, snap.activeStationId);
+            nowPlayingName.textContent = station ? station.name : 'Unknown station';
+            nowPlayingStatus.textContent = snap.status === 'BUFFERING' ? 'buffering' : 'playing';
+            nowPlayingStrip.classList.add('nowPlayingStrip--visible');
+        } else {
+            nowPlayingStrip.classList.remove('nowPlayingStrip--visible');
+        }
+    }
+
     // Hidden popover lives in the DOM after the first open so the iframe
     // (and therefore the audio stream) isn't destroyed on close.
     let musicPopover = null;
@@ -1263,6 +1351,12 @@ function component() {
         if (!ctl) return;
         ctl.subscribe(syncMusicIcon);
         syncMusicIcon();
+
+        // Keep the now-playing strip in lockstep with the controller too, so
+        // it appears/disappears as status flips (including pomodoro-driven
+        // auto-pause/resume, which routes through the same status changes).
+        ctl.subscribe(syncNowPlayingStrip);
+        syncNowPlayingStrip();
 
         // Pomodoro coordination: pause music when an alert lands; resume on
         // acknowledgment if the user was playing before. Subscribed via the
@@ -1676,6 +1770,7 @@ function component() {
     });
 
     base.appendChild(nav);
+    base.appendChild(nowPlayingStrip);
     base.appendChild(main);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);

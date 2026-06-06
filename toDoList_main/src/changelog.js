@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-05',
+        added: [
+            "A now-playing strip appears below the header while music is playing, showing the active station name with quick pause and dismiss controls.",
+        ],
         changed: [
-            "On mobile, the project header is now a single compact row — the name, a workspace-picker chevron, and the open/done counts sit inline — freeing vertical space for more tasks.",
             "The redundant hamburger button has been removed from the mobile header — tap the project name and chevron to open the menu as before.",
             "The TODAY tab no longer shows its overdue/today/upcoming task dashboard while that view is being reworked.",
             "The bottom-nav tab once labeled TODAY is now labeled INBOX, with a matching inbox tray icon.",
