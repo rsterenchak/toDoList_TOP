@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** D1a: Migrate the responsive breakpoint constant from 700px to 1024px (with paired test updates)
+- [x] **[MEDIUM]** D1a: Migrate the responsive breakpoint constant from 700px to 1024px (with paired test updates) — Completed: 2026-06-05
   - Type: feature
   - Description: Migrate every occurrence of the literal 700px / 701px breakpoint in source AND in tests to 1023px / 1024px. This is a coordinated constant migration: the source and the tests that pin the source's literal value must change in lockstep so the test suite continues to express truth about the codebase. The visual behavior of the app does not change in terms of *what* layout appears at which width — the mobile layout still appears below the breakpoint, the desktop layout still appears at and above the breakpoint. ONLY the threshold value moves. The persistent left sidebar, the slide-in drawer, the workspace pill, the chat sheet, and all responsive behaviors stay structurally identical post-merge — they just switch between mobile and desktop presentations at 1024px instead of 700px. The pattern unification (drawer-everywhere) and the sidebar removal are deliberately deferred to D1b. This entry is the foundation that makes those later entries possible without test churn.
   - Implementation notes:
