@@ -227,7 +227,7 @@
   - Completed: 2026-06-05
   <!-- id: bbe2e9b0-90fd-4a34-ba78-303f108c466a -->
 
-- [ ] **[MEDIUM]** Radio: add now-playing strip below header when music is active
+- [x] **[MEDIUM]** Radio: add now-playing strip below header when music is active
   - Type: feature
   - Description: When music is playing (or buffering), render a thin horizontal "now-playing" strip immediately below the main header, showing the active station name, playing status, and quick controls (pause and dismiss). When music is paused or idle, the strip is hidden entirely (the existing `musicToggle` button alone indicates state). The strip is the persistent ambient indicator that earns its space only when active. The button's existing equalizer-bars icon animation continues to work as before. The popover, YouTube iframe player, station picker, volume control, visualizer toggle, and underlying music controller in `music.js` are all UNCHANGED — this entry only adds the new strip element and wires it to the existing music controller's subscribe pattern.
   - Implementation notes:
@@ -281,5 +281,5 @@
   - Visual reference: `mobile-final-active.svg` and `desktop-final-active.svg` from the design session — when music is playing, a thin horizontal strip below the header shows "Lo-Fi Beats Radio · playing" with pause and close controls on the right, in subtle dark styling consistent with the Void aesthetic.
   - Out of scope: any pomodoro changes (entry #7 just shipped), any popover redesign, any music controller logic changes, any data model changes, any visualizer changes, any other UI changes. **Do NOT modify the TODO.md viewer.**
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-05
   <!-- id: 5e2e9c19-911d-48ae-a665-cccce5dd44d0 -->
