@@ -852,7 +852,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 29b70b21-f014-46f3-8132-62f429b3f38b -->
 
-- [ ] **[MEDIUM]** Two-pane alignment: roomier sub-header spacing, segmented-control CHAT/RUNS tabs, both panes' sub-headers align
+- [x] **[MEDIUM]** Two-pane alignment: roomier sub-header spacing, segmented-control CHAT/RUNS tabs, both panes' sub-headers align — Completed: 2026-06-06
   - Type: feature
   - Description: At desktop widths (≥1024px), refine the two-pane sub-header alignment with three coordinated changes: (1) add ~16px vertical gap between the top header and the sub-header row in both panes — currently they sit too flush; (2) align the chat pane's sub-header row at the same vertical position as the task pane's view tabs sub-band (currently the chat pane's collapse button sits above the tabs on its own row, misaligned); (3) restyle the CHAT/RUNS tabs as a segmented control — a single rounded container with the active half highlighted, replacing the separate-pills layout. The repo workspace pill sits on the right of the chat sub-header row. The collapse `›` button sits inline at the left of the chat sub-header row, in line with CHAT/RUNS. Mobile UX is unaffected (mobile uses the slide-up chat sheet, not the desktop pane).
   - Implementation notes:
