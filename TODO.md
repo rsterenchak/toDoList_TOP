@@ -925,3 +925,51 @@
   - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if DOM restructuring is needed), possibly `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ebacfc08-7079-417d-9bda-8f9caedeaaa7 -->
+
+- [ ] **[LOW]** Paint the 16px gap above sub-header rows with pane background color (eliminate color discontinuity)
+  - Type: bug
+  - Description: At desktop widths (≥1024px), there's a 16px vertical gap between the top header (navbar) and the sub-header row containing the view tabs (PROJECTS/INBOX/CALENDAR) on the left and the segmented chat tabs (CHAT/RUNS + collapse + repo pill) on the right. Currently this gap renders with the page background color (`#07070c`), which is visibly darker than the chat pane's content background (`#0b0b11`). The result: a thin darker stripe between the navbar and the sub-header row on the chat side. This entry paints the gap with the pane's background color so the chat pane appears as one continuous colored region from sub-header down to bottom. The same fix applies to the task pane for consistency (eliminates the same discontinuity, even if less visually obvious there). The 16px gap is preserved — the change is purely cosmetic, no spacing alteration.
+  - Implementation notes:
+    - **The change is surgical CSS:**
+      - Identify where the 16px gap currently sits. Most likely it's `margin-top` on the sub-header row container or `padding-top` on a wrapper above the panes' content. Find the actual selector via inspect element.
+      - Move the gap from "between navbar and pane wrapper" to "inside each pane as padding-top". Specifically:
+        - REMOVE the 16px gap from its current location (e.g. delete `margin-top: 16px` on the sub-header row, or `padding-top: 16px` on a wrapper)
+        - ADD `padding-top: 16px` to the outer container of each pane (e.g. `#desktopChatPane` and the task pane's outer container)
+      - The visual result: same 16px of vertical space, but it's now painted by the pane's background color instead of the page background.
+    - **Pane background colors to verify match:**
+      - Chat pane container: `background: #0b0b11` (or whatever the actual color is)
+      - Task pane container: usually inherits the page background OR has its own — verify against the actual codebase. If task pane uses page bg, the task-side gap won't look different, which is fine.
+      - Whatever each pane is painted with, the new `padding-top` region should inherit that background.
+    - **At mobile widths (<1024px):**
+      - Scope the `padding-top: 16px` rule to `@media (min-width: 1024px)` only — mobile uses the chat sheet, not a pane, so this doesn't apply.
+    - **What stays the same:**
+      - Visible vertical spacing — still ~16px between navbar bottom and sub-header row top
+      - Sub-header row alignment — both panes' rows still align at the same y-coordinate
+      - Top header / navbar — unchanged
+      - Segmented CHAT/RUNS control, view tabs, repo pill, collapse button — all unchanged
+      - Filter pills, sort/expand, compose row, task list, chat content — unchanged
+      - Project picker dropdown, mobile UX, all previously-shipped contracts — unchanged
+    - **Critical**: do NOT change the visible spacing — the gap remains ~16px tall to the eye.
+    - **Critical**: do NOT change pane content backgrounds.
+    - **Critical**: do NOT modify mobile UX.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT change the navbar's height or background.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - The vertical region immediately above the chat pane's sub-header row has the same background color as the chat pane's content area below it (no visible darker stripe)
+        - The vertical region immediately above the task pane's sub-header row has the same background color as the task pane's content area
+        - The visible spacing between navbar bottom and sub-header row top is approximately unchanged (~16px tall)
+        - Both panes' sub-header rows still align at the same y-coordinate
+        - The chat pane appears as one continuous colored region from sub-header to bottom
+      - At `innerWidth < 1024`:
+        - Mobile UX unchanged
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the computed `background-color` of the chat pane's `padding-top` region matches the chat pane's content background (sample a pixel from each region and compare)
+      - (b) At `innerWidth = 1280`, the visible distance between the navbar bottom edge and the sub-header row top edge is still ≥ 12px
+      - (c) At `innerWidth = 1280`, both panes' sub-header rows still have approximately equal `top` y-coordinates (within 4px)
+      - (d) At `innerWidth = 500`, no `padding-top` of 16px is applied to the chat pane (regression guard for mobile)
+  - Visual reference: `navbar-gap-variations.svg` Variation 2 from the design session — the gap remains but is painted with each pane's background color, eliminating the color discontinuity.
+  - Out of scope: any other layout changes, navbar restyling, mobile UX changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 49b88e7a-acfb-42a7-a473-412101b52117 -->
