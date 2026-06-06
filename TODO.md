@@ -734,7 +734,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fc8d7d8a-1ea6-4d27-bcb9-157d2f3864d9 -->
 
-- [ ] **[LOW]** Remove sub-band background to eliminate visible color stripe between view tabs and filter pills
+- [x] **[LOW]** Remove sub-band background to eliminate visible color stripe between view tabs and filter pills — Completed: 2026-06-06
   - Type: bug
   - Description: At desktop widths (≥1024px), the view tab sub-band (containing PROJECTS/INBOX/CALENDAR) has a slightly different background color than the page (`#08080d` vs `#07070c`). With the recent spacing changes adding gap between the sub-band and the filter pills row, the sub-band's distinct background is now visible as a horizontal "stripe" of slightly-lighter color extending below the tabs. This entry removes the sub-band's distinct background so the tabs sit directly on the page background — no stripe, no visible color shift. The tabs themselves and their underline indicator remain visually identical; only the band's background color is removed.
   - Implementation notes:

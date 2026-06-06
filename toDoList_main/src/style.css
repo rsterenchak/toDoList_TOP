@@ -6969,8 +6969,9 @@ body.row-dragging * { cursor: grabbing !important; }
     align-items: center;
     min-height: 32px;
     padding: 0 16px;
-    background: #08080d;
-    border-top: 1px solid #1a1a22;
+    /* No distinct background or borders: the tabs sit directly on the page
+       background so no lighter "stripe" shows in the gap below the band. */
+    background: transparent;
     position: relative;
     z-index: 9;
   }
