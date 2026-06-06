@@ -82,16 +82,16 @@ describe('D1c — desktop project pill', () => {
         expect(rule(block, '.mobileProjDropdownChev')).not.toMatch(/display:\s*none/);
     });
 
-    it('(d) the pill tap still opens the drawer at every breakpoint', () => {
-        // openMobileDrawer is wired on the name and the ▾ chevron, and it
-        // opens the unified drawer by adding sidebar-open — no viewport gate.
-        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
-        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
+    it('(d) the pill tap activates the project picker (drawer at mobile, dropdown at desktop)', () => {
+        // activateProjectPicker is wired on the name and the ▾ chevron and
+        // branches on viewport: <1024px opens the unified drawer (sidebar-open
+        // via openMobileDrawer), ≥1024px opens the anchored dropdown picker.
+        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
         const fnIdx = main.indexOf('function openMobileDrawer(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fnBody = main.slice(fnIdx, main.indexOf('}', main.indexOf('{', fnIdx)) + 1);
         expect(fnBody).toMatch(/classList\.add\(\s*['"]sidebar-open['"]\s*\)/);
-        expect(fnBody).not.toMatch(/isMobile\(\)/);
     });
 
     it('(e) the pill text reflects the active project name at all breakpoints', () => {

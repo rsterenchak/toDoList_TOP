@@ -64,15 +64,16 @@ describe('desktop workspace pill — single row + click-to-open', () => {
         expect(name).toMatch(/font-size:\s*14px/);
     });
 
-    it('(c) binds a drawer-open click handler to the pill (#mobileProjHeader) itself', () => {
+    it('(c) binds a picker-activation click handler to the pill (#mobileProjHeader) itself', () => {
         // The fix for the click regression: the whole padded pill is clickable,
-        // not just the name + ▾ glyphs. Locate the header click listener and
-        // confirm it routes to openMobileDrawer.
+        // not just the name + ▾ glyphs. The handler now routes through
+        // activateProjectPicker, which branches on viewport (desktop dropdown /
+        // mobile drawer) — clicking the pill body still activates the picker.
         const idx = main.indexOf("mobileProjHeader.addEventListener('click'");
         expect(idx).toBeGreaterThan(-1);
         // Grab the handler body up to its closing "});".
         const handler = main.slice(idx, main.indexOf('});', idx) + 3);
-        expect(handler).toMatch(/openMobileDrawer\(\)/);
+        expect(handler).toMatch(/activateProjectPicker\(\)/);
     });
 
     it('(d) the pill handler ignores ‹ › carousel chevron clicks so mobile project-nav is unchanged', () => {
@@ -84,12 +85,15 @@ describe('desktop workspace pill — single row + click-to-open', () => {
         expect(handler).toMatch(/\.mobileProjChev/);
     });
 
-    it('(e) retains the original name + ▾ chevron drawer wiring (mobile contract)', () => {
-        // The header-level handler is additive — the existing name and dropdown
-        // chevron listeners stay so the mobile picker tap is byte-for-byte the
-        // same behavior it always had.
-        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
-        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
+    it('(e) retains the name + ▾ chevron picker wiring (mobile contract preserved)', () => {
+        // The name and dropdown-chevron listeners still fire the picker, now
+        // through activateProjectPicker — which routes to openMobileDrawer at
+        // mobile widths, so the mobile picker tap opens the drawer exactly as
+        // it always did.
+        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        // activateProjectPicker routes to openMobileDrawer at mobile widths.
+        expect(main).toMatch(/function activateProjectPicker\(\)\s*\{[\s\S]*?openMobileDrawer\(\)/);
     });
 
     it('(f regression) the mobile title row stays a flex row and the ‹ › chevrons stay visible', () => {

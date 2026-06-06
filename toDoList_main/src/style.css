@@ -6849,6 +6849,103 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
+   PROJECT PICKER DROPDOWN (desktop ≥ 1024px)
+   ──────────────────────────────────────────
+   The anchored dropdown that replaces the slide-in drawer at desktop
+   widths. Lives on document.body; JS sets its top/left off the pill's
+   bounding rect and toggles the `.open` class. Hidden by default and
+   force-hidden below 1024px (the drawer owns project switching there).
+══════════════════════════════════════════ */
+#projectPickerDropdown {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: 280px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #15151e;
+  border: 1px solid #3a3a50;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  padding: 6px 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+#projectPickerDropdown.open {
+  display: block;
+}
+
+.projectPickerHeader {
+  padding: 8px 16px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #5a5a6a;
+}
+
+.projectPickerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 32px;
+  padding: 0 16px;
+  cursor: pointer;
+  /* Reserve the active-row accent stripe so non-active rows don't shift. */
+  border-left: 3px solid transparent;
+}
+
+.projectPickerRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.projectPickerName {
+  font-size: 13px;
+  color: #e8e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectPickerCount {
+  font-size: 12px;
+  color: #8a8a99;
+  flex: 0 0 auto;
+}
+
+.projectPickerCount.zero {
+  color: #5a5a6a;
+}
+
+.projectPickerRow.active {
+  border-left-color: #6C5DF5;
+  background: rgba(108, 93, 245, 0.18);
+}
+
+.projectPickerRow.active .projectPickerName,
+.projectPickerRow.active .projectPickerCount {
+  color: #9D93EE;
+}
+
+/* The dropdown is a desktop-only affordance — the slide-in drawer remains
+   the project switcher below 1024px. Force it hidden there even if a stale
+   `.open` class survives a viewport change. */
+@media (max-width: 1023px) {
+  #projectPickerDropdown { display: none !important; }
+}
+
+/* When the dropdown is open, accent the pill border to signal the active
+   trigger (pairs with the ▾ → ▴ chevron flip done in JS). */
+@media (min-width: 1024px) {
+  #mobileProjHeader.picker-open {
+    border-color: #9D93EE;
+  }
+}
+
+/* ══════════════════════════════════════════
    DESKTOP HEADER CONSOLIDATION ≥ 1024px
    ──────────────────────────────────────────
    Two rows of header chrome instead of three:
@@ -6945,12 +7042,16 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 11px;
     letter-spacing: 0.04em;
   }
-  #navBar #mobileProjOpen { color: var(--text-primary); }
-  #navBar #mobileProjDone { color: var(--text-muted); }
+  /* "N open" is a unified purple unit (number + word together); "N done"
+     is de-emphasized muted gray, with a medium-gray middot separating the
+     two. Mirrors the dense mobile header so the coloring is consistent at
+     every breakpoint. */
+  #navBar #mobileProjOpen { color: #6C5DF5; }
+  #navBar #mobileProjDone { color: #5a5a6a; }
   #navBar #mobileProjDone::before {
     content: '·';
     margin-right: 8px;
-    color: var(--text-muted);
+    color: #8a8a99;
   }
 
   /* In INBOX / CALENDAR the pill + counts describe a project context that the
