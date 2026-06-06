@@ -176,6 +176,12 @@ function component() {
     // rules even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
+    // Mirror the routing attribute onto <body> as well. At desktop widths the
+    // workspace pill + counts are lifted out of #mainBar into #navBar, so the
+    // #mainBar[data-view] rules that hide them in INBOX / CALENDAR no longer
+    // reach them; body[data-view] gives a hook that still does. applyActiveView
+    // keeps the two in lockstep on every flip.
+    document.body.dataset.view = 'projects';
 
     sideTitle.id = 'sideTit';
     sideMain.id = 'sideMa';
@@ -1767,6 +1773,17 @@ function component() {
     // the chat lives in the slide-up sheet exactly as before.
     const mainSplit = document.createElement('div');
     mainSplit.id = 'mainSplit';
+
+    // Desktop header consolidation — a thin sub-band that sits directly
+    // beneath the top header (#navBar) at desktop widths and carries the
+    // PROJECTS / INBOX / CALENDAR view tabs as underlined text (the pills
+    // are restyled via CSS inside this container). Collapsed to a 0-height
+    // display:none track on mobile, where the persistent #mobileTabBar is
+    // the sole navigator. The #viewSwitcher tablist is relocated into it
+    // below (it used to sit inside #navBar).
+    const desktopViewSubBand = document.createElement('div');
+    desktopViewSubBand.id = 'desktopViewSubBand';
+
     const desktopChatPane = document.createElement('div');
     desktopChatPane.id = 'desktopChatPane';
     desktopChatPane.setAttribute('aria-label', 'Claude assistant');
@@ -1805,6 +1822,10 @@ function component() {
     base.appendChild(nav);
     base.appendChild(nowPlayingStrip);
     base.appendChild(mainSplit);
+    // The view sub-band is placed by explicit grid-row (row 3) so its DOM
+    // position among the grid children is free; append it after #mainSplit to
+    // keep the nav → strip → main ordering the now-playing strip contract pins.
+    base.appendChild(desktopViewSubBand);
     base.appendChild(chatExpandBtn);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
@@ -3295,7 +3316,11 @@ function component() {
     calendarPrevBtn.addEventListener('keydown', calendarNavArrowKey);
     calendarNextBtn.addEventListener('keydown', calendarNavArrowKey);
 
-    nav.insertBefore(viewSwitcher, pomodoroToggle);
+    // The view tabs ride in the desktop sub-band beneath the top header, not
+    // in #navBar. They are desktop-only (display:none on mobile, where
+    // #mobileTabBar owns navigation), so a single permanent home in the
+    // sub-band is correct at every breakpoint.
+    desktopViewSubBand.appendChild(viewSwitcher);
     const taskFilterBar = buildTaskFilterBar();
 
     main2.appendChild(inboxView);
@@ -3377,6 +3402,41 @@ function component() {
             bulkDescLabel.textContent = 'Expand All';
         }
     });
+
+    // Desktop header consolidation — relocate the workspace pill
+    // (#mobileProjHeader) and its open/done counts (#mobileProjStats) into the
+    // top header (#navBar) at desktop widths, and return them to the stacked
+    // project header inside #mainBar at mobile widths. The nodes are MOVED, not
+    // duplicated, so their event wiring (drawer open on tap, ‹ › carousel,
+    // swipe-to-navigate) and the single updateMobileProjHeader writer that
+    // drives the counts all survive the move. Idempotent: a no-op when the
+    // nodes already sit in the container matching the current breakpoint, so it
+    // is safe to call on every resize. The view tabs already have a permanent
+    // home in the desktop sub-band; only the pill + counts shuttle across the
+    // 1024px boundary.
+    function placeDesktopHeader() {
+        const desktop = window.innerWidth >= 1024;
+        if (desktop) {
+            if (mobileProjHeader.parentNode !== nav) {
+                nav.insertBefore(mobileProjHeader, pomodoroToggle);
+            }
+            // Counts sit inline to the right of the pill, ahead of the chip
+            // cluster — lifted out of the pill so they read as header text
+            // rather than part of the clickable drawer trigger.
+            if (mobileProjStats.parentNode !== nav) {
+                nav.insertBefore(mobileProjStats, pomodoroToggle);
+            }
+        } else {
+            if (mobileProjHeader.parentNode !== main2) {
+                main2.insertBefore(mobileProjHeader, taskFilterBar);
+            }
+            if (mobileProjStats.parentNode !== mobileProjHeader) {
+                mobileProjHeader.appendChild(mobileProjStats);
+            }
+        }
+    }
+    placeDesktopHeader();
+    window.addEventListener('resize', placeDesktopHeader);
 
     function activeProjectName() {
         const selected = document.querySelector('.selectedProject');
@@ -7442,6 +7502,11 @@ function applyActiveView(view) {
 
     const mainBar = document.getElementById('mainBar');
     if (mainBar) mainBar.setAttribute('data-view', safe);
+    // Mirror onto <body> so the desktop header's relocated pill + counts hide
+    // in INBOX / CALENDAR — at desktop widths they live in the top header, no
+    // longer under the task-pane grid, so the pane-scoped rules can't reach
+    // them.
+    document.body.setAttribute('data-view', safe);
 
     const pillInbox    = document.getElementById('viewPillInbox');
     const pillProjects = document.getElementById('viewPillProjects');
