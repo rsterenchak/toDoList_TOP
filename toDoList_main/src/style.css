@@ -42,8 +42,6 @@
   --radius-md:     6px;
 
   --sidebar-w:     200px;
-  --rail-w:        54px;
-  --rail-chip:     34px;
   --nav-h:         44px;
   --foot-h:        36px;
   --row-h:         48px;
@@ -429,23 +427,13 @@ body {
 #mainSec {
   grid-row: 3;
   display: grid;
-  grid-template-columns: var(--sidebar-w) 4px 1fr;
+  /* The projects sidebar is an overlay drawer (position:fixed) at every
+     breakpoint, so the main content owns the full width of #mainSec — no
+     column is reserved for a persistent sidebar. */
+  grid-template-columns: 1fr;
   overflow: hidden;
   position: relative;
-  transition: grid-template-columns 0.25s ease;
 }
-
-/* SIDEBAR RESIZE HANDLE — desktop only; mobile hides it in the media query */
-#sidebarResizer {
-  cursor: col-resize;
-  background: transparent;
-  transition: background 0.15s ease;
-  user-select: none;
-  touch-action: none;
-  z-index: 5;
-}
-#sidebarResizer:hover { background: var(--border-bright); }
-#sidebarResizer.resizing { background: var(--accent-dim); }
 
 /* SIDEBAR */
 #sideBar {
@@ -5266,19 +5254,60 @@ body.row-dragging * { cursor: grabbing !important; }
 ══════════════════════════════════════════ */
 @media (min-width: 1024px) {
 
-  #mainSec.sidebar-collapsed {
-    grid-template-columns: 0px 0px 1fr;
+  /* The projects sidebar is an overlay drawer at desktop widths too — it
+     slides in from the right over the full-width main content, mirroring
+     the mobile drawer. There is no persistent left column or icon rail;
+     the hamburger (#sidebarToggle) is the trigger and #sidebarOverlay is
+     the dismiss backdrop. */
+  #sideBar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: auto;
+    width: 300px;
+    max-width: 88vw;
+    height: 100vh;
+    z-index: 9;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    border-right: none;
+    border-left: 0.5px solid var(--border-mid);
+    box-shadow: -8px 0 20px -10px rgba(0, 0, 0, 0.45);
   }
 
-  #mainSec.sidebar-collapsed #sideBar {
-    border-right-color: transparent;
+  #sideBar.sidebar-open {
+    transform: translateX(0);
   }
 
-  #mainSec.sidebar-collapsed #sidebarResizer {
-    pointer-events: none;
+  /* Drawer header X-close button — same top-right placement as the mobile
+     drawer so the three-way close vocabulary (X, backdrop, Escape) is
+     visible at every breakpoint. */
+  #mobileSidebarClose {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 1;
   }
-
-  #sidebarOverlay { display: none !important; }
+  #mobileSidebarClose:hover,
+  #mobileSidebarClose:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    outline: none;
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -5370,9 +5399,6 @@ body.row-dragging * { cursor: grabbing !important; }
     grid-template-columns: 1fr;
     transition: none;
   }
-
-  /* Sidebar is a drawer on mobile — resize handle is not relevant */
-  #sidebarResizer { display: none; }
 
   /* STACK menu drawer: slides in from the RIGHT at 78vw width (capped
      at 380px so it doesn't dwarf the underlying STACK content on
@@ -6685,7 +6711,6 @@ body.row-dragging * { cursor: grabbing !important; }
    they should never paint above the breakpoint. */
 @media (min-width: 1024px) {
   #mobileProjHeader { display: none; }
-  #mobileSidebarClose { display: none; }
   #drawerSettingsBtnWrap,
   #drawerSettingsBtn,
   #drawerFooter { display: none; }
@@ -7748,199 +7773,6 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 }
 
-
-/* ══════════════════════════════════════════
-   PROJECTS ICON RAIL — desktop only
-   The rail (default state) is a 54px column of first-letter chips. The
-   hamburger inside #sideTit toggles to the full-named sidebar. Mobile
-   keeps the existing overlay drawer regardless of this state — the rail
-   styles below are scoped to viewports above the mobile breakpoint.
-══════════════════════════════════════════ */
-@media (min-width: 1024px) {
-  /* Active rail mode shrinks the sidebar grid track and locks the
-     resizer out so the user can't accidentally drag a 54px rail wide. */
-  html[data-sidebar-rail="on"] #mainSec {
-    grid-template-columns: var(--rail-w) 0px 1fr;
-  }
-  html[data-sidebar-rail="on"] #sidebarResizer {
-    pointer-events: none;
-    background: transparent;
-  }
-
-  /* Desktop: the sidebar header row is hidden in both rail and full
-     modes. The hamburger lives in the top nav, the PROJECTS label was
-     retired (the view-switch pills in the top nav now communicate the
-     active surface), and the mobile drawer's close (×) button only
-     renders below 1024px. With no children to host on desktop, hiding
-     #sideTit lets the project list begin directly at the sidebar's top
-     padding. The mobile rule below restores its layout for the drawer
-     header. */
-  #sideTit {
-    display: none;
-  }
-
-  /* Project rows collapse into 34px rounded chips centered in the 54px
-     column. The data-initial attribute is rendered via ::after so the
-     real #projInput stays in the DOM (rename + arrow-key nav still
-     work — focus auto-expands the rail). */
-  html[data-sidebar-rail="on"] #sideMa {
-    padding: 6px 0;
-    grid-row-gap: 4px;
-    justify-items: center;
-  }
-  html[data-sidebar-rail="on"] #projChild {
-    grid-template-columns: none;
-    width: var(--rail-chip);
-    height: var(--rail-chip);
-    min-height: 0;
-    padding: 0;
-    border: 0.5px solid var(--border-bright);
-    border-left: 0.5px solid var(--border-bright);
-    border-radius: 8px;
-    /* !important defeats the inline `background: transparent` that the
-       per-row mouseleave handler in main.js writes — the rail wants the
-       chip to keep its surface fill at rest, not match the rail track. */
-    background: var(--bg-surface) !important;
-    color: var(--text-secondary);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    box-shadow: none !important;
-  }
-  html[data-sidebar-rail="on"] #projChild::after {
-    content: attr(data-initial);
-    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0;
-    color: inherit;
-    line-height: 1;
-    pointer-events: none;
-  }
-  html[data-sidebar-rail="on"] #projChild #projInput,
-  html[data-sidebar-rail="on"] #projChild > div {
-    display: none;
-  }
-  html[data-sidebar-rail="on"] #projChild:hover {
-    background: var(--bg-hover) !important;
-    border-color: var(--accent-text);
-    color: var(--text-primary);
-  }
-  /* Active project: ghost/outlined treatment — semi-transparent purple
-     fill, brighter 1.5px accent border, and accent-colored letter so the
-     chip reads as the selection without looking like an unselected dark
-     square. Per-project accent colors flow through via --proj-accent. */
-  html[data-sidebar-rail="on"] #projChild.selectedProject {
-    background: rgba(108, 93, 245, 0.18) !important;
-    border: 1.5px solid var(--proj-accent, #9D93EE) !important;
-    color: var(--proj-accent, #9D93EE) !important;
-    border-left: 1.5px solid var(--proj-accent, #9D93EE) !important;
-  }
-  html[data-sidebar-rail="on"] #projChild.selectedProject::after {
-    color: var(--proj-accent, #9D93EE);
-  }
-  /* Dot indicator below the selected chip — reinforces selection without
-     relying on fill alone. Repurposes ::before (which carries the hover
-     tooltip for unselected chips); the selected chip's ghost styling
-     already identifies the active project, so the tooltip is suppressed
-     here in favor of the dot. */
-  html[data-sidebar-rail="on"] #projChild.selectedProject::before {
-    content: '●';
-    position: absolute;
-    left: 50%;
-    top: auto;
-    bottom: -9px;
-    transform: translateX(-50%);
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    font-size: 5px;
-    line-height: 1;
-    color: var(--proj-accent, #9D93EE);
-    opacity: 1;
-    box-shadow: none;
-    z-index: 12;
-    white-space: nowrap;
-    pointer-events: none;
-    transition: none;
-  }
-  html[data-sidebar-rail="on"] #projChild.selectedProject:hover::before {
-    opacity: 1;
-    transform: translateX(-50%);
-    transition-delay: 0s;
-  }
-
-  /* Add-project chip mirrors the rail chip footprint and gets a dashed
-     border to read as a "create new" affordance distinct from the
-     committed-project chips above it. */
-  html[data-sidebar-rail="on"] #addProj {
-    padding: 8px 0;
-    border-top: 0.5px solid var(--border-dim);
-    background: var(--bg-elevated);
-  }
-  html[data-sidebar-rail="on"] #projButton {
-    width: var(--rail-chip);
-    height: var(--rail-chip);
-    border: 1px dashed var(--border-bright);
-    background: transparent;
-    border-radius: 8px;
-    color: var(--text-secondary);
-  }
-  html[data-sidebar-rail="on"] #projButton:hover {
-    border-color: var(--accent);
-    background: var(--bg-hover);
-    color: var(--accent);
-  }
-  html[data-sidebar-rail="on"] #projButton::before { width: 12px; }
-  html[data-sidebar-rail="on"] #projButton::after  { height: 12px; }
-
-  /* Rail tooltip — uses the title attribute already on each #projChild
-     (set by applyProjectInitial). Shows after a 300ms hover delay via a
-     transition-delay on the visible state. The tooltip is a CSS-only
-     ::before so no extra DOM is needed per row. */
-  html[data-sidebar-rail="on"] #projChild::before {
-    content: attr(data-project-name);
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%) translateX(-4px);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    border: 0.5px solid var(--border-bright);
-    border-radius: var(--radius-md);
-    padding: 4px 8px;
-    font-size: 12px;
-    line-height: 1.2;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 12;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-    transition: opacity 0.12s ease 0s, transform 0.12s ease 0s;
-  }
-  html[data-sidebar-rail="on"] #projChild:hover::before {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-    transition-delay: 300ms;
-  }
-  /* Suppress the native tooltip for committed rows in rail mode so the
-     custom one above isn't shadowed by the OS bubble. (We rely on the
-     attribute remaining in the DOM for the ::before text content; CSS
-     doesn't need to clear it.) */
-
-  /* Default project-row layout (full mode) — unchanged: data-initial
-     attribute is harmless when the ::after rule above isn't active. */
-}
-
-/* When the rail is OFF (full sidebar mode), suppress the inline initial
-   chip and tooltip artifacts so they can't bleed through. */
-html[data-sidebar-rail="off"] #projChild::after,
-html[data-sidebar-rail="off"] #projChild::before {
-  content: none;
-}
 
 /* POMODORO TIMER — clock icon button to the left of the ghost menu trigger
    in the nav. Visual treatment mirrors #settingsToggle (36×36, rounded,

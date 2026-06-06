@@ -22,11 +22,6 @@ import {
     getStationById,
 } from './music.js';
 import {
-    readSidebarWidthPref,
-    writeSidebarWidthPref,
-    hasSidebarWidthPref,
-    isSidebarRailOn,
-    setSidebarRailOn,
     isCompletedSectionOpen,
     setCompletedSectionOpen,
     getActiveView,
@@ -110,15 +105,14 @@ initInjectConfig();
 applyTheme(resolveInitialTheme());
 
 
-// Sidebar rail vs. full mode. Rail (default) is a 54px column of first-letter
-// chips; full expands to the named project list. Driven by `data-sidebar-rail`
-// on <html> so CSS can switch surfaces before the first paint, and toggled at
-// runtime by the hamburger inside the rail (see component()).
-function applySidebarRail(on) {
-    document.documentElement.setAttribute('data-sidebar-rail', on ? 'on' : 'off');
-}
-
-applySidebarRail(isSidebarRailOn());
+// The projects sidebar is a slide-in overlay drawer at every breakpoint
+// (see component() and style.css). The legacy desktop "icon rail vs. full
+// column" presentation and its `todoapp_sidebarRail` preference have been
+// retired; drop the now-meaningless key on load so it doesn't linger in
+// storage for existing users.
+try {
+    localStorage.removeItem('todoapp_sidebarRail');
+} catch (e) { /* ignore private-mode / quota */ }
 
 
 // Sync the rail-mode initial chip and hover tooltip on a project row from
@@ -162,7 +156,6 @@ function component() {
 
     const sidebarToggle  = document.createElement('button');
     const sidebarOverlay = document.createElement('div');
-    const sidebarResizer = document.createElement('div');
 
     base.id ='outerContainer';
     nav.id = 'navBar';
@@ -212,16 +205,11 @@ function component() {
 
     sidebarOverlay.id = 'sidebarOverlay';
 
-    sidebarResizer.id = 'sidebarResizer';
-    sidebarResizer.setAttribute('role', 'separator');
-    sidebarResizer.setAttribute('aria-orientation', 'vertical');
-    sidebarResizer.setAttribute('aria-label', 'Resize projects sidebar');
-
     // sidebarToggle lives in the nav so the global controls (hamburger left,
     // ghost right) share one horizontal band. The breadcrumb row below then
-    // reads as a clean second row of project-scoped chrome. On mobile
-    // viewports the rail is replaced with the existing overlay drawer, so
-    // the nav-anchored toggle still slides the full sidebar in/out.
+    // reads as a clean second row of project-scoped chrome. The sidebar is an
+    // overlay drawer at every breakpoint, so the nav-anchored toggle slides
+    // the same drawer in/out on desktop and mobile alike.
 
     // ── ghost menu trigger (far right of nav) ──
     // Single 36px ghost icon button replaces the previous save/import/kebab
@@ -2846,7 +2834,6 @@ function component() {
     setTimeout(updateChangelogDot, 0);
 
     main.appendChild(main1);
-    main.appendChild(sidebarResizer);
     main.appendChild(main2);
 
     // Sidebar layout (flex column):
@@ -3861,88 +3848,60 @@ function component() {
     // ── sidebar toggle logic ──
     function isMobile() { return window.innerWidth < 1024; }
 
+    // The projects sidebar is an overlay drawer at every breakpoint. open /
+    // close / state all key off the `sidebar-open` class on #sideBar plus the
+    // #sidebarOverlay backdrop — the same mechanism the mobile drawer has
+    // always used, now unified across desktop too (no more persistent rail /
+    // full column).
     function openSidebar() {
-        if (isMobile()) {
-            // Drawer state could have drifted while it was closed (theme
-            // toggled via settings menu, Expand All toggled by Ctrl+Enter,
-            // a project added/removed). Re-sync the mobile mirrors so the
-            // ON/OFF pills and footer count match reality on every open.
-            refreshDrawerSections();
-            main1.classList.add('sidebar-open');
-            sidebarOverlay.classList.add('visible');
-            if (typeof window.bottomSheetRefreshVisibility === 'function') {
-                window.bottomSheetRefreshVisibility();
-            }
-        } else {
-            main.classList.remove('sidebar-collapsed');
+        // Drawer state could have drifted while it was closed (theme toggled
+        // via settings menu, Expand All toggled by Ctrl+Enter, a project
+        // added/removed). Re-sync the drawer mirrors so the ON/OFF pills and
+        // footer count match reality on every open.
+        refreshDrawerSections();
+        main1.classList.add('sidebar-open');
+        sidebarOverlay.classList.add('visible');
+        if (typeof window.bottomSheetRefreshVisibility === 'function') {
+            window.bottomSheetRefreshVisibility();
         }
     }
 
     function closeSidebar() {
-        if (isMobile()) {
-            main1.classList.remove('sidebar-open');
-            sidebarOverlay.classList.remove('visible');
-            if (typeof window.bottomSheetRefreshVisibility === 'function') {
-                window.bottomSheetRefreshVisibility();
-            }
-        } else {
-            main.classList.add('sidebar-collapsed');
+        main1.classList.remove('sidebar-open');
+        sidebarOverlay.classList.remove('visible');
+        if (typeof window.bottomSheetRefreshVisibility === 'function') {
+            window.bottomSheetRefreshVisibility();
         }
     }
 
     function sidebarIsOpen() {
-        return isMobile()
-            ? main1.classList.contains('sidebar-open')
-            : !main.classList.contains('sidebar-collapsed');
+        return main1.classList.contains('sidebar-open');
     }
 
-    // Desktop: hamburger toggles between the 54px icon rail (default) and
-    // the full named-project sidebar. Mobile: the rail isn't shown — the
-    // hamburger continues to slide the existing overlay drawer in/out.
+    // The hamburger slides the overlay drawer in/out at every breakpoint.
     sidebarToggle.addEventListener('click', function() {
-        if (isMobile()) {
-            sidebarIsOpen() ? closeSidebar() : openSidebar();
-            return;
-        }
-        const next = !isSidebarRailOn();
-        setSidebarRailOn(next);
-        applySidebarRail(next);
-    });
-
-    // Auto-expand the rail when a project input takes focus (Edit context
-    // menu, keyboard nav into a row's input, programmatic focus). Without
-    // this, users in rail mode would land on a hidden input with no
-    // visible cursor.
-    sideMain.addEventListener('focusin', function(event) {
-        if (isMobile()) return;
-        if (!isSidebarRailOn()) return;
-        if (event.target && event.target.id === 'projInput') {
-            setSidebarRailOn(false);
-            applySidebarRail(false);
-        }
+        sidebarIsOpen() ? closeSidebar() : openSidebar();
     });
 
     sidebarOverlay.addEventListener('click', closeSidebar);
 
-    // X-button close inside the mobile drawer. Mirrors the backdrop click
+    // X-button close inside the drawer header. Mirrors the backdrop click
     // and the Escape handler below so the drawer satisfies CLAUDE.md's
-    // three-way modal close vocabulary at the ≤1023px breakpoint.
+    // three-way modal close vocabulary at all breakpoints.
     mobileSidebarClose.addEventListener('click', function() {
         closeSidebar();
         sidebarToggle.focus();
     });
 
-    // Escape closes the mobile drawer, completing the modal close
-    // vocabulary (X button, backdrop tap, Escape). Capture phase so an
-    // open drawer always wins over downstream Escape handlers (which
-    // would otherwise consume the keystroke for popovers and modals
-    // mounted underneath the drawer's backdrop). Bails when another
-    // modal/popover is already open so its own Escape handling owns the
-    // keystroke; bails on desktop where the sidebar is a persistent rail
-    // rather than a modal drawer.
+    // Escape closes the drawer, completing the modal close vocabulary
+    // (X button, backdrop tap, Escape). Capture phase so an open drawer
+    // always wins over downstream Escape handlers (which would otherwise
+    // consume the keystroke for popovers and modals mounted underneath the
+    // drawer's backdrop). Bails when another modal/popover is already open so
+    // its own Escape handling owns the keystroke. The drawer exists at every
+    // breakpoint now, so there is no desktop bail.
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        if (!isMobile()) return;
         if (!sidebarIsOpen()) return;
         if (isAnyModalOrPopoverOpen()) return;
         e.preventDefault();
@@ -3998,8 +3957,9 @@ function component() {
     // Global "Ctrl+Backspace" (or Cmd+Backspace) shortcut — toggle the
     // sidebar exactly the way the hamburger does, so the whole chrome stays
     // reachable from the keyboard. Routed through `sidebarToggle.click()`
-    // so the desktop rail/full and mobile drawer branches stay in lockstep
-    // with the on-screen control. Skipped while focus is inside an editable
+    // so the chord drives the unified overlay drawer at all breakpoints,
+    // staying in lockstep with the on-screen control. Skipped while focus is
+    // inside an editable
     // surface so Ctrl+Backspace still deletes the previous word while
     // typing in task titles or descriptions. The preventDefault below stops
     // the browser's default "go back" gesture from firing when we consume
@@ -4679,93 +4639,6 @@ function component() {
         if (target) target.focus();
     });
 
-    // ── sidebar resize logic ──
-    // Allows the user to drag the vertical divider between the Projects sidebar
-    // and the Todo Items panel. Width is persisted via localStorage (see
-    // prefs.js for the read/write helpers) so it survives reloads. On mobile
-    // viewports the sidebar is a drawer, so the handle is hidden via CSS and
-    // we bail out here too.
-    const SIDEBAR_MIN_W     = 120;
-
-    function sidebarMaxWidth() {
-        return Math.floor(window.innerWidth * 0.5);
-    }
-
-    function clampSidebarWidth(w) {
-        return Math.max(SIDEBAR_MIN_W, Math.min(sidebarMaxWidth(), w));
-    }
-
-    function setSidebarWidth(w) {
-        document.documentElement.style.setProperty('--sidebar-w', clampSidebarWidth(w) + 'px');
-    }
-
-    const savedWidth = readSidebarWidthPref();
-    if (!isNaN(savedWidth)) setSidebarWidth(savedWidth);
-
-    let resizeStartX = 0;
-    let resizeStartW = 0;
-    let resizing     = false;
-
-    function readSidebarWidth() {
-        const cs = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w');
-        const px = parseInt(cs, 10);
-        return isNaN(px) ? 200 : px;
-    }
-
-    function onResizeMove(e) {
-        if (!resizing) return;
-        const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-        setSidebarWidth(resizeStartW + (clientX - resizeStartX));
-        if (e.cancelable) e.preventDefault();
-    }
-
-    function onResizeEnd() {
-        if (!resizing) return;
-        resizing = false;
-        sidebarResizer.classList.remove('resizing');
-        document.body.style.userSelect = '';
-        writeSidebarWidthPref(readSidebarWidth());
-        document.removeEventListener('mousemove', onResizeMove);
-        document.removeEventListener('mouseup', onResizeEnd);
-        document.removeEventListener('touchmove', onResizeMove);
-        document.removeEventListener('touchend', onResizeEnd);
-        document.removeEventListener('touchcancel', onResizeEnd);
-    }
-
-    function onResizeStart(e) {
-        if (isMobile()) return;
-        resizing = true;
-        resizeStartX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
-        resizeStartW = readSidebarWidth();
-        sidebarResizer.classList.add('resizing');
-        document.body.style.userSelect = 'none';
-        document.addEventListener('mousemove', onResizeMove);
-        document.addEventListener('mouseup', onResizeEnd);
-        document.addEventListener('touchmove', onResizeMove, { passive: false });
-        document.addEventListener('touchend', onResizeEnd);
-        document.addEventListener('touchcancel', onResizeEnd);
-        if (e.cancelable) e.preventDefault();
-    }
-
-    sidebarResizer.addEventListener('mousedown', onResizeStart);
-    sidebarResizer.addEventListener('touchstart', onResizeStart, { passive: false });
-
-    // re-clamp on viewport resize so the sidebar can't exceed 50% of a newly
-    // narrowed window (e.g. user rotates device or resizes browser).
-    // Only touch the value if it's actually out of bounds so the responsive
-    // default keeps applying when the user hasn't customised the width.
-    window.addEventListener('resize', function() {
-        if (isMobile()) return;
-        const current = readSidebarWidth();
-        const max     = sidebarMaxWidth();
-        if (current > max) {
-            setSidebarWidth(max);
-            if (hasSidebarWidthPref()) {
-                writeSidebarWidthPref(readSidebarWidth());
-            }
-        }
-    });
-
     // *** HELPER: clears all toDo DOM elements from mainList (index 1 onward) ***
     function clearToDos_global() {
         const mainDiv = document.getElementById('mainList');
@@ -4785,14 +4658,6 @@ function component() {
         // switch back from TODAY so the new row's todo list lands in
         // front of the user instead of behind the dashboard shell.
         applyActiveView('projects');
-
-        // Rail mode hides #projInput, so the user has no visible typing
-        // surface for the new project name. Expand to full sidebar mode for
-        // the entry — the user can re-collapse via the hamburger after.
-        if (!isMobile() && isSidebarRailOn()) {
-            setSidebarRailOn(false);
-            applySidebarRail(false);
-        }
 
         // on click should temporarily disable ability to continue clicking
         projButton.style.pointerEvents = "none";
@@ -7076,10 +6941,6 @@ function restoreFromStorage(opts) {
     if (savedProjects.length === 0) {
         updateEmptyState(document.getElementById('mainList'));
         applyActiveView(getActiveView());
-        // Initial-load default: the saved view dictates whether the desktop
-        // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
-        // when applyActiveView's view-change guard would otherwise skip it.
-        applyViewDefaultSidebar(getActiveView());
         // First-run tour — reaches here only when seeding was skipped
         // (mobile, already-seeded, or onboarding done); the function
         // itself gates on the persisted onboarding flag.
@@ -7351,10 +7212,6 @@ function restoreFromStorage(opts) {
     // sidebar reads as "no active project" — Today owns the main panel
     // and the project list is just navigation chrome at that point.
     applyActiveView(getActiveView());
-    // Initial-load default: the saved view dictates whether the desktop
-    // sidebar starts collapsed (TODAY) or expanded (PROJECTS), even
-    // when applyActiveView's view-change guard would otherwise skip it.
-    applyViewDefaultSidebar(getActiveView());
 
     // First-run welcome tour — fires once when the just-seeded sample
     // project has produced live DOM targets (sidebar row, due pill,
@@ -7535,7 +7392,6 @@ function applyActiveView(view) {
     let safe = 'projects';
     if (view === 'inbox') safe = 'inbox';
     else if (view === 'calendar') safe = 'calendar';
-    const prevView = getActiveView();
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -7593,30 +7449,6 @@ function applyActiveView(view) {
         renderCalendarView();
     }
 
-    // Switching views resets the desktop projects sidebar to the new
-    // view's default: TODAY/CALENDAR collapse to the icon rail (the
-    // dashboard owns the main panel, the project list is just
-    // navigation chrome) and PROJECTS expands to the full named-project
-    // sidebar. A no-op when the view hasn't actually changed so the
-    // hamburger override the user took within the current view is
-    // preserved.
-    if (prevView !== safe) {
-        applyViewDefaultSidebar(safe);
-    }
-}
-
-// Reset the desktop projects sidebar to a view's default open/collapsed
-// state. TODAY collapses to the 54px icon rail; PROJECTS expands to the
-// full named-project sidebar. Mobile keeps its drawer behavior — the
-// rail is a desktop-and-up affordance and the mobile drawer is hidden
-// by default regardless of view.
-function applyViewDefaultSidebar(view) {
-    if (window.innerWidth < 1024) return;
-    const wantRail = view !== 'projects';
-    if (isSidebarRailOn() !== wantRail) {
-        setSidebarRailOn(wantRail);
-        applySidebarRail(wantRail);
-    }
 }
 
 // Mirror the desktop companion-enabled flag onto body.companion-ghost-off so
