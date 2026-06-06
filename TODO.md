@@ -381,3 +381,86 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js` (if using the prefs module pattern), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 81b7c4ff-bc67-4a2e-b3e2-e8b4b09a084a -->
+
+- [ ] **[MEDIUM]** Desktop header polish: consolidate workspace pill into top header, move view tabs into thin sub-band below
+  - Type: feature
+  - Description: At desktop widths (≥1024px), restructure the header chrome to consolidate visual hierarchy. The workspace pill (`Task Management App ▾`) moves up from its current location in the task pane area into the main top header, sitting on the left. The counts (`11 open · 146 done`) sit inline next to the workspace pill in the top header. The pomodoro/music/ghost utility chips stay on the right of the top header. Below the main header, a thin sub-band (~32px tall) contains the PROJECTS / INBOX / CALENDAR view tabs, restyled as underlined-text tabs (not pills) — purple text + purple underline for the active tab, muted gray for inactive. The SORT BY DUE / EXPAND ALL controls move from their current row (alongside the workspace pill) down to share the same row as the filter pills (ALL / ACTIVE / IDEAS) inside the task pane. Net effect: 3 rows of chrome → 2 rows of chrome (main header + thin sub-band) before the task pane's own sub-header begins. Mobile UX is completely unchanged — the bottom nav and mobile pill behavior stay identical.
+  - Implementation notes:
+    - **At desktop widths (≥1024px), the new layout is:**
+      - Top header (~48px tall, spans full viewport):
+        - LEFT: workspace pill `Task Management App ▾`
+        - INLINE after pill: counts `11 open · 146 done`
+        - RIGHT: pomodoro chip, music chip, ghost menu (unchanged from current)
+      - Thin sub-band (~32px tall, spans full viewport):
+        - Distinct background (subtle — e.g. `#08080d` if main header is `#0b0b11`)
+        - Thin top border (`border-top: 1px solid #1a1a22`)
+        - View tabs as underlined text (NOT pills):
+          - Active: purple text (`#9D93EE`), purple underline (2px tall, ~80% width of text), bold weight
+          - Inactive: muted gray text (`#8a8a99`), no underline, normal weight
+          - Hover state: text brightens slightly
+          - ~24-32px horizontal padding between tabs
+      - Task pane sub-header (inside task pane, ~36px tall):
+        - LEFT: filter pills `ALL / ACTIVE / IDEAS` (unchanged)
+        - RIGHT: `SORT BY DUE / EXPAND ALL` controls (moved here from current position)
+      - Below: compose row, task rows, COMPLETED section, TODO.md viewer (all unchanged)
+    - **DOM placement (likely needs adjustment, not creation):**
+      - The workspace pill (`#mobileProjHeader`) needs to move from its current parent container into the main top header container. Since D1c established the pill should already be in the desktop header, this may be a styling-only adjustment, OR if the agent placed it in the task pane's container, it needs to move up.
+      - The view tabs (likely `#viewPillProjects`, `#viewPillInbox`, `#viewPillCalendar` per the codebase conventions) need to move from the main top header into the new sub-band container. Either the agent creates a new container `#desktopViewSubBand` (or similar name) and moves the tabs into it, OR the existing tabs container is repositioned and restyled.
+      - The SORT BY DUE / EXPAND ALL controls — these need to move from their current row down to share the row with the filter pills.
+    - **CSS for the view tabs at desktop (the key visual change):**
+      - At desktop widths, the tabs lose their pill background and become text-only with a purple underline indicator on the active one.
+      - Use `text-decoration` or a `::after` pseudo-element to create the underline (positioned ~2px below the text baseline, ~80% of the text width, centered).
+      - Active tab styling: purple color, bold font-weight, underline visible
+      - Inactive tab styling: muted gray, normal weight, no underline
+      - DO NOT remove the pill styling from the tabs at MOBILE widths — mobile bottom nav should look identical to current.
+    - **Mobile considerations:**
+      - At mobile widths (<1024px), the existing bottom nav with view tabs as icon-pills stays exactly as it is today. None of this polish work should affect mobile.
+      - The workspace pill on mobile (top of screen) stays in its current mobile position and styling.
+      - The new desktop sub-band should be `display: none` at mobile widths via media query.
+    - **Width / overflow consideration:**
+      - The new top header has: workspace pill (~200px) + counts (~150px) + spacer + chips (~120px). Total ~470px + spacer at 1024px viewport. Comfortable at every desktop width.
+      - The sub-band tabs (text + underline) are small enough that they fit easily at 1024px.
+    - **What stays the same (do NOT touch):**
+      - Mobile UX completely identical — bottom nav, mobile pill, slide-in drawer, all of it
+      - The chat pane (D2 contract) — tabs, content, input row, workspace pill, collapse toggle (D3 contract)
+      - The project drawer (D1b contract) — the workspace pill still triggers it the same way
+      - Filter pills (ALL/ACTIVE/IDEAS) — their styling stays as the current pill style
+      - Task rows, status indicators, INBOX, CALENDAR, pomodoro, music, voice mic, TODO.md viewer
+      - The breakpoint constant (D1a contract)
+    - **Critical**: do NOT modify mobile UX in any way. The view tabs at mobile must stay as the pill-style bottom nav.
+    - **Critical**: do NOT modify the chat pane's view tabs (CHAT/RUNS) — those are separate from the main view tabs. They stay in their current pill style inside the chat pane.
+    - **Critical**: do NOT modify the breakpoint, drawer, workspace pill identity, two-pane structure, or chat collapse toggle.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT introduce any new view tabs or remove existing ones — PROJECTS/INBOX/CALENDAR remain the three tabs.
+    - **Critical**: ensure the active state of the view tabs continues to work — clicking INBOX still routes to the inbox view, etc. Don't break the existing click handlers in the restyle.
+    - **Acceptance test scenarios:**
+      - At desktop widths (≥1024px):
+        - Top header has workspace pill on left, counts inline next to it, chips on right
+        - Below: thin sub-band with view tabs as underlined text (PROJECTS active in purple with underline; INBOX and CALENDAR muted gray)
+        - Task pane sub-header has filter pills LEFT and sort/expand RIGHT on same row
+        - Compose row + task list below the task pane sub-header
+        - Clicking INBOX tab routes to inbox view (active state updates)
+        - Clicking CALENDAR tab routes to calendar view (active state updates)
+        - Workspace pill click opens project drawer
+        - Sort by Due toggle and Expand All dropdown still work
+        - No visible "third row" of header chrome — should be just two rows (main header + sub-band)
+      - At mobile widths (<1024px):
+        - Bottom nav with view tabs as pill-style icons (identical to current)
+        - Workspace pill at top (identical to current)
+        - All mobile UX identical to current
+      - Resizing across 1024px:
+        - Desktop sub-band appears/disappears as the boundary is crossed
+        - View tabs styling changes between desktop (underlined text) and mobile (pill icons)
+        - No layout jumps or broken intermediate states
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the desktop view sub-band element (`#desktopViewSubBand` or equivalent) has computed display other than `none`
+      - (b) At `innerWidth = 1280`, the workspace pill is a child of (or visually positioned within) the top header element, not the task pane
+      - (c) At `innerWidth = 1280`, the active view tab has a computed style indicating purple color + underline (use `getComputedStyle` to verify `color` and either `border-bottom` or `::after` content)
+      - (d) At `innerWidth = 500` (mobile), the desktop sub-band is `display: none`
+      - (e) At `innerWidth = 500`, the bottom nav view tabs retain their current pill styling (regression guard)
+      - (f) Clicking a view tab at desktop updates the active state (the previously active tab loses its underline, the clicked one gains it)
+  - Visual reference: `header-option-b.svg` from the design session — main header with workspace pill on left, counts inline, chips on right; thin sub-band below with underlined text tabs; task pane sub-header with filter pills LEFT, sort/expand RIGHT.
+  - Out of scope: any structural changes to the two-pane layout (D2 contract), chat pane collapse (D3 contract), project drawer (D1b contract), the breakpoint (D1a contract). Any mobile UX changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 7a636f5f-df46-4a8c-a726-3c857ef6ff29 -->
