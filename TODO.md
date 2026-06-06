@@ -926,7 +926,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ebacfc08-7079-417d-9bda-8f9caedeaaa7 -->
 
-- [ ] **[LOW]** Paint the 16px gap above sub-header rows with pane background color (eliminate color discontinuity)
+- [x] **[LOW]** Paint the 16px gap above sub-header rows with pane background color (eliminate color discontinuity) — Completed: 2026-06-06
   - Type: bug
   - Description: At desktop widths (≥1024px), there's a 16px vertical gap between the top header (navbar) and the sub-header row containing the view tabs (PROJECTS/INBOX/CALENDAR) on the left and the segmented chat tabs (CHAT/RUNS + collapse + repo pill) on the right. Currently this gap renders with the page background color (`#07070c`), which is visibly darker than the chat pane's content background (`#0b0b11`). The result: a thin darker stripe between the navbar and the sub-header row on the chat side. This entry paints the gap with the pane's background color so the chat pane appears as one continuous colored region from sub-header down to bottom. The same fix applies to the task pane for consistency (eliminates the same discontinuity, even if less visually obvious there). The 16px gap is preserved — the change is purely cosmetic, no spacing alteration.
   - Implementation notes:
