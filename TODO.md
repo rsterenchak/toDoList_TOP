@@ -46,7 +46,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: adc9277c-27c3-47a9-b217-20e75bafbd89 -->
 
-- [ ] **[MEDIUM]** D1b: Convert #sideBar from persistent column to slide-in drawer at desktop widths; retire rail/resizer/collapse machinery
+- [x] **[MEDIUM]** D1b: Convert #sideBar from persistent column to slide-in drawer at desktop widths; retire rail/resizer/collapse machinery — Completed: 2026-06-05
   - Type: feature
   - Description: At desktop widths (≥1024px), `#sideBar` no longer renders as a persistent left column. Instead, it slides in as an overlay drawer — the same presentation it already uses on mobile. The hamburger / sidebar-toggle button (which already exists and works on mobile) becomes visible at desktop widths as the trigger for opening the drawer. The rail-mode (54px icon strip), the rail↔full resizer, the `todoapp_sidebarRail` localStorage preference, the auto-collapse-on-tab-view behavior, the `Ctrl+Backspace`-specific desktop gating, and any other machinery that exists to support the "persistent rail vs full column" desktop presentation are retired. The drawer's three-way close vocabulary (X button, backdrop tap, Escape) works at all breakpoints, not just mobile. The workspace pill (`#mobileProjHeader`) is still hidden at desktop — D1c adds it as the better trigger surface and lets the hamburger become redundant.
   - Implementation notes:
