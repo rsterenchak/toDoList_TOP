@@ -173,3 +173,75 @@
   - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if event handlers need adjustment), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d86cf21e-e6f2-48e4-93e4-f85f50ba175c -->
+
+- [ ] **[MEDIUM]** D2: At desktop widths, present the chat as a persistent right pane (replacing the slide-up sheet on desktop only)
+  - Type: feature
+  - Description: At desktop widths (≥1024px), the Claude chat is presented as a persistent right pane (~40% of viewport width) instead of a slide-up sheet. The main task area takes the left ~60% of the viewport. At mobile widths (<1024px), the chat continues to appear as a slide-up sheet, exactly as it does today — mobile UX is completely unchanged. The chat content itself — message history, input row with mic and send, Chat/Runs tabs, workspace pill in chat header — is identical in both presentations; only the *container* the content lives in changes. After this entry ships, the desktop two-pane layout from the design mockups is visible: task pane on left, chat pane on right, both visible simultaneously. The collapse/expand toggle for the chat pane is deliberately deferred to D3.
+  - Implementation notes:
+    - **Architecture: same content, two containers.**
+      - The chat sheet's content (everything currently rendered inside `#claudeSheet` or its equivalent — the Chat/Runs tabs, message list, input row, etc.) should be either (a) rendered once and conditionally appended to the sheet container OR the pane container based on viewport, or (b) duplicated across both containers with shared event handlers, with the container-not-in-use hidden via CSS.
+      - **Strongly prefer Option (a) — render once, move between containers.** Duplicating DOM is fragile (event handlers, scroll state, focus state, in-flight requests all become two things to coordinate). Moving an existing element between parents preserves all of that.
+      - The implementation: at the desktop breakpoint, on viewport-resize or initial mount, if `width >= 1024px` the chat content node is appended as a child of the desktop chat pane element; if `width < 1024px` it's appended as a child of the existing slide-up sheet element. The chat sheet's open/close animation only runs at <1024px; at desktop the pane is always visible.
+      - If the existing chat content is structured in a way that makes (a) genuinely difficult — e.g. its parent is hardcoded throughout claudeSheet.js — then fall back to (b) with explicit cross-container event listener registration via a single delegated handler on the document.
+    - **New DOM elements:**
+      - A new container `#mainSplit` (or similar) that wraps the existing main content area + the new chat pane. CSS at desktop: `display: flex; flex-direction: row;`. At mobile: behaves as if it weren't there (display: contents, or just unaffecting layout).
+      - The existing main task area (workspace with tasks, filter pills, etc.) becomes the left child of `#mainSplit`, with `flex: 1` or `flex: 0 0 60%`.
+      - A new container `#desktopChatPane` becomes the right child of `#mainSplit`, with `flex: 0 0 40%` (or whatever proportion you prefer; 60/40 is the design's split). At desktop: `display: flex; flex-direction: column;`. At mobile: `display: none;`.
+      - The existing `#claudeSheet` (slide-up sheet) stays in place in the DOM. At desktop, it should be `display: none;` (or just have its slide-up trigger disabled). At mobile, it functions as today.
+    - **CSS for the desktop pane:**
+      - Border between task pane and chat pane: a thin vertical line (`border-left: 1px solid #2a2a3a` on the chat pane)
+      - The chat pane should be `height: calc(100vh - <header-height>px)` so it fills the viewport below the header but doesn't extend behind it
+      - The chat content inside the pane should scroll independently from the task list (separate scroll context)
+      - Background slightly distinct from the task pane (e.g. `background: #0b0b11` vs task pane's `#07070c`, matching the mockup)
+    - **JS for content placement:**
+      - On viewport resize, when crossing the 1024px boundary, move the chat content from one container to the other.
+      - On initial page load, place the chat content in the correct container based on initial viewport width.
+      - The mover function should be idempotent — calling it when the chat is already in the right container should be a no-op.
+      - Preserve scroll position when moving (if possible — `scrollTop` survives a parent change in most browsers; verify).
+      - Preserve input field text when moving (the input is part of the moved content, so its value persists naturally).
+    - **What stays the same:**
+      - All chat content rendering — message history, Chat/Runs tabs, workspace pill in the chat sheet/pane, input row, mic button, send button, conversation messages
+      - All chat behavior — sending messages, receiving responses, voice transcription, "Add to Idea dump" flows, etc.
+      - All workspace pill behavior in the chat header (selecting active repo)
+      - The slide-up sheet behavior at mobile widths
+      - The main task area and all its components: filter pills, status indicators, compose row, INBOX, CALENDAR, header chrome, pomodoro, music
+      - All other features: TODO.md viewer, voice mic, etc.
+    - **Critical**: do NOT add a collapse/expand toggle for the chat pane. That's D3.
+    - **Critical**: do NOT modify the breakpoint constant or `isMobile()` definition (D1a's contract).
+    - **Critical**: do NOT modify the project drawer or workspace pill (D1b/D1c contracts).
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT modify chat content behavior — message sending, voice input, popovers — only the container the content lives in changes.
+    - **Critical**: at mobile widths, the slide-up sheet must work IDENTICALLY to today. No regressions.
+    - **Critical**: do NOT duplicate the chat DOM. Move the existing chat node between containers; do not create two copies of the chat content.
+    - **Acceptance test scenarios:**
+      - At ≥1024px window width:
+        - Two visible panes side by side: task pane on left (~60% width), chat pane on right (~40% width)
+        - Chat content (tabs, messages, input row) lives inside the right pane
+        - The slide-up chat sheet is NOT visible (not triggerable, no visual presence)
+        - All chat functionality works: sending messages, receiving responses, voice input, all current chat affordances
+        - Task pane shows the full task list, filter pills, compose row, status indicators — all functioning
+        - Both panes scroll independently
+      - At <1024px window width:
+        - Chat appears as a slide-up sheet exactly as it does today
+        - The desktop chat pane is NOT visible
+        - All mobile UX identical to current behavior
+      - Resizing across the 1024px boundary:
+        - Chat content moves between containers without losing state (scroll position, input text, focus state)
+        - No console errors during the transition
+        - No flickering or layout jumps that look broken (a brief reflow is acceptable)
+      - Layout consistency at 1024, 1036, 1100, 1280, 1440, 1920px:
+        - Two-pane layout at all these widths
+        - Task pane and chat pane proportions consistent
+        - No reverting at wider widths (this is the D1c-fix bug — if it surfaces here too, it surfaces; D2 doesn't fix it, but doesn't make it worse)
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, `#desktopChatPane` has computed `display` other than `none`
+      - (b) At `innerWidth = 1280`, `#claudeSheet` has computed `display: none` (or is otherwise not interactive)
+      - (c) At `innerWidth = 500` (mobile), `#desktopChatPane` has computed `display: none`
+      - (d) At `innerWidth = 500`, `#claudeSheet` is interactive as today
+      - (e) The chat content node (whatever its top-level identifier is) has exactly one parent at any given viewport — verify it's not duplicated
+      - (f) Moving the chat content between containers preserves event handlers (verify by triggering a send action after a resize)
+  - Visual reference: `desktop-final-idle.svg` from the design session — the two-pane layout with the chat pane on the right showing Chat/Runs tabs and conversation, separated by a thin vertical border.
+  - Out of scope: the chat collapse/expand toggle (D3), the radio now-playing strip's width constraint to task pane only (polish, future entry), any chat content changes, any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 284a951e-7b02-4d9a-8aa4-206e22edf928 -->
