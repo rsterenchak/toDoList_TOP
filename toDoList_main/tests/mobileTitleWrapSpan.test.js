@@ -109,7 +109,7 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
     const css = read('style.css');
 
     it('the span is hidden by default at the top-level cascade', () => {
-        // Default display:none keeps desktop and 421–700px tablet
+        // Default display:none keeps desktop and 421–1023px tablet
         // rendering unchanged — the input remains the visible title slot
         // at those breakpoints. The ≤420px media block flips it on.
         expect(css).toMatch(/\.toDoTitleDisplay\s*\{[\s\S]{0,80}display:\s*none/);
@@ -211,9 +211,9 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
 
     it('the global ≤420px ellipsis rule on #toDoInput is preserved', () => {
         // Per the task: "leave it in place (it's still the source of
-        // truth for desktop column widths between 421–700px)". Even
+        // truth for desktop column widths between 421–1023px)". Even
         // though the input is opacity-hidden on phones, the rule must
-        // stay so the tablet range (421–700px) renders the input with
+        // stay so the tablet range (421–1023px) renders the input with
         // the existing ellipsis chrome.
         const phoneIdx = css.indexOf('@media (max-width: 420px)');
         const phoneBlock = css.slice(phoneIdx);

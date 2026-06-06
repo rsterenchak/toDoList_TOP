@@ -40,12 +40,12 @@ function extractTopLevelRule(css, selector) {
     throw new Error(`Top-level rule for "${selector}" not found`);
 }
 
-// Pulls the body of the @media (max-width: 700px) block, then returns the
+// Pulls the body of the @media (max-width: 1023px) block, then returns the
 // nested rule body for the given selector within it. Returns null if the
 // selector has no override inside that block.
 function extractMobileRule(css, selector) {
-    const start = css.search(/@media\s*\(\s*max-width:\s*700px\s*\)\s*\{/);
-    if (start < 0) throw new Error('@media (max-width: 700px) block not found');
+    const start = css.search(/@media\s*\(\s*max-width:\s*1023px\s*\)\s*\{/);
+    if (start < 0) throw new Error('@media (max-width: 1023px) block not found');
     const bodyStart = css.indexOf('{', start) + 1;
     let depth = 1;
     let i = bodyStart;
@@ -117,7 +117,7 @@ describe('#calendarView horizontal gutter', () => {
         expect(rightPx).toBeGreaterThanOrEqual(40);
     });
 
-    it('uses a narrower horizontal gutter inside @media (max-width: 700px) so mobile keeps near-full width', () => {
+    it('uses a narrower horizontal gutter inside @media (max-width: 1023px) so mobile keeps near-full width', () => {
         const desktopRule = stripCssComments(extractTopLevelRule(css, '#calendarView'));
         const desktopMatch = desktopRule.match(/(?:^|;)\s*padding\s*:\s*([^;]+);/);
         const desktopH = parseFloat(parsePaddingShorthand(desktopMatch[1]).left);

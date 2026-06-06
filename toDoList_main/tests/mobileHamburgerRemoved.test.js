@@ -12,7 +12,7 @@ function read(relative) {
 // Pins the removal of the redundant hamburger (☰ / #sidebarToggle) from the
 // compressed mobile header. The hamburger opened the same drawer as tapping
 // the project name + ▾ chevron, so on mobile it is pure redundancy and is
-// hidden at the ≤700px breakpoint. The element itself stays in the DOM
+// hidden at the ≤1023px breakpoint. The element itself stays in the DOM
 // because the SAME #sidebarToggle is the desktop sidebar-rail toggle (and is
 // driven by the Ctrl+Backspace shortcut) — so desktop must be untouched and
 // the project-name tap must remain the single mobile menu affordance.
@@ -25,12 +25,12 @@ describe('Hamburger removed from the compressed mobile header', () => {
     // Split the stylesheet at the first mobile media query so desktop rules
     // (above) and mobile rules (below) can be asserted independently.
     function mobileCss() {
-        const start = css.indexOf('@media (max-width: 700px)');
+        const start = css.indexOf('@media (max-width: 1023px)');
         expect(start).toBeGreaterThan(-1);
         return css.slice(start);
     }
     function desktopCss() {
-        const start = css.indexOf('@media (max-width: 700px)');
+        const start = css.indexOf('@media (max-width: 1023px)');
         expect(start).toBeGreaterThan(-1);
         return css.slice(0, start);
     }

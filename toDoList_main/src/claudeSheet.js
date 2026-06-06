@@ -1,7 +1,7 @@
 // In-app Claude assistant. Lives behind a `⋯` launcher pinned to the
 // bottom-right (the slot the old help `?` FAB used to occupy — help moved to
 // the ghost menu's "Help" item and the global `?` keypress). On narrow
-// viewports (≤700px) the surface is a bottom sheet at ~86% height with a grab
+// viewports (≤1023px) the surface is a bottom sheet at ~86% height with a grab
 // handle and a dimming backdrop; on wider viewports it docks as a right-hand
 // panel (~380px, full height) so the app stays visible beside it.
 //
@@ -33,7 +33,7 @@ import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 import DOMPurify from 'dompurify';
 
-const MOBILE_MAX_WIDTH = 700;
+const MOBILE_MAX_WIDTH = 1023;
 const SWIPE_CLOSE_PX = 60;
 
 const RUNS_KEY = 'todoapp_claudeRuns';
@@ -1870,7 +1870,7 @@ function buildSheet() {
     handle.setAttribute('aria-label', 'Close Claude assistant');
     handle.addEventListener('click', closeClaudeSheet);
 
-    // Close `×` — surfaced on the desktop panel only (CSS hides it at ≤700px,
+    // Close `×` — surfaced on the desktop panel only (CSS hides it at ≤1023px,
     // where backdrop-tap and swipe-down already dismiss). Reuses the same close
     // path as the launcher and backdrop; not a second close route.
     const closeX = document.createElement('button');

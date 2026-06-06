@@ -11,7 +11,7 @@ function read(relative) {
 
 // Pins the contract for the mobile-only bottom sheet that hosts the
 // TODO.md viewer card when the user taps the inline viewer on the
-// <=700px breakpoint. The inline card is cramped on touch — the sheet
+// <=1023px breakpoint. The inline card is cramped on touch — the sheet
 // gives it a full-height surface and reuses the COMPLETED-sheet pattern
 // (DOM move, four-affordance dismiss, mainListRendered refresh) so the
 // touch wiring is shared rather than duplicated. Source-inspection
@@ -186,7 +186,7 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         // it must read as tappable (cursor + :active feedback) so the
         // sheet affordance is discoverable without a visible label.
         // Verify the cursor + active rules exist, then confirm both
-        // sit inside the first @media (max-width: 700px) block (the
+        // sit inside the first @media (max-width: 1023px) block (the
         // shared mobile bucket — putting them in their own narrower
         // @media would split the bucket).
         const cursorRuleIdx = css.search(/#mainList\s+\.todoMdViewerCard\s*\{[^}]*cursor:\s*pointer/);
@@ -194,11 +194,11 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         const activeRuleIdx = css.search(/#mainList\s+\.todoMdViewerCard:active\s*\{[^}]*background:\s*var\(--bg-hover\)/);
         expect(activeRuleIdx).toBeGreaterThan(-1);
 
-        // Confirm both rules live inside a @media (max-width: 700px)
+        // Confirm both rules live inside a @media (max-width: 1023px)
         // block (walk braces from the nearest preceding @media to find
         // its end; both rules must fall inside that range).
         function inMobileMediaBlock(pos) {
-            const mediaIdx = css.lastIndexOf('@media (max-width: 700px)', pos);
+            const mediaIdx = css.lastIndexOf('@media (max-width: 1023px)', pos);
             if (mediaIdx === -1) return false;
             let depth = 0;
             let openSeen = false;
@@ -228,9 +228,9 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
 describe('Mobile inline TODO.md viewer launcher', () => {
     const css = read('style.css');
 
-    // True when `pos` falls inside a @media (max-width: 700px) block.
+    // True when `pos` falls inside a @media (max-width: 1023px) block.
     function inMobileMediaBlock(pos) {
-        const mediaIdx = css.lastIndexOf('@media (max-width: 700px)', pos);
+        const mediaIdx = css.lastIndexOf('@media (max-width: 1023px)', pos);
         if (mediaIdx === -1) return false;
         let depth = 0;
         let openSeen = false;

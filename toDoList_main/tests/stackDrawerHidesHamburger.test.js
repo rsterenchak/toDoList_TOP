@@ -20,7 +20,7 @@ describe('STACK mobile drawer — hamburger hidden on mobile', () => {
     const css = read('style.css');
 
     function mobileBlock() {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         let depth = 0;
         let end = css.length;

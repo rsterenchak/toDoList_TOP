@@ -80,12 +80,12 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
     }
 
     it('mobile #footBar is hidden — no separate footer row at this breakpoint', () => {
-        const rule = extractRule('#footBar', '(max-width: 700px)');
+        const rule = extractRule('#footBar', '(max-width: 1023px)');
         expect(rule).toMatch(/display:\s*none/);
     });
 
     it('mobile #outerContainer grid collapses the footer track to 0', () => {
-        const rule = extractRule('#outerContainer', '(max-width: 700px)');
+        const rule = extractRule('#outerContainer', '(max-width: 1023px)');
         // Middle row still minmax(0, 1fr) so the todo list can't inflate
         // the track past its fair share.
         expect(rule).toMatch(/minmax\(\s*0\s*,\s*1fr\s*\)/);
@@ -98,13 +98,13 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
     });
 
     it('mobile #mobileTabBar anchors flush against the screen bottom', () => {
-        const rule = extractRule('#mobileTabBar', '(max-width: 700px)');
+        const rule = extractRule('#mobileTabBar', '(max-width: 1023px)');
         // `bottom: 0` (allowing trailing whitespace / unit-less zero).
         expect(rule).toMatch(/bottom:\s*0\s*;/);
     });
 
     it('mobile #mobileTabBar absorbs the home-indicator safe-area inset into its own height + padding', () => {
-        const rule = extractRule('#mobileTabBar', '(max-width: 700px)');
+        const rule = extractRule('#mobileTabBar', '(max-width: 1023px)');
         // Height grows by env(safe-area-inset-bottom) so the elevated bg
         // covers the home-indicator zone.
         expect(rule).toMatch(/height:\s*calc\(\s*var\(--mobile-tab-h[^)]*\)\s*\+\s*env\(safe-area-inset-bottom[^)]*\)\s*\)/);
@@ -114,7 +114,7 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
     });
 
     it('mobile #drawerFooter is hidden — version + project count live in the Settings modal instead', () => {
-        const rule = extractRule('#drawerFooter', '(max-width: 700px)');
+        const rule = extractRule('#drawerFooter', '(max-width: 1023px)');
         expect(rule).toMatch(/display:\s*none/);
     });
 
@@ -124,12 +124,12 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
     // Pinning body to min-height: 100dvh keeps it tall enough, and
     // matching body's bg to the elevated surface hides any residual gap.
     it('mobile body is pinned to at least the dynamic viewport height', () => {
-        const rule = extractRule('body', '(max-width: 700px)');
+        const rule = extractRule('body', '(max-width: 1023px)');
         expect(rule).toMatch(/min-height:\s*100dvh/);
     });
 
     it('mobile body background matches the elevated surface so any gap blends in', () => {
-        const rule = extractRule('body', '(max-width: 700px)');
+        const rule = extractRule('body', '(max-width: 1023px)');
         expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
     });
 });

@@ -113,7 +113,7 @@ describe('mobile read-mode CSS no longer hides the title on :focus-within', () =
     });
 
     it('the new attribute-keyed swap rules live inside the ≤420px media block', () => {
-        // Scope must stay phone-only — at 421–700px tablet the span is
+        // Scope must stay phone-only — at 421–1023px tablet the span is
         // hidden by the default cascade and the input is the visible
         // title slot, so the data-mobile-edit attribute being set on
         // tablet rows is harmless but the swap rule must not leak.

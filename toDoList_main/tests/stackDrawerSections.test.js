@@ -24,7 +24,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('drawer slide direction and width', () => {
         it('mobile drawer slides in from the right via translateX(100%)', () => {
-            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\n\}/);
             expect(mobileBlock).toBeTruthy();
             const block = mobileBlock[0];
             // Anchored to the right edge with translateX(100%) for the
@@ -36,7 +36,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('mobile drawer width is ~78vw (capped so it doesn\'t dwarf STACK content)', () => {
-            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\n\}/);
             expect(mobileBlock).toBeTruthy();
             const block = mobileBlock[0];
             expect(block).toMatch(/#sideBar\s*\{[\s\S]*?width:\s*78vw/);
@@ -205,7 +205,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('desktop hides the new drawer-only chrome', () => {
         it('drawer Settings button and footer are hidden at desktop sizes', () => {
-            const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
+            const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g) || [];
             const hidesDrawer = desktop.find(function(block) {
                 return /#drawerSettingsBtn/.test(block)
                     && /#drawerFooter/.test(block)
@@ -215,7 +215,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('the Settings button wrap is also hidden at desktop sizes', () => {
-            const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
+            const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g) || [];
             const hidesWrap = desktop.find(function(block) {
                 return /#drawerSettingsBtnWrap/.test(block)
                     && /display:\s*none/.test(block);
@@ -226,7 +226,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('Settings button centers within the drawer bottom half on both axes', () => {
         it('#drawerSettingsBtnWrap is a flex container with center justify and center align on mobile', () => {
-            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\n\}/);
             expect(mobileBlock).toBeTruthy();
             const block = mobileBlock[0];
             const wrapRule = block.match(/#drawerSettingsBtnWrap\s*\{([^}]*)\}/);
@@ -238,7 +238,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('#drawerSettingsBtnWrap grows to fill the space above the footer so vertical centering has room', () => {
-            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\n\}/);
             expect(mobileBlock).toBeTruthy();
             const block = mobileBlock[0];
             const wrapRule = block.match(/#drawerSettingsBtnWrap\s*\{([^}]*)\}/);
@@ -253,7 +253,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         it('centering layout is scoped to the wrap, not applied to the shared #sidebarBottom parent', () => {
             // Pin the wrapping-div approach so the footer sibling inside
             // #sidebarBottom is not rearranged by flex centering.
-            const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?\n\}/);
+            const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?\n\}/);
             expect(mobileBlock).toBeTruthy();
             const block = mobileBlock[0];
             const bottomRule = block.match(/#sidebarBottom\s*\{([^}]*)\}/);

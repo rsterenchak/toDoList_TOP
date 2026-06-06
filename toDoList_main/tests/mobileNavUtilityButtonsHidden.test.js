@@ -9,7 +9,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile nav contract: at the ≤700px breakpoint the
+// Pins the STACK mobile nav contract: at the ≤1023px breakpoint the
 // pomodoro, music, and ghost-menu triggers in #navBar are hidden, and the
 // hamburger (#sidebarToggle) is hidden too — it opened the same drawer as
 // tapping the project name + ▾ chevron in the compressed header, so on
@@ -20,7 +20,7 @@ function read(relative) {
 describe('STACK mobile nav utility buttons hidden', () => {
     const css = read('style.css');
 
-    // Walk every `@media (max-width: 700px)` block in the file and return
+    // Walk every `@media (max-width: 1023px)` block in the file and return
     // them concatenated. The hide rules can live in any mobile block; what
     // matters for cascade is that the rule sits AFTER the matching desktop
     // declaration, which is asserted separately below.
@@ -28,7 +28,7 @@ describe('STACK mobile nav utility buttons hidden', () => {
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;

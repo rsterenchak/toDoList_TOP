@@ -9,7 +9,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile contract: at the ≤700px breakpoint the per-row
+// Pins the STACK mobile contract: at the ≤1023px breakpoint the per-row
 // `#checkToDo` checkbox is hidden so titles get the reclaimed horizontal
 // room. Completion is owned by the swipe-right gesture which programmatically
 // toggles `checkToDo.checked` and dispatches its `change` event, so the
@@ -23,7 +23,7 @@ describe('STACK mobile per-row check-off checkbox hidden', () => {
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;
@@ -66,7 +66,7 @@ describe('STACK mobile per-row check-off checkbox hidden', () => {
         return null;
     }
 
-    it('#checkToDo is hidden at the ≤700px breakpoint', () => {
+    it('#checkToDo is hidden at the ≤1023px breakpoint', () => {
         const hit = findHidingBlock('#checkToDo');
         expect(hit).not.toBeNull();
     });

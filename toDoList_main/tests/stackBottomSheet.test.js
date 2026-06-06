@@ -11,7 +11,7 @@ function read(relative) {
 
 // Pins the contract for the STACK mobile bottom sheet utility surface — the
 // bottom-anchored container that houses the Pomodoro timer and the YouTube
-// music player at the ≤700px breakpoint. The sheet cycles through three
+// music player at the ≤1023px breakpoint. The sheet cycles through three
 // visible states (IDLE → PEEK → EXPANDED), reuses the existing pomodoro.js /
 // music.js controllers without changing their logic, and follows the
 // CLAUDE.md three-way modal close vocabulary when expanded. Source
@@ -164,7 +164,7 @@ describe('STACK mobile bottom sheet utility surface', () => {
         // Outside the mobile breakpoint #bottomSheet should not paint.
         expect(css).toMatch(/#bottomSheet\s*\{\s*display:\s*none/);
         // Inside the mobile breakpoint the sheet displays again.
-        const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s*\{\s*display:\s*block/);
+        const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?#bottomSheet\s*\{\s*display:\s*block/);
         expect(mobileBlock).toBeTruthy();
     });
 
@@ -187,7 +187,7 @@ describe('STACK mobile bottom sheet utility surface', () => {
         // rule has higher specificity (attribute selector) than a plain
         // `#bottomSheet #bottomSheetNub` override, so prior non-!important
         // attempts lost the cascade in both directions.
-        const mobileBlock = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s+#bottomSheetNub\s*\{\s*display:\s*none\s*!important\s*;?\s*\}/);
+        const mobileBlock = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?#bottomSheet\s+#bottomSheetNub\s*\{\s*display:\s*none\s*!important\s*;?\s*\}/);
         expect(mobileBlock).toBeTruthy();
     });
 
@@ -224,7 +224,7 @@ describe('STACK mobile bottom sheet utility surface', () => {
     });
 
     it('uses position: absolute inside #outerContainer (respects existing overflow rules)', () => {
-        const block = css.match(/@media \(max-width:\s*700px\)\s*\{[\s\S]*?#bottomSheet\s*\{[^}]*\}/);
+        const block = css.match(/@media \(max-width:\s*1023px\)\s*\{[\s\S]*?#bottomSheet\s*\{[^}]*\}/);
         expect(block).toBeTruthy();
         expect(block[0]).toMatch(/position:\s*absolute/);
     });

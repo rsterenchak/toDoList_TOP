@@ -9,17 +9,17 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile nav-bar collapse: at the ≤700px breakpoint the
+// Pins the STACK mobile nav-bar collapse: at the ≤1023px breakpoint the
 // dedicated 44px nav band above the project header disappears. The
 // hamburger toggle is hidden on mobile (it was redundant with the project
 // name + ▾ chevron drawer tap), but #sidebarToggle stays a child of
-// #navBar in the DOM so the desktop fallback (701px+) keeps the existing
+// #navBar in the DOM so the desktop fallback (1024px+) keeps the existing
 // flex-row chrome and the rail toggle.
 describe('STACK mobile nav-bar collapse', () => {
     const css = read('style.css');
 
     function extractMobileRule(selector) {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         let depth = 0;
         let mediaEnd = css.length;
@@ -73,7 +73,7 @@ describe('STACK mobile nav-bar collapse', () => {
         // The hamburger opened the same drawer as tapping the project name +
         // ▾ chevron, so on mobile it is hidden outright. No absolute
         // positioning or hit-target sizing remains — the rule collapses to
-        // display:none. The desktop rail toggle (701px+) is untouched.
+        // display:none. The desktop rail toggle (1024px+) is untouched.
         const rule = extractMobileRule('#sidebarToggle');
         expect(rule).toMatch(/display:\s*none/);
         expect(rule).not.toMatch(/position:\s*absolute/);
@@ -101,7 +101,7 @@ describe('STACK mobile nav-bar collapse', () => {
     });
 
     it('the desktop #sidebarToggle 36×36 rule is preserved (untouched outside the breakpoint)', () => {
-        // Desktop layout (701px+) is unchanged — the desktop declaration
+        // Desktop layout (1024px+) is unchanged — the desktop declaration
         // still defines the 36×36 button with no positioning.
         const desktopBlock = css.match(/#sidebarToggle\s*\{[^}]*\}/);
         expect(desktopBlock).not.toBeNull();

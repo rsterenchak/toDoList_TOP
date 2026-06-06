@@ -2,7 +2,7 @@
 // state shared across chained commits within a single project visit.
 //
 // The dashed `+ Add a task…` placeholder row at the top of every project
-// expands inline on focus at the ≤700px breakpoint to reveal a chip row
+// expands inline on focus at the ≤1023px breakpoint to reveal a chip row
 // (Today / Tomorrow / calendar / `+ ¶` description toggle). The user's
 // last picked date chip persists across chained Return-commits so the
 // next blank placeholder lands with the same preference, but a project
@@ -66,12 +66,12 @@ export function applyChosenDueToItem(item, row) {
 
 
 function isMobileViewport() {
-    return typeof window !== 'undefined' && window.innerWidth <= 700;
+    return typeof window !== 'undefined' && window.innerWidth < 1024;
 }
 
 
 // Build and wire the chip row for a blank placeholder. Appends the chip
-// row as the last child of the placeholder row so CSS at ≤700px can flex-
+// row as the last child of the placeholder row so CSS at ≤1023px can flex-
 // wrap it onto a second line under the input when the row is focus-within.
 // No-op on committed rows — the chip row only makes sense for the
 // always-pinned blank placeholder at the top of each project list.

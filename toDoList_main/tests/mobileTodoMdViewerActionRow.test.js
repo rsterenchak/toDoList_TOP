@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the reworked action row in the mobile TODO.md viewer sheet. On the
-// <=700px breakpoint the sync caption, run-state control, and Sync button
+// <=1023px breakpoint the sync caption, run-state control, and Sync button
 // used to crowd onto one line beside the tabs. The rework stacks the header
 // into a column: tabs, then the "synced" caption on its own line, then the
 // run-state control and Sync split 50/50 on a full-width touch-sized row,
@@ -21,9 +21,9 @@ function read(relative) {
 describe('Mobile TODO.md viewer sheet action row', () => {
     const css = read('style.css');
 
-    // True when `pos` falls inside a @media (max-width: 700px) block.
+    // True when `pos` falls inside a @media (max-width: 1023px) block.
     function inMobileMediaBlock(pos) {
-        const mediaIdx = css.lastIndexOf('@media (max-width: 700px)', pos);
+        const mediaIdx = css.lastIndexOf('@media (max-width: 1023px)', pos);
         if (mediaIdx === -1) return false;
         let depth = 0;
         let openSeen = false;

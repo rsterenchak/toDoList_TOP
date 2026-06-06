@@ -11,7 +11,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK ≤700px empty-state restyle: each of the three variants
+// Pins the STACK ≤1023px empty-state restyle: each of the three variants
 // (NO PROJECTS / NO TODOS YET / ALL CAUGHT UP) renders a ghost mascot
 // element with a variant-specific class, plus the welcome / sparkles /
 // up-arrow flourishes called out in the STACK spec. The mascots are

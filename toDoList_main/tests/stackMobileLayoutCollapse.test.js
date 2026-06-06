@@ -23,9 +23,9 @@ describe('STACK mobile layout collapse', () => {
 
     function extractMobileRule(selector) {
         // Grab the declaration block for `selector` scoped inside the
-        // first `@media (max-width: 700px)` block in the file. Same naive
+        // first `@media (max-width: 1023px)` block in the file. Same naive
         // parsing helper as mobileFooterSafeArea.test.js.
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         const mediaEnd = (function () {
             // Walk braces to find the closing brace of the media block.
@@ -97,7 +97,7 @@ describe('STACK mobile layout collapse', () => {
         const desktopMainBar  = css.indexOf('#mainBar {');
         const desktopBulkDesc = css.indexOf('#bulkDescActions {');
         const desktopFootCounts = css.indexOf('#footCounts {');
-        const mobileBlock = css.indexOf('@media (max-width: 700px)');
+        const mobileBlock = css.indexOf('@media (max-width: 1023px)');
         expect(desktopMainBar).toBeGreaterThan(-1);
         expect(desktopBulkDesc).toBeGreaterThan(-1);
         expect(desktopFootCounts).toBeGreaterThan(-1);

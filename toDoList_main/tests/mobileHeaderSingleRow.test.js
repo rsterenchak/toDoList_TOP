@@ -9,7 +9,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the compressed single-row mobile project header. At the ≤700px
+// Pins the compressed single-row mobile project header. At the ≤1023px
 // breakpoint the header collapses from a stacked block (large name on one
 // line, count pills on a second line) into ONE ~40px row: project name +
 // ▾ dropdown chevron on the left, the open/done counts as inline plain
@@ -24,7 +24,7 @@ describe('Compressed single-row mobile header', () => {
     const main = read('main.js');
 
     // Slice just the compressed-header override block (the second
-    // @media (max-width:700px) pass that re-styles the header) so these
+    // @media (max-width:1023px) pass that re-styles the header) so these
     // assertions can't accidentally read the base STACK block's rules.
     function denseBlock() {
         const start = css.indexOf('── Compressed single-row mobile header');
@@ -89,11 +89,11 @@ describe('Compressed single-row mobile header', () => {
         expect(before).toMatch(/color:\s*#8a8a99/i);
     });
 
-    it('keeps the desktop header hidden at the ≥701px breakpoint (no desktop layout change)', () => {
+    it('keeps the desktop header hidden at the ≥1024px breakpoint (no desktop layout change)', () => {
         // The compressed layout is mobile-only; desktop still hides the
         // mobile header entirely so its larger chrome is untouched.
         expect(css).toMatch(
-            /@media \(min-width:\s*701px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/
+            /@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/
         );
     });
 

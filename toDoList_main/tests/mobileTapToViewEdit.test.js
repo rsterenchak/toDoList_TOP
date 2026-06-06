@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the STACK mobile tap-to-view / tap-to-edit task-row interaction:
-// the first tap on a collapsed committed row at the ≤700px breakpoint
+// the first tap on a collapsed committed row at the ≤1023px breakpoint
 // expands the existing descSibling panel WITHOUT focusing the title input
 // (no soft keyboard). A second tap on the title or description text
 // summons the keyboard. A tap outside the row+descSibling unit collapses
@@ -31,10 +31,10 @@ describe('STACK mobile tap-to-view — first tap expands without focusing', () =
         expect(toDoRow).toMatch(/wireToDoRowClick\(toDoChild,\s*toDoInput,\s*descToggle\)/);
     });
 
-    it('the mobile branch is gated on the ≤700px breakpoint', () => {
+    it('the mobile branch is gated on the <1024px breakpoint', () => {
         // Desktop must keep its existing one-click-to-edit behavior. The
-        // tap-to-view branch only fires when window.innerWidth ≤ 700.
-        expect(toDoRow).toMatch(/window\.innerWidth\s*<=\s*700/);
+        // tap-to-view branch only fires when window.innerWidth < 1024.
+        expect(toDoRow).toMatch(/window\.innerWidth\s*<\s*1024/);
     });
 
     it('first tap programmatically clicks descToggle and marks the row data-mobile-read', () => {
@@ -139,16 +139,16 @@ describe('STACK mobile tap-to-view — visual merge with descSibling', () => {
 
     it('mobile media query carries a data-mobile-read selector for the visual cue', () => {
         // The shared accent left-edge is what makes the row + descSibling
-        // read as one card. Lives inside the ≤700px block so desktop is
+        // read as one card. Lives inside the ≤1023px block so desktop is
         // untouched.
-        const media700Idx = css.indexOf('@media (max-width: 700px)');
+        const media700Idx = css.indexOf('@media (max-width: 1023px)');
         expect(media700Idx).toBeGreaterThan(-1);
         const mobileBlock = css.slice(media700Idx);
         expect(mobileBlock).toMatch(/#toDoChild\[data-mobile-read="true"\]/);
     });
 
     it('descSibling under a mobile-read row pulls up to merge with the parent row', () => {
-        const media700Idx = css.indexOf('@media (max-width: 700px)');
+        const media700Idx = css.indexOf('@media (max-width: 1023px)');
         const mobileBlock = css.slice(media700Idx);
         // Negative top margin overlaps the row's bottom edge so the two
         // surfaces read as continuous rather than stacked-with-a-gap.
@@ -164,7 +164,7 @@ describe('STACK mobile tap-to-view — active row title is unclamped and washed'
     const css = read('style.css');
 
     function mobileBlock() {
-        const idx = css.indexOf('@media (max-width: 700px)');
+        const idx = css.indexOf('@media (max-width: 1023px)');
         expect(idx).toBeGreaterThan(-1);
         return css.slice(idx);
     }

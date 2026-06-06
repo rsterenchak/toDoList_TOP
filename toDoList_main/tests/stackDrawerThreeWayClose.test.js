@@ -78,7 +78,7 @@ describe('STACK mobile drawer — three-way close vocabulary', () => {
     });
 
     it('mobile X button is hidden at desktop sizes', () => {
-        const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?#mobileSidebarClose\s*\{\s*display:\s*none/);
+        const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileSidebarClose\s*\{\s*display:\s*none/);
         expect(desktop).toBeTruthy();
     });
 });

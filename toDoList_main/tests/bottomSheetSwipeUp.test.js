@@ -50,7 +50,7 @@ describe('Mobile bottom sheet swipe-up gesture', () => {
         // Pointer-events flip to auto only when both the mobile width AND
         // a coarse pointer apply — desktop with a fine pointer leaves the
         // strip non-interactive.
-        expect(css).toMatch(/@media \(max-width:\s*700px\)\s*and\s*\(pointer:\s*coarse\)\s*\{\s*\.sheetSwipeZone\s*\{\s*pointer-events:\s*auto/);
+        expect(css).toMatch(/@media \(max-width:\s*1023px\)\s*and\s*\(pointer:\s*coarse\)\s*\{\s*\.sheetSwipeZone\s*\{\s*pointer-events:\s*auto/);
         // Hidden while EXPANDED so taps inside the open sheet aren't
         // intercepted by the strip behind it.
         expect(css).toMatch(/#bottomSheet\[data-state="EXPANDED"\]\s*\.sheetSwipeZone\s*\{\s*display:\s*none/);

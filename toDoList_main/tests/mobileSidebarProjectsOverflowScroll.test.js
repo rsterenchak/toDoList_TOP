@@ -23,7 +23,7 @@ describe('Mobile sidebar — projects list overflows internally', () => {
     const css = read('style.css');
 
     function extractMobileRule(selector) {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         let depth = 0;
         let mediaEnd = css.length;
