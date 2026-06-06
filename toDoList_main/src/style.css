@@ -6878,6 +6878,81 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
+   D3 — DESKTOP CHAT PANE COLLAPSE / EXPAND ≥ 1024px
+   ──────────────────────────────────────────
+   The persistent chat pane (D2) can be collapsed so the task pane reclaims the
+   full viewport width. State lives on `body.chatPaneCollapsed` and persists via
+   localStorage (todoapp_chatPaneCollapsed). The collapse `›` button sits at the
+   top-left inside the pane; the expand `‹` button is a fixed tab pinned to the
+   right viewport edge, surfaced only while collapsed. Both controls and the
+   collapsed-state layout rules live ENTIRELY inside the desktop media query, so
+   at mobile widths the class has no visual effect and the slide-up sheet is
+   untouched (the collapse pref is simply ignored below 1024px).
+══════════════════════════════════════════ */
+#chatCollapseButton,
+#chatExpandButton { display: none; }
+
+@media (min-width: 1024px) {
+  /* Collapse control — small chevron seated at the top-left of the pane,
+     ahead of the relocated chat content. */
+  #chatCollapseButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    margin: 6px 0 0 6px;
+    padding: 0;
+    border: 0.5px solid var(--border-bright);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #chatCollapseButton:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  /* Light-touch expand so the task pane glides out when chat collapses. */
+  #mainSec { transition: flex-basis 0.2s ease; }
+
+  /* Collapsed: hide the pane, hand its width back to the task pane, and
+     surface the fixed expand tab on the right edge. */
+  body.chatPaneCollapsed #desktopChatPane { display: none; }
+  body.chatPaneCollapsed #mainSec { flex: 1 1 100%; }
+  body.chatPaneCollapsed #chatExpandButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 64px;
+    padding: 0;
+    border: 0.5px solid var(--border-bright);
+    border-right: 0;
+    border-radius: 8px 0 0 8px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 40;
+  }
+  body.chatPaneCollapsed #chatExpandButton:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+}
+
+/* ══════════════════════════════════════════
    PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {
