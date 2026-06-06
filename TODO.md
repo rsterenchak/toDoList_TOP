@@ -531,3 +531,103 @@
   - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (if click rebinding is needed), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 317a83ac-b51d-4647-a656-ca283d643800 -->
+
+- [ ] **[MEDIUM]** Replace project drawer with anchored dropdown picker at desktop widths; color "open" text in header counts to match design
+  - Type: feature
+  - Description: At desktop widths (≥1024px), replace the slide-in project drawer with an anchored dropdown menu that appears below the workspace pill when clicked. The dropdown lists all projects with their names and open-task counts, highlights the active project, and dismisses on click-outside or Escape. The slide-in drawer behavior is preserved at mobile widths (<1024px) — only the desktop trigger changes. Additionally, color the "open" word in the inline header counts (e.g. "11 open · 148 done") to match the purple accent of its number rather than rendering in default text color. The "open" + its number form a unified visual unit; the "done" + its number stay in muted gray as the de-emphasized counterpart.
+  - Implementation notes:
+    - **The dropdown component (new UI):**
+      - Create a new DOM element `#projectPickerDropdown` (or similar — match codebase naming) that's appended to the body OR positioned absolutely relative to the workspace pill. Either is fine; whichever fits cleaner.
+      - Width: ~280px (auto-sizes with content but caps at 280px)
+      - Max-height: ~60vh with internal scroll for cases of many projects
+      - Default hidden (`display: none` or `opacity: 0` + `pointer-events: none`)
+      - Position: directly below `#mobileProjHeader` with ~4px gap, left-aligned with the pill (use `position: absolute` with computed `top` and `left` based on the pill's bounding rect)
+      - Background: `#15151e`
+      - Border: `1px solid #3a3a50`
+      - Border-radius: `8px`
+      - Drop shadow: subtle (`box-shadow: 0 8px 24px rgba(0,0,0,0.4)`)
+      - z-index: above task content but below modals (e.g. `z-index: 100`)
+    - **Dropdown contents:**
+      - Header label: small "PROJECTS" text in muted gray (`#5a5a6a`), 10px, uppercase, letter-spacing for that "section header" feel. Padding: `8px 16px`.
+      - Project rows:
+        - Each row: `32px` height, `padding: 0 16px`, displays project name (left) + open-task count (right)
+        - Active project: purple left-accent (3px wide `#6C5DF5` stripe), purple-tinted background (`#6C5DF5` at 18% opacity), purple text for name and count (`#9D93EE`), small `✓` indicator before the count
+        - Non-active project: regular text (`#e8e8f0` for name), muted gray count (`#8a8a99`)
+        - Zero-count project: same name color, count in extra-muted gray (`#5a5a6a`) so empty projects feel quieter
+        - Hover state: light background tint (e.g. `rgba(255,255,255,0.04)`)
+        - Clicking a row: invokes the existing project-selection function (same one the drawer's item clicks call), then dismisses the dropdown
+      - Divider (`1px solid #2a2a3a`) between project list and footer
+      - Footer: "+ New project" action in purple (`#9D93EE`), 12px text, hover state same as project rows. Clicking invokes whatever the existing "create new project" flow is — if no existing flow, OMIT this footer entirely (don't invent new functionality). If unsure, search the codebase for existing project-creation code (likely in `listLogic.js` or a settings menu). If no such flow exists, leave the footer out.
+    - **Dropdown open/close logic:**
+      - At desktop (≥1024px), clicking `#mobileProjHeader` opens the dropdown INSTEAD of opening the drawer. Do not open the drawer at desktop — the dropdown replaces it.
+      - At mobile (<1024px), clicking `#mobileProjHeader` opens the drawer as today. No change.
+      - Dismissal: clicking anywhere outside the dropdown closes it. Pressing Escape closes it. Clicking a project row closes it. Clicking the pill again while it's open closes it (toggle behavior).
+      - Use a flag like `dropdownOpen` in state OR check the DOM class on the dropdown element. Either is fine.
+      - The pill's `▾` indicator can flip to `▴` when the dropdown is open (purely visual feedback). The pill's border can also accent purple when open (`border-color: #9D93EE`) — see the mockup. Both are optional polish; just one of the two is sufficient.
+    - **Click handler routing:**
+      - The existing click handler on `#mobileProjHeader` (which calls `openSidebar()` or similar after the previous fix) needs to branch on viewport width:
+        - At desktop: open dropdown
+        - At mobile: open drawer (existing behavior)
+      - Implement this branch inline OR via a single function that handles both. Don't duplicate the click binding.
+    - **Project list data:**
+      - REUSE the same data source the drawer uses. Don't duplicate the list of projects. The dropdown and drawer should always show the same projects in the same order.
+      - When the user creates/deletes/renames a project, both surfaces update via the existing data flow.
+      - Open-task counts: use the existing per-project task-count computation. If this doesn't exist in a reusable form, write it once and use it from both surfaces.
+    - **At mobile widths (<1024px):**
+      - The dropdown should NEVER appear at mobile. `@media (max-width: 1023px) { #projectPickerDropdown { display: none !important; } }` ensures this.
+      - The drawer continues to work identically. Don't touch mobile UX at all.
+    - **Color the "open" text in header counts:**
+      - In the top header next to the workspace pill, the inline counts currently render as something like `<span>11 open · 148 done</span>` (or with separate spans per number/word).
+      - The desired styling:
+        - "11 open" — both number AND word in purple `#6C5DF5` (or your primary accent). Together they form a unified visual element.
+        - "·" separator — muted gray (e.g. `#8a8a99`)
+        - "148 done" — both number AND word in muted gray (e.g. `#5a5a6a`). De-emphasized to make "open" stand out.
+      - If "open" is currently rendered as default white/light text, wrap it in a span with the appropriate class so it gets the purple color matching "11". Same for "done" matching its number.
+      - This is a small CSS adjustment. Should be minimal code.
+    - **What stays the same:**
+      - Mobile drawer behavior — completely unchanged
+      - All other components: chat pane, view tabs, filter pills, sort/expand, compose row, task rows, INBOX, CALENDAR, pomodoro, music, voice mic, TODO.md viewer
+      - The project-selection function — same function called from both dropdown and drawer
+      - The breakpoint constant (1024px)
+      - All chat collapse toggle, two-pane structure, drawer 3-way close behavior
+    - **Critical**: do NOT modify mobile UX. Drawer must work identically at mobile.
+    - **Critical**: do NOT duplicate project list data. Both surfaces read from the same source.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT introduce a new "create project" code path. Either reuse existing OR omit the "+ New project" footer.
+    - **Critical**: do NOT break the drawer's three-way close at mobile. The drawer's X button, backdrop, and Escape handler all still work.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - Clicking the workspace pill opens the dropdown anchored below it, NOT the drawer
+        - The dropdown shows all projects with names + counts
+        - Active project is highlighted (purple accent stripe, purple text, ✓)
+        - Non-active projects show name in regular text + count in muted gray
+        - Zero-count projects show count in extra-muted gray
+        - Clicking a non-active project: switches to that project, dropdown closes, pill text updates
+        - Clicking the active project (or clicking outside the dropdown, or pressing Escape): dropdown closes, no project change
+        - Pill's `▾` flips to `▴` (or pill border accents purple) when dropdown is open
+        - Drawer is NEVER shown at desktop widths
+      - At `innerWidth < 1024`:
+        - Clicking the workspace pill opens the drawer (unchanged from current behavior)
+        - The dropdown is never visible at mobile
+        - All mobile UX identical to current
+      - Header count coloring:
+        - At all breakpoints: "11 open" renders in purple, "148 done" in muted gray, "·" in medium gray
+        - Both numbers and their respective words use matching colors
+      - Resizing across 1024px:
+        - At desktop: pill opens dropdown
+        - At mobile: pill opens drawer
+        - Switching breakpoint mid-session works correctly (no stale state)
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, clicking the pill makes `#projectPickerDropdown` visible (computed display ≠ none)
+      - (b) At `innerWidth = 1280`, clicking the pill does NOT trigger the drawer-open function
+      - (c) At `innerWidth = 1280`, clicking a project row in the dropdown invokes the project-selection function
+      - (d) At `innerWidth = 1280`, clicking outside the dropdown closes it
+      - (e) At `innerWidth = 1280`, pressing Escape closes the dropdown
+      - (f) At `innerWidth = 500`, clicking the pill triggers the drawer-open function (NOT the dropdown)
+      - (g) At `innerWidth = 500`, `#projectPickerDropdown` is always `display: none`
+      - (h) The "open" text in header has computed color matching the purple accent (not default text color); "done" text has computed muted gray color
+  - Visual reference: `project-picker-dropdown.svg` from the design session — dropdown anchored below the pill, ~280px wide, project rows with names + counts, active project with purple accent and ✓.
+  - Out of scope: any changes to the chat pane, drawer behavior at mobile, view tabs, filter pills, breakpoint, two-pane structure, or any other shipped component. Any new project-creation flow that doesn't already exist. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, possibly `toDoList_main/src/listLogic.js` (if a new helper for project counts is needed), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4a48a7ee-ecdd-4b7e-9f4d-95713e1dc19f -->
