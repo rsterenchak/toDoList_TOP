@@ -692,3 +692,44 @@
   - File: `toDoList_main/src/main.js`, possibly `toDoList_main/src/style.css` (only if a `pointer-events` adjustment is needed), `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f28db964-3307-45c4-a9db-a3a07c1a9ec0 -->
+
+- [ ] **[LOW]** Increase vertical spacing between desktop header rows (workspace pill → sub-band → filter pills → compose)
+  - Type: bug
+  - Description: At desktop widths (≥1024px), the header rows are stacked too tightly together — the workspace pill row, the view tab sub-band (PROJECTS/INBOX/CALENDAR), the filter pills row (ALL/ACTIVE/IDEAS), and the compose row sit nearly flush against each other with minimal vertical gap. The design intent (per `header-option-b.svg` mockup) was modest breathing room between these distinct chrome sections to establish visual hierarchy. This entry adjusts the vertical spacing to match the mockup. CSS-only fix.
+  - Implementation notes:
+    - **At desktop widths (≥1024px), the gaps should be approximately:**
+      - Between top header (workspace pill + counts row, ~48px tall) and the view tab sub-band: keep flush or with very small gap (4-6px max) — these are conceptually part of the same header region
+      - Between the view tab sub-band and the filter pills row: ~16-20px vertical gap. This is the largest gap — it separates "global navigation" (which view, which project) from "task-pane controls" (which filter, sort)
+      - Between the filter pills row and the compose row: ~12-16px vertical gap
+      - Between the compose row and the first task row: ~8-12px vertical gap (current spacing is probably fine here, just verify)
+    - **Approach: padding/margin on the appropriate containers.**
+      - The task pane has multiple sections; the agent should identify where each row's container lives in the DOM and apply `margin-top` or `padding-top` to add the gap.
+      - Use `padding-top` on the receiving container rather than `margin-bottom` on the giving container — easier to reason about and less prone to margin collapse issues.
+      - At mobile widths (<1024px), do NOT change spacing. Mobile chrome may have different proportions that work well as-is. Scope the spacing changes to `@media (min-width: 1024px)`.
+    - **Visual reference:** the `header-option-b.svg` mockup from the design session is the target. The gaps in that mockup are visible to the eye — distinct sections separated by clear vertical space, not flush stacking.
+    - **What stays the same:**
+      - Mobile UX completely unchanged (no spacing adjustments at <1024px)
+      - The chrome elements themselves: workspace pill, view tabs, filter pills, sort/expand, compose row, task rows — all unchanged
+      - Chat pane (no changes there)
+      - All previously-shipped contracts (breakpoint, drawer, two-pane, etc.)
+    - **Critical**: do NOT modify mobile spacing.
+    - **Critical**: do NOT modify any chrome element's own styling (background, border, padding, text) — only the gaps BETWEEN them.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT change the height or position of the top header itself.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - Visible vertical gap between the view tab sub-band and the filter pills row (~16-20px)
+        - Visible vertical gap between the filter pills row and the compose row (~12-16px)
+        - The top header and the sub-band can be flush or have a very small gap (4-6px max)
+        - The layout matches `header-option-b.svg` in terms of vertical rhythm — distinct sections with breathing room
+      - At `innerWidth < 1024`:
+        - Mobile spacing identical to current (no regression)
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the computed distance between the bottom of the view tab sub-band and the top of the filter pills row is >= 12px (catches the regression of "everything flush")
+      - (b) At `innerWidth = 1280`, the computed distance between the bottom of the filter pills row and the top of the compose row is >= 8px
+      - (c) At `innerWidth = 500`, the spacing is unchanged from current (use a baseline assertion if practical)
+  - Visual reference: `header-option-b.svg` from the design session — desktop layout with breathing room between sections.
+  - Out of scope: any chrome element changes, mobile spacing changes, any other component changes, the cycle pill UI change (separate entry if still desired). **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: fc8d7d8a-1ea6-4d27-bcb9-157d2f3864d9 -->
