@@ -245,3 +245,65 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 284a951e-7b02-4d9a-8aa4-206e22edf928 -->
+
+- [ ] **[HIGH]** D2-fix: Inject chat content into the desktop chat pane (currently empty)
+  - Type: bug
+  - Description: After D2 shipped, the desktop two-pane layout is structurally present — the chat pane container is visible on the right side of the viewport at ≥1024px — but the chat content (Chat/Runs tabs, message history, input row with mic and send) is not appearing inside it. The pane is visually empty. The slide-up chat sheet still works correctly at mobile widths (<1024px), so the bug is isolated to the desktop content-injection path. This is a HIGH priority bug because desktop users currently have no way to access the chat at all — neither the sheet nor the pane shows anything.
+  - Implementation notes:
+    - **Investigation first, then fix.** The agent should diagnose before patching. The most likely root causes, in priority order:
+      - (a) The content-mover function exists but is only called on `resize` events, not on initial page load. Fix: call the mover function once during initial setup, after the DOM is ready, AND on resize.
+      - (b) The content-mover function uses incorrect selectors that don't match the actual chat-content node IDs/classes. Fix: identify the actual chat content node (likely the children of `#claudeSheet` or a specific container inside it) and target it correctly.
+      - (c) The chat content was never wired to be movable. The agent built the pane container but didn't write the mover. Fix: write the mover function, ensuring it runs on initial mount + resize.
+      - (d) The chat content IS being moved but is hidden inside the pane via a CSS rule that doesn't apply to it correctly (e.g. `#claudeSheet { display: none; }` at desktop also hides its now-displaced children, OR the moved content has `display: none` inherited).
+    - **Investigation approach:**
+      - Open the desktop view, inspect the DOM in browser devtools, find the chat content node (Chat/Runs tabs, message list, input row). Identify which parent it currently lives in. That tells you whether the content was never moved (still inside `#claudeSheet`) or was moved but is invisible (inside the pane but hidden via CSS).
+      - Check the JS for whatever mover function should exist. Confirm it's called on initial mount, not just on resize.
+      - Check the CSS for `#claudeSheet` and its descendants at desktop widths. If `#claudeSheet { display: none; }` hides descendants that were moved out, that's the root cause.
+    - **Likely fix shape:**
+      - In the JS file that handles the chat presentation (`claudeSheet.js` or `main.js` depending on where D2 added it):
+        - Identify the mover function (likely named something like `moveChatToDesktopPane`, `applyChatLayout`, `relocateChatContent`, etc.). If it doesn't exist, create one.
+        - The function takes the chat content node and appends it to either `#desktopChatPane` (at desktop) or `#claudeSheet` (at mobile), based on `window.innerWidth >= 1024`.
+        - Call the function once during initial mount, AFTER the chat sheet is initialized (so the content exists), and AFTER `#desktopChatPane` is in the DOM.
+        - Wire the function to `window.addEventListener('resize', ...)` with appropriate debouncing to avoid thrashing on continuous resize.
+      - In the CSS: if `#claudeSheet { display: none; }` is the rule at desktop, make sure it ONLY hides `#claudeSheet` itself, not any descendants that were moved out of it. (Moving content out of `#claudeSheet` makes them descendants of `#desktopChatPane` instead, so this might not actually be an issue — but verify.)
+    - **What stays the same (do NOT touch):**
+      - The mobile slide-up sheet (still works per verification)
+      - The desktop pane container, divider, CSS layout (already in place per D2)
+      - The chat content itself — tabs, message rendering, input row, mic, send, voice input, popovers
+      - The workspace pill in the chat header (the repo selector)
+      - All non-chat features: task pane, INBOX, CALENDAR, pomodoro, music, voice mic in chat input, status indicators, filter pills, TODO.md viewer
+      - The breakpoint constant (1024px, D1a's contract)
+      - The project drawer (D1b's contract)
+      - The workspace pill in main header (D1c's contract)
+    - **Critical**: do NOT modify the breakpoint constant or `isMobile()` definition.
+    - **Critical**: do NOT modify the project drawer, workspace pill, or other previously-shipped contracts.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT add a collapse/expand toggle for the chat pane. That's D3.
+    - **Critical**: do NOT duplicate the chat DOM. The chat content node must live in exactly one place at any given time — either inside `#claudeSheet` (mobile) or inside `#desktopChatPane` (desktop), never both.
+    - **Critical**: the mobile slide-up sheet must continue to work IDENTICALLY to current state. Verify by setting `innerWidth = 500` in tests.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - Chat content (Chat/Runs tabs, message history, input row with mic and send) is visible inside the desktop chat pane on the right
+        - All chat functionality works: sending messages, receiving responses, voice input, all existing chat affordances
+        - Scrolling the chat message history works independently from the task pane scroll
+        - Switching projects via the workspace pill (in main header) does not break the chat pane
+      - At `innerWidth < 1024`:
+        - Chat slide-up sheet works identically to current behavior (verified to be working)
+        - The desktop chat pane is NOT visible
+        - All chat functionality in the sheet works as before
+      - Resizing across the 1024px boundary:
+        - On crossing into desktop: chat content appears in the right pane, sheet disappears
+        - On crossing into mobile: chat content reappears in the sheet container; sheet behavior restored
+        - No flicker, no console errors, no duplicated content
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the chat content node has a parent that is `#desktopChatPane` (not `#claudeSheet`)
+      - (b) At `innerWidth = 1280`, the chat content node IS visible (computed `display` is not `none`)
+      - (c) At `innerWidth = 500`, the chat content node has a parent that is `#claudeSheet` (not `#desktopChatPane`)
+      - (d) Resizing window from 500 to 1280 in a test should move the chat content's parent accordingly
+      - (e) The chat content node exists exactly once in the document — no duplication
+      - (f) Sending a chat message at `innerWidth = 1280` triggers the same handler as at `innerWidth = 500` — event handlers preserved across the move
+  - Visual reference: `desktop-final-idle.svg` from the design session — chat pane on the right with Chat/Runs tabs, message exchanges, and input row at the bottom.
+  - Out of scope: the chat collapse/expand toggle (D3), any styling changes to the chat content, any new chat features, the lingering D1c >1024 layout-reverting bug (still deferred), any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/claudeSheet.js`, possibly `toDoList_main/src/main.js`, possibly `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d357a7ac-2501-4c09-b922-9cf65c825f33 -->
