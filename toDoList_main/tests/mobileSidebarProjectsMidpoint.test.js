@@ -19,13 +19,13 @@ function read(relative) {
 // short; long lists fill outward and #sideMa scrolls within
 // #sidebarTop. Desktop is unchanged: the top wrapper grows to fill
 // the sidebar and the bottom wrapper holds elements that are
-// display:none above the 700px breakpoint.
+// display:none above the 1023px breakpoint.
 describe('Mobile sidebar — projects fill remaining height above content-sized bottom', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
     function extractMobileRule(selector) {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         let depth = 0;
         let mediaEnd = css.length;
@@ -106,7 +106,7 @@ describe('Mobile sidebar — projects fill remaining height above content-sized 
     describe('desktop layout is unchanged', () => {
         // On desktop #sidebarTop should grow to fill the sidebar like
         // the old flat children flow, and #sidebarBottom is visually
-        // inert (its children are display:none above 700px) so the
+        // inert (its children are display:none above 1023px) so the
         // overall sidebar shape is identical to before the split.
         it('#sidebarTop has flex:1 1 auto outside the mobile breakpoint so it fills #sideBar on desktop', () => {
             // Strip any @media blocks so we only inspect the base rules.
@@ -119,7 +119,7 @@ describe('Mobile sidebar — projects fill remaining height above content-sized 
         });
 
         it('drawer chrome inside #sidebarBottom remains display:none on desktop so the bottom half collapses', () => {
-            const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g) || [];
+            const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g) || [];
             const hidesDrawer = desktop.find(function(block) {
                 return /#drawerSettingsBtn/.test(block)
                     && /#drawerFooter/.test(block)

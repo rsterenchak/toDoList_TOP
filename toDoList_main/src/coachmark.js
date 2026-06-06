@@ -14,7 +14,7 @@
 // startCoachmarkTour() while a tour is already mounted is a no-op.
 //
 // Mobile is intentionally out of scope; maybeStartFirstRunTour bails on
-// viewports ≤700px so the desktop-only flow doesn't pop on phones.
+// viewports ≤1023px so the desktop-only flow doesn't pop on phones.
 
 import { isOnboardingComplete, setOnboardingComplete } from './prefs.js';
 
@@ -22,7 +22,7 @@ export const COACHMARK_OVERLAY_ID = 'coachmarkOverlay';
 export const COACHMARK_CALLOUT_ID = 'coachmarkCallout';
 export const COACHMARK_CUTOUT_ID = 'coachmarkCutout';
 
-const MOBILE_BREAKPOINT = 700;
+const MOBILE_BREAKPOINT = 1023;
 const CUTOUT_PADDING = 6;
 const CALLOUT_GAP = 12;
 const CALLOUT_MARGIN = 8;

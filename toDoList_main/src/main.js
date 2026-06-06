@@ -1784,7 +1784,7 @@ function component() {
     mountClaudeSheet(base);
 
     // ── Mobile bottom sheet utility surface ──
-    // Bottom-anchored sheet for STACK mobile (≤700px) that houses the
+    // Bottom-anchored sheet for STACK mobile (≤1023px) that houses the
     // Pomodoro timer and the YouTube music player without changing either
     // controller's logic. Three visible states:
     //   IDLE      — 12px collapsed handle nub at the bottom edge
@@ -2206,7 +2206,7 @@ function component() {
 
     // ── Persistent bottom tab bar (mobile only) ──
     // Three destinations — Projects, Today, Calendar — pinned to the
-    // bottom of the viewport at ≤700px. Tapping a tab routes through
+    // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
     // applyActiveView. The bar height is exposed as `--mobile-tab-h` so
@@ -2859,13 +2859,13 @@ function component() {
     //   addProj    — bottom: "+" add-project button. In rail mode the button
     //                renders with a dashed border; in full mode it stays a
     //                solid surface chip.
-    // On mobile (≤700px) the sidebar splits into two equal halves via the
+    // On mobile (≤1023px) the sidebar splits into two equal halves via the
     // #sidebarTop / #sidebarBottom wrappers so the projects block
     // bottom-anchors to the vertical midpoint instead of pinning to the
     // top — the View/Appearance/footer block then top-anchors at the
     // midpoint. Desktop treats #sidebarTop as a flex:1 1 auto growth
     // region and #sidebarBottom is visually inert (its children are
-    // display:none above 700px), so desktop layout is unchanged.
+    // display:none above 1023px), so desktop layout is unchanged.
     const sidebarTop = document.createElement('div');
     const sidebarBottom = document.createElement('div');
     sidebarTop.id = 'sidebarTop';
@@ -2880,7 +2880,7 @@ function component() {
     addProj.appendChild(projButton);
 
     // ── mobile project header (STACK layout) ──
-    // On the ≤700px breakpoint the layout shifts to a STACK pattern: the
+    // On the ≤1023px breakpoint the layout shifts to a STACK pattern: the
     // active project name renders as a screen-level header above the todo
     // list, with a "PROJECT N OF M" label, open/done counts, and a
     // swipe-on-title gesture (flanked by ‹ / › chevron affordances) that
@@ -2929,11 +2929,11 @@ function component() {
     mobileProjTitleRow.appendChild(mobileProjPrev);
     mobileProjTitleRow.appendChild(mobileProjName);
 
-    // Dense-mobile-header affordance (≤700px only — hidden on desktop
+    // Dense-mobile-header affordance (≤1023px only — hidden on desktop
     // via CSS): the ▾ chevron next to the project name advertises the
     // dropdown that opens the drawer (project picker). It lives in the
     // DOM at every viewport but the desktop styles keep it display:none
-    // so the legacy ‹ › carousel pattern stays untouched above 700px.
+    // so the legacy ‹ › carousel pattern stays untouched above 1023px.
     const mobileProjChevron = document.createElement('span');
     mobileProjChevron.id = 'mobileProjChevron';
     mobileProjChevron.className = 'mobileProjDropdownChev';
@@ -2948,7 +2948,7 @@ function component() {
 
     // Tap on name/chevron opens the drawer (the project picker on
     // mobile). Desktop ignores the gesture because the drawer pattern is
-    // mobile-only, but the listener is harmless above 700px.
+    // mobile-only, but the listener is harmless above 1023px.
     function openMobileDrawer() {
         if (!main1.classList.contains('sidebar-open')) {
             main1.classList.add('sidebar-open');
@@ -3095,7 +3095,7 @@ function component() {
     inboxEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
 
     // Mobile-only ghost spacer that anchors the Today view when the bucket
-    // counts are short. The .viewGhostSpacer rule is gated to ≤700px in
+    // counts are short. The .viewGhostSpacer rule is gated to ≤1023px in
     // style.css, so the element is inert on desktop. flex:1 fills the
     // remaining vertical column inside #inboxView (which is already
     // flex-direction: column), centering the ghost + caption in whatever
@@ -3279,7 +3279,7 @@ function component() {
 
     // ── mobile drawer close (X) button ──
     // Adds an explicit dismiss affordance to the sidebar drawer at the
-    // ≤700px breakpoint so the modal-style three-way close vocabulary
+    // ≤1023px breakpoint so the modal-style three-way close vocabulary
     // (X button, backdrop tap, Escape) is fully covered. Hidden on
     // desktop via CSS — the sidebar there is a persistent rail/full
     // pane, not a modal drawer.
@@ -3567,7 +3567,7 @@ function component() {
     drawerSettingsBtn.appendChild(drawerSettingsBtnLabel);
 
     // Mobile-chrome service-worker update cue — the desktop footer's
-    // #footVersion dot is hidden at ≤700px, so the mobile gear/settings
+    // #footVersion dot is hidden at ≤1023px, so the mobile gear/settings
     // entry point picks up an equivalent dot via the .hasUpdate class.
     // Mirrors the #changelogDot pattern on #footVersion. The dot is
     // painted by CSS; this element just exists so the class hook has
@@ -3859,7 +3859,7 @@ function component() {
     });
 
     // ── sidebar toggle logic ──
-    function isMobile() { return window.innerWidth <= 700; }
+    function isMobile() { return window.innerWidth < 1024; }
 
     function openSidebar() {
         if (isMobile()) {
@@ -3926,7 +3926,7 @@ function component() {
 
     // X-button close inside the mobile drawer. Mirrors the backdrop click
     // and the Escape handler below so the drawer satisfies CLAUDE.md's
-    // three-way modal close vocabulary at the ≤700px breakpoint.
+    // three-way modal close vocabulary at the ≤1023px breakpoint.
     mobileSidebarClose.addEventListener('click', function() {
         closeSidebar();
         sidebarToggle.focus();
@@ -6629,7 +6629,7 @@ function wireExclusiveCompletedDescCollapse(mainListDiv) {
 // ── Mobile completed-section bottom sheet ──
 // The inline accordion that reveals the COMPLETED list (and the TODO.md
 // viewer card with its Rendered / Raw tabs nested beneath it) fails to
-// render reliably on touch at the ≤700px breakpoint. Tapping the
+// render reliably on touch at the ≤1023px breakpoint. Tapping the
 // COMPLETED header on mobile opens this slide-up sheet instead, which
 // hosts the existing completed rows + viewer card via DOM move so all
 // their event listeners stay live. Three-affordance close per CLAUDE.md
@@ -6637,7 +6637,7 @@ function wireExclusiveCompletedDescCollapse(mainListDiv) {
 // drag handle as the fourth touch-native affordance.
 
 function isMobileViewport() {
-    return typeof window !== 'undefined' && window.innerWidth <= 700;
+    return typeof window !== 'undefined' && window.innerWidth < 1024;
 }
 
 let completedMobileSheetState = null;
@@ -6895,7 +6895,7 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined'
 
 // ── Mobile TODO.md viewer bottom sheet ──
 // Mirrors the COMPLETED-section sheet treatment: the inline viewer card
-// is cramped on touch, so tapping the card on the ≤700px breakpoint
+// is cramped on touch, so tapping the card on the ≤1023px breakpoint
 // moves the whole card into a slide-up sheet (DOM move keeps its tab /
 // Sync / expand listeners alive) and the user gets a full-height
 // markdown surface. Shares attachCompletedSheetSwipeDown for the
@@ -7611,7 +7611,7 @@ function applyActiveView(view) {
 // rail is a desktop-and-up affordance and the mobile drawer is hidden
 // by default regardless of view.
 function applyViewDefaultSidebar(view) {
-    if (window.innerWidth <= 700) return;
+    if (window.innerWidth < 1024) return;
     const wantRail = view !== 'projects';
     if (isSidebarRailOn() !== wantRail) {
         setSidebarRailOn(wantRail);

@@ -51,9 +51,9 @@
   --touch:         44px;
   /* Mobile bottom tab bar height — used as the resting `bottom` for the
      PEEK strip, IDLE nub, and bottom-edge swipe zone so all three layer
-     directly above the persistent tab bar at the ≤700px breakpoint.
+     directly above the persistent tab bar at the ≤1023px breakpoint.
      Also exposed at desktop for symmetry; the tab bar itself is
-     display:none above 700px so the value is inert there. */
+     display:none above 1023px so the value is inert there. */
   --mobile-tab-h:  56px;
 }
 
@@ -460,7 +460,7 @@ body {
 
 /* Sidebar halves. On desktop #sidebarTop houses the projects group and
    grows to fill #sideBar; #sidebarBottom holds the mobile-only drawer
-   sections (View/Appearance/footer) which are display:none above 700px,
+   sections (View/Appearance/footer) which are display:none above 1023px,
    so the wrapper is effectively zero-height on desktop and the layout
    matches the previous flat-children flow. The mobile breakpoint flips
    both halves to flex:0 0 50% so the projects block bottom-anchors to
@@ -1486,7 +1486,7 @@ body:has(#settingsMenu) #claudeLauncher {
 
 /* CLAUDE SHEET — right-hand docked panel on wide viewports; the app stays
    visible and interactive beside it (non-modal, no dimming backdrop). On
-   mobile it becomes a bottom sheet — see the ≤700px block far below. */
+   mobile it becomes a bottom sheet — see the ≤1023px block far below. */
 #claudeSheetBackdrop { display: none; }
 #claudeSheet {
   position: fixed;
@@ -2682,7 +2682,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    into a month grid on the left and a day-detail panel on the right;
    the grid drives the panel via the module-scope calendarSelectedKey
    state in main.js. Both panes share the same vertical scroll area on
-   small viewports — at ≤700px the panel stacks beneath the grid (see
+   small viewports — at ≤1023px the panel stacks beneath the grid (see
    the mobile @media block further down). Hidden by default; #mainBar's
    data-view attribute toggles which surface is visible (same hook as
    #inboxView). */
@@ -3226,7 +3226,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    anchored to the input above) can sit beneath it. On desktop the
    mascot/arrow/sparkles are display:none and the desktop layout expects
    [icon, title, sub, input], so push the input back to the bottom of
-   the flex column with `order`. Reset `order` inside the ≤700px media
+   the flex column with `order`. Reset `order` inside the ≤1023px media
    block so mobile gets the natural source-order layout with the input
    at the top. */
 #emptyState.emptyStateNoTodos #emptyStateInput,
@@ -3271,7 +3271,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 /* ── Empty-state ghost mascots, sparkles, and dotted up-arrow ──
-   These are STACK-mobile flourishes painted only at the ≤700px breakpoint
+   These are STACK-mobile flourishes painted only at the ≤1023px breakpoint
    (rules below in the mobile media query enable them). On desktop they're
    hidden so the existing ✦/✓ glyph + title carry the visual weight without
    competing with the mascot. The mascot's background-image is set per
@@ -3748,7 +3748,7 @@ body.row-dragging * { cursor: grabbing !important; }
 #spacer { display: none; }
 
 /* COPY-TITLE BUTTON — purple Tabler-style icon that sits between the title
-   and the due-date pill on mobile rows. Hidden on desktop; the ≤700px
+   and the due-date pill on mobile rows. Hidden on desktop; the ≤1023px
    media query flips it to inline-flex below. The button only paints on
    committed rows (blank placeholders set display:none in JS) so the
    chrome stays out of the way until there's actually a title to copy. */
@@ -4639,7 +4639,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ── MOBILE COMPLETED-SECTION BOTTOM SHEET ──
-   At the ≤700px breakpoint the inline accordion reveal fails to render
+   At the ≤1023px breakpoint the inline accordion reveal fails to render
    the completed-items list reliably on touch (the Rendered / Raw viewer
    tabs nested beneath it end up unreachable). Tapping #completedHeader
    on mobile opens this slide-up sheet instead, which hosts the existing
@@ -5262,9 +5262,9 @@ body.row-dragging * { cursor: grabbing !important; }
 #sidebarOverlay.visible { display: block; }
 
 /* ══════════════════════════════════════════
-   DESKTOP > 700px
+   DESKTOP ≥ 1024px
 ══════════════════════════════════════════ */
-@media (min-width: 701px) {
+@media (min-width: 1024px) {
 
   #mainSec.sidebar-collapsed {
     grid-template-columns: 0px 0px 1fr;
@@ -5282,9 +5282,9 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
-   MOBILE ≤ 700px
+   MOBILE ≤ 1023px
 ══════════════════════════════════════════ */
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
 
   /* The global html/body height:100% rule resolves against the initial
      containing block, which on iOS Safari can settle at 100svh (URL bar
@@ -5344,7 +5344,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* The hamburger is redundant on mobile: tapping the project name + ▾
      dropdown chevron in the compressed header opens the same drawer, so
      the hamburger affordance is hidden entirely at this breakpoint. The
-     desktop nav-anchored hamburger (#sidebarToggle at ≥701px) is
+     desktop nav-anchored hamburger (#sidebarToggle at ≥1024px) is
      unchanged and still toggles the icon rail. */
   #sidebarToggle {
     display: none;
@@ -5563,7 +5563,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* ── STACK empty-state mascots ──
-     Three retuned variants for the ≤700px layout: a big purple ghost on
+     Three retuned variants for the ≤1023px layout: a big purple ghost on
      NO PROJECTS (welcome screen), a muted gray ghost on NO TODOS YET with
      a dotted up-arrow pointing at the input, and a green-tinted ghost
      with sparkles on ALL CAUGHT UP. The desktop ✦/✓ icon is hidden in
@@ -5873,7 +5873,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* ── STACK mobile project header ──
-     Mounts above the todo list at the ≤700px breakpoint as a
+     Mounts above the todo list at the ≤1023px breakpoint as a
      screen-level header: PROJECT N OF M label, a two-line project
      name flanked by prev/next chevrons (with a horizontal
      swipe-on-title gesture as an alternative), and a stats line with
@@ -6162,7 +6162,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #footCounts { display: none; }
 
   /* ── Mobile drawer X close button ──
-     Top-right of the sidebar drawer at the ≤700px breakpoint. Pairs
+     Top-right of the sidebar drawer at the ≤1023px breakpoint. Pairs
      with the existing backdrop tap and the new Escape handler in
      main.js to satisfy the three-way modal close vocabulary. Hidden
      on desktop where the sidebar is a persistent rail/full pane. */
@@ -6272,7 +6272,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Mobile-chrome service-worker update cue — the desktop #footVersion
-     dot lives in the footer which is hidden at ≤700px, so the gear
+     dot lives in the footer which is hidden at ≤1023px, so the gear
      button picks up an equivalent dot. The dot is hidden by default and
      paints only when the Settings button has the .hasUpdate class
      (toggled from the appUpdateAvailable event). Anchored to the
@@ -6683,7 +6683,7 @@ body.row-dragging * { cursor: grabbing !important; }
 /* Hide the mobile-only chrome at desktop sizes — these elements live
    in the DOM at all viewports so the JS path stays single-branch, but
    they should never paint above the breakpoint. */
-@media (min-width: 701px) {
+@media (min-width: 1024px) {
   #mobileProjHeader { display: none; }
   #mobileSidebarClose { display: none; }
   #drawerSettingsBtnWrap,
@@ -7756,7 +7756,7 @@ body.row-dragging * { cursor: grabbing !important; }
    keeps the existing overlay drawer regardless of this state — the rail
    styles below are scoped to viewports above the mobile breakpoint.
 ══════════════════════════════════════════ */
-@media (min-width: 701px) {
+@media (min-width: 1024px) {
   /* Active rail mode shrinks the sidebar grid track and locks the
      resizer out so the user can't accidentally drag a 54px rail wide. */
   html[data-sidebar-rail="on"] #mainSec {
@@ -7771,7 +7771,7 @@ body.row-dragging * { cursor: grabbing !important; }
      modes. The hamburger lives in the top nav, the PROJECTS label was
      retired (the view-switch pills in the top nav now communicate the
      active surface), and the mobile drawer's close (×) button only
-     renders below 700px. With no children to host on desktop, hiding
+     renders below 1024px. With no children to host on desktop, hiding
      #sideTit lets the project list begin directly at the sidebar's top
      padding. The mobile rule below restores its layout for the drawer
      header. */
@@ -8772,10 +8772,10 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
    instead of element presence. */
 body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
-/* CLAUDE SHEET — mobile bottom-sheet form. At ≤700px the docked panel
+/* CLAUDE SHEET — mobile bottom-sheet form. At ≤1023px the docked panel
    becomes a bottom sheet at ~86% height with a grab handle and a dimming
    backdrop (tap to close). */
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
   #claudeSheetBackdrop {
     display: block;
     position: fixed;
@@ -8835,12 +8835,12 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
 /* ══════════════════════════════════════════
    MOBILE BOTTOM SHEET — Pomodoro + Music
-   Hidden on desktop. At ≤700px the sheet lives at the bottom of
+   Hidden on desktop. At ≤1023px the sheet lives at the bottom of
    #outerContainer and cycles IDLE → PEEK → EXPANDED.
 ══════════════════════════════════════════ */
 #bottomSheet { display: none; }
 
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
   #bottomSheet {
     display: block;
     position: absolute;
@@ -9550,7 +9550,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   background: var(--bg-hover, rgba(255, 255, 255, 0.05));
   outline: none;
 }
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
   #undoToast {
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
@@ -9577,9 +9577,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* Bottom-edge swipe hit zone is touch-only — pointer-events are auto'd
    in only when the device's primary input is coarse so a hovering mouse
    doesn't get stuck on an invisible strip along the bottom of the
-   viewport. Combines with the @media (max-width: 700px) base rules
+   viewport. Combines with the @media (max-width: 1023px) base rules
    above. */
-@media (max-width: 700px) and (pointer: coarse) {
+@media (max-width: 1023px) and (pointer: coarse) {
   .sheetSwipeZone { pointer-events: auto; }
 }
 
@@ -9587,7 +9587,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    Persistent bottom tab bar (mobile only)
    ──────────────────────────────────────────
    Three destinations — Projects · Today · Calendar — pinned to the
-   bottom of the viewport at ≤700px. Hidden on desktop. The bar shares
+   bottom of the viewport at ≤1023px. Hidden on desktop. The bar shares
    --mobile-tab-h with the bottom sheet so the IDLE nub, PEEK strip, and
    swipe-zone all stack directly above the tabs without per-element
    coupling. Visibility classes (hidden-by-drawer / hidden-by-empty)
@@ -9596,7 +9596,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 ══════════════════════════════════════════ */
 #mobileTabBar { display: none; }
 
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
   #mobileTabBar {
     position: absolute;
     left: 0;

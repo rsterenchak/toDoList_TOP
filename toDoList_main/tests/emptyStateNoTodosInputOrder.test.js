@@ -125,12 +125,12 @@ describe('STACK mobile NO TODOS YET source order', () => {
             );
         });
 
-        it('resets the input order inside the ≤700px media block so mobile gets natural source order', () => {
+        it('resets the input order inside the ≤1023px media block so mobile gets natural source order', () => {
             // The mobile-scoped reset is required: without it, the desktop
             // `order: 99` rule would also apply on mobile and re-push the
             // input back to the bottom — defeating the whole point of the
             // reorder. Both variants share the reset.
-            const mobileBlockMatch = css.match(/@media\s*\(max-width:\s*700px\)\s*\{([\s\S]*)$/);
+            const mobileBlockMatch = css.match(/@media\s*\(max-width:\s*1023px\)\s*\{([\s\S]*)$/);
             expect(mobileBlockMatch).not.toBeNull();
             const mobileBlock = mobileBlockMatch[1];
             expect(mobileBlock).toMatch(

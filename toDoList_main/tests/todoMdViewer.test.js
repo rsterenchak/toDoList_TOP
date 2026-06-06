@@ -764,7 +764,7 @@ describe('todo.md viewer — style.css', () => {
         expect(mainJs).not.toMatch(/target\.repo\s*\+\s*['"][^'"]*['"]\s*\+\s*target\.file_path/);
         expect(css).not.toMatch(/\.todoMdViewerRepo\b/);
         // Single layout — the previously mobile-only header restack
-        // (flex-direction: column inside @media (max-width: 700px)) is
+        // (flex-direction: column inside @media (max-width: 1023px)) is
         // gone, so there's one style to maintain across viewports.
         expect(css).not.toMatch(/\.todoMdViewerHeader\s*\{[^}]*flex-direction:\s*column/);
     });

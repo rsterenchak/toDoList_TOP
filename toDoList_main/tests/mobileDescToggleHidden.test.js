@@ -9,7 +9,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile contract: at the ≤700px breakpoint the per-row
+// Pins the STACK mobile contract: at the ≤1023px breakpoint the per-row
 // `▾` description-toggle chevron is hidden so titles reclaim the
 // horizontal space. Tapping the row itself already opens the description
 // on touch (wireToDoRowClick), so the chevron is redundant on mobile.
@@ -21,7 +21,7 @@ describe('STACK mobile per-row description toggle chevron hidden', () => {
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;
@@ -69,7 +69,7 @@ describe('STACK mobile per-row description toggle chevron hidden', () => {
         return null;
     }
 
-    it('#descToggle is hidden at the ≤700px breakpoint', () => {
+    it('#descToggle is hidden at the ≤1023px breakpoint', () => {
         const hit = findHidingBlock('#descToggle');
         expect(hit).not.toBeNull();
     });

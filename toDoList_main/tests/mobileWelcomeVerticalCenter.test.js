@@ -22,7 +22,7 @@ describe('Mobile welcome empty-state vertical centering', () => {
     const css = read('style.css');
 
     function extractMobileRule(selector) {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         let depth = 0;
         let mediaEnd = css.length;
@@ -72,7 +72,7 @@ describe('Mobile welcome empty-state vertical centering', () => {
         // Strip the mobile @media block; the no-projects rule should not
         // surface min-height: 100% outside the mobile breakpoint, so
         // desktop continues to rely on flex-grow alone.
-        const mediaStart = css.indexOf('@media (max-width: 700px)');
+        const mediaStart = css.indexOf('@media (max-width: 1023px)');
         expect(mediaStart).toBeGreaterThan(-1);
         let depth = 0;
         let mediaEnd = css.length;

@@ -444,7 +444,7 @@ export function updateChangelogDot() {
 // reuses the #changelogDot visual vocabulary to signal the update, and its
 // click handler switches from "open changelog" to "skipWaiting + reload".
 //
-// The desktop footer is hidden on mobile (≤700px), so notifyUpdateAvailable
+// The desktop footer is hidden on mobile (≤1023px), so notifyUpdateAvailable
 // also dispatches an `appUpdateAvailable` CustomEvent on document. The mobile
 // Settings modal's About → Version row listens for it, and the mobile
 // chrome's #drawerSettingsBtn adopts a small dot via the same event so the

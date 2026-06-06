@@ -22,7 +22,7 @@ import { isCompletedSectionOpen, setCompletedSectionOpen } from './prefs.js';
 // Mobile-only ghost spacer that fills the vertical void below the todo rows
 // when a project has only a few items. Painted via the .viewGhostSpacer CSS
 // rule (purple ghost SVG + caption, dimmed to 50% opacity) which only fires
-// inside the @media (max-width: 700px) block, so on desktop this element is
+// inside the @media (max-width: 1023px) block, so on desktop this element is
 // inert. Idempotent — every call ensures the spacer exists and is the last
 // child of #mainList so subsequent row appends don't leave it stranded mid-
 // list. The companion-ghost preference is enforced via the body class set
@@ -193,7 +193,7 @@ export function updateEmptyState(mainListDiv) {
         block.id = 'emptyState';
         block.classList.add('emptyStateNoProjects');
 
-        // Purple ghost mascot — visible at the ≤700px STACK breakpoint via
+        // Purple ghost mascot — visible at the ≤1023px STACK breakpoint via
         // CSS; hidden on desktop where the existing ✦ glyph + title carry
         // the visual weight. Painted via background-image in style.css.
         const mascot = document.createElement('div');
@@ -239,7 +239,7 @@ export function updateEmptyState(mainListDiv) {
             // synchronously so the new projInput is in-layout and iOS Safari
             // honors the .focus() call inside this same user-gesture tick.
             // Deferring the focus behind the slide transition drops the keyboard.
-            if (window.innerWidth <= 700) {
+            if (window.innerWidth < 1024) {
                 const sideBar = document.getElementById('sideBar');
                 const overlay = document.getElementById('sidebarOverlay');
                 if (sideBar) sideBar.classList.add('sidebar-open');
@@ -305,7 +305,7 @@ export function updateEmptyState(mainListDiv) {
     block.id = 'emptyState';
 
     // Mascot variants — gray ghost for "no todos yet" (waiting), green
-    // ghost for "all caught up" (success). STACK mobile (≤700px) swaps
+    // ghost for "all caught up" (success). STACK mobile (≤1023px) swaps
     // the inline ✦/✓ glyph for the mascot via CSS; desktop ignores it.
     const mascot = document.createElement('div');
     mascot.className = 'emptyStateMascot';

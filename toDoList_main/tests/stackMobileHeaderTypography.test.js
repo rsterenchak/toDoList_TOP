@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the STACK mobile project header's typography and stacking guarantees.
-// The screen-level header at the ≤700px breakpoint reads as the Void theme's
+// The screen-level header at the ≤1023px breakpoint reads as the Void theme's
 // mono chrome: SpaceMono everywhere, accent-colored title that respects the
 // per-project --proj-accent swatch, and a defensive z-index so the empty-state
 // block (which lives inside the sibling #mainList) can never hoist above the
@@ -21,7 +21,7 @@ describe('STACK mobile project header typography + stacking', () => {
     const main = read('main.js');
 
     function extractMobileRule(selector) {
-        const media = css.indexOf('@media (max-width: 700px)');
+        const media = css.indexOf('@media (max-width: 1023px)');
         expect(media).toBeGreaterThan(-1);
         const mediaEnd = (function () {
             let depth = 0;

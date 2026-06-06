@@ -11,7 +11,7 @@ function read(relative) {
 
 // Pins the mobile-row chrome changes that ship together: a purple copy-title
 // icon button between the title and the due pill, and a slimmer due pill
-// (no border / background, condensed label text) under the ≤700px media
+// (no border / background, condensed label text) under the ≤1023px media
 // query. Desktop chrome stays untouched. Source-inspection only, matching
 // the existing mobileTaskInteractions / mobileTapToViewEdit patterns —
 // buildToDoRow is too heavily wired for a full jsdom instantiation here.
@@ -126,7 +126,7 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;
@@ -273,7 +273,7 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
 
     it('mobile @media block reveals the copy-title button via display: inline-flex', () => {
         // The desktop default is display: none on .copyTitleBtn; the
-        // ≤700px breakpoint flips it on. Without this rule the JS-side
+        // ≤1023px breakpoint flips it on. Without this rule the JS-side
         // wiring would be dark on every device.
         const block = allMobileMediaBlocks().find(b =>
             /\.copyTitleBtn\s*\{[^}]*display:\s*inline-flex/.test(b.text)
@@ -291,7 +291,7 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
     });
 
     it('desktop urgency cascade for #duePill stays intact at the top level', () => {
-        // The bare-icon mobile pill overrides these in the ≤700px media
+        // The bare-icon mobile pill overrides these in the ≤1023px media
         // block with its own literal-hex colors, but desktop must still
         // recolor the bordered pill text via the existing urgency tokens.
         // Lock in the top-level rules so a future refactor doesn't drop

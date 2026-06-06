@@ -348,7 +348,7 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 // the input). Second click on the input then focuses it for editing.
 // Blank placeholder rows skip straight to focus on first click.
 //
-// Mobile (≤700px) replaces the desktop one-tap-to-edit with a two-stage
+// Mobile (≤1023px) replaces the desktop one-tap-to-edit with a two-stage
 // tap-to-view / tap-to-edit flow on committed rows: the first tap on a
 // collapsed row programmatically opens the description panel via the
 // existing descToggle (so descSibling appears below) and marks the row
@@ -428,7 +428,7 @@ function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             return;
         }
 
-        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 700;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
         const descOpen = !!(descToggle && descToggle.classList.contains('open'));
 
         // Mobile tap-to-view: first tap on a collapsed committed row enters
@@ -1349,7 +1349,7 @@ export function buildToDoRow(item, toDoName) {
 
     // COPY-TITLE BUTTON — mobile-only chrome that lets the user tap to copy
     // the todo's title to the clipboard. The button is in the DOM for every
-    // committed row but only paints at ≤700px via CSS; desktop rows never
+    // committed row but only paints at ≤1023px via CSS; desktop rows never
     // surface it. Blank placeholder rows skip it entirely (display:none)
     // because there's no title to copy yet. On click the SVG swaps from the
     // Tabler copy glyph to a checkmark for ~1s as feedback, then restores.
@@ -1476,7 +1476,7 @@ export function buildToDoRow(item, toDoName) {
     // STACK mobile inline-expand chips — only the blank placeholder gets
     // the chip row, since it's the only row the chip controls (Today /
     // Tomorrow / calendar / description toggle) make sense on. The chip
-    // row is visually surfaced via CSS at the ≤700px breakpoint when the
+    // row is visually surfaced via CSS at the ≤1023px breakpoint when the
     // row is focus-within.
     attachMobileCreateChips(toDoChild, item);
 
@@ -1578,7 +1578,7 @@ export function buildToDoRow(item, toDoName) {
         // before the desktop fallback. The chip module no-ops on Custom
         // chip selection — the popover already wrote item.due in that
         // path, so parseItemDue catches it below and the fallback skips.
-        if (window.innerWidth <= 700 && !parseItemDue(item)) {
+        if (window.innerWidth < 1024 && !parseItemDue(item)) {
             applyChosenDueToItem(item, toDoChild);
         }
         // If no due date is set yet, default to today so the urgency
@@ -1619,7 +1619,7 @@ export function buildToDoRow(item, toDoName) {
         // into "chaining" mode so the next blank placeholder built by
         // appendNewToDoRow uses the "Type the next…" copy instead of the
         // initial dashed-row hint.
-        if (window.innerWidth <= 700) {
+        if (window.innerWidth < 1024) {
             // Strip the blank-placeholder marker now that this row is a
             // real todo; the chip row CSS rules key off the attribute.
             toDoChild.removeAttribute('data-blank-placeholder');

@@ -74,12 +74,12 @@ describe('#calendarView stacks calendar grid above the day-detail panel', () => 
         expect(rule).toMatch(/grid-template-columns:\s*repeat\(\s*7\s*,\s*1fr\s*\)\s*;/);
     });
 
-    it('does not double-apply flex-direction: column inside the @media (max-width: 700px) block', () => {
-        // Walk to the start of the `@media (max-width: 700px) {` block and
+    it('does not double-apply flex-direction: column inside the @media (max-width: 1023px) block', () => {
+        // Walk to the start of the `@media (max-width: 1023px) {` block and
         // extract its full body, so we can assert the inner #calendarView
         // override no longer re-sets flex-direction. The block contains many
         // nested rules — track brace depth to find its matching close.
-        const start = css.search(/@media\s*\(\s*max-width:\s*700px\s*\)\s*\{/);
+        const start = css.search(/@media\s*\(\s*max-width:\s*1023px\s*\)\s*\{/);
         expect(start).toBeGreaterThan(-1);
         const bodyStart = css.indexOf('{', start) + 1;
         let depth = 1;

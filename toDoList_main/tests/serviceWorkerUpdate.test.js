@@ -17,7 +17,7 @@
 //
 // The desktop #footVersion footer carries an "update available" cue when
 // notifyUpdateAvailable runs, but the footer is hidden on mobile
-// (≤700px). The mobile surfaces — the Settings modal's About → Version
+// (≤1023px). The mobile surfaces — the Settings modal's About → Version
 // row and a dot on the #drawerSettingsBtn gear button — listen for the
 // appUpdateAvailable CustomEvent that notifyUpdateAvailable now
 // dispatches alongside the footer paint. Both surfaces also call
@@ -250,7 +250,7 @@ describe('mobile update cue — src/main.js wiring', () => {
 
     describe('#drawerSettingsBtn pending-update dot', () => {
         it('mounts a .drawerSettingsBtnUpdateDot child on the Settings button', () => {
-            // The desktop #footVersion dot is hidden at ≤700px (footer
+            // The desktop #footVersion dot is hidden at ≤1023px (footer
             // collapses), so the mobile gear button picks up an
             // equivalent dot keyed off the same hasPendingUpdate signal.
             expect(main).toMatch(/drawerSettingsBtnUpdateDot\.className\s*=\s*['"]drawerSettingsBtnUpdateDot['"]/);

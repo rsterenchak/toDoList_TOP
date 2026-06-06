@@ -225,11 +225,11 @@ describe('Claude sheet — module surface and styling', () => {
         expect(rule).toMatch(/height:\s*100%/);
     });
 
-    it('becomes a ~86% bottom sheet under the 700px breakpoint', () => {
-        // The mobile form lives in a @media (max-width: 700px) block and
+    it('becomes a ~86% bottom sheet under the 1023px breakpoint', () => {
+        // The mobile form lives in a @media (max-width: 1023px) block and
         // anchors to the bottom at ~86% height. A `#claudeSheet { ... }` rule
         // body runs to the first `}`, so [^}]* stays inside one block.
-        expect(css).toMatch(/@media\s*\(\s*max-width:\s*700px\s*\)/);
+        expect(css).toMatch(/@media\s*\(\s*max-width:\s*1023px\s*\)/);
         expect(css).toMatch(/#claudeSheet\s*\{[^}]*height:\s*86%/);
         expect(css).toMatch(/#claudeSheet\s*\{[^}]*bottom:\s*0/);
         // The grab handle only surfaces on mobile.

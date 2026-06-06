@@ -279,7 +279,7 @@ describe('Inbox view + view switcher', () => {
         });
 
         it('mobile #mainBar grid carries mobile header + filter pills + list', () => {
-            const mediaStart = css.indexOf('@media (max-width: 700px)');
+            const mediaStart = css.indexOf('@media (max-width: 1023px)');
             expect(mediaStart).toBeGreaterThan(-1);
             // Find the matching close of the @media block.
             let depth = 0;

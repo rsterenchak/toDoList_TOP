@@ -21,7 +21,7 @@ function read(relative) {
 
 
 // Pins the STACK mobile inline-expand task-creation slice: the dashed
-// `+ Add a task…` placeholder row at the ≤700px breakpoint expands on
+// `+ Add a task…` placeholder row at the ≤1023px breakpoint expands on
 // focus to reveal a chip row (Today / Tomorrow / 📅 / + ¶), the user's
 // last picked date chip persists across chained Return-commits via a
 // module-level session variable (NOT localStorage), and the session
@@ -188,9 +188,9 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
         expect(chipIdx).toBeLessThan(fallbackIdx);
     });
 
-    it('only applies the chip stamp at the ≤700px breakpoint', () => {
+    it('only applies the chip stamp at the <1024px breakpoint', () => {
         // The chip flow is mobile-specific; desktop relies on the default fallback.
-        expect(toDoRow).toMatch(/window\.innerWidth\s*<=\s*700[\s\S]*?applyChosenDueToItem/);
+        expect(toDoRow).toMatch(/window\.innerWidth\s*<\s*1024[\s\S]*?applyChosenDueToItem/);
     });
 
     it('defaults an untouched new task to today (offset 0) so desktop matches mobile', () => {
@@ -267,23 +267,23 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.justCommittedMobile[\s\S]*?animation:\s*none/);
     });
 
-    it('scopes the chip styles to the ≤700px mobile breakpoint', () => {
-        // The block must live inside the existing @media (max-width: 700px)
+    it('scopes the chip styles to the ≤1023px mobile breakpoint', () => {
+        // The block must live inside the existing @media (max-width: 1023px)
         // section — desktop never surfaces the chip row, so its styling
         // would be dead weight at the top level.
-        const mediaIdx = css.indexOf('@media (max-width: 700px)');
+        const mediaIdx = css.indexOf('@media (max-width: 1023px)');
         const chipsIdx = css.indexOf('#mobileCreateChips');
         expect(mediaIdx).toBeGreaterThan(-1);
         expect(chipsIdx).toBeGreaterThan(mediaIdx);
     });
 
-    it('hides the chip cluster at the ≥701px desktop breakpoint', () => {
+    it('hides the chip cluster at the ≥1024px desktop breakpoint', () => {
         // The chip DOM is attached unconditionally to every blank placeholder
         // so the JS path stays single-branch, but on desktop the cluster
         // (Today / Tomorrow / 📅 / + ¶) must never paint — desktop
         // placeholder rows must look identical to committed rows.
         const desktopBlocks = Array.from(
-            css.matchAll(/@media\s*\(min-width:\s*701px\)\s*\{[\s\S]*?\n\}/g)
+            css.matchAll(/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g)
         );
         expect(desktopBlocks.length).toBeGreaterThan(0);
         const hidesChips = desktopBlocks.some(function(m) {

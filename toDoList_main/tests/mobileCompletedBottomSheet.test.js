@@ -11,7 +11,7 @@ function read(relative) {
 
 // Pins the contract for the mobile-only bottom sheet that hosts the
 // COMPLETED list (and the TODO.md viewer card's Rendered / Raw tabs)
-// when the user taps #completedHeader on the ≤700px breakpoint. The
+// when the user taps #completedHeader on the ≤1023px breakpoint. The
 // inline accordion expansion is broken on touch — the sheet replaces
 // it on mobile and keeps the existing inline behavior on desktop.
 // Verified via source inspection because main.js is too large to
@@ -20,9 +20,9 @@ describe('Mobile COMPLETED bottom sheet', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
-    it('exposes a mobile viewport helper gated on a 700px width threshold', () => {
+    it('exposes a mobile viewport helper gated on a 1024px width threshold', () => {
         expect(main).toMatch(/function isMobileViewport\s*\(/);
-        expect(main).toMatch(/window\.innerWidth\s*<=\s*700/);
+        expect(main).toMatch(/window\.innerWidth\s*<\s*1024/);
     });
 
     it('intercepts the #completedHeader click on mobile and opens the sheet instead of the inline toggle', () => {
@@ -141,7 +141,7 @@ describe('Mobile COMPLETED bottom sheet', () => {
 
     it('dismisses the sheet on a resize past the mobile breakpoint so desktop falls back to inline', () => {
         // The inline accordion works on desktop — auto-closing the
-        // sheet on resize past 700px keeps the affordance consistent
+        // sheet on resize past 1023px keeps the affordance consistent
         // with the active viewport rather than stranding a touch-only
         // surface on a mouse layout.
         expect(main).toMatch(/addEventListener\(\s*['"]resize['"][\s\S]{0,400}!isMobileViewport\(\s*\)[\s\S]{0,200}closeCompletedMobileSheet/);

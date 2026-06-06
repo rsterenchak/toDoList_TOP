@@ -13,14 +13,14 @@ function stripCssComments(css) {
     return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-// Walks every `@media (max-width: 700px)` block in the stylesheet and returns
+// Walks every `@media (max-width: 1023px)` block in the stylesheet and returns
 // every nested rule body matching `selector` (across all such blocks). The
 // mobile padding-top formula and the later padding-bottom override on these
-// views live in two distinct @media (max-width: 700px) blocks, so we have to
+// views live in two distinct @media (max-width: 1023px) blocks, so we have to
 // inspect them all rather than the first one.
 function extractAllMobileRules(css, selector) {
     const cleaned = stripCssComments(css);
-    const re = /@media\s*\(\s*max-width:\s*700px\s*\)\s*\{/g;
+    const re = /@media\s*\(\s*max-width:\s*1023px\s*\)\s*\{/g;
     const results = [];
     let match;
     const selectorRe = new RegExp(
@@ -66,7 +66,7 @@ describe('Today + Calendar mobile top padding reserves safe-area-inset-top', () 
     const safeAreaCalendarPaddingTopRe =
         /calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*(\d+)px\s*\)/;
 
-    it('#inboxView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px)', () => {
+    it('#inboxView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 1023px)', () => {
         const rules = extractAllMobileRules(css, '#inboxView');
         expect(rules.length).toBeGreaterThan(0);
         const hasPaddingTop = rules.some(rule =>
@@ -77,7 +77,7 @@ describe('Today + Calendar mobile top padding reserves safe-area-inset-top', () 
         expect(hasPaddingTop).toBe(true);
     });
 
-    it('#calendarView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 700px), with enough offset to clear the hamburger', () => {
+    it('#calendarView reserves the safe-area inset (with a 24px floor) as padding-top inside @media (max-width: 1023px), with enough offset to clear the hamburger', () => {
         const rules = extractAllMobileRules(css, '#calendarView');
         expect(rules.length).toBeGreaterThan(0);
         let matchedOffset = null;

@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the contract for the STACK mobile project header — the screen-level
-// header that mounts at the ≤700px breakpoint with a "PROJECT N OF M"
+// header that mounts at the ≤1023px breakpoint with a "PROJECT N OF M"
 // label, two-line project name flanked by prev/next chevrons (with a
 // horizontal swipe-on-title gesture as an alternative navigation), and
 // open/done counts on the stats line. Companion to the long-press project
@@ -143,11 +143,11 @@ describe('STACK mobile project header', () => {
         expect(css).not.toMatch(/mobileProjOverflow/);
     });
 
-    it('exposes only the mobile header at the ≤700px breakpoint', () => {
+    it('exposes only the mobile header at the ≤1023px breakpoint', () => {
         // The mobile header is in the DOM at all viewports so the JS path
-        // is single-branch; CSS hides it at ≥701px to keep the desktop
+        // is single-branch; CSS hides it at ≥1024px to keep the desktop
         // chrome unchanged.
-        const desktop = css.match(/@media \(min-width:\s*701px\)\s*\{[^@]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/);
+        const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[^@]*?#mobileProjHeader\s*\{\s*display:\s*none\s*;?\s*\}/);
         expect(desktop).toBeTruthy();
     });
 

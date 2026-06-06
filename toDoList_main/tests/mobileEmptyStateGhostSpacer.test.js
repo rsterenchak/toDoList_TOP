@@ -13,13 +13,13 @@ function stripCssComments(css) {
     return css.replace(/\/\*[\s\S]*?\*\//g, '');
 }
 
-// Pulls the body of the first @media (max-width: 700px) block that contains a
+// Pulls the body of the first @media (max-width: 1023px) block that contains a
 // rule for `selector`, then returns that rule body. Walks brace depth so nested
 // blocks (e.g. the @media (max-width: 600px) child query) don't trip the
 // scanner.
 function extractMobileRule(css, selector) {
     const cleaned = stripCssComments(css);
-    const re = /@media\s*\(\s*max-width:\s*700px\s*\)\s*\{/g;
+    const re = /@media\s*\(\s*max-width:\s*1023px\s*\)\s*\{/g;
     const selectorEsc = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const ruleRe = new RegExp(
         '(?:^|[},\\s])' + selectorEsc + '\\s*\\{([^}]*)\\}'
@@ -105,7 +105,7 @@ describe('Empty-state ghost spacer — CSS', () => {
         expect(found).toBe(true);
     });
 
-    it('paints .viewGhostSpacer as a flex column with flex:1 inside @media (max-width: 700px) so it fills the column space', () => {
+    it('paints .viewGhostSpacer as a flex column with flex:1 inside @media (max-width: 1023px) so it fills the column space', () => {
         const rule = extractMobileRule(css, '.viewGhostSpacer');
         expect(rule).not.toBeNull();
         expect(rule).toMatch(/display\s*:\s*flex/);

@@ -19,9 +19,9 @@ describe('desktop descInput — max-height cap with internal scroll', () => {
     const css = read('style.css');
 
     it('the desktop @media block caps #descInput with a max-height around 180–220px', () => {
-        // Match every `@media (min-width: 701px) { ... }` block and look
+        // Match every `@media (min-width: 1024px) { ... }` block and look
         // for the one that scopes a #descInput rule with max-height.
-        const blockRe = /@media\s*\(\s*min-width:\s*701px\s*\)\s*\{([\s\S]*?)\n\}/g;
+        const blockRe = /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{([\s\S]*?)\n\}/g;
         let match;
         let capped = false;
         let capPx = null;
@@ -43,7 +43,7 @@ describe('desktop descInput — max-height cap with internal scroll', () => {
     });
 
     it('the desktop #descInput rule sets overflow-y: auto so capped content scrolls', () => {
-        const blockRe = /@media\s*\(\s*min-width:\s*701px\s*\)\s*\{([\s\S]*?)\n\}/g;
+        const blockRe = /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{([\s\S]*?)\n\}/g;
         let match;
         let scrolls = false;
         while ((match = blockRe.exec(css)) !== null) {
@@ -60,10 +60,10 @@ describe('desktop descInput — max-height cap with internal scroll', () => {
 
     it('the cap does not appear inside a mobile media block', () => {
         // Sanity: the spec scopes this to desktop only — the mobile
-        // (max-width: 700px) and ≤420px phone blocks must NOT contain a
+        // (max-width: 1023px) and ≤420px phone blocks must NOT contain a
         // #descInput max-height rule, otherwise the mobile read-mode panel
         // would inherit the cap and start hiding content too.
-        const mobileBlockRe = /@media\s*\(\s*max-width:\s*(?:700|420|480)px\s*\)\s*\{([\s\S]*?)\n\}/g;
+        const mobileBlockRe = /@media\s*\(\s*max-width:\s*(?:1023|420|480)px\s*\)\s*\{([\s\S]*?)\n\}/g;
         let match;
         while ((match = mobileBlockRe.exec(css)) !== null) {
             const body = match[1];

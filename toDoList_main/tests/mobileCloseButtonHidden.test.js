@@ -9,7 +9,7 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile contract: at the ≤700px breakpoint the per-row
+// Pins the STACK mobile contract: at the ≤1023px breakpoint the per-row
 // `×` delete button is hidden so the row's right cluster reads as just
 // the due pill + expand caret. Destructive removal is owned by the
 // swipe-left gesture (with the 5s UNDO toast) which is the expected
@@ -23,7 +23,7 @@ describe('STACK mobile per-row delete button hidden', () => {
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;
@@ -66,7 +66,7 @@ describe('STACK mobile per-row delete button hidden', () => {
         return null;
     }
 
-    it('#closeButtonToDo is hidden at the ≤700px breakpoint', () => {
+    it('#closeButtonToDo is hidden at the ≤1023px breakpoint', () => {
         const hit = findHidingBlock('#closeButtonToDo');
         expect(hit).not.toBeNull();
     });

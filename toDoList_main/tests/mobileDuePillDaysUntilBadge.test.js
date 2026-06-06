@@ -209,7 +209,7 @@ describe('mobile due pill — days-until-due badge CSS', () => {
         const blocks = [];
         let cursor = 0;
         while (true) {
-            const media = css.indexOf('@media (max-width: 700px)', cursor);
+            const media = css.indexOf('@media (max-width: 1023px)', cursor);
             if (media === -1) break;
             let depth = 0;
             let end = css.length;

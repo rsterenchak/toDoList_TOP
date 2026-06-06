@@ -45,9 +45,9 @@ describe('view switch — auto-collapse sidebar on TODAY, auto-expand on PROJECT
 
         it('bails on mobile so the drawer behavior stays untouched', () => {
             // Mobile drawer already hides by default — touching the rail
-            // pref there would change unrelated behavior. The ≤700px guard
+            // pref there would change unrelated behavior. The <1024px guard
             // matches the rest of the codebase's isMobile() definition.
-            expect(body).toMatch(/innerWidth\s*<=\s*700/);
+            expect(body).toMatch(/innerWidth\s*<\s*1024/);
         });
 
         it("collapses to the icon rail when the view is anything other than 'projects'", () => {
