@@ -782,7 +782,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9b393636-0f69-4efc-a7c4-20b2e2711103 -->
 
-- [ ] **[MEDIUM]** Align chat pane sub-header row with task pane view tabs sub-band at desktop widths
+- [x] **[MEDIUM]** Align chat pane sub-header row with task pane view tabs sub-band at desktop widths — Completed: 2026-06-06
   - Type: bug
   - Description: At desktop widths (≥1024px), the chat pane and task pane do not share a horizontal coordinate system for their sub-header rows. In the task pane, the view tabs sub-band (PROJECTS/INBOX/CALENDAR) sits directly below the top header. In the chat pane, the collapse `›` button sits on its own row directly below the top header, with the CHAT/RUNS tabs (and the repo workspace pill) placed on a separate row below it. The result: when scanning horizontally across the pane divider, the panes look misaligned — the chat pane's content starts at a different vertical position than the task pane's content. This entry aligns the chat pane's sub-header row with the task pane's view tabs sub-band, so both panes have a peer "first row under the main header" at the same vertical position. Mobile UX is unaffected (mobile uses the slide-up chat sheet, not the desktop pane).
   - Implementation notes:
