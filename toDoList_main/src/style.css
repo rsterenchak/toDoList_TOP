@@ -124,7 +124,10 @@ body {
 /* OUTER SHELL */
 #outerContainer {
   display: grid;
-  grid-template-rows: var(--nav-h) 1fr var(--foot-h);
+  /* Four tracks: header, the optional now-playing strip (collapses to 0 when
+     hidden), the main pane, and the footer. Children are placed by explicit
+     grid-row so the strip's display:none never reshuffles the other rows. */
+  grid-template-rows: var(--nav-h) auto 1fr var(--foot-h);
   height: calc(100dvh - 32px);
   border: 0.5px solid var(--border-mid);
   border-radius: 10px;
@@ -134,6 +137,7 @@ body {
 
 /* NAV BAR */
 #navBar {
+  grid-row: 1;
   background: var(--bg-elevated);
   border-bottom: 0.5px solid rgba(108, 93, 245, 0.20);
   display: flex;
@@ -142,6 +146,84 @@ body {
   gap: 8px;
   position: relative;
   z-index: 10;
+}
+
+/* NOW-PLAYING STRIP — thin row beneath the header, shown only while music is
+   PLAYING or BUFFERING (see syncNowPlayingStrip in main.js). Hidden by default
+   so its grid track (the `auto` row) collapses to 0 and the main pane sits
+   flush under the header. */
+#nowPlayingStrip {
+  grid-row: 2;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--bg-base);
+  border-bottom: 0.5px solid var(--border-mid);
+  font-size: 12px;
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 9;
+}
+#nowPlayingStrip.nowPlayingStrip--visible { display: flex; }
+
+.nowPlayingStripIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.nowPlayingStripName {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50vw;
+}
+.nowPlayingStripSep {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.nowPlayingStripStatus {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.nowPlayingStripControls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.nowPlayingStripPause,
+.nowPlayingStripDismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.nowPlayingStripPause:hover,
+.nowPlayingStripDismiss:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.nowPlayingStripPause:focus-visible,
+.nowPlayingStripDismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 #sidebarToggle {
@@ -231,6 +313,7 @@ body {
 
 /* FOOTER */
 #footBar {
+  grid-row: 4;
   background: var(--bg-elevated);
   border-top: 0.5px solid var(--border-dim);
   display: flex;
@@ -344,6 +427,7 @@ body {
 
 /* MAIN SECTION */
 #mainSec {
+  grid-row: 3;
   display: grid;
   grid-template-columns: var(--sidebar-w) 4px 1fr;
   overflow: hidden;
@@ -5225,11 +5309,14 @@ body.row-dragging * { cursor: grabbing !important; }
        middle track owns the full viewport. The persistent #mobileTabBar
        anchors to the bottom edge (bottom: 0) and absorbs the home-indicator
        safe-area inset into its own padding-bottom — there is no separate
-       footer row on this breakpoint. minmax(0, 1fr) on the middle track
+       footer row on this breakpoint. minmax(0, 1fr) on the main track
        prevents the todo list's intrinsic max-content height from
-       inflating that track past its fair share. */
+       inflating that track past its fair share. The second track holds the
+       now-playing strip — `auto` so it collapses to 0 while hidden and takes
+       only its own ~32px when music is active. */
     grid-template-rows:
       0
+      auto
       minmax(0, 1fr)
       0;
   }
