@@ -308,7 +308,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d357a7ac-2501-4c09-b922-9cf65c825f33 -->
 
-- [ ] **[MEDIUM]** D3: Collapse/expand toggle for the desktop chat pane (with localStorage persistence)
+- [x] **[MEDIUM]** D3: Collapse/expand toggle for the desktop chat pane (with localStorage persistence) — Completed: 2026-06-06
   - Type: feature
   - Description: At desktop widths (≥1024px), add a small toggle button that lets the user collapse the chat pane (right side) so the task pane fills the full viewport width. When collapsed, a re-expand button appears so the user can bring the chat back. The collapsed/expanded state persists across page reloads via localStorage (key: `todoapp_chatPaneCollapsed`, default: false / expanded). At mobile widths (<1024px), this toggle has no effect — the chat continues to behave as a slide-up sheet, the collapse preference is ignored. After this entry ships, the desktop two-pane has the dismissibility that completes the design vision.
   - Implementation notes:
