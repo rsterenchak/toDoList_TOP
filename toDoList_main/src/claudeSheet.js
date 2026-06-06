@@ -1928,8 +1928,17 @@ function buildSheet() {
     const runsTab = buildTab('claudeTabRuns', 'RUNS', false);
     chatTab.addEventListener('click', function() { setActiveTab('chat'); });
     runsTab.addEventListener('click', function() { setActiveTab('runs'); });
-    tabs.appendChild(chatTab);
-    tabs.appendChild(runsTab);
+    // CHAT / RUNS live inside a single grouping wrapper so the desktop pane can
+    // render them as one segmented control (a rounded container with the active
+    // half highlighted). At mobile widths the wrapper is `display: contents`
+    // (see .claudeTabGroup in style.css), so the two tabs fall back to being
+    // direct flex children of #claudeSheetTabs and the slide-up sheet's tab row
+    // looks exactly as before.
+    const tabGroup = document.createElement('div');
+    tabGroup.className = 'claudeTabGroup';
+    tabGroup.appendChild(chatTab);
+    tabGroup.appendChild(runsTab);
+    tabs.appendChild(tabGroup);
     tabs.appendChild(buildWorkspace());
 
     // The interactive surface (tabs + chat/runs views) lives in its own wrapper
