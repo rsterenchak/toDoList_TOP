@@ -226,3 +226,60 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: bbe2e9b0-90fd-4a34-ba78-303f108c466a -->
+
+- [ ] **[MEDIUM]** Radio: add now-playing strip below header when music is active
+  - Type: feature
+  - Description: When music is playing (or buffering), render a thin horizontal "now-playing" strip immediately below the main header, showing the active station name, playing status, and quick controls (pause and dismiss). When music is paused or idle, the strip is hidden entirely (the existing `musicToggle` button alone indicates state). The strip is the persistent ambient indicator that earns its space only when active. The button's existing equalizer-bars icon animation continues to work as before. The popover, YouTube iframe player, station picker, volume control, visualizer toggle, and underlying music controller in `music.js` are all UNCHANGED — this entry only adds the new strip element and wires it to the existing music controller's subscribe pattern.
+  - Implementation notes:
+    - All changes happen in `main.js` (the section that defines `musicToggle` and `syncMusicIcon`, or a new section nearby for the strip) and `style.css` (the CSS rules for the new strip). Do NOT touch `music.js`, `musicVisualizer.js`, or any music controller / iframe / visualizer logic.
+    - **Add a now-playing strip DOM element:**
+      - New element (e.g., `<div id="nowPlayingStrip">`) inserted into the DOM immediately below the nav/header, above the main task list area. Position it in the layout so that when visible it occupies its own horizontal row.
+      - The strip is hidden by default (e.g., `display: none` via CSS class)
+      - When visible, it shows:
+        - A small play-state icon on the left (matching the existing `.musicVizBars` animation if reusable, or a simple inline play triangle SVG)
+        - The active station name (from the music controller's `snap.activeStationId` resolved via `getStationById`)
+        - A small middle-dot separator and the status text ("playing" or "buffering")
+        - On the right, a pause button (`⏸` glyph) and a dismiss button (`×` glyph)
+      - Use existing design tokens — purple accent for the play icon, muted text for the status, subtle background distinct from the header
+    - **Wire to the existing music controller subscription:**
+      - The existing `setTimeout` block subscribes `syncMusicIcon` to the music controller. Add a parallel subscriber that updates the now-playing strip on every state change.
+      - When `snap.status === 'PLAYING'` or `snap.status === 'BUFFERING'`:
+        - Resolve the active station via `getStationById(snap, snap.activeStationId)` — the existing imported helper
+        - Set the strip's station-name text to `station.name` (fall back to "Unknown station" if station is null, shouldn't happen but defensive)
+        - Set the status text to "playing" or "buffering" matching the snap status
+        - Make the strip visible (toggle CSS class)
+      - When `snap.status` is anything else (`PAUSED`, `IDLE`, etc.): hide the strip (toggle CSS class)
+    - **Strip control handlers:**
+      - Pause button: calls `ensureMusic().pause()` — same call the popover's primary button makes when status is PLAYING. Reuses the existing controller method, no new logic.
+      - Dismiss button: calls `ensureMusic().pause()` AND also visually hides the strip immediately (don't wait for the subscribe callback). The dismiss is a stronger "I don't want this visible right now" action — it pauses and acknowledges. If the user wants to resume, they tap the music toggle button.
+    - **Critical**: the strip's visibility is driven by the controller's status — when status flips to PLAYING, strip appears; when it flips to PAUSED or IDLE, strip disappears. Don't add separate visibility state in the DOM layer.
+    - **CSS for the strip:**
+      - Height: ~32px (matches the design)
+      - Background: subtle distinct color (e.g., `#0f0f18` with `1px solid #2a2a3a` top/bottom borders, matching the design tokens)
+      - Layout: flex row with the play icon and station name on the left, controls on the right
+      - Font sizes: ~12px for the station name, ~10-11px for the status text
+      - Hidden by default via CSS class (e.g., `.nowPlayingStrip` and `.nowPlayingStrip--visible` modifier)
+      - **Critical**: use CSS classes for show/hide, not inline `style.display = 'none'` JS assignments
+    - **Layout consideration — strip pushes task list down:**
+      - When the strip is visible, the main task list area gets pushed down ~32px (the strip's height). This is intentional and honest — the strip earns its space by being relevant.
+      - If your current layout is flex-based with a header + main + footer, inserting the strip between header and main should reflow naturally. If it's position:fixed or absolute-positioned, the strip placement might need adjustment.
+      - On mobile and desktop, the strip should span the full width of the task list area (or the full viewport width on mobile). On desktop with the multi-pane layout (if any from prior work), the strip spans only the task pane, not the chat pane — but since the desktop two-pane redesign is deferred, this isn't relevant yet.
+    - **The button's existing icon animation stays unchanged.** The `musicToggle` continues to show the equalizer bars animating when playing, settling when idle. Don't touch that.
+    - **The popover's own play/pause button still works** — tapping it from inside the popover does the same thing as the strip's pause button. Both route through the same controller method.
+    - **Critical**: do NOT modify `music.js`, `musicVisualizer.js`, the popover code, the YouTube iframe handling, the station picker, the visualizer toggle, the paste-URL flow, or any music-controller logic.
+    - **Critical**: do NOT modify the TODO.md viewer, the pomodoro button or popover (entry #7 just shipped), the INBOX view, the PROJECTS view, the bottom nav, or any other surface.
+    - **Critical**: the pomodoro-coordinated pause behavior (music auto-pauses when a pomodoro alert lands, auto-resumes on acknowledgment if it was playing before) — this is handled by `createPomodoroSubscriber` in music.js and is invoked from `main.js`'s setTimeout block. Leave that wiring alone. The strip's visibility will follow the controller's status, so when pomodoro auto-pauses music, the strip naturally hides. When pomodoro auto-resumes music, the strip reappears. This should work for free if you wire correctly to the controller.
+    - **Test cases to add:**
+      - (a) When music status is IDLE, the strip is hidden
+      - (b) When music status transitions to PLAYING, the strip becomes visible
+      - (c) The strip displays the active station name correctly
+      - (d) Tapping the strip's pause button calls the controller's pause method
+      - (e) Tapping the strip's dismiss button pauses and hides the strip
+      - (f) When music status transitions to PAUSED, the strip hides
+      - (g) The strip's visibility correctly follows multiple status changes (PLAYING → PAUSED → PLAYING → IDLE)
+      - (h) The pomodoro-coordinated pause (mocked) correctly hides the strip without manual intervention
+  - Visual reference: `mobile-final-active.svg` and `desktop-final-active.svg` from the design session — when music is playing, a thin horizontal strip below the header shows "Lo-Fi Beats Radio · playing" with pause and close controls on the right, in subtle dark styling consistent with the Void aesthetic.
+  - Out of scope: any pomodoro changes (entry #7 just shipped), any popover redesign, any music controller logic changes, any data model changes, any visualizer changes, any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5e2e9c19-911d-48ae-a665-cccce5dd44d0 -->
