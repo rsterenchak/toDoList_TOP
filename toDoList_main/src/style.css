@@ -7177,6 +7177,17 @@ body.row-dragging * { cursor: grabbing !important; }
        position:relative anchors the absolutely-placed collapse button. */
     margin-top: -32px;
     position: relative;
+    /* Paint the 16px gap above the pane's sub-header row with the pane's own
+       --bg-base. That gap is #desktopViewSubBand's margin-top (16px), which
+       renders in #outerContainer's lighter --bg-elevated, leaving a faint
+       color seam above the chat sub-header. A hard-edged box-shadow (offset up
+       16px, no blur, no spread) extends the pane background up over that strip:
+       box-shadow is NOT clipped by the pane's own overflow:hidden, adds no
+       layout (the 16px spacing and the -32px lift/alignment stay untouched),
+       and disappears with the pane when the chat is collapsed (display:none).
+       The task pane needs no equivalent — it shares #outerContainer's
+       --bg-elevated, so its gap already matches its content. */
+    box-shadow: 0 -16px 0 0 var(--bg-base);
   }
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for

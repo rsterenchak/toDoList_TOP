@@ -11,9 +11,7 @@ export const changelog = [
             "On wide screens, the header rows now have clearer vertical spacing so the workspace pill, view tabs, filter row, and compose row read as distinct sections.",
             "On wide screens, the faint background stripe behind the view tabs is gone, so the tabs sit directly on the page background.",
             "On wide screens, the chat panel's top row now lines up with the task list's view tabs, so both panes start at the same height.",
-        ],
-        changed: [
-            "On wide screens, the chat panel's CHAT/RUNS toggle is now a single segmented control, with extra breathing room above both panes' sub-header rows.",
+            "On wide screens, the strip above the chat panel's top row now matches the chat panel's background instead of showing a faint color seam.",
         ],
     },
 ];
