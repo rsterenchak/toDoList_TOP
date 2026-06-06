@@ -464,3 +464,70 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7a636f5f-df46-4a8c-a726-3c857ef6ff29 -->
+
+- [ ] **[HIGH]** Fix #mobileProjHeader at desktop: render as single row AND restore click-to-open-drawer behavior
+  - Type: bug
+  - Description: After the desktop header polish entry shipped, two regressions exist in the workspace pill (`#mobileProjHeader`) at desktop widths (≥1024px): (1) the pill renders as two stacked lines — project name on top, dropdown ▾ on a separate line below — instead of the intended single inline row, AND (2) clicking on the pill no longer opens the project drawer. Both regressions almost certainly share a root cause in the polish entry's CSS handling of `#mobileProjHeader` sub-elements. This is a HIGH priority bug because the click regression makes desktop users unable to switch projects via the pill — the primary way they were supposed to navigate after D1c retired the persistent sidebar. Mobile UX is unaffected and must remain identical.
+  - Implementation notes:
+    - **Diagnosis (the agent should investigate before patching):**
+      - At desktop in the browser, inspect the rendered DOM of `#mobileProjHeader` and its sub-elements:
+        - `#mobileProjHeader` — outer container
+        - `#mobileProjLabel` — "PROJECT N OF M" text (should be hidden at desktop)
+        - `#mobileProjTitleRow` — container of prev chevron + name + next chevron
+        - `#mobileProjPrev` — ‹ left chevron (should be hidden at desktop)
+        - `#mobileProjName` — the actual project name text
+        - `#mobileProjNext` — › right chevron (should be hidden at desktop)
+        - `#mobileProjStats`, `#mobileProjCounts`, `#mobileProjOpen`, `#mobileProjDone` — counts (hidden at desktop)
+      - Identify the click handler binding. Check `main.js` (or wherever the workspace pill's click handler is registered) to find which element receives the click and which function it routes to (likely something like `openSidebar()` or `sidebarOpen()`).
+      - Most likely scenarios for the click regression:
+        - (a) The click handler is bound to `#mobileProjTitleRow` or `#mobileProjName` but the polish entry's `display: none` rules accidentally hide the element receiving clicks. Fix: make sure the receiving element is visible at desktop (e.g. by moving the click handler to `#mobileProjHeader` itself, or by ensuring the receiving sub-element retains `display: block` or `display: inline-flex`).
+        - (b) The click handler is bound to a sub-element that's still visible, but a parent's `pointer-events: none` (perhaps added in polish entry) blocks clicks from reaching it. Fix: ensure `pointer-events: auto` on the receiving element.
+        - (c) The click handler was bound to a wrapper that was repositioned in the DOM by the polish entry's restructuring. Fix: re-bind the handler to the new structure, or rebind to `#mobileProjHeader` itself.
+      - Most likely scenarios for the two-line rendering:
+        - (a) `#mobileProjHeader` has `flex-direction: column` at desktop (legacy mobile pattern). Fix: `flex-direction: row` at desktop.
+        - (b) The ▾ dropdown indicator is a child element that's wrapping to a new line because the parent's `flex-wrap: wrap` is enabled OR a sibling element is pushing it down. Fix: `flex-wrap: nowrap` on the parent, OR adjust the ▾ element to be inline with the name.
+        - (c) The ▾ is a `::after` pseudo-element on `#mobileProjName` but `#mobileProjName` is `display: block` causing the ::after to render on a new line. Fix: ensure `display: inline-block` or `display: inline-flex` on the name, OR move the ▾ to be a sibling element instead of a pseudo-element.
+    - **Combined fix approach:**
+      - At `@media (min-width: 1024px)`:
+        - `#mobileProjHeader { flex-direction: row; align-items: center; gap: 6px; cursor: pointer; pointer-events: auto; width: auto; max-width: 240px; }`
+        - Visible at desktop: `#mobileProjName` (and the ▾ indicator, however it's implemented)
+        - Hidden at desktop: `#mobileProjLabel, #mobileProjPrev, #mobileProjNext, #mobileProjStats, #mobileProjCounts, #mobileProjOpen, #mobileProjDone { display: none; }`
+        - The ▾ indicator: if it's a `::after` pseudo-element on `#mobileProjHeader`, make sure it has `content: ' ▾'`, `display: inline-block`, and `flex: 0 0 auto`. If it's a separate child element, ensure it's `display: inline-flex` or `display: inline-block`.
+      - **Click binding:** if the click handler is bound to a specific sub-element that's now hidden at desktop, REBIND it to `#mobileProjHeader` directly. This ensures the whole pill area is clickable regardless of internal structure changes. Use the existing function the handler calls (don't write new logic).
+      - Verify the click handler still works at mobile by testing at `innerWidth < 1024`. If the rebinding to `#mobileProjHeader` works at mobile too, that's the cleanest solution.
+    - **What stays the same (do NOT touch):**
+      - The view tab sub-band styling (Option B from polish entry) — stays as shipped
+      - The filter pills + SORT BY DUE row — stays as shipped
+      - The chat pane, drawer, breakpoint, two-pane layout, collapse toggle — all unchanged
+      - Mobile UX completely identical to current — chevrons, label, counts all visible at mobile, pill click still opens drawer at mobile
+      - All other components: pomodoro, music, INBOX, CALENDAR, voice mic, TODO.md viewer
+    - **Critical**: do NOT modify any component outside `#mobileProjHeader` and its sub-elements.
+    - **Critical**: do NOT modify the click handler's destination function (whatever opens the drawer). Just ensure the click event reaches that function.
+    - **Critical**: do NOT modify mobile UX. Verify by testing at `innerWidth = 500`.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - The workspace pill renders as a single inline row: project name + ▾, side-by-side, vertically centered
+        - The pill's height is ≤ 32px (catches the two-line regression)
+        - Clicking anywhere on the pill opens the project drawer
+        - The drawer slides in correctly (D1b behavior, unchanged)
+        - Selecting a project from the drawer closes the drawer AND updates the pill's text to the new project name
+        - Long project names truncate with ellipsis
+      - At `innerWidth < 1024`:
+        - The workspace pill renders identically to current mobile behavior (chevrons, label, counts visible)
+        - Clicking the pill (or its tap target) opens the drawer (unchanged)
+        - All mobile UX identical to current
+      - Resizing across 1024px:
+        - The pill smoothly transitions between desktop (compact inline) and mobile (multi-element) layouts
+        - The click handler continues to work on both sides of the boundary
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, `#mobileProjHeader` has computed `flex-direction: row` (not `column`)
+      - (b) At `innerWidth = 1280`, the pill's computed `height` is ≤ 40px
+      - (c) At `innerWidth = 1280`, simulating a click on `#mobileProjHeader` triggers the drawer-open function (verify the drawer's `.sidebar-open` class gets applied, or whatever the drawer-open state indicator is)
+      - (d) At `innerWidth = 500`, the same click simulation still triggers the drawer-open function (regression guard for mobile)
+      - (e) At `innerWidth = 500`, sub-elements (`#mobileProjPrev`, `#mobileProjNext`, etc.) are visible (regression guard for mobile)
+  - Visual reference: `header-option-b.svg` from the polish design — workspace pill as single inline `[Task Management App ▾]` row, ~22px tall, clickable to open project drawer.
+  - Out of scope: any changes to the view tab sub-band, filter pills, chat pane, drawer, two-pane layout, breakpoint, or any other component. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (if click rebinding is needed), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 317a83ac-b51d-4647-a656-ca283d643800 -->
