@@ -174,7 +174,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d86cf21e-e6f2-48e4-93e4-f85f50ba175c -->
 
-- [ ] **[MEDIUM]** D2: At desktop widths, present the chat as a persistent right pane (replacing the slide-up sheet on desktop only)
+- [x] **[MEDIUM]** D2: At desktop widths, present the chat as a persistent right pane (replacing the slide-up sheet on desktop only) — Completed: 2026-06-06
   - Type: feature
   - Description: At desktop widths (≥1024px), the Claude chat is presented as a persistent right pane (~40% of viewport width) instead of a slide-up sheet. The main task area takes the left ~60% of the viewport. At mobile widths (<1024px), the chat continues to appear as a slide-up sheet, exactly as it does today — mobile UX is completely unchanged. The chat content itself — message history, input row with mic and send, Chat/Runs tabs, workspace pill in chat header — is identical in both presentations; only the *container* the content lives in changes. After this entry ships, the desktop two-pane layout from the design mockups is visible: task pane on left, chat pane on right, both visible simultaneously. The collapse/expand toggle for the chat pane is deliberately deferred to D3.
   - Implementation notes:
