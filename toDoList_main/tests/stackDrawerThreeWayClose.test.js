@@ -9,15 +9,15 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the three-way close vocabulary on the mobile drawer (CLAUDE.md
+// Pins the three-way close vocabulary on the projects drawer (CLAUDE.md
 // modal rule + STACK acceptance criterion). The drawer must close on:
 //   1. tapping an explicit close (×) button
 //   2. tapping the backdrop overlay
 //   3. pressing Escape
-// (1) and (3) are net-new in the STACK foundation; (2) was already wired
-// via #sidebarOverlay's click listener — we just lock it down here so a
-// future refactor can't remove a leg of the vocabulary unnoticed.
-describe('STACK mobile drawer — three-way close vocabulary', () => {
+// As of D1b the sidebar is an overlay drawer at EVERY breakpoint (the
+// persistent desktop rail/column was retired), so the close vocabulary —
+// including the X button and the Escape handler — is no longer mobile-gated.
+describe('STACK projects drawer — three-way close vocabulary', () => {
     const main = read('main.js');
     const css  = read('style.css');
 
@@ -44,41 +44,44 @@ describe('STACK mobile drawer — three-way close vocabulary', () => {
         expect(main).toMatch(/sidebarOverlay\.addEventListener\(\s*['"]click['"]\s*,\s*closeSidebar\s*\)/);
     });
 
-    it('Escape closes the drawer when open on mobile', () => {
-        // Locate the Escape handler dedicated to the drawer (distinct
-        // from the popover-specific Escape handlers that pre-date STACK).
-        const blocks = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?\}\s*,\s*true\s*\)\s*;/g) || [];
-        const handler = blocks.find(function(b) {
+    // Locate the capture-phase Escape handler dedicated to the drawer
+    // (distinct from the popover/bottom-sheet Escape handlers). It is
+    // identified by reading sidebarIsOpen() and calling closeSidebar().
+    function findDrawerEscapeHandler() {
+        const blocks = main.match(/document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function[\s\S]*?\}\s*,\s*true\s*\)\s*;/g) || [];
+        return blocks.find(function(b) {
             return /e\.key\s*!==\s*['"]Escape['"]/.test(b)
-                && /isMobile\(\)/.test(b)
-                && /sidebarIsOpen\(\)/.test(b);
+                && /sidebarIsOpen\(\)/.test(b)
+                && /closeSidebar\(\s*\)/.test(b);
         });
+    }
+
+    it('Escape closes the drawer when it is open', () => {
+        const handler = findDrawerEscapeHandler();
         expect(handler).toBeTruthy();
         expect(handler).toMatch(/closeSidebar\(\s*\)/);
     });
 
     it('Escape handler bails when another modal/popover already owns the keystroke', () => {
-        const blocks = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?\}\s*,\s*true\s*\)\s*;/g) || [];
-        const handler = blocks.find(function(b) {
-            return /e\.key\s*!==\s*['"]Escape['"]/.test(b)
-                && /isMobile\(\)/.test(b)
-                && /sidebarIsOpen\(\)/.test(b);
-        });
+        const handler = findDrawerEscapeHandler();
         expect(handler).toMatch(/isAnyModalOrPopoverOpen/);
     });
 
-    it('Escape handler bails on desktop (sidebar is a persistent rail there)', () => {
-        const blocks = main.match(/document\.addEventListener\(['"]keydown['"][\s\S]*?\}\s*,\s*true\s*\)\s*;/g) || [];
-        const handler = blocks.find(function(b) {
-            return /e\.key\s*!==\s*['"]Escape['"]/.test(b)
-                && /isMobile\(\)/.test(b)
-                && /sidebarIsOpen\(\)/.test(b);
-        });
-        expect(handler).toMatch(/!\s*isMobile\(\)/);
+    it('Escape handler is NOT gated on viewport — the drawer exists at all breakpoints', () => {
+        // D1b unified the drawer across desktop and mobile, so the old
+        // `if (!isMobile()) return;` desktop bail must be gone: Escape now
+        // closes the drawer at every width.
+        const handler = findDrawerEscapeHandler();
+        expect(handler).toBeTruthy();
+        expect(handler).not.toMatch(/!\s*isMobile\(\)/);
+        expect(handler).not.toMatch(/isMobile\(\)/);
     });
 
-    it('mobile X button is hidden at desktop sizes', () => {
-        const desktop = css.match(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileSidebarClose\s*\{\s*display:\s*none/);
-        expect(desktop).toBeTruthy();
+    it('X button is visible at desktop sizes (not hidden)', () => {
+        // The drawer — and therefore its X close affordance — renders at all
+        // breakpoints now, so no rule may set the button to display:none.
+        expect(css).not.toMatch(/#mobileSidebarClose\s*\{\s*display:\s*none/);
+        // It is positioned and shown inside a desktop media query.
+        expect(css).toMatch(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileSidebarClose\s*\{[\s\S]*?display:\s*inline-flex/);
     });
 });

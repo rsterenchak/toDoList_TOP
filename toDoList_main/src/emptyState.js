@@ -235,19 +235,15 @@ export function updateEmptyState(mainListDiv) {
         createBtn.appendChild(ctaDesktop);
         createBtn.appendChild(ctaMobile);
         createBtn.addEventListener('click', function() {
-            // On mobile the sidebar is a drawer translated off-screen; open it
-            // synchronously so the new projInput is in-layout and iOS Safari
-            // honors the .focus() call inside this same user-gesture tick.
-            // Deferring the focus behind the slide transition drops the keyboard.
-            if (window.innerWidth < 1024) {
-                const sideBar = document.getElementById('sideBar');
-                const overlay = document.getElementById('sidebarOverlay');
-                if (sideBar) sideBar.classList.add('sidebar-open');
-                if (overlay) overlay.classList.add('visible');
-            } else {
-                const mainSec = document.getElementById('mainSec');
-                if (mainSec) mainSec.classList.remove('sidebar-collapsed');
-            }
+            // The projects sidebar is an overlay drawer translated off-screen
+            // at every breakpoint; open it synchronously so the new projInput
+            // is in-layout and iOS Safari honors the .focus() call inside this
+            // same user-gesture tick. Deferring the focus behind the slide
+            // transition drops the keyboard.
+            const sideBar = document.getElementById('sideBar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sideBar) sideBar.classList.add('sidebar-open');
+            if (overlay) overlay.classList.add('visible');
             const projBtn = document.getElementById('projButton');
             if (projBtn) projBtn.click();
             // focus the newly-appended project input so the user can type immediately

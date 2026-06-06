@@ -101,3 +101,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js`, `toDoList_main/tests/` (broadly — multiple test files retire or migrate)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d6d99084-b97d-4692-b018-cf30f7993330 -->
+
+- [ ] **[MEDIUM]** First-run coachmark tour: open the projects drawer for sidebar-targeted steps on desktop
+  - Type: bug
+  - Description: After D1b converted the desktop projects sidebar from a persistent column/rail to a slide-in overlay drawer that is closed by default, the first-run desktop coachmark tour (`maybeStartFirstRunTour` / `startCoachmarkTour` in `coachmark.js`) now spotlights elements that live inside the closed, off-screen drawer. Specifically the `sampleProject` step targets `#projChild` inside `#sideMa`, and the `addProject` step targets `#projButton` — both are translated off-screen (`transform: translateX(100%)`) while the drawer is shut, so their spotlight cutouts and callouts land against the right viewport edge instead of over the real control. The elements still exist in the DOM (no null target, no thrown error, and the callout layout clamps to the viewport), so this degrades the visual tour rather than crashing it. Fix: when a coachmark step targets a sidebar element on desktop, open the drawer first (add `sidebar-open` to `#sideBar` and `visible` to `#sidebarOverlay`, or route through the existing `openSidebar` path) so the spotlight lands on the real, on-screen control; close it again when the tour advances past the sidebar steps or finishes. Keep mobile behavior unchanged (the tour already early-exits on mobile via the breakpoint guard).
+  - File: `toDoList_main/src/coachmark.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/`

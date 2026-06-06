@@ -31,8 +31,9 @@ describe('Ctrl+Backspace — sidebar toggle', () => {
     it('routes the chord through the on-screen sidebar toggle button', () => {
         const handler = findHandler();
         expect(handler).toBeTruthy();
-        // Mirrors the existing on-screen control so the desktop rail/full
-        // and mobile drawer branches stay in lockstep with the hamburger.
+        // Mirrors the existing on-screen control so the chord drives the
+        // unified overlay drawer at all breakpoints, in lockstep with the
+        // hamburger.
         expect(handler).toMatch(/sidebarToggle\.click\(\s*\)/);
     });
 
