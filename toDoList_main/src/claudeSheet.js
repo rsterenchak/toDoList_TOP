@@ -1999,7 +1999,15 @@ export function mountClaudeSheet(parent) {
     // container that matches the current viewport, then keep it in sync across
     // the breakpoint on resize. Drop any prior mount's resize listener so
     // remounts don't stack handlers.
-    chatPaneEl = document.getElementById('desktopChatPane');
+    //
+    // Scope the lookup to `parent`, not `document`: real boot (index.js) builds
+    // the whole page tree inside a DETACHED `base` and mounts the sheet on it
+    // BEFORE appending base to document.body. A document-level lookup here would
+    // miss the still-detached pane, leave chatPaneEl null, and the desktop pane
+    // would render empty. The pane is already a descendant of `parent` at this
+    // point, so querySelector finds it whether or not base is attached yet.
+    chatPaneEl = (parent.querySelector && parent.querySelector('#desktopChatPane'))
+        || document.getElementById('desktopChatPane');
     placeChatContent();
     if (resizeHandler) window.removeEventListener('resize', resizeHandler);
     resizeHandler = function() { placeChatContent(); };

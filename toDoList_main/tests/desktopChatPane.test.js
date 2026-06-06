@@ -83,6 +83,24 @@ describe('D2 — desktop chat pane (content relocation)', () => {
         expect(document.getElementById('claudeRunsView').hidden).toBe(true);
     });
 
+    it('seats content in the pane when the shell is mounted detached, then attached (real boot order)', () => {
+        // Regression for the D2 empty-desktop-pane bug. Real boot (index.js)
+        // builds the whole page tree — including #desktopChatPane — inside a
+        // DETACHED `base` div, calls mountClaudeSheet on it, and only THEN
+        // appends base to document.body. A document-level lookup at mount time
+        // misses the still-detached pane, so chatPaneEl is null and the content
+        // never moves out of the sheet — the desktop pane renders empty.
+        document.body.innerHTML = '';
+        Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true, writable: true });
+        const base = document.createElement('div');
+        const pane = document.createElement('div');
+        pane.id = 'desktopChatPane';
+        base.appendChild(pane);
+        mountClaudeSheet(base);          // base is NOT in the document yet
+        document.body.appendChild(base); // attached only now, like index.js:14
+        expect(document.getElementById('claudeSheetBody').parentElement.id).toBe('desktopChatPane');
+    });
+
     it('falls back to the sheet when no desktop pane is present', () => {
         // A mount without the pane (e.g. a bare shell) must leave the content in
         // the sheet rather than dropping it.
