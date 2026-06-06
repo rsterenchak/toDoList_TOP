@@ -283,3 +283,44 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: 2026-06-05
   <!-- id: 5e2e9c19-911d-48ae-a665-cccce5dd44d0 -->
+
+- [ ] **[MEDIUM]** Remove desktop left project sidebar; workspace pill becomes single source for project selection
+  - Type: feature
+  - Description: Remove the left-side project sidebar that currently appears on desktop. The sidebar (which lists project names like "Task Management App", "DBZ Memory Game App", "BookHavenBookstore", etc., and lets the user select a project by clicking) is deleted entirely. The workspace pill in the header (the `TaskApp ▼ <project>` element that mobile uses to switch projects) becomes the single source of project selection for both mobile and desktop. After this entry ships, the desktop layout is single-pane (task list takes the full width formerly shared with the sidebar) and project selection is done via the header dropdown. The two-pane chat layout (D2) is a follow-up entry; this entry does NOT add the right-side chat pane.
+  - Implementation notes:
+    - **Find and remove the desktop left sidebar:**
+      - Locate the project sidebar markup in `component()` or wherever the desktop layout is constructed. It likely has an ID or class like `projectSidebar`, `desktopSidebar`, or `leftPane`. Find by behavior if names don't match — the element that renders the per-project list on desktop.
+      - Remove the markup entirely. Do NOT keep it hidden via CSS — actually delete it from the DOM construction.
+      - Remove any JS that exclusively manages the sidebar — e.g., render functions that populate the sidebar's project list, event handlers for sidebar clicks, mutation observers watching for sidebar updates.
+      - Remove the CSS rules for the sidebar (`#projectSidebar`, `.projectSidebar`, etc.). Orphan CSS is acceptable if not easily distinguished, but explicit removal is preferred.
+    - **Adjust main container layout:**
+      - The current desktop layout is probably a flex row with the sidebar on the left and the main task area taking the remaining width. After removing the sidebar, the main task area should fill the full viewport width (minus the persistent slide-up chat sheet's footprint, which still exists post-D1).
+      - The CSS media query that currently shows the sidebar at desktop (something like `@media (min-width: 768px)` or similar) should be removed or have its sidebar-specific rules removed.
+      - The main task area should look like the mobile layout but stretched to fill desktop width — same header, same task list, same compose row.
+    - **Workspace pill is already the project selector at all breakpoints:**
+      - The mobile compressed header (entry #4) already has the workspace pill: `TaskApp ▼ <project name>` — tappable, opens the project dropdown.
+      - At desktop, this same workspace pill should already be visible in the header (verify in the current code; if not, ensure it's not hidden by desktop CSS).
+      - The dropdown menu for project switching is the same on mobile and desktop — no new dropdown UX, no changes to project selection logic, no changes to the `listLogic.js` project query.
+    - **What stays the same:**
+      - All `listLogic.js` project functions — `getActiveProject`, `setActiveProject`, `getProjects`, etc. — unchanged.
+      - The workspace pill's behavior and dropdown — unchanged.
+      - The task list area, filter pills, compose row, status indicators, INBOX view — unchanged.
+      - The slide-up chat sheet (claudeSheet.js) — unchanged. Still slides up from the bottom on tap, still works on both mobile and desktop after this entry. D2 changes this on desktop only.
+      - All pomodoro, music, header, INBOX, voice mic functionality — unchanged.
+    - **Critical**: do NOT add a two-pane layout. The chat stays as a slide-up sheet on desktop after this entry (same behavior as before). D2 adds the persistent right pane.
+    - **Critical**: do NOT modify the TODO.md viewer, the INBOX view, the pomodoro popover, the music popover, the chat sheet, the bottom nav (which doesn't exist on desktop anyway), the header layout (other than ensuring the workspace pill remains visible).
+    - **Critical**: do NOT change project selection logic. Project switching still works exactly as it did via the workspace pill dropdown.
+    - **Critical**: do NOT introduce any user-visible regression for mobile users. Mobile has no sidebar to remove, so mobile behavior should be 100% identical post-merge.
+    - **Critical**: do NOT use inline JS styles. Use CSS class changes (or just remove CSS rules entirely for deleted elements).
+    - Add tests for:
+      - (a) On desktop (viewport width >= 1024px), the project sidebar element is not present in the DOM
+      - (b) On mobile (viewport width < 1024px), nothing changes from the previous behavior (workspace pill present, no sidebar present, task list takes full width)
+      - (c) On desktop, the workspace pill is visible in the header
+      - (d) On desktop, clicking the workspace pill opens the project dropdown (same behavior as mobile)
+      - (e) Switching projects via the workspace pill updates the task list correctly
+      - (f) The chat sheet still slides up on tap (unchanged behavior)
+  - Visual reference: `desktop-final-idle.svg` from the design session — the desktop layout shows no left sidebar; the workspace pill (`TaskApp ▼ toDoList_TOP`) sits in the header on the left, where the user can tap to switch projects.
+  - Out of scope: the two-pane chat layout (D2), the collapse/expand toggle for chat (D3), any chat sheet → pane migration, any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a7b37b7a-417f-4bd0-969e-fc5cd37d6305 -->
