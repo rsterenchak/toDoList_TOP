@@ -116,4 +116,31 @@ describe('desktop project-picker dropdown', () => {
         expect(css).toMatch(/#navBar #mobileProjOpen\s*\{\s*color:\s*#6C5DF5/);
         expect(css).toMatch(/#navBar #mobileProjDone\s*\{\s*color:\s*#5a5a6a/);
     });
+
+    // Regression: the dropdown "only opens sometimes" race. activateProjectPicker
+    // toggles at desktop (open ↔ close). The pill name (#mobileProjName) and the
+    // ▾ indicator (#mobileProjChevron) carry their own click→activate handlers
+    // AND are descendants of #mobileProjHeader, whose handler also activates. A
+    // click on the name/chevron therefore fired the toggle twice (direct +
+    // bubbled) — opening then immediately closing — while a click on the padding
+    // fired once and opened. The fix: the header handler skips clicks that
+    // originate on the name or the ▾ chevron so exactly one toggle runs per click.
+    it('header handler skips name/chevron clicks to avoid the double-toggle', () => {
+        // The name + ▾ chevron carry their own direct activate handlers, so the
+        // header handler must exclude them (alongside the ‹ › carousel chevrons)
+        // to keep exactly one toggle per click.
+        expect(main).toMatch(
+            /mobileProjHeader\.addEventListener\(['"]click['"][\s\S]{0,400}?closest\(['"]#mobileProjName, #mobileProjChevron['"]\)[\s\S]{0,80}?return/
+        );
+        // The per-element bindings the header handler defers to remain wired.
+        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+    });
+
+    it('toggles open/closed so a second pill click dismisses the dropdown', () => {
+        const body = fnBody('toggleProjectPicker');
+        expect(body).toMatch(/projectPickerIsOpen\(\)/);
+        expect(body).toMatch(/closeProjectPicker\(\)/);
+        expect(body).toMatch(/openProjectPicker\(\)/);
+    });
 });

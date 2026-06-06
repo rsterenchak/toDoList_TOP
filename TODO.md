@@ -632,7 +632,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4a48a7ee-ecdd-4b7e-9f4d-95713e1dc19f -->
 
-- [ ] **[HIGH]** Fix project picker dropdown click handler — only opens "sometimes" due to event race condition
+- [x] **[HIGH]** Fix project picker dropdown click handler — only opens "sometimes" due to event race condition — Completed: 2026-06-06
   - Type: bug
   - Description: After the dropdown picker shipped, clicking the workspace pill at desktop widths sometimes opens the dropdown and sometimes does nothing visible (or causes a brief flash). The behavior is non-deterministic, indicating an event handler race condition rather than a logic bug. This is HIGH priority because the dropdown is the primary way users switch projects at desktop after the drawer was retired — unreliable behavior makes the pill effectively broken. Mobile UX is unaffected and must remain identical.
   - Implementation notes:

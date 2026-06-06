@@ -3152,13 +3152,23 @@ function component() {
     // Make the whole pill clickable, not just the name + ▾ glyphs. At desktop
     // the header is a padded pill (D1c) whose body looked clickable (cursor:
     // pointer) but had no handler, so clicks landing on the padding / pill
-    // background did nothing. Bind the drawer-open to the header itself —
-    // openMobileDrawer is idempotent, so clicks that also hit the name/▾ (which
-    // bubble up here) are harmless. The ‹ › carousel chevrons navigate prev/
-    // next project at mobile and must NOT open the drawer, so ignore clicks
-    // originating from them.
+    // background did nothing. Bind activation to the header itself so the
+    // padding works too. The ‹ › carousel chevrons navigate prev/next project
+    // at mobile and must NOT activate the picker, so ignore clicks from them.
+    //
+    // #mobileProjName and #mobileProjChevron carry their OWN click→activate
+    // handlers (above), and they bubble up to this header listener too. With
+    // the desktop dropdown, activation toggles (open ↔ close), so letting both
+    // the direct handler and this bubbled one fire would toggle twice for a
+    // single click — opening then immediately closing it. That double fire was
+    // the "only opens sometimes" race: clicks on the padding fired once and
+    // opened, clicks on the text fired twice and cancelled out. Skip here when
+    // the click originated on the name or the ▾ chevron so exactly one toggle
+    // runs per click regardless of where on the pill the click lands.
     mobileProjHeader.addEventListener('click', function(event) {
-        if (event.target.closest && event.target.closest('.mobileProjChev')) return;
+        if (!event.target.closest) return activateProjectPicker();
+        if (event.target.closest('.mobileProjChev')) return;
+        if (event.target.closest('#mobileProjName, #mobileProjChevron')) return;
         activateProjectPicker();
     });
 
