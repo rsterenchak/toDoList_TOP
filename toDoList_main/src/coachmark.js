@@ -27,6 +27,21 @@ const CUTOUT_PADDING = 6;
 const CALLOUT_GAP = 12;
 const CALLOUT_MARGIN = 8;
 
+// Since D1b the projects sidebar is a slide-in overlay drawer that is closed
+// by default at every breakpoint (#sideBar.sidebar-open toggles the slide,
+// #sidebarOverlay.visible toggles the backdrop). While shut, the drawer's
+// contents — the sample project row and the "+" add-project button — sit
+// off-screen via transform: translateX(100%). Steps that spotlight those
+// controls (`sidebar: true`) open the drawer first so the cut-out lands on
+// the real, on-screen control, then close it again when the tour advances
+// past them or finishes. The slide animation runs ~0.25s, so the spotlight
+// is re-measured once it settles.
+const SIDEBAR_ID = 'sideBar';
+const SIDEBAR_OVERLAY_ID = 'sidebarOverlay';
+const SIDEBAR_OPEN_CLASS = 'sidebar-open';
+const SIDEBAR_OVERLAY_VISIBLE_CLASS = 'visible';
+const SIDEBAR_TRANSITION_MS = 250;
+
 // Each step describes one stop on the tour. `target` is a function returning
 // the DOM element to spotlight (or null when unavailable) — resolved fresh
 // at advance time so dynamic chrome like the placeholder todo row is found
@@ -55,6 +70,7 @@ const STEPS = [
             return sideMa.querySelector('.selectedProject')
                 || sideMa.querySelector('#projChild');
         },
+        sidebar: true,
         advanceOn: ['click'],
         placement: 'right',
     },
@@ -97,6 +113,7 @@ const STEPS = [
         title: 'Create a project',
         body: 'Use the + in the sidebar to start a project of your own. Each project keeps its own list of todos.',
         target: function() { return document.getElementById('projButton'); },
+        sidebar: true,
         advanceOn: ['click'],
         placement: 'right',
     },
@@ -195,6 +212,7 @@ export function startCoachmarkTour() {
         currentTarget: null,
         currentEventHandler: null,
         currentEventNames: null,
+        openedSidebar: false,
     };
 
     window.addEventListener('resize', onWindowChange);
@@ -228,11 +246,42 @@ function onOverlayClick(event) {
     finish();
 }
 
+// Toggle the projects drawer open/closed by mirroring main.js's drawer
+// classes directly (#sideBar.sidebar-open + #sidebarOverlay.visible). Both
+// nodes are looked up fresh and guarded so the helper is a no-op when the
+// drawer chrome isn't present (e.g. the test skeleton or a replay before the
+// app shell mounts).
+function setDrawerOpen(open) {
+    const sideBar = document.getElementById(SIDEBAR_ID);
+    const overlay = document.getElementById(SIDEBAR_OVERLAY_ID);
+    if (sideBar) sideBar.classList.toggle(SIDEBAR_OPEN_CLASS, open);
+    if (overlay) overlay.classList.toggle(SIDEBAR_OVERLAY_VISIBLE_CLASS, open);
+}
+
+// Open the drawer for sidebar-targeted steps; close it again on any step that
+// isn't. `active.openedSidebar` records whether the tour was the one that
+// opened it, so a drawer the user already had open is never yanked shut and
+// the tour only undoes its own opening.
+function syncSidebarForStep(step) {
+    if (!active) return;
+    if (step && step.sidebar) {
+        const sideBar = document.getElementById(SIDEBAR_ID);
+        if (sideBar && !sideBar.classList.contains(SIDEBAR_OPEN_CLASS)) {
+            setDrawerOpen(true);
+            active.openedSidebar = true;
+        }
+    } else if (active.openedSidebar) {
+        setDrawerOpen(false);
+        active.openedSidebar = false;
+    }
+}
+
 function renderStep() {
     if (!active) return;
     const step = STEPS[active.index];
 
     detachTargetListener();
+    syncSidebarForStep(step);
 
     const callout = active.callout;
     while (callout.firstChild) callout.removeChild(callout.firstChild);
@@ -285,6 +334,16 @@ function renderStep() {
 
     layoutStep();
     attachTargetListener(step);
+
+    // The drawer slides in over ~0.25s, so the rect measured synchronously
+    // above reflects the mid-slide (off-screen) transform. Re-measure once
+    // the animation settles, but only if the tour is still on this same step.
+    if (step.sidebar && active.openedSidebar) {
+        const stepAtSchedule = active.index;
+        setTimeout(function() {
+            if (active && active.index === stepAtSchedule) layoutStep();
+        }, SIDEBAR_TRANSITION_MS);
+    }
 
     next.focus();
 }
@@ -453,6 +512,13 @@ function placeCallout(callout, cutout, placement) {
 function finish() {
     if (!active) return;
     detachTargetListener();
+
+    // Leave the drawer the way we found it — close it only if the tour was
+    // the one that opened it for a sidebar step.
+    if (active.openedSidebar) {
+        setDrawerOpen(false);
+        active.openedSidebar = false;
+    }
 
     window.removeEventListener('resize', onWindowChange);
     window.removeEventListener('scroll', onWindowChange, true);
