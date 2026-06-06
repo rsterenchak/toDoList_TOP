@@ -454,3 +454,155 @@ describe('coachmark tour — wired into the app', () => {
         expect(rafIdx).toBeLessThan(startIdx);
     });
 });
+
+
+// Since D1b the projects sidebar is a slide-in overlay drawer that is closed
+// by default, so the steps that spotlight controls inside it (the sample
+// project row, the "+" add-project button) would otherwise land their cut-out
+// against the off-screen drawer. The tour opens the drawer for those steps
+// and closes it again when it moves past them or finishes — without yanking
+// shut a drawer the user already had open.
+describe('coachmark tour — opens the projects drawer for sidebar steps', () => {
+    const SIDEBAR_OPEN_CLASS = 'sidebar-open';
+
+    function buildDrawerDOM() {
+        document.body.innerHTML = '';
+
+        // The projects drawer (#sideBar) wraps the sidebar targets and is
+        // closed by default — exactly the post-D1b shell. #sidebarOverlay is
+        // its dismiss backdrop.
+        const sideBar = document.createElement('div');
+        sideBar.id = 'sideBar';
+
+        const sideMa = document.createElement('div');
+        sideMa.id = 'sideMa';
+        const projChild = document.createElement('div');
+        projChild.id = 'projChild';
+        projChild.className = 'selectedProject';
+        sideMa.appendChild(projChild);
+        sideBar.appendChild(sideMa);
+
+        const projButton = document.createElement('div');
+        projButton.id = 'projButton';
+        sideBar.appendChild(projButton);
+
+        document.body.appendChild(sideBar);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'sidebarOverlay';
+        document.body.appendChild(overlay);
+
+        // Right-side chrome + main-list rows the non-sidebar steps anchor on.
+        const pomodoroToggle = document.createElement('button');
+        pomodoroToggle.id = 'pomodoroToggle';
+        document.body.appendChild(pomodoroToggle);
+        const musicToggle = document.createElement('button');
+        musicToggle.id = 'musicToggle';
+        document.body.appendChild(musicToggle);
+        const settingsToggle = document.createElement('button');
+        settingsToggle.id = 'settingsToggle';
+        document.body.appendChild(settingsToggle);
+
+        const mainList = document.createElement('div');
+        mainList.id = 'mainList';
+        const row = document.createElement('div');
+        row.id = 'toDoChild';
+        const duePill = document.createElement('button');
+        duePill.id = 'duePill';
+        row.appendChild(duePill);
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        row.appendChild(descToggle);
+        mainList.appendChild(row);
+        document.body.appendChild(mainList);
+
+        return { sideBar, overlay, projChild, projButton };
+    }
+
+    function clickNext() {
+        document.querySelector('.coachmarkNext').click();
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+        buildDrawerDOM();
+    });
+
+    afterEach(() => {
+        if (document.getElementById(COACHMARK_OVERLAY_ID)) {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        }
+    });
+
+    it('opens the drawer on the first sidebar step', () => {
+        startCoachmarkTour();
+        const sideBar = document.getElementById('sideBar');
+        const overlay = document.getElementById('sidebarOverlay');
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+        expect(overlay.classList.contains('visible')).toBe(true);
+    });
+
+    it('closes the drawer when advancing to a non-sidebar step', () => {
+        startCoachmarkTour();
+        // Step 1 (sampleProject) is a sidebar step; step 2 (duePill) is not.
+        clickNext();
+        const label = document.querySelector('.coachmarkStepLabel');
+        expect(label.textContent).toBe('STEP 2 OF 7');
+        const sideBar = document.getElementById('sideBar');
+        const overlay = document.getElementById('sidebarOverlay');
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(false);
+        expect(overlay.classList.contains('visible')).toBe(false);
+    });
+
+    it('reopens the drawer on the add-project sidebar step', () => {
+        startCoachmarkTour();
+        // Advance to step 4 (addProject), which targets #projButton in drawer.
+        clickNext(); // -> step 2 (duePill)
+        clickNext(); // -> step 3 (descToggle)
+        clickNext(); // -> step 4 (addProject)
+        const label = document.querySelector('.coachmarkStepLabel');
+        expect(label.textContent).toBe('STEP 4 OF 7');
+        const sideBar = document.getElementById('sideBar');
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+    });
+
+    it('closes a tour-opened drawer when the tour finishes', () => {
+        startCoachmarkTour();
+        const sideBar = document.getElementById('sideBar');
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+        document.querySelector('.coachmarkSkip').click();
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(false);
+    });
+
+    it('leaves a user-opened drawer open after the tour finishes', () => {
+        // The user already has the drawer open; the tour must not yank it
+        // shut on finish since it wasn't the one that opened it.
+        const sideBar = document.getElementById('sideBar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sideBar.classList.add(SIDEBAR_OPEN_CLASS);
+        overlay.classList.add('visible');
+        startCoachmarkTour();
+        document.querySelector('.coachmarkSkip').click();
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+        expect(overlay.classList.contains('visible')).toBe(true);
+    });
+
+    it('keeps a user-opened drawer open even when advancing past sidebar steps', () => {
+        const sideBar = document.getElementById('sideBar');
+        sideBar.classList.add(SIDEBAR_OPEN_CLASS);
+        startCoachmarkTour();
+        clickNext(); // -> step 2 (non-sidebar): tour must not close a drawer it didn't open
+        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+    });
+
+    it('does not throw when the drawer chrome is absent', () => {
+        // Replay before the app shell mounts (or the test skeleton without a
+        // #sideBar) must still run — the drawer helper is a guarded no-op.
+        document.getElementById('sideBar').remove();
+        document.getElementById('sidebarOverlay').remove();
+        expect(() => startCoachmarkTour()).not.toThrow();
+        expect(document.getElementById(COACHMARK_OVERLAY_ID)).not.toBeNull();
+    });
+});
