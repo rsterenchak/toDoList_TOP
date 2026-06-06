@@ -45,3 +45,59 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/coachmark.js`, `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/` (broadly — many test files migrate together)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: adc9277c-27c3-47a9-b217-20e75bafbd89 -->
+
+- [ ] **[MEDIUM]** D1b: Convert #sideBar from persistent column to slide-in drawer at desktop widths; retire rail/resizer/collapse machinery
+  - Type: feature
+  - Description: At desktop widths (≥1024px), `#sideBar` no longer renders as a persistent left column. Instead, it slides in as an overlay drawer — the same presentation it already uses on mobile. The hamburger / sidebar-toggle button (which already exists and works on mobile) becomes visible at desktop widths as the trigger for opening the drawer. The rail-mode (54px icon strip), the rail↔full resizer, the `todoapp_sidebarRail` localStorage preference, the auto-collapse-on-tab-view behavior, the `Ctrl+Backspace`-specific desktop gating, and any other machinery that exists to support the "persistent rail vs full column" desktop presentation are retired. The drawer's three-way close vocabulary (X button, backdrop tap, Escape) works at all breakpoints, not just mobile. The workspace pill (`#mobileProjHeader`) is still hidden at desktop — D1c adds it as the better trigger surface and lets the hamburger become redundant.
+  - Implementation notes:
+    - **Tests that pin the retired machinery are part of the contract being retired, not immutable assertions.** This is explicit authorization to remove or update the following test suites (and any similar tests that exist):
+      - `projectsIconRail.test.js` — entirely retired. The rail mode no longer exists.
+      - `todayViewAutoCollapseSidebar.test.js` — entirely retired or substantially rewritten. The auto-collapse behavior was specific to the persistent column; with a drawer, there's nothing to auto-collapse.
+      - Parts of `ctrlBackspaceSidebarToggle.test.js` — the desktop-specific routing through "rail/full and mobile drawer branches" must be updated to "the unified drawer at all breakpoints."
+      - `stackDrawerThreeWayClose.test.js` — the desktop-specific "Escape bails on desktop because sidebar is a persistent rail" test must be retired/inverted, and the "X button hidden at desktop" assertion must be inverted (X button visible everywhere because the drawer is at every breakpoint).
+      - Any test that asserts the literal `@media (min-width: 1024px) { #sideBar { ... persistent-column CSS ... } }` pattern — those persistent-column CSS rules are being removed, so the tests that pin them must update accordingly.
+    - **What "retired" means for tests:** delete the test file (or the specific `it()` blocks) and add a brief comment in the routine's PR description noting the retirement. Do NOT leave dead tests with `it.skip()`; clean removal is preferred since this is intentional contract retirement. If a test verifies behavior that *also* exists elsewhere (e.g. a sidebar-related test that's actually about the workspace pill's drawer-open behavior), keep that part and remove only the rail-specific assertions.
+    - **What "rewritten" means for tests:** if a test still has a meaningful behavioral assertion under the new contract (e.g. "the drawer closes on Escape"), update the test to make that assertion under the new unified-drawer semantics. The behavior the test pins should survive; the implementation details specific to the retired machinery should not.
+    - **Critical**: do NOT weaken tests by simply removing assertions to make them pass. Retire tests that pin retired behavior; rewrite tests that pin still-relevant behavior; keep tests that don't touch the affected machinery untouched.
+    - **Source changes:**
+      - In `style.css`, the `@media (min-width: 1024px)` rules for `#sideBar` change from persistent-column to overlay-drawer. Mirror the existing mobile rules: `position: fixed`, `transform: translateX(100%)` by default, slides in via the `.sidebar-open` class. The drawer can occupy the same width on desktop as it does on mobile, or be slightly wider — your call as the agent, just keep it reasonable (250-320px is the typical drawer width).
+      - The persistent-column CSS rules at `@media (min-width: 1024px)` are removed: any `position: relative` or `flex: 0 0 <width>` or similar layout rules for `#sideBar` at desktop widths.
+      - The main content area's CSS at desktop widths: remove any `margin-left` / `padding-left` / flex sibling offsets that previously made room for the persistent sidebar. The main content area now fills the full viewport width.
+      - The CSS for `#mobileSidebarClose` (the X button inside the drawer header): remove the desktop-hides-this rule. The X button is visible at all breakpoints.
+      - The rail-mode CSS — `.sidebar-rail`, `#sideBar.rail`, or whatever the class pattern is — entirely removed.
+      - The resizer element CSS — removed.
+    - **JS changes:**
+      - `prefs.js`: remove the `SIDEBAR_RAIL_KEY` constant, the `isSidebarRailOn()` function, the `setSidebarRailOn()` function, and any related rail-preference persistence.
+      - `main.js`: remove the rail/full toggle code, the resizer event handlers, the auto-collapse-on-tab-view code (e.g. the `todayViewAutoCollapseSidebar` logic). Remove any `isSidebarRailOn()` calls.
+      - `main.js`: in the `Ctrl+Backspace` handler, remove any branch that's specific to the rail/full toggle on desktop. The chord should now route through `sidebarToggle.click()` at all breakpoints, which opens or closes the drawer.
+      - `main.js`: in the drawer's Escape handler, remove the `!isMobile()` desktop-bail. Escape closes the drawer at all breakpoints (since the drawer exists at all breakpoints now).
+      - The sidebar-toggle button (hamburger) CSS: ensure it's visible at all breakpoints. If it was previously `display: none` at desktop widths, remove that rule.
+    - **localStorage cleanup:** existing users may have `todoapp_sidebarRail` stored. The value is no longer meaningful. Optional: add a one-time migration that deletes the stale key on next app load. Not critical — leaving an unused localStorage key is harmless — but tidier if simple.
+    - **Critical**: do NOT show the workspace pill on desktop. `#mobileProjHeader` remains hidden at desktop widths after this entry. D1c adds that.
+    - **Critical**: do NOT make any structural changes to the chat sheet, the main task list area, the INBOX view, the CALENDAR view, the bottom nav, the pomodoro/music chips, or any other component. ONLY the sidebar's desktop presentation changes.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT modify the `isMobile()` definition or the breakpoint constant (1024). Those are D1a's contract, locked.
+    - **Acceptance test scenarios:**
+      - At ≥1024px window width:
+        - No persistent left column visible
+        - Main task area fills the full viewport width (no offset for a sidebar that's not there)
+        - Hamburger button visible in the header (or wherever it lives on desktop now)
+        - Tap hamburger → drawer slides in from the side (same direction as mobile)
+        - Drawer shows the project list
+        - Drawer can be closed via X button, backdrop tap, or Escape
+        - Project selection from the drawer works (taps a project → drawer closes, main view updates)
+      - At <1024px window width: zero behavioral changes from after D1a (mobile UX completely unchanged)
+      - All pomodoro, music, INBOX, filter pills, status indicators, voice mic, chat sheet, header chrome work at both breakpoints
+      - No console errors
+    - **Test additions (new tests for new contract):**
+      - (a) At desktop widths, `#sideBar` has `position: fixed` (not `position: relative` or `static`) — verified via computed CSS or class assertion.
+      - (b) At desktop widths, the X button (`#mobileSidebarClose`) is visible (not `display: none`).
+      - (c) The Escape handler in `main.js` no longer contains `isMobile()` gating for the sidebar-close path.
+      - (d) The `Ctrl+Backspace` chord routes through `sidebarToggle.click()` regardless of viewport width.
+      - (e) `prefs.js` does not export `isSidebarRailOn` or `setSidebarRailOn`.
+      - (f) The main content area's CSS at desktop widths has no `margin-left` or `padding-left` accommodating a persistent sidebar.
+  - Visual reference: `desktop-final-idle.svg` from the design session shows the no-sidebar state. After D1b, desktop matches that — except the workspace pill in the header is still missing (D1c adds it). The hamburger button stays visible as a transitional trigger.
+  - Out of scope: workspace pill visibility on desktop (D1c), two-pane chat (D2), chat collapse toggle (D3), removal of the hamburger button (acceptable to keep at all breakpoints), and any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js`, `toDoList_main/tests/` (broadly — multiple test files retire or migrate)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d6d99084-b97d-4692-b018-cf30f7993330 -->
