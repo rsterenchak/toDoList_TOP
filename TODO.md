@@ -851,3 +851,77 @@
   - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if DOM restructuring is needed), possibly `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 29b70b21-f014-46f3-8132-62f429b3f38b -->
+
+- [ ] **[MEDIUM]** Two-pane alignment: roomier sub-header spacing, segmented-control CHAT/RUNS tabs, both panes' sub-headers align
+  - Type: feature
+  - Description: At desktop widths (≥1024px), refine the two-pane sub-header alignment with three coordinated changes: (1) add ~16px vertical gap between the top header and the sub-header row in both panes — currently they sit too flush; (2) align the chat pane's sub-header row at the same vertical position as the task pane's view tabs sub-band (currently the chat pane's collapse button sits above the tabs on its own row, misaligned); (3) restyle the CHAT/RUNS tabs as a segmented control — a single rounded container with the active half highlighted, replacing the separate-pills layout. The repo workspace pill sits on the right of the chat sub-header row. The collapse `›` button sits inline at the left of the chat sub-header row, in line with CHAT/RUNS. Mobile UX is unaffected (mobile uses the slide-up chat sheet, not the desktop pane).
+  - Implementation notes:
+    - **Layout structure (at desktop, ≥1024px):**
+      - Top header (row 1, ~48px tall, full viewport): workspace pill + counts on left, chips on right (UNCHANGED)
+      - 16px vertical gap (visible empty space between top header and sub-header row)
+      - Sub-header row (~36px tall, full viewport width but content split between panes):
+        - Task pane (left of divider): PROJECTS/INBOX/CALENDAR view tabs (UNCHANGED — already underlined-text style)
+        - Chat pane (right of divider, from left to right): collapse `›` button, CHAT/RUNS segmented control, (spacer pushes right), repo workspace pill
+      - Below sub-header: each pane has its own content rhythm
+    - **CHAT/RUNS as segmented control:**
+      - A single rounded outer container (`border-radius: 13px`, `border: 1px solid #3a3a50`, `background: #15151e`)
+      - Width: ~152px total (76px per half)
+      - Two halves inside, side-by-side, no gap between them
+      - Active half: solid purple background (`#6C5DF5`), white text (`#e8e8f0`), bold weight, slightly inset rounded shape (`border-radius: 12px` to fit inside the outer 13px radius)
+      - Inactive half: transparent background, muted gray text (`#8a8a99`), regular weight
+      - Clicking inactive half: switches active state, slides/snaps the highlight
+      - Outer container is a single click target with internal logic, OR two halves each click-handled separately — either is fine, agent picks based on existing code
+      - Optional: a brief CSS transition on the active highlight position (`transition: background 0.15s ease`) for polish — skip if it adds complexity
+    - **Chat pane sub-header row structure:**
+      - Single horizontal flex row containing (left to right): collapse `›`, segmented control (CHAT/RUNS), spacer, repo workspace pill
+      - `display: flex; align-items: center; gap: 12px;`
+      - Height matches the task pane's view tabs sub-band (~36px)
+      - The repo workspace pill uses `margin-left: auto` to push to the right edge
+      - Vertical position: top of this row should be at the same y-coordinate as the top of the task pane's view tabs sub-band (within ~4px tolerance)
+    - **16px gap above the sub-header row:**
+      - The gap applies to BOTH panes' sub-header rows (since they align, the gap is the same)
+      - Apply via `padding-top: 16px` on the container that holds both panes' sub-header rows, OR `margin-top: 16px` on each sub-header row individually — pick whichever fits the existing structure
+      - The space should be empty/transparent (showing page background `#07070c`)
+    - **What stays the same:**
+      - Top header — workspace pill, counts, chips unchanged
+      - Task pane view tabs — PROJECTS/INBOX/CALENDAR still in underlined-text style
+      - Task pane content below sub-header — filter pills, sort/expand, compose, task list, COMPLETED, TODO.md viewer — all unchanged
+      - Chat pane content below sub-header — messages area, input row with mic/send — unchanged
+      - The chat collapse toggle behavior (D3) — still toggles via localStorage; only the button's visual position changes
+      - The repo workspace pill — still opens its dropdown when clicked
+      - Project picker dropdown — unchanged
+      - Mobile UX completely unaffected (chat sheet, not pane)
+      - All previously-shipped contracts: breakpoint, drawer, project picker, two-pane structure, chat collapse
+    - **Critical**: do NOT modify mobile UX. Verify by testing at `innerWidth = 500`.
+    - **Critical**: do NOT modify the task pane's view tabs (PROJECTS/INBOX/CALENDAR) — they stay as underlined text. Only the chat pane's tabs become segmented.
+    - **Critical**: do NOT modify chat content (messages area, input row).
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT modify the project picker dropdown.
+    - **Critical**: do NOT change the collapse toggle's behavior — only its visual position (moves into the sub-header row inline with tabs).
+    - **Critical**: do NOT use Sort by Due / Expand All position from task pane as a reference for chat sub-header — those stay on the filter pills row in the task pane.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`:
+        - Visible ~16px gap between top header and sub-header row (eyeball test: the gap is clearly larger than 4px and clearly smaller than 32px)
+        - Chat pane's collapse button, CHAT/RUNS segmented control, and repo pill are all on the same horizontal row
+        - Chat pane's sub-header row top y-coordinate matches task pane's view tabs sub-band top y-coordinate (within ~4px)
+        - CHAT/RUNS render as a single segmented control with rounded outer border, active half highlighted in purple
+        - Clicking inactive RUNS half switches active state to RUNS
+        - Clicking inactive CHAT half (when RUNS is active) switches back to CHAT
+        - The collapse button still toggles the chat pane open/closed
+        - The repo workspace pill still opens its dropdown
+      - At `innerWidth < 1024`:
+        - Chat sheet behavior identical to current (mobile chat sheet, not pane)
+        - All mobile UX unchanged
+    - **Test additions:**
+      - (a) At `innerWidth = 1280`, the y-coordinate of the chat sub-header row equals the y-coordinate of the task pane's view tabs sub-band (`getBoundingClientRect().top`, within 4px tolerance)
+      - (b) At `innerWidth = 1280`, the CHAT/RUNS tabs are within a single parent container (the segmented control)
+      - (c) At `innerWidth = 1280`, computed CSS shows the segmented control container has rounded `border-radius` and a `border` styling
+      - (d) At `innerWidth = 1280`, the gap between the top header's bottom and the sub-header row's top is ≥ 12px
+      - (e) At `innerWidth = 1280`, clicking the inactive segmented half switches the active state
+      - (f) At `innerWidth = 1280`, the collapse button still triggers the chat pane visibility toggle
+      - (g) At `innerWidth = 500`, chat sheet behavior unchanged (regression guard)
+  - Visual reference: `chat-tabs-layout-options.svg` Option C from the design session — CHAT/RUNS as segmented control inside a single rounded container, sub-header row aligned with task pane, 16px gap above.
+  - Out of scope: any task pane layout changes (view tabs stay as underlined text), filter pill changes (cycle pill is separate entry if pursued), chat content changes, mobile UX changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if DOM restructuring is needed), possibly `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ebacfc08-7079-417d-9bda-8f9caedeaaa7 -->
