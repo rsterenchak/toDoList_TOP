@@ -7078,6 +7078,28 @@ body.row-dragging * { cursor: grabbing !important; }
     top: 0;
     height: 36px;
   }
+
+  /* ── Vertical rhythm between the desktop header rows ──
+     The top header (#navBar) and the view-tab sub-band sit flush as one
+     header region; below them the task-pane chrome needs breathing room so
+     the sections read as distinct (per header-option-b.svg). The gaps are
+     applied as padding-top on the RECEIVING containers so the giving rows
+     keep their own box untouched and margin-collapse can't bite.
+
+     - sub-band → filter pills: padding-top on #mainSec drops the whole task
+       pane (#mainBar + its absolutely-positioned SORT/EXPAND overlay) down
+       together, so the overlay stays centered on the filter row. The chat
+       pane (#desktopChatPane) is a flex sibling and is unaffected.
+     - filter pills → compose row: padding-top at the top of the scrollable
+       list (#mainList) separates the first add-task row from the pills
+       without moving the overlay (which is anchored to #mainBar, not the
+       list). */
+  #mainSec {
+    padding-top: 18px;
+  }
+  #mainList {
+    padding-top: 12px;
+  }
 }
 
 /* ══════════════════════════════════════════

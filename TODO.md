@@ -693,7 +693,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f28db964-3307-45c4-a9db-a3a07c1a9ec0 -->
 
-- [ ] **[LOW]** Increase vertical spacing between desktop header rows (workspace pill → sub-band → filter pills → compose)
+- [x] **[LOW]** Increase vertical spacing between desktop header rows (workspace pill → sub-band → filter pills → compose) — Completed: 2026-06-06
   - Type: bug
   - Description: At desktop widths (≥1024px), the header rows are stacked too tightly together — the workspace pill row, the view tab sub-band (PROJECTS/INBOX/CALENDAR), the filter pills row (ALL/ACTIVE/IDEAS), and the compose row sit nearly flush against each other with minimal vertical gap. The design intent (per `header-option-b.svg` mockup) was modest breathing room between these distinct chrome sections to establish visual hierarchy. This entry adjusts the vertical spacing to match the mockup. CSS-only fix.
   - Implementation notes:
