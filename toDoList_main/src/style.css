@@ -1530,6 +1530,11 @@ body:has(#settingsMenu) #claudeLauncher {
   padding: 12px;
   border-bottom: 0.5px solid var(--border-dim);
 }
+/* At mobile widths the segmented-control wrapper is layout-transparent, so the
+   CHAT / RUNS tabs stay direct flex children of #claudeSheetTabs and the
+   slide-up sheet's tab row is unchanged. The desktop pane overrides this to a
+   real rounded container (see the D2 media region). */
+.claudeTabGroup { display: contents; }
 .claudeTab {
   flex: 1;
   padding: 8px 0;
@@ -6968,6 +6973,13 @@ body.row-dragging * { cursor: grabbing !important; }
     display: flex;
     align-items: center;
     min-height: 32px;
+    /* ~16px of breathing room between the top header (#navBar) and this
+       sub-header row, so the two header regions read as distinct rather than
+       flush. The band's `auto` grid track grows by this margin, which pushes
+       #mainSplit (and the chat pane lifted into this row by margin-top:-32px)
+       down by the same amount — so the chat pane's sub-header row stays aligned
+       with these view tabs while both gain the gap. */
+    margin-top: 16px;
     padding: 0 16px;
     /* No distinct background or borders: the tabs sit directly on the page
        background so no lighter "stripe" shows in the gap below the band. */
@@ -7175,6 +7187,36 @@ body.row-dragging * { cursor: grabbing !important; }
     min-height: 36px;
     align-items: center;
     padding: 0 12px 0 44px;
+  }
+  /* CHAT / RUNS as a single segmented control: one rounded outer container with
+     the two halves side by side and no gap, the active half filled with the
+     accent purple. Mobile keeps the separate-pill layout (the wrapper is
+     display:contents there), so this is scoped to the desktop pane. */
+  #desktopChatPane .claudeTabGroup {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: stretch;
+    width: 152px;
+    border: 1px solid #3a3a50;
+    border-radius: 13px;
+    background: #15151e;
+    overflow: hidden;
+  }
+  #desktopChatPane .claudeTabGroup .claudeTab {
+    flex: 1 1 0;
+    width: auto;
+    padding: 6px 0;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #8a8a99;
+    font-weight: 600;
+    transition: background 0.15s ease;
+  }
+  #desktopChatPane .claudeTabGroup .claudeTab[aria-selected="true"] {
+    background: #6C5DF5;
+    color: #e8e8f0;
+    font-weight: 700;
   }
   /* The persistent pane is the desktop chat surface; the slide-up sheet and
      its bottom-right launcher are retired here. */
