@@ -3011,8 +3011,143 @@ function component() {
             }
         }
     }
-    mobileProjName.addEventListener('click', openMobileDrawer);
-    mobileProjChevron.addEventListener('click', openMobileDrawer);
+
+    // ── desktop project-picker dropdown (≥1024px) ──
+    // At desktop widths the slide-in drawer is replaced by an anchored
+    // dropdown menu that opens directly below the project pill. It reads
+    // the SAME project list + counts the drawer uses (listLogic), so the
+    // two surfaces never drift, and routes a row click through the same
+    // project-selection path the drawer's rows use (navigateToProjectByIndex
+    // → #projChild.click()). The drawer stays the mobile (<1024px) trigger,
+    // untouched. The element lives on document.body and is positioned off
+    // the pill's bounding rect each time it opens.
+    const projectPickerDropdown = document.createElement('div');
+    projectPickerDropdown.id = 'projectPickerDropdown';
+    projectPickerDropdown.setAttribute('role', 'menu');
+    projectPickerDropdown.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(projectPickerDropdown);
+
+    function projectPickerIsOpen() {
+        return projectPickerDropdown.classList.contains('open');
+    }
+
+    // Rebuild the dropdown rows from the authoritative project list. Active
+    // project gets the purple accent + ✓; zero-count projects get a quieter
+    // count color. No "+ New project" footer: the existing create-project
+    // flow (#projButton) appends an input into the drawer's #sideMa, which is
+    // hidden at desktop — wiring it here would create an off-screen input, so
+    // per the task it is omitted rather than inventing a new code path.
+    function buildProjectPickerRows() {
+        projectPickerDropdown.innerHTML = '';
+
+        const header = document.createElement('div');
+        header.className = 'projectPickerHeader';
+        header.textContent = 'PROJECTS';
+        projectPickerDropdown.appendChild(header);
+
+        const list = document.createElement('div');
+        list.className = 'projectPickerList';
+        projectPickerDropdown.appendChild(list);
+
+        const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const activeName = mobileProjName.textContent || '';
+
+        projects.forEach(function(name, idx) {
+            const row = document.createElement('div');
+            row.className = 'projectPickerRow';
+            row.setAttribute('role', 'menuitem');
+            const isActive = name === activeName;
+            if (isActive) row.classList.add('active');
+
+            const label = document.createElement('span');
+            label.className = 'projectPickerName';
+            label.textContent = name;
+
+            const count = listLogic.getProjectIncompleteCount
+                ? listLogic.getProjectIncompleteCount(name)
+                : 0;
+            const countEl = document.createElement('span');
+            countEl.className = 'projectPickerCount';
+            if (count === 0) countEl.classList.add('zero');
+            countEl.textContent = (isActive ? '✓ ' : '') + count;
+
+            row.appendChild(label);
+            row.appendChild(countEl);
+
+            row.addEventListener('click', function() {
+                // Active row: just dismiss (no project change). Otherwise
+                // route through the shared selection path, then dismiss.
+                if (!isActive) navigateToProjectByIndex(idx);
+                closeProjectPicker();
+            });
+
+            list.appendChild(row);
+        });
+    }
+
+    function positionProjectPicker() {
+        const rect = mobileProjHeader.getBoundingClientRect();
+        const top = rect.bottom + window.scrollY + 4;
+        const left = rect.left + window.scrollX;
+        projectPickerDropdown.style.top = top + 'px';
+        projectPickerDropdown.style.left = left + 'px';
+    }
+
+    function openProjectPicker() {
+        buildProjectPickerRows();
+        positionProjectPicker();
+        projectPickerDropdown.classList.add('open');
+        projectPickerDropdown.setAttribute('aria-hidden', 'false');
+        mobileProjHeader.classList.add('picker-open');
+        mobileProjChevron.textContent = '▴';
+    }
+
+    function closeProjectPicker() {
+        projectPickerDropdown.classList.remove('open');
+        projectPickerDropdown.setAttribute('aria-hidden', 'true');
+        mobileProjHeader.classList.remove('picker-open');
+        mobileProjChevron.textContent = '▾';
+    }
+
+    function toggleProjectPicker() {
+        projectPickerIsOpen() ? closeProjectPicker() : openProjectPicker();
+    }
+
+    // Single entry point for activating the project picker from the pill —
+    // branches on viewport width so there is one click binding, not two:
+    // desktop opens the anchored dropdown, mobile opens the slide-in drawer.
+    function activateProjectPicker() {
+        if (window.innerWidth >= 1024) {
+            toggleProjectPicker();
+        } else {
+            openMobileDrawer();
+        }
+    }
+
+    // Dismiss the dropdown on outside click (the pill itself is excluded —
+    // its own handler toggles), Escape, and when the viewport crosses down to
+    // mobile widths where the drawer takes over.
+    document.addEventListener('click', function(e) {
+        if (!projectPickerIsOpen()) return;
+        if (projectPickerDropdown.contains(e.target)) return;
+        if (mobileProjHeader.contains(e.target)) return;
+        closeProjectPicker();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (!projectPickerIsOpen()) return;
+        e.preventDefault();
+        e.stopPropagation();
+        closeProjectPicker();
+    }, true);
+    window.addEventListener('resize', function() {
+        if (!projectPickerIsOpen()) return;
+        if (window.innerWidth < 1024) { closeProjectPicker(); return; }
+        positionProjectPicker();
+    });
+
+    mobileProjName.addEventListener('click', activateProjectPicker);
+    mobileProjChevron.addEventListener('click', activateProjectPicker);
 
     // Make the whole pill clickable, not just the name + ▾ glyphs. At desktop
     // the header is a padded pill (D1c) whose body looked clickable (cursor:
@@ -3024,7 +3159,7 @@ function component() {
     // originating from them.
     mobileProjHeader.addEventListener('click', function(event) {
         if (event.target.closest && event.target.closest('.mobileProjChev')) return;
-        openMobileDrawer();
+        activateProjectPicker();
     });
 
     // ── top-level view switcher (Today / Projects) ──

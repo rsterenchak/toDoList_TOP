@@ -112,9 +112,10 @@ describe('Compressed single-row mobile header', () => {
     });
 
     it('keeps the workspace-picker tap wiring on the name and dropdown chevron', () => {
-        // Tapping the title or the ▾ chevron must still open the mobile
-        // drawer (the project picker) after the compression.
-        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
-        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
+        // Tapping the title or the ▾ chevron must still open the project
+        // picker after the compression — now via activateProjectPicker, which
+        // routes to the mobile drawer below 1024px.
+        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
     });
 });

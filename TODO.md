@@ -532,7 +532,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 317a83ac-b51d-4647-a656-ca283d643800 -->
 
-- [ ] **[MEDIUM]** Replace project drawer with anchored dropdown picker at desktop widths; color "open" text in header counts to match design
+- [x] **[MEDIUM]** Replace project drawer with anchored dropdown picker at desktop widths; color "open" text in header counts to match design — Completed: 2026-06-06
   - Type: feature
   - Description: At desktop widths (≥1024px), replace the slide-in project drawer with an anchored dropdown menu that appears below the workspace pill when clicked. The dropdown lists all projects with their names and open-task counts, highlights the active project, and dismisses on click-outside or Escape. The slide-in drawer behavior is preserved at mobile widths (<1024px) — only the desktop trigger changes. Additionally, color the "open" word in the inline header counts (e.g. "11 open · 148 done") to match the purple accent of its number rather than rendering in default text color. The "open" + its number form a unified visual unit; the "done" + its number stay in muted gray as the de-emphasized counterpart.
   - Implementation notes:

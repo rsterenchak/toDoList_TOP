@@ -66,8 +66,12 @@ describe('Hamburger removed from the compressed mobile header', () => {
 
     it('keeps the project name + chevron as the mobile menu affordance', () => {
         // Tapping the title or the ▾ chevron must still open the mobile
-        // drawer after the hamburger is gone (regression check).
-        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
-        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*openMobileDrawer\s*\)/);
+        // drawer after the hamburger is gone (regression check). The tap now
+        // routes through activateProjectPicker, which opens the drawer below
+        // the 1024px breakpoint.
+        expect(main).toMatch(/mobileProjName\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        expect(main).toMatch(/mobileProjChevron\.addEventListener\(\s*['"]click['"]\s*,\s*activateProjectPicker\s*\)/);
+        // And the mobile branch of activateProjectPicker opens the drawer.
+        expect(main).toMatch(/function activateProjectPicker\(\)\s*\{[\s\S]*?openMobileDrawer\(\)/);
     });
 });

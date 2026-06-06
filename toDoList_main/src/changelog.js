@@ -6,12 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-06',
-        added: [
-            "On wide screens you can now collapse the Claude chat panel to give your tasks the full width, then reopen it from the edge tab — the choice is remembered.",
-        ],
         changed: [
             "On wide screens the Claude chat now appears as a persistent panel beside your tasks instead of a slide-up sheet.",
             "On wide screens the workspace name and open/done counts now sit in the top header, with the Projects / Inbox / Calendar tabs on a slim underlined row beneath it.",
+            "On wide screens, clicking the project pill now opens an anchored dropdown to switch projects instead of the slide-in drawer, and the \"open\" count in the header is colored to match its number.",
         ],
         fixed: [
             "The Claude chat panel on wide screens now shows its content on first load instead of appearing empty.",
