@@ -307,3 +307,77 @@
   - File: `toDoList_main/src/claudeSheet.js`, possibly `toDoList_main/src/main.js`, possibly `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d357a7ac-2501-4c09-b922-9cf65c825f33 -->
+
+- [ ] **[MEDIUM]** D3: Collapse/expand toggle for the desktop chat pane (with localStorage persistence)
+  - Type: feature
+  - Description: At desktop widths (≥1024px), add a small toggle button that lets the user collapse the chat pane (right side) so the task pane fills the full viewport width. When collapsed, a re-expand button appears so the user can bring the chat back. The collapsed/expanded state persists across page reloads via localStorage (key: `todoapp_chatPaneCollapsed`, default: false / expanded). At mobile widths (<1024px), this toggle has no effect — the chat continues to behave as a slide-up sheet, the collapse preference is ignored. After this entry ships, the desktop two-pane has the dismissibility that completes the design vision.
+  - Implementation notes:
+    - **Toggle button (collapse — when chat pane is visible):**
+      - Small button positioned at the top-left corner of the chat pane (just inside the pane, near the workspace pill at the chat header)
+      - Icon: `›` (right chevron) or `⇥` — pick whichever looks cleaner in the existing design language
+      - `aria-label`: "Collapse chat pane"
+      - On click: set localStorage `todoapp_chatPaneCollapsed = 'true'`, apply CSS class to body or main container (e.g. `body.chatPaneCollapsed`), let CSS handle the visual transition
+    - **Re-expand button (when chat pane is collapsed):**
+      - Small floating button on the right edge of the viewport (vertically centered, fixed positioning)
+      - OR: button in the main header on the right side, near the pomodoro/music chips
+      - Pick the placement that fits the existing header layout best. The floating-right-edge pattern is more discoverable; the header-button pattern is more contained.
+      - Icon: `‹` (left chevron) or `⇤`
+      - `aria-label`: "Expand chat pane"
+      - On click: set localStorage `todoapp_chatPaneCollapsed = 'false'`, remove the CSS class
+    - **CSS for collapsed state at desktop:**
+      - `body.chatPaneCollapsed #desktopChatPane { display: none; }` — chat pane hidden entirely
+      - `body.chatPaneCollapsed .taskPane` (or whatever the task pane's container class is) — task pane expands to fill `100%` width via `flex: 1 1 100%` or similar
+      - The expand button is shown via `body.chatPaneCollapsed #chatExpandButton { display: block; }` (and hidden by default when the class isn't present)
+    - **Animation (optional, light touch):**
+      - If easy to add without complexity: a brief `transition: flex-basis 0.2s ease` on the panes so the task pane smoothly expands when chat collapses
+      - If it adds complexity or risks layout issues, skip the animation. An instant transition is acceptable.
+    - **localStorage persistence:**
+      - On page load, read `todoapp_chatPaneCollapsed`. If `'true'`, apply the `chatPaneCollapsed` class to body immediately (before paint, if possible, to avoid a flash of expanded state). If `'false'` or null, leave the class off.
+      - Use the existing prefs.js module if there's a pattern for other localStorage prefs (e.g. `getCollapsedChat()`, `setCollapsedChat(value)` functions).
+    - **Behavior at width transitions:**
+      - The CSS rules above should be scoped to `@media (min-width: 1024px)` — at mobile, the collapsed class has no visual effect because the chat sheet/pane logic doesn't apply.
+      - When the viewport resizes back to desktop after being at mobile, the localStorage state determines whether the chat pane appears or is collapsed.
+      - Don't write a JS resize handler for this — pure CSS media queries + class toggling is sufficient.
+    - **What stays the same:**
+      - The chat content inside the pane — tabs, message history, input row, mic/send, voice input, popovers — all unchanged
+      - The mobile slide-up sheet — completely unchanged
+      - Task pane behavior — filter pills, compose row, status indicators, INBOX, CALENDAR, all unchanged
+      - All other features: pomodoro, music, voice mic in chat input, workspace pill, project drawer, etc.
+      - The breakpoint (D1a), the drawer (D1b), the workspace pill (D1c), the two-pane structure (D2)
+    - **Critical**: do NOT modify the breakpoint constant or `isMobile()` definition.
+    - **Critical**: do NOT modify the chat content, the project drawer, or the workspace pill.
+    - **Critical**: do NOT modify the mobile slide-up sheet's behavior.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT change any task pane behavior beyond the width adjustment when chat collapses.
+    - **Acceptance test scenarios:**
+      - At `innerWidth >= 1024`, fresh page load (no localStorage value):
+        - Chat pane visible on the right, task pane on the left
+        - Collapse button visible inside the chat pane (top-left of pane)
+        - Re-expand button NOT visible
+      - Click the collapse button:
+        - Chat pane disappears, task pane expands to fill the viewport
+        - localStorage `todoapp_chatPaneCollapsed = 'true'`
+        - Re-expand button appears (right edge or header)
+      - Click the re-expand button:
+        - Chat pane reappears, task pane returns to ~60% width
+        - localStorage `todoapp_chatPaneCollapsed = 'false'`
+        - Collapse button reappears
+      - Reload the page while collapsed:
+        - Chat pane is collapsed on load (no flash of expanded state)
+      - At `innerWidth < 1024` (mobile):
+        - The collapse/expand buttons have no visible effect (collapsed class doesn't apply)
+        - Chat sheet behavior identical to current
+      - Resize from mobile to desktop while in different localStorage states:
+        - Goes back to whatever the localStorage state says
+    - **Test additions:**
+      - (a) On desktop, clicking the collapse button hides `#desktopChatPane` and sets localStorage
+      - (b) On desktop, clicking the re-expand button shows `#desktopChatPane` and clears localStorage flag
+      - (c) On desktop with `todoapp_chatPaneCollapsed = 'true'` in localStorage, `#desktopChatPane` is hidden on initial mount
+      - (d) On desktop with `todoapp_chatPaneCollapsed = 'false'` (or null) in localStorage, `#desktopChatPane` is visible on initial mount
+      - (e) On mobile (innerWidth < 1024), the collapse button is not visible
+      - (f) On mobile, applying the `chatPaneCollapsed` class to body does NOT hide the chat sheet
+  - Visual reference: the desktop mockups from the design session show the expanded state. The collapsed state is a 100%-width task pane with a small `‹` chevron button on the right edge to reopen.
+  - Out of scope: any styling changes to the chat content, any task pane changes beyond width expansion when collapsed, the lingering D1c >1024 layout bug (still deferred), any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js` (if using the prefs module pattern), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 81b7c4ff-bc67-4a2e-b3e2-e8b4b09a084a -->
