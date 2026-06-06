@@ -382,7 +382,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 81b7c4ff-bc67-4a2e-b3e2-e8b4b09a084a -->
 
-- [ ] **[MEDIUM]** Desktop header polish: consolidate workspace pill into top header, move view tabs into thin sub-band below
+- [x] **[MEDIUM]** Desktop header polish: consolidate workspace pill into top header, move view tabs into thin sub-band below — Completed: 2026-06-06
   - Type: feature
   - Description: At desktop widths (≥1024px), restructure the header chrome to consolidate visual hierarchy. The workspace pill (`Task Management App ▾`) moves up from its current location in the task pane area into the main top header, sitting on the left. The counts (`11 open · 146 done`) sit inline next to the workspace pill in the top header. The pomodoro/music/ghost utility chips stay on the right of the top header. Below the main header, a thin sub-band (~32px tall) contains the PROJECTS / INBOX / CALENDAR view tabs, restyled as underlined-text tabs (not pills) — purple text + purple underline for the active tab, muted gray for inactive. The SORT BY DUE / EXPAND ALL controls move from their current row (alongside the workspace pill) down to share the same row as the filter pills (ALL / ACTIVE / IDEAS) inside the task pane. Net effect: 3 rows of chrome → 2 rows of chrome (main header + thin sub-band) before the task pane's own sub-header begins. Mobile UX is completely unchanged — the bottom nav and mobile pill behavior stay identical.
   - Implementation notes:

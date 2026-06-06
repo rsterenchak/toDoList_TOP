@@ -11,6 +11,7 @@ export const changelog = [
         ],
         changed: [
             "On wide screens the Claude chat now appears as a persistent panel beside your tasks instead of a slide-up sheet.",
+            "On wide screens the workspace name and open/done counts now sit in the top header, with the Projects / Inbox / Calendar tabs on a slim underlined row beneath it.",
         ],
         fixed: [
             "The Claude chat panel on wide screens now shows its content on first load instead of appearing empty.",
@@ -19,9 +20,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-05',
-        changed: [
-            "On wide screens the active project now shows as a pill in the header that opens the projects drawer, and the hamburger button is hidden.",
-        ],
         fixed: [
             "The first-run welcome tour now opens the projects drawer when spotlighting the sample project and the add-project button, so those steps highlight the real controls instead of empty screen edge.",
         ],

@@ -78,14 +78,15 @@ describe('Inbox view + view switcher', () => {
             expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]PROJECTS['"]/);
         });
 
-        it('mounts the pill bar in the top nav, anchored right of the hamburger', () => {
-            // The pill bar lives inside #navBar (next to the hamburger
-            // toggle) and pushes the right-side icon cluster — pomodoro,
-            // music, settings — to the far right via margin-right:auto
-            // on #viewSwitcher. insertBefore(pomodoroToggle) preserves
-            // the existing right-cluster order while anchoring the pills
-            // left of it.
-            expect(main).toMatch(/nav\.insertBefore\(\s*viewSwitcher\s*,\s*pomodoroToggle\s*\)/);
+        it('mounts the pill bar in the desktop view sub-band beneath the header', () => {
+            // The view tabs ride in the thin sub-band (#desktopViewSubBand)
+            // directly below the top header rather than inside #navBar — the
+            // desktop header consolidation moved them there and restyles them
+            // as underlined text. They are desktop-only (display:none on
+            // mobile), so a single permanent home in the sub-band is correct
+            // at every breakpoint; the chip cluster's own margin-left:auto
+            // keeps it right-anchored in #navBar without the tabs present.
+            expect(main).toMatch(/desktopViewSubBand\.appendChild\(\s*viewSwitcher\s*\)/);
             expect(main).toMatch(/main2\.appendChild\(\s*inboxView\s*\)/);
         });
 

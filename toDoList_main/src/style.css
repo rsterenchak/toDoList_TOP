@@ -122,10 +122,12 @@ body {
 /* OUTER SHELL */
 #outerContainer {
   display: grid;
-  /* Four tracks: header, the optional now-playing strip (collapses to 0 when
-     hidden), the main pane, and the footer. Children are placed by explicit
-     grid-row so the strip's display:none never reshuffles the other rows. */
-  grid-template-rows: var(--nav-h) auto 1fr var(--foot-h);
+  /* Five tracks: header, the optional now-playing strip (collapses to 0 when
+     hidden), the desktop view sub-band (also `auto` — collapses to 0 when its
+     #desktopViewSubBand is display:none at mobile widths), the main pane, and
+     the footer. Children are placed by explicit grid-row so a collapsed track
+     never reshuffles the others. */
+  grid-template-rows: var(--nav-h) auto auto 1fr var(--foot-h);
   height: calc(100dvh - 32px);
   border: 0.5px solid var(--border-mid);
   border-radius: 10px;
@@ -311,7 +313,7 @@ body {
 
 /* FOOTER */
 #footBar {
-  grid-row: 4;
+  grid-row: 5;
   background: var(--bg-elevated);
   border-top: 0.5px solid var(--border-dim);
   display: flex;
@@ -425,7 +427,7 @@ body {
 
 /* MAIN SECTION */
 #mainSec {
-  grid-row: 3;
+  grid-row: 4;
   display: grid;
   /* The projects sidebar is an overlay drawer (position:fixed) at every
      breakpoint, so the main content owns the full width of #mainSec — no
@@ -5342,10 +5344,13 @@ body.row-dragging * { cursor: grabbing !important; }
        prevents the todo list's intrinsic max-content height from
        inflating that track past its fair share. The second track holds the
        now-playing strip — `auto` so it collapses to 0 while hidden and takes
-       only its own ~32px when music is active. */
+       only its own ~32px when music is active. The third track is the desktop
+       view sub-band, collapsed to 0 here (its #desktopViewSubBand is
+       display:none at this breakpoint — #mobileTabBar is the sole navigator). */
     grid-template-rows:
       0
       auto
+      0
       minmax(0, 1fr)
       0;
   }
@@ -5385,6 +5390,14 @@ body.row-dragging * { cursor: grabbing !important; }
      the collapsed mobile nav. Hide it entirely on mobile — the bottom
      tab bar is the sole navigator at this breakpoint. */
   #viewSwitcher {
+    display: none;
+  }
+
+  /* The desktop view sub-band collapses entirely on mobile — its grid track is
+     pinned to 0 above and the band itself is removed from paint so it can't
+     leave a sliver of chrome below the (zero-height) nav. The #mobileTabBar is
+     the sole navigator at this breakpoint. */
+  #desktopViewSubBand {
     display: none;
   }
 
@@ -6742,14 +6755,11 @@ body.row-dragging * { cursor: grabbing !important; }
    counts are mobile-only affordances and stay hidden here.
 ══════════════════════════════════════════ */
 @media (min-width: 1024px) {
-  /* Give the pill its own grid row above the filter pills so it reads as
-     the pane header; mirrors the mobile three-track layout. The inbox /
-     calendar overlays span 1 / -1 and the data-view rules hide the pill
-     in those views, so adding the row is safe. */
-  #mainBar          { grid-template-rows: auto auto 1fr; }
-  #mobileProjHeader { grid-row: 1; }
-  #taskFilterBar    { grid-row: 2; }
-  #mainList         { grid-row: 3; }
+  /* The workspace pill no longer occupies a row in #mainBar — it is lifted
+     into the top header (#navBar) by placeDesktopHeader(). #mainBar keeps its
+     base two-track layout (status-filter row, then the scrollable list); the
+     SORT BY DUE / EXPAND ALL overlay (#bulkDescActions) now shares that
+     filter row. */
 
   #mobileProjHeader {
     display: inline-flex;
@@ -6760,8 +6770,10 @@ body.row-dragging * { cursor: grabbing !important; }
     width: auto;
     max-width: 280px;
     min-height: 0;
-    margin: 10px 0 2px 12px;
-    padding: 7px 10px 7px 12px;
+    /* Vertically centered inside the 44px nav band; #navBar's gap/padding own
+       the horizontal spacing now that the pill rides in the header. */
+    margin: 0;
+    padding: 6px 10px 6px 12px;
     background: var(--bg-elevated);
     border: 0.5px solid var(--border-mid);
     border-radius: var(--radius-md);
@@ -6781,11 +6793,12 @@ body.row-dragging * { cursor: grabbing !important; }
     border-color: var(--accent);
   }
 
-  /* The pill shows name + ▾ only: the label, the ‹ › carousel chevrons,
-     and the open/done counts are mobile affordances. */
+  /* The pill shows name + ▾ only: the PROJECT N OF M label and the ‹ ›
+     carousel chevrons are mobile affordances. The open/done counts
+     (#mobileProjStats) are NOT hidden here — placeDesktopHeader() lifts them
+     out of the pill and seats them inline in the top header (styled below). */
   #mobileProjLabel,
-  .mobileProjChev,
-  #mobileProjStats { display: none; }
+  .mobileProjChev { display: none; }
 
   #mobileProjTitleRow {
     flex: 0 1 auto;
@@ -6830,6 +6843,137 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
+   DESKTOP HEADER CONSOLIDATION ≥ 1024px
+   ──────────────────────────────────────────
+   Two rows of header chrome instead of three:
+     • Top header (#navBar): workspace pill on the LEFT, open/done counts
+       inline beside it, the pomodoro / music / settings chip cluster pushed
+       to the far RIGHT.
+     • Thin sub-band (#desktopViewSubBand) directly beneath: the PROJECTS /
+       INBOX / CALENDAR view tabs, restyled from pills into underlined text —
+       purple text + a 2px purple underline on the active tab, muted gray on
+       the inactive ones.
+   The SORT BY DUE / EXPAND ALL overlay drops down to share the status-filter
+   pill row inside the task pane. Mobile UX is untouched: the sub-band is
+   display:none below 1024px and the pill + counts return to the stacked
+   #mobileProjHeader via placeDesktopHeader().
+══════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* ── Thin view-tab sub-band ── */
+  #desktopViewSubBand {
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 16px;
+    background: #08080d;
+    border-top: 1px solid #1a1a22;
+    position: relative;
+    z-index: 9;
+  }
+
+  /* The relocated tablist fills the band, left-aligned; no margin-right:auto
+     spacer is needed now that it owns its own row. */
+  #desktopViewSubBand #viewSwitcher {
+    margin-right: 0;
+    gap: 4px;
+  }
+
+  /* View tabs as underlined text rather than pills. The pill chrome
+     (background, border, radius) is stripped; the active tab takes the accent
+     purple plus a short underline drawn with ::after so it never reflows the
+     row. Higher specificity (#id .class) keeps these ahead of the base
+     .viewPill / .viewPill.active rules. */
+  #desktopViewSubBand .viewPill {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 8px 6px;
+    color: #8a8a99;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    position: relative;
+  }
+  #desktopViewSubBand .viewPill:hover {
+    color: var(--text-primary);
+    background: transparent;
+  }
+  #desktopViewSubBand .viewPill.active {
+    color: #9D93EE;
+    background: transparent;
+    font-weight: 700;
+  }
+  #desktopViewSubBand .viewPill.active::after {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 2px;
+    height: 2px;
+    background: #9D93EE;
+    border-radius: 1px;
+  }
+
+  /* The chip cluster (pomodoro / music / settings) stays anchored at the right
+     edge via the pre-existing `margin-left: auto` on the leftmost chip — it
+     absorbs the nav slack whether or not a project pill + counts sit on the
+     left, so no extra spacer is needed now that the view tabs have moved out
+     of #navBar into the sub-band. */
+
+  /* ── Open/done counts, inline beside the pill ── */
+  #navBar #mobileProjStats {
+    display: inline-flex;
+    align-items: center;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+  }
+  #navBar #mobileProjCounts {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  #navBar #mobileProjOpen { color: var(--text-primary); }
+  #navBar #mobileProjDone { color: var(--text-muted); }
+  #navBar #mobileProjDone::before {
+    content: '·';
+    margin-right: 8px;
+    color: var(--text-muted);
+  }
+
+  /* In INBOX / CALENDAR the pill + counts describe a project context that the
+     active view doesn't show, so hide them — mirrors the #mainBar[data-view]
+     rules that handled this when the pill still lived inside #mainBar. */
+  body[data-view="inbox"] #mobileProjHeader,
+  body[data-view="calendar"] #mobileProjHeader,
+  body[data-view="inbox"] #mobileProjStats,
+  body[data-view="calendar"] #mobileProjStats {
+    display: none;
+  }
+
+  /* No active project → the empty pill hides (data-empty), and so do the
+     counts that sit beside it. In the top header the counts are a sibling of
+     the pill rather than a child, so reach them with a sibling combinator. */
+  #mobileProjHeader[data-empty="true"] ~ #mobileProjStats {
+    display: none;
+  }
+
+  /* SORT BY DUE / EXPAND ALL now share the status-filter row (the pane's top
+     auto track) — pull the overlay up to center on that ~36px row instead of
+     the old pill row. */
+  #bulkDescActions {
+    top: 0;
+    height: 36px;
+  }
+}
+
+/* ══════════════════════════════════════════
    D2 — DESKTOP TWO-PANE CHAT ≥ 1024px
    ──────────────────────────────────────────
    #mainSplit wraps the main task pane (#mainSec) and a persistent Claude
@@ -6855,7 +6999,7 @@ body.row-dragging * { cursor: grabbing !important; }
 
 @media (min-width: 1024px) {
   #mainSplit {
-    grid-row: 3;
+    grid-row: 4;
     display: flex;
     flex-direction: row;
     min-height: 0;

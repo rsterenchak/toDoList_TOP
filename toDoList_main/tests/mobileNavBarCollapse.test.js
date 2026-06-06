@@ -47,10 +47,11 @@ describe('STACK mobile nav-bar collapse', () => {
         // version label + project count moved to the Settings modal's
         // About section), both reservations collapse to `0`. The second
         // track is `auto` for the now-playing strip (collapses to 0 while
-        // hidden), and the minmax(0, 1fr) main track owns the rest of the
-        // viewport.
+        // hidden); the third track is 0 for the desktop view sub-band (hidden
+        // on mobile, where #mobileTabBar is the sole navigator); and the
+        // minmax(0, 1fr) main track owns the rest of the viewport.
         const rule = extractMobileRule('#outerContainer');
-        expect(rule).toMatch(/grid-template-rows:\s*0\s+auto\s+minmax\(\s*0\s*,\s*1fr\s*\)\s+0/);
+        expect(rule).toMatch(/grid-template-rows:\s*0\s+auto\s+0\s+minmax\(\s*0\s*,\s*1fr\s*\)\s+0/);
     });
 
     it('#navBar collapses to invisible 0-height chrome on mobile (not display:none)', () => {
