@@ -246,7 +246,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 284a951e-7b02-4d9a-8aa4-206e22edf928 -->
 
-- [ ] **[HIGH]** D2-fix: Inject chat content into the desktop chat pane (currently empty)
+- [x] **[HIGH]** D2-fix: Inject chat content into the desktop chat pane (currently empty) — Completed: 2026-06-06
   - Type: bug
   - Description: After D2 shipped, the desktop two-pane layout is structurally present — the chat pane container is visible on the right side of the viewport at ≥1024px — but the chat content (Chat/Runs tabs, message history, input row with mic and send) is not appearing inside it. The pane is visually empty. The slide-up chat sheet still works correctly at mobile widths (<1024px), so the bug is isolated to the desktop content-injection path. This is a HIGH priority bug because desktop users currently have no way to access the chat at all — neither the sheet nor the pane shows anything.
   - Implementation notes:

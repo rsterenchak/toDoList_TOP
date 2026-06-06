@@ -9,12 +9,14 @@ export const changelog = [
         changed: [
             "On wide screens the Claude chat now appears as a persistent panel beside your tasks instead of a slide-up sheet.",
         ],
+        fixed: [
+            "The Claude chat panel on wide screens now shows its content on first load instead of appearing empty.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-05',
         changed: [
-            "The layout now switches to the mobile view on screens narrower than 1024px instead of 700px, so tablets and medium-width windows get the touch-optimized layout.",
             "On wide screens the projects list now slides in as an overlay drawer from the hamburger button instead of taking up a permanent left column.",
             "On wide screens the active project now shows as a pill in the header that opens the projects drawer, and the hamburger button is hidden.",
         ],
