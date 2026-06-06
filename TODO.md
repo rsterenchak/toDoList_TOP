@@ -106,3 +106,70 @@
   - Type: bug
   - Description: After D1b converted the desktop projects sidebar from a persistent column/rail to a slide-in overlay drawer that is closed by default, the first-run desktop coachmark tour (`maybeStartFirstRunTour` / `startCoachmarkTour` in `coachmark.js`) now spotlights elements that live inside the closed, off-screen drawer. Specifically the `sampleProject` step targets `#projChild` inside `#sideMa`, and the `addProject` step targets `#projButton` — both are translated off-screen (`transform: translateX(100%)`) while the drawer is shut, so their spotlight cutouts and callouts land against the right viewport edge instead of over the real control. The elements still exist in the DOM (no null target, no thrown error, and the callout layout clamps to the viewport), so this degrades the visual tour rather than crashing it. Fix: when a coachmark step targets a sidebar element on desktop, open the drawer first (add `sidebar-open` to `#sideBar` and `visible` to `#sidebarOverlay`, or route through the existing `openSidebar` path) so the spotlight lands on the real, on-screen control; close it again when the tour advances past the sidebar steps or finishes. Keep mobile behavior unchanged (the tour already early-exits on mobile via the breakpoint guard).
   - File: `toDoList_main/src/coachmark.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/`
+
+- [ ] **[MEDIUM]** D1c: Reveal #mobileProjHeader at desktop widths as the project drawer trigger; hide the hamburger at desktop
+  - Type: feature
+  - Description: At desktop widths (≥1024px), `#mobileProjHeader` becomes visible in the header as the project selector and drawer trigger. The pill displays the active project name and a small dropdown indicator (▾), matching the mobile pattern. Tapping the pill opens the project drawer (the slide-in overlay that D1b established). The hamburger button (which D1b kept as a transitional trigger) is hidden at desktop widths — the pill is now the single trigger. Mobile behavior is completely unchanged: the workspace pill works exactly as it did before, the hamburger still works on mobile if it's currently visible there, and the slide-in drawer still appears the same way. After this entry ships, the desktop design from the design session is complete: full-width header with workspace pill on the left, no persistent sidebar, main task area filling the viewport, chat sheet behavior unchanged (D2 makes chat persistent).
+  - Implementation notes:
+    - **The mobile pill (`#mobileProjHeader`) already exists and has working drawer-open wiring.** This entry primarily reveals it at desktop and adjusts its styling to fit the desktop header — it does NOT create new DOM or new event handlers. The pill's tap-to-open-drawer behavior should work for free since the drawer is now unified across breakpoints (D1b's contract).
+    - **CSS changes:**
+      - Remove the `display: none` rule that hides `#mobileProjHeader` at `@media (min-width: 1024px)`. The pill becomes visible at all breakpoints.
+      - Add desktop-specific styling for `#mobileProjHeader` to fit the desktop header layout. The mobile pill spans full width with chevrons (`‹` / `›`) flanking the project name. The desktop version should be more compact:
+        - Sit on the left side of the header (where the hamburger currently is, or just to the right of it)
+        - Width auto-sized to content (project name + dropdown indicator) with a reasonable max-width (e.g. 220-280px) and ellipsis truncation for long names
+        - NO `‹` / `›` carousel chevrons at desktop — those are mobile-only swipe affordances. Desktop users use the drawer to switch projects.
+        - Show only: the project name + a small `▾` or `▼` dropdown indicator
+        - Tappable target with hover state
+        - Use existing design tokens — match the visual weight of other header elements (filter pills, etc.)
+      - At desktop widths, hide the hamburger button (`#sidebarToggle` or whatever the actual selector is). Use a media query: `@media (min-width: 1024px) { #sidebarToggle { display: none; } }`.
+      - The mobile chevrons (`#mobileProjPrev`, `#mobileProjNext`) and counts (`#mobileProjCounts`) need to be hidden at desktop widths too if they're descendants of `#mobileProjHeader`. The pill at desktop is name + dropdown indicator only.
+    - **JS changes:**
+      - Likely none required if the pill's tap handler is already wired correctly. The handler that opens the drawer when the pill is tapped should work at any breakpoint, since D1b unified the drawer.
+      - If there's any JS code that explicitly checks viewport width and skips the pill's wiring at desktop (e.g. "don't bother wiring this since it's not visible"), remove that check.
+      - The `Ctrl+Backspace` chord and the existing Escape handler still work — D1b unified them. No changes here.
+    - **Long project name handling:**
+      - The mobile pill has its own truncation strategy. The desktop pill should truncate similarly — ellipsis after a reasonable character count (the existing CSS `text-overflow: ellipsis` with `max-width` should work).
+      - For very long project names, the pill shows the truncated name with `...` and the dropdown indicator. Tapping still opens the drawer where the full name is visible.
+    - **What stays the same:**
+      - The drawer itself — same overlay, same X close, same backdrop, same Escape handler, same animation. All from D1b.
+      - The mobile pill at <1024px — completely unchanged.
+      - The hamburger at <1024px — completely unchanged.
+      - The project list inside the drawer — unchanged.
+      - All other header elements: filter pills, pomodoro chip, music chip, INBOX/CALENDAR tabs.
+      - Main task list, INBOX view, CALENDAR view, compose row, status indicators, voice mic, chat sheet.
+    - **Critical**: do NOT modify the drawer itself (its DOM, its CSS, its event handlers). That's D1b's contract. Only the trigger surfaces change.
+    - **Critical**: do NOT modify the workspace pill's underlying behavior — the tap → drawer-open path. Only its visibility and visual styling at desktop change.
+    - **Critical**: do NOT remove the hamburger at mobile widths. Only hide it at ≥1024px.
+    - **Critical**: do NOT modify the TODO.md viewer.
+    - **Critical**: do NOT modify the breakpoint constant or `isMobile()` definition. That's D1a's contract.
+    - **Acceptance test scenarios:**
+      - At ≥1024px window width:
+        - Workspace pill visible in the header, showing the active project name with a `▾` dropdown indicator
+        - Pill sits on the left side of the header
+        - Long project names truncate with ellipsis; pill width caps at ~280px
+        - Hamburger button is NOT visible
+        - Tapping the pill opens the drawer (same as D1b's drawer behavior)
+        - Selecting a project from the drawer closes the drawer and updates the active project; the pill text updates to reflect the new project
+        - `‹` / `›` chevrons NOT visible at desktop
+        - The drawer's three-way close (X / backdrop / Escape) all work
+      - At <1024px window width:
+        - Workspace pill visible (unchanged from current mobile UX)
+        - Hamburger button visibility unchanged from current mobile UX
+        - `‹` / `›` chevrons still visible on mobile
+        - All other mobile behavior unchanged
+      - Resizing across the 1024 boundary:
+        - The pill stays visible throughout (was always visible on mobile, now visible on desktop too)
+        - The hamburger appears/disappears as the boundary is crossed
+        - The chevrons appear/disappear as the boundary is crossed
+        - No broken intermediate states
+    - **Test additions:**
+      - (a) At ≥1024px, `#mobileProjHeader` is NOT `display: none` — verified via computed CSS
+      - (b) At ≥1024px, the hamburger button (`#sidebarToggle` or its equivalent) IS `display: none`
+      - (c) At ≥1024px, `#mobileProjPrev` and `#mobileProjNext` (chevrons) are NOT visible
+      - (d) The pill's existing tap-to-open-drawer handler still triggers `sidebarOpen()` (or whatever the existing function is) regardless of viewport width
+      - (e) The pill text reflects the active project name at all breakpoints
+  - Visual reference: `desktop-final-idle.svg` from the design session — workspace pill on the left of the header (`TaskApp ▼ toDoList_TOP`), no hamburger visible, no persistent sidebar, main task area fills the viewport width.
+  - Out of scope: the two-pane chat layout (D2), the chat collapse/expand toggle (D3), any sidebar/drawer changes (D1b's contract), any breakpoint changes (D1a's contract), removal of the hamburger at mobile widths, any other UI changes. **Do NOT modify the TODO.md viewer.**
+  - File: `toDoList_main/src/style.css`, possibly `toDoList_main/src/main.js` (only if event handlers need adjustment), `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d86cf21e-e6f2-48e4-93e4-f85f50ba175c -->
