@@ -6974,13 +6974,21 @@ body.row-dragging * { cursor: grabbing !important; }
     background: transparent;
     position: relative;
     z-index: 9;
+    /* The band spans the full viewport, but only its left half holds the view
+       tabs; the chat pane's sub-header now sits one z-layer beneath its empty
+       right half (the pane overhangs up into this row — see #desktopChatPane).
+       Let clicks fall through the band's empty area to that sub-header, while
+       the tablist itself stays interactive (re-enabled below). */
+    pointer-events: none;
   }
 
   /* The relocated tablist fills the band, left-aligned; no margin-right:auto
-     spacer is needed now that it owns its own row. */
+     spacer is needed now that it owns its own row. Re-enable pointer events the
+     band suppresses so the view tabs stay clickable. */
   #desktopViewSubBand #viewSwitcher {
     margin-right: 0;
     gap: 4px;
+    pointer-events: auto;
   }
 
   /* View tabs as underlined text rather than pills. The pill chrome
@@ -7133,7 +7141,11 @@ body.row-dragging * { cursor: grabbing !important; }
     display: flex;
     flex-direction: row;
     min-height: 0;
-    overflow: hidden;
+    /* visible (not hidden) so the chat pane's negative-margin overhang into
+       the view-tab sub-band's row isn't clipped — see #desktopChatPane below.
+       Both panes own their own overflow:hidden + internal scroll (#mainSec,
+       #desktopChatPane), so dropping the wrapper clip doesn't leak content. */
+    overflow: visible;
   }
   #mainSec { flex: 1 1 60%; min-width: 0; }
   #desktopChatPane {
@@ -7144,6 +7156,25 @@ body.row-dragging * { cursor: grabbing !important; }
     overflow: hidden;
     background: var(--bg-base);
     border-left: 0.5px solid var(--border-bright);
+    /* Align the chat pane's sub-header row (collapse + CHAT/RUNS tabs + repo
+       pill) with the task pane's view-tab sub-band. #mainSplit sits at grid
+       row 4, exactly one sub-band height (#desktopViewSubBand min-height: 32px)
+       below the sub-band; pull the pane up by that height so its first row
+       starts at the same y as the view tabs. align-items:stretch grows the
+       pane's height to compensate, so it still fills down to the footer.
+       position:relative anchors the absolutely-placed collapse button. */
+    margin-top: -32px;
+    position: relative;
+  }
+  /* The relocated tab row IS the chat pane's sub-header. Compress it to the
+     sub-band's height, vertically center it, and reserve room at the start for
+     the absolutely-placed collapse button so CHAT/RUNS don't sit beneath it.
+     The repo pill keeps its margin-left:auto right alignment. Scoped to
+     #desktopChatPane so the mobile slide-up sheet's tab row is untouched. */
+  #desktopChatPane #claudeSheetTabs {
+    min-height: 36px;
+    align-items: center;
+    padding: 0 12px 0 44px;
   }
   /* The persistent pane is the desktop chat surface; the slide-up sheet and
      its bottom-right launcher are retired here. */
@@ -7167,17 +7198,23 @@ body.row-dragging * { cursor: grabbing !important; }
 #chatExpandButton { display: none; }
 
 @media (min-width: 1024px) {
-  /* Collapse control — small chevron seated at the top-left of the pane,
-     ahead of the relocated chat content. */
+  /* Collapse control — small chevron seated inline at the START of the chat
+     pane's sub-header row (not on its own row above it). Absolutely positioned
+     against the pane (position:relative) so it sits over the left edge of the
+     #claudeSheetTabs row, which reserves a 44px left pad for it; this keeps the
+     collapse button, the CHAT/RUNS tabs, and the repo pill all on one row at the
+     same y as the task pane's view-tab sub-band. */
   #chatCollapseButton {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    align-self: flex-start;
-    flex: 0 0 auto;
+    position: absolute;
+    top: 4px;
+    left: 8px;
+    z-index: 2;
     width: 28px;
     height: 28px;
-    margin: 6px 0 0 6px;
+    margin: 0;
     padding: 0;
     border: 0.5px solid var(--border-bright);
     border-radius: 6px;
