@@ -982,7 +982,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bd615b2f-6dfd-4d7f-ac4e-03667f534341 -->
 
-- [ ] **[MEDIUM]** Re-fetch the chat workspace repo list when the sheet opens
+- [x] **[MEDIUM]** Re-fetch the chat workspace repo list when the sheet opens — Completed: 2026-06-07
   - Type: bug
   - Description: The chat-window workspace menu (the pill dropdown) is sourced from the Worker's `ALLOWED_TARGETS` allowlist via `loadWorkspaceRepos`, which fires only once per mount in `mountClaudeSheet`. Opening/closing the sheet just toggles classes and never remounts, so after a repo is added to or removed from `ALLOWED_TARGETS`, the menu keeps showing the stale list until a full page reload. Fix by also calling `loadWorkspaceRepos()` (fire-and-forget) from `openClaudeSheet` so each open re-syncs `attachRepos` and repaints the pill/menu. The in-app "Inject targets" (settings modal, Supabase-backed `cachedTargets`) are a separate list that intentionally does not feed the chat workspace menu — if those should also appear in chat, that's a separate sourcing change, not part of this fix.
   - Behavior:
