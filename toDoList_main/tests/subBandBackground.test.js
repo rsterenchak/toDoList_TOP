@@ -59,3 +59,58 @@ describe('desktop view sub-band background', () => {
         expect(css).toMatch(/#desktopViewSubBand \.viewPill\.active::after\s*\{[^}]*background:\s*#9D93EE/);
     });
 });
+
+// Pins the contract that the desktop filter+sort band (#taskFilterBar, which
+// also hosts the absolutely-positioned Sort dropdown overlay) paints the SAME
+// colour as the view-tab sub-band directly above it, so the two read as one
+// continuous band beneath the top project-switcher row (#navBar).
+//
+// Why an explicit --bg-elevated rather than `transparent`: the sub-band is
+// transparent and sits directly in #outerContainer, so it paints the shell's
+// --bg-elevated. #taskFilterBar, however, lives inside #mainBar — which is
+// itself --bg-base — so clearing the filter band to transparent would leave it
+// painting --bg-base and the seam would remain. Matching the sub-band's
+// EFFECTIVE colour therefore means setting the filter band to --bg-elevated at
+// desktop. Verified by pixel-sampling a Chromium render of the real cascade
+// (jsdom does no stylesheet resolution, and main.js is too large to instantiate
+// per CLAUDE.md guidance), so this is pinned by source inspection of the one
+// rule whose own background is the band's topmost painted layer.
+describe('desktop filter+sort band background matches the view sub-band', () => {
+    const css = read('style.css');
+
+    function consolidationBlock() {
+        const start = css.indexOf('DESKTOP HEADER CONSOLIDATION');
+        expect(start).toBeGreaterThan(-1);
+        const end = css.indexOf('D2 — DESKTOP TWO-PANE CHAT', start);
+        expect(end).toBeGreaterThan(start);
+        return css.slice(start, end);
+    }
+
+    function filterBarDesktopRule() {
+        const block = consolidationBlock();
+        // The bare `#taskFilterBar { ... }` rule inside the desktop consolidation
+        // block — not the compound `#mainBar[data-view=...] #taskFilterBar` rules
+        // (those live outside this block).
+        const re = /(^|[\s}])#taskFilterBar\s*\{([^}]*)\}/m;
+        const m = block.match(re);
+        expect(m).not.toBeNull();
+        return m[2];
+    }
+
+    it('(a) the filter+sort band paints the shell --bg-elevated at desktop, matching the transparent sub-band', () => {
+        const rule = filterBarDesktopRule();
+        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
+        // It must NOT fall back to --bg-base at desktop (the base rule's value),
+        // which is what produced the original seam.
+        expect(rule).not.toMatch(/background:\s*var\(--bg-base\)/);
+    });
+
+    it('(b) the top project-switcher row (#navBar) keeps its greyer --bg-elevated chrome (unchanged)', () => {
+        // Pin the top row so a future "match everything to the page bg" refactor
+        // can't silently strip the chrome this entry intentionally preserves.
+        // #navBar's background is declared once, in the base (non-media) rules.
+        const m = css.match(/#navBar\s*\{([^}]*)\}/);
+        expect(m).not.toBeNull();
+        expect(m[1]).toMatch(/background:\s*var\(--bg-elevated\)/);
+    });
+});
