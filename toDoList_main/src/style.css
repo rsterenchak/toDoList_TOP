@@ -7005,9 +7005,12 @@ body.row-dragging * { cursor: grabbing !important; }
        with these view tabs while both gain the gap. */
     margin-top: 16px;
     padding: 0 16px;
-    /* No distinct background or borders: the tabs sit directly on the page
-       background so no lighter "stripe" shows in the gap below the band. */
-    background: transparent;
+    /* Paint the band with --bg-base so it matches the filter+sort band
+       (#taskFilterBar) below, which is transparent but falls through to
+       #mainBar's --bg-base. Both bands now resolve to the same colour, with no
+       visible seam, while the top project-switcher row keeps #outerContainer's
+       greyer chrome. No borders: no lighter "stripe" shows in the gap below. */
+    background: var(--bg-base);
     position: relative;
     z-index: 9;
     /* The band spans the full viewport, but only its left half holds the view
