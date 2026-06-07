@@ -1059,7 +1059,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b173d274-eb72-4a3f-8b9b-74175a1d355b -->
 
-- [ ] **[HIGH]** Bump #projContextMenu z-index above the desktop project picker dropdown
+- [x] **[HIGH]** Bump #projContextMenu z-index above the desktop project picker dropdown — Completed: 2026-06-07
   - Type: bug
   - Description: The project context menu (Edit · color picker · Delete) renders behind the desktop `#projectPickerDropdown` panel because of a stacking-context gap, leaving Delete unreachable from the new desktop project switcher. The menu is already portaled to `document.body` (`document.body.appendChild(menu)` in `projectMenu.js`) and uses `position: fixed`, so the issue is not clipping or a trapped parent — it's purely z-index: `#projContextMenu` is set to `z-index: 20` (sufficient when the menu only opened from sidebar `#projChild` rows) while `#projectPickerDropdown` is `z-index: 100`, so 100 wins and the menu paints underneath. Raise `#projContextMenu` to `z-index: 200` — comfortably above the dropdown (100) and the settings menu (30), and well below the welcome carousel (650) and desktop spotlight (600/601) so first-run flows are unaffected. Supersedes the previously-drafted "Fix project delete context menu rendering behind the project dropdown" entry; the portal change it proposed was based on a wrong diagnosis. If that entry hasn't shipped yet, skip it.
   - Behavior:
