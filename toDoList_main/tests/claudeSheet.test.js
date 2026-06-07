@@ -15,6 +15,65 @@ import {
 import { initInjectConfig } from '../src/inject.js';
 import { notifyUpdateAvailable } from '../src/modals.js';
 
+// The chat workspace menu projects its repo list from the user's Inject targets
+// (the `inject_targets` Supabase table, cached in inject.js) rather than the
+// Worker allowlist. To drive that source in these runtime tests we mock the
+// shared Supabase client so the `inject_targets` select returns a configurable
+// set of rows. `supaState.injectTargets` is the knob; `setInjectTargets` seeds
+// it from a list of repo strings. The mock mirrors the real stub's surface
+// (auth/from/channel/removeChannel) so every non-targets path behaves exactly as
+// it did with the unmocked stub. A file-level beforeEach resets the knob to an
+// empty list so a block that doesn't seed targets gets the safe default-repo
+// fallback, matching prior behavior.
+const { supaState } = vi.hoisted(() => ({ supaState: { injectTargets: [] } }));
+
+vi.mock('../src/supabaseClient.js', () => {
+    function makeQuery(table) {
+        const q = {
+            select: function() { return q; },
+            order: function() {
+                if (table === 'inject_targets') {
+                    return Promise.resolve({ data: supaState.injectTargets.slice(), error: null });
+                }
+                return Promise.resolve({ data: [], error: null });
+            },
+            insert: function() { return Promise.resolve({ data: null, error: null }); },
+            update: function() { return q; },
+            delete: function() { return q; },
+            eq: function() { return Promise.resolve({ data: null, error: null }); },
+        };
+        return q;
+    }
+    return {
+        supabase: {
+            auth: {
+                getSession: function() { return Promise.resolve({ data: { session: null }, error: null }); },
+                onAuthStateChange: function() { return { data: { subscription: { unsubscribe: function() {} } } }; },
+                signInWithOtp: function() { return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }); },
+                signOut: function() { return Promise.resolve({ error: null }); },
+            },
+            from: function(table) { return makeQuery(table); },
+            channel: function() { return { on: function() { return this; }, subscribe: function() { return this; }, unsubscribe: function() { return this; } }; },
+            removeChannel: function() {},
+        },
+    };
+});
+
+// Seed the mocked inject_targets cache from a list of repo strings; the menu
+// projects each row's `repo`, so the row shape only needs `repo` to matter.
+function setInjectTargets(repos) {
+    supaState.injectTargets = repos.map(function(repo, i) {
+        return { id: 'tgt-' + i, nickname: repo, repo: repo, file_path: 'TODO.md' };
+    });
+}
+
+// Reset the targets source before every test so blocks that don't seed it fall
+// back to the default repo only (prior behavior). Blocks that need a multi-repo
+// menu seed it in their own beforeEach, which runs after this one.
+beforeEach(() => {
+    supaState.injectTargets = [];
+});
+
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 
@@ -803,11 +862,14 @@ describe('Claude sheet — ship targets the active workspace repo', () => {
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
+        // The workspace menu projects the Inject targets; seed the non-default
+        // repo this block switches to.
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
         globalThis.fetch = fetchSpy;
         mountClaudeSheet(document.body);
-        // The workspace allowlist loads asynchronously on mount; let it resolve so
+        // The workspace list loads asynchronously on mount; let it resolve so
         // the pill menu lists the non-default repo this test switches to.
         await flush();
     });
@@ -1665,11 +1727,13 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
-        // The workspace list loads asynchronously from the Worker on mount; let
-        // it resolve so the pill menu lists the non-default repo these tests switch to.
+        // The workspace list loads asynchronously from the Inject targets on
+        // mount; let it resolve so the pill menu lists the non-default repo these
+        // tests switch to.
         await flush();
     });
 
@@ -1824,11 +1888,12 @@ describe('Claude sheet — chat-level workspace pill', () => {
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, 'rsterenchak/BookHavenBookstore_Sophia']);
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
-        // The repo list is sourced from the Worker asynchronously on mount; let
-        // it resolve so the workspace menu reflects the full allowlist.
+        // The repo list is projected from the Inject targets asynchronously on
+        // mount; let it resolve so the workspace menu reflects the full set.
         await flush();
     });
 
@@ -1926,30 +1991,23 @@ describe('Claude sheet — chat-level workspace pill', () => {
     });
 });
 
-// The workspace repo list is sourced from the Worker's allowlist (the `repos`
-// route) rather than a hardcoded array, so onboarding a new repo never requires
-// an app edit. The list starts on a safe fallback (the default repo only) and is
-// replaced when the fetch resolves; a failed fetch leaves the fallback in place
-// so the chat is always usable. These tests drive the fetch outcome directly.
-describe('Claude sheet — workspace repos sourced from worker', () => {
+// The workspace repo list is projected from the user's Inject targets (the
+// `inject_targets` Supabase table, cached in inject.js) rather than the Worker
+// allowlist, so the chat menu never drifts from the targets managed in Inject
+// settings. The list starts on a safe fallback (the default repo only) and is
+// replaced once the cache loads; an empty cache leaves the fallback in place so
+// the chat is always usable. These tests drive the cache via setInjectTargets
+// and the `injectTargetsChanged` event.
+describe('Claude sheet — workspace repos sourced from inject targets', () => {
     const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
     const OTHER_REPO = 'rsterenchak/matchingGame-test';
     const BOOKHAVEN_REPO = 'rsterenchak/BookHavenBookstore_Sophia';
     let realFetch;
-    let reposResult; // controls what the worker `repos` route returns per test
 
     function makeFetch() {
         return vi.fn((url, opts) => {
             if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
                 return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
-            }
-            const body = JSON.parse(opts.body);
-            if (body.repos) {
-                if (reposResult === 'reject') return Promise.reject(new Error('network'));
-                if (reposResult === 'http500') {
-                    return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve(null) });
-                }
-                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(reposResult) });
             }
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
         });
@@ -1971,45 +2029,41 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         globalThis.fetch = realFetch;
     });
 
-    it('renders every repo from the worker once the fetch resolves', async () => {
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
-            ],
-        };
+    function menuRepos() {
+        return Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
+    }
+
+    it('projects the menu from the inject targets once the cache loads', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         document.getElementById('claudeWorkspacePill').click();
-        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
-        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
     });
 
-    it('falls back to the default repo and stays usable when the fetch fails', async () => {
-        reposResult = 'reject';
+    it('collapses duplicate repos (two targets on one repo) to a single menu item', async () => {
+        // Two targets can share a repo (different file paths); the menu anchors
+        // on the repo string, so it shows that repo once.
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         document.getElementById('claudeWorkspacePill').click();
-        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
-        expect(repos).toEqual([DEFAULT_REPO]);
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
+    });
+
+    it('falls back to the default repo and stays usable when the targets list is empty', async () => {
+        setInjectTargets([]);
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        expect(menuRepos()).toEqual([DEFAULT_REPO]);
         // The chat is still usable on the fallback repo.
         expect(document.getElementById('claudeComposerInput').disabled).toBe(false);
         expect(document.getElementById('claudeComposerSend').disabled).toBe(false);
     });
 
-    it('selecting a fetched repo sets it as the active workspace', async () => {
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
-            ],
-        };
+    it('selecting a target repo sets it as the active workspace', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         document.getElementById('claudeWorkspacePill').click();
@@ -2019,62 +2073,56 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
     });
 
-    // The allowlist is sourced from the Worker on every sheet open — not just on
-    // mount — so a repo added to or removed from `ALLOWED_TARGETS` shows up the
-    // next time the user opens the sheet, with no page reload. Opening/closing
-    // the sheet is just a class toggle (no remount), so without this refresh the
-    // pill menu would freeze on whatever the Worker served at first mount.
-    it('re-fetches the workspace allowlist on each sheet open', async () => {
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-            ],
-        };
+    // The list is re-projected from the targets on every sheet open — not just on
+    // mount — so a target added or removed in Inject settings shows up the next
+    // time the user opens the sheet, with no page reload. Opening/closing the
+    // sheet is just a class toggle (no remount), so without this refresh the pill
+    // menu would freeze on whatever the cache held at first mount.
+    it('re-projects the workspace list on each sheet open', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         openClaudeSheet();
         await flush();
         document.getElementById('claudeWorkspacePill').click();
-        let repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem'))
-            .map((el) => el.dataset.repo);
-        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO]);
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
 
-        // Worker adds a third repo to ALLOWED_TARGETS between sheet opens.
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
-            ],
-        };
+        // A third target is added in Inject settings between sheet opens.
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         // Close the open menu so the next pill click opens a fresh one.
         document.getElementById('claudeWorkspacePill').click();
         closeClaudeSheet();
         openClaudeSheet();
         await flush();
         document.getElementById('claudeWorkspacePill').click();
-        repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem'))
-            .map((el) => el.dataset.repo);
-        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+    });
+
+    // A target add/edit/delete made while the sheet is OPEN dispatches an
+    // `injectTargetsChanged` event; the sheet listens and re-projects the menu
+    // mid-session without a sheet re-open.
+    it('re-projects the workspace list on the injectTargetsChanged event', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
+        // Close the menu so the next pill click rebuilds it.
+        document.getElementById('claudeWorkspacePill').click();
+
+        // A new target is added; inject.js dispatches injectTargetsChanged.
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
     });
 
     // The on-open refresh repaints the pill/menu only — it must not wipe
     // chatHistory, attachments, or the active workspace. Only an explicit pill
     // switch (with the confirm) clears the chat.
     it('preserves the active workspace and chat history when the on-open refresh resolves', async () => {
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-            ],
-        };
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         openClaudeSheet();
@@ -2095,8 +2143,8 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         const bubblesBefore = document.querySelectorAll('.claudeMsg').length;
         expect(bubblesBefore).toBeGreaterThan(0);
 
-        // Re-open with the allowlist still listing OTHER_REPO. The refresh must
-        // be silent: same workspace, same chat history, same composer state.
+        // Re-open with the targets still listing OTHER_REPO. The refresh must be
+        // silent: same workspace, same chat history, same composer state.
         closeClaudeSheet();
         openClaudeSheet();
         await flush();
@@ -2104,19 +2152,12 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         expect(document.querySelectorAll('.claudeMsg').length).toBe(bubblesBefore);
     });
 
-    // If the user's active workspace is dropped from the Worker allowlist before
-    // the next sheet open, the refresh falls back to the Worker's default repo
-    // so the user isn't stranded on a repo the Worker will refuse. Chat history
-    // is preserved — the fallback only repaints the pill.
-    it('falls back to the default repo when the active workspace was removed from the allowlist', async () => {
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-                { repo: OTHER_REPO, srcPrefix: 'src/' },
-            ],
-        };
+    // If the user's active workspace target is deleted before the next sheet
+    // open, the refresh falls back to the first remaining target so the user
+    // isn't stranded on a repo the menu no longer lists. Chat history is
+    // preserved — the fallback only repaints the pill.
+    it('falls back to the first target when the active workspace target was deleted', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         openClaudeSheet();
@@ -2134,19 +2175,34 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         const bubblesBefore = document.querySelectorAll('.claudeMsg').length;
         expect(bubblesBefore).toBeGreaterThan(0);
 
-        // Worker drops OTHER_REPO from ALLOWED_TARGETS.
-        reposResult = {
-            ok: true,
-            default: DEFAULT_REPO,
-            repos: [
-                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
-            ],
-        };
+        // The OTHER_REPO target is deleted in Inject settings.
+        setInjectTargets([DEFAULT_REPO]);
         closeClaudeSheet();
         openClaudeSheet();
         await flush();
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
         expect(document.querySelectorAll('.claudeMsg').length).toBe(bubblesBefore);
+    });
+
+    // Empty targets after a refresh strand no one: the active repo falls back to
+    // the default so the chat is always usable.
+    it('falls back to the default repo when all targets are deleted', async () => {
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
+
+        // All targets are deleted; the change event fires.
+        setInjectTargets([]);
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
+        document.getElementById('claudeWorkspacePill').click();
+        expect(menuRepos()).toEqual([DEFAULT_REPO]);
     });
 });
 
@@ -2208,12 +2264,14 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
         localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         manifestByRepo = { toDoList_TOP: TODO_MANIFEST, 'matchingGame-test': GAME_MANIFEST };
         realFetch = globalThis.fetch;
         globalThis.fetch = makeFetch();
         mountClaudeSheet(document.body);
-        // The workspace list loads asynchronously from the Worker on mount; let it
-        // resolve so the pill menu lists the non-default repo these tests switch to.
+        // The workspace list loads asynchronously from the Inject targets on
+        // mount; let it resolve so the pill menu lists the non-default repo these
+        // tests switch to.
         await flush();
     });
 

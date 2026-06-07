@@ -226,3 +226,41 @@ describe('inject targets — sub-modal registered in global modal-open guard', (
         );
     });
 });
+
+// The chat workspace menu projects its repo list from the inject-targets cache,
+// so inject.js must expose that cache and announce mutations to it. These pin
+// the accessor exports and the change-event wiring the menu depends on.
+describe('inject targets — workspace-source exports and change event', () => {
+
+    const inject = read('inject.js');
+
+    it('exports getCachedTargets so the chat menu can read the targets cache', () => {
+        expect(inject).toMatch(/export\s+function\s+getCachedTargets\s*\(/);
+    });
+
+    it('exports loadInjectTargets so the chat menu can refresh the cache', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+loadInjectTargets\s*\(/);
+    });
+
+    it('defines a coalesced injectTargetsChanged dispatcher', () => {
+        // A single in-flight flag coalesces a burst of mutations into one event,
+        // dispatched on the document.
+        expect(inject).toMatch(/function\s+notifyInjectTargetsChanged\s*\(/);
+        expect(inject).toMatch(/injectTargetsChangedPending/);
+        expect(inject).toMatch(/dispatchEvent\s*\(\s*new\s+CustomEvent\(\s*['"]injectTargetsChanged['"]/);
+    });
+
+    it('insert, update, and delete each notify on a successful write', () => {
+        // Insert and update fire the notifier right before returning ok.
+        expect(inject).toMatch(
+            /\.insert\(\s*row\s*\)[\s\S]{0,200}notifyInjectTargetsChanged\s*\(\s*\)[\s\S]{0,40}return\s*\{\s*ok:\s*true/
+        );
+        expect(inject).toMatch(
+            /\.update\([\s\S]{0,400}notifyInjectTargetsChanged\s*\(\s*\)[\s\S]{0,40}return\s*\{\s*ok:\s*true/
+        );
+        // Three call sites total (insert, update, delete) — one per mutation —
+        // distinct from the single `function notifyInjectTargetsChanged()` def.
+        const calls = inject.match(/notifyInjectTargetsChanged\(\);/g) || [];
+        expect(calls.length).toBe(3);
+    });
+});
