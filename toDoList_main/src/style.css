@@ -7062,21 +7062,18 @@ body.row-dragging * { cursor: grabbing !important; }
     border-radius: 1px;
   }
 
-  /* ── Filter+sort band background, matched to the view-tab sub-band ──
+  /* ── Filter+sort band background, cleared to the page bg ──
      The status-filter row (#taskFilterBar, which also hosts the Sort dropdown
-     overlay #bulkDescActions) sits directly below #desktopViewSubBand. The
-     sub-band is transparent and lives in #outerContainer, so it paints the
-     shell's --bg-elevated; but #taskFilterBar lives inside #mainBar, which is
-     itself --bg-base, so its base-rule --bg-base background read as a darker
-     block and broke the seam — the two header rows looked like separate
-     surfaces. Repaint the band with the shell's --bg-elevated so it matches the
-     sub-band exactly and the two read as one continuous band beneath the top
-     project-switcher row. (Clearing it to transparent would NOT work: it would
-     fall through to #mainBar's --bg-base and leave the seam.) The scrollable
-     list below keeps --bg-base, so the chrome/content boundary now sits at the
-     band's bottom edge. Mobile is untouched — the base rule still applies there. */
+     overlay #bulkDescActions) sits directly below #desktopViewSubBand. Clear
+     its background to transparent so it falls through to its parent #mainBar's
+     --bg-base page bg and reads as one continuous band with the view-tab
+     sub-band above it. (A previous entry painted this band --bg-elevated — the
+     greyer chrome colour from #outerContainer — which shipped the inverse of
+     what was wanted and made the seam more pronounced.) The top project-switcher
+     row keeps its greyer chrome from #outerContainer, untouched. Mobile is
+     untouched — the base rule still applies there. */
   #taskFilterBar {
-    background: var(--bg-elevated);
+    background: transparent;
   }
 
   /* The chip cluster (pomodoro / music / settings) stays anchored at the right
