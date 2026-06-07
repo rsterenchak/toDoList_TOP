@@ -1,4 +1,4 @@
-import { listLogic, nextDueDate, sanitizeRecurrence, sortItemsByDueForRender } from '../src/listLogic.js';
+import { listLogic, nextDueDate, sanitizeRecurrence, sortItemsByDueForRender, sortItemsByStatusForRender } from '../src/listLogic.js';
 import { setItemDue } from '../src/dueDate.js';
 
 // ── PROJECTS ─────────────────────────────────────────────────────────
@@ -2447,6 +2447,82 @@ describe('sortItemsByDueForRender', () => {
         const sorted = sortItemsByDueForRender(items);
         const titles = sorted.map(i => i.tit).filter(t => t !== '');
         expect(titles).toEqual(['X', 'Y', 'Z']);
+    });
+});
+
+
+describe('sortItemsByStatusForRender', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+    });
+
+    // Build five committed rows in pos 0..4 order with the given statuses,
+    // returning the live items array (blank placeholder pinned at index 0).
+    function setupItems() {
+        listLogic.addToDo('Work', 'A');
+        listLogic.addToDo('Work', 'B');
+        listLogic.addToDo('Work', 'C');
+        listLogic.addToDo('Work', 'D');
+        listLogic.addToDo('Work', 'E');
+        const items = listLogic.listItems('Work');
+        items.find(i => i.tit === 'A').status = 'in_progress';
+        items.find(i => i.tit === 'B').status = 'active';
+        items.find(i => i.tit === 'C').status = 'idea';
+        items.find(i => i.tit === 'D').status = 'in_progress';
+        items.find(i => i.tit === 'E').status = 'active';
+        return items;
+    }
+
+    it('groups in_progress → active → idea, preserving pos order within each group', () => {
+        const items = setupItems();
+        const sorted = sortItemsByStatusForRender(items);
+        const titles = sorted.map(i => i.tit).filter(t => t !== '');
+        // in_progress (A, D), then active (B, E), then idea (C) — intra-group
+        // order follows the original pos sequence.
+        expect(titles).toEqual(['A', 'D', 'B', 'E', 'C']);
+    });
+
+    it('pins the blank placeholder to index 0', () => {
+        const items = setupItems();
+        const sorted = sortItemsByStatusForRender(items);
+        expect(sorted[0].tit).toBe('');
+    });
+
+    it('hydrates a legacy todo without a status field as active', () => {
+        listLogic.addToDo('Work', 'Legacy');
+        listLogic.addToDo('Work', 'Idea');
+        listLogic.addToDo('Work', 'Prog');
+        const items = listLogic.listItems('Work');
+        // Simulate cached data that predates the status field.
+        delete items.find(i => i.tit === 'Legacy').status;
+        items.find(i => i.tit === 'Idea').status = 'idea';
+        items.find(i => i.tit === 'Prog').status = 'in_progress';
+        const sorted = sortItemsByStatusForRender(items);
+        const titles = sorted.map(i => i.tit).filter(t => t !== '');
+        // Prog (in_progress) first, then Legacy (treated as active), then Idea.
+        expect(titles).toEqual(['Prog', 'Legacy', 'Idea']);
+    });
+
+    it('groups completed items at the bottom in the same status order', () => {
+        const items = setupItems();
+        items.find(i => i.tit === 'A').completed = true;
+        const sorted = sortItemsByStatusForRender(items);
+        const titles = sorted.map(i => i.tit).filter(t => t !== '');
+        // Completed A (in_progress) drops below every uncompleted row.
+        expect(titles).toEqual(['D', 'B', 'E', 'C', 'A']);
+    });
+
+    it('does not mutate the input array or any item pos', () => {
+        const items = setupItems();
+        const before = items.map(i => i.tit);
+        sortItemsByStatusForRender(items);
+        expect(items.map(i => i.tit)).toEqual(before);
+    });
+
+    it('returns an empty array for non-array input', () => {
+        expect(sortItemsByStatusForRender(null)).toEqual([]);
+        expect(sortItemsByStatusForRender(undefined)).toEqual([]);
     });
 });
 

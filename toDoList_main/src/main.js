@@ -33,6 +33,8 @@ import {
     setMusicVisualizerStyle,
     isChatPaneCollapsed,
     setChatPaneCollapsed,
+    getTaskSort,
+    setTaskSort,
 } from './prefs.js';
 import {
     VISUALIZER_STYLES,
@@ -3838,51 +3840,173 @@ function component() {
     // The per-project "Sort by due" toggle rides in the same wrapper to
     // the LEFT of Expand All; it persists on the project record via
     // listLogic and re-renders the active project's rows on flip.
+    // Task-list controls overlay anchored at the top-right of the list. Hosts
+    // the Sort dropdown (None / Due date / Status). Hidden on mobile via CSS —
+    // the drawer's "Expand all descriptions" toggle owns that surface there.
     const bulkDescActions = document.createElement('div');
     bulkDescActions.id = 'bulkDescActions';
 
-    const sortByDueLabel = document.createElement('label');
-    sortByDueLabel.id = 'sortByDueToggle';
-    sortByDueLabel.className = 'sortByDueToggle';
-    sortByDueLabel.setAttribute('title', 'Sort items by due date (ascending)');
-    const sortByDueCheckbox = document.createElement('input');
-    sortByDueCheckbox.type = 'checkbox';
-    sortByDueCheckbox.id = 'sortByDueCheckbox';
-    sortByDueCheckbox.className = 'sortByDueCheckbox';
-    const sortByDueText = document.createElement('span');
-    sortByDueText.className = 'sortByDueLabel';
-    sortByDueText.textContent = 'Sort by due';
-    sortByDueLabel.appendChild(sortByDueCheckbox);
-    sortByDueLabel.appendChild(sortByDueText);
-    bulkDescActions.appendChild(sortByDueLabel);
+    // ── Sort dropdown ──
+    // Replaces the former per-project "Sort by due" checkbox and the "Expand
+    // All" button. The choice is GLOBAL across projects (prefs todoapp_taskSort)
+    // and a pure render concern: selecting a sort reorders the visible rows
+    // only — the manual `pos` order is never touched, so picking None restores
+    // the hand-arranged order. The menu reuses the #projContextMenu /
+    // #settingsMenu visual vocabulary and closes three ways (item select,
+    // outside click, Escape).
+    const TASK_SORT_OPTIONS = [
+        { key: 'none',   label: 'None' },
+        { key: 'due',    label: 'Due date' },
+        { key: 'status', label: 'Status', subtitle: 'In Progress · Active · Idea' },
+    ];
 
-    const bulkDescToggleBtn = document.createElement('button');
-    bulkDescToggleBtn.type = 'button';
-    bulkDescToggleBtn.id  = 'bulkDescToggle';
-    bulkDescToggleBtn.className = 'bulkDescBtn';
-    const bulkDescLabel = document.createElement('span');
-    bulkDescLabel.className = 'bulkDescLabel';
-    bulkDescLabel.textContent = 'Expand All';
-    const bulkDescCaret = document.createElement('span');
-    bulkDescCaret.className = 'bulkDescCaret';
-    bulkDescCaret.textContent = '▾';
-    bulkDescCaret.setAttribute('aria-hidden', 'true');
-    bulkDescToggleBtn.appendChild(bulkDescLabel);
-    bulkDescToggleBtn.appendChild(bulkDescCaret);
-
-    bulkDescActions.appendChild(bulkDescToggleBtn);
+    const taskSortBtn = document.createElement('button');
+    taskSortBtn.type = 'button';
+    taskSortBtn.id = 'taskSortBtn';
+    taskSortBtn.className = 'bulkDescBtn taskSortBtn';
+    taskSortBtn.setAttribute('aria-haspopup', 'menu');
+    taskSortBtn.setAttribute('aria-expanded', 'false');
+    const taskSortBtnLabel = document.createElement('span');
+    taskSortBtnLabel.className = 'bulkDescLabel';
+    const taskSortBtnCaret = document.createElement('span');
+    taskSortBtnCaret.className = 'bulkDescCaret';
+    taskSortBtnCaret.textContent = '▾';
+    taskSortBtnCaret.setAttribute('aria-hidden', 'true');
+    taskSortBtn.appendChild(taskSortBtnLabel);
+    taskSortBtn.appendChild(taskSortBtnCaret);
+    bulkDescActions.appendChild(taskSortBtn);
     main2.appendChild(bulkDescActions);
 
-    bulkDescToggleBtn.addEventListener('click', function () {
-        const expanded = bulkDescToggleBtn.classList.toggle('expanded');
-        if (expanded) {
-            expandAllDescriptions();
-            bulkDescLabel.textContent = 'Collapse All';
+    function taskSortButtonText(key) {
+        if (key === 'due') return 'Sort: Due';
+        if (key === 'status') return 'Sort: Status';
+        return 'Sort';
+    }
+
+    function syncTaskSortButton() {
+        const key = getTaskSort();
+        taskSortBtnLabel.textContent = taskSortButtonText(key);
+        taskSortBtn.setAttribute('data-sort', key);
+    }
+    syncTaskSortButton();
+
+    function rerenderActiveProjectRows() {
+        const activeName = activeProjectName();
+        if (!activeName) return;
+        const mainListDiv = document.getElementById('mainList');
+        if (!mainListDiv) return;
+        while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
+        addAllToDo_DOM(listLogic.listItems(activeName), activeName);
+    }
+
+    function onTaskSortOutsideClick(event) {
+        const menu = document.getElementById('taskSortMenu');
+        if (!menu) return;
+        if (menu.contains(event.target) || taskSortBtn.contains(event.target)) return;
+        hideTaskSortMenu();
+    }
+
+    function onTaskSortKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            hideTaskSortMenu();
+            taskSortBtn.focus();
+        }
+    }
+
+    function hideTaskSortMenu() {
+        const existing = document.getElementById('taskSortMenu');
+        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        taskSortBtn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onTaskSortOutsideClick, true);
+        document.removeEventListener('keydown', onTaskSortKeydown, true);
+        window.removeEventListener('resize', hideTaskSortMenu);
+        window.removeEventListener('scroll', hideTaskSortMenu, true);
+    }
+
+    function applyTaskSortChoice(key) {
+        setTaskSort(key);
+        syncTaskSortButton();
+        // Re-render so the new order lands, then re-apply the status filter so
+        // its hide-class settles on the now-correctly-ordered rows.
+        rerenderActiveProjectRows();
+        applyTaskFilter();
+    }
+
+    function showTaskSortMenu() {
+        const current = getTaskSort();
+        const menu = document.createElement('div');
+        menu.id = 'taskSortMenu';
+        menu.setAttribute('role', 'menu');
+        TASK_SORT_OPTIONS.forEach(function(opt) {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'taskSortMenuItem' + (opt.key === current ? ' selected' : '');
+            item.setAttribute('role', 'menuitemradio');
+            item.setAttribute('aria-checked', opt.key === current ? 'true' : 'false');
+            item.setAttribute('data-sort', opt.key);
+            const label = document.createElement('span');
+            label.className = 'taskSortMenuItemLabel';
+            label.textContent = opt.label;
+            item.appendChild(label);
+            if (opt.subtitle) {
+                const sub = document.createElement('span');
+                sub.className = 'taskSortMenuItemSub';
+                sub.textContent = opt.subtitle;
+                item.appendChild(sub);
+            }
+            item.addEventListener('click', function() {
+                hideTaskSortMenu();
+                applyTaskSortChoice(opt.key);
+            });
+            menu.appendChild(item);
+        });
+        document.body.appendChild(menu);
+
+        // Anchor beneath the trigger, right-aligned, clamped to the viewport —
+        // mirrors the settings menu's positioning.
+        const rect = taskSortBtn.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        let top = rect.bottom + 4;
+        let left = rect.right - menuRect.width;
+        if (left < 4) left = 4;
+        if (top + menuRect.height > window.innerHeight) {
+            top = Math.max(4, window.innerHeight - menuRect.height - 4);
+        }
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+
+        taskSortBtn.setAttribute('aria-expanded', 'true');
+        document.addEventListener('click', onTaskSortOutsideClick, true);
+        document.addEventListener('keydown', onTaskSortKeydown, true);
+        window.addEventListener('resize', hideTaskSortMenu);
+        window.addEventListener('scroll', hideTaskSortMenu, true);
+    }
+
+    taskSortBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (document.getElementById('taskSortMenu')) {
+            hideTaskSortMenu();
         } else {
-            collapseAllDescriptions();
-            bulkDescLabel.textContent = 'Expand All';
+            showTaskSortMenu();
         }
     });
+
+    // ── bulk description expand/collapse state ──
+    // Formerly owned by the on-screen "Expand All" button (retired in favour of
+    // the Sort dropdown). The state now lives here as a module-scoped flag so
+    // the two remaining entry points — the Ctrl+Enter chord and the mobile
+    // drawer's "Expand all descriptions" toggle — share one source of truth.
+    let bulkDescExpanded = false;
+    function isBulkDescExpanded() {
+        return bulkDescExpanded;
+    }
+    function toggleBulkDescriptions() {
+        bulkDescExpanded = !bulkDescExpanded;
+        if (bulkDescExpanded) expandAllDescriptions();
+        else collapseAllDescriptions();
+        return bulkDescExpanded;
+    }
 
     // Desktop header consolidation — relocate the workspace pill
     // (#mobileProjHeader) and its open/done counts (#mobileProjStats) into the
@@ -3925,27 +4049,6 @@ function component() {
         const projInput = selected.querySelector('#projInput');
         return projInput ? (projInput.value || '').trim() : '';
     }
-
-    function syncSortByDueToggle() {
-        const activeName = activeProjectName();
-        const hasProject = !!activeName;
-        sortByDueCheckbox.checked = hasProject && listLogic.getProjectSortByDue(activeName);
-        sortByDueCheckbox.disabled = !hasProject;
-        sortByDueLabel.classList.toggle('isDisabled', !hasProject);
-    }
-
-    sortByDueCheckbox.addEventListener('change', function() {
-        const activeName = activeProjectName();
-        if (!activeName) {
-            sortByDueCheckbox.checked = false;
-            return;
-        }
-        listLogic.setProjectSortByDue(activeName, sortByDueCheckbox.checked);
-        const mainListDiv = document.getElementById('mainList');
-        if (!mainListDiv) return;
-        while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
-        addAllToDo_DOM(listLogic.listItems(activeName), activeName);
-    });
 
     // ── STACK mobile drawer settings entry + footer ──
     // The drawer's previous always-visible View / Appearance toggle rows
@@ -4090,8 +4193,8 @@ function component() {
     function buildExpandAllToggle() {
         return createDrawerToggleRow(
             'Expand all descriptions',
-            function() { return bulkDescToggleBtn.classList.contains('expanded'); },
-            function() { bulkDescToggleBtn.click(); }
+            function() { return isBulkDescExpanded(); },
+            function() { toggleBulkDescriptions(); }
         );
     }
 
@@ -4527,17 +4630,17 @@ function component() {
         }
     });
 
-    // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — mirror the EXPAND ALL
-    // button so the chord toggles inline descriptions on every open task at
-    // once. Routed through the button's own click so the label and the
-    // `.expanded` class flip in lockstep with the bulk action, which keeps
-    // the visible state of the control honest after a keyboard invocation.
+    // Global "Ctrl+Enter" (or Cmd+Enter) shortcut — toggle inline descriptions
+    // on every open task at once. Routed through toggleBulkDescriptions() so the
+    // chord and the mobile drawer's "Expand all descriptions" toggle share one
+    // expand/collapse state (the on-screen Expand All button was retired in
+    // favour of the Sort dropdown).
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Enter') return;
         if (!(e.ctrlKey || e.metaKey)) return;
         if (e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        bulkDescToggleBtn.click();
+        toggleBulkDescriptions();
         e.preventDefault();
     });
 
@@ -5721,7 +5824,6 @@ function component() {
         footDone.textContent = done + ' DONE';
 
         updateMobileProjHeader(name, open, done);
-        syncSortByDueToggle();
     }
 
     // Resolve the project name at the given index in the authoritative
@@ -6046,19 +6148,18 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
     });
 }
 
-// Reorder the active project's rows whenever a due-date edit lands
-// while "Sort by Due" is on for that project. Without this, the row
-// stayed in its original DOM slot after the user picked a new date
-// and the new ordering only surfaced on the next manual sort toggle
-// or page reload. reorderToDoDOM re-parents existing rows via
-// appendChild so event listeners + open description/stats panels
-// survive the reorder.
+// Reorder the active project's rows whenever a due-date edit lands while the
+// global sort is set to Due. Without this, the row stayed in its original DOM
+// slot after the user picked a new date and the new ordering only surfaced on
+// the next sort change or page reload. reorderToDoDOM re-parents existing rows
+// via appendChild so event listeners + open description/stats panels survive
+// the reorder.
 if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__dueDateChangedListenerRegistered) {
     window.__dueDateChangedListenerRegistered = true;
     document.addEventListener('todoDueDateChanged', function onDueChange(evt) {
         const project = evt && evt.detail && evt.detail.project;
         if (!project) return;
-        if (!listLogic.getProjectSortByDue(project)) return;
+        if (getTaskSort() !== 'due') return;
         try {
             reorderToDoDOM(project);
         } catch (e) {

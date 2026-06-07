@@ -17,7 +17,8 @@
 // regard to their position. The ghost-companion singleton is reached through
 // `ensureCompanion()` from companion.js (no deps bag involved).
 
-import { listLogic, sortItemsByDueForRender } from './listLogic.js';
+import { listLogic, sortItemsByDueForRender, sortItemsByStatusForRender } from './listLogic.js';
+import { getTaskSort } from './prefs.js';
 import { setupRowDrag, isCoarsePointer, prefersReducedMotion } from './dragDrop.js';
 import {
     applyDueUrgency,
@@ -1846,6 +1847,19 @@ export function buildToDoRow(item, toDoName) {
 // here; the deps bags are gone.
 
 
+// Map the global task-sort preference to a render order. Returns a NEW array
+// for the 'due' / 'status' modes (the helpers never mutate the input or the
+// underlying `pos` field) and the original array untouched for 'none', so
+// switching the sort back to None restores the user's manual order. The sort
+// is a pure render concern — the data model is never reordered.
+function renderOrderForSort(items) {
+    const mode = getTaskSort();
+    if (mode === 'due') return sortItemsByDueForRender(items);
+    if (mode === 'status') return sortItemsByStatusForRender(items);
+    return items;
+}
+
+
 // Render every persisted item for `name` into #mainList. Used on the bulk
 // add path (project switch from a fresh project, post-delete re-render).
 // `items` is the array returned by listLogic.listItems(name).
@@ -1853,9 +1867,7 @@ export function addAllToDo_DOM(items, name) {
     if (!items) return;
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    const renderOrder = listLogic.getProjectSortByDue(name)
-        ? sortItemsByDueForRender(items)
-        : items;
+    const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, name));
     });
@@ -1882,9 +1894,7 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
     const items = listLogic.listItems(toDoName);
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
-    const renderOrder = listLogic.getProjectSortByDue(toDoName)
-        ? sortItemsByDueForRender(items)
-        : items;
+    const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
     });
@@ -1912,9 +1922,7 @@ export function reorderToDoDOM(projectName) {
         if (rows[i].__item) rowsByItem.set(rows[i].__item, rows[i]);
     }
 
-    const renderOrder = listLogic.getProjectSortByDue(projectName)
-        ? sortItemsByDueForRender(items)
-        : items;
+    const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
@@ -2012,13 +2020,10 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
         container: document.getElementById('mainList'),
         itemSelector: '#toDoChild',
         isDraggable: function() {
-            // Sort-by-due overrides manual order, so drag would reshuffle
-            // to nothing the moment the row re-renders. Pin the row to
-            // non-draggable while the toggle is on.
-            const projectName = (toDoChild.dataset && toDoChild.dataset.value)
-                ? toDoChild.dataset.value
-                : project;
-            if (projectName && listLogic.getProjectSortByDue(projectName)) return false;
+            // An active sort (Due / Status) overrides manual order, so drag
+            // would reshuffle to nothing the moment the row re-renders. Pin
+            // the row to non-draggable while a sort is applied.
+            if (getTaskSort() !== 'none') return false;
             return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
         },
         onReorder: function(fromIdx, toIdx) {
@@ -2039,10 +2044,7 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
     });
 
     function syncDraggable() {
-        const projectName = (toDoChild.dataset && toDoChild.dataset.value)
-            ? toDoChild.dataset.value
-            : project;
-        const sortLocked = projectName && listLogic.getProjectSortByDue(projectName);
+        const sortLocked = getTaskSort() !== 'none';
         toDoChild.setAttribute(
             'draggable',
             (!sortLocked && toDoInput.value.trim().length > 0) ? 'true' : 'false'

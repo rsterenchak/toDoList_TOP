@@ -2649,6 +2649,51 @@ export function sortItemsByDueForRender(items) {
 }
 
 
+// Sort-for-render helper used when the global task sort is set to 'status'.
+// Returns a new array (input is not mutated) with the blank placeholder pinned
+// to index 0, uncompleted items grouped by workflow status in the order
+// in_progress → active → idea, and completed items grouped at the bottom in the
+// same status order. Within each status group the items keep their existing
+// array order (the manual `pos` order), so a hand-arranged sequence inside a
+// status group is never destroyed by turning Status sort on — and because the
+// underlying `pos` field is never touched, switching the sort back to 'none'
+// restores the user's manual order intact. Cached todos lacking a status field
+// normalise to 'active', matching the rest of the data model.
+const STATUS_SORT_RANK = { in_progress: 0, active: 1, idea: 2 };
+export function sortItemsByStatusForRender(items) {
+    if (!Array.isArray(items)) return [];
+
+    let blank = null;
+    const uncompleted = [];
+    const completed = [];
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (!it) continue;
+        if (it.tit === '' && !blank) {
+            blank = it;
+            continue;
+        }
+        if (it.completed) completed.push({ item: it, idx: i });
+        else uncompleted.push({ item: it, idx: i });
+    }
+
+    const cmp = function(a, b) {
+        const ra = STATUS_SORT_RANK[normalizeTodoStatus(a.item.status)];
+        const rb = STATUS_SORT_RANK[normalizeTodoStatus(b.item.status)];
+        if (ra !== rb) return ra - rb;
+        return a.idx - b.idx;
+    };
+    uncompleted.sort(cmp);
+    completed.sort(cmp);
+
+    const out = [];
+    if (blank) out.push(blank);
+    uncompleted.forEach(function(w) { out.push(w.item); });
+    completed.forEach(function(w) { out.push(w.item); });
+    return out;
+}
+
+
 // ── RECURRENCE PURE HELPERS ─────────────────────────────────────────
 // Module-level exports so these are importable from tests and from any
 // module that needs the date math without reaching through listLogic's

@@ -17,11 +17,12 @@ describe('Ctrl+Enter — bulk description toggle', () => {
     const main = read('main.js');
     const modals = read('modals.js');
 
-    it('routes the chord handler at the EXPAND ALL button click', () => {
+    it('routes the chord handler through the bulk-description toggle', () => {
         // The Ctrl+Enter handler is the only `keydown` listener that requires
-        // both `e.key === 'Enter'` and a Ctrl/Cmd modifier. It must dispatch
-        // the same click the on-screen EXPAND ALL button receives so the
-        // label and `.expanded` state stay in sync after a keyboard trigger.
+        // both `e.key === 'Enter'` and a Ctrl/Cmd modifier. It must call the
+        // shared toggleBulkDescriptions() so the chord and the mobile drawer's
+        // "Expand all descriptions" toggle stay on one expand/collapse state
+        // (the on-screen Expand All button was retired for the Sort dropdown).
         const blocks = main.match(/document\.addEventListener\(['"]keydown['"],[\s\S]*?\}\s*\)\s*;/g) || [];
         const handler = blocks.find(function(b) {
             return /e\.key\s*!==\s*['"]Enter['"]/.test(b)
@@ -29,7 +30,7 @@ describe('Ctrl+Enter — bulk description toggle', () => {
                 && /metaKey/.test(b);
         });
         expect(handler).toBeTruthy();
-        expect(handler).toMatch(/bulkDescToggleBtn\.click\(\s*\)/);
+        expect(handler).toMatch(/toggleBulkDescriptions\(\s*\)/);
         // Modifiers other than Ctrl/Cmd must bail so Shift+Enter / Alt+Enter
         // remain available to other surfaces.
         expect(handler).toMatch(/altKey/);
