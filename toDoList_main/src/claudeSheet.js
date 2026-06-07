@@ -27,7 +27,8 @@ import {
     dispatchRun,
     pollRunStatus,
     resolveEntryByMarker,
-    fetchAllowedRepos,
+    getCachedTargets,
+    loadInjectTargets,
 } from './inject.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
@@ -40,11 +41,12 @@ const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
 const RUN_GIVE_UP_MS = 10 * 60 * 1000;
 
-// Repos the file-attach picker can pull source from. The list is sourced from
-// the Worker's `ALLOWED_TARGETS` at runtime (via `loadWorkspaceRepos`) so the
-// app never drifts from the Worker's allowlist. Until that fetch resolves — and
-// if it fails — the list holds a safe fallback of just the default repo, so the
-// chat is always usable. The default repo is the only one with a published
+// Repos the file-attach picker can pull source from. The list is projected from
+// the user's Inject targets at runtime (via `loadWorkspaceRepos`, reading the
+// `inject_targets` cache in inject.js) so the chat menu never drifts from the
+// targets managed in Inject settings. Until the cache loads — and if it's empty
+// or fails to load — the list holds a safe fallback of just the default repo, so
+// the chat is always usable. The default repo is the only one with a published
 // `src-manifest.json`, so it gets the browsable file list; others fall back to
 // a free-text path input since there's no manifest to render.
 const DEFAULT_ATTACH_REPO = 'rsterenchak/toDoList_TOP';
@@ -67,6 +69,7 @@ let workspaceClickHandler = null;
 let attachClickHandler = null;
 let appUpdateHandler = null;
 let appAppliedHandler = null;
+let injectTargetsChangedHandler = null;
 
 // True once a newer build's service worker is installed-and-waiting (the
 // `appUpdateAvailable` event fired) but the page is still running the old
@@ -184,11 +187,13 @@ export function openClaudeSheet() {
     sheetEl.setAttribute('aria-hidden', 'false');
     if (backdropEl) backdropEl.classList.add('open');
     if (launcherEl) launcherEl.setAttribute('aria-expanded', 'true');
-    // Re-sync the workspace allowlist on every open so a repo added to or
-    // removed from `ALLOWED_TARGETS` shows up in the pill menu without a
-    // page reload. Fire-and-forget: the current list stays usable while the
-    // fetch is in flight, and a failed fetch leaves it intact.
-    loadWorkspaceRepos();
+    // Re-sync the workspace list from the Inject targets on every open so a
+    // target added, edited, or removed while the sheet was closed shows up in
+    // the pill menu without a page reload. Fire-and-forget: the current list
+    // stays usable while the reload is in flight, and a failed reload leaves it
+    // intact. Repaints the pill/menu only — chatHistory, attachments, and the
+    // active workspace survive.
+    refreshWorkspaceRepos();
 }
 
 export function closeClaudeSheet() {
@@ -985,35 +990,48 @@ function setActiveChatRepo(repo) {
     selectedAttachRepo = repo;
 }
 
-// Source the workspace repo list from the Worker's allowlist so the app never
-// drifts from `ALLOWED_TARGETS`. Fired on mount AND on every sheet open so a
-// repo added to or removed from the allowlist surfaces without a page reload.
-// Until it resolves — and if it fails — `attachRepos` keeps its safe fallback
-// (the default repo only), so the chat is usable immediately and degrades
-// gracefully with no error surface. On success the list is replaced and the
-// pill repaints; the menu is rebuilt too if it happens to be open when the
-// fetch lands, so the full set shows without a re-open. The refresh path
-// preserves `chatHistory`, attachments, and the active workspace — only an
-// explicit pill switch wipes the chat. The one exception: when the active
-// workspace was dropped from the allowlist, fall back to the Worker's default
-// (still preserving chat history) so the user isn't stranded on a repo the
-// Worker will refuse.
-async function loadWorkspaceRepos() {
-    const result = await fetchAllowedRepos();
-    if (!result || !Array.isArray(result.repos) || !result.repos.length) return;
-    const names = result.repos
-        .map(function(r) { return r && r.repo; })
-        .filter(Boolean);
-    if (!names.length) return;
-    attachRepos = names;
-    if (names.indexOf(activeChatRepo) === -1) {
-        const fallback = (result.default && names.indexOf(result.default) !== -1)
-            ? result.default
-            : names[0];
-        setActiveChatRepo(fallback);
+// Project the workspace repo list from the Inject targets (Supabase
+// `inject_targets`, cached in inject.js) so the chat menu is a clean projection
+// of the targets the user manages in Inject settings — the two never drift. The
+// save-time allowlist guard already keeps every target's repo on the Worker's
+// `ALLOWED_TARGETS`, so the targets list is a safe subset. Each menu item still
+// anchors on the target's `repo` string, so `activeChatRepo`, the chat-turn
+// `repo` payload, and the `repoShortName` display are all unchanged; the menu is
+// simply sourced differently. Duplicate repos (two targets on the same repo)
+// collapse to one item, since the menu anchors on the repo string.
+//
+// This reads the cache synchronously; `refreshWorkspaceRepos` reloads the cache
+// first. The projection preserves `chatHistory`, attachments, and the active
+// workspace — only an explicit pill switch wipes the chat. The exceptions:
+// when the cache is empty or failed to load, fall back to the default repo so
+// the chat is always usable; and when the active workspace is no longer in the
+// list (the user deleted that target), fall back to the first target (or the
+// default) so the user isn't stranded on a repo the menu no longer lists.
+function loadWorkspaceRepos() {
+    const targets = getCachedTargets();
+    const seen = {};
+    const names = [];
+    targets.forEach(function(t) {
+        const repo = t && t.repo;
+        if (repo && !seen[repo]) { seen[repo] = true; names.push(repo); }
+    });
+    attachRepos = names.length ? names : [DEFAULT_ATTACH_REPO];
+    if (attachRepos.indexOf(activeChatRepo) === -1) {
+        setActiveChatRepo(attachRepos[0]);
     }
     renderWorkspacePill();
     if (isWorkspaceMenuOpen()) buildWorkspaceMenu();
+}
+
+// Reload the inject-targets cache from Supabase, then re-project the workspace
+// list. Fired on mount, on every sheet open, and whenever the targets change
+// mid-session (the `injectTargetsChanged` event). Fire-and-forget at the call
+// sites: the current list stays usable while the reload is in flight, and a
+// failed reload leaves the safe fallback in place. Repaints only — never wipes
+// chatHistory, attachments, or the active workspace.
+async function refreshWorkspaceRepos() {
+    await loadInjectTargets();
+    loadWorkspaceRepos();
 }
 
 // Paint the pill with the active workspace's short name, e.g. "📂 toDoList_TOP ▾".
@@ -2108,6 +2126,18 @@ export function mountClaudeSheet(parent) {
     };
     document.addEventListener('appUpdateApplied', appAppliedHandler);
 
+    // Repaint the workspace pill/menu when the Inject targets change mid-session
+    // (an add/edit/delete in Inject settings dispatches this). Reload the cache
+    // and re-project so the menu reflects the new set without a page reload;
+    // chatHistory, attachments, and the active workspace survive (only an
+    // explicit pill switch wipes the chat). Drop any prior mount's listener
+    // first so remounts don't stack handlers.
+    if (injectTargetsChangedHandler) {
+        document.removeEventListener('injectTargetsChanged', injectTargetsChangedHandler);
+    }
+    injectTargetsChangedHandler = function() { refreshWorkspaceRepos(); };
+    document.addEventListener('injectTargetsChanged', injectTargetsChangedHandler);
+
     updatePending = hasPendingUpdate();
     renderUpdateNudge();
 
@@ -2124,10 +2154,12 @@ export function mountClaudeSheet(parent) {
     // list; loadWorkspaceRepos repopulates it from the Worker when it resolves.
     attachRepos = [DEFAULT_ATTACH_REPO];
     srcManifestCache = {};
-    renderWorkspacePill();
-    // Pull the full workspace list from the Worker's allowlist. Fire-and-forget:
-    // the pill/menu start on the fallback and repaint when this resolves.
+    // Project immediately from whatever the inject-targets cache already holds
+    // (it may be warm from app boot's initInjectTargets), then reload it to
+    // catch any change. Fire-and-forget: the pill/menu start on the current
+    // projection and repaint when the reload resolves.
     loadWorkspaceRepos();
+    refreshWorkspaceRepos();
     Object.keys(runPollers).forEach(stopRunPoller);
 
     // Hydrate run records from localStorage, render them into the Runs tab,

@@ -615,7 +615,7 @@ function refreshAllInjectButtons() {
 // writes through here. The inject button itself does NOT consume these
 // yet — per-project routing lands in a follow-up entry.
 
-async function loadInjectTargets() {
+export async function loadInjectTargets() {
     try {
         const res = await supabase
             .from('inject_targets')
@@ -633,6 +633,30 @@ async function loadInjectTargets() {
     }
 }
 
+// Read-only snapshot of the inject-targets cache populated by loadInjectTargets.
+// The chat workspace menu projects this list (mapped to each row's `repo`) as
+// its single source of truth, so the menu and Inject settings never drift.
+// Returns a shallow copy so callers can't mutate the cache in place.
+export function getCachedTargets() {
+    return Array.isArray(cachedTargets) ? cachedTargets.slice() : [];
+}
+
+// Tell any listener (the chat workspace menu) that the inject-targets set
+// changed on a successful Supabase write, so it can re-project its repo list
+// without a page reload. Coalesce a burst of mutations into a single event via
+// a microtask hop — rapid add/edit/deletes repaint once rather than per write.
+let injectTargetsChangedPending = false;
+function notifyInjectTargetsChanged() {
+    if (injectTargetsChangedPending) return;
+    injectTargetsChangedPending = true;
+    Promise.resolve().then(function() {
+        injectTargetsChangedPending = false;
+        try {
+            document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        } catch (e) { /* defensive: non-DOM environment */ }
+    });
+}
+
 async function insertInjectTarget(values) {
     try {
         const sessionResult = await supabase.auth.getSession();
@@ -648,6 +672,7 @@ async function insertInjectTarget(values) {
         };
         const res = await supabase.from('inject_targets').insert(row);
         if (res && res.error) return classifyTargetError(res.error);
+        notifyInjectTargetsChanged();
         return { ok: true };
     } catch (e) {
         return { ok: false, reason: 'Save failed' };
@@ -665,6 +690,7 @@ async function updateInjectTarget(id, values) {
             })
             .eq('id', id);
         if (res && res.error) return classifyTargetError(res.error);
+        notifyInjectTargetsChanged();
         return { ok: true };
     } catch (e) {
         return { ok: false, reason: 'Save failed' };
@@ -678,6 +704,7 @@ async function deleteInjectTarget(id) {
             .delete()
             .eq('id', id);
         if (res && res.error) return { ok: false, reason: 'Delete failed' };
+        notifyInjectTargetsChanged();
         return { ok: true };
     } catch (e) {
         return { ok: false, reason: 'Delete failed' };

@@ -1015,7 +1015,7 @@
   - Out of scope: `pollRunStatus` in `inject.js` (it already accepts and forwards `target`); the inject/dispatch repo wiring (already fixed); the TODO.md viewer's own status polling.
   - Completed: YYYY-MM-DD (PR #<number>)
 
-- [ ] **[MEDIUM]** Source the chat workspace menu from Inject targets instead of the Worker allowlist
+- [x] **[MEDIUM]** Source the chat workspace menu from Inject targets instead of the Worker allowlist — Completed: 2026-06-06
   - Type: feature
   - Description: The chat workspace menu currently fetches its repo list from the Worker's `ALLOWED_TARGETS` via `loadWorkspaceRepos` → `fetchAllowedRepos`, so repos managed in Inject settings (Supabase `inject_targets`) don't necessarily appear in the chat and vice versa. Now that the save-time allowlist guard in the inject-target sub-modal guarantees every target's repo is on `ALLOWED_TARGETS`, `inject_targets` is a clean subset of the allowlist and the better single source of truth. Switch `loadWorkspaceRepos` to read from `cachedTargets` (mapped to the `.repo` field) via a new exported accessor in `inject.js` — each menu item still anchors on the target's `repo` string so `activeChatRepo`, the chat-turn `repo` payload, and the existing `repoShortName` display all stay unchanged; the menu simply becomes a projection of the inject targets list. This entry supersedes the previously-drafted MEDIUM "Re-fetch the chat workspace repo list when the sheet opens" entry — same surface, but the source swap rewrites the refresh strategy.
   - Behavior:

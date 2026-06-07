@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "Adding an inject target whose repository isn't in the Worker allowlist is now blocked with an inline error instead of failing silently later.",
         ],
+        changed: [
+            "The chat assistant's workspace menu now lists your configured Inject targets, staying in sync as you add or remove them.",
+        ],
         fixed: [
             "The chat assistant's workspace menu now refreshes each time you open it, so a repo added to or removed from the allowlist shows up without a page reload.",
             "Runs shipped from the chat assistant to a non-default workspace now report their final status instead of staying stuck as queued.",
@@ -18,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-06',
         fixed: [
-            "On wide screens, the strip above the chat panel's top row now matches the chat panel's background instead of showing a faint color seam.",
             "Shipping a drafted entry from the chat assistant now lands in the selected workspace repo instead of always going to the default repository.",
         ],
     },
