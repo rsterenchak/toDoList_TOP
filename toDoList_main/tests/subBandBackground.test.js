@@ -61,21 +61,19 @@ describe('desktop view sub-band background', () => {
 });
 
 // Pins the contract that the desktop filter+sort band (#taskFilterBar, which
-// also hosts the absolutely-positioned Sort dropdown overlay) paints the SAME
-// colour as the view-tab sub-band directly above it, so the two read as one
-// continuous band beneath the top project-switcher row (#navBar).
+// also hosts the absolutely-positioned Sort dropdown overlay) carries NO
+// distinct background at desktop: it clears to `transparent` so it falls
+// through to its parent #mainBar's --bg-base page bg, matching the view-tab
+// sub-band directly above it rather than painting the greyer --bg-elevated
+// chrome colour.
 //
-// Why an explicit --bg-elevated rather than `transparent`: the sub-band is
-// transparent and sits directly in #outerContainer, so it paints the shell's
-// --bg-elevated. #taskFilterBar, however, lives inside #mainBar — which is
-// itself --bg-base — so clearing the filter band to transparent would leave it
-// painting --bg-base and the seam would remain. Matching the sub-band's
-// EFFECTIVE colour therefore means setting the filter band to --bg-elevated at
-// desktop. Verified by pixel-sampling a Chromium render of the real cascade
-// (jsdom does no stylesheet resolution, and main.js is too large to instantiate
-// per CLAUDE.md guidance), so this is pinned by source inspection of the one
-// rule whose own background is the band's topmost painted layer.
-describe('desktop filter+sort band background matches the view sub-band', () => {
+// A previous entry set this band to --bg-elevated on the theory that the band
+// should match the sub-band's "effective" colour; that shipped the inverse of
+// what was wanted and made the seam more pronounced. The band must be
+// transparent (or, equivalently, match #mainBar's --bg-base) — never
+// --bg-elevated. Verified by source inspection because jsdom does no stylesheet
+// resolution and main.js is too large to instantiate per CLAUDE.md guidance.
+describe('desktop filter+sort band background falls through to the page bg', () => {
     const css = read('style.css');
 
     function consolidationBlock() {
@@ -97,12 +95,13 @@ describe('desktop filter+sort band background matches the view sub-band', () => 
         return m[2];
     }
 
-    it('(a) the filter+sort band paints the shell --bg-elevated at desktop, matching the transparent sub-band', () => {
+    it('(a) the filter+sort band clears to transparent at desktop, not the greyer --bg-elevated chrome', () => {
         const rule = filterBarDesktopRule();
-        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
-        // It must NOT fall back to --bg-base at desktop (the base rule's value),
-        // which is what produced the original seam.
-        expect(rule).not.toMatch(/background:\s*var\(--bg-base\)/);
+        // It must clear to transparent so it inherits #mainBar's --bg-base.
+        expect(rule).toMatch(/background:\s*transparent/);
+        // It must NOT paint the --bg-elevated chrome colour — that was the
+        // inverse the previous entry shipped, which made the seam worse.
+        expect(rule).not.toMatch(/background:\s*var\(--bg-elevated\)/);
     });
 
     it('(b) the top project-switcher row (#navBar) keeps its greyer --bg-elevated chrome (unchanged)', () => {
