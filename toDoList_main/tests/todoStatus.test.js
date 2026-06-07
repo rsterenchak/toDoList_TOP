@@ -13,6 +13,7 @@ import {
     hideStatusPopover,
     wireStatusLabelDelegation,
 } from '../src/todoStatus.js';
+import { wireToDoRowClick } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
 
 
@@ -343,5 +344,115 @@ describe('popover dismissal affordances', () => {
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         expect(document.getElementById('todoStatusPopover')).toBeNull();
+    });
+});
+
+
+// ── Regression: the row's click handler must treat the status label as a
+// sub-control and skip its input-focus + activate side effects, so the popover
+// the delegated #mainList handler mounts on the same click survives. The real
+// bug was browser-specific (focus()'s scroll-into-view fired a `scroll` event
+// that the popover's own scroll-dismissal listener removed it on). jsdom
+// doesn't scroll on focus(), so we make the focus→scroll causality explicit by
+// patching focus() to dispatch a scroll — proving that IF the row focused the
+// input on a label click, the popover would be torn down. With the fix in
+// place focus() is never called for a label click, so the popover persists.
+function makeWiredRow(item, projectName) {
+    const mainList = document.createElement('div');
+    mainList.id = 'mainList';
+
+    const row = document.createElement('div');
+    row.id = 'toDoChild';
+    row.__item = item;
+    row.setAttribute('data-value', projectName || 'Inbox');
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'toDoInput';
+    input.value = item.tit || 'a committed task';
+
+    const title = document.createElement('span');
+    title.className = 'toDoTitleDisplay';
+    title.textContent = input.value;
+
+    applyTodoStatusClass(row, item.status);
+    const label = buildStatusLabel(item);
+
+    row.appendChild(input);
+    row.appendChild(title);
+    row.appendChild(label);
+    mainList.appendChild(row);
+    document.body.appendChild(mainList);
+
+    wireStatusLabelDelegation(mainList);
+    wireToDoRowClick(row, input, null);
+    return { mainList, row, input, title, label };
+}
+
+describe('status label click is excluded from the row activate/focus path', () => {
+    ['active', 'in_progress', 'idea'].forEach((status) => {
+        it(`clicking a ${status} row's status label mounts the popover and keeps it mounted`, async () => {
+            const { input, label } = makeWiredRow({ status, tit: 'T' }, 'Inbox');
+            // Simulate the browser's focus-into-view scroll. It fires AFTER the
+            // current task (deferred to a frame), matching the real ordering in
+            // which the involuntary scroll lands once the popover is already
+            // mounted and its scroll-dismissal listener is live.
+            input.focus = () => requestAnimationFrame(
+                () => window.dispatchEvent(new Event('scroll')),
+            );
+
+            label.click();
+            expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+
+            await Promise.resolve();
+            expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+            await new Promise((r) => requestAnimationFrame(r));
+            await new Promise((r) => requestAnimationFrame(r));
+            expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+        });
+    });
+
+    it('clicking the status label does not focus the input or activate the row', () => {
+        const { row, input, label } = makeWiredRow({ status: 'active', tit: 'T' }, 'Inbox');
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        label.click();
+
+        expect(focusSpy).not.toHaveBeenCalled();
+        expect(document.activeElement).not.toBe(input);
+        expect(row.classList.contains('todo-active')).toBe(false);
+    });
+
+    it('clicking the row title still focuses the input and activates the row', () => {
+        const { row, input, title } = makeWiredRow({ status: 'active', tit: 'T' }, 'Inbox');
+        const focusSpy = vi.spyOn(input, 'focus');
+
+        title.click();
+
+        expect(focusSpy).toHaveBeenCalled();
+        expect(row.classList.contains('todo-active')).toBe(true);
+    });
+
+    it('a genuine user scroll after a label-mounted popover still dismisses it', () => {
+        const { label } = makeWiredRow({ status: 'active', tit: 'T' }, 'Inbox');
+
+        label.click();
+        expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+
+        window.dispatchEvent(new Event('scroll'));
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+    });
+
+    it('the row click handler early-returns on a status-label target before focusing the input', () => {
+        const src = readFileSync(
+            resolve(dirname(fileURLToPath(import.meta.url)), '../src/toDoRow.js'),
+            'utf8',
+        );
+        const body = src.slice(src.indexOf('function wireToDoRowClick'));
+        const guardIdx = body.indexOf(".closest('.todoStatusLabel')");
+        const focusIdx = body.indexOf('toDoInput.focus()');
+        expect(guardIdx).toBeGreaterThan(-1);
+        expect(focusIdx).toBeGreaterThan(-1);
+        expect(guardIdx).toBeLessThan(focusIdx);
     });
 });
