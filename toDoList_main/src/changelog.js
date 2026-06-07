@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-07',
-        changed: [
-            "The chat assistant's workspace menu now lists your configured Inject targets, staying in sync as you add or remove them.",
+        added: [
+            "Projects can be renamed from the desktop project dropdown — right-click or long-press a project and choose Rename.",
         ],
         fixed: [
             "The chat assistant's workspace menu now refreshes each time you open it, so a repo added to or removed from the allowlist shows up without a page reload.",

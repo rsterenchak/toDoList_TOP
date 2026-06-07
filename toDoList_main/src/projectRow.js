@@ -139,48 +139,61 @@ export function attachProjectDrag(projChild, titleInput) {
 }
 
 
-export function attachProjectContextMenu(projChild, titleInput) {
+// Select a project row (loading its todos into the main list) unless it is
+// already the selected project. Lifted to module scope so both the sidebar's
+// Edit item and the desktop project-picker's Rename item route their
+// selection through one path.
+function selectProjectRow(projChild, titleInput) {
+    if (projChild.classList.contains('selectedProject')) return;
 
-    function selectIfNeeded() {
-        if (projChild.classList.contains('selectedProject')) return;
-
-        const current = document.querySelector('.selectedProject');
-        if (current) {
-            const prevInput = current.querySelector('#projInput');
-            if (prevInput) {
-                prevInput.style.pointerEvents = 'none';
-                prevInput.style.cursor = 'default';
-                prevInput.blur();
-            }
-            current.classList.remove('selectedProject');
-            current.classList.add('unselectedProject');
+    const current = document.querySelector('.selectedProject');
+    if (current) {
+        const prevInput = current.querySelector('#projInput');
+        if (prevInput) {
+            prevInput.style.pointerEvents = 'none';
+            prevInput.style.cursor = 'default';
+            prevInput.blur();
         }
-
-        projChild.classList.remove('unselectedProject');
-        projChild.classList.add('selectedProject');
-
-        const name  = titleInput.value;
-        const items = listLogic.listItems(name);
-        const mainDiv = document.getElementById('mainList');
-        if (mainDiv) {
-            while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
-        }
-        applyProjectAccent(mainDiv, listLogic.getProjectColor(name));
-        const hasReal = items && items.some(function(i){ return i.tit !== ''; });
-        if (hasReal) {
-            addToDos_restore(items, name);
-        } else if (items) {
-            addAllToDo_DOM(items, name);
-        }
-        focusBlankToDoInputIfDesktop();
+        current.classList.remove('selectedProject');
+        current.classList.add('unselectedProject');
     }
 
+    projChild.classList.remove('unselectedProject');
+    projChild.classList.add('selectedProject');
+
+    const name  = titleInput.value;
+    const items = listLogic.listItems(name);
+    const mainDiv = document.getElementById('mainList');
+    if (mainDiv) {
+        while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
+    }
+    applyProjectAccent(mainDiv, listLogic.getProjectColor(name));
+    const hasReal = items && items.some(function(i){ return i.tit !== ''; });
+    if (hasReal) {
+        addToDos_restore(items, name);
+    } else if (items) {
+        addAllToDo_DOM(items, name);
+    }
+    focusBlankToDoInputIfDesktop();
+}
+
+// Drop a project into the rename / edit-name flow: select it if needed, then
+// make its title input editable and focused with its text selected. Shared by
+// the sidebar context menu's Edit item and the desktop project-picker
+// dropdown's Rename item so both surfaces produce identical results.
+export function beginProjectRename(projChild, titleInput) {
+    selectProjectRow(projChild, titleInput);
+    titleInput.style.pointerEvents = 'auto';
+    titleInput.style.cursor = 'text';
+    titleInput.focus();
+    if (typeof titleInput.select === 'function') titleInput.select();
+}
+
+
+export function attachProjectContextMenu(projChild, titleInput) {
+
     function onEdit() {
-        selectIfNeeded();
-        titleInput.style.pointerEvents = 'auto';
-        titleInput.style.cursor = 'text';
-        titleInput.focus();
-        if (typeof titleInput.select === 'function') titleInput.select();
+        beginProjectRename(projChild, titleInput);
     }
 
     function onDelete() {
