@@ -1228,7 +1228,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 17cdf5c8-117e-41d2-a323-a5474ef8edc9 -->
 
-- [ ] **[LOW]** Match the filter/sort band background to the view-tabs sub-band
+- [x] **[LOW]** Match the filter/sort band background to the view-tabs sub-band — Completed: 2026-06-07
   - Type: bug
   - Description: The filter+sort band (the row holding the cycle pill `#taskFilterBar` and the sort dropdown) paints a different background than the view-tabs sub-band directly above it (`#desktopViewSubBand`, holding PROJECTS / INBOX / CALENDAR), so the two header rows read as separate surfaces instead of one continuous band beneath the top project-switcher row. The view-tabs sub-band intentionally has no background ("the tabs sit directly on the page background so no lighter 'stripe' shows in the gap below the band" — see the existing comment in `style.css`); the filter+sort band's wrapper picked up a non-page-bg colour somewhere along the way (likely when the sort-dropdown entry restructured the band). Make the filter+sort band sit on the same page background by clearing the wrapper's `background` (or set it to `transparent`) so the view tabs and the filter+sort band read as one continuous band. Grep `style.css` for whatever wraps `#taskFilterBar` + the sort control at desktop widths — same band element gets both — and zero out that one rule rather than chasing per-child overrides.
   - Behavior:
