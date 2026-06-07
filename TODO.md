@@ -1071,3 +1071,17 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/projectContextMenu.test.js` (or the existing stacking-related test file — grep `tests/` for `z-index` first; if there's an existing stacking ladder test, extend it instead of adding a new file)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a693e3d5-6554-42e3-b313-c8db61b854e6 -->
+
+- [ ] **[HIGH]** Add Rename to the desktop project picker context menu
+  - Type: feature
+  - Description: The right-click / long-press context menu on a desktop `#projectPickerDropdown` row only offers `Delete project…` — Rename (the "Edit" arm of `showProjectContextMenu` in `projectMenu.js`) was deferred when the desktop delete affordance shipped, leaving no path to rename a project from the new desktop surface. Surface a `Rename` item above `Delete project…` in the same context menu, wired to the same rename flow the sidebar's Edit item already uses, so the dropdown reaches parity with the sidebar for the two non-destructive + destructive project actions. Out of scope: the inline color picker (that's a separate decision — say the word and I'll draft it).
+  - Behavior:
+    1. Right-click / long-press on a row inside `#projectPickerDropdown` opens the context menu with two items, in order: `Rename` (default treatment) and `Delete project…` (danger treatment). No separator between them in this scope — the color picker that would normally sit between them stays gated for a follow-up.
+    2. Selecting `Rename` closes both the context menu and the dropdown, then drops the just-targeted project into the existing rename / edit-name flow — same end behavior as picking `Edit` from the sidebar context menu, so a user moving between sidebar and dropdown gets identical results.
+    3. The four context-menu dismissal paths from CLAUDE.md (option select, click outside, Escape, right-click elsewhere) all continue to close the menu without firing the Rename action.
+    4. Regression-test alongside the new entry: opening the context menu from a dropdown row exposes both `Rename` and `Delete project…`; clicking `Rename` triggers the same callback the sidebar's Edit click fires.
+  - Implementation notes: `projectMenu.js`'s `showProjectContextMenu(x, y, onEdit, onDelete, colorContext)` already builds an Edit item — easiest path is to reuse it from the dropdown row's `contextmenu` / long-press handler (in `main.js`), passing a real `onEdit` callback that points at the existing rename flow, leaving `colorContext` as `undefined` so the swatch strip stays hidden for this scope. If the dropdown shipped its own ad-hoc context menu instead of reusing `showProjectContextMenu` (the trailing ellipsis on `Delete project…` versus the sidebar's plain `Delete` suggests this — grep `Delete project…` in `main.js` and `projectMenu.js` to confirm), the right move is to consolidate onto `showProjectContextMenu` and let the dropdown's invocation pass the labels it wants via a small options bag — one menu source for both surfaces is cheaper to maintain than two parallel ones.
+  - Out of scope: the inline color picker; mobile project chrome (initial-letter sidebar); any change to the rename flow itself.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/tests/projectContextMenu.test.js` (or the closest existing test file — grep first)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9df144ad-8b48-49d4-97a8-64d061c07389 -->
