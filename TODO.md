@@ -1102,3 +1102,26 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/projectContextMenu.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b04c818e-5cc1-47a1-a0e2-69697f820863 -->
+
+- [ ] **[HIGH]** Give the desktop project picker dropdown its own inline rename edit mode
+  - Type: bug
+  - Description: The Rename item in the `#projectPickerDropdown` context menu was wired to the sidebar `projectRow.js` `onEdit` helper, which `selectIfNeeded()` + focuses the sidebar's `#projInput`. At desktop widths the sidebar drawer is hidden, so the user sees only a silent project switch and the context menu closing — no editable input ever appears. The dropdown surface needs its own inline edit mode that lives ON the dropdown row, independent of the sidebar's input. Add an `enterRowEditMode(row, currentName)` helper next to the dropdown row builder in `main.js` that swaps the row's `.projectPickerName` + `.projectPickerCount` children for a single text input pre-populated with the current name and select-all'd on mount. Wire the dropdown context menu's `Rename` handler to call this helper — NOT to the sidebar's `onEdit`. Commit via the shared `listLogic.editProject(oldName, newName)` mutation already used by the sidebar's rename keydown handler so the data path stays single-sourced; only the input UI is per-surface. The previous "Make Rename in the desktop project picker edit the row inline" entry described this approach but the implementation reused the sidebar helper instead — this entry is the correction.
+  - Behavior:
+    1. Right-click / long-press on a dropdown row → pick `Rename` → that row replaces its name+count children with a focused 32px-tall input matching the row's padding, value pre-selected.
+    2. The dropdown stays open; other rows render unchanged; no project switch fires (`selectIfNeeded` must NOT be called from this path).
+    3. Enter commits via `listLogic.editProject(currentName, newName.trim())` and repaints the row with the new name + the original count badge in its original position; blur also commits (same path).
+    4. Escape cancels and repaints the row with the prior name; an empty / whitespace-only commit reverts cleanly via the same path.
+    5. Duplicate-name commit keeps the input open with a `color: var(--text-danger)` treatment on the input — same vocabulary the sidebar's rename uses on `#projInput`. No silent revert, no swallowed mutation.
+    6. Closing the dropdown (Escape, outside click) while an edit is in flight commits the current value (matching the blur path) — no orphan input, no stale value lost.
+    7. The context-menu surface must NOT call `selectIfNeeded` or `onEdit` from `projectRow.js` for the dropdown's `Rename` click — those are sidebar-only paths; cross-wiring them is the bug being fixed.
+  - Behavioral regression tests (test-first — these are what the previous entry's tests failed to catch):
+    1. After clicking `Rename` from a dropdown row's context menu, an `input` element exists INSIDE that `.projectPickerRow` (`row.querySelector('input')` is non-null) and is the active element. Asserting only that a rename callback fires is insufficient — pin the visible DOM state.
+    2. `listLogic.editProject` is called with `(oldName, newName)` on Enter; the row's textContent reads the new name after the commit; the row's position in the dropdown is unchanged.
+    3. Escape removes the input and the row's textContent reads the prior name.
+    4. A duplicate-name commit leaves the input mounted and applies the error color treatment.
+    5. The dropdown's project-switch click handler (`navigateToProjectByIndex` / `#projChild.click()`) does NOT fire on a `Rename` click — assert with a spy that switching is not triggered.
+  - Implementation notes: `main.js` is >25k tokens — grep with offset/limit for `projectPickerDropdown` to find the row builder and the context-menu wiring, and for `attachProjectContextMenu` to confirm the sidebar wiring (which should remain untouched). `listLogic.editProject` is already callable from any module that imports `listLogic` — no new export needed. Style `.projectPickerRow.editing` in `style.css`: 32px row height preserved, 16px horizontal padding, SpaceMono 13px (matches `.projectPickerName`), a 1px purple focus ring (`box-shadow: inset 0 0 0 1px var(--purple)`), transparent-ish background so the row's accent stripe stays readable. The danger color uses `var(--text-danger)` to match the sidebar's vocabulary.
+  - Out of scope: changes to the sidebar `attachProjectContextMenu` / `onEdit` / `#projInput` flow (those still work — they're just not for this surface); the inline color picker in the dropdown context menu (separate follow-up); mobile project chrome.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/projectContextMenu.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1a731218-8f25-4426-9750-fd67a83da7f9 -->
