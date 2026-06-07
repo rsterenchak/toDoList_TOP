@@ -160,6 +160,49 @@ describe('inject targets — sub-modal shell', () => {
     });
 });
 
+describe('inject targets — save-time allowlist check', () => {
+
+    const inject = read('inject.js');
+
+    it('onSave calls fetchAllowedRepos after the synchronous shape validation', () => {
+        // The async allowlist gate lives in onSave, after validateTargetForm
+        // returns clean and before the Supabase write.
+        expect(inject).toMatch(
+            /validateTargetForm\s*\([\s\S]{0,1000}await\s+fetchAllowedRepos\s*\(\s*\)/
+        );
+    });
+
+    it('blocks the write when the allowlist resolves without values.repo', () => {
+        // Match against result.repos.some(r => r.repo === values.repo) per
+        // the implementation note, and abort (return) when absent.
+        expect(inject).toMatch(
+            /\.repos\.some\(\s*\(?\s*r\s*\)?\s*=>\s*r\.repo\s*===\s*values\.repo\s*\)/
+        );
+    });
+
+    it('surfaces the allowlist failure as an inline repo-field error', () => {
+        expect(inject).toMatch(
+            /setError\(\s*repoField\s*,\s*['"]Not in the Worker allowlist[^'"]*['"]\s*\)/
+        );
+    });
+
+    it('re-enables Save on a blocked result so the user can retry', () => {
+        // The blocked path must clear saveBtn.disabled before returning so
+        // Save is never left stuck disabled.
+        expect(inject).toMatch(
+            /Not in the Worker allowlist[\s\S]{0,400}saveBtn\.disabled\s*=\s*false/
+        );
+    });
+
+    it('skips the check (allows save) when fetchAllowedRepos returns null', () => {
+        // The guard must be conditional on a truthy allow result, so a null
+        // (Worker-unreachable) return falls through to the write.
+        expect(inject).toMatch(
+            /if\s*\(\s*allow(?:ed)?\b[\s\S]{0,160}\.repos\.some/
+        );
+    });
+});
+
 describe('inject targets — destructive delete confirmation', () => {
 
     const inject = read('inject.js');

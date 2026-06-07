@@ -994,7 +994,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b29825ba-9452-4bbe-b4dd-c7cec30a0716 -->
 
-- [ ] **[LOW]** Block saving an inject target whose repo isn't in the Worker allowlist
+- [x] **[LOW]** Block saving an inject target whose repo isn't in the Worker allowlist — Completed: 2026-06-07
   - Type: feature
   - Description: The inject-target add/edit sub-modal only validates that `repo` is non-empty and matches the `owner/repository` shape — it never checks the repo against the Worker's `ALLOWED_TARGETS`, so a target pointing at an unlisted repo saves cleanly and then silently fails at inject/dispatch time. Add a save-time allowlist check in `onSave`: after the existing synchronous `validateTargetForm` pass and before the Supabase insert/update, call `fetchAllowedRepos()` and, if it resolves with a repo list that does not include `values.repo`, set an inline error on the repo field via the existing `setError(repoField, …)` machinery ("Not in the Worker allowlist — add it to ALLOWED_TARGETS first") and abort the write. Keep `validateTargetForm` synchronous (shape checks only); the async allowlist check lives in `onSave`.
   - Behavior:

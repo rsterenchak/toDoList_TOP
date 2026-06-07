@@ -863,6 +863,18 @@ function showInjectTargetSubModal(options) {
             return;
         }
         saveBtn.disabled = true;
+        // Save-time allowlist gate: a repo not in the Worker's
+        // ALLOWED_TARGETS saves cleanly but then silently fails at
+        // inject/dispatch time. Block the write when the allowlist
+        // resolves without this repo. If the fetch is null/throws
+        // (Worker unreachable), fall through and allow the save —
+        // graceful degradation over blocking on a transient failure.
+        const allowed = await fetchAllowedRepos();
+        if (allowed && !allowed.repos.some(r => r.repo === values.repo)) {
+            saveBtn.disabled = false;
+            setError(repoField, 'Not in the Worker allowlist — add it to ALLOWED_TARGETS first');
+            return;
+        }
         const result = isEdit
             ? await updateInjectTarget(existing.id, values)
             : await insertInjectTarget(values);
