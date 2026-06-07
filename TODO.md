@@ -113,7 +113,7 @@
  - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1988bac5-8d4e-4b9c-8a79-c73bc6922d6e -->
 
-- [ ] **[HIGH]** Revert all Inbox-card work — restore idea rendering in both Projects and Inbox tabs
+- [x] **[HIGH]** Revert all Inbox-card work — restore idea rendering in both Projects and Inbox tabs — Completed: 2026-06-07
   - Type: bug
   - Description: Two consecutive entries have left the app in a broken state where idea-type entries do not render in either the Projects tab (with the IDEAS filter active — the filter pill shows "IDEAS 7 ›" but the body shows the "THAT'S ALL FOR THIS PROJECT" empty-state ghost) or the Inbox tab. The page header reports "10 open · 176 done" yet no open cards render, confirming the render path is broken, not the data. The two entries responsible are: (1) the "Reformat Inbox cards to compact one-line + tap-to-open modal" entry (introduced compact cards, a tap-to-open modal, and rewired handlers), and (2) the follow-up "Fix IDEAS filter rendering regression + rewire Inbox modal Done to close-only" entry (a fix attempt that did NOT resolve the regression). Both fix attempts failed because the root cause is not well enough understood to fix forward safely. The correct move is to fully revert both, returning the card rendering for both Projects and Inbox to the exact state it was in BEFORE any of this Inbox-card work began. The original card-clipping cosmetic issue is acceptable to reintroduce — it will be re-addressed later in a much narrower CSS-only entry. Restoring the ability to see ideas in both tabs is the priority; a missing polish feature is far less bad than broken core rendering.
   - Behavior:
