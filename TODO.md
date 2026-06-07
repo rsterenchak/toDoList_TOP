@@ -50,7 +50,7 @@
   - Completed: 2026-06-07
   <!-- id: 7f01fc9c-666f-408a-9af9-6bb60adc161a -->
 
-- [ ] **[MEDIUM]** Swap "Show completed (N)" text pill for 32×32 icon button with count badge
+- [x] **[MEDIUM]** Swap "Show completed (N)" text pill for 32×32 icon button with count badge
   - Type: bug
   - Description: The previous "Show completed (N)" toggle entry (the show-completed-toggle work that shipped to `#todoMdViewerHeader`) added a text-pill button that reads "Show completed (2)" or similar. On mobile, that pill combined with the `TODO.md` title, "▶ Run backlog" pill, and "Sync" pill overflows the viewer header and gets clipped on the right edge — confirmed visually in the user-supplied screenshot. Replace the text-pill form with a 32×32 icon button: a checked-checkbox glyph (option C from the approved mockup — an SVG combining a rectangle outline with a checkmark inside, conveying "completed item") inside a square button with the existing purple border and corner radius, and a small floating count badge at the top-right of the button showing the number of currently-hidden completed entries. Everything else from the original toggle entry stays: state persists in `localStorage` (same key, do NOT migrate or rename), toggle defaults OFF, OFF hides every completed entry's full block (the `- [x]` line, sub-bullets, `<!-- id: ... -->` marker), ON shows everything, the file on disk is never mutated, and the pipeline agent still reads the full `TODO.md` server-side. Only the trigger's visual form changes; behavior and persistence are unchanged.
   - Behavior:
@@ -87,5 +87,5 @@
     - If the existing test file `tests/todoMdViewerShowCompleted.test.js` (or whatever the previous entry created) asserts the text content "Show completed", update that assertion to match the new DOM (icon + badge) — but DO NOT delete the entire test file; extend it. Add new assertions for the icon button form (SVG child present, badge child present with correct text, computed width ≤ 36px).
   - Out of scope: changing the localStorage key or its persistence behavior; changing the default OFF state; changing the entry-filter parsing or the (N) calculation logic; changing the "Run backlog" pill or "Sync" pill (if there's STILL a clip after the icon swap, that's a separate follow-up — do not preemptively shrink those); changing the `TODO.md` on-disk format; changing how the pipeline agent reads the file; any change to the chat pane, the sub-band, or other unrelated viewer chrome.
   - File: whichever module owns the `#todoMdViewer` rendering (grep `todoMdViewer` to find it — same file as the previous Show-completed entry touched), `toDoList_main/src/style.css` (CSS for the icon button and badge), `toDoList_main/tests/todoMdViewerShowCompleted.test.js` (extend, do not replace)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-07
   <!-- id: 8941f60e-fa1d-4b1f-8fa4-b61a74ea7206 -->

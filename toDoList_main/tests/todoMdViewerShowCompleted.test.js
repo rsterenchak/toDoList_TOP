@@ -158,10 +158,37 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         );
     });
 
-    it('builds a Show completed toggle button in the header meta row', () => {
+    it('builds an icon button (no text-pill label) in the header meta row', () => {
         expect(main).toMatch(/showCompletedBtn\.className\s*=\s*['"]todoMdViewerShowCompletedBtn['"]/);
-        expect(main).toMatch(/showCompletedLabel\.textContent\s*=\s*['"]Show completed['"]/);
+        // The text-pill label span is gone — the trigger is now an icon glyph.
+        expect(main).not.toMatch(/showCompletedLabel\.textContent\s*=\s*['"]Show completed['"]/);
         expect(main).toMatch(/meta\.appendChild\(showCompletedBtn\);/);
+    });
+
+    it('renders an inline checked-checkbox SVG glyph inside the button', () => {
+        expect(main).toMatch(/showCompletedBtn\.innerHTML\s*=[\s\S]*?<svg[\s\S]*?<polyline[\s\S]*?<\/svg>/);
+    });
+
+    it('renders a floating count badge as the button child', () => {
+        expect(main).toMatch(/showCompletedCount\.className\s*=\s*['"]todoMdViewerShowCompletedBadge['"]/);
+        expect(main).toMatch(/showCompletedBtn\.appendChild\(showCompletedCount\)/);
+    });
+
+    it('sets a descriptive aria-label + title carrying the count and verb', () => {
+        const start = main.indexOf('function applyShowCompletedState');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1100);
+        expect(block).toMatch(/aria-label/);
+        expect(block).toMatch(/\.title\s*=/);
+        expect(block).toMatch(/Hide/);
+        expect(block).toMatch(/Show/);
+    });
+
+    it('hides the badge (via the --empty modifier) when the count is zero', () => {
+        const start = main.indexOf('function applyShowCompletedState');
+        const block = main.slice(start, start + 1100);
+        expect(block).toMatch(/todoMdViewerShowCompletedBtn--empty/);
+        expect(block).toMatch(/===?\s*0/);
     });
 
     it('reflects state via aria-pressed (keyboard-accessible <button>)', () => {
@@ -197,5 +224,33 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         const start = main.indexOf("showCompletedBtn.addEventListener('click'");
         const block = main.slice(start, start + 500);
         expect(block).not.toMatch(/injectEntry|dispatchRun|postToWorker|fetch\s*\(/);
+    });
+});
+
+describe('todo.md viewer — show-completed icon button CSS (style.css)', () => {
+    const css = read('style.css');
+
+    it('sizes the button as a 32×32 square, not text-width', () => {
+        const start = css.indexOf('.todoMdViewerShowCompletedBtn {');
+        expect(start).toBeGreaterThan(-1);
+        const block = css.slice(start, start + 700);
+        expect(block).toMatch(/width:\s*32px/);
+        expect(block).toMatch(/height:\s*32px/);
+        expect(block).toMatch(/border-radius:\s*8px/);
+    });
+
+    it('inverts the background on the pressed/active state', () => {
+        expect(css).toMatch(/\.todoMdViewerShowCompletedBtn\[aria-pressed="true"\]/);
+        expect(css).toMatch(/rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+    });
+
+    it('positions a floating badge and hides it when empty', () => {
+        expect(css).toMatch(/\.todoMdViewerShowCompletedBadge\s*\{/);
+        const badgeStart = css.indexOf('.todoMdViewerShowCompletedBadge {');
+        const block = css.slice(badgeStart, badgeStart + 500);
+        expect(block).toMatch(/position:\s*absolute/);
+        expect(block).toMatch(/top:\s*-5px/);
+        expect(block).toMatch(/right:\s*-5px/);
+        expect(css).toMatch(/--empty\s+\.todoMdViewerShowCompletedBadge\s*\{\s*display:\s*none/);
     });
 });
