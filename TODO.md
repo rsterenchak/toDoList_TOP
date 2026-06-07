@@ -980,3 +980,11 @@
   - File: `BinarySearch.cs`, `tests/BinarySearchTests.cs`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 150213e4-a9f4-48e8-ae6f-cebff22e171c -->
+
+- [ ] **[HIGH]** Pass the active workspace repo when injecting and dispatching from the chat
+  - Type: bug
+  - Description: In the in-app Claude assistant, shipping a drafted entry always injects to and runs claude-run on the default repo (`toDoList_TOP`) regardless of which workspace is selected via the pill. Root cause: `shipDraftedEntry` in `claudeSheet.js` calls both `injectEntry({ entry, id })` and `dispatchRun({ mode: 'entry', entryId, correlationId })` with no `target`, so neither request carries `repo`/`filePath` and the Worker falls back to its default target. Fix by building a target from the active workspace — `{ repo: activeChatRepo, file_path: 'TODO.md' }` — and passing it as `target` to both calls, so the entry lands in the selected repo's `TODO.md` and the run dispatches against that repo. Confirm the Worker honors an explicit `filePath` of `TODO.md` for non-default repos (matchingGame-test's `TODO.md` is at repo root, same as the default). Add a regression test (test-first) asserting that after switching the workspace via the pill, both the inject and dispatch request bodies carry the switched repo rather than the default.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Out of scope: `injectEntry`/`dispatchRun` in `inject.js` (they already accept and forward `target`); the chat-turn `repo` wiring, which already rides `activeChatRepo` correctly.
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bd615b2f-6dfd-4d7f-ac4e-03667f534341 -->
