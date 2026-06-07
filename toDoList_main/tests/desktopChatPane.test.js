@@ -211,6 +211,47 @@ describe('D2 — desktop chat pane (layout source)', () => {
         expect(body).toMatch(/box-shadow:[^;]*var\(--bg-base\)/);
     });
 
+    it('(f) a 1px vertical separator marks the chat pane left edge without a border-left', () => {
+        // The z-10 stacking fix restored the CHAT/RUNS tabs to view, but the
+        // pane's own chrome reads too weakly against the sub-band's --bg-base to
+        // register as a seam — the two header bands looked like one continuous
+        // strip. A 1px vertical separator restores the boundary. It must NOT be
+        // a `border-left` (forbidden above — it would shift layout and the prior
+        // boundary border was removed), so it ships as a hard-edged box-shadow
+        // stripe painted outside the pane's left edge instead.
+        const regionStart = css.indexOf('D2 — DESKTOP TWO-PANE CHAT');
+        const mediaStart = css.indexOf('@media (min-width: 1024px)', regionStart);
+        const regionEnd = css.indexOf('D3 — DESKTOP CHAT PANE COLLAPSE', mediaStart);
+        const d2 = css.slice(mediaStart, regionEnd);
+        const m = d2.match(/#desktopChatPane\s*\{([^}]*)\}/);
+        expect(m).not.toBeNull();
+        // Strip block comments so the prose (which mentions box-shadow) can't be
+        // mistaken for the actual declaration when matching below.
+        const body = m[1].replace(/\/\*[\s\S]*?\*\//g, '');
+
+        // Still no border-left (the prior boundary attempt) — the stripe is a
+        // shadow, so it adds the seam with zero layout impact.
+        expect(body).not.toMatch(/border-left:\s*1px\s+solid/);
+
+        // The box-shadow now carries TWO shadows: the existing --bg-base
+        // overhang AND a 1px separator stripe. The overhang must stay first so
+        // the gap-fill test (navbarGapPaneBackground) still matches it leading
+        // the value.
+        const shadow = body.match(/box-shadow:\s*([^;]+);/);
+        expect(shadow).not.toBeNull();
+        const value = shadow[1];
+        // Overhang leads the declaration.
+        expect(value).toMatch(/^\s*0\s+-16px\s+0\s+0\s+var\(--bg-base\)/);
+        // ...and a 1px vertical stripe (offset-x -1px, no blur/spread) follows,
+        // in a non-transparent colour that is not the page bg.
+        expect(value).toMatch(/-1px\s+0\s+0\s+0\s+rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+
+        // The z-10 stacking from the previous entry is preserved, so the
+        // separator sits on a pane that is already above the sub-band and never
+        // covers the tab strip.
+        expect(body).toMatch(/z-index:\s*10/);
+    });
+
     it('main.js wraps the main pane and the chat pane in #mainSplit', () => {
         expect(main).toMatch(/mainSplit\.id\s*=\s*['"]mainSplit['"]/);
         expect(main).toMatch(/desktopChatPane\.id\s*=\s*['"]desktopChatPane['"]/);
