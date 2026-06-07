@@ -6587,20 +6587,38 @@ function buildTodoMdViewerCard(projectName, target) {
         '<line x1="3" y1="21" x2="10" y2="14"/>' +
         '</svg>';
 
-    // "Show completed" toggle — a compact 32×32 icon button (a standalone
-    // checkmark glyph) with a floating count badge, defaults OFF (completed
-    // entries hidden in the rendered body). The icon form replaces the old
-    // "Show completed (N)" text pill, which overflowed the header on narrow
-    // mobile widths. The N badge is recomputed from live content on every
-    // render; since the glyph carries no visible text, the count and the
-    // Show/Hide verb live in aria-label + title for screen readers and hover
-    // tooltips. The button mounts as the last child of the header meta row.
+    // Body collapse toggle — hides everything below the header (todo rows
+    // and any non-header content) so only the fixed header bar remains.
+    // Distinct from the fullscreen expandBtn above, which resizes the body
+    // rather than hiding it. State is in-memory only (default expanded);
+    // it intentionally does not persist across reloads.
+    const collapseBodyBtn = document.createElement('button');
+    collapseBodyBtn.type = 'button';
+    collapseBodyBtn.className = 'todoMdViewerCollapseBtn';
+
+    const bodyExpandedGlyph =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="6 15 12 9 18 15"/>' +
+        '</svg>';
+    const bodyCollapsedGlyph =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="6 9 12 15 18 9"/>' +
+        '</svg>';
+
+    // "Show completed" toggle — a compact 32×32 icon button (a checked-checkbox
+    // glyph) with a floating count badge, defaults OFF (completed entries hidden
+    // in the rendered body). The icon form replaces the old "Show completed (N)"
+    // text pill, which overflowed the header on narrow mobile widths. The N
+    // badge is recomputed from live content on every render; since the glyph
+    // carries no visible text, the count and the Show/Hide verb live in
+    // aria-label + title for screen readers and hover tooltips.
     const showCompletedBtn = document.createElement('button');
     showCompletedBtn.type = 'button';
     showCompletedBtn.className = 'todoMdViewerShowCompletedBtn';
     showCompletedBtn.innerHTML =
-        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<polyline points="20 6 9 17 4 12"/>' +
+        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M21 11v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>' +
+        '<polyline points="9 11 12 14 22 4"/>' +
         '</svg>';
     const showCompletedCount = document.createElement('span');
     showCompletedCount.className = 'todoMdViewerShowCompletedBadge';
@@ -6608,13 +6626,12 @@ function buildTodoMdViewerCard(projectName, target) {
     showCompletedCount.textContent = '0';
     showCompletedBtn.appendChild(showCompletedCount);
 
+    meta.appendChild(showCompletedBtn);
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
     meta.appendChild(expandBtn);
-    // The show-completed icon button occupies the far-right slot the former
-    // body-collapse button vacated — it is the last child of the meta row.
-    meta.appendChild(showCompletedBtn);
+    meta.appendChild(collapseBodyBtn);
 
     header.appendChild(tabs);
     header.appendChild(meta);
@@ -7049,6 +7066,25 @@ function buildTodoMdViewerCard(projectName, target) {
     });
 
     applyExpandedState(readViewerExpanded(projectName));
+
+    function applyCollapsedState(collapsed) {
+        card.classList.toggle('collapsed', !!collapsed);
+        if (collapsed) {
+            collapseBodyBtn.innerHTML = bodyCollapsedGlyph;
+            collapseBodyBtn.setAttribute('aria-label', 'Expand panel');
+            collapseBodyBtn.title = 'Expand panel';
+        } else {
+            collapseBodyBtn.innerHTML = bodyExpandedGlyph;
+            collapseBodyBtn.setAttribute('aria-label', 'Collapse panel');
+            collapseBodyBtn.title = 'Collapse panel';
+        }
+    }
+
+    collapseBodyBtn.addEventListener('click', function() {
+        applyCollapsedState(!card.classList.contains('collapsed'));
+    });
+
+    applyCollapsedState(true);
 
     // Mobile: tapping the card body anywhere outside its own buttons /
     // tabs opens the viewer in a slide-up bottom sheet. The inline card
