@@ -5096,31 +5096,6 @@ body.row-dragging * { cursor: grabbing !important; }
   to { transform: rotate(360deg); }
 }
 
-.todoMdViewerExpandBtn {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  background: #161622;
-  color: #9D93EE;
-  border: 1px solid #2a2a38;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-}
-.todoMdViewerExpandBtn:hover {
-  background: var(--accent-dim);
-  color: var(--text-primary);
-  border-color: #6C5DF5;
-}
-.todoMdViewerExpandBtn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
 .todoMdViewerCollapseBtn {
   appearance: none;
   display: inline-flex;
@@ -6473,15 +6448,6 @@ body.row-dragging * { cursor: grabbing !important; }
     color: var(--text-primary);
     white-space: nowrap;
   }
-  /* The expand/collapse toggle adds little value on small screens (the
-     viewer opens as a slide-up sheet here, not a fixed-height inline box)
-     and just clutters the header — hide it on mobile. The card and its
-     button are moved into the bottom sheet on open, so this class-scoped
-     rule covers both the inline and in-sheet instances. */
-  .todoMdViewerExpandBtn {
-    display: none;
-  }
-
   /* In the full-screen mobile sheet the header action row used to cram the
      synced caption, run-state control, and Sync onto one line beside the
      tabs. Stack it instead by making the tabs and the meta row each span the

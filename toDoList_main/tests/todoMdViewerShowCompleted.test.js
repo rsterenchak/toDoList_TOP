@@ -165,8 +165,12 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         expect(main).toMatch(/meta\.appendChild\(showCompletedBtn\);/);
     });
 
-    it('renders an inline checked-checkbox SVG glyph inside the button', () => {
+    it('renders a standalone checkmark polyline glyph (not the checked-box) inside the button', () => {
         expect(main).toMatch(/showCompletedBtn\.innerHTML\s*=[\s\S]*?<svg[\s\S]*?<polyline[\s\S]*?<\/svg>/);
+        // The new glyph is option A: a single checkmark polyline, no box outline.
+        expect(main).toMatch(/<polyline points="20 6 9 17 4 12"\/>/);
+        // The prior checked-checkbox path markup is gone.
+        expect(main).not.toMatch(/<path d="M21 11v6/);
     });
 
     it('renders a floating count badge as the button child', () => {
@@ -224,6 +228,59 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         const start = main.indexOf("showCompletedBtn.addEventListener('click'");
         const block = main.slice(start, start + 500);
         expect(block).not.toMatch(/injectEntry|dispatchRun|postToWorker|fetch\s*\(/);
+    });
+});
+
+describe('todo.md viewer — expand-button removal & show-completed relocation (main.js)', () => {
+    const main = read('main.js');
+    const css = read('style.css');
+
+    it('removes the #todoMdViewerExpandBtn (diagonal-arrows) button entirely', () => {
+        // No DOM construction, class assignment, glyph constants, or CSS for it.
+        expect(main).not.toMatch(/todoMdViewerExpandBtn/);
+        expect(main).not.toMatch(/expandIconHtml/);
+        expect(main).not.toMatch(/collapseIconHtml/);
+        expect(css).not.toMatch(/\.todoMdViewerExpandBtn/);
+    });
+
+    it('preserves the #todoMdViewerCollapseBtn (chevron body-collapse) button untouched', () => {
+        // Construction, append, handler, and CSS for the collapse button all stay.
+        expect(main).toMatch(/collapseBodyBtn\.className\s*=\s*['"]todoMdViewerCollapseBtn['"]/);
+        expect(main).toMatch(/meta\.appendChild\(collapseBodyBtn\);/);
+        expect(main).toMatch(/collapseBodyBtn\.addEventListener\(\s*['"]click['"]/);
+        expect(css).toMatch(/\.todoMdViewerCollapseBtn\s*\{/);
+    });
+
+    it('relocates show-completed into the slot the expand button vacated (before collapse, last-but-one)', () => {
+        // The meta append order: synced, run, sync, show-completed, collapse.
+        // show-completed now sits immediately before the collapse button, and
+        // is no longer appended in the leading slot.
+        const order = [
+            'meta.appendChild(syncedLabel);',
+            'meta.appendChild(runBacklogBtn);',
+            'meta.appendChild(syncBtn);',
+            'meta.appendChild(showCompletedBtn);',
+            'meta.appendChild(collapseBodyBtn);',
+        ];
+        let cursor = -1;
+        for (const line of order) {
+            const idx = main.indexOf(line, cursor + 1);
+            expect(idx).toBeGreaterThan(cursor);
+            cursor = idx;
+        }
+        // The collapse button is the final child appended to meta.
+        expect(main.indexOf('meta.appendChild(showCompletedBtn);'))
+            .toBeLessThan(main.indexOf('meta.appendChild(collapseBodyBtn);'));
+        // Exactly one append of the show-completed button (no leftover leading append).
+        const appends = main.match(/meta\.appendChild\(showCompletedBtn\);/g) || [];
+        expect(appends).toHaveLength(1);
+    });
+
+    it('keeps the 32×32 button dimensions (tap target preserved)', () => {
+        const start = css.indexOf('.todoMdViewerShowCompletedBtn {');
+        const block = css.slice(start, start + 700);
+        expect(block).toMatch(/width:\s*32px/);
+        expect(block).toMatch(/height:\s*32px/);
     });
 });
 

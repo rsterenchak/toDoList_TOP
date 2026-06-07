@@ -6568,30 +6568,10 @@ function buildTodoMdViewerCard(projectName, target) {
     syncBtn.setAttribute('aria-label', 'Sync TODO.md');
     syncBtn.textContent = 'Sync';
 
-    const expandBtn = document.createElement('button');
-    expandBtn.type = 'button';
-    expandBtn.className = 'todoMdViewerExpandBtn';
-
-    const expandIconHtml =
-        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<polyline points="15 3 21 3 21 9"/>' +
-        '<polyline points="9 21 3 21 3 15"/>' +
-        '<line x1="21" y1="3" x2="14" y2="10"/>' +
-        '<line x1="3" y1="21" x2="10" y2="14"/>' +
-        '</svg>';
-    const collapseIconHtml =
-        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<polyline points="4 14 10 14 10 20"/>' +
-        '<polyline points="20 10 14 10 14 4"/>' +
-        '<line x1="14" y1="10" x2="21" y2="3"/>' +
-        '<line x1="3" y1="21" x2="10" y2="14"/>' +
-        '</svg>';
-
     // Body collapse toggle — hides everything below the header (todo rows
     // and any non-header content) so only the fixed header bar remains.
-    // Distinct from the fullscreen expandBtn above, which resizes the body
-    // rather than hiding it. State is in-memory only (default expanded);
-    // it intentionally does not persist across reloads.
+    // State is in-memory only (default expanded); it intentionally does not
+    // persist across reloads.
     const collapseBodyBtn = document.createElement('button');
     collapseBodyBtn.type = 'button';
     collapseBodyBtn.className = 'todoMdViewerCollapseBtn';
@@ -6616,9 +6596,8 @@ function buildTodoMdViewerCard(projectName, target) {
     showCompletedBtn.type = 'button';
     showCompletedBtn.className = 'todoMdViewerShowCompletedBtn';
     showCompletedBtn.innerHTML =
-        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<path d="M21 11v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>' +
-        '<polyline points="9 11 12 14 22 4"/>' +
+        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="20 6 9 17 4 12"/>' +
         '</svg>';
     const showCompletedCount = document.createElement('span');
     showCompletedCount.className = 'todoMdViewerShowCompletedBadge';
@@ -6626,11 +6605,10 @@ function buildTodoMdViewerCard(projectName, target) {
     showCompletedCount.textContent = '0';
     showCompletedBtn.appendChild(showCompletedCount);
 
-    meta.appendChild(showCompletedBtn);
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
-    meta.appendChild(expandBtn);
+    meta.appendChild(showCompletedBtn);
     meta.appendChild(collapseBodyBtn);
 
     header.appendChild(tabs);
@@ -7044,28 +7022,6 @@ function buildTodoMdViewerCard(projectName, target) {
         const fallback = 240;
         body.style.height = Math.max(fallback, available) + 'px';
     }
-
-    function applyExpandedState(expanded) {
-        card.classList.toggle('todoMdViewerCard--expanded', !!expanded);
-        if (expanded) {
-            expandBtn.innerHTML = collapseIconHtml;
-            expandBtn.setAttribute('aria-label', 'Collapse TODO.md viewer');
-            expandBtn.title = 'Collapse';
-        } else {
-            expandBtn.innerHTML = expandIconHtml;
-            expandBtn.setAttribute('aria-label', 'Expand TODO.md viewer');
-            expandBtn.title = 'Expand';
-        }
-        applyExpandedHeight();
-    }
-
-    expandBtn.addEventListener('click', function() {
-        const next = !card.classList.contains('todoMdViewerCard--expanded');
-        writeViewerExpanded(projectName, next);
-        applyExpandedState(next);
-    });
-
-    applyExpandedState(readViewerExpanded(projectName));
 
     function applyCollapsedState(collapsed) {
         card.classList.toggle('collapsed', !!collapsed);
