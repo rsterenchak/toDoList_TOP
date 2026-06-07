@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-07',
         fixed: [
-            "On desktop, the filter and sort row now matches the background of the view-tab band above it, removing the mismatched seam between the two header rows.",
             "On desktop, the filter and sort row no longer paints a greyer chrome stripe — its background again matches the view-tab band above it.",
             "On desktop, the view-tab band now paints the same background as the filter and sort row below it, so the two header rows read as one seamless region.",
             "On desktop, the view-tab band now paints its full row, removing the thin grey strip that showed above the view tabs.",
             "On desktop, a visible divider line again separates the Claude chat pane from the view-tab band, so the two no longer blend into one continuous bar.",
+            "On desktop, the Claude chat pane's CHAT and RUNS tabs are no longer hidden behind the view-tab band.",
         ],
     },
 ];
