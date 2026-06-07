@@ -1103,7 +1103,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b04c818e-5cc1-47a1-a0e2-69697f820863 -->
 
-- [ ] **[HIGH]** Give the desktop project picker dropdown its own inline rename edit mode
+- [x] **[HIGH]** Give the desktop project picker dropdown its own inline rename edit mode — Completed: 2026-06-07
   - Type: bug
   - Description: The Rename item in the `#projectPickerDropdown` context menu was wired to the sidebar `projectRow.js` `onEdit` helper, which `selectIfNeeded()` + focuses the sidebar's `#projInput`. At desktop widths the sidebar drawer is hidden, so the user sees only a silent project switch and the context menu closing — no editable input ever appears. The dropdown surface needs its own inline edit mode that lives ON the dropdown row, independent of the sidebar's input. Add an `enterRowEditMode(row, currentName)` helper next to the dropdown row builder in `main.js` that swaps the row's `.projectPickerName` + `.projectPickerCount` children for a single text input pre-populated with the current name and select-all'd on mount. Wire the dropdown context menu's `Rename` handler to call this helper — NOT to the sidebar's `onEdit`. Commit via the shared `listLogic.editProject(oldName, newName)` mutation already used by the sidebar's rename keydown handler so the data path stays single-sourced; only the input UI is per-surface. The previous "Make Rename in the desktop project picker edit the row inline" entry described this approach but the implementation reused the sidebar helper instead — this entry is the correction.
   - Behavior:
