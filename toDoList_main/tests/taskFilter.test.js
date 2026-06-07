@@ -218,6 +218,62 @@ describe('applyTaskFilter — visible subset', () => {
 });
 
 
+// Bug-1 regression guard: a reported symptom claimed the project-page IDEAS
+// filter rendered ZERO cards even though the pill counted ideas (e.g. "IDEAS 7"
+// with an empty body + empty-state ghost). The pill count and the row
+// visibility are driven by the SAME single DOM scan in applyTaskFilter, so a
+// non-zero idea count provably implies that many idea rows are un-hidden — the
+// described state is structurally impossible. These tests pin that invariant so
+// any future change that decouples the count from visibility fails loudly.
+describe('IDEAS filter renders every idea row (bug-1 invariant)', () => {
+    function visibleCommitted(ml) {
+        return Array.from(ml.querySelectorAll('#toDoChild')).filter(function (row) {
+            return row.__item && row.__item.tit && !isHidden(row);
+        });
+    }
+
+    it('renders exactly K idea cards when K idea entries exist and IDEAS is active', () => {
+        const ml = makeMainList();
+        const ideas = [];
+        for (let i = 0; i < 7; i++) {
+            const r = makeRow('Idea ' + i, 'idea');
+            ideas.push(r);
+            ml.append(r);
+        }
+        // A couple of non-idea rows to prove they're filtered OUT, not the ideas.
+        ml.append(makeRow('Active task', 'active'), makeRow('WIP task', 'in_progress'));
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // all → active
+        cyclePill(bar).click(); // active → ideas
+
+        // The pill count and the rendered-card count must agree …
+        expect(pillCount(bar)).toBe('7');
+        expect(visibleCommitted(ml).length).toBe(7);
+        ideas.forEach(function (r) { expect(isHidden(r)).toBe(false); });
+        // … and the filter empty-state must NOT appear while ideas are visible.
+        expect(document.getElementById('taskFilterEmpty')).toBeNull();
+    });
+
+    it('shows the empty-state only when there are genuinely zero idea entries', () => {
+        const ml = makeMainList();
+        ml.append(makeRow('Active task', 'active'), makeRow('WIP task', 'in_progress'));
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // all → active
+        cyclePill(bar).click(); // active → ideas (no idea rows here)
+
+        expect(pillCount(bar)).toBe('0');
+        expect(visibleCommitted(ml).length).toBe(0);
+        const empty = document.getElementById('taskFilterEmpty');
+        expect(empty).not.toBeNull();
+        expect(empty.textContent).toBe('No ideas captured yet.');
+    });
+});
+
+
 // (4 cont.) Counts come from the full list and are shown for the active filter.
 describe('cycle pill count', () => {
     it('shows the active filter\'s count, updating as the filter cycles', () => {
