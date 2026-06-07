@@ -143,6 +143,19 @@ describe('desktop project-picker delete context menu', () => {
         expect(menuZ).toBeGreaterThan(dropZ);
     });
 
+    // Regression: the drawer's full project context menu (#projContextMenu —
+    // Edit / color / Delete) is also portaled to document.body, so if it is ever
+    // raised over the desktop picker it must clear the dropdown. The bare 20 it
+    // shipped with sat below the dropdown's 100. A relational assertion (not a
+    // bare number) fails the moment the two cross again, however the picker bumps
+    // its own z-index.
+    it('#projContextMenu stacks above the project-picker dropdown', () => {
+        const dropZ = zIndexOf('#projectPickerDropdown');
+        const menuZ = zIndexOf('#projContextMenu');
+        expect(dropZ).toBeGreaterThan(0);
+        expect(menuZ).toBeGreaterThan(dropZ);
+    });
+
     // Regression: a portaled child can outlive its conceptual parent. When the
     // dropdown closes (outside click, Escape, resize to mobile), the menu must
     // close too — closeProjectPicker tears it down.

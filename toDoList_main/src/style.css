@@ -707,6 +707,15 @@ body {
   z-index: 101;
 }
 
+/* #projContextMenu is portaled onto document.body; when opened over the desktop
+   #projectPickerDropdown (z-index 100) it must stack above it or Delete renders
+   behind the dropdown and is unreachable. 200 clears the dropdown (100) and the
+   settings menu (30), and stays well below the welcome carousel (650) and the
+   desktop spotlight (600/601) so first-run flows are unaffected. */
+#projContextMenu {
+  z-index: 200;
+}
+
 .projContextMenuItem {
   padding: 8px 14px;
   font-size: 13px;
