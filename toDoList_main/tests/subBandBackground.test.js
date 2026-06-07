@@ -110,6 +110,32 @@ describe('desktop view sub-band background', () => {
         expect(rule).toMatch(/background:\s*var\(--bg-base\)/);
     });
 
+    it('(d3) a mirrored downward box-shadow fills the 16px row slack below the band with --bg-base', () => {
+        // The band's grid row is 48px tall but the band is only 32px, leaving
+        // 16px of slack at the bottom of the row that fell through to
+        // #outerContainer's greyer chrome — a grey strip BELOW the view tabs.
+        // The fix mirrors the existing upward shadow with a symmetric downward
+        // shadow on the same band, same --bg-base token, hard-edged (no
+        // blur/spread). This is paint-only and additive: the upward shadow (d2
+        // pins it) stays, the band geometry stays, and the second shadow simply
+        // extends --bg-base 16px down over the slack.
+        const rule = subBandRule();
+
+        // Both shadow segments must be present: the existing upward one AND the
+        // new mirrored downward one, both the same offset magnitude and token.
+        expect(rule).toMatch(/box-shadow:[^;]*0\s+-16px\s+0\s+0\s+var\(--bg-base\)/);
+        expect(rule).toMatch(/box-shadow:[^;]*0\s+16px\s+0\s+0\s+var\(--bg-base\)/);
+
+        // The downward offset must exactly match the margin-top (16px), so the
+        // covered slack equals the slack the row actually leaves. Symmetric with
+        // the upward shadow that covers the top gap.
+        const margin = rule.match(/margin-top:\s*(\d+)px/);
+        expect(margin).not.toBeNull();
+        const down = rule.match(/box-shadow:[^;]*\b0\s+(\d+)px\s+0\s+0\s+var\(--bg-base\)/);
+        expect(down).not.toBeNull();
+        expect(parseInt(down[1], 10)).toBe(parseInt(margin[1], 10));
+    });
+
     it('(d) the sub-band keeps its grid-row:3 placement under #outerContainer', () => {
         // Pin the DOM parentage and grid placement so a future "actually relocate
         // the sub-band into #mainBar" refactor — which would re-introduce the

@@ -7019,8 +7019,13 @@ body.row-dragging * { cursor: grabbing !important; }
        the band's whole grid row continuously, with no grey slack above the view
        tabs. Pure paint: the 16px margin-top, the 32px min-height, and the
        chat-pane alignment that keys off them all stay untouched, and it's inert
-       at mobile where the band is display:none. */
-    box-shadow: 0 -16px 0 0 var(--bg-base);
+       at mobile where the band is display:none. A mirrored downward shadow
+       (offset down 16px, same token, no blur, no spread) covers the symmetric
+       16px of grey slack BELOW the band: the band's grid row 3 is 48px tall but
+       the band is only 32px, leaving 16px at the row's bottom that otherwise
+       falls through to #outerContainer's greyer chrome. Two-shadow paint mirrors
+       the pattern already on #desktopChatPane. */
+    box-shadow: 0 -16px 0 0 var(--bg-base), 0 16px 0 0 var(--bg-base);
     position: relative;
     z-index: 9;
     /* The band spans the full viewport, but only its left half holds the view
