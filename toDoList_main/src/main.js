@@ -62,7 +62,6 @@ import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
     attachProjectDrag,
-    beginProjectRename,
     deleteProjectFlow,
 } from './projectRow.js';
 import {
@@ -3032,6 +3031,14 @@ function component() {
         return projectPickerDropdown.classList.contains('open');
     }
 
+    // The single in-progress inline rename editor inside the dropdown (or
+    // null). Tracked at picker scope so dismissing the dropdown can cancel a
+    // half-finished edit cleanly — no orphan input, no stale commit.
+    let activeRowEditor = null;
+    function cancelActiveRowEditor() {
+        if (activeRowEditor) activeRowEditor.cancel();
+    }
+
     // Rebuild the dropdown rows from the authoritative project list. Active
     // project gets the purple accent + ✓; zero-count projects get a quieter
     // count color. No "+ New project" footer: the existing create-project
@@ -3089,6 +3096,128 @@ function component() {
         });
     }
 
+    // Swap a dropdown row in place into a focused text input pre-populated
+    // with the project's current name (select-all'd so a single keypress
+    // replaces). Mirrors the sidebar's #projInput edit behavior, scoped to the
+    // dropdown's own row geometry. Enter / blur commit through the same
+    // listLogic rename mutation the sidebar's #projInput commit uses; Escape
+    // (and dropdown dismissal) cancels and restores the row.
+    function enterRowEditMode(row, projectName) {
+        if (row.classList.contains('editing')) return;
+        // Only one inline editor at a time — settle any other first.
+        cancelActiveRowEditor();
+
+        const nameEl  = row.querySelector('.projectPickerName');
+        const countEl = row.querySelector('.projectPickerCount');
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'projectPickerRenameInput';
+        input.value = projectName;
+        input.setAttribute('aria-label', 'Rename project');
+
+        row.classList.add('editing');
+        if (nameEl)  nameEl.style.display  = 'none';
+        if (countEl) countEl.style.display = 'none';
+        row.appendChild(input);
+
+        input.focus();
+        if (typeof input.select === 'function') input.select();
+
+        let settled = false;
+
+        const api = { cancel: cancel };
+        activeRowEditor = api;
+
+        function teardown() {
+            if (input.parentNode) input.parentNode.removeChild(input);
+            if (nameEl)  nameEl.style.display  = '';
+            if (countEl) countEl.style.display = '';
+            row.classList.remove('editing');
+            if (activeRowEditor === api) activeRowEditor = null;
+        }
+
+        function cancel() {
+            if (settled) return;
+            settled = true;
+            teardown();
+        }
+
+        // Inline error treatment matching the sidebar's #projInput reject
+        // path (red) — keep the editor open so the user can correct it.
+        function rejectAndStayOpen() {
+            input.classList.add('error');
+            input.focus();
+            if (typeof input.select === 'function') input.select();
+        }
+
+        function commit() {
+            if (settled) return;
+            const trimmed = input.value.trim();
+            // Unchanged value (incl. a no-edit blur): revert cleanly, no write.
+            if (trimmed === projectName) { cancel(); return; }
+            // Reject empty / whitespace-only.
+            if (trimmed.length === 0) { rejectAndStayOpen(); return; }
+            // Reject duplicates (mirror the sidebar's name-collision guard).
+            const names = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+            if (names.indexOf(trimmed) !== -1) { rejectAndStayOpen(); return; }
+
+            // Commit through the SAME listLogic mutation the sidebar's
+            // #projInput commit uses — one rename mutation site, no parallel
+            // writer.
+            const originalIdx = names.indexOf(projectName);
+            listLogic.editProject(projectName, trimmed);
+            // editProject appends the renamed key to the end of the project
+            // order; restore its original slot so the row keeps its sort
+            // position and every row's index closure stays valid.
+            const movedIdx = listLogic.listProjectsArray().indexOf(trimmed);
+            if (originalIdx !== -1 && movedIdx !== -1 && movedIdx !== originalIdx) {
+                listLogic.reorderProject(movedIdx, originalIdx);
+            }
+            // Keep the backing drawer row (#projChild) in sync so the sidebar
+            // surface and every name-keyed lookup agree with the new name.
+            const projChild = findProjChildByName(projectName);
+            if (projChild) {
+                const backingInput = projChild.querySelector('#projInput');
+                if (backingInput) backingInput.value = trimmed;
+                applyProjectInitial(projChild, trimmed);
+            }
+            settled = true;
+            teardown();
+            // Repaint: badges + the active pill name (when the renamed project
+            // is active), then rebuild the dropdown rows. The dropdown stays
+            // open and the row sits at its restored sort position, now with the
+            // new name and a fresh, correct index closure.
+            updateFooterCounts();
+            buildProjectPickerRows();
+        }
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+            } else if (e.key === 'Escape') {
+                // Cancel only the edit; keep the dropdown open (don't let the
+                // dropdown's own Escape handler also fire).
+                e.preventDefault();
+                e.stopPropagation();
+                cancel();
+            } else {
+                input.classList.remove('error');
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            // Defer so a dropdown dismissal (outside click → closeProjectPicker
+            // → cancelActiveRowEditor) settles as a cancel before this would
+            // commit. A blur that stays inside the still-open dropdown commits.
+            setTimeout(function() {
+                if (settled) return;
+                commit();
+            }, 0);
+        });
+    }
+
     function positionProjectPicker() {
         const rect = mobileProjHeader.getBoundingClientRect();
         const top = rect.bottom + window.scrollY + 4;
@@ -3107,6 +3236,10 @@ function component() {
     }
 
     function closeProjectPicker() {
+        // Dismissing the dropdown cancels any in-progress inline rename so a
+        // half-finished edit never strands an orphan input or commits a stale
+        // value.
+        cancelActiveRowEditor();
         projectPickerDropdown.classList.remove('open');
         projectPickerDropdown.setAttribute('aria-hidden', 'true');
         mobileProjHeader.classList.remove('picker-open');
@@ -3174,7 +3307,7 @@ function component() {
         return null;
     }
 
-    function showProjectRowContextMenu(x, y, projectName) {
+    function showProjectRowContextMenu(x, y, projectName, row) {
         hideProjectRowContextMenu();
 
         const menu = document.createElement('div');
@@ -3182,10 +3315,11 @@ function component() {
         menu.setAttribute('role', 'menu');
 
         // Rename sits above Delete (no separator — the color picker that would
-        // normally sit between them stays gated for a follow-up). It resolves
-        // the dropdown row back to its backing #projChild and routes through
-        // the same beginProjectRename flow the sidebar's Edit item uses, so the
-        // two surfaces produce identical results.
+        // normally sit between them stays gated for a follow-up). It edits the
+        // dropdown's own row in place: the row swaps into a focused text input,
+        // and commits through the same listLogic rename mutation the sidebar's
+        // #projInput commit uses, so the two surfaces produce identical results.
+        // The dropdown stays open while editing.
         const rename = document.createElement('div');
         rename.className = 'projContextMenuItem';
         rename.setAttribute('role', 'menuitem');
@@ -3193,12 +3327,7 @@ function component() {
         rename.textContent = 'Rename';
         rename.addEventListener('click', function() {
             hideProjectRowContextMenu();
-            closeProjectPicker();
-            const projChild = findProjChildByName(projectName);
-            if (projChild) {
-                const input = projChild.querySelector('#projInput');
-                if (input) beginProjectRename(projChild, input);
-            }
+            if (row) enterRowEditMode(row, projectName);
         });
         menu.appendChild(rename);
 
@@ -3247,7 +3376,7 @@ function component() {
     function attachProjectPickerRowContextMenu(row, projectName) {
         row.addEventListener('contextmenu', function(event) {
             event.preventDefault();
-            showProjectRowContextMenu(event.clientX, event.clientY, projectName);
+            showProjectRowContextMenu(event.clientX, event.clientY, projectName, row);
         });
 
         let lpTimer  = null;
@@ -3263,7 +3392,7 @@ function component() {
             lpFired  = false;
             lpTimer  = setTimeout(function() {
                 lpFired = true;
-                showProjectRowContextMenu(lpStartX, lpStartY, projectName);
+                showProjectRowContextMenu(lpStartX, lpStartY, projectName, row);
             }, 500);
         }, { passive: true });
 

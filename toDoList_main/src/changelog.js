@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-07',
-        added: [
-            "Projects can be renamed from the desktop project dropdown — right-click or long-press a project and choose Rename.",
-        ],
         fixed: [
             "The chat assistant's workspace menu now refreshes each time you open it, so a repo added to or removed from the allowlist shows up without a page reload.",
             "Runs shipped from the chat assistant to a non-default workspace now report their final status instead of staying stuck as queued.",
             "Projects can be deleted again from the desktop project dropdown — right-click or long-press a project for a Delete option, with a confirmation naming the project and how many todos go with it.",
             "The desktop project dropdown's Delete option is reachable again — its menu now opens above the dropdown instead of behind it.",
+            "Choosing Rename in the desktop project dropdown now edits the name inline in the row instead of switching to the project.",
         ],
     },
 ];
