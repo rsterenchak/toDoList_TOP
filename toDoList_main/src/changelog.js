@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-07',
-        changed: [
-            "The All, Active, and Ideas filter buttons above the task list are now a single pill that cycles through the three filters each time you tap it.",
-        ],
         fixed: [
             "Projects can be deleted again from the desktop project dropdown — right-click or long-press a project for a Delete option, with a confirmation naming the project and how many todos go with it.",
             "The desktop project dropdown's Delete option is reachable again — its menu now opens above the dropdown instead of behind it.",
             "Choosing Rename in the desktop project dropdown now edits the name inline in the row instead of switching to the project.",
             "Choosing Rename in the desktop project dropdown's menu no longer makes the dropdown close — the inline editor opens and stays put while you rename.",
+            "Tapping a task's status label now opens its menu on the first tap even when another row's status menu is already open.",
         ],
     },
 ];
