@@ -155,6 +155,37 @@ describe('D2 — desktop chat pane (layout source)', () => {
         );
     });
 
+    it('(e) the chat pane carries a visible 1px left boundary separating it from the view-tabs band', () => {
+        // After the view-tab sub-band (#desktopViewSubBand) was repainted
+        // var(--bg-base), it and the chat pane's CHAT/RUNS tab band resolve to
+        // the same colour at the same y, so the seam between the two panes
+        // disappeared — they read as one continuous bar. The boundary is
+        // restored with a 1px left border on the chat pane (the pane's left
+        // edge already used var(--border-bright); a sub-pixel 0.5px line is too
+        // faint to act as the divider now that both surfaces match). A full 1px
+        // line is the visible separator. It must be solid and non-transparent.
+        //
+        // Slice the D2 desktop region first so we target the lifted pane rule,
+        // not the base `#desktopChatPane { display:none }` or the collapsed-state
+        // rule. Same region boundaries as chatPaneSubHeaderAlign's d2Block.
+        const regionStart = css.indexOf('D2 — DESKTOP TWO-PANE CHAT');
+        expect(regionStart).toBeGreaterThan(-1);
+        const mediaStart = css.indexOf('@media (min-width: 1024px)', regionStart);
+        expect(mediaStart).toBeGreaterThan(regionStart);
+        const regionEnd = css.indexOf('D3 — DESKTOP CHAT PANE COLLAPSE', mediaStart);
+        expect(regionEnd).toBeGreaterThan(mediaStart);
+        const d2 = css.slice(mediaStart, regionEnd);
+
+        const m = d2.match(/#desktopChatPane\s*\{([^}]*)\}/);
+        expect(m).not.toBeNull();
+        const body = m[1];
+        // A visible 1px solid left border, not the faint 0.5px sub-pixel line.
+        expect(body).toMatch(/border-left:\s*1px\s+solid\s+var\(--border-bright\)/);
+        expect(body).not.toMatch(/border-left:\s*0\.5px/);
+        // The boundary colour is a token, never transparent.
+        expect(body).not.toMatch(/border-left:[^;]*transparent/);
+    });
+
     it('main.js wraps the main pane and the chat pane in #mainSplit', () => {
         expect(main).toMatch(/mainSplit\.id\s*=\s*['"]mainSplit['"]/);
         expect(main).toMatch(/desktopChatPane\.id\s*=\s*['"]desktopChatPane['"]/);
