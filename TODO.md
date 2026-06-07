@@ -1085,3 +1085,20 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/tests/projectContextMenu.test.js` (or the closest existing test file — grep first)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9df144ad-8b48-49d4-97a8-64d061c07389 -->
+
+- [ ] **[HIGH]** Make Rename in the desktop project picker edit the row inline
+  - Type: bug
+  - Description: Rename in the `#projectPickerDropdown` context menu currently routes to the project's todo page instead of letting the user edit the name, because it reuses the sidebar's `onEdit` callback that activates the sidebar row's `#projInput` element — the dropdown row has no equivalent inline-edit field, so the click falls through to "switch to this project." Add inline editing scoped to the dropdown's own row geometry: the row swaps in place into a focused text input pre-populated with the current name and select-all'd so a single keypress replaces. Enter (or blur) commits via the existing rename flow `listLogic` already exposes for the sidebar; Escape cancels and restores the row. Mirrors the sidebar's edit behavior at parity, scoped to the dropdown surface.
+  - Behavior:
+    1. Right-click / long-press on a dropdown row → pick `Rename` → that row replaces its `.projectPickerName` + `.projectPickerCount` children with a single text input matching the row's 32px height and padding; the dropdown stays open and other rows are unaffected.
+    2. The input mounts focused with the name pre-selected (select-all) so typing replaces; arrow keys position normally.
+    3. Commit paths: Enter, and blur (clicking outside the input but still inside the dropdown). Both submit through the same rename helper the sidebar's Edit path uses — no parallel mutation site.
+    4. Cancel paths: Escape, and Escape only. A blur with an unchanged value also reverts cleanly (no-op write).
+    5. Validation: reuse the existing rename validation (trim whitespace, reject empty, reject duplicates). On rejection the input stays open with an inline error treatment matching whatever the sidebar uses on its `#projInput` reject path — don't invent a new error surface.
+    6. After a successful commit the row repaints with the new name + the same count badge, the row stays in its current sort position, and the dropdown stays open. After a cancel the row repaints with the prior name.
+    7. Closing the dropdown while editing (clicking outside it, Escape on the dropdown chrome) cancels the edit cleanly — no orphan input mid-save, no stale value committed.
+  - Implementation notes: The wiring lives in `main.js` where `#projectPickerDropdown` rows are built and where the context-menu `Rename` handler routes — grep with offset/limit, the file is over 25k tokens. The cleanest path is to add a small `enterRowEditMode(row, project)` helper next to the dropdown row builder rather than spreading edit DOM logic across the context-menu handler. Reuse whatever rename helper the sidebar's `#projInput` commit calls — there should be exactly one; if it isn't already exported from `listLogic.js`, export it now and switch both call sites at the same time so the two surfaces share the mutation. Style the input in `style.css` as a `.projectPickerRow.editing` variant — same 32px row height, same horizontal padding, SpaceMono 13px to match the row's name treatment, a 1px purple focus border, transparent-ish background so the row's accent stripe stays readable. No new dependency. Regression test: clicking `Rename` from a dropdown row swaps the row into an input, Enter commits via the shared rename helper (assert it's the same function the sidebar Edit path invokes — wire a spy), Escape reverts, and a duplicate-name input keeps the editor open with an error.
+  - Out of scope: rename from the sidebar (already works, unchanged); the inline color picker in the dropdown context menu (separate follow-up); mobile project chrome.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/projectContextMenu.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b04c818e-5cc1-47a1-a0e2-69697f820863 -->
