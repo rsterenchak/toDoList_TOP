@@ -1058,3 +1058,16 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b173d274-eb72-4a3f-8b9b-74175a1d355b -->
+
+- [ ] **[HIGH]** Bump #projContextMenu z-index above the desktop project picker dropdown
+  - Type: bug
+  - Description: The project context menu (Edit · color picker · Delete) renders behind the desktop `#projectPickerDropdown` panel because of a stacking-context gap, leaving Delete unreachable from the new desktop project switcher. The menu is already portaled to `document.body` (`document.body.appendChild(menu)` in `projectMenu.js`) and uses `position: fixed`, so the issue is not clipping or a trapped parent — it's purely z-index: `#projContextMenu` is set to `z-index: 20` (sufficient when the menu only opened from sidebar `#projChild` rows) while `#projectPickerDropdown` is `z-index: 100`, so 100 wins and the menu paints underneath. Raise `#projContextMenu` to `z-index: 200` — comfortably above the dropdown (100) and the settings menu (30), and well below the welcome carousel (650) and desktop spotlight (600/601) so first-run flows are unaffected. Supersedes the previously-drafted "Fix project delete context menu rendering behind the project dropdown" entry; the portal change it proposed was based on a wrong diagnosis. If that entry hasn't shipped yet, skip it.
+  - Behavior:
+    1. Right-click / long-press on a row inside `#projectPickerDropdown` opens the context menu visually above the dropdown panel, with Edit / color picker / Delete fully clickable and no row text bleeding through the menu.
+    2. The dropdown stays open beneath the menu (acting on a row visible inside it is the whole point); existing dismiss paths still work — selecting an item, Escape, outside click, outside right-click, scroll, or viewport resize all close the menu (per `hideProjectContextMenu`).
+    3. The menu must still close above the dropdown without trapping clicks — verify the existing capture-phase outside-click listener still fires when the click target is inside the dropdown but outside the menu.
+  - Implementation notes: One-line change in `style.css` (`#projContextMenu { z-index: 200; }`). Add a regression test in `tests/` that asserts `#projContextMenu`'s computed `z-index` is greater than `#projectPickerDropdown`'s — bare numeric assertions invite the same drift to recur the next time the picker bumps its own z-index, but a relational assertion fails the moment they cross again. The existing z-index ladder elsewhere (settings menu 30, welcome carousel 650, spotlight overlay 600/601) should be cited in a CSS comment above the new value so the next person reading the rule sees the budget.
+  - Out of scope: any change to `projectMenu.js` (the portal logic, dismiss handlers, and positioning are all correct); any change to `#projectPickerDropdown`'s own z-index; restyling the menu surface; the sidebar `#projChild` use case (unaffected — its parent has no stacking competitor above z-index 20).
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/projectContextMenu.test.js` (or the existing stacking-related test file — grep `tests/` for `z-index` first; if there's an existing stacking ladder test, extend it instead of adding a new file)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a693e3d5-6554-42e3-b313-c8db61b854e6 -->
