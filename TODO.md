@@ -974,13 +974,6 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 49b88e7a-acfb-42a7-a473-412101b52117 -->
 
-- [ ] **[MEDIUM]** Add a binary search stub and failing unit test for practice
-  - Type: feature
-  - Description: Create a `BinarySearch` class with a single static method `Search(int[] sortedArray, int target)` that returns the index of `target` in `sortedArray`, or `-1` if not found. The method body should be `throw new NotImplementedException()` so Robert can implement it himself. Add a corresponding xUnit (or MSTest, whichever the project already uses) test class with at least 3 test cases (target found in middle, target found at edge, target not present) — all tests should fail until the stub is replaced with a real implementation.
-  - File: `BinarySearch.cs`, `tests/BinarySearchTests.cs`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: 150213e4-a9f4-48e8-ae6f-cebff22e171c -->
-
 - [ ] **[HIGH]** Pass the active workspace repo when injecting and dispatching from the chat
   - Type: bug
   - Description: In the in-app Claude assistant, shipping a drafted entry always injects to and runs claude-run on the default repo (`toDoList_TOP`) regardless of which workspace is selected via the pill. Root cause: `shipDraftedEntry` in `claudeSheet.js` calls both `injectEntry({ entry, id })` and `dispatchRun({ mode: 'entry', entryId, correlationId })` with no `target`, so neither request carries `repo`/`filePath` and the Worker falls back to its default target. Fix by building a target from the active workspace — `{ repo: activeChatRepo, file_path: 'TODO.md' }` — and passing it as `target` to both calls, so the entry lands in the selected repo's `TODO.md` and the run dispatches against that repo. Confirm the Worker honors an explicit `filePath` of `TODO.md` for non-default repos (matchingGame-test's `TODO.md` is at repo root, same as the default). Add a regression test (test-first) asserting that after switching the workspace via the pill, both the inject and dispatch request bodies carry the switched repo rather than the default.
