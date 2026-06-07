@@ -10,6 +10,45 @@ The core feature implemented is the ability to add and edit tasks, including upd
 
 ---
 
+## Claude run pipeline — adding repos
+
+Quick reference for wiring a new or existing repo into the routine that reads `TODO.md`, opens a PR, and auto-merges.
+
+### Existing repo (already wired)
+
+1. Open the PWA, switch the workspace picker to the target repo.
+2. Inject a TODO entry (or paste directly into `TODO.md` on `main`).
+3. The next run picks it up — watch for the PR to open and auto-merge.
+
+### New repo (first-time setup)
+
+Roughly 7 steps. Order matters for steps 1–3.
+
+1. **Scaffold the pipeline files.** From the `todo-injector-worker` repo, run `./onboard.sh` against the target repo. It drops in `.claude/routine.md`, `.claude/routine-base.md`, `.github/workflows/claude-run.yml`, `test.yml`, `deploy.yml`, `CLAUDE.md`, and an initial `TODO.md`. Review and commit directly to `main`.
+
+2. **Install the Claude GitHub app** on the new repo: https://github.com/apps/claude — grant access to just this repo.
+
+3. **Add the PAT secret.** Settings → Secrets and variables → Actions → New repository secret. Name matches what `claude-run.yml` expects (check the workflow file). PAT scoped to `Actions: read+write`.
+
+4. **Set workflow permissions.** Settings → Actions → General → Workflow permissions → **"Read and write permissions"**. New repos default to read-only; without this, `deploy.yml` 403s on `gh-pages` push and `claude-run.yml` 403s on PR auto-merge.
+
+5. **Configure Pages.** Settings → Pages → Source: "Deploy from a branch", branch `gh-pages`, folder `/ (root)`. (If the project deploys from `main` instead, use that with `/ (root)`.)
+
+6. **Register the repo with the worker.** Edit `ALLOWED_TARGETS` in `todo-injector-worker/src` to include the new repo (`owner/repo`). Then `wrangler deploy` from the worker's directory — the allowlist won't take effect until the new worker is live.
+
+7. **Add the repo as an inject target in the PWA**, then smoke-test by injecting a trivial entry (e.g. "Add a comment to README.md saying 'Pipeline verified'"). If the PR opens, tests pass, and it auto-merges — you're integrated.
+
+### Gotchas that bit on first runs
+
+* **Workflow permissions** (Step 4) and **Pages source** (Step 5) are repo settings, not files — easy to forget because they don't come from `onboard.sh`. 403s on deploy or auto-merge are almost always one of these.
+* **Worker `ALLOWED_TARGETS` is hardcoded** and requires `wrangler deploy` to take effect. Adding the repo in the PWA without updating + deploying the worker first will fail at inject time.
+* **Direct commits to `main` for routine/config changes** — don't route them through the pipeline. The pipeline ships backlog entries, not its own scaffolding.
+
+---
+
+
+---
+
 ## Live Application
 
 You can access the deployed application here:
