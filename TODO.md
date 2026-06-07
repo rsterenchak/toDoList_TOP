@@ -1000,3 +1000,17 @@
   - Out of scope: making in-app Inject targets (`cachedTargets`) populate the chat workspace menu; any change to `ALLOWED_TARGETS` sourcing on the Worker.
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b29825ba-9452-4bbe-b4dd-c7cec30a0716 -->
+
+- [ ] **[LOW]** Block saving an inject target whose repo isn't in the Worker allowlist
+  - Type: feature
+  - Description: The inject-target add/edit sub-modal only validates that `repo` is non-empty and matches the `owner/repository` shape — it never checks the repo against the Worker's `ALLOWED_TARGETS`, so a target pointing at an unlisted repo saves cleanly and then silently fails at inject/dispatch time. Add a save-time allowlist check in `onSave`: after the existing synchronous `validateTargetForm` pass and before the Supabase insert/update, call `fetchAllowedRepos()` and, if it resolves with a repo list that does not include `values.repo`, set an inline error on the repo field via the existing `setError(repoField, …)` machinery ("Not in the Worker allowlist — add it to ALLOWED_TARGETS first") and abort the write. Keep `validateTargetForm` synchronous (shape checks only); the async allowlist check lives in `onSave`.
+  - Behavior:
+    1. Block the Supabase write when the allowlist fetch succeeds and `values.repo` is absent from `result.repos`; surface the failure as an inline repo-field error using the same red treatment as the existing shape errors.
+    2. Disable Save while the async check is in flight and re-enable it on a blocked result so the user can fix the repo and retry — never leave Save stuck disabled.
+    3. If `fetchAllowedRepos()` returns null or throws (Worker unreachable), skip the check and allow the save, matching the app's graceful-degradation pattern rather than blocking on a transient failure.
+    4. Apply the same check on the edit flow, not just add.
+  - Implementation notes: `fetchAllowedRepos()` is already exported from `inject.js` and resolves to `{ default, repos: [{ repo, srcPrefix }] }`; match with `result.repos.some(r => r.repo === values.repo)`. No new dependency needed.
+  - Out of scope: what feeds the chat workspace menu; any change to `ALLOWED_TARGETS` on the Worker; validating `file_path`.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/tests/injectTargetsManagement.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 47042474-b464-4dcd-9ae8-9f01e3eac068 -->
