@@ -7245,8 +7245,19 @@ body.row-dragging * { cursor: grabbing !important; }
        layout (the 16px spacing and the -32px lift/alignment stay untouched),
        and disappears with the pane when the chat is collapsed (display:none).
        The task pane needs no equivalent — it shares #outerContainer's
-       --bg-elevated, so its gap already matches its content. */
-    box-shadow: 0 -16px 0 0 var(--bg-base);
+       --bg-elevated, so its gap already matches its content.
+
+       A second hard-edged shadow paints a 1px vertical separator at the pane's
+       left edge. The z-10 stacking fix restored the CHAT/RUNS tabs to view, but
+       the pane's own #15151e chrome reads too weakly against the sub-band's
+       --bg-base to register as a seam, so the two header bands looked like one
+       continuous strip. The `-1px 0 0 0` offset paints the line OUTSIDE the
+       pane's left edge (no layout shift, unlike a border), in the same subtle
+       purple the rest of the chrome uses for boundary lines. It is listed after
+       the overhang so the overhang stays the first value (the gap-fill test
+       keys off `box-shadow: 0 -16px ...` leading the declaration), and like the
+       overhang it disappears with the pane when the chat is collapsed. */
+    box-shadow: 0 -16px 0 0 var(--bg-base), -1px 0 0 0 rgba(108, 93, 245, 0.18);
   }
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for
