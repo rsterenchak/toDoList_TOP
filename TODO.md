@@ -1086,7 +1086,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9df144ad-8b48-49d4-97a8-64d061c07389 -->
 
-- [ ] **[HIGH]** Make Rename in the desktop project picker edit the row inline
+- [x] **[HIGH]** Make Rename in the desktop project picker edit the row inline — Completed: 2026-06-07
   - Type: bug
   - Description: Rename in the `#projectPickerDropdown` context menu currently routes to the project's todo page instead of letting the user edit the name, because it reuses the sidebar's `onEdit` callback that activates the sidebar row's `#projInput` element — the dropdown row has no equivalent inline-edit field, so the click falls through to "switch to this project." Add inline editing scoped to the dropdown's own row geometry: the row swaps in place into a focused text input pre-populated with the current name and select-all'd so a single keypress replaces. Enter (or blur) commits via the existing rename flow `listLogic` already exposes for the sidebar; Escape cancels and restores the row. Mirrors the sidebar's edit behavior at parity, scoped to the dropdown surface.
   - Behavior:
