@@ -35,6 +35,8 @@ import {
     setChatPaneCollapsed,
     getTaskSort,
     setTaskSort,
+    isTodoMdShowCompleted,
+    setTodoMdShowCompleted,
 } from './prefs.js';
 import {
     VISUALIZER_STYLES,
@@ -6372,17 +6374,71 @@ export function parseTodoMdChecklist(text) {
     return tokens;
 }
 
+// Walk a parsed token list and drop every completed (`- [x]`) top-level
+// entry along with ALL of its nested lines — sub-bullets, nested checkboxes,
+// continuation text, and the trailing `<!-- id: … -->` marker — when
+// `hideCompleted` is true. An entry's block runs from its top-level checkbox
+// line through to (but not including) the next top-level checkbox or heading,
+// which is what bounds the hide range. The completed top-level count is always
+// tallied (regardless of `hideCompleted`) so the "Show completed (N)" toggle
+// can label itself off the live content.
+//
+// NOTE: this filters the VIEWER's rendered DOM only. TODO.md on disk is never
+// touched, and the pipeline reads the full file server-side via the GitHub
+// API — so this render-side filter is purely cosmetic and must never be
+// "consolidated" into anything that affects the pipeline read path.
+export function filterCompletedTokens(tokens, hideCompleted) {
+    let completedCount = 0;
+    const kept = [];
+    let hiding = false;
+    tokens.forEach(function(tok) {
+        if (tok.type === 'heading') {
+            // A heading bounds the previous entry's block and never belongs
+            // to a completed entry, so it always renders.
+            hiding = false;
+            kept.push(tok);
+            return;
+        }
+        if (tok.type === 'checkbox' && tok.indent === 0) {
+            // Top-level checkbox: starts a new entry block.
+            if (tok.checked) {
+                completedCount++;
+                hiding = !!hideCompleted;
+                if (hiding) return; // drop the completed entry's own line
+            } else {
+                hiding = false; // an active entry ends any prior hide range
+            }
+            kept.push(tok);
+            return;
+        }
+        // Any other line (nested bullet, text, blank, marker) belongs to the
+        // current entry block — drop it while hiding a completed entry.
+        if (hiding) return;
+        kept.push(tok);
+    });
+    return { tokens: kept, completedCount };
+}
+
+// Count completed top-level entries in raw TODO.md markdown. Used to label the
+// viewer's "Show completed (N)" toggle without rendering.
+export function countCompletedTodoMdEntries(text) {
+    return filterCompletedTokens(parseTodoMdChecklist(text), false).completedCount;
+}
+
 const RUN_ENTRY_PLAY_GLYPH =
     '<svg class="todoMdViewerRunEntryIcon" viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true">' +
     '<polygon points="6 4 20 12 6 20"/>' +
     '</svg>';
 
-function buildViewerRenderedBody(text, options) {
+export function buildViewerRenderedBody(text, options) {
     const opts = options || {};
     const onRunEntry = typeof opts.onRunEntry === 'function' ? opts.onRunEntry : null;
     const wrap = document.createElement('div');
     wrap.className = 'todoMdViewerRendered';
-    const tokens = parseTodoMdChecklist(text);
+    const tokens = filterCompletedTokens(
+        parseTodoMdChecklist(text),
+        !!opts.hideCompleted
+    ).tokens;
     tokens.forEach(function(tok) {
         if (tok.type === 'heading') {
             const h = document.createElement('div');
@@ -6549,6 +6605,23 @@ function buildTodoMdViewerCard(projectName, target) {
         '<polyline points="6 9 12 15 18 9"/>' +
         '</svg>';
 
+    // "Show completed (N)" toggle — defaults OFF (completed entries hidden in
+    // the rendered body). The N count is recomputed from live content on every
+    // render. The count sits in its own fixed-min-width span so the header
+    // doesn't reflow when N crosses from one digit to two.
+    const showCompletedBtn = document.createElement('button');
+    showCompletedBtn.type = 'button';
+    showCompletedBtn.className = 'todoMdViewerShowCompletedBtn';
+    const showCompletedLabel = document.createElement('span');
+    showCompletedLabel.className = 'todoMdViewerShowCompletedLabel';
+    showCompletedLabel.textContent = 'Show completed';
+    const showCompletedCount = document.createElement('span');
+    showCompletedCount.className = 'todoMdViewerShowCompletedCount';
+    showCompletedCount.textContent = '(0)';
+    showCompletedBtn.appendChild(showCompletedLabel);
+    showCompletedBtn.appendChild(showCompletedCount);
+
+    meta.appendChild(showCompletedBtn);
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
@@ -6581,14 +6654,39 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(text)
-                : buildViewerRenderedBody(text, { onRunEntry: runEntry })
+                : buildViewerRenderedBody(text, { onRunEntry: runEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
     }
 
+    // Reflect the persisted toggle state onto the button (aria-pressed + label
+    // count from live content). N is recomputed each call so it tracks content
+    // changes between renders.
+    function applyShowCompletedState() {
+        const on = isTodoMdShowCompleted();
+        showCompletedBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        showCompletedBtn.classList.toggle('is-on', on);
+        showCompletedBtn.setAttribute(
+            'aria-label',
+            (on ? 'Hide' : 'Show') + ' completed entries'
+        );
+        showCompletedCount.textContent =
+            '(' + countCompletedTodoMdEntries(card.dataset.content || '') + ')';
+    }
+
+    showCompletedBtn.addEventListener('click', function() {
+        setTodoMdShowCompleted(!isTodoMdShowCompleted());
+        // Preserve scroll position so toggling doesn't jump the body to top.
+        const prevScroll = body.scrollTop;
+        applyShowCompletedState();
+        applyTab(viewerActiveTab);
+        body.scrollTop = prevScroll;
+    });
+
     renderedTab.addEventListener('click', function() { applyTab('rendered'); });
     rawTab.addEventListener('click', function() { applyTab('raw'); });
     applyTab(viewerActiveTab);
+    applyShowCompletedState();
 
     function renderError(reason) {
         card.dataset.state = 'error';
@@ -6608,9 +6706,11 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(content)
-                : buildViewerRenderedBody(content, { onRunEntry: runEntry })
+                : buildViewerRenderedBody(content, { onRunEntry: runEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
+        // Refresh the toggle's (N) now that live content is available.
+        applyShowCompletedState();
     }
 
     async function runSync() {
