@@ -90,7 +90,7 @@
   - Completed: 2026-06-07
   <!-- id: 8941f60e-fa1d-4b1f-8fa4-b61a74ea7206 -->
 
-- [x] **[MEDIUM]** Swap show-completed icon to checkmark glyph, eliminate the collapse button, and relocate show-completed to that slot
+- [ ] **[MEDIUM]** Swap show-completed icon to checkmark glyph, eliminate the collapse button, and relocate show-completed to that slot
   - Type: bug
   - Description: The prior "icon button with badge" entry shipped a 32×32 button with a checked-checkbox glyph and a count badge into `#todoMdViewerHeader`, but the resulting layout still feels crowded on mobile and the button sits in a sub-optimal position between the tabs and the "synced just now" text. Two paired changes: (1) swap the checked-checkbox SVG glyph for the simpler standalone checkmark glyph (option A from the original mockup — just a polyline checkmark, no surrounding rectangle), which reads as "completed" with less visual weight; (2) eliminate the collapse button currently at the far-right of `#todoMdViewerHeader` (the down-chevron / collapse-viewer toggle) and move the show-completed icon button into that slot. The button keeps its 32×32 dimensions (preserve tap target — do NOT shrink below 32px), keeps its purple border, keeps the floating count badge at the top-right corner, and keeps all behavior from the prior entry (state, localStorage key, default OFF, click handler, accessibility). Only the glyph and the DOM position change.
   - Behavior:
@@ -120,5 +120,5 @@
     - If the existing test file `tests/todoMdViewerShowCompleted.test.js` (or whichever file the prior entry's tests live in) pins the prior button's position with an assertion like "icon button is in position N", update that assertion to "icon button is the last child of `#todoMdViewerHeader`". Do NOT delete the file; extend it.
   - Out of scope: changing the localStorage key or default state; changing the badge appearance or color; changing the button's dimensions (32×32 stays); changing any other element in `#todoMdViewerHeader` ("Sync" pill, "▶ Run backlog" pill, "Rendered" / "Raw markdown" tabs, "synced just now" status text — all unchanged); changing `#todoMdViewerBody`; changing the filter-completed-entries logic; the `TODO.md` on-disk format; the pipeline agent's behavior; restoring collapse functionality elsewhere in the UI (separate entry if desired); any change to the chat pane or other unrelated viewer chrome.
   - File: whichever module owns `#todoMdViewer` rendering (same file as the prior Show-completed entries touched), `toDoList_main/src/style.css` (remove collapse button rules, no new CSS needed for the glyph swap unless the new SVG needs different sizing), `toDoList_main/tests/todoMdViewerShowCompleted.test.js` (extend, do not replace)
-  - Completed: 2026-06-07
+  - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a528c484-fa06-4220-874a-3d6185ff78b6 -->

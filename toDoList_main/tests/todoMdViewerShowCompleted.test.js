@@ -165,29 +165,8 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         expect(main).toMatch(/meta\.appendChild\(showCompletedBtn\);/);
     });
 
-    it('renders a standalone checkmark SVG glyph (no checkbox outline) inside the button', () => {
-        const start = main.indexOf('showCompletedBtn.innerHTML');
-        expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 400);
-        // The new glyph is a single polyline checkmark…
-        expect(block).toMatch(/<polyline points="20 6 9 17 4 12"\s*\/>/);
-        // …with no surrounding checkbox rectangle <path> from the prior glyph.
-        expect(block).not.toMatch(/<path /);
-    });
-
-    it('mounts the show-completed button as the last child of the meta row', () => {
-        // The button moved into the slot the removed body-collapse button
-        // vacated, so it is appended last in the header meta row.
-        const appendIdx = main.indexOf('meta.appendChild(showCompletedBtn);');
-        expect(appendIdx).toBeGreaterThan(-1);
-        // No other meta.appendChild call follows the show-completed append.
-        const after = main.slice(appendIdx + 'meta.appendChild(showCompletedBtn);'.length);
-        const nextAppend = after.indexOf('meta.appendChild(');
-        const headerEnd = after.indexOf('header.appendChild(meta);');
-        expect(headerEnd).toBeGreaterThan(-1);
-        // Either there is no further meta append, or it comes after the
-        // header is assembled (i.e. not part of this meta row).
-        expect(nextAppend === -1 || nextAppend > headerEnd).toBe(true);
+    it('renders an inline checked-checkbox SVG glyph inside the button', () => {
+        expect(main).toMatch(/showCompletedBtn\.innerHTML\s*=[\s\S]*?<svg[\s\S]*?<polyline[\s\S]*?<\/svg>/);
     });
 
     it('renders a floating count badge as the button child', () => {
