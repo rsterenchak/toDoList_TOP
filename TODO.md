@@ -1162,7 +1162,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 25c82b0c-6c68-4a72-bbfe-2b724d972dba -->
 
-- [ ] **[MEDIUM]** Replace ALL/Active/Ideas filter pills with a single cycle pill
+- [x] **[MEDIUM]** Replace ALL/Active/Ideas filter pills with a single cycle pill — Completed: 2026-06-07
   - Type: feature
   - Description: Replace the three-pill `#taskFilterBar` (ALL, Active, Ideas — each rendered as a separate `.taskFilterPill` button) with a single cycle pill that rotates through the three filter states on click in the order `all → active → ideas → all → …`. The pill displays only the currently active filter's label + count plus a trailing `›` indicator as a discoverability cue that the control cycles rather than toggles. Behaviour at desktop and mobile is identical — no breakpoint-specific path. The filter semantics, counts, hide-class application, and persistence layer all stay exactly as they are: this entry changes the UI control only. The current persistence via `prefs.js`'s `getTaskFilter`/`setTaskFilter` (key `todoapp_taskFilter`) is preserved as-is, so a cycled filter still survives reload. (An earlier-session decision excluded persistence; persistence has shipped separately since then, so this entry leaves it in place rather than re-removing it.)
   - Behavior:
