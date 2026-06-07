@@ -3081,6 +3081,9 @@ function component() {
                 closeProjectPicker();
             });
 
+            // Right-click / long-press → "Delete project…" context menu.
+            attachProjectPickerRowContextMenu(row, name);
+
             list.appendChild(row);
         });
     }
@@ -3111,6 +3114,160 @@ function component() {
 
     function toggleProjectPicker() {
         projectPickerIsOpen() ? closeProjectPicker() : openProjectPicker();
+    }
+
+    // ── desktop project-row context menu (Delete project…) ──
+    // The desktop dropdown rows mirror the drawer's right-click / long-press
+    // delete affordance, but expose only the destructive action (rename and
+    // color stay on the drawer's #projContextMenu — reserved for a follow-up
+    // here). The flow reuses the drawer's tested deleteProjectFlow — same
+    // confirmation copy (project name + exact todo count, count clause dropped
+    // when zero), the same cascade delete through listLogic.removeProject, and
+    // the same active-project fallback to the first remaining project or the
+    // empty state — by resolving the dropdown row back to its backing
+    // #projChild row.
+    let projRowContextMenu = null;
+
+    function onProjRowCtxOutsideClick(e) {
+        if (projRowContextMenu && projRowContextMenu.contains(e.target)) return;
+        hideProjectRowContextMenu();
+    }
+    function onProjRowCtxOutsideCtx(e) {
+        if (projRowContextMenu && projRowContextMenu.contains(e.target)) return;
+        hideProjectRowContextMenu();
+    }
+    function onProjRowCtxKeydown(e) {
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        e.stopPropagation();
+        hideProjectRowContextMenu();
+    }
+
+    function hideProjectRowContextMenu() {
+        if (projRowContextMenu && projRowContextMenu.parentNode) {
+            projRowContextMenu.parentNode.removeChild(projRowContextMenu);
+        }
+        projRowContextMenu = null;
+        document.removeEventListener('click', onProjRowCtxOutsideClick, true);
+        document.removeEventListener('contextmenu', onProjRowCtxOutsideCtx, true);
+        document.removeEventListener('keydown', onProjRowCtxKeydown, true);
+        window.removeEventListener('resize', hideProjectRowContextMenu);
+        window.removeEventListener('scroll', hideProjectRowContextMenu, true);
+    }
+
+    // Resolve a project name to its backing drawer row (#projChild). The
+    // desktop dropdown is a thin view over the same listLogic order the drawer
+    // renders, so every dropdown row has a 1:1 #projChild behind it;
+    // deleteProjectFlow operates on that row for its DOM teardown + fallback.
+    function findProjChildByName(name) {
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const inp = rows[i].querySelector('#projInput');
+            if (inp && inp.value.trim() === name) return rows[i];
+        }
+        return null;
+    }
+
+    function showProjectRowContextMenu(x, y, projectName) {
+        hideProjectRowContextMenu();
+
+        const menu = document.createElement('div');
+        menu.id = 'projRowContextMenu';
+        menu.setAttribute('role', 'menu');
+
+        const del = document.createElement('div');
+        del.className = 'projContextMenuItem danger';
+        del.setAttribute('role', 'menuitem');
+        del.tabIndex = 0;
+        del.textContent = 'Delete project…';
+        del.addEventListener('click', function() {
+            hideProjectRowContextMenu();
+            closeProjectPicker();
+            const projChild = findProjChildByName(projectName);
+            if (projChild) deleteProjectFlow(projChild, projectName);
+        });
+        menu.appendChild(del);
+
+        menu.style.position = 'fixed';
+        menu.style.left = x + 'px';
+        menu.style.top  = y + 'px';
+        document.body.appendChild(menu);
+        projRowContextMenu = menu;
+
+        // Clamp into the viewport (mirrors #projContextMenu's edge handling).
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            menu.style.left = Math.max(0, window.innerWidth - rect.width - 4) + 'px';
+        }
+        if (rect.bottom > window.innerHeight) {
+            menu.style.top = Math.max(0, window.innerHeight - rect.height - 4) + 'px';
+        }
+
+        // Close vocabulary (4 ways): selecting the item (above), clicking
+        // outside, pressing Escape, or right-clicking elsewhere. Capture phase
+        // so the dismissers always see the event first; resize / scroll also
+        // dismiss so the menu can't strand off its anchor.
+        document.addEventListener('click', onProjRowCtxOutsideClick, true);
+        document.addEventListener('contextmenu', onProjRowCtxOutsideCtx, true);
+        document.addEventListener('keydown', onProjRowCtxKeydown, true);
+        window.addEventListener('resize', hideProjectRowContextMenu);
+        window.addEventListener('scroll', hideProjectRowContextMenu, true);
+    }
+
+    // Wire the delete context menu onto a dropdown row: desktop right-click
+    // plus a ~500ms touch long-press with a 10px movement-cancel threshold (so
+    // a scroll never fires the menu), mirroring projectRow.js's pattern.
+    function attachProjectPickerRowContextMenu(row, projectName) {
+        row.addEventListener('contextmenu', function(event) {
+            event.preventDefault();
+            showProjectRowContextMenu(event.clientX, event.clientY, projectName);
+        });
+
+        let lpTimer  = null;
+        let lpStartX = 0;
+        let lpStartY = 0;
+        let lpFired  = false;
+
+        row.addEventListener('touchstart', function(event) {
+            if (event.touches.length !== 1) return;
+            const t = event.touches[0];
+            lpStartX = t.clientX;
+            lpStartY = t.clientY;
+            lpFired  = false;
+            lpTimer  = setTimeout(function() {
+                lpFired = true;
+                showProjectRowContextMenu(lpStartX, lpStartY, projectName);
+            }, 500);
+        }, { passive: true });
+
+        row.addEventListener('touchmove', function(event) {
+            if (!lpTimer) return;
+            const t = event.touches[0];
+            if (Math.abs(t.clientX - lpStartX) > 10 || Math.abs(t.clientY - lpStartY) > 10) {
+                clearTimeout(lpTimer);
+                lpTimer = null;
+            }
+        }, { passive: true });
+
+        row.addEventListener('touchend', function(event) {
+            if (lpTimer) {
+                clearTimeout(lpTimer);
+                lpTimer = null;
+            }
+            if (lpFired) {
+                // long-press already opened the menu — suppress the tap
+                // (project navigation) that would otherwise follow.
+                event.preventDefault();
+                lpFired = false;
+            }
+        });
+
+        row.addEventListener('touchcancel', function() {
+            if (lpTimer) {
+                clearTimeout(lpTimer);
+                lpTimer = null;
+            }
+        });
     }
 
     // Single entry point for activating the project picker from the pill —

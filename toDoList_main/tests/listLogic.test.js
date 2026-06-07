@@ -28,6 +28,33 @@ describe('listLogic — projects', () => {
         expect(listLogic.listProjectsArray()).not.toContain('Groceries');
     });
 
+    // The desktop dropdown's context-menu delete routes through the same
+    // listLogic.removeProject cascade the old per-row × used: deleting a
+    // project must take all of its todos with it and the loss must survive a
+    // reload. Pin the cascade + persistence so the new entry point can rely
+    // on it.
+    it('removeProject cascades — drops the project record AND all its todos, and persists', () => {
+        listLogic.addProject('Groceries');
+        listLogic.addToDo('Groceries', 'Milk');
+        listLogic.addToDo('Groceries', 'Eggs');
+
+        // Sanity: the project and its real (non-placeholder) todos exist.
+        expect(listLogic.listProjectsArray()).toContain('Groceries');
+        const before = listLogic.listItems('Groceries').filter(i => i.tit !== '');
+        expect(before.map(i => i.tit)).toEqual(expect.arrayContaining(['Milk', 'Eggs']));
+
+        listLogic.removeProject('Groceries');
+
+        // Project record gone, and its todos go with it (no orphaned items).
+        expect(listLogic.listProjectsArray()).not.toContain('Groceries');
+        expect(listLogic.listItems('Groceries')).toBeUndefined();
+
+        // Durable: the serialized snapshot the next page load reads back
+        // carries neither the project nor its todos.
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        expect(parsed.Groceries).toBeUndefined();
+    });
+
     it('editProject renames a project and preserves its items', () => {
         listLogic.addProject('Old');
         listLogic.addToDo('Old', 'Milk');

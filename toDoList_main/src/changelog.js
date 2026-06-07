@@ -15,13 +15,7 @@ export const changelog = [
         fixed: [
             "The chat assistant's workspace menu now refreshes each time you open it, so a repo added to or removed from the allowlist shows up without a page reload.",
             "Runs shipped from the chat assistant to a non-default workspace now report their final status instead of staying stuck as queued.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-06',
-        fixed: [
-            "Shipping a drafted entry from the chat assistant now lands in the selected workspace repo instead of always going to the default repository.",
+            "Projects can be deleted again from the desktop project dropdown — right-click or long-press a project for a Delete option, with a confirmation naming the project and how many todos go with it.",
         ],
     },
 ];

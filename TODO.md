@@ -1030,7 +1030,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: aa4a92e4-114f-4ca5-978e-2a0dd4be870f -->
 
-- [ ] **[HIGH]** Add context-menu delete to the desktop project dropdown
+- [x] **[HIGH]** Add context-menu delete to the desktop project dropdown — Completed: 2026-06-07
   - Type: bug
   - Description: The desktop revamp of the project dropdown removed the per-row `×` that previously let users delete a project, leaving no path to project deletion from the new desktop surface. Restore the affordance via a context menu pinned to the row, opened on right-click (mouse) or a ~500ms long-press (touch), with a single "Delete project…" item — rename and other actions reserved for a follow-up; just the destructive action lands here. Selecting it opens a confirmation modal worded "Delete '<project name>'? This deletes <N todos> along with the project. This cannot be undone." with Cancel and Delete buttons. On confirm, the project and its todos are removed via `listLogic` and persisted; if the deleted project was the active one, the view falls back to the first remaining project (or the empty-state view if the list is now empty). Add a regression test (test-first) in `listLogic.test.js` asserting that deleting a project removes both the project record and all of its todos and that the new state persists — the previous per-row `×` had cascade behavior that must hold under the new entry point.
   - Behavior:
