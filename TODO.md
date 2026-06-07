@@ -988,3 +988,15 @@
   - Out of scope: `injectEntry`/`dispatchRun` in `inject.js` (they already accept and forward `target`); the chat-turn `repo` wiring, which already rides `activeChatRepo` correctly.
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bd615b2f-6dfd-4d7f-ac4e-03667f534341 -->
+
+- [ ] **[MEDIUM]** Re-fetch the chat workspace repo list when the sheet opens
+  - Type: bug
+  - Description: The chat-window workspace menu (the pill dropdown) is sourced from the Worker's `ALLOWED_TARGETS` allowlist via `loadWorkspaceRepos`, which fires only once per mount in `mountClaudeSheet`. Opening/closing the sheet just toggles classes and never remounts, so after a repo is added to or removed from `ALLOWED_TARGETS`, the menu keeps showing the stale list until a full page reload. Fix by also calling `loadWorkspaceRepos()` (fire-and-forget) from `openClaudeSheet` so each open re-syncs `attachRepos` and repaints the pill/menu. The in-app "Inject targets" (settings modal, Supabase-backed `cachedTargets`) are a separate list that intentionally does not feed the chat workspace menu — if those should also appear in chat, that's a separate sourcing change, not part of this fix.
+  - Behavior:
+    1. Each sheet open re-fetches the allowlist; a newly-added repo appears in the menu and a removed one disappears, with no page reload.
+    2. The refresh only repaints the pill/menu — it must not clear `chatHistory`, attachments, or the active workspace (only an explicit pill switch wipes the chat). Pin this with a regression test.
+    3. If the currently active workspace was removed from the allowlist, fall back to the default repo and repaint the pill so the user isn't stranded on a repo the Worker no longer accepts.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Out of scope: making in-app Inject targets (`cachedTargets`) populate the chat workspace menu; any change to `ALLOWED_TARGETS` sourcing on the Worker.
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b29825ba-9452-4bbe-b4dd-c7cec30a0716 -->
