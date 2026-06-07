@@ -147,15 +147,12 @@ describe('Cross-project INBOX ideas view', () => {
             expect(rule).toMatch(/color:\s*var\(--text-muted\)/);
         });
 
-        it('styles the compact idea row title as a single truncated line in primary text', () => {
+        it('styles the idea row title at >=16px (mobile no-zoom) and muted', () => {
             const idx = css.indexOf('.inboxRowTitle {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            // Compact one-line card: title is the primary-text headline,
-            // truncated with ellipsis (replaces the old 16px muted treatment).
-            expect(rule).toMatch(/color:\s*var\(--text-primary\)/);
-            expect(rule).toMatch(/white-space:\s*nowrap/);
-            expect(rule).toMatch(/text-overflow:\s*ellipsis/);
+            expect(rule).toMatch(/font-size:\s*16px/);
+            expect(rule).toMatch(/color:\s*var\(--text-muted\)/);
         });
 
         it('keeps #inboxView hidden unless INBOX is the active view', () => {
