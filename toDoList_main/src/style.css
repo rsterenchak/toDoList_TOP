@@ -7218,7 +7218,13 @@ body.row-dragging * { cursor: grabbing !important; }
     flex-direction: column;
     overflow: hidden;
     background: var(--bg-base);
-    border-left: 0.5px solid var(--border-bright);
+    /* A visible 1px left boundary between the chat pane and the task pane's
+       view-tab sub-band. Both surfaces now paint var(--bg-base) at the same y,
+       so a sub-pixel 0.5px edge was too faint to read as a divider and the two
+       header bands merged into one continuous bar. A full 1px solid line in the
+       same edge token restores the seam. Additive only — the lift, box-shadow,
+       and CHAT/RUNS alignment below are untouched. */
+    border-left: 1px solid var(--border-bright);
     /* Align the chat pane's sub-header row (collapse + CHAT/RUNS tabs + repo
        pill) with the task pane's view-tab sub-band. #mainSplit sits at grid
        row 4, exactly one sub-band height (#desktopViewSubBand min-height: 32px)
