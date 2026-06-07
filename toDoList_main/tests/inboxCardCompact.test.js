@@ -119,14 +119,32 @@ describe('Compact INBOX card + read-mode modal', () => {
             expect(body).toMatch(/inboxReadModalDescLabel/);
         });
 
-        it('reuses the existing edit and completion handlers — no new mutation logic', () => {
+        it('reuses the existing edit handler — no new mutation logic', () => {
             expect(body).toMatch(/showDescEditorModal\(/);
-            expect(body).toMatch(/listLogic\.setToDoCompleted\(/);
             expect(body).not.toMatch(/item\.completed\s*=/);
         });
 
-        it('re-renders the inbox after Done so the completed idea drops out', () => {
-            expect(body).toMatch(/renderInbox\(\)/);
+        // Bug-2 fix: Done is a dismiss-only action. It must NOT complete the
+        // entry, so the modal never calls listLogic.setToDoCompleted (its only
+        // prior caller was the Done handler). Pinning the absence here is the
+        // source-pattern equivalent of "spy on setToDoCompleted, assert not
+        // called" — main.js is the webpack entry and can't be imported to spy.
+        it('does NOT complete the entry from the modal (Done is close-only)', () => {
+            expect(body).not.toMatch(/setToDoCompleted\(/);
+        });
+
+        // The Done handler itself only closes the modal — same effect as the
+        // backdrop/Escape paths. Extract just the doneBtn click handler so the
+        // assertion targets Done specifically, not the Edit handler (which still
+        // calls renderInbox after a save).
+        it('wires Done to close-only (calls close(), no completion or re-render)', () => {
+            const start = body.indexOf("doneBtn.addEventListener('click'");
+            expect(start).toBeGreaterThan(-1);
+            // Slice to the end of that handler's arrow function body.
+            const handler = body.slice(start, body.indexOf('});', start) + 3);
+            expect(handler).toMatch(/close\(\)/);
+            expect(handler).not.toMatch(/setToDoCompleted/);
+            expect(handler).not.toMatch(/renderInbox/);
         });
 
         it('closes on backdrop click and Escape, returning focus to the originating card', () => {

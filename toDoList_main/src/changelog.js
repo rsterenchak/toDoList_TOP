@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-07',
         fixed: [
-            "On desktop, a thin divider line now separates the Claude chat pane from the view-tab band, so the two header bands read as distinct surfaces.",
             "On desktop, the view-tab band now paints its full row, removing the thin grey strip that showed below the view tabs.",
             "The TODO.md viewer's 'Show completed' control is now a compact icon button with a count badge, so the viewer header no longer clips on narrow mobile screens.",
             "The TODO.md viewer's 'Show completed' control now uses a checkmark icon and moves to the header's right edge, and the redundant fullscreen-expand button was removed to ease crowding.",
             "Inbox cards are now compact one-line cards that no longer clip their content, and tapping a card opens a modal showing its full title and description.",
+            "The Inbox card modal's Done button now just closes the card without marking the idea complete, so ideas you've read stay in your Inbox.",
         ],
     },
 ];

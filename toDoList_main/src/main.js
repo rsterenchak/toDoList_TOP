@@ -8107,13 +8107,14 @@ function buildInboxRow(item, projectName) {
 
 // Read-mode modal for an INBOX idea card. The compact cards truncate their
 // title to one line; tapping a card opens this modal to show the full title
-// and full description with comfortable typography. Edit and Done reuse the
-// SAME mutation paths the rest of the app uses — showDescEditorModal (the
-// touch edit flow per-project rows already use) and listLogic.setToDoCompleted
-// (the checkbox/swipe completion path) — so no new edit/complete logic is
-// introduced. Mirrors the help/changelog modal shell: backdrop + dialog, the
-// trio of close affordances (close button / backdrop / Escape), and focus
-// returned to the originating card on close.
+// and full description with comfortable typography. Edit reuses the SAME edit
+// path the rest of the app uses — showDescEditorModal (the touch edit flow
+// per-project rows already use) — so no new edit logic is introduced. Done is a
+// dismiss-only action (close the modal without mutating the entry), so a read
+// idea stays in the Inbox; it is NOT a completion control. Mirrors the
+// help/changelog modal shell: backdrop + dialog, the trio of close affordances
+// (close button / backdrop / Escape), and focus returned to the originating
+// card on close.
 function showInboxReadModal(item, projectName, originatingCard) {
     if (!item) return;
 
@@ -8224,12 +8225,14 @@ function showInboxReadModal(item, projectName, originatingCard) {
         });
     });
 
-    // Done reuses the existing completion path; a completed idea drops out of
-    // the cross-project query, so re-rendering removes its card.
+    // Done is a dismiss-only action: it closes the modal exactly like the
+    // backdrop tap / Escape paths and never mutates the entry. An idea the user
+    // has just read therefore stays in the Inbox — completion is intentionally
+    // NOT triggered here (this previously called listLogic.setToDoCompleted,
+    // which removed the idea from the cross-project query on close). The
+    // checkbox/swipe completion path elsewhere still completes ideas normally.
     doneBtn.addEventListener('click', function () {
-        listLogic.setToDoCompleted(projectName, item, true);
         close();
-        renderInbox();
     });
 
     closeBtnBackdropEsc();
