@@ -1242,7 +1242,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7ca332c7-1649-4427-839b-e10822877474 -->
 
-- [ ] **[HIGH]** Revert #taskFilterBar background to transparent (previous entry shipped the inverse)
+- [x] **[HIGH]** Revert #taskFilterBar background to transparent (previous entry shipped the inverse) — Completed: 2026-06-07
   - Type: bug
   - Description: The previous "Match the filter/sort band background to the view-tabs sub-band" entry shipped the inverse of what was specified: instead of clearing `#taskFilterBar`'s `background` so the band falls through to its parent `#mainBar`'s page bg (`rgb(14, 15, 20)`), the band now paints `rgb(20, 21, 27)` — the chrome color from `#outerContainer` — and the view-tabs sub-band stays transparent, so the seam is more pronounced than before. Confirmed by walking up the ancestor chain in the console: `#taskFilterBar` reads `rgb(20, 21, 27)`, `#mainBar` reads `rgb(14, 15, 20)`, `#outerContainer` reads `rgb(20, 21, 27)`. Set `#taskFilterBar { background: transparent; }` (or remove the existing `background:` declaration outright) so the band inherits `#mainBar`'s color and matches the view-tabs sub-band directly above. The top project-switcher row's greyer chrome comes from `#outerContainer` / its top-row child, not from `#taskFilterBar`, so this change does not disturb it.
   - Behavior:
