@@ -87,3 +87,25 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/chatPaneSubHeaderAlign.test.js` (or wherever the prior boundary entry's tests landed — extend that file; do NOT modify the three existing alignment assertions, only add the stacking ones)
   - Completed: 2026-06-07
   <!-- id: 0fd29be0-412e-48df-8fa2-c9da09ef831a -->
+
+- [ ] **[MEDIUM]** Add a 1px vertical separator between #desktopChatPane and #desktopViewSubBand
+  - Type: bug
+  - Description: After the chat pane's stacking fix (z-index: 10) restored the CHAT/RUNS tab strip to visibility, the visible seam between the chat pane and the view-tabs band is now missing — the chat pane's surface meets the sub-band's `--bg-base` paint at the boundary with no separator, so the two read as one continuous strip even though the chat pane's own `.claudeTabGroup` chrome paints `rgb(21, 21, 30)` (slightly lighter than `--bg-base`). The two-color contrast alone isn't strong enough to read as a seam. Add a 1px vertical line at the chat pane's left edge so the boundary reads cleanly. The chat pane already has the correct stacking layer (z-index: 10, position: relative) from the previous entry, so a `border-left: 1px solid var(--line)` on `#desktopChatPane` is the cleanest treatment. The 1px content shift this introduces is invisible at the pane's current 486px width and standard 8/16px-grid alignment. If a downstream selector already has a competing `border-left` declaration on `#desktopChatPane`, fall back to `box-shadow: -1px 0 0 0 var(--line), 0 -16px 0 0 var(--bg-base);` — additive to the existing box-shadow's `0 -16px 0 0 var(--bg-base)` overhang lift, with the new `-1px 0` painting a 1px stripe outside the pane's left edge for zero layout impact. Either form achieves the same visible boundary.
+  - Behavior:
+    1. At ≥1024px with the chat pane open: there's a visible 1px vertical line separating the chat pane's left edge from the view-tabs band to its left. The line is fully vertical, spans the chat pane's full height, and uses a token that reads as a UI boundary (not page bg, not a status color).
+    2. The chat pane's CHAT/RUNS tabs remain fully visible (the stacking fix from the previous entry stays intact).
+    3. The chat pane's `top`, `width`, `margin-top: -32px`, `box-shadow`'s overhang component (`0 -16px 0 0 var(--bg-base)`), and `z-index: 10` are all preserved.
+    4. The sub-band's paint (`var(--bg-base)`) is unchanged.
+    5. With the chat pane collapsed/hidden, the separator is also gone — no orphan line painted where the pane used to be.
+    6. The three pinned chat-pane tests (`chatPaneSubHeaderAlign`, `twoPaneSubHeaderPolish`, `navbarGapPaneBackground`) remain unchanged and passing.
+  - Test-first regression set:
+    1. Source-pattern: `#desktopChatPane` rule contains either `border-left: 1px solid var(--line)` OR a `box-shadow` declaration whose value includes both `-1px 0 0 0 var(--line)` (or equivalent) AND the existing `0 -16px 0 0 var(--bg-base)` overhang. Assert the disjunction so either landing form passes.
+    2. Behavioral if jsdom resolves it: `getComputedStyle(chatPane).borderLeftWidth === '1px'` OR `getComputedStyle(chatPane).boxShadow` includes a non-overhang stripe. Don't pin one over the other — let the implementation pick.
+    3. The chat pane's stacking from the previous entry is preserved: `getComputedStyle(chatPane).zIndex === '10'`.
+    4. The chat pane's tab group is still topmost at its center via `elementsFromPoint` (the separator must not cover the tabs).
+    5. Sub-band paint anchor still holds.
+  - Implementation notes: Grep `style.css` for `#desktopChatPane` to find the desktop rule block. Prefer adding `border-left: 1px solid var(--line)` as a single new declaration in that block. If `var(--line)` isn't defined at `:root`, grep `--line` to confirm and fall back to a hardcoded `rgba(108, 93, 245, 0.18)` matching the rest of the codebase's subtle-border conventions (this token is used on `#projectPickerDropdown`'s border per the project knowledge). If a competing `border-left` rule already exists on `#desktopChatPane`, switch to the `box-shadow` form: extend the existing `box-shadow: 0 -16px 0 0 var(--bg-base)` to `box-shadow: -1px 0 0 0 var(--line), 0 -16px 0 0 var(--bg-base)`. Do NOT touch the chat pane's stacking (`z-index: 10`), overhang (`margin-top: -32px`), box-shadow overhang component, or DOM placement. Do NOT touch the sub-band, the filter band, the top project-switcher row, or `#outerContainer`.
+  - Out of scope: any change to the sub-band's paint or geometry; the chat pane's stacking or overhang; the slack strips above and below the view-tabs band (separate follow-up); the three pinned chat-pane alignment tests; the filter band; mobile chat-pane chrome.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/chatPaneSubHeaderAlign.test.js` (or the existing chat-pane visual test file — extend it with the separator assertions alongside the alignment ones)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d1ecbbfe-6539-4e2c-948f-36df48968e4c -->
