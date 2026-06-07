@@ -7011,6 +7011,16 @@ body.row-dragging * { cursor: grabbing !important; }
        visible seam, while the top project-switcher row keeps #outerContainer's
        greyer chrome. No borders: no lighter "stripe" shows in the gap below. */
     background: var(--bg-base);
+    /* The 16px margin-top above leaves a gap that renders in #outerContainer's
+       greyer --bg-elevated chrome — a faint seam above the view tabs now that
+       the band itself paints --bg-base. Mirror the chat pane's fix
+       (#desktopChatPane): a hard-edged box-shadow (offset up 16px, no blur, no
+       spread) extends the band's --bg-base up over that gap so --bg-base paints
+       the band's whole grid row continuously, with no grey slack above the view
+       tabs. Pure paint: the 16px margin-top, the 32px min-height, and the
+       chat-pane alignment that keys off them all stay untouched, and it's inert
+       at mobile where the band is display:none. */
+    box-shadow: 0 -16px 0 0 var(--bg-base);
     position: relative;
     z-index: 9;
     /* The band spans the full viewport, but only its left half holds the view

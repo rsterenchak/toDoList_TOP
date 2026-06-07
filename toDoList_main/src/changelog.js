@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-07',
         fixed: [
-            "Tapping a task's status label now opens its menu on the first tap even when another row's status menu is already open.",
             "Tapping a task's status label now reliably opens its status menu instead of flickering shut on the same tap.",
             "On desktop, the filter and sort row now matches the background of the view-tab band above it, removing the mismatched seam between the two header rows.",
             "On desktop, the filter and sort row no longer paints a greyer chrome stripe — its background again matches the view-tab band above it.",
             "On desktop, the view-tab band now paints the same background as the filter and sort row below it, so the two header rows read as one seamless region.",
+            "On desktop, the view-tab band now paints its full row, removing the thin grey strip that showed above the view tabs.",
         ],
     },
 ];

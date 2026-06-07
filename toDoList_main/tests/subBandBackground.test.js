@@ -77,6 +77,39 @@ describe('desktop view sub-band background', () => {
         expect(css).toMatch(/#desktopViewSubBand \.viewPill\.active::after\s*\{[^}]*background:\s*#9D93EE/);
     });
 
+    it('(d2) the sub-band paints its full grid row — a box-shadow fills the margin-top slack with --bg-base', () => {
+        // After the band itself paints --bg-base, its 16px margin-top still
+        // showed #outerContainer's greyer chrome — a thin grey strip above the
+        // view tabs. The fix mirrors the chat pane (#desktopChatPane): a
+        // hard-edged box-shadow extends the band's --bg-base up over that gap so
+        // --bg-base paints the whole row continuously. It is paint-only — the
+        // margin-top and min-height that the chat-pane alignment keys off must
+        // stay untouched, so the move that was correctly aborted last round
+        // (changing the box model to fill the row) is NOT what shipped.
+        const rule = subBandRule();
+
+        // The box-shadow extends --bg-base upward, hard-edged (no blur/spread).
+        const shadow = rule.match(/box-shadow:\s*0\s+-(\d+)px\s+0\s+0\s+var\(--bg-base\)/);
+        expect(shadow).not.toBeNull();
+
+        // The margin-top gap that renders #outerContainer's chrome is preserved
+        // (the pinned chat-pane tests require it) — and the box-shadow offset
+        // must exactly cover it, so no grey slack is left above the view tabs.
+        const margin = rule.match(/margin-top:\s*(\d+)px/);
+        expect(margin).not.toBeNull();
+        expect(parseInt(shadow[1], 10)).toBe(parseInt(margin[1], 10));
+
+        // Paint-only: min-height is unchanged (== the chat pane's lift), so this
+        // is NOT the box-model rewrite that was aborted — the band still occupies
+        // exactly its row and the chat sub-header stays aligned.
+        const minH = rule.match(/min-height:\s*(\d+)px/);
+        expect(minH).not.toBeNull();
+        expect(parseInt(minH[1], 10)).toBe(32);
+
+        // The band's own fill stays --bg-base too, so band + shadow are one colour.
+        expect(rule).toMatch(/background:\s*var\(--bg-base\)/);
+    });
+
     it('(d) the sub-band keeps its grid-row:3 placement under #outerContainer', () => {
         // Pin the DOM parentage and grid placement so a future "actually relocate
         // the sub-band into #mainBar" refactor — which would re-introduce the
