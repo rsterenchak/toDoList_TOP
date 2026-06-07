@@ -403,15 +403,19 @@ function openDescEditorForRow(toDoChild) {
         }
     });
 }
-function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
+export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
     toDoChild.addEventListener('click', function(e) {
-        // Let dedicated controls handle their own clicks without interference
+        // Let dedicated controls handle their own clicks without interference.
+        // The status label is a sub-control like copyBtn: skipping the row's
+        // focus/activate here stops the focus-into-view scroll from tearing
+        // down the popover its own delegated #mainList handler just mounted.
         if (e.target.id === 'checkToDo'      ||
             e.target.id === 'closeButtonToDo' ||
             e.target.id === 'descToggle'      ||
             e.target.closest('#statsToggle')  ||
             e.target.closest('#duePill')      ||
             e.target.closest('.copyTitleBtn') ||
+            e.target.closest('.todoStatusLabel') ||
             e.target.closest('#dueDatePopover') ||
             e.target.closest('#descSibling')  ||
             e.target.closest('#statsSibling')) return;
