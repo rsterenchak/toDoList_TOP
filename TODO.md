@@ -88,7 +88,7 @@
   - Completed: 2026-06-07
   <!-- id: 0fd29be0-412e-48df-8fa2-c9da09ef831a -->
 
-- [ ] **[MEDIUM]** Add a 1px vertical separator between #desktopChatPane and #desktopViewSubBand
+- [x] **[MEDIUM]** Add a 1px vertical separator between #desktopChatPane and #desktopViewSubBand — Completed: 2026-06-07
   - Type: bug
   - Description: After the chat pane's stacking fix (z-index: 10) restored the CHAT/RUNS tab strip to visibility, the visible seam between the chat pane and the view-tabs band is now missing — the chat pane's surface meets the sub-band's `--bg-base` paint at the boundary with no separator, so the two read as one continuous strip even though the chat pane's own `.claudeTabGroup` chrome paints `rgb(21, 21, 30)` (slightly lighter than `--bg-base`). The two-color contrast alone isn't strong enough to read as a seam. Add a 1px vertical line at the chat pane's left edge so the boundary reads cleanly. The chat pane already has the correct stacking layer (z-index: 10, position: relative) from the previous entry, so a `border-left: 1px solid var(--line)` on `#desktopChatPane` is the cleanest treatment. The 1px content shift this introduces is invisible at the pane's current 486px width and standard 8/16px-grid alignment. If a downstream selector already has a competing `border-left` declaration on `#desktopChatPane`, fall back to `box-shadow: -1px 0 0 0 var(--line), 0 -16px 0 0 var(--bg-base);` — additive to the existing box-shadow's `0 -16px 0 0 var(--bg-base)` overhang lift, with the new `-1px 0` painting a 1px stripe outside the pane's left edge for zero layout impact. Either form achieves the same visible boundary.
   - Behavior:
