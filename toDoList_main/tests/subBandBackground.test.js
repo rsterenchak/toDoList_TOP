@@ -10,13 +10,17 @@ function read(relative) {
 }
 
 // Pins the contract that the desktop view-tab sub-band (#desktopViewSubBand)
-// has no distinct background or borders. Previously the band carried a
-// slightly-lighter background (#08080d) plus a 1px top border to mark its
-// region; once vertical breathing room was added below it, that background
-// showed as a visible "stripe" of lighter color between the view tabs and the
-// filter pills. The tabs now sit directly on the page background. Verified via
-// source inspection because jsdom does no layout and main.js is too large to
-// instantiate (per CLAUDE.md guidance).
+// paints --bg-base so it matches the filter+sort band (#taskFilterBar) directly
+// below it. Both bands must resolve to the same colour with no visible seam: the
+// filter band is transparent and falls through to #mainBar's --bg-base, while
+// the sub-band lives under #outerContainer (the greyer chrome) and so must
+// paint --bg-base explicitly rather than rely on a transparent fall-through. A
+// previous round left the sub-band transparent, so the two bands inherited
+// different parent backgrounds and looked mismatched; an even earlier round gave
+// it a lighter #08080d stripe. Neither is correct — it must be exactly
+// var(--bg-base), the same token #mainBar paints. Verified via source inspection
+// because jsdom does no layout and main.js is too large to instantiate (per
+// CLAUDE.md guidance).
 describe('desktop view sub-band background', () => {
     const css = read('style.css');
 
@@ -40,11 +44,25 @@ describe('desktop view sub-band background', () => {
         return m[1];
     }
 
-    it('(a) the sub-band has no distinct background color — transparent', () => {
+    // The bare `#mainBar { ... }` rule, used as the anchor: the sub-band must
+    // paint the SAME token #mainBar does, so the two bands can never drift apart.
+    function mainBarRule() {
+        const m = css.match(/(^|[\s}])#mainBar\s*\{([^}]*)\}/m);
+        expect(m).not.toBeNull();
+        return m[2];
+    }
+
+    it('(a) the sub-band paints var(--bg-base), the same token #mainBar paints', () => {
         const rule = subBandRule();
-        // No lighter band background remains; an explicit transparent is fine.
+        // It must paint --bg-base explicitly — not transparent (which would fall
+        // through to #outerContainer's greyer chrome and mismatch the filter
+        // band) and not the lighter #08080d stripe an earlier round shipped.
+        expect(rule).toMatch(/background:\s*var\(--bg-base\)/);
+        expect(rule).not.toMatch(/background:\s*transparent/);
         expect(rule).not.toMatch(/background:\s*#08080d/);
-        expect(rule).toMatch(/background:\s*transparent/);
+        // Anchor against #mainBar: both bands resolve to the same colour. If a
+        // future change repaints #mainBar, this forces the sub-band to follow.
+        expect(mainBarRule()).toMatch(/background:\s*var\(--bg-base\)/);
     });
 
     it('(b) the sub-band declares no top or bottom border', () => {
@@ -57,6 +75,23 @@ describe('desktop view sub-band background', () => {
         // The active tab purple text + underline indicator are untouched.
         expect(css).toMatch(/#desktopViewSubBand \.viewPill\.active\s*\{[^}]*color:\s*#9D93EE/);
         expect(css).toMatch(/#desktopViewSubBand \.viewPill\.active::after\s*\{[^}]*background:\s*#9D93EE/);
+    });
+
+    it('(d) the sub-band keeps its grid-row:3 placement under #outerContainer', () => {
+        // Pin the DOM parentage and grid placement so a future "actually relocate
+        // the sub-band into #mainBar" refactor — which would re-introduce the
+        // chat-pane overhang collision — is caught here rather than shipping a
+        // broken alignment. The band is appended to `base` (#outerContainer) in
+        // main.js and positioned by explicit grid-row, never moved into #mainBar.
+        const rule = subBandRule();
+        expect(rule).toMatch(/grid-row:\s*3/);
+
+        const js = read('main.js');
+        // `base` is the #outerContainer element; the sub-band is appended to it.
+        expect(js).toMatch(/base\.id\s*=\s*'outerContainer'/);
+        expect(js).toMatch(/base\.appendChild\(desktopViewSubBand\)/);
+        // It must NOT be re-parented into #mainBar (the aborted relocation).
+        expect(js).not.toMatch(/mainBar\.appendChild\(desktopViewSubBand\)/);
     });
 });
 
