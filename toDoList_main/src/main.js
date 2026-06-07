@@ -6605,20 +6605,25 @@ function buildTodoMdViewerCard(projectName, target) {
         '<polyline points="6 9 12 15 18 9"/>' +
         '</svg>';
 
-    // "Show completed (N)" toggle — defaults OFF (completed entries hidden in
-    // the rendered body). The N count is recomputed from live content on every
-    // render. The count sits in its own fixed-min-width span so the header
-    // doesn't reflow when N crosses from one digit to two.
+    // "Show completed" toggle — a compact 32×32 icon button (a checked-checkbox
+    // glyph) with a floating count badge, defaults OFF (completed entries hidden
+    // in the rendered body). The icon form replaces the old "Show completed (N)"
+    // text pill, which overflowed the header on narrow mobile widths. The N
+    // badge is recomputed from live content on every render; since the glyph
+    // carries no visible text, the count and the Show/Hide verb live in
+    // aria-label + title for screen readers and hover tooltips.
     const showCompletedBtn = document.createElement('button');
     showCompletedBtn.type = 'button';
     showCompletedBtn.className = 'todoMdViewerShowCompletedBtn';
-    const showCompletedLabel = document.createElement('span');
-    showCompletedLabel.className = 'todoMdViewerShowCompletedLabel';
-    showCompletedLabel.textContent = 'Show completed';
+    showCompletedBtn.innerHTML =
+        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M21 11v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/>' +
+        '<polyline points="9 11 12 14 22 4"/>' +
+        '</svg>';
     const showCompletedCount = document.createElement('span');
-    showCompletedCount.className = 'todoMdViewerShowCompletedCount';
-    showCompletedCount.textContent = '(0)';
-    showCompletedBtn.appendChild(showCompletedLabel);
+    showCompletedCount.className = 'todoMdViewerShowCompletedBadge';
+    showCompletedCount.setAttribute('aria-hidden', 'true');
+    showCompletedCount.textContent = '0';
     showCompletedBtn.appendChild(showCompletedCount);
 
     meta.appendChild(showCompletedBtn);
@@ -6664,14 +6669,18 @@ function buildTodoMdViewerCard(projectName, target) {
     // changes between renders.
     function applyShowCompletedState() {
         const on = isTodoMdShowCompleted();
+        const n = countCompletedTodoMdEntries(card.dataset.content || '');
         showCompletedBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
         showCompletedBtn.classList.toggle('is-on', on);
-        showCompletedBtn.setAttribute(
-            'aria-label',
-            (on ? 'Hide' : 'Show') + ' completed entries'
-        );
-        showCompletedCount.textContent =
-            '(' + countCompletedTodoMdEntries(card.dataset.content || '') + ')';
+        // The glyph has no visible text, so the count + verb ride on
+        // aria-label (screen readers) and title (desktop hover tooltip).
+        const label = (on ? 'Hide' : 'Show') + ' completed (' + n + ')';
+        showCompletedBtn.setAttribute('aria-label', label);
+        showCompletedBtn.title = label;
+        showCompletedCount.textContent = String(n);
+        // Hide the badge entirely at N=0 — "show completed (0)" is a no-op and a
+        // visible 0 invites confusion.
+        showCompletedBtn.classList.toggle('todoMdViewerShowCompletedBtn--empty', n === 0);
     }
 
     showCompletedBtn.addEventListener('click', function() {
