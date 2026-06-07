@@ -1140,7 +1140,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ecbe5e9a-bb83-4578-907f-2b18525aa76d -->
 
-- [ ] **[MEDIUM]** Replace Expand all + Sort by Due with a single Sort dropdown (adds Status sort)
+- [x] **[MEDIUM]** Replace Expand all + Sort by Due with a single Sort dropdown (adds Status sort) — Completed: 2026-06-07
   - Type: feature
   - Description: Remove the Expand all button and the Sort by Due checkbox from the task-list controls row (the band that hosts the ALL / Active / Ideas filter pills) and replace both with a single Sort dropdown sitting in the same right-aligned slot. The dropdown button reads its current state — "Sort ▾" for none, "Sort: Due ▾" for due-sorted, "Sort: Status ▾" for status-sorted — and opens a small menu with three mutually-exclusive options: None, Due date, Status (subtitled "In Progress · Active · Idea"). Selecting any option applies that sort and persists the choice globally across projects via `prefs.js`, mirroring the `getTaskFilter`/`setTaskFilter` shape with a new `getTaskSort`/`setTaskSort` pair under a `todoapp_taskSort` key (values: `'none' | 'due' | 'status'`, default `'none'`). The Status sort reorders todos so `in_progress` items come first, then `active`, then `idea`; within each status group the existing `pos` ordering is preserved as the secondary key so a manual drag-arrangement inside a status group is never destroyed by toggling Status on. Sort and filter compose cleanly — the filter still hides rows via its existing CSS class after the sort has run, so the visible subset is correctly ordered.
   - Behavior:
