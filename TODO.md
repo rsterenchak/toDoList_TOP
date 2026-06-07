@@ -1072,7 +1072,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a693e3d5-6554-42e3-b313-c8db61b854e6 -->
 
-- [ ] **[HIGH]** Add Rename to the desktop project picker context menu
+- [x] **[HIGH]** Add Rename to the desktop project picker context menu — Completed: 2026-06-07
   - Type: feature
   - Description: The right-click / long-press context menu on a desktop `#projectPickerDropdown` row only offers `Delete project…` — Rename (the "Edit" arm of `showProjectContextMenu` in `projectMenu.js`) was deferred when the desktop delete affordance shipped, leaving no path to rename a project from the new desktop surface. Surface a `Rename` item above `Delete project…` in the same context menu, wired to the same rename flow the sidebar's Edit item already uses, so the dropdown reaches parity with the sidebar for the two non-destructive + destructive project actions. Out of scope: the inline color picker (that's a separate decision — say the word and I'll draft it).
   - Behavior:
