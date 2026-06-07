@@ -184,6 +184,11 @@ export function openClaudeSheet() {
     sheetEl.setAttribute('aria-hidden', 'false');
     if (backdropEl) backdropEl.classList.add('open');
     if (launcherEl) launcherEl.setAttribute('aria-expanded', 'true');
+    // Re-sync the workspace allowlist on every open so a repo added to or
+    // removed from `ALLOWED_TARGETS` shows up in the pill menu without a
+    // page reload. Fire-and-forget: the current list stays usable while the
+    // fetch is in flight, and a failed fetch leaves it intact.
+    loadWorkspaceRepos();
 }
 
 export function closeClaudeSheet() {
@@ -981,12 +986,18 @@ function setActiveChatRepo(repo) {
 }
 
 // Source the workspace repo list from the Worker's allowlist so the app never
-// drifts from `ALLOWED_TARGETS`. Fired once per mount. Until it resolves — and
-// if it fails — `attachRepos` keeps its safe fallback (the default repo only),
-// so the chat is usable immediately and degrades gracefully with no error
-// surface. On success the list is replaced and the pill repaints; the menu is
-// rebuilt too if it happens to be open when the fetch lands, so the full set
-// shows without a re-open.
+// drifts from `ALLOWED_TARGETS`. Fired on mount AND on every sheet open so a
+// repo added to or removed from the allowlist surfaces without a page reload.
+// Until it resolves — and if it fails — `attachRepos` keeps its safe fallback
+// (the default repo only), so the chat is usable immediately and degrades
+// gracefully with no error surface. On success the list is replaced and the
+// pill repaints; the menu is rebuilt too if it happens to be open when the
+// fetch lands, so the full set shows without a re-open. The refresh path
+// preserves `chatHistory`, attachments, and the active workspace — only an
+// explicit pill switch wipes the chat. The one exception: when the active
+// workspace was dropped from the allowlist, fall back to the Worker's default
+// (still preserving chat history) so the user isn't stranded on a repo the
+// Worker will refuse.
 async function loadWorkspaceRepos() {
     const result = await fetchAllowedRepos();
     if (!result || !Array.isArray(result.repos) || !result.repos.length) return;
@@ -995,6 +1006,12 @@ async function loadWorkspaceRepos() {
         .filter(Boolean);
     if (!names.length) return;
     attachRepos = names;
+    if (names.indexOf(activeChatRepo) === -1) {
+        const fallback = (result.default && names.indexOf(result.default) !== -1)
+            ? result.default
+            : names[0];
+        setActiveChatRepo(fallback);
+    }
     renderWorkspacePill();
     if (isWorkspaceMenuOpen()) buildWorkspaceMenu();
 }
