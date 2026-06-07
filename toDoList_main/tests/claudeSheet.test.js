@@ -1991,6 +1991,136 @@ describe('Claude sheet — workspace repos sourced from worker', () => {
         await flush();
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
     });
+
+    // The allowlist is sourced from the Worker on every sheet open — not just on
+    // mount — so a repo added to or removed from `ALLOWED_TARGETS` shows up the
+    // next time the user opens the sheet, with no page reload. Opening/closing
+    // the sheet is just a class toggle (no remount), so without this refresh the
+    // pill menu would freeze on whatever the Worker served at first mount.
+    it('re-fetches the workspace allowlist on each sheet open', async () => {
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        mountClaudeSheet(document.body);
+        await flush();
+        openClaudeSheet();
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        let repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem'))
+            .map((el) => el.dataset.repo);
+        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO]);
+
+        // Worker adds a third repo to ALLOWED_TARGETS between sheet opens.
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+                { repo: BOOKHAVEN_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        // Close the open menu so the next pill click opens a fresh one.
+        document.getElementById('claudeWorkspacePill').click();
+        closeClaudeSheet();
+        openClaudeSheet();
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem'))
+            .map((el) => el.dataset.repo);
+        expect(repos).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
+    });
+
+    // The on-open refresh repaints the pill/menu only — it must not wipe
+    // chatHistory, attachments, or the active workspace. Only an explicit pill
+    // switch (with the confirm) clears the chat.
+    it('preserves the active workspace and chat history when the on-open refresh resolves', async () => {
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        mountClaudeSheet(document.body);
+        await flush();
+        openClaudeSheet();
+        await flush();
+
+        // Switch the workspace to OTHER_REPO explicitly (this would normally wipe
+        // any prior chat — we then build new history on top).
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'hello';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+        const bubblesBefore = document.querySelectorAll('.claudeMsg').length;
+        expect(bubblesBefore).toBeGreaterThan(0);
+
+        // Re-open with the allowlist still listing OTHER_REPO. The refresh must
+        // be silent: same workspace, same chat history, same composer state.
+        closeClaudeSheet();
+        openClaudeSheet();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
+        expect(document.querySelectorAll('.claudeMsg').length).toBe(bubblesBefore);
+    });
+
+    // If the user's active workspace is dropped from the Worker allowlist before
+    // the next sheet open, the refresh falls back to the Worker's default repo
+    // so the user isn't stranded on a repo the Worker will refuse. Chat history
+    // is preserved — the fallback only repaints the pill.
+    it('falls back to the default repo when the active workspace was removed from the allowlist', async () => {
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                { repo: OTHER_REPO, srcPrefix: 'src/' },
+            ],
+        };
+        mountClaudeSheet(document.body);
+        await flush();
+        openClaudeSheet();
+        await flush();
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'hello';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+        const bubblesBefore = document.querySelectorAll('.claudeMsg').length;
+        expect(bubblesBefore).toBeGreaterThan(0);
+
+        // Worker drops OTHER_REPO from ALLOWED_TARGETS.
+        reposResult = {
+            ok: true,
+            default: DEFAULT_REPO,
+            repos: [
+                { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+            ],
+        };
+        closeClaudeSheet();
+        openClaudeSheet();
+        await flush();
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
+        expect(document.querySelectorAll('.claudeMsg').length).toBe(bubblesBefore);
+    });
 });
 
 // Multi-repo manifest fetching: the picker derives each repo's manifest URL by
