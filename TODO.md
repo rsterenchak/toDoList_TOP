@@ -973,3 +973,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 49b88e7a-acfb-42a7-a473-412101b52117 -->
+
+- [ ] **[MEDIUM]** Add a binary search stub and failing unit test for practice
+  - Type: feature
+  - Description: Create a `BinarySearch` class with a single static method `Search(int[] sortedArray, int target)` that returns the index of `target` in `sortedArray`, or `-1` if not found. The method body should be `throw new NotImplementedException()` so Robert can implement it himself. Add a corresponding xUnit (or MSTest, whichever the project already uses) test class with at least 3 test cases (target found in middle, target found at edge, target not present) — all tests should fail until the stub is replaced with a real implementation.
+  - File: `BinarySearch.cs`, `tests/BinarySearchTests.cs`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 150213e4-a9f4-48e8-ae6f-cebff22e171c -->
