@@ -133,6 +133,35 @@ describe('desktop project-picker inline rename', () => {
         // error variant turns the border red
         expect(css).toMatch(/\.projectPickerRenameInput\.error\s*\{[\s\S]*?border-color:\s*#e5484d/);
     });
+
+    // The context menu is portaled to document.body, so a click on its Rename
+    // item bubbles to the dropdown's document-level outside-click handler, which
+    // would read it as "outside" and close the picker (tearing down the input
+    // enterRowEditMode just mounted). The Rename handler must stop propagation
+    // BEFORE it mounts the editor so that race can't happen.
+    it('the Rename item stops click propagation before entering edit mode', () => {
+        const body = fnBody('showProjectRowContextMenu');
+        const stopIdx = body.indexOf('stopPropagation()');
+        const enterIdx = body.indexOf('enterRowEditMode(');
+        expect(stopIdx).toBeGreaterThan(-1);
+        expect(enterIdx).toBeGreaterThan(-1);
+        expect(stopIdx).toBeLessThan(enterIdx);
+    });
+
+    // Symmetric guard for Delete project…: its click belongs to the menu, not to
+    // "outside the dropdown," so it stops propagation before closing the picker.
+    it('the Delete project… item stops click propagation before closing the picker', () => {
+        const body = fnBody('showProjectRowContextMenu');
+        // Slice from the delete handler so the assertion can't accidentally match
+        // the Rename handler's stopPropagation above it.
+        const delIdx = body.indexOf("'Delete project…'");
+        const delBody = body.slice(delIdx);
+        const stopIdx = delBody.indexOf('stopPropagation()');
+        const closeIdx = delBody.indexOf('closeProjectPicker()');
+        expect(stopIdx).toBeGreaterThan(-1);
+        expect(closeIdx).toBeGreaterThan(-1);
+        expect(stopIdx).toBeLessThan(closeIdx);
+    });
 });
 
 // Parity guard: the sidebar's Edit item still drives projectRow.js's
@@ -333,5 +362,29 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         expect(row.querySelector('input')).not.toBeNull();
         expect(input.classList.contains('error')).toBe(true);
         expect(editSpy).not.toHaveBeenCalled();
+    });
+
+    // Regression for the bubbling race: the context menu is portaled to
+    // document.body, so a click on Rename reaches the document. With the
+    // dropdown's real outside-click handler in place, an unstopped click would
+    // read as "outside the dropdown," fire closeProjectPicker(), and tear down
+    // the freshly-mounted editor — the "the menu just closes" symptom. The
+    // Rename handler's stopPropagation() must keep that document handler from
+    // ever seeing the click, so the editor survives and the dropdown stays open.
+    it('clicking Rename does NOT trip the dropdown outside-click handler (editor survives, dropdown stays open)', () => {
+        dropdown.classList.add('open');
+        // Mirror the real document-level outside-click handler from
+        // openProjectPicker: anything outside the dropdown closes the picker.
+        document.addEventListener('click', function (e) {
+            if (!api.projectPickerIsOpen()) return;
+            if (dropdown.contains(e.target)) return;
+            api.closeProjectPicker();
+        });
+
+        const row = rowAt(1); // Beta
+        clickRenameFromMenu(row);
+
+        expect(row.querySelector('input')).not.toBeNull();
+        expect(dropdown.classList.contains('open')).toBe(true);
     });
 });

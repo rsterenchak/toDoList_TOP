@@ -3325,7 +3325,13 @@ function component() {
         rename.setAttribute('role', 'menuitem');
         rename.tabIndex = 0;
         rename.textContent = 'Rename';
-        rename.addEventListener('click', function() {
+        rename.addEventListener('click', function(event) {
+            // The menu is portaled to document.body, so this item is NOT a DOM
+            // descendant of #projectPickerDropdown. Without stopping propagation,
+            // the click bubbles to the dropdown's document-level outside-click
+            // handler, which reads it as "outside," closes the picker, and tears
+            // down the inline editor enterRowEditMode just mounted.
+            event.stopPropagation();
             hideProjectRowContextMenu();
             if (row) enterRowEditMode(row, projectName);
         });
@@ -3336,7 +3342,11 @@ function component() {
         del.setAttribute('role', 'menuitem');
         del.tabIndex = 0;
         del.textContent = 'Delete project…';
-        del.addEventListener('click', function() {
+        del.addEventListener('click', function(event) {
+            // Symmetric with Rename: clicks on a context-menu item belong to the
+            // menu, not to "outside the dropdown." stopPropagation keeps the
+            // dropdown's outside-click handler from also firing on this click.
+            event.stopPropagation();
             hideProjectRowContextMenu();
             closeProjectPicker();
             const projChild = findProjChildByName(projectName);
