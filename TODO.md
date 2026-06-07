@@ -974,7 +974,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 49b88e7a-acfb-42a7-a473-412101b52117 -->
 
-- [ ] **[HIGH]** Pass the active workspace repo when injecting and dispatching from the chat
+- [x] **[HIGH]** Pass the active workspace repo when injecting and dispatching from the chat — Completed: 2026-06-06
   - Type: bug
   - Description: In the in-app Claude assistant, shipping a drafted entry always injects to and runs claude-run on the default repo (`toDoList_TOP`) regardless of which workspace is selected via the pill. Root cause: `shipDraftedEntry` in `claudeSheet.js` calls both `injectEntry({ entry, id })` and `dispatchRun({ mode: 'entry', entryId, correlationId })` with no `target`, so neither request carries `repo`/`filePath` and the Worker falls back to its default target. Fix by building a target from the active workspace — `{ repo: activeChatRepo, file_path: 'TODO.md' }` — and passing it as `target` to both calls, so the entry lands in the selected repo's `TODO.md` and the run dispatches against that repo. Confirm the Worker honors an explicit `filePath` of `TODO.md` for non-default repos (matchingGame-test's `TODO.md` is at repo root, same as the default). Add a regression test (test-first) asserting that after switching the workspace via the pill, both the inject and dispatch request bodies carry the switched repo rather than the default.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
@@ -1007,3 +1007,10 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/tests/injectTargetsManagement.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 47042474-b464-4dcd-9ae8-9f01e3eac068 -->
+
+- [ ] **[MEDIUM]** Poll run status against the workspace repo a chat-shipped run was dispatched to
+  - Type: bug
+  - Description: Now that `shipDraftedEntry` in `claudeSheet.js` dispatches entry-mode runs against the active workspace repo (a `target` of `{ repo: activeChatRepo, file_path: 'TODO.md' }`), the status poller has gone stale: `startRunPoller` → `pollRunRecordOnce` calls `pollRunStatus({ correlationId })` with no `target`, so the Worker polls its DEFAULT repo for the run's `correlation_id`. For a run dispatched against a non-default repo (e.g. `matchingGame-test`), the default-repo poll never finds it (`res.found === false`), so the Runs-tab record sits QUEUED until the give-up window and is then marked unconfirmed — the run actually ran, but the UI can never confirm it. Fix: persist the dispatched repo on the run record at ship time (e.g. `record.repo = activeChatRepo`) and thread a `target` of `{ repo: record.repo, file_path: 'TODO.md' }` through `startRunPoller` → `pollRunRecordOnce` → `pollRunStatus(...)` so status polling queries the same repo the run was dispatched against. Default-repo runs (no stored repo) must keep working exactly as today. Add a regression test (test-first) asserting the status request body carries the non-default repo for a run shipped while a non-default workspace is active, and carries the default (or omits repo) for a default-workspace run.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Out of scope: `pollRunStatus` in `inject.js` (it already accepts and forwards `target`); the inject/dispatch repo wiring (already fixed); the TODO.md viewer's own status polling.
+  - Completed: YYYY-MM-DD (PR #<number>)

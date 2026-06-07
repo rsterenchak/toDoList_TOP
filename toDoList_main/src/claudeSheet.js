@@ -1466,7 +1466,11 @@ async function shipDraftedEntry(entryText, card) {
 
     const entryId = mintEntryId();
     const entry = embedEntryMarker(entryText, entryId);
-    const injectResult = await injectEntry({ entry: entry, id: entryId });
+    // Ship to the active workspace repo, not the Worker's default. Both calls
+    // carry the same target so the entry lands in the selected repo's TODO.md
+    // and the run dispatches against that same repo.
+    const target = { repo: activeChatRepo, file_path: 'TODO.md' };
+    const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });
     if (!injectResult.ok) {
         markDraftCardError(card, 'Inject failed — ' + (injectResult.reason || 'error'));
         return;
@@ -1477,6 +1481,7 @@ async function shipDraftedEntry(entryText, card) {
         mode: 'entry',
         entryId: entryId,
         correlationId: correlationId,
+        target: target,
     });
     if (!dispatchResult.ok) {
         markDraftCardError(card, 'Run failed — ' + (dispatchResult.reason || 'error'));
