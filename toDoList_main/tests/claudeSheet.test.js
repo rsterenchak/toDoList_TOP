@@ -849,6 +849,11 @@ describe('Claude sheet — ship targets the active workspace repo', () => {
         return call ? JSON.parse(call[1].body) : null;
     }
 
+    function findStatusBody() {
+        const call = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).status);
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
     it('sends the switched repo on both inject and dispatch', async () => {
         await switchWorkspace(OTHER_REPO);
         await authorAndShip();
@@ -876,6 +881,28 @@ describe('Claude sheet — ship targets the active workspace repo', () => {
         expect(dispatchBody).toBeTruthy();
         expect(dispatchBody.repo).toBe(DEFAULT_REPO);
         expect(dispatchBody.filePath).toBe('TODO.md');
+    });
+
+    // The status poller must query the same repo the run was dispatched to.
+    // Before this fix the poll always hit the Worker's default repo, so a run
+    // shipped to a non-default workspace never surfaced and sat unconfirmed.
+    it('polls run status against the switched repo', async () => {
+        await switchWorkspace(OTHER_REPO);
+        await authorAndShip();
+
+        const statusBody = findStatusBody();
+        expect(statusBody).toBeTruthy();
+        expect(statusBody.repo).toBe(OTHER_REPO);
+        expect(statusBody.filePath).toBe('TODO.md');
+    });
+
+    it('polls run status against the default repo when the pill is left at default', async () => {
+        await authorAndShip();
+
+        const statusBody = findStatusBody();
+        expect(statusBody).toBeTruthy();
+        expect(statusBody.repo).toBe(DEFAULT_REPO);
+        expect(statusBody.filePath).toBe('TODO.md');
     });
 });
 

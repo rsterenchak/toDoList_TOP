@@ -1008,7 +1008,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 47042474-b464-4dcd-9ae8-9f01e3eac068 -->
 
-- [ ] **[MEDIUM]** Poll run status against the workspace repo a chat-shipped run was dispatched to
+- [x] **[MEDIUM]** Poll run status against the workspace repo a chat-shipped run was dispatched to — Completed: 2026-06-06
   - Type: bug
   - Description: Now that `shipDraftedEntry` in `claudeSheet.js` dispatches entry-mode runs against the active workspace repo (a `target` of `{ repo: activeChatRepo, file_path: 'TODO.md' }`), the status poller has gone stale: `startRunPoller` → `pollRunRecordOnce` calls `pollRunStatus({ correlationId })` with no `target`, so the Worker polls its DEFAULT repo for the run's `correlation_id`. For a run dispatched against a non-default repo (e.g. `matchingGame-test`), the default-repo poll never finds it (`res.found === false`), so the Runs-tab record sits QUEUED until the give-up window and is then marked unconfirmed — the run actually ran, but the UI can never confirm it. Fix: persist the dispatched repo on the run record at ship time (e.g. `record.repo = activeChatRepo`) and thread a `target` of `{ repo: record.repo, file_path: 'TODO.md' }` through `startRunPoller` → `pollRunRecordOnce` → `pollRunStatus(...)` so status polling queries the same repo the run was dispatched against. Default-repo runs (no stored repo) must keep working exactly as today. Add a regression test (test-first) asserting the status request body carries the non-default repo for a run shipped while a non-default workspace is active, and carries the default (or omits repo) for a default-workspace run.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`

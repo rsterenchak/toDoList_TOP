@@ -1511,6 +1511,10 @@ async function shipDraftedEntry(entryText, card) {
         title: deriveRunTitle(entryText),
         status: 'QUEUED',
         dispatchedAt: Date.now(),
+        // Persist the repo this run was dispatched against so status polling
+        // queries the same repo, not the Worker's default. Without this, a run
+        // shipped to a non-default workspace can never be confirmed.
+        repo: activeChatRepo,
     };
     runRecords.unshift(record);
     saveRunRecords();
@@ -1808,10 +1812,14 @@ function startRunPoller(rec) {
     if (runPollers[correlationId]) return;
     if (isTerminalStatus(rec.status)) return;
     const startedAt = typeof rec.dispatchedAt === 'number' ? rec.dispatchedAt : Date.now();
+    // Poll against the repo the run was dispatched to. Records from before this
+    // was persisted (no rec.repo) fall back to null → the Worker's default repo,
+    // exactly as polling behaved before.
+    const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
     runPollers[correlationId] = setInterval(function() {
-        pollRunRecordOnce(correlationId, startedAt);
+        pollRunRecordOnce(correlationId, startedAt, target);
     }, RUN_POLL_INTERVAL_MS);
-    pollRunRecordOnce(correlationId, startedAt);
+    pollRunRecordOnce(correlationId, startedAt, target);
 }
 
 function stopRunPoller(correlationId) {
@@ -1821,7 +1829,7 @@ function stopRunPoller(correlationId) {
     }
 }
 
-async function pollRunRecordOnce(correlationId, startedAt) {
+async function pollRunRecordOnce(correlationId, startedAt, target) {
     if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
         // Past the give-up window the run can no longer be reconciled. We can't
         // see a positive outcome either way, so "couldn't confirm" is NOT
@@ -1832,7 +1840,7 @@ async function pollRunRecordOnce(correlationId, startedAt) {
         stopRunPoller(correlationId);
         return;
     }
-    const res = await pollRunStatus({ correlationId: correlationId });
+    const res = await pollRunStatus({ correlationId: correlationId, target: target || null });
     if (!res || res.ok === false) return; // transient — keep polling
     if (res.found === false) return; // run not surfaced yet — stay QUEUED
     if (res.status === 'completed') {
