@@ -96,4 +96,58 @@ describe('desktop project-picker delete context menu', () => {
     it('CSS styles #projRowContextMenu by sharing the #projContextMenu surface', () => {
         expect(css).toMatch(/#projContextMenu,\s*#projRowContextMenu\s*\{/);
     });
+
+    // Return the brace-matched bodies of every rule whose selector list
+    // contains `selector` as a standalone token. Brace-matching (not a flat
+    // regex) so the file's many nested @media blocks don't desync parsing.
+    function ruleBodies(selector) {
+        const bodies = [];
+        let idx = 0;
+        while ((idx = css.indexOf(selector, idx)) !== -1) {
+            const after = css[idx + selector.length];
+            const braceStart = css.indexOf('{', idx);
+            // `after` must be a selector boundary (not e.g. `.open`), and the
+            // gap up to `{` must be only more selectors / commas / whitespace.
+            const between = braceStart === -1 ? '' : css.slice(idx + selector.length, braceStart);
+            if (after && /[\s,{]/.test(after) && /^[\s,#.\w:>\-\[\]()="']*$/.test(between)) {
+                let depth = 0, i = braceStart;
+                for (; i < css.length; i++) {
+                    if (css[i] === '{') depth++;
+                    else if (css[i] === '}') { depth--; if (depth === 0) break; }
+                }
+                bodies.push(css.slice(braceStart + 1, i));
+            }
+            idx += selector.length;
+        }
+        return bodies;
+    }
+
+    // Effective z-index for an exact selector: the last rule that sets it wins.
+    function zIndexOf(selector) {
+        let z = null;
+        for (const body of ruleBodies(selector)) {
+            const zm = /z-index:\s*(\d+)/.exec(body);
+            if (zm) z = parseInt(zm[1], 10);
+        }
+        return z;
+    }
+
+    // Regression: the menu is portaled to document.body alongside
+    // #projectPickerDropdown, so it must stack ABOVE the dropdown — otherwise it
+    // renders behind the dropdown that triggered it and "Delete project…" is
+    // unreachable.
+    it('#projRowContextMenu stacks above the project-picker dropdown', () => {
+        const dropZ = zIndexOf('#projectPickerDropdown');
+        const menuZ = zIndexOf('#projRowContextMenu');
+        expect(dropZ).toBeGreaterThan(0);
+        expect(menuZ).toBeGreaterThan(dropZ);
+    });
+
+    // Regression: a portaled child can outlive its conceptual parent. When the
+    // dropdown closes (outside click, Escape, resize to mobile), the menu must
+    // close too — closeProjectPicker tears it down.
+    it('closeProjectPicker also dismisses the portaled delete menu', () => {
+        const body = fnBody('closeProjectPicker');
+        expect(body).toMatch(/hideProjectRowContextMenu\(\)/);
+    });
 });

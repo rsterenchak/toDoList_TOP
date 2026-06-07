@@ -3110,6 +3110,11 @@ function component() {
         projectPickerDropdown.setAttribute('aria-hidden', 'true');
         mobileProjHeader.classList.remove('picker-open');
         mobileProjChevron.textContent = '▾';
+        // The delete context menu is portaled onto document.body, so it can
+        // outlive the dropdown that spawned it. Tear it down whenever the
+        // dropdown closes (outside click, Escape, resize to mobile) so a
+        // portaled child never strands without its conceptual parent.
+        hideProjectRowContextMenu();
     }
 
     function toggleProjectPicker() {

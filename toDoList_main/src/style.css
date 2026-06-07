@@ -698,6 +698,15 @@ body {
   user-select: none;
 }
 
+/* #projRowContextMenu is portaled onto document.body next to
+   #projectPickerDropdown (z-index 100). It must stack above the dropdown that
+   triggered it, or "Delete project…" renders behind the dropdown and is
+   unreachable. #projContextMenu lives in the drawer's stacking context and is
+   unaffected by this override. */
+#projRowContextMenu {
+  z-index: 101;
+}
+
 .projContextMenuItem {
   padding: 8px 14px;
   font-size: 13px;
