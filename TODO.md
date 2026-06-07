@@ -1,2 +1,62 @@
 # TODO LIST
 
+- [ ] **[MEDIUM]** Reformat Inbox cards to compact one-line + tap-to-open modal, fix vertical clipping
+ - Type: bug
+ - Description: On mobile Inbox view, each todo card currently clips its content at the top edge — the project breadcrumb (e.g. "▸ IDEA   Task Management App") rendered above the title is half-cut by the card's rounded top edge, and long titles get cropped at the bottom. The clipping is the underlying bug; the reformat is the design fix. Replace the current card layout with a compact one-line card: a small circular checkbox on the left, the title truncated to one line with ellipsis, a small `▸ IDEA` (or whatever entry-type tag) pill plus the project name as a dimmed metadata line below the title, and a right chevron (›) indicating tappable. Tapping a card opens a focused modal that displays the full title and full description with comfortable typography (no truncation, line-height ~1.5, generous padding), plus Edit and Done action buttons at the bottom. The modal serves as the "read mode" so the cards themselves can stay compact and many fit on a phone screen without clipping. Mockup option B from the user-approved set.
+ - Behavior:
+   1. The Inbox view's card container no longer clips content at its top or bottom edges. The clipping was caused by either `overflow: hidden` set too aggressively on the card or insufficient vertical padding combined with content rendering above the card's content box. Fix at the root: ensure the card's padding accommodates the rendered content AND `overflow: visible` (or `overflow: hidden` with content fitting inside) — pick whichever matches the surrounding pattern. The visible symptom (any text rendering outside the card's apparent bounds, or being cropped by the card's rounded corners) must be gone.
+   2. New card layout, compact (one-line title):
+      - Left: 18px circular checkbox/radio indicator with `1.5px` border in `var(--muted)` (matches existing inbox checkbox style if one exists; otherwise use the Void palette muted token).
+      - Middle: stacked column with `gap: 3px`:
+        - Title: `font-size: ~13.5px`, `line-height: 1.3`, `color: var(--text)`, truncated to one line via `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`.
+        - Metadata row: a small pill containing the entry-type tag (e.g. `▸ IDEA` — match whatever tag the entry already carries: IDEA, FEATURE, BUG, etc.) in `var(--purple-lt)` text on `rgba(108, 93, 245, 0.18)` background, `border-radius: 4px`, `padding: 2px 6px`, `font-size: 10px`, `letter-spacing: 0.5px`, `text-transform: uppercase`, `font-weight: bold`. After the pill, the project name in `font-size: 10.5px`, `color: var(--muted)`, single-line ellipsis truncation with a sensible max-width (~200px).
+      - Right: chevron `›` glyph in `var(--muted-dim)`, `font-size: 14px`, flex-shrink: 0.
+      - Card itself: `background: var(--card-bg)` (or the existing inbox card bg token — match what's already there), `border-radius: 12px`, `padding: 11px 14px`, `display: flex; align-items: center; gap: 10px`, `cursor: pointer`.
+   3. Cards are tappable (entire card, not just the chevron). Tapping opens a modal.
+   4. Modal contents:
+      - At the top, a small dim label: `▸ IDEA · Task Management App` (entry-type tag and project name on one line, `font-size: 10px`, `color: var(--muted-dim)`, `text-transform: uppercase`, `letter-spacing: 1px`).
+      - Title: `font-size: 16px`, `line-height: 1.35`, `color: var(--text)`, `font-weight: 600`, NO truncation (wraps naturally).
+      - "Description" label (same dim small style as the breadcrumb label).
+      - Description body: `font-size: 13px`, `line-height: 1.55`, `color: var(--text-dim)`, NO truncation, wraps fully.
+      - Action row at the bottom, right-aligned: "Edit" (ghost button) and "Done" (primary purple button). Both invoke the EXISTING edit and complete handlers from the current Inbox tap behavior — do NOT create new handlers; reuse whatever the current card-tap or row-tap path uses for these actions.
+      - Modal styling: `background: var(--card-bg)`, `border: 1px solid var(--purple-bord)` (or the existing modal border token), `border-radius: 14px`, `padding: 18px 18px 16px`, `box-shadow: 0 8px 24px rgba(0,0,0,.4)`, centered or anchored per the existing modal convention (grep for any existing modals like the edit modal, settings modal, or pomodoro modal and match its open/close treatment — overlay backdrop, focus trap, ESC-to-close, tap-outside-to-close).
+   5. Closing the modal returns to the Inbox view with scroll position preserved.
+   6. If a card is tapped while the keyboard is active in another input, the input loses focus and the modal opens — i.e. the tap dispatches normally without being eaten by a focus-blur race.
+   7. The Inbox's existing affordances are unchanged: the empty-state, the pull-to-refresh (if any), the bottom tab bar (Projects / Inbox / Calendar), and the title-bar / settings menu access. Only the card layout and the modal trigger change.
+   8. On the desktop layout (≥1024px) — if the Inbox is rendered there at all — the change is a no-op or matches whatever desktop already does. This entry is explicitly mobile-scoped; do not refactor desktop card rendering unless the same code path renders both (in which case, gate the new compact + modal treatment behind the existing mobile breakpoint and leave desktop on its current layout).
+   9. Accessibility: cards are keyboard-focusable, Enter/Space activates the tap (opens the modal). Modal traps focus and returns focus to the originating card on close. The card's `role` and `aria-label` are set appropriately so screen readers announce the title + project context.
+   10. Long titles (50+ chars) truncate cleanly with ellipsis in the card and render in full in the modal. Pin via test with a fixture entry having a known-long title.
+   11. Entries without a description: the modal still opens, the "Description" label is either hidden or replaced with a dim "No description" placeholder. Pick one and pin it. Suggest: hide the label entirely and show no body text — cleaner.
+ - Test-first regression set:
+   1. Clipping fix: the card's rendered bounding box contains all of its child text. Pin via DOM assertion that the card's `scrollHeight` equals its `offsetHeight` (no overflow) AND the card's children's bounding rects are all within the card's bounding rect. May be flaky in jsdom — fall back to source-pattern (assert the card's CSS rule does NOT have `overflow: hidden` combined with insufficient padding, or assert `overflow: visible` is explicitly set).
+   2. Compact card structure: the card contains exactly one title element, one metadata row with a pill + project name, and one chevron. Title element has `text-overflow: ellipsis` and `white-space: nowrap` in its computed style.
+   3. Tap opens modal: simulating a click on the card invokes whatever modal-open function the implementation uses. Assert the modal element is present in the DOM and visible after the tap.
+   4. Modal content: with a fixture entry having a known title and description, the modal contains both, with the title NOT truncated (`white-space: normal` or no truncation styles applied) and the description fully rendered (no `-webkit-line-clamp` or similar truncation).
+   5. Modal close: tapping outside, pressing ESC, or tapping a close affordance closes the modal and returns focus to the originating card.
+   6. Edit and Done actions in the modal call the SAME handlers the current Inbox card-tap action calls. Do NOT introduce new edit/complete logic — reuse existing.
+   7. Long-title fixture: title with 80+ characters renders truncated with ellipsis in the card, full in the modal.
+   8. No-description fixture: modal opens, no "Description" label, no empty body section.
+   9. Keyboard accessibility: cards are reachable via Tab, Enter activates the tap, modal traps focus, ESC closes.
+   10. Mobile-only scope (if Inbox renders on desktop too): at ≥1024px, the existing desktop layout is unchanged. Pin via responsive test or source-pattern check on the breakpoint guard.
+   11. Empty Inbox: existing empty-state rendering is unchanged.
+   12. Tab bar non-regression: the bottom tab bar (Projects / Inbox / Calendar) is unchanged.
+ - Implementation notes: Find the Inbox view's card-rendering function. The screenshot's URL bar shows `terenchak.github.io` so this is the deployed PWA — the relevant module is whatever renders the Inbox tab on mobile. Grep `Inbox`, `inbox`, `INBOX`, or for the bottom tab bar's "INBOX" label to find the entry point. The card itself is likely rendered in a function that maps over a list of inbox entries (entries from across all projects that haven't been completed and aren't tied to a project view). Identify that function before touching anything.
+   - Replace the card's DOM construction with the new compact structure. Remove any element that rendered the project breadcrumb ABOVE the title (this was the clipping culprit per the screenshot). Add the new metadata row BELOW the title.
+   - Add the modal: if the project already has a modal system (grep for existing modals — settings, edit-task, pomodoro, etc.), follow its conventions for open/close, backdrop, focus management, ESC handling, tap-outside dismissal. If no existing modal system, the cleanest approach is a fixed-position overlay with a backdrop div and the modal content centered; reuse the Void aesthetic tokens (`--card-bg`, `--purple-bord`).
+   - Wire the modal's Edit and Done buttons to the existing edit and complete handlers — do NOT introduce new mutation paths. Grep the current Inbox card's tap handler to find what it calls today and route the modal buttons to the same functions.
+   - For the clipping fix specifically: inspect the current card CSS for `overflow: hidden`. If present, evaluate whether removing it leaks content elsewhere; if removing is safe, prefer that over restructuring. If `overflow: hidden` must stay (e.g. for border-radius clipping of child elements), increase the card's vertical padding so content fits inside, and ensure the rendered HTML doesn't place text outside the padded content box (the screenshot suggests the breadcrumb was being absolutely-positioned above the card top, or the card had `padding-top` smaller than the breadcrumb's height — find which and fix accordingly).
+   - CSS tokens to use (match existing Void palette in `style.css`; if these exact tokens don't exist, grep for the closest equivalents and use those — do NOT invent new tokens):
+     - Card bg: `var(--card-bg)` or whichever bg the current inbox card uses.
+     - Pill bg: `rgba(108, 93, 245, 0.18)` (the existing purple-dim pattern from the show-completed icon's active state).
+     - Pill text: `var(--purple-lt)`.
+     - Title text: `var(--text)`.
+     - Metadata muted: `var(--muted)`.
+     - Chevron dim: `var(--muted-dim)`.
+     - Modal border: existing modal border (grep `border:` on existing modal selectors).
+   - The chevron is a simple `›` text glyph, not an SVG — keeps the DOM light.
+   - Do NOT change the entry data model. Do NOT change how Inbox entries are aggregated. Do NOT change the empty-state. Do NOT change the bottom tab bar. Only the card's DOM structure and CSS + the new modal change.
+   - If existing tests pin the old card structure (e.g. "card has a breadcrumb element above the title"), update those assertions to match the new structure. Do NOT delete the test file; extend it.
+ - Out of scope: changes to the entry data model; the bottom tab bar layout; the empty Inbox state; the calendar tab; the projects tab; the desktop Inbox rendering (if separate from mobile); any change to other modals in the app; any change to how Inbox entries are filtered, sorted, or aggregated; the entry edit flow itself (only the trigger — the modal's Edit button — is new; the actual edit modal/screen is whatever already exists); the entry-type tag taxonomy (IDEA, FEATURE, BUG, etc.); the project name truncation max-width can be tweaked later if needed.
+ - File: whichever module renders the Inbox tab on mobile (grep `Inbox`, `inbox`, or the INBOX tab label to find it — likely in `main.js` or a dedicated `inboxView.js` module), `toDoList_main/src/style.css` (new CSS for the compact card + modal), `toDoList_main/tests/` (extend existing inbox tests if they exist, or add a new test file `inboxCardCompact.test.js`)
+ - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bdc1a4e6-ddcd-4fcc-9ba9-e9e55b495e9b -->
