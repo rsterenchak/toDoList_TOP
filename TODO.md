@@ -1045,7 +1045,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 03ee2eb0-5ef0-46af-a5d2-1d8a2da2da96 -->
 
-- [ ] **[HIGH]** Fix project delete context menu rendering behind the project dropdown
+- [x] **[HIGH]** Fix project delete context menu rendering behind the project dropdown — Completed: 2026-06-07
   - Type: bug
   - Description: The context menu added by the previous "Add context-menu delete to the desktop project dropdown" entry renders behind the dropdown that triggered it, so "Delete project…" is unreachable and the new delete path is effectively broken. Root cause is almost certainly stacking-context related: the context menu is currently mounted inside a dropdown row, and the dropdown panel either sets `overflow: hidden`/`auto` (clipping the menu) or establishes its own stacking context (`transform`, `opacity`, `position` + `z-index`, etc.) that pins the menu's z-index below sibling rows below it. The robust fix is to portal the context menu out of the row and append it to `document.body` (or a top-level overlay layer) and position it via measured coordinates from the row's `getBoundingClientRect`, with a high z-index above the dropdown panel and any modal layers it might also need to clear. As a fallback if portaling is overscope, raise the dropdown panel's child stacking so the menu escapes its container — but portaling is the durable fix because it survives any future dropdown layout change.
   - Behavior:
