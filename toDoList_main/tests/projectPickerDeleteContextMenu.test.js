@@ -165,14 +165,15 @@ describe('desktop project-picker delete context menu', () => {
     });
 });
 
-// The desktop dropdown's context menu reaches parity with the sidebar by
-// exposing a Rename item above Delete, wired to the same rename flow the
-// sidebar's Edit item uses. main.js is too large to instantiate in jsdom, so
-// these invariants are pinned by source inspection (mirroring the delete suite
-// above); projectRow.js's small surface is read directly for the parity check.
+// The desktop dropdown's Rename item now edits the dropdown's OWN row in place
+// (the earlier routing through the sidebar's #projInput landed the edit on an
+// off-screen drawer field at desktop widths). The menu still exposes Rename
+// above Delete; selecting it enters inline edit mode on the row rather than
+// closing the dropdown. main.js is too large to instantiate in jsdom, so these
+// invariants are pinned by source inspection (mirroring the delete suite
+// above). Deeper inline-edit invariants live in projectContextMenu.test.js.
 describe('desktop project-picker rename context menu', () => {
     const main = read('main.js');
-    const projectRow = read('projectRow.js');
 
     function fnBody(name) {
         const start = main.indexOf('function ' + name + '(');
@@ -206,30 +207,28 @@ describe('desktop project-picker rename context menu', () => {
         expect(renameIdx).toBeLessThan(deleteIdx);
     });
 
-    it('Rename closes the menu + dropdown and routes through beginProjectRename on the backing #projChild', () => {
+    it('Rename tears down the menu and enters inline edit mode on the dropdown row', () => {
         const body = fnBody('showProjectRowContextMenu');
-        // Selecting Rename tears down the menu, closes the dropdown, resolves the
-        // backing row by name, and hands its #projInput to the shared rename flow.
         expect(body).toMatch(/hideProjectRowContextMenu\(\)/);
-        expect(body).toMatch(/closeProjectPicker\(\)/);
-        expect(body).toMatch(/findProjChildByName\(projectName\)/);
-        expect(body).toMatch(/querySelector\(['"]#projInput['"]\)/);
-        expect(body).toMatch(/beginProjectRename\(projChild,\s*input\)/);
+        expect(body).toMatch(/enterRowEditMode\(row,\s*projectName\)/);
     });
 
-    it('main.js imports beginProjectRename from projectRow.js', () => {
-        expect(main).toMatch(/import\s*\{[\s\S]*?beginProjectRename[\s\S]*?\}\s*from\s*['"]\.\/projectRow\.js['"]/);
+    it('the Rename path no longer routes through the sidebar #projInput rename flow', () => {
+        // beginProjectRename activated the off-screen drawer field — the bug
+        // this entry fixes. main.js no longer references it at all (the import
+        // is dropped; the sidebar still uses it from within projectRow.js).
+        expect(main).not.toMatch(/beginProjectRename/);
     });
 
-    // Parity: the sidebar's Edit item and the dropdown's Rename item must drive
-    // the SAME rename flow. projectRow.js exports beginProjectRename, and the
-    // sidebar context menu's onEdit routes through it — so both surfaces fire
-    // the identical callback.
-    it('projectRow.js exports beginProjectRename and the sidebar Edit routes through it', () => {
-        expect(projectRow).toMatch(/export function beginProjectRename\(projChild,\s*titleInput\)/);
-        const onEditIdx = projectRow.indexOf('function onEdit()');
-        expect(onEditIdx).toBeGreaterThan(-1);
-        const onEditBody = projectRow.slice(onEditIdx, onEditIdx + 120);
-        expect(onEditBody).toMatch(/beginProjectRename\(projChild,\s*titleInput\)/);
+    it('the row geometry is threaded into the context menu so Rename can target it', () => {
+        const show = fnBody('showProjectRowContextMenu');
+        // showProjectRowContextMenu takes the row as its 4th argument...
+        expect(show).toMatch(/function showProjectRowContextMenu\(x,\s*y,\s*projectName,\s*row\)/);
+        // ...and attachProjectPickerRowContextMenu passes the row on both the
+        // right-click and long-press code paths.
+        const attach = fnBody('attachProjectPickerRowContextMenu');
+        const calls = attach.match(/showProjectRowContextMenu\([^)]*\)/g) || [];
+        expect(calls.length).toBe(2);
+        calls.forEach(function(call) { expect(call).toMatch(/,\s*row\)/); });
     });
 });

@@ -6957,6 +6957,43 @@ body.row-dragging * { cursor: grabbing !important; }
   color: #9D93EE;
 }
 
+/* Inline rename: the row swaps its name + count for a single text input that
+   matches the row's 32px height and horizontal padding so the row geometry
+   doesn't shift. SpaceMono 13px mirrors the .projectPickerName treatment; the
+   1px purple focus border and near-transparent background keep the row's
+   accent stripe readable. */
+.projectPickerRow.editing {
+  cursor: default;
+}
+
+.projectPickerRenameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  color: #e8e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #6C5DF5;
+  border-radius: 4px;
+  caret-color: #6C5DF5;
+}
+
+.projectPickerRenameInput:focus {
+  outline: none;
+  border-color: #6C5DF5;
+}
+
+/* Reject treatment (empty / duplicate name) — red, matching the sidebar's
+   #projInput reject path. */
+.projectPickerRenameInput.error {
+  border-color: #e5484d;
+  color: #e5484d;
+  caret-color: #e5484d;
+}
+
 /* The dropdown is a desktop-only affordance — the slide-in drawer remains
    the project switcher below 1024px. Force it hidden there even if a stale
    `.open` class survives a viewport change. */
