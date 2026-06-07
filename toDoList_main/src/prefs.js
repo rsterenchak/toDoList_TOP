@@ -20,6 +20,7 @@ export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 export const TASK_FILTER_KEY = 'todoapp_taskFilter';
 export const TASK_SORT_KEY = 'todoapp_taskSort';
 export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
+export const TODO_MD_SHOW_COMPLETED_KEY = 'todoapp_todoMdShowCompleted';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -222,6 +223,27 @@ export function isChatPaneCollapsed() {
 export function setChatPaneCollapsed(collapsed) {
     try {
         localStorage.setItem(CHAT_PANE_COLLAPSED_KEY, collapsed ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── TODO.md viewer: show completed entries ──
+// The read-only TODO.md viewer card hides completed (`- [x]`) entries by
+// default so the active backlog isn't buried under shipped work; a header
+// toggle reveals them. Default is OFF (completed hidden) on first load and
+// after a localStorage clear, so only `true` reads as "show completed". This
+// is a render-side control only — the file on disk and the pipeline's
+// server-side read of it are untouched.
+export function isTodoMdShowCompleted() {
+    try {
+        return localStorage.getItem(TODO_MD_SHOW_COMPLETED_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setTodoMdShowCompleted(show) {
+    try {
+        localStorage.setItem(TODO_MD_SHOW_COMPLETED_KEY, show ? 'true' : 'false');
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
