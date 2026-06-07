@@ -758,6 +758,127 @@ describe('Claude sheet — chat → inject integration (end-to-end author path)'
     });
 });
 
+// Shipping a drafted entry must land it in the ACTIVE workspace repo, not the
+// Worker's default. The inject and dispatch requests both carry repo/filePath
+// built from the workspace pill's current selection, so switching the pill to a
+// non-default repo and then shipping sends that repo on both calls. A prior bug
+// shipped every entry to the default repo regardless of the pill; this pins the
+// fix so the wiring can't silently drop the target again.
+describe('Claude sheet — ship targets the active workspace repo', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    let realFetch;
+    let fetchSpy;
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.repos) {
+                json = {
+                    ok: true,
+                    default: DEFAULT_REPO,
+                    repos: [
+                        { repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' },
+                        { repo: OTHER_REPO, srcPrefix: 'src/' },
+                    ],
+                };
+            } else if (body.chat) {
+                json = { reply: 'On it:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```' };
+            } else if (body.dispatch) {
+                json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
+            } else if (body.status) {
+                json = { found: false };
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
+        });
+    }
+
+    beforeEach(async () => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+        // The workspace allowlist loads asynchronously on mount; let it resolve so
+        // the pill menu lists the non-default repo this test switches to.
+        await flush();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function switchWorkspace(repo) {
+        document.getElementById('claudeWorkspacePill').click();
+        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
+        document.querySelector('.claudeWorkspaceConfirmYes').click();
+        await flush();
+    }
+
+    async function authorAndShip() {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'draft me a sparkle feature';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+    }
+
+    function findInjectBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && !b.repos && b.entry;
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    function findDispatchBody() {
+        const call = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).dispatch);
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('sends the switched repo on both inject and dispatch', async () => {
+        await switchWorkspace(OTHER_REPO);
+        await authorAndShip();
+
+        const injectBody = findInjectBody();
+        expect(injectBody).toBeTruthy();
+        expect(injectBody.repo).toBe(OTHER_REPO);
+        expect(injectBody.filePath).toBe('TODO.md');
+
+        const dispatchBody = findDispatchBody();
+        expect(dispatchBody).toBeTruthy();
+        expect(dispatchBody.repo).toBe(OTHER_REPO);
+        expect(dispatchBody.filePath).toBe('TODO.md');
+    });
+
+    it('sends the default repo on both calls when the pill is left at default', async () => {
+        await authorAndShip();
+
+        const injectBody = findInjectBody();
+        expect(injectBody).toBeTruthy();
+        expect(injectBody.repo).toBe(DEFAULT_REPO);
+        expect(injectBody.filePath).toBe('TODO.md');
+
+        const dispatchBody = findDispatchBody();
+        expect(dispatchBody).toBeTruthy();
+        expect(dispatchBody.repo).toBe(DEFAULT_REPO);
+        expect(dispatchBody.filePath).toBe('TODO.md');
+    });
+});
+
 // The iterate door: tapping a SHIPPED run record opens the Chat tab and fires
 // turn 1 carrying the run's entry id so the Worker seeds the conversation from
 // that merged change. Follow-up drafts flow through the same author-flow card.

@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-06',
         fixed: [
-            "On wide screens, clicking the project pill now reliably opens the projects dropdown every time instead of sometimes doing nothing.",
             "On wide screens, the header rows now have clearer vertical spacing so the workspace pill, view tabs, filter row, and compose row read as distinct sections.",
             "On wide screens, the faint background stripe behind the view tabs is gone, so the tabs sit directly on the page background.",
             "On wide screens, the chat panel's top row now lines up with the task list's view tabs, so both panes start at the same height.",
             "On wide screens, the strip above the chat panel's top row now matches the chat panel's background instead of showing a faint color seam.",
+            "Shipping a drafted entry from the chat assistant now lands in the selected workspace repo instead of always going to the default repository.",
         ],
     },
 ];
