@@ -682,9 +682,9 @@ body {
 }
 
 /* PROJECT CONTEXT MENU */
-/* #projRowContextMenu is the desktop project-picker dropdown's single-item
-   delete menu; it shares #projContextMenu's surface, shadow, and radius so the
-   two project context menus read identically. */
+/* #projRowContextMenu is the desktop project-picker dropdown's Rename / Delete
+   menu; it shares #projContextMenu's surface, shadow, and radius so the two
+   project context menus read identically. */
 #projContextMenu,
 #projRowContextMenu {
   position: fixed;

@@ -164,3 +164,72 @@ describe('desktop project-picker delete context menu', () => {
         expect(body).toMatch(/hideProjectRowContextMenu\(\)/);
     });
 });
+
+// The desktop dropdown's context menu reaches parity with the sidebar by
+// exposing a Rename item above Delete, wired to the same rename flow the
+// sidebar's Edit item uses. main.js is too large to instantiate in jsdom, so
+// these invariants are pinned by source inspection (mirroring the delete suite
+// above); projectRow.js's small surface is read directly for the parity check.
+describe('desktop project-picker rename context menu', () => {
+    const main = read('main.js');
+    const projectRow = read('projectRow.js');
+
+    function fnBody(name) {
+        const start = main.indexOf('function ' + name + '(');
+        expect(start).toBeGreaterThan(-1);
+        let i = main.indexOf('{', start);
+        let depth = 0;
+        for (; i < main.length; i++) {
+            if (main[i] === '{') depth++;
+            else if (main[i] === '}') {
+                depth--;
+                if (depth === 0) return main.slice(start, i + 1);
+            }
+        }
+        throw new Error('unbalanced braces for ' + name);
+    }
+
+    it('the menu exposes a default-treatment "Rename" item', () => {
+        const body = fnBody('showProjectRowContextMenu');
+        // A default (non-danger) projContextMenuItem labelled Rename.
+        expect(body).toMatch(/textContent\s*=\s*['"]Rename['"]/);
+        // The Rename element is built with the plain item class (no danger).
+        expect(body).toMatch(/className\s*=\s*['"]projContextMenuItem['"]\s*;/);
+    });
+
+    it('Rename sits above "Delete project…" in the menu', () => {
+        const body = fnBody('showProjectRowContextMenu');
+        const renameIdx = body.indexOf("'Rename'");
+        const deleteIdx = body.indexOf('Delete project…');
+        expect(renameIdx).toBeGreaterThan(-1);
+        expect(deleteIdx).toBeGreaterThan(-1);
+        expect(renameIdx).toBeLessThan(deleteIdx);
+    });
+
+    it('Rename closes the menu + dropdown and routes through beginProjectRename on the backing #projChild', () => {
+        const body = fnBody('showProjectRowContextMenu');
+        // Selecting Rename tears down the menu, closes the dropdown, resolves the
+        // backing row by name, and hands its #projInput to the shared rename flow.
+        expect(body).toMatch(/hideProjectRowContextMenu\(\)/);
+        expect(body).toMatch(/closeProjectPicker\(\)/);
+        expect(body).toMatch(/findProjChildByName\(projectName\)/);
+        expect(body).toMatch(/querySelector\(['"]#projInput['"]\)/);
+        expect(body).toMatch(/beginProjectRename\(projChild,\s*input\)/);
+    });
+
+    it('main.js imports beginProjectRename from projectRow.js', () => {
+        expect(main).toMatch(/import\s*\{[\s\S]*?beginProjectRename[\s\S]*?\}\s*from\s*['"]\.\/projectRow\.js['"]/);
+    });
+
+    // Parity: the sidebar's Edit item and the dropdown's Rename item must drive
+    // the SAME rename flow. projectRow.js exports beginProjectRename, and the
+    // sidebar context menu's onEdit routes through it — so both surfaces fire
+    // the identical callback.
+    it('projectRow.js exports beginProjectRename and the sidebar Edit routes through it', () => {
+        expect(projectRow).toMatch(/export function beginProjectRename\(projChild,\s*titleInput\)/);
+        const onEditIdx = projectRow.indexOf('function onEdit()');
+        expect(onEditIdx).toBeGreaterThan(-1);
+        const onEditBody = projectRow.slice(onEditIdx, onEditIdx + 120);
+        expect(onEditBody).toMatch(/beginProjectRename\(projChild,\s*titleInput\)/);
+    });
+});

@@ -62,6 +62,7 @@ import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
     attachProjectDrag,
+    beginProjectRename,
     deleteProjectFlow,
 } from './projectRow.js';
 import {
@@ -3121,11 +3122,11 @@ function component() {
         projectPickerIsOpen() ? closeProjectPicker() : openProjectPicker();
     }
 
-    // ── desktop project-row context menu (Delete project…) ──
+    // ── desktop project-row context menu (Rename / Delete project…) ──
     // The desktop dropdown rows mirror the drawer's right-click / long-press
-    // delete affordance, but expose only the destructive action (rename and
-    // color stay on the drawer's #projContextMenu — reserved for a follow-up
-    // here). The flow reuses the drawer's tested deleteProjectFlow — same
+    // menu for the two project actions — Rename and Delete (the inline color
+    // picker stays on the drawer's #projContextMenu, reserved for a follow-up
+    // here). The delete flow reuses the drawer's tested deleteProjectFlow — same
     // confirmation copy (project name + exact todo count, count clause dropped
     // when zero), the same cascade delete through listLogic.removeProject, and
     // the same active-project fallback to the first remaining project or the
@@ -3179,6 +3180,27 @@ function component() {
         const menu = document.createElement('div');
         menu.id = 'projRowContextMenu';
         menu.setAttribute('role', 'menu');
+
+        // Rename sits above Delete (no separator — the color picker that would
+        // normally sit between them stays gated for a follow-up). It resolves
+        // the dropdown row back to its backing #projChild and routes through
+        // the same beginProjectRename flow the sidebar's Edit item uses, so the
+        // two surfaces produce identical results.
+        const rename = document.createElement('div');
+        rename.className = 'projContextMenuItem';
+        rename.setAttribute('role', 'menuitem');
+        rename.tabIndex = 0;
+        rename.textContent = 'Rename';
+        rename.addEventListener('click', function() {
+            hideProjectRowContextMenu();
+            closeProjectPicker();
+            const projChild = findProjChildByName(projectName);
+            if (projChild) {
+                const input = projChild.querySelector('#projInput');
+                if (input) beginProjectRename(projChild, input);
+            }
+        });
+        menu.appendChild(rename);
 
         const del = document.createElement('div');
         del.className = 'projContextMenuItem danger';
