@@ -202,7 +202,12 @@ export function wireStatusLabelDelegation(container) {
         const projectName = row.getAttribute('data-value');
         if (!item || !projectName) return;
         event.stopPropagation();
-        if (document.getElementById('todoStatusPopover')) {
+        // Toggle off ONLY when the open popover belongs to THIS label; for any
+        // other label (including when nothing is open) mount its popover.
+        // showStatusPopover's own hideStatusPopover() call tears down a popover
+        // anchored to a different label, so a cross-label tap swaps in one click
+        // rather than requiring a second.
+        if (label.getAttribute('aria-expanded') === 'true') {
             hideStatusPopover();
         } else {
             showStatusPopover(label, item, projectName, row);

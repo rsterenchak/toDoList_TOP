@@ -226,6 +226,102 @@ describe('buildToDoRow integration is wired (source-level — row builder is not
 });
 
 
+describe('(e) cross-label popover swap in a single click', () => {
+    // Regression: clicking label B while label A's popover is open must tear
+    // down A's popover AND mount B's in the same click — no second click. The
+    // bug was the delegated handler toggling on the presence of ANY popover
+    // (so it hid A's and mounted nothing) instead of on whether THIS label
+    // owns the open popover.
+    function setupTwoRows() {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const itemA = { status: 'active', tit: 'Row A' };
+        const itemB = { status: 'idea', tit: 'Row B' };
+        const rowA = makeRow(itemA, 'Inbox');
+        const rowB = makeRow(itemB, 'Inbox');
+        container.appendChild(rowA);
+        container.appendChild(rowB);
+        return {
+            labelA: rowA.querySelector('.todoStatusLabel'),
+            labelB: rowB.querySelector('.todoStatusLabel'),
+            itemA, itemB,
+        };
+    }
+
+    it('clicking a different label swaps the popover to it without a second click', () => {
+        const { labelA, labelB } = setupTwoRows();
+
+        labelA.click();
+        expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+
+        labelB.click();
+        // Exactly one popover mounted, and it belongs to B.
+        expect(document.querySelectorAll('#todoStatusPopover').length).toBe(1);
+        const expanded = document.querySelectorAll('.todoStatusLabel[aria-expanded="true"]');
+        expect(expanded.length).toBe(1);
+        expect(expanded[0]).toBe(labelB);
+        expect(labelA.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('the swapped-in popover reflects the newly-clicked row\'s status', () => {
+        const { labelA, labelB } = setupTwoRows();
+
+        labelA.click();
+        labelB.click();
+        // B's item is an idea, so the idea option is the selected one — proves
+        // the popover was rebuilt for B's item, not left as A's.
+        const popover = document.getElementById('todoStatusPopover');
+        const selected = popover.querySelector('.todoStatusOption.selected');
+        expect(selected.getAttribute('data-status')).toBe('idea');
+    });
+
+    it('clicking the same label twice still toggles closed (not a swap)', () => {
+        const { labelA } = setupTwoRows();
+
+        labelA.click();
+        expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+        labelA.click();
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+        expect(labelA.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('the first click on a fresh page still opens the popover', () => {
+        const { labelA } = setupTwoRows();
+
+        // No popover anywhere; the new aria-expanded check must not mistake the
+        // absence of an expanded label for "this label is already expanded."
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+        labelA.click();
+        expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+        expect(labelA.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('Inbox parity: a cross-row swap in #inboxView behaves identically', () => {
+        const container = document.createElement('div');
+        container.id = 'inboxView';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const rowA = makeRow({ status: 'active', tit: 'IA' }, 'Inbox');
+        const rowB = makeRow({ status: 'in_progress', tit: 'IB' }, 'Inbox');
+        container.appendChild(rowA);
+        container.appendChild(rowB);
+        const labelA = rowA.querySelector('.todoStatusLabel');
+        const labelB = rowB.querySelector('.todoStatusLabel');
+
+        labelA.click();
+        labelB.click();
+        expect(document.querySelectorAll('#todoStatusPopover').length).toBe(1);
+        const expanded = document.querySelectorAll('.todoStatusLabel[aria-expanded="true"]');
+        expect(expanded.length).toBe(1);
+        expect(expanded[0]).toBe(labelB);
+    });
+});
+
+
 describe('popover dismissal affordances', () => {
     it('closes on an outside click', () => {
         const item = { status: 'active', tit: 'A' };
