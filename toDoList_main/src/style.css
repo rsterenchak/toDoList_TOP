@@ -2310,6 +2310,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
+/* Trailing cycle hint on the single filter pill — muted so it reads as a
+   secondary affordance rather than competing with the label. */
+.taskFilterCycleCue {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.7;
+}
+
 /* Rows (and their trailing description / stats drawers) hidden by the active
    status filter. `!important` lets this single utility class beat the row's
    own ID-level `display: flex` without naming each ID — a plain class selector

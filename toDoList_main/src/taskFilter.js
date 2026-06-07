@@ -63,9 +63,19 @@ function rowStatus(row) {
 }
 
 
-// Build the pill row element. Reads the persisted filter to mark the initial
-// selection and wires one delegated click handler. The bar lives in #mainBar
-// (outside #mainList) so the list's clear-and-rebuild cycles never destroy it.
+// Look up a FILTERS entry by key, falling back to the first (ALL) when the
+// stored value is unrecognised.
+function filterFor(key) {
+    return FILTERS.filter(function (f) { return f.key === key; })[0] || FILTERS[0];
+}
+
+
+// Build the pill row element. The bar holds a SINGLE cycle pill that rotates
+// through all → active → ideas → all … on each click; it paints the currently
+// active filter's label + count plus a muted trailing `›` as the cycle hint.
+// One delegated click handler advances the persisted filter and repaints in
+// place. The bar lives in #mainBar (outside #mainList) so the list's
+// clear-and-rebuild cycles never destroy it.
 export function buildTaskFilterBar() {
     const bar = document.createElement('div');
     bar.id = 'taskFilterBar';
@@ -73,34 +83,40 @@ export function buildTaskFilterBar() {
     bar.setAttribute('role', 'group');
     bar.setAttribute('aria-label', 'Filter tasks by status');
 
-    const active = getTaskFilter();
-    FILTERS.forEach(function (f) {
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = 'taskFilterPill' + (f.key === active ? ' selected' : '');
-        pill.setAttribute('data-filter', f.key);
-        pill.setAttribute('aria-pressed', f.key === active ? 'true' : 'false');
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'taskFilterPill taskCyclePill selected';
 
-        const labelSpan = document.createElement('span');
-        labelSpan.className = 'taskFilterPillLabel';
-        labelSpan.textContent = f.label;
-        pill.appendChild(labelSpan);
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'taskFilterPillLabel';
+    pill.appendChild(labelSpan);
 
-        const countSpan = document.createElement('span');
-        countSpan.className = 'taskFilterCount';
-        countSpan.textContent = '0';
-        pill.appendChild(countSpan);
+    const countSpan = document.createElement('span');
+    countSpan.className = 'taskFilterCount';
+    countSpan.textContent = '0';
+    pill.appendChild(countSpan);
 
-        bar.appendChild(pill);
-    });
+    // Muted trailing glyph hinting the control cycles rather than toggles. Kept
+    // as a real text node (not a ::after) so the cue rides in the pill's
+    // textContent in every state.
+    const cueSpan = document.createElement('span');
+    cueSpan.className = 'taskFilterCycleCue';
+    cueSpan.setAttribute('aria-hidden', 'true');
+    cueSpan.textContent = '›';
+    pill.appendChild(cueSpan);
+
+    bar.appendChild(pill);
+    paintCyclePill(bar);
 
     bar.addEventListener('click', function (event) {
-        const pill = event.target.closest && event.target.closest('.taskFilterPill');
-        if (!pill || !bar.contains(pill)) return;
-        const key = pill.getAttribute('data-filter');
-        if (!key) return;
-        setTaskFilter(key);
-        syncSelectedPill(bar);
+        const clicked = event.target.closest && event.target.closest('.taskFilterPill');
+        if (!clicked || !bar.contains(clicked)) return;
+        const current = getTaskFilter();
+        let idx = FILTERS.findIndex(function (f) { return f.key === current; });
+        if (idx < 0) idx = 0;
+        const next = FILTERS[(idx + 1) % FILTERS.length];
+        setTaskFilter(next.key);
+        paintCyclePill(bar);
         applyTaskFilter();
     });
 
@@ -108,14 +124,16 @@ export function buildTaskFilterBar() {
 }
 
 
-// Reflect the persisted filter onto the pills' selected/aria state.
-function syncSelectedPill(bar) {
-    const active = getTaskFilter();
-    bar.querySelectorAll('.taskFilterPill').forEach(function (pill) {
-        const on = pill.getAttribute('data-filter') === active;
-        pill.classList.toggle('selected', on);
-        pill.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
+// Reflect the persisted filter onto the cycle pill's label, data-filter, and
+// aria state. The count is refreshed separately by applyTaskFilter → updateCounts.
+function paintCyclePill(bar) {
+    const pill = bar.querySelector('.taskCyclePill');
+    if (!pill) return;
+    const filter = filterFor(getTaskFilter());
+    pill.setAttribute('data-filter', filter.key);
+    pill.setAttribute('aria-label', 'Filter: ' + filter.label + '. Tap to cycle filters.');
+    const labelSpan = pill.querySelector('.taskFilterPillLabel');
+    if (labelSpan) labelSpan.textContent = filter.label;
 }
 
 
@@ -170,11 +188,11 @@ function setRowHidden(row, hidden) {
 function updateCounts(counts) {
     const bar = document.getElementById('taskFilterBar');
     if (!bar) return;
-    bar.querySelectorAll('.taskFilterPill').forEach(function (pill) {
-        const key = pill.getAttribute('data-filter');
-        const countSpan = pill.querySelector('.taskFilterCount');
-        if (countSpan) countSpan.textContent = String(counts[key] != null ? counts[key] : 0);
-    });
+    const pill = bar.querySelector('.taskCyclePill');
+    if (!pill) return;
+    const key = pill.getAttribute('data-filter');
+    const countSpan = pill.querySelector('.taskFilterCount');
+    if (countSpan) countSpan.textContent = String(counts[key] != null ? counts[key] : 0);
 }
 
 
