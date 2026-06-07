@@ -54,6 +54,7 @@ import {
 import {
     showChangelogModal,
     showHelpModal,
+    showDescEditorModal,
     updateChangelogDot,
     notifyUpdateAvailable,
     applyPendingUpdate,
@@ -76,7 +77,7 @@ import {
     reorderToDoDOM,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
-import { wireStatusLabelDelegation, buildStatusLabel } from './todoStatus.js';
+import { wireStatusLabelDelegation, buildStatusLabel, STATUS_META, normalizeStatus } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
@@ -8042,6 +8043,12 @@ function buildInboxRow(item, projectName) {
     row.setAttribute('data-value', projectName);
     row.__item = item;
 
+    // The whole card is a tap target that opens the read-mode modal, so it is
+    // keyboard-focusable and announces its title + project to screen readers.
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-label', item.tit + ', ' + projectName);
+
     // Non-interactive checkbox-style glyph on the left, echoing the per-
     // project row affordance. Status changes happen through the label.
     const check = document.createElement('div');
@@ -8052,8 +8059,19 @@ function buildInboxRow(item, projectName) {
     const body = document.createElement('div');
     body.className = 'inboxRowBody';
 
+    // Title sits on top now, truncated to a single line; the project
+    // breadcrumb moved BELOW it (see the metadata row) to clear the rounded
+    // top edge that used to clip the breadcrumb when it rendered first.
+    const title = document.createElement('div');
+    title.className = 'inboxRowTitle';
+    title.textContent = item.tit;
+    body.appendChild(title);
+
     const meta = document.createElement('div');
     meta.className = 'inboxRowMeta';
+    // The shared status label doubles as the "▸ IDEA" tag pill AND the
+    // status-change tap target; the delegated #inboxView popover wiring reads
+    // the owning row's __item/data-value, so it must stay inside the row.
     meta.appendChild(buildStatusLabel(item));
     const proj = document.createElement('span');
     proj.className = 'inboxRowProject';
@@ -8061,13 +8079,166 @@ function buildInboxRow(item, projectName) {
     meta.appendChild(proj);
     body.appendChild(meta);
 
-    const title = document.createElement('div');
-    title.className = 'inboxRowTitle';
-    title.textContent = item.tit;
-    body.appendChild(title);
-
     row.appendChild(body);
+
+    // Right chevron hint that the card is tappable.
+    const chevron = document.createElement('div');
+    chevron.className = 'inboxRowChevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    row.appendChild(chevron);
+
+    // Tapping the card (anywhere except the status label) opens the read-mode
+    // modal. The status label owns its own popover and stops propagation; we
+    // bail out for it here too so a status tap never also opens the modal.
+    row.addEventListener('click', function (event) {
+        if (event.target.closest && event.target.closest('.todoStatusLabel')) return;
+        showInboxReadModal(item, projectName, row);
+    });
+    row.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        if (event.target.closest && event.target.closest('.todoStatusLabel')) return;
+        event.preventDefault();
+        showInboxReadModal(item, projectName, row);
+    });
+
     return row;
+}
+
+// Read-mode modal for an INBOX idea card. The compact cards truncate their
+// title to one line; tapping a card opens this modal to show the full title
+// and full description with comfortable typography. Edit and Done reuse the
+// SAME mutation paths the rest of the app uses — showDescEditorModal (the
+// touch edit flow per-project rows already use) and listLogic.setToDoCompleted
+// (the checkbox/swipe completion path) — so no new edit/complete logic is
+// introduced. Mirrors the help/changelog modal shell: backdrop + dialog, the
+// trio of close affordances (close button / backdrop / Escape), and focus
+// returned to the originating card on close.
+function showInboxReadModal(item, projectName, originatingCard) {
+    if (!item) return;
+
+    const prior = document.getElementById('inboxReadModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'inboxReadModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'inboxReadModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'inboxReadModalTitle');
+
+    // Breadcrumb: "○ IDEA · <project>" using the shared status label text so
+    // the tag glyph matches the rest of the app rather than inventing one.
+    const crumb = document.createElement('div');
+    crumb.id = 'inboxReadModalCrumb';
+    crumb.textContent = STATUS_META[normalizeStatus(item.status)].label + ' · ' + projectName;
+    dialog.appendChild(crumb);
+
+    const title = document.createElement('div');
+    title.id = 'inboxReadModalTitle';
+    title.textContent = item.tit;
+    dialog.appendChild(title);
+
+    // Entries without a description: hide the "Description" label entirely and
+    // render no body text (the cleaner of the two options the brief offered).
+    const desc = (item && typeof item.desc === 'string') ? item.desc : '';
+    if (desc.trim().length > 0) {
+        const descLabel = document.createElement('div');
+        descLabel.id = 'inboxReadModalDescLabel';
+        descLabel.textContent = 'Description';
+        dialog.appendChild(descLabel);
+
+        const descBody = document.createElement('div');
+        descBody.id = 'inboxReadModalDescBody';
+        descBody.textContent = desc;
+        dialog.appendChild(descBody);
+    }
+
+    const actions = document.createElement('div');
+    actions.id = 'inboxReadModalActions';
+
+    const editBtn = document.createElement('button');
+    editBtn.id = 'inboxReadModalEdit';
+    editBtn.type = 'button';
+    editBtn.className = 'inboxReadModalBtn inboxReadModalBtn--ghost';
+    editBtn.textContent = 'Edit';
+
+    const doneBtn = document.createElement('button');
+    doneBtn.id = 'inboxReadModalDone';
+    doneBtn.type = 'button';
+    doneBtn.className = 'inboxReadModalBtn inboxReadModalBtn--primary';
+    doneBtn.textContent = 'Done';
+
+    actions.appendChild(editBtn);
+    actions.appendChild(doneBtn);
+    dialog.appendChild(actions);
+
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+    doneBtn.focus();
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        // Return focus to the originating card when it's still in the DOM;
+        // fall back to whatever held focus before the modal opened.
+        if (originatingCard && document.contains(originatingCard) &&
+            typeof originatingCard.focus === 'function') {
+            originatingCard.focus();
+        } else if (previouslyFocused &&
+            typeof previouslyFocused.focus === 'function' &&
+            document.contains(previouslyFocused)) {
+            previouslyFocused.focus();
+        }
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    // Edit reuses the existing touch description/title editor; route saves
+    // through listLogic so the Supabase mirror fires, then re-render the inbox
+    // so a renamed title is reflected in the compact card.
+    editBtn.addEventListener('click', function () {
+        close();
+        showDescEditorModal(item, {
+            projectName: projectName,
+            onSave: function () {
+                if (projectName) listLogic.editToDoItem(projectName, item);
+                renderInbox();
+            },
+            onTitleSave: function () {
+                if (projectName) listLogic.editToDoItem(projectName, item);
+                renderInbox();
+            },
+        });
+    });
+
+    // Done reuses the existing completion path; a completed idea drops out of
+    // the cross-project query, so re-rendering removes its card.
+    doneBtn.addEventListener('click', function () {
+        listLogic.setToDoCompleted(projectName, item, true);
+        close();
+        renderInbox();
+    });
+
+    closeBtnBackdropEsc();
+    function closeBtnBackdropEsc() {
+        backdrop.addEventListener('click', function (event) {
+            if (event.target === backdrop) close();
+        });
+        document.addEventListener('keydown', onKeydown, true);
+    }
 }
 
 // Defer an INBOX re-render to just after a status-change commits. The

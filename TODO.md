@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Reformat Inbox cards to compact one-line + tap-to-open modal, fix vertical clipping
+- [x] **[MEDIUM]** Reformat Inbox cards to compact one-line + tap-to-open modal, fix vertical clipping
  - Type: bug
  - Description: On mobile Inbox view, each todo card currently clips its content at the top edge — the project breadcrumb (e.g. "▸ IDEA   Task Management App") rendered above the title is half-cut by the card's rounded top edge, and long titles get cropped at the bottom. The clipping is the underlying bug; the reformat is the design fix. Replace the current card layout with a compact one-line card: a small circular checkbox on the left, the title truncated to one line with ellipsis, a small `▸ IDEA` (or whatever entry-type tag) pill plus the project name as a dimmed metadata line below the title, and a right chevron (›) indicating tappable. Tapping a card opens a focused modal that displays the full title and full description with comfortable typography (no truncation, line-height ~1.5, generous padding), plus Edit and Done action buttons at the bottom. The modal serves as the "read mode" so the cards themselves can stay compact and many fit on a phone screen without clipping. Mockup option B from the user-approved set.
  - Behavior:
@@ -58,5 +58,5 @@
    - If existing tests pin the old card structure (e.g. "card has a breadcrumb element above the title"), update those assertions to match the new structure. Do NOT delete the test file; extend it.
  - Out of scope: changes to the entry data model; the bottom tab bar layout; the empty Inbox state; the calendar tab; the projects tab; the desktop Inbox rendering (if separate from mobile); any change to other modals in the app; any change to how Inbox entries are filtered, sorted, or aggregated; the entry edit flow itself (only the trigger — the modal's Edit button — is new; the actual edit modal/screen is whatever already exists); the entry-type tag taxonomy (IDEA, FEATURE, BUG, etc.); the project name truncation max-width can be tweaked later if needed.
  - File: whichever module renders the Inbox tab on mobile (grep `Inbox`, `inbox`, or the INBOX tab label to find it — likely in `main.js` or a dedicated `inboxView.js` module), `toDoList_main/src/style.css` (new CSS for the compact card + modal), `toDoList_main/tests/` (extend existing inbox tests if they exist, or add a new test file `inboxCardCompact.test.js`)
- - Completed: YYYY-MM-DD (PR #<number>)
+ - Completed: 2026-06-07
   <!-- id: bdc1a4e6-ddcd-4fcc-9ba9-e9e55b495e9b -->
