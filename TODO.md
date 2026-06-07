@@ -1044,3 +1044,17 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 03ee2eb0-5ef0-46af-a5d2-1d8a2da2da96 -->
+
+- [ ] **[HIGH]** Fix project delete context menu rendering behind the project dropdown
+  - Type: bug
+  - Description: The context menu added by the previous "Add context-menu delete to the desktop project dropdown" entry renders behind the dropdown that triggered it, so "Delete project…" is unreachable and the new delete path is effectively broken. Root cause is almost certainly stacking-context related: the context menu is currently mounted inside a dropdown row, and the dropdown panel either sets `overflow: hidden`/`auto` (clipping the menu) or establishes its own stacking context (`transform`, `opacity`, `position` + `z-index`, etc.) that pins the menu's z-index below sibling rows below it. The robust fix is to portal the context menu out of the row and append it to `document.body` (or a top-level overlay layer) and position it via measured coordinates from the row's `getBoundingClientRect`, with a high z-index above the dropdown panel and any modal layers it might also need to clear. As a fallback if portaling is overscope, raise the dropdown panel's child stacking so the menu escapes its container — but portaling is the durable fix because it survives any future dropdown layout change.
+  - Behavior:
+    1. Right-click / long-press on a project row opens the context menu visually above the dropdown panel, with no clipping at the dropdown's edges and no row text bleeding through it.
+    2. Menu still anchors to the row that triggered it — re-measure on open so scrolling or resizing the dropdown doesn't strand the menu at a stale coordinate.
+    3. All four close paths from CLAUDE.md (option select, click outside, Escape, right-click elsewhere) continue to work when the menu lives outside the dropdown — verify the outside-click listener references the menu's new DOM location, not its old in-row parent.
+    4. The menu must also close when the dropdown itself closes (e.g., clicking outside the dropdown). Pin this in a test — a portaled child can otherwise outlive its conceptual parent.
+  - Implementation notes: `main.js` owns the dropdown and the new context menu — grep with offset/limit for the context-menu append site and the `contextmenu`/long-press wiring. Use `position: fixed` with viewport coordinates from the row's `getBoundingClientRect`, clamped against viewport edges so the menu doesn't open off-screen near the right or bottom. `style.css` change is small — a `z-index` rule on the new top-level menu class above whatever the dropdown panel uses. Confirm the dropdown panel's stacking before picking the new value (search `project_knowledge_search` for the dropdown's CSS rather than guessing the current z-index).
+  - Out of scope: any other context-menu items (rename, reorder); restyling the context menu itself; changes to the dropdown's own stacking aside from what's strictly needed to host a portaled child.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b173d274-eb72-4a3f-8b9b-74175a1d355b -->
