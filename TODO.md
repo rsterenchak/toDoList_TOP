@@ -1029,3 +1029,18 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/tests/claudeSheet.test.js`, `toDoList_main/tests/injectTargetsManagement.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: aa4a92e4-114f-4ca5-978e-2a0dd4be870f -->
+
+- [ ] **[HIGH]** Add context-menu delete to the desktop project dropdown
+  - Type: bug
+  - Description: The desktop revamp of the project dropdown removed the per-row `×` that previously let users delete a project, leaving no path to project deletion from the new desktop surface. Restore the affordance via a context menu pinned to the row, opened on right-click (mouse) or a ~500ms long-press (touch), with a single "Delete project…" item — rename and other actions reserved for a follow-up; just the destructive action lands here. Selecting it opens a confirmation modal worded "Delete '<project name>'? This deletes <N todos> along with the project. This cannot be undone." with Cancel and Delete buttons. On confirm, the project and its todos are removed via `listLogic` and persisted; if the deleted project was the active one, the view falls back to the first remaining project (or the empty-state view if the list is now empty). Add a regression test (test-first) in `listLogic.test.js` asserting that deleting a project removes both the project record and all of its todos and that the new state persists — the previous per-row `×` had cascade behavior that must hold under the new entry point.
+  - Behavior:
+    1. Right-click on a project row in the desktop dropdown opens the context menu anchored to the row; a ~500ms long-press on touch opens the same menu (per CLAUDE.md's right-click + long-press pairing).
+    2. Context menu closes 4 ways per CLAUDE.md: option select, click outside, Escape, right-click elsewhere.
+    3. Confirmation modal closes 3 ways per CLAUDE.md: explicit close button, backdrop click, Escape — Escape only closes the modal, not the parent dropdown.
+    4. The confirm message names the project and the exact number of todos that will be lost. When N is 0, drop the "<N todos>" clause so the copy doesn't read "This deletes 0 todos…" — fall back to "Delete '<project name>'? This cannot be undone."
+    5. Active-project fallback: deleting the currently-viewed project switches the view to the first remaining project, or the empty state if the list is now empty. Pin this with a regression test.
+  - Implementation notes: `main.js` owns the dropdown's row rendering and event wiring — grep with offset/limit, the file is over 25k tokens. Add the context-menu DOM, a `contextmenu` listener for right-click, and a `touchstart`/`touchmove`/`touchend` long-press detector with a movement-cancel threshold so a scroll doesn't fire the menu. Style the context menu and confirmation modal in `style.css` matching the Void aesthetic — purple-tinted hover, red danger button. Confirm or add a cascade-delete path in `listLogic.js`; if the previous `×` removed todos along with the project, the same path is reusable from here.
+  - Out of scope: rename / reorder / any non-delete context-menu actions (future entries can extend the menu); the mobile project chrome (the initial-letter sidebar) — if delete is missing there too, that's a separate surface and a separate entry.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 03ee2eb0-5ef0-46af-a5d2-1d8a2da2da96 -->
