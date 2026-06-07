@@ -66,9 +66,9 @@ describe('STACK mobile layout collapse', () => {
     });
 
     it('#bulkDescActions is hidden at the mobile breakpoint', () => {
-        // The overlay button is desktop-only chrome; the drawer's
-        // "Expand all descriptions" toggle invokes bulkDescToggleBtn.click()
-        // directly, which continues to work on a display:none button.
+        // The Sort dropdown overlay is desktop-only chrome; on mobile the
+        // drawer's "Expand all descriptions" toggle covers bulk-description
+        // expand/collapse, so hiding the overlay here loses no affordance.
         const rule = extractMobileRule('#bulkDescActions');
         expect(rule).toMatch(/display:\s*none/);
     });

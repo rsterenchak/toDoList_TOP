@@ -92,12 +92,12 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
             expect(main).toMatch(/getElementById\(['"]completedHeader['"]\)/);
         });
 
-        it('Expand all descriptions toggle dispatches through the bulkDesc button', () => {
+        it('Expand all descriptions toggle dispatches through the shared bulk-description toggle', () => {
             expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Expand all descriptions['"]/);
             const expandBlockStart = main.indexOf("'Expand all descriptions'");
             expect(expandBlockStart).toBeGreaterThan(-1);
             const slice = main.slice(expandBlockStart, expandBlockStart + 400);
-            expect(slice).toMatch(/bulkDescToggleBtn\.click\(\s*\)/);
+            expect(slice).toMatch(/toggleBulkDescriptions\(\s*\)/);
         });
 
         it('Dark theme toggle uses the same applyTheme + localStorage write as the settings menu', () => {

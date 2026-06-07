@@ -18,6 +18,7 @@ export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 export const TASK_FILTER_KEY = 'todoapp_taskFilter';
+export const TASK_SORT_KEY = 'todoapp_taskSort';
 export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
 
 // ── completed section open/closed ──
@@ -111,6 +112,32 @@ export function setTaskFilter(filter) {
     try {
         const stored = (filter === 'active' || filter === 'ideas') ? filter : 'all';
         localStorage.setItem(TASK_FILTER_KEY, stored);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── task sort order (None / Due date / Status) ──
+// The Sort dropdown above the task list reorders visible rows for render only;
+// the underlying manual `pos` order is never touched, so selecting 'none'
+// restores the user's hand-arranged order intact. The choice is GLOBAL across
+// projects (mirroring getTaskFilter/setTaskFilter) and persists so a sorted
+// session is restored on reload. 'due' sorts ascending by due date; 'status'
+// groups in_progress → active → idea. Any stored value other than the three
+// known tokens falls back to 'none' so a stale or hand-edited pref can't
+// desync the list.
+export function getTaskSort() {
+    try {
+        const v = localStorage.getItem(TASK_SORT_KEY);
+        if (v === 'due' || v === 'status') return v;
+        return 'none';
+    } catch (e) {
+        return 'none';
+    }
+}
+
+export function setTaskSort(sort) {
+    try {
+        const stored = (sort === 'due' || sort === 'status') ? sort : 'none';
+        localStorage.setItem(TASK_SORT_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

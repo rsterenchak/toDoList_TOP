@@ -2949,61 +2949,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
   z-index: 4;
 }
 
-#bulkDescActions > .bulkDescBtn,
-#bulkDescActions > .sortByDueToggle {
+#bulkDescActions > .bulkDescBtn {
   pointer-events: auto;
-}
-
-/* Per-project "Sort by due" toggle. Sits in #bulkDescActions to the left of
-   the Expand All button; click flips listLogic.setProjectSortByDue for the
-   active project and the row layer re-renders in due-date-ascending order
-   (drag handles are auto-disabled while the toggle is on). Styled to match
-   the muted-pill cadence of .bulkDescBtn so the two controls read as a
-   single chrome cluster anchored at the top-right of the list. */
-.sortByDueToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-bright);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  line-height: 1;
-  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
-  user-select: none;
-}
-
-.sortByDueToggle:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-  border-color: var(--accent-text);
-}
-
-.sortByDueToggle.isDisabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.sortByDueCheckbox {
-  /* iOS Safari shrinks native checkboxes more aggressively than other
-     browsers — set width/height explicitly so the touch target is
-     consistent across platforms. */
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  cursor: inherit;
-  accent-color: var(--accent);
-}
-
-.sortByDueLabel {
-  line-height: 1;
 }
 
 .bulkDescBtn {
@@ -3038,8 +2985,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   transition: transform 0.2s ease;
 }
 
-.bulkDescBtn.expanded .bulkDescCaret {
+.bulkDescBtn.expanded .bulkDescCaret,
+#taskSortBtn[aria-expanded="true"] .bulkDescCaret {
   transform: rotate(180deg);
+}
+
+/* Active-sort accent — when a sort other than None is applied, tint the Sort
+   button so the active state reads at a glance, matching the filter pills'
+   selected cadence. */
+#taskSortBtn[data-sort="due"],
+#taskSortBtn[data-sort="status"] {
+  color: var(--accent-text);
+  border-color: var(--accent-text);
 }
 
 /* TODO LIST */
@@ -6785,8 +6742,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* The workspace pill no longer occupies a row in #mainBar — it is lifted
      into the top header (#navBar) by placeDesktopHeader(). #mainBar keeps its
      base two-track layout (status-filter row, then the scrollable list); the
-     SORT BY DUE / EXPAND ALL overlay (#bulkDescActions) now shares that
-     filter row. */
+     Sort dropdown overlay (#bulkDescActions) now shares that filter row. */
 
   #mobileProjHeader {
     display: inline-flex;
@@ -7151,9 +7107,9 @@ body.row-dragging * { cursor: grabbing !important; }
     display: none;
   }
 
-  /* SORT BY DUE / EXPAND ALL now share the status-filter row (the pane's top
-     auto track) — pull the overlay up to center on that ~36px row instead of
-     the old pill row. */
+  /* The Sort dropdown shares the status-filter row (the pane's top auto track)
+     — pull the overlay up to center on that ~36px row instead of the old pill
+     row. */
   #bulkDescActions {
     top: 0;
     height: 36px;
@@ -7473,13 +7429,9 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Collapse bulk description buttons to chevron-only so they don't overlap
-     the "Todo Items" header on narrow phones. The sort-by-due toggle drops
-     its label text the same way — the checkbox alone is enough of an
-     affordance once horizontal room is tight. */
+     the "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
-  .sortByDueToggle .sortByDueLabel { display: none; }
-  .sortByDueToggle { padding: 6px; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }
@@ -7607,8 +7559,11 @@ body.row-dragging * { cursor: grabbing !important; }
 .ghostIconEye { fill: var(--bg-base); }
 
 /* Settings menu — visual treatment mirrors #projContextMenu so the dropdown
-   reads as the same kind of surface the rest of the app already uses. */
-#settingsMenu {
+   reads as the same kind of surface the rest of the app already uses. The Sort
+   dropdown (#taskSortMenu) shares the same surface, shadow, and radius so the
+   two menus read as kin. */
+#settingsMenu,
+#taskSortMenu {
   position: fixed;
   z-index: 30;
   min-width: 180px;
@@ -7620,6 +7575,39 @@ body.row-dragging * { cursor: grabbing !important; }
   user-select: none;
   display: flex;
   flex-direction: column;
+}
+
+/* Sort dropdown items — a label with an optional muted subtitle (the Status
+   option spells out its group order). The selected option is accented to match
+   the radio semantics. */
+.taskSortMenuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.taskSortMenuItem:hover { background: var(--bg-hover); }
+.taskSortMenuItem:focus { outline: none; }
+.taskSortMenuItem:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.taskSortMenuItem.selected .taskSortMenuItemLabel { color: var(--accent-text); }
+.taskSortMenuItemLabel { line-height: 1.2; }
+.taskSortMenuItemSub {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 .settingsMenuItem {
   display: flex;
