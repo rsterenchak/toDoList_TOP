@@ -67,6 +67,7 @@ import { applyProjectAccent } from './projectMenu.js';
 import {
     attachProjectContextMenu,
     attachProjectDrag,
+    attachProjectInjectIndicator,
     deleteProjectFlow,
 } from './projectRow.js';
 import {
@@ -5721,6 +5722,7 @@ function component() {
 
         attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
+        attachProjectInjectIndicator(projChild, titleInput);
 
         // Focus the new input synchronously inside this same user-gesture
         // tick. iOS Safari only summons the soft keyboard when .focus() is
@@ -7945,6 +7947,7 @@ function restoreFromStorage(opts) {
 
         attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
+        attachProjectInjectIndicator(projChild, titleInput);
 
     });
 
