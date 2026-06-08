@@ -17,25 +17,26 @@ function read(relative) {
 // dismiss path can mark an idea complete. CRITICAL non-regression: this entry
 // must NOT touch buildToDoRow / the shared project-page render path.
 //
-// main.js cannot be imported at runtime (boot-time side effects), so these
-// assertions are source-pattern checks against the extracted function body —
-// the established idiom for main.js view tests (see inboxIdeasView.test.js).
+// The inbox render cluster lives in inboxView.js; it cannot be imported at
+// runtime (DOM side effects), so these assertions are source-pattern checks
+// against the extracted function body — the established idiom for view tests
+// (see inboxIdeasView.test.js).
 describe('Inbox row tap-to-open description editor', () => {
-    const main = read('main.js');
+    const inbox = read('inboxView.js');
     const css = read('style.css');
 
     // Extract a top-level `function <name>(...) { ... }` body by brace
     // matching, matching the approach the sibling inbox view tests use.
     function extractFn(name) {
-        const idx = main.indexOf('function ' + name);
+        const idx = inbox.indexOf('function ' + name);
         expect(idx).toBeGreaterThan(-1);
-        const braceStart = main.indexOf('{', idx);
+        const braceStart = inbox.indexOf('{', idx);
         let depth = 0;
-        for (let i = braceStart; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (let i = braceStart; i < inbox.length; i++) {
+            if (inbox[i] === '{') depth++;
+            else if (inbox[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(braceStart, i + 1);
+                if (depth === 0) return inbox.slice(braceStart, i + 1);
             }
         }
         throw new Error('unterminated ' + name + ' body');
@@ -45,7 +46,7 @@ describe('Inbox row tap-to-open description editor', () => {
 
     describe('import wiring', () => {
         it('imports showDescEditorModal from modals.js', () => {
-            expect(main).toMatch(
+            expect(inbox).toMatch(
                 /import\s*\{[\s\S]*?showDescEditorModal[\s\S]*?\}\s*from\s*['"]\.\/modals\.js['"]/
             );
         });
