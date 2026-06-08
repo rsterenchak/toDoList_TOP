@@ -15,11 +15,53 @@ import { setupRowDrag } from './dragDrop.js';
 import { showProjectContextMenu, applyProjectAccent } from './projectMenu.js';
 import { showConfirmModal } from './modals.js';
 import { updateEmptyState } from './emptyState.js';
+import { isInjectConfigured } from './inject.js';
 import {
     addAllToDo_DOM,
     addToDos_restore,
     focusBlankToDoInputIfDesktop,
 } from './toDoRow.js';
+
+
+// Green ⚡ shown at the start of every project row's title while inject is
+// configured. The trailing variation selector (U+FE0E) forces text-style
+// (monochrome) rendering so the glyph honors the CSS `color` (theme green)
+// instead of falling back to a platform emoji.
+const INJECT_BOLT_CHAR = '⚡︎';
+
+// Attach (once per row) the inject-configured thunderbolt indicator. The bolt
+// lives in its own leading grid cell, surfaced by toggling `hasInjectBolt` on
+// the row — so it never disturbs the title input's ellipsis truncation, and
+// its CSS `pointer-events: none` lets taps / long-presses fall straight
+// through to the row's own click, drag, and context-menu handlers. It is
+// hidden whenever the title is mid-rename (the input holds focus) and shown
+// again on blur, and it reacts live to the `injectConfigChanged` event so
+// saving or clearing the inject config updates every row without a reload.
+export function attachProjectInjectIndicator(projChild, titleInput) {
+    let bolt = projChild.querySelector('.projInjectBolt');
+    if (!bolt) {
+        bolt = document.createElement('span');
+        bolt.className = 'projInjectBolt';
+        bolt.textContent = INJECT_BOLT_CHAR;
+        bolt.setAttribute('aria-hidden', 'true');
+        // first child → lands in the row's leading grid column
+        projChild.insertBefore(bolt, projChild.firstChild);
+    }
+
+    function sync() {
+        const editing = document.activeElement === titleInput;
+        projChild.classList.toggle('hasInjectBolt', isInjectConfigured() && !editing);
+    }
+
+    sync();
+
+    // hide while renaming, restore once the edit ends
+    titleInput.addEventListener('focus', sync);
+    titleInput.addEventListener('blur', sync);
+
+    // reflect inject config save/clear live (no reload)
+    document.addEventListener('injectConfigChanged', sync);
+}
 
 
 function countRealToDos(projectName) {

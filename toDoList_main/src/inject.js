@@ -47,6 +47,11 @@ function saveInjectConfig(url, secret) {
         if (cachedSecret) localStorage.setItem(SECRET_KEY, cachedSecret);
         else              localStorage.removeItem(SECRET_KEY);
     } catch (e) { /* private mode */ }
+    // Let inject-dependent UI (e.g. the sidebar project-row thunderbolt
+    // indicators) refresh live on save/clear without a page reload.
+    try {
+        document.dispatchEvent(new CustomEvent('injectConfigChanged'));
+    } catch (e) { /* non-DOM context */ }
 }
 
 function readLastTest() {

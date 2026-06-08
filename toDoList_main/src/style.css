@@ -681,6 +681,28 @@ body {
   display: none;
 }
 
+/* Inject-configured indicator. A green ⚡ prepended to the project title
+   when the user has configured inject. It occupies its own leading grid
+   column — surfaced only while `.hasInjectBolt` is set on the row — so the
+   title input keeps its full `minmax(0, 1fr)` truncation budget when no
+   bolt is shown. pointer-events: none so taps / long-presses pass through
+   to the row's own handlers; the bolt is purely decorative (aria-hidden). */
+.projInjectBolt {
+  display: none;
+  justify-self: start;
+  align-self: center;
+  color: var(--type-feature, #9ad0a8);
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+}
+#projChild.hasInjectBolt {
+  grid-template-columns: auto minmax(0, 1fr) auto 12px;
+}
+#projChild.hasInjectBolt .projInjectBolt {
+  display: inline;
+}
+
 /* PROJECT CONTEXT MENU */
 /* #projRowContextMenu is the desktop project-picker dropdown's Rename / Delete
    menu; it shares #projContextMenu's surface, shadow, and radius so the two
