@@ -358,3 +358,55 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 73937df2-9074-48e1-bd91-8d4f1d823f53 -->
+
+- [ ] **[MEDIUM]** Wire the ▾ expand toggle to actually fill the viewer body to the bottom of #mainList
+  - Type: bug
+  - Description: The TODO.md viewer's expand affordance (the `▾` chevron in `#todoMdViewerHeader`, which `applyCollapsedState` labels "Expand panel" / "Collapse panel" depending on state — referred to as the collapse button in the codebase but functionally serves as the expand toggle for end users) doesn't actually expand the viewer to fill the available room. When the user taps it from the collapsed state, the body is shown at its natural content height (with the default `max-height: 280px` from `.todoMdViewerBody` in style.css applying), leaving substantial blank space below the viewer card. User-supplied console probe confirms: in the post-tap state, card.bottom = 682, mainList.bottom = 1220 → 538px of unused space below the card. Root cause: the `applyCollapsedState` path toggles only the `collapsed` class on the card; it never adds the `todoMdViewerCard--expanded` class that `.todoMdViewerCard--expanded .todoMdViewerBody { max-height: none; }` keys off. The `applyExpandedHeight` function (main.js:7006) which computes the fill-to-bottom height is wired only to the window-resize handler — itself guarded by the `--expanded` class check — so it never fires from a user action. The `--expanded` class has no UI trigger remaining (was previously wired to `#todoMdViewerExpandBtn`, which a prior entry intentionally removed; the removal didn't migrate the fill-to-bottom semantic onto the surviving collapse button). Fix: in the collapse button's click handler, also toggle the `--expanded` class in sync with the un-collapsed state, then call `applyExpandedHeight()`. Three-line change. Net effect: tapping the expand chevron now fills the viewer body to the bottom of `#mainList` (minus the existing 16px `bottomGap`), and tapping again to collapse returns the body to its hidden state.
+  - Behavior:
+    1. From the collapsed state, tapping the `▾` chevron expands the viewer card: the body becomes visible AND fills to `mainList.bottom - 16px`. The card.bottom approaches the bottom of mainList, eliminating the previously-unused space.
+    2. From the expanded state, tapping the chevron collapses the card: body hides AND the inline height is cleared (`body.style.height = ''`).
+    3. The `applyExpandedHeight` calculation already handles the height clear correctly when `--expanded` is absent (existing guard at line 7007 sets `body.style.height = ''` and early-returns).
+    4. Window resize while expanded continues to recompute body height via the existing resize listener (unchanged).
+    5. The default un-expanded state (page load or project switch) is collapsed, matching today's behavior (`applyCollapsedState(true)` still runs at viewer construction).
+    6. The chevron's aria-label and tooltip update as they do today: "Expand panel" when collapsed, "Collapse panel" when expanded. The labels match the new fill-to-bottom semantic naturally — "Expand" now actually expands.
+    7. No persistence change in this entry. The expanded state does NOT survive a project switch or page reload. (Tying state to the orphan `viewerExpandedKey` localStorage path is a worthwhile follow-up but explicitly out of scope here.)
+    8. **Mobile sheet caveat**: when the viewer card lives inside `#todoMdViewerMobileSheet` (the slide-up sheet on mobile), `applyExpandedHeight` computes against `#mainList` which is no longer the card's parent. The fix in this entry does not address that — if the user opens the viewer in the mobile sheet and taps expand, the body height calculation will use the wrong anchor. The mobile sheet has its own bounding container and would need its own anchor in the calc. For this entry, the mobile-sheet path is out of scope; it remains in whatever state it's in today (no behavioral regression from this entry — the calc was already mainList-anchored before).
+  - Test-first regression set:
+    1. Tap expand from collapsed state: assert `card.classList.contains('todoMdViewerCard--expanded') === true` AND `body.style.height` is non-empty (a px value).
+    2. Tap collapse from expanded state: assert `card.classList.contains('todoMdViewerCard--expanded') === false` AND `body.style.height === ''`.
+    3. The `collapsed` class still toggles correctly in sync (preserves existing show/hide-body behavior).
+    4. With a fixture viewport of known size (e.g. innerHeight 1000) and a known mainList rect (e.g. mainList.bottom 900, header.bottom 200), after expanding the body's inline height equals `900 - 200 - 16 = 684px` (matching the existing `applyExpandedHeight` formula).
+    5. Resize after expand triggers a new height computation via the existing window resize handler. Pin: dispatch a resize event while expanded → `body.style.height` updates.
+    6. Default state on viewer construction: collapsed, body height empty, `--expanded` class absent.
+    7. Non-regression: the `applyCollapsedState` aria-label/tooltip swap continues to work — when collapsed the button says "Expand panel," when expanded it says "Collapse panel."
+    8. Non-regression: no other element's stacking, height, or visibility changes. Diff inspection — only `main.js`'s collapse-button click handler changes; no CSS edits.
+  - Implementation notes:
+    - **Single small edit in `main.js`** at the collapse button click handler (around line 7039-7041). Current code:
+```js
+      collapseBodyBtn.addEventListener('click', function() {
+          applyCollapsedState(!card.classList.contains('collapsed'));
+      });
+```
+      Patched form:
+```js
+      collapseBodyBtn.addEventListener('click', function() {
+          const willBeCollapsed = !card.classList.contains('collapsed');
+          applyCollapsedState(willBeCollapsed);
+          // When uncollapsing, also fill the body to the bottom of #mainList
+          // by applying the --expanded class that applyExpandedHeight keys off.
+          // When collapsing, remove the class so applyExpandedHeight clears
+          // the inline height.
+          card.classList.toggle('todoMdViewerCard--expanded', !willBeCollapsed);
+          applyExpandedHeight();
+      });
+```
+    - `applyExpandedHeight` itself is UNCHANGED. Its existing guard handles both the apply path (when `--expanded` is present, compute and set body.style.height) and the clear path (when absent, set body.style.height = '').
+    - The `applyCollapsedState` function is UNCHANGED. It continues to toggle the `collapsed` class and update the button's aria-label/tooltip.
+    - The CSS rule at style.css:5143 (`.todoMdViewerCard--expanded .todoMdViewerBody { max-height: none; }`) is UNCHANGED — already correct, just needed the class to be applied.
+    - Do NOT touch `viewerExpandedKey`, `getViewerExpandedPref`, or `setViewerExpandedPref` in this entry. Those are orphan persistence helpers; tying them in is a separate follow-up if you want state to survive project switches.
+    - Do NOT touch `#todoMdViewerCollapseBtn`'s DOM construction, aria attributes outside what `applyCollapsedState` already does, or its position in the header. The element identity is preserved.
+    - **Sanity check before committing**: grep `--expanded` in the diff. There should be exactly one new line — the `classList.toggle('todoMdViewerCard--expanded', ...)` call. If any CSS rule, other JS site, or any other reference appears in the diff, revert it.
+  - Out of scope: tying the expanded state to localStorage persistence (the `viewerExpandedKey` machinery is orphan code; wiring it in is a worthwhile follow-up but separate); fixing the mobile-sheet expand path (`applyExpandedHeight` uses `#mainList` as anchor which is wrong when the card is hosted by `#todoMdViewerMobileSheet` — separate entry); changing the `▾` chevron glyph or position; changing the default collapsed state on viewer construction; changing `applyExpandedHeight`'s formula (the `mainListRect.bottom - headerRect.bottom - 16` calculation is preserved as-is); renaming the `collapsed` class or the `applyCollapsedState` function (it does what it does today, plus is now paired with the `--expanded` toggle); changing the default `max-height: 280px` on `.todoMdViewerBody` (only the expanded state lifts it via the existing `--expanded` rule).
+  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/` (extend any existing viewer expand/collapse test, or add `todoMdViewerExpandFill.test.js`)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 27b6155a-58a8-476f-b051-80fc3debe824 -->
