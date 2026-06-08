@@ -1368,6 +1368,10 @@ export function showInjectSettingsModal(options) {
                 savedNote.textContent = '';
             }, 1500);
             refreshAllInjectButtons();
+            // Let the sidebar project-row thunderbolt indicators re-evaluate
+            // their per-project target so a freshly routed (or unrouted)
+            // project gains/loses its bolt without a reload.
+            notifyInjectTargetsChanged();
         });
 
         row.appendChild(nameCell);

@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { beforeEach } from 'vitest';
 import { attachProjectInjectIndicator } from '../src/projectRow.js';
 import { initInjectConfig } from '../src/inject.js';
+import { listLogic } from '../src/listLogic.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -15,12 +16,12 @@ function read(relative) {
 // Build a minimal committed project row mirroring main.js's two row-creation
 // paths: a #projChild grid with a #projInput title, a .projBadge count pill,
 // and the trailing spacer. attachProjectInjectIndicator wires the green ⚡.
-function makeRow() {
+function makeRow(name = 'Alpha') {
     const projChild = document.createElement('div');
     projChild.id = 'projChild';
     const titleInput = document.createElement('input');
     titleInput.id = 'projInput';
-    titleInput.value = 'Alpha';
+    titleInput.value = name;
     const badge = document.createElement('div');
     badge.className = 'projBadge';
     const spacer = document.createElement('div');
@@ -43,21 +44,38 @@ function clearInject() {
     initInjectConfig();
 }
 
+// Register a project in the data model and (optionally) route it at a
+// per-project inject target — the bolt now gates on this target_id, not on
+// the global inject-configured flag alone.
+function makeProject(name, { target = false } = {}) {
+    listLogic.addProject(name);
+    if (target) listLogic.setProjectTargetId(name, 'tgt-' + name);
+}
+
+function clearProjects() {
+    listLogic.listProjectsArray().slice().forEach(function(name) {
+        listLogic.removeProject(name);
+    });
+}
+
 describe('project-row inject thunderbolt — runtime behavior', () => {
     beforeEach(() => {
         document.body.innerHTML = '';
         clearInject();
+        clearProjects();
     });
 
-    it('shows no bolt when inject is not configured', () => {
-        const { projChild } = makeRow();
+    it('shows no bolt when inject is not configured (even with a routed target)', () => {
+        makeProject('Alpha', { target: true });
+        const { projChild } = makeRow('Alpha');
         attachProjectInjectIndicator(projChild, document.querySelector('#projInput'));
         expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
     });
 
-    it('surfaces a green ⚡ at the start of the row when inject is configured', () => {
+    it('surfaces a green ⚡ at the start of the row when the project has a routed inject target', () => {
         configureInject();
-        const { projChild } = makeRow();
+        makeProject('Alpha', { target: true });
+        const { projChild } = makeRow('Alpha');
         attachProjectInjectIndicator(projChild, document.querySelector('#projInput'));
 
         expect(projChild.classList.contains('hasInjectBolt')).toBe(true);
@@ -71,9 +89,35 @@ describe('project-row inject thunderbolt — runtime behavior', () => {
         expect(bolt.getAttribute('aria-hidden')).toBe('true');
     });
 
+    it('shows no bolt when inject is configured but the project has no routed target', () => {
+        // Per-project filtering: a globally-configured inject setup is not
+        // enough — the bolt only appears for rows whose project is actually
+        // routed at a target.
+        configureInject();
+        makeProject('Beta', { target: false });
+        const { projChild } = makeRow('Beta');
+        attachProjectInjectIndicator(projChild, document.querySelector('#projInput'));
+        expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
+    it('shows the bolt on the routed project and not on the unrouted one (per-project filtering)', () => {
+        configureInject();
+        makeProject('Routed', { target: true });
+        makeProject('Bare', { target: false });
+
+        const routed = makeRow('Routed');
+        const bare = makeRow('Bare');
+        attachProjectInjectIndicator(routed.projChild, routed.titleInput);
+        attachProjectInjectIndicator(bare.projChild, bare.titleInput);
+
+        expect(routed.projChild.classList.contains('hasInjectBolt')).toBe(true);
+        expect(bare.projChild.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
     it('hides the bolt while the title is being renamed and restores it on blur', () => {
         configureInject();
-        const { projChild, titleInput } = makeRow();
+        makeProject('Alpha', { target: true });
+        const { projChild, titleInput } = makeRow('Alpha');
         attachProjectInjectIndicator(projChild, titleInput);
         expect(projChild.classList.contains('hasInjectBolt')).toBe(true);
 
@@ -90,7 +134,8 @@ describe('project-row inject thunderbolt — runtime behavior', () => {
     });
 
     it('updates live on inject config save/clear without re-attaching (injectConfigChanged event)', () => {
-        const { projChild } = makeRow();
+        makeProject('Alpha', { target: true });
+        const { projChild } = makeRow('Alpha');
         attachProjectInjectIndicator(projChild, document.querySelector('#projInput'));
         // starts unconfigured → no bolt
         expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
@@ -106,9 +151,29 @@ describe('project-row inject thunderbolt — runtime behavior', () => {
         expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
     });
 
+    it('updates live when the project gains or loses a routed target (injectTargetsChanged event)', () => {
+        configureInject();
+        makeProject('Alpha', { target: false });
+        const { projChild } = makeRow('Alpha');
+        attachProjectInjectIndicator(projChild, document.querySelector('#projInput'));
+        // configured globally but unrouted → no bolt
+        expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
+
+        // routing the project at a target lights the bolt with no reload
+        listLogic.setProjectTargetId('Alpha', 'tgt-Alpha');
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        expect(projChild.classList.contains('hasInjectBolt')).toBe(true);
+
+        // unrouting it removes the bolt
+        listLogic.setProjectTargetId('Alpha', null);
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        expect(projChild.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
     it('does not insert a second bolt when re-attached to the same row', () => {
         configureInject();
-        const { projChild, titleInput } = makeRow();
+        makeProject('Alpha', { target: true });
+        const { projChild, titleInput } = makeRow('Alpha');
         attachProjectInjectIndicator(projChild, titleInput);
         attachProjectInjectIndicator(projChild, titleInput);
         expect(projChild.querySelectorAll('.projInjectBolt').length).toBe(1);
@@ -117,8 +182,9 @@ describe('project-row inject thunderbolt — runtime behavior', () => {
 
 // Source / CSS invariants that jsdom can't exercise (it applies no
 // stylesheet): the bolt must not steal pointer events, must not eat the
-// title's truncation budget when absent, and the inject config write must
-// broadcast a change event the rows listen for.
+// title's truncation budget when absent, renders at every breakpoint (no
+// mobile-only guard), and the inject config write must broadcast a change
+// event the rows listen for.
 describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
     const css = read('style.css');
     const projectRow = read('projectRow.js');
@@ -144,6 +210,18 @@ describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
         expect(css).toMatch(/#projChild\.hasInjectBolt\s+\.projInjectBolt\s*\{[^}]*display:\s*inline/);
     });
 
+    it('the bolt show/hide rule carries no media query or touch-only guard (renders on desktop too)', () => {
+        // The only rule that toggles bolt visibility is the unconditional
+        // `.hasInjectBolt .projInjectBolt { display: inline }` — there must be
+        // no breakpoint that re-hides it, or the bolt would vanish on desktop.
+        const showIdx = css.indexOf('#projChild.hasInjectBolt .projInjectBolt');
+        expect(showIdx).toBeGreaterThan(-1);
+        // no other selector targets .projInjectBolt with display:none beyond
+        // the single default-hidden base rule
+        const hideMatches = css.match(/\.projInjectBolt[^{]*\{[^}]*display:\s*none/g) || [];
+        expect(hideMatches.length).toBe(1);
+    });
+
     it('saveInjectConfig broadcasts injectConfigChanged so rows can refresh live', () => {
         const fnIdx = inject.indexOf('function saveInjectConfig(');
         expect(fnIdx).toBeGreaterThan(-1);
@@ -151,12 +229,24 @@ describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
         expect(body).toMatch(/dispatchEvent\(new CustomEvent\(['"]injectConfigChanged['"]\)\)/);
     });
 
-    it('the indicator listens for injectConfigChanged and gates on isInjectConfigured', () => {
+    it('routing a project at a target notifies rows so the bolt updates without reload', () => {
+        // The autosave routing handler must emit injectTargetsChanged after
+        // setProjectTargetId so the sidebar bolts re-evaluate live.
+        expect(inject).toMatch(
+            /setProjectTargetId\s*\(\s*projectName\s*,\s*newId\s*\)[\s\S]{0,1000}notifyInjectTargetsChanged\s*\(\s*\)/
+        );
+    });
+
+    it('the indicator gates on the per-project target and listens for both refresh events', () => {
         expect(projectRow).toMatch(/import\s*\{\s*isInjectConfigured\s*\}\s*from\s*['"]\.\/inject\.js['"]/);
         const fnIdx = projectRow.indexOf('export function attachProjectInjectIndicator(');
         expect(fnIdx).toBeGreaterThan(-1);
-        const body = projectRow.slice(fnIdx, fnIdx + 1200);
-        expect(body).toMatch(/addEventListener\(['"]injectConfigChanged['"]/);
+        const body = projectRow.slice(fnIdx, fnIdx + 1600);
+        // per-project gate, not the global flag alone
+        expect(body).toMatch(/getProjectTargetId\s*\(\s*titleInput\.value\s*\)/);
         expect(body).toMatch(/isInjectConfigured\(\)/);
+        // live refresh on both config and routing changes
+        expect(body).toMatch(/addEventListener\(['"]injectConfigChanged['"]/);
+        expect(body).toMatch(/addEventListener\(['"]injectTargetsChanged['"]/);
     });
 });
