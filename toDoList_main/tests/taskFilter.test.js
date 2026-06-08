@@ -20,10 +20,10 @@ function makeMainList() {
     return ml;
 }
 
-function makeRow(tit, status) {
+function makeRow(tit, status, completed) {
     const row = document.createElement('div');
     row.id = 'toDoChild';
-    row.__item = { tit: tit, status: status };
+    row.__item = { tit: tit, status: status, completed: !!completed };
     row.setAttribute('data-value', 'Inbox');
     return row;
 }
@@ -310,6 +310,144 @@ describe('cycle pill count', () => {
 
         cyclePill(bar).click(); // → active
         expect(pillCount(bar)).toBe('1');
+    });
+});
+
+
+// (8) Completed items must not inflate the pill counts. A completed row keeps
+// its original `status` field (so un-completing restores its category), so the
+// count loop has to exclude `__item.completed === true` rows from every count
+// while still applying filter-match hiding to them.
+describe('completed items excluded from pill counts', () => {
+    it('ACTIVE count ignores completed active rows', () => {
+        const ml = makeMainList();
+        ml.append(
+            makeRow('A1', 'active', false),
+            makeRow('A2', 'active', false),
+            makeRow('A3', 'in_progress', false),
+            makeRow('C1', 'active', true),
+            makeRow('C2', 'active', true),
+            makeRow('C3', 'active', true),
+            makeRow('C4', 'in_progress', true),
+            makeRow('C5', 'active', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        expect(pillLabel(bar)).toBe('Active');
+        expect(pillCount(bar)).toBe('3');
+    });
+
+    it('IDEAS count ignores completed idea rows', () => {
+        const ml = makeMainList();
+        ml.append(
+            makeRow('I1', 'idea', false),
+            makeRow('I2', 'idea', false),
+            makeRow('IC1', 'idea', true),
+            makeRow('IC2', 'idea', true),
+            makeRow('IC3', 'idea', true),
+            makeRow('IC4', 'idea', true),
+            makeRow('IC5', 'idea', true),
+            makeRow('IC6', 'idea', true),
+            makeRow('IC7', 'idea', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        cyclePill(bar).click(); // → ideas
+        expect(pillLabel(bar)).toBe('Ideas');
+        expect(pillCount(bar)).toBe('2');
+    });
+
+    it('ALL count ignores all completed rows', () => {
+        const ml = makeMainList();
+        ml.append(
+            makeRow('A', 'active', false),
+            makeRow('B', 'idea', false),
+            makeRow('C', 'active', true),
+            makeRow('D', 'idea', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        applyTaskFilter();
+        expect(pillLabel(bar)).toBe('ALL');
+        expect(pillCount(bar)).toBe('2');
+    });
+
+    it('fires the filter empty-state when the only active rows are completed but other non-completed work exists', () => {
+        // total > 0 (the two non-completed ideas) but visible === 0 under the
+        // ACTIVE filter (the only active rows are completed and excluded) → the
+        // filter-specific empty message surfaces.
+        const ml = makeMainList();
+        ml.append(
+            makeRow('I1', 'idea', false),
+            makeRow('I2', 'idea', false),
+            makeRow('C1', 'active', true),
+            makeRow('C2', 'active', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        const empty = document.getElementById('taskFilterEmpty');
+        expect(empty).not.toBeNull();
+        expect(empty.textContent).toBe('Nothing active right now.');
+    });
+
+    it('does not fire the filter empty-state when every row is completed (project empty-state owns that)', () => {
+        // All rows completed → total === 0, so the FILTER empty-state stays
+        // dormant; the project-level empty-state governs the genuinely-empty case.
+        const ml = makeMainList();
+        ml.append(
+            makeRow('C1', 'active', true),
+            makeRow('C2', 'active', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        expect(document.getElementById('taskFilterEmpty')).toBeNull();
+    });
+
+    it('still applies filter-match hiding to completed rows (setRowHidden unchanged)', () => {
+        const ml = makeMainList();
+        const completedActive = makeRow('CA', 'active', true);
+        const completedIdea = makeRow('CI', 'idea', true);
+        ml.append(makeRow('A', 'active', false), completedActive, completedIdea);
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        // Completed rows are still hidden/shown by filter-status match: the
+        // completed active row matches Active (not hidden), the completed idea
+        // row does not (hidden) — exactly as before the count fix.
+        expect(isHidden(completedActive)).toBe(false);
+        expect(isHidden(completedIdea)).toBe(true);
+    });
+
+    it('recounts when a completed item is un-completed in place', () => {
+        const ml = makeMainList();
+        const flipper = makeRow('Flip', 'active', true);
+        ml.append(
+            makeRow('A1', 'active', false),
+            makeRow('A2', 'active', false),
+            makeRow('A3', 'active', false),
+            flipper,
+            makeRow('C2', 'active', true),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // → active
+        expect(pillCount(bar)).toBe('3');
+
+        // Un-complete one of the completed-active rows and re-apply.
+        flipper.__item.completed = false;
+        applyTaskFilter();
+        expect(pillCount(bar)).toBe('4');
     });
 });
 

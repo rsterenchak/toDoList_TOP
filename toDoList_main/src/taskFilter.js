@@ -157,13 +157,21 @@ export function applyTaskFilter() {
     rows.forEach(function (row) {
         if (!isCommittedRow(row)) return;
         const status = rowStatus(row);
-        total += 1;
-        counts.all += 1;
-        if (status === 'active' || status === 'in_progress') counts.active += 1;
-        if (status === 'idea') counts.ideas += 1;
+        // Completed rows keep their original `status` (so un-completing restores
+        // the category), but they belong to the COMPLETED section's own count —
+        // excluding them here keeps the filter pills reporting non-completed
+        // work only. Row hiding (setRowHidden) stays unconditional so the
+        // filter-match partition still applies when COMPLETED is expanded.
+        const isCompleted = !!(row.__item && row.__item.completed);
+        if (!isCompleted) {
+            total += 1;
+            counts.all += 1;
+            if (status === 'active' || status === 'in_progress') counts.active += 1;
+            if (status === 'idea') counts.ideas += 1;
+        }
 
         const show = activeFilter.match(status);
-        if (show) visible += 1;
+        if (show && !isCompleted) visible += 1;
         setRowHidden(row, !show);
     });
 
