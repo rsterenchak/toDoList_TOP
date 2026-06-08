@@ -483,7 +483,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c9477cf0-a99e-45c3-b020-eb52e10f5842 -->
 
-- [ ] **[MEDIUM]** Extract the Calendar view into its own calendarView.js module
+- [x] **[MEDIUM]** Extract the Calendar view into its own calendarView.js module — Completed: 2026-06-08
   - Type: feature
   - Description: Move the entire Calendar subsystem out of `main.js` into a new `toDoList_main/src/calendarView.js`, with no behavior change. The unit to move is cohesive: the module-scope state (`calendarVisibleYear`, `calendarVisibleMonth`, `calendarSelectedKey`), the constants (`CALENDAR_MONTH_NAMES`, `CALENDAR_WEEKDAY_NAMES`), the helpers (`formatCalendarKeyForDate`, `parseCalendarKey`), the state mutators (`resetCalendarStateToToday`, `shiftCalendarMonth`), the renderers (`renderCalendarView`, `renderCalendarDayPanel`), AND the day-panel row builders `buildTodayRow`, `handleTodayCheckboxToggle`, and `jumpToProjectTodo` — despite the "Today" naming there is no Today view, and those three are reachable only from `renderCalendarDayPanel`, so they belong with the calendar. The renderers already fetch their DOM nodes via `document.getElementById` at call time (no closure capture from `component()`), so no DOM needs to be threaded in.
   - Imports the new module needs: `{ listLogic } from './listLogic.js'`; `{ updateDuePillLabel, applyDueUrgency } from './dueDate.js'`; `{ prefersReducedMotion } from './dragDrop.js'` (the exported copy).
