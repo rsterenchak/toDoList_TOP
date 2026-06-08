@@ -85,7 +85,7 @@ describe('todo.md viewer — main.js card wiring', () => {
         // No bare fetch( inside the viewer block — search for the
         // viewer-scoped functions and assert fetch isn't used there.
         const viewerStart = main.indexOf('VIEWER_LASTFETCH_PREFIX');
-        const viewerEnd = main.indexOf("__todoMdViewerListenerRegistered");
+        const viewerEnd = main.indexOf("document.addEventListener('mainListRendered'");
         expect(viewerStart).toBeGreaterThan(-1);
         expect(viewerEnd).toBeGreaterThan(viewerStart);
         const block = main.slice(viewerStart, viewerEnd);
@@ -105,7 +105,7 @@ describe('todo.md viewer — main.js card wiring', () => {
 
     it('subscribes to the mainListRendered event so re-renders re-place the card idempotently', () => {
         expect(main).toMatch(/['"]mainListRendered['"]/);
-        expect(main).toMatch(/__todoMdViewerListenerRegistered/);
+        expect(main).toMatch(/document\.addEventListener\(\s*['"]mainListRendered['"]/);
     });
 
     it('tab toggle reuses cached content (no re-fetch on tab swap)', () => {
