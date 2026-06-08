@@ -705,9 +705,19 @@ body {
 }
 /* Same bolt, mounted inside the desktop project-picker dropdown rows. The
    sidebar's display rule is `#projChild`-scoped, so the dropdown needs its
-   own show rule; the row is flex, so the bolt simply leads the name. */
+   own show rule; the row is flex, so the bolt simply leads the name. The
+   row uses `justify-content: space-between`, which would distribute the
+   row's free space *between* the bolt and the name (a gap that grows and
+   shrinks with the count badge's width). Instead, let the name absorb that
+   free space (`margin-right: auto`) so the count stays pinned right while
+   the bolt + name read as one left-aligned unit; a negative margin on the
+   bolt tightens the 12px row gap down to a fixed, predictable offset. */
 .projectPickerRow.hasInjectBolt .projInjectBolt {
   display: inline;
+  margin-right: -6px;
+}
+.projectPickerRow.hasInjectBolt .projectPickerName {
+  margin-right: auto;
 }
 
 /* PROJECT CONTEXT MENU */
