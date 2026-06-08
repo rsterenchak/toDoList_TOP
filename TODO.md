@@ -304,3 +304,31 @@
   - File: `toDoList_main/src/todoStatus.js`, `toDoList_main/tests/` (extend `todoStatus.test.js` if it exists, or add a small `todoStatusResortOnChange.test.js`)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bbe4cc28-f6fb-408b-8d96-7bda7e248b56 -->
+
+- [ ] **[LOW]** Extend run-watch timeout from 10 minutes to 20 minutes so long pipeline runs don't dead-end at "Unknown"
+  - Type: bug
+  - Description: Pipeline runs that take longer than 10 minutes get labeled "Unknown" by both run-watch surfaces (the TODO.md viewer's inline Run-backlog pill, and the Runs tab inside the chat pane) even though the run is still progressing on GitHub. Root cause: the give-up timeout `RUN_GIVE_UP_MS = 10 * 60 * 1000` in both `claudeSheet.js:42` and `main.js:6732`. After this window expires without a terminal status, the client stops polling and the pill switches to the dimmed "Unknown" treatment (claudeSheet.js:1746, plus the equivalent path in main.js via `showRunTimeout()`). The 10-minute window is shorter than how long the pipeline agent can plausibly take on a complex entry: with `max_turns: 100` in `.github/workflows/claude-run.yml`, runs that involve multi-file diagnosis, test rounds, and PR creation routinely reach 12-15 minutes. Bump both constants to 20 minutes (`20 * 60 * 1000`). This is a single-value change in two files — both call sites use the same constant name and the same semantic ("give up polling, render Unknown after this window"), so they must move together to keep the two surfaces consistent. Genuinely hung runs (>20 min) will still surface as "Unknown" with the existing affordance to open GitHub Actions and check directly.
+  - Behavior:
+    1. A run that completes within 20 minutes of dispatch displays its actual terminal state (Success / Failure) on both surfaces — never falls back to "Unknown" prematurely.
+    2. A run that exceeds 20 minutes without surfacing a terminal status still falls back to the dimmed "Unknown" pill, with the existing affordance to open the GitHub Actions run page intact.
+    3. The viewer-side pill (main.js) and the Runs-tab pill (claudeSheet.js) behave identically with respect to timeout — they share the same 20-minute window. Don't bump one without the other.
+    4. The poll interval (`RUN_POLL_INTERVAL_MS = 5000` in claudeSheet.js) is UNCHANGED. Only the total give-up window changes.
+    5. Existing dismissible/tap-to-dismiss behavior on the "Unknown" pill is UNCHANGED.
+    6. Any in-flight runs at the moment of deploy: they keep their existing watcher (the constant is captured per-run at startRunPill or equivalent, not read on every poll — but the value is also re-read inside pollRunOnce in main.js via the module-scoped const, so any poll after deploy uses the new value). Net: no migration concern; the bump just applies forward.
+  - Test-first regression set:
+    1. Source-pattern: both `claudeSheet.js` and `main.js` define `RUN_GIVE_UP_MS = 20 * 60 * 1000`. Pin via grep — exactly two occurrences in the source tree, both equal to `20 * 60 * 1000` (or `1200000`).
+    2. The poll-interval constant `RUN_POLL_INTERVAL_MS` is unchanged. Pin via grep.
+    3. Behavioral (claudeSheet.js): with a fixture run started at t=0 and a current time of t=19 min, the give-up branch does NOT fire and polling continues. At t=21 min, the give-up branch fires and the Unknown pill renders.
+    4. Behavioral (main.js): same as #3 for the viewer-side pill.
+    5. `showRunTimeout` itself is unchanged — same dimmed "Unknown" treatment with the existing link affordance.
+  - Implementation notes:
+    - **Two-file edit, both identical.** Change `const RUN_GIVE_UP_MS = 10 * 60 * 1000;` to `const RUN_GIVE_UP_MS = 20 * 60 * 1000;` in:
+      - `toDoList_main/src/claudeSheet.js` (line 42)
+      - `toDoList_main/src/main.js` (line 6732)
+    - **Update the inline comment** at main.js around line 6851 from "stop watching after 10 minutes" to "stop watching after 20 minutes" so the comment stays accurate. If claudeSheet.js has a similar comment near its constant, update that too (grep its surroundings).
+    - **Do NOT** consolidate the duplicated constant into a shared module as part of this entry. That refactor (extract `RUN_GIVE_UP_MS` into a shared `runWatch.js` or similar) would touch import graphs and risk scope drift on a one-line bug fix. If the duplication is worth eliminating, that's a separate small entry afterward — leave a TODO comment near both constants noting they must stay in sync if you want a future reminder, or skip that and just rely on the test #1 grep assertion to catch drift.
+    - **Sanity check before committing**: grep for `10 * 60 * 1000` in the patched files — there should be zero matches. Grep for `20 * 60 * 1000` — there should be exactly two matches (one in each file).
+  - Out of scope: extracting the constant into a shared module; changing the poll interval; changing the "Unknown" pill's visual treatment or messaging; adding a user-configurable timeout; changing the `max_turns` setting in the workflow; changing the give-up behavior itself (still dimmed Unknown pill with link to GitHub); changing how the run watcher hands off between mobile and desktop chat surfaces; the `RUNS_KEY` localStorage schema.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 789eee60-3efd-4480-bbb1-8850865162ea -->
