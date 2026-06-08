@@ -681,17 +681,18 @@ body {
   display: none;
 }
 
-/* Inject-configured indicator. A green ⚡ prepended to the project title
+/* Inject-configured indicator. An amber ⚡ prepended to the project title
    when the user has configured inject. It occupies its own leading grid
    column — surfaced only while `.hasInjectBolt` is set on the row — so the
    title input keeps its full `minmax(0, 1fr)` truncation budget when no
    bolt is shown. pointer-events: none so taps / long-presses pass through
-   to the row's own handlers; the bolt is purely decorative (aria-hidden). */
+   to the row's own handlers; the bolt is purely decorative (aria-hidden).
+   The amber accent (#ffbd5e) reads clearly against both themes. */
 .projInjectBolt {
   display: none;
   justify-self: start;
   align-self: center;
-  color: var(--type-feature, #9ad0a8);
+  color: #ffbd5e;
   font-size: 13px;
   line-height: 1;
   pointer-events: none;
@@ -700,6 +701,12 @@ body {
   grid-template-columns: auto minmax(0, 1fr) auto 12px;
 }
 #projChild.hasInjectBolt .projInjectBolt {
+  display: inline;
+}
+/* Same bolt, mounted inside the desktop project-picker dropdown rows. The
+   sidebar's display rule is `#projChild`-scoped, so the dropdown needs its
+   own show rule; the row is flex, so the bolt simply leads the name. */
+.projectPickerRow.hasInjectBolt .projInjectBolt {
   display: inline;
 }
 

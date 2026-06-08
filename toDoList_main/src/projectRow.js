@@ -23,10 +23,10 @@ import {
 } from './toDoRow.js';
 
 
-// Green ⚡ shown at the start of a project row's title while that specific
+// Amber ⚡ shown at the start of a project row's title while that specific
 // project has a configured inject target. The trailing variation selector
 // (U+FE0E) forces text-style (monochrome) rendering so the glyph honors the
-// CSS `color` (theme green) instead of falling back to a platform emoji.
+// CSS `color` (amber accent) instead of falling back to a platform emoji.
 const INJECT_BOLT_CHAR = '⚡︎';
 
 // Attach (once per row) the inject-target thunderbolt indicator. The bolt
@@ -73,6 +73,31 @@ export function attachProjectInjectIndicator(projChild, titleInput) {
     // (no reload)
     document.addEventListener('injectConfigChanged', sync);
     document.addEventListener('injectTargetsChanged', sync);
+}
+
+
+// One-shot inject-bolt sync for a project row that has no live rename <input>
+// of its own — notably the desktop project-picker dropdown rows, which carry a
+// `.projectPickerName` span rather than a `#projInput` and are rebuilt from
+// scratch on every open. It inserts the same leading ⚡ (once) and toggles
+// `hasInjectBolt` using the same per-project gate as the sidebar indicator: the
+// bolt shows only when inject is configured AND this project has a routed
+// `target_id`. No persistent event listeners are attached here — the caller
+// rebuilds these rows on each open, so the bolt state is always recomputed
+// fresh and there are no leaked closures over discarded rows.
+export function syncProjectRowInjectBolt(row, projectName) {
+    let bolt = row.querySelector('.projInjectBolt');
+    if (!bolt) {
+        bolt = document.createElement('span');
+        bolt.className = 'projInjectBolt';
+        bolt.textContent = INJECT_BOLT_CHAR;
+        bolt.setAttribute('aria-hidden', 'true');
+        // first child → lands ahead of the project name
+        row.insertBefore(bolt, row.firstChild);
+    }
+    const hasTarget = isInjectConfigured()
+        && !!listLogic.getProjectTargetId(projectName);
+    row.classList.toggle('hasInjectBolt', hasTarget);
 }
 
 
