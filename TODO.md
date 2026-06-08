@@ -440,3 +440,11 @@
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e1baf03f-5f98-4047-95f4-f93f4242bcbd -->
+
+- [ ] **[HIGH]** Fix projectPickerRow bolt span being inserted into every row regardless of inject gate
+
+  - Type: bug
+  - Description: `syncProjectRowInjectBolt` inserts the `.projInjectBolt` span unconditionally into every dropdown row, then uses the `hasInjectBolt` class + CSS `display` to hide it on non-qualifying rows. The span is present in the DOM on all rows even when the project has no inject target configured. This causes a visible layout gap on at least one row where the hidden span contributes non-zero width. Fix: move the span insertion inside the gate check so the span is only appended to rows that actually qualify (same condition used to add `hasInjectBolt`); rows that don't qualify should have no `.projInjectBolt` span at all.
+  - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5d4d927a-2d3e-4a44-aa8c-63242529974b -->
