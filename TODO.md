@@ -433,7 +433,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4e1cb527-5e61-4db1-8662-dacdbc064628 -->
 
-- [ ] **[HIGH]** Fix inject bolt visibility in project picker dropdown and change bolt color to amber accent
+- [x] **[HIGH]** Fix inject bolt visibility in project picker dropdown and change bolt color to amber accent — Completed: 2026-06-08
 
   - Type: bug
   - Description: The inject bolt (`projInjectBolt`) does not appear on project rows rendered inside `#projectPickerDropdown`, even when a project has a routed inject target. The `attachProjectInjectIndicator` wiring likely only runs for sidebar project rows and is not called for dropdown-rendered rows — or the CSS display rule for `.hasInjectBolt .projInjectBolt` is scoped to a sidebar container and does not apply inside the dropdown. Fix by ensuring `attachProjectInjectIndicator` (or equivalent `sync()` logic) runs for every project row regardless of mount point, and verify the CSS selector is not ancestor-scoped in a way that excludes the dropdown. Additionally, change the bolt icon color from green to the existing amber/orange accent token (approximately `#ffbd5e`) in `style.css`.
