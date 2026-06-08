@@ -7038,7 +7038,14 @@ function buildTodoMdViewerCard(projectName, target) {
     }
 
     collapseBodyBtn.addEventListener('click', function() {
-        applyCollapsedState(!card.classList.contains('collapsed'));
+        const willBeCollapsed = !card.classList.contains('collapsed');
+        applyCollapsedState(willBeCollapsed);
+        // When uncollapsing, also fill the body to the bottom of #mainList
+        // by applying the --expanded class that applyExpandedHeight keys off.
+        // When collapsing, remove the class so applyExpandedHeight clears
+        // the inline height.
+        card.classList.toggle('todoMdViewerCard--expanded', !willBeCollapsed);
+        applyExpandedHeight();
     });
 
     applyCollapsedState(true);
