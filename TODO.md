@@ -456,3 +456,16 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-08
   <!-- id: 5726f2cf-2069-47e0-a22a-6ac50bd4fab3 -->
+
+- [ ] **[MEDIUM]** Collapse webpack to a single entry to stop main.js double-evaluation
+  - Type: bug
+  - Description: `webpack.config.js` declares four entry points (`index`, `main`, `toDo`, `list`), but `index.js` already imports `main.js` and `listLogic.js` (and `toDo.js` transitively), so those three are redundant. Because `HtmlWebpackPlugin` injects every entry bundle into the page, `main.js`'s module-level code is evaluated twice — once inside `index.bundle.js` and once inside `main.bundle.js` — which is the real source of the duplicate `addEventListener` registrations that the `window.__*Registered` guards currently suppress. Fix it by reducing the webpack `entry` to `{ index: './src/index.js' }` only, so a single app bundle is emitted and module code runs exactly once. This is an intentional, task-required change to `webpack.config.js`; note that in the PR so the CLAUDE.md build-config review doesn't bounce it (the rule's carve-out is explicit build changes).
+  - Acceptance criteria:
+    - `npm run build` succeeds and emits a single app bundle (`index.<contenthash>.bundle.js`) with no `main`/`toDo`/`list` bundles in `dist/`.
+    - The app boots and renders exactly once; the document-level listeners that were previously double-registered now fire a single time, and behavior is unchanged (the guards still hold either way).
+    - The full Vitest suite (`npm run test:run`) stays green.
+  - Implementation notes: Nothing hardcodes the individual bundle filenames — verified `template.html` and `sw.js` — and Workbox `InjectManifest` globs `dist/` output, so dropping the extra entries is contained. Vitest runs against source modules in jsdom, not the bundle, so the suite will NOT catch a bundling regression; verify single-evaluation manually in the browser (or dev server) before merging. For that reason this is best applied as a direct commit to main with a local build/boot check rather than an unattended pipeline auto-merge.
+  - Out of scope: Removing the six `window.__*Registered` guards (that's the A2 follow-up, done only after this confirms single-evaluation); any `optimization.splitChunks` / `runtimeChunk` / code-splitting or production-mode tuning; any change to application behavior, listeners, or DOM.
+  - File: `toDoList_main/webpack.config.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d6269be6-5f4d-456c-b9ec-bbe95c2565c4 -->
