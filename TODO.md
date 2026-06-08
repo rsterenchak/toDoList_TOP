@@ -457,7 +457,7 @@
   - Completed: 2026-06-08
   <!-- id: 5726f2cf-2069-47e0-a22a-6ac50bd4fab3 -->
 
-- [ ] **[MEDIUM]** Collapse webpack to a single entry to stop main.js double-evaluation
+- [x] **[MEDIUM]** Collapse webpack to a single entry to stop main.js double-evaluation — Completed: 2026-06-08
   - Type: bug
   - Description: `webpack.config.js` declares four entry points (`index`, `main`, `toDo`, `list`), but `index.js` already imports `main.js` and `listLogic.js` (and `toDo.js` transitively), so those three are redundant. Because `HtmlWebpackPlugin` injects every entry bundle into the page, `main.js`'s module-level code is evaluated twice — once inside `index.bundle.js` and once inside `main.bundle.js` — which is the real source of the duplicate `addEventListener` registrations that the `window.__*Registered` guards currently suppress. Fix it by reducing the webpack `entry` to `{ index: './src/index.js' }` only, so a single app bundle is emitted and module code runs exactly once. This is an intentional, task-required change to `webpack.config.js`; note that in the PR so the CLAUDE.md build-config review doesn't bounce it (the rule's carve-out is explicit build changes).
   - Acceptance criteria:
