@@ -252,3 +252,55 @@
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/tests/taskFilter.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a1062b59-6aaf-452c-a049-32bb8a26b66f -->
+
+- [ ] **[MEDIUM]** Auto-resort current project's row after status change in popover (when sort = Status)
+  - Type: bug
+  - Description: When the global task sort is set to "Status" on a project page, changing a todo's status via the status popover (e.g. Active → In Progress) does NOT move the row to its new sorted position. The row stays at its original index and the user has to manually toggle sort off and back to Status to trigger the re-sort. Root cause: the status popover commit handler in `todoStatus.js` (around line 145) calls `listLogic.setToDoStatus(projectName, item, status)` (persists the mutation), then `refreshTodoStatusUI(toDoChild, item)` (updates the status label visual), then `applyTaskFilter()` (re-runs filter counts + visibility), then `hideStatusPopover()` — but it never calls `reorderToDoDOM(projectName)`, which is the function that re-applies `renderOrderForSort(items)` to the DOM. So `sortItemsByStatusForRender` runs only on the next manual sort change or page reload, not after a status mutation. Fix: replace the `applyTaskFilter()` call in the popover handler with `reorderToDoDOM(projectName)`. `reorderToDoDOM` already calls `applyTaskFilter()` internally at line 1947 of `toDoRow.js`, so the filter pass still runs — we just additionally pick up the sort-order refresh. Net effect: a status change now re-sorts the row on commit, regardless of sort mode (sort='status' re-sorts by status, sort='due' re-applies due ordering, sort='none' is a no-op DOM-wise since `renderOrderForSort` returns items unchanged when mode='none').
+  - Behavior:
+    1. On the project page with sort = "Status" active: changing a row's status from Active → In Progress moves the row to the top of the active section immediately on commit (status sort order is in_progress → active → idea → completed, per `STATUS_SORT_RANK` in listLogic.js).
+    2. On the project page with sort = "Status" active: changing a row's status from In Progress → Idea moves the row down past the active items into the idea group.
+    3. On the project page with sort = "Due" active: changing a row's status does NOT change its position (due-date order is independent of status). The reorderToDoDOM call still runs and re-applies due ordering, which is a no-op for the position of the changed row since its due date didn't change.
+    4. On the project page with sort = "None" active: changing a row's status does NOT change its position (manual order is preserved). `renderOrderForSort` returns items in their original array order, so `reorderToDoDOM` re-appends every row in the same order — visually a no-op.
+    5. Filter pill counts and visibility still update on commit (they did before — `applyTaskFilter` is called by `reorderToDoDOM` internally).
+    6. The status popover closes after commit (`hideStatusPopover()` still runs as the last step of the handler).
+    7. The inbox view (`#inboxView`) is UNCHANGED by this entry. It already has its own re-render via `ensureInboxStatusRerender` (a capture-phase document listener at main.js:8082) that calls `renderInbox()` after a status-change commit — that path remains intact and unaffected.
+    8. The status change still persists to localStorage and Supabase via the existing `setToDoStatus` path — no change to persistence.
+  - Test-first regression set:
+    1. Sort = "Status" + status change → row repositions. Fixture: project with one Active and one Idea item, sort='status'. Change Active → In Progress. Assert the changed row is now the first child of `#mainList` (after the blank placeholder if one exists).
+    2. Sort = "Due" + status change → row position unchanged. Pin both that `reorderToDoDOM` was called AND that the changed row's index in `#mainList` is the same before and after.
+    3. Sort = "None" + status change → row position unchanged. Same assertion structure as #2.
+    4. Filter pill counts still update on status change. (Existing behavior preservation — `applyTaskFilter` continues to fire via `reorderToDoDOM`.) With a fixture of 2 active + 1 idea, change one active → idea, assert `counts.active === 1` and `counts.ideas === 2` afterward.
+    5. Status popover closes after commit. Assert no `#statusPopover` (or whichever id the popover uses) exists in the DOM after the click.
+    6. Persistence still fires. Spy on `listLogic.setToDoStatus` — assert it was called with the right args.
+    7. Inbox view non-regression: with active view = 'inbox', a status change on an inbox row STILL triggers `renderInbox()` via the existing capture-phase listener. The `reorderToDoDOM` call also fires but is scoped to `#mainList` so it doesn't disturb `#inboxView`. Pin: after a status change in inbox view, `renderInbox` was called AND `#inboxView`'s child structure reflects the post-change idea list.
+  - Implementation notes:
+    - **Single-file change in `todoStatus.js`** plus an import addition.
+    - **Add import** at the top of `todoStatus.js` (currently imports `listLogic` from `./listLogic.js` and `applyTaskFilter` from `./taskFilter.js`): add `import { reorderToDoDOM } from './toDoRow.js';`. The existing `applyTaskFilter` import becomes unused after this change — remove it from the import block to avoid dead code (the linter or test setup may flag it).
+    - **The exact edit** in the popover click handler (around line 144-153 of todoStatus.js). Current code:
+```js
+      opt.addEventListener('click', function (event) {
+          event.stopPropagation();
+          listLogic.setToDoStatus(projectName, item, status);
+          refreshTodoStatusUI(toDoChild, item);
+          applyTaskFilter();
+          hideStatusPopover();
+      });
+```
+      Patched form:
+```js
+      opt.addEventListener('click', function (event) {
+          event.stopPropagation();
+          listLogic.setToDoStatus(projectName, item, status);
+          refreshTodoStatusUI(toDoChild, item);
+          reorderToDoDOM(projectName);
+          hideStatusPopover();
+      });
+```
+      The `reorderToDoDOM(projectName)` call replaces `applyTaskFilter()` because the former internally calls the latter (line 1947 of toDoRow.js). No need to call both.
+    - **Do NOT** touch the inbox's `ensureInboxStatusRerender` path in main.js. The inbox re-render fires via a separate capture-phase document listener that runs BEFORE the bubble-phase popover click handler completes. Its scope is correct (only fires when `getActiveView() === 'inbox'`) and it's idempotent. Leaving it alone preserves the inbox behavior.
+    - **Do NOT** add a reorder hook to any other status-change path. The popover is the ONLY user-facing entry point for status changes; the only other call sites for `setToDoStatus` are internal/test paths. If a future status change is wired up elsewhere, that wiring's author is responsible for calling `reorderToDoDOM` from its own commit path — same contract as other mutating handlers (the checkbox completion handlers in toDoRow.js already follow this pattern).
+    - **Sanity check before committing**: grep `applyTaskFilter` in the diff. If the patched todoStatus.js still imports or calls `applyTaskFilter`, remove the import (it becomes dead after the substitution). Grep `reorderToDoDOM` in todoStatus.js — should be exactly two matches: the import line and the call site inside the popover handler.
+  - Out of scope: any change to `setToDoStatus`, `reorderToDoDOM`, `sortItemsByStatusForRender`, `renderOrderForSort`, `applyTaskFilter`, or the sort dropdown UI; any change to the inbox status-change path; any change to the status popover's appearance, positioning, or non-commit behavior (ESC, tap-outside, hover); any change to the checkbox completion path (already correctly calls reorderToDoDOM); the data model; CSS; the COMPLETED section collapse; the filter pill counts (this entry just preserves their correctness via the internal applyTaskFilter call).
+  - File: `toDoList_main/src/todoStatus.js`, `toDoList_main/tests/` (extend `todoStatus.test.js` if it exists, or add a small `todoStatusResortOnChange.test.js`)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bbe4cc28-f6fb-408b-8d96-7bda7e248b56 -->
