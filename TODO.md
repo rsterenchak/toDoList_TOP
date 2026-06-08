@@ -190,7 +190,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: dea60389-89df-4e52-9bb9-f389708402a6 -->
 
-- [ ] **[MEDIUM]** Exclude completed items from filter pill counts and empty-state trigger in applyTaskFilter
+- [x] **[MEDIUM]** Exclude completed items from filter pill counts and empty-state trigger in applyTaskFilter — Completed: 2026-06-07
   - Type: bug
   - Description: The task filter cycle pill ("ACTIVE 175", "IDEAS N", "ALL N") inflates its count by including items whose `__item.completed === true`. Visible symptom in the user-supplied screenshot: the ACTIVE pill reads "175" on a project where only ~5 active items are visible and 170 items are in the collapsed COMPLETED section (5 + 170 = 175 — the completed are being double-counted under their original status). Same root cause as the previously-diagnosed IDEAS count inflation: completed items retain their `status` field, so a `status === 'active'` item with `completed: true` still gets counted by `counts.active += 1` in the filter's iteration. Fix: in `applyTaskFilter`'s count loop, exclude rows where `__item.completed === true` from ALL count increments (`counts.all`, `counts.active`, `counts.ideas`, `total`, and `visible`). Leave the `setRowHidden(row, !show)` call unchanged — the visibility behavior is correct as-is; only the counting is wrong. Completed items remain in the DOM (under the collapsed COMPLETED section), keep their `taskFilterHidden` class set by filter-match logic, and the dedicated "COMPLETED (170)" indicator continues to show the completed count separately. Net effect: filter pills show the count of *non-completed* matching items, which matches what the user perceives.
   - Behavior:
