@@ -20,7 +20,7 @@
 // text color inline, since that override pattern is a known fragile area here.
 
 import { listLogic } from './listLogic.js';
-import { applyTaskFilter } from './taskFilter.js';
+import { reorderToDoDOM } from './toDoRow.js';
 
 
 // Display metadata per status. The glyph + uppercase label match the Option C
@@ -146,9 +146,12 @@ export function showStatusPopover(anchor, item, projectName, toDoChild) {
             // Single update channel — same path as any other todo mutation.
             listLogic.setToDoStatus(projectName, item, status);
             refreshTodoStatusUI(toDoChild, item);
-            // Re-apply the status filter so the row's new status is reflected
-            // in the pill counts and its visibility under the active filter.
-            applyTaskFilter();
+            // Re-sort + re-render the list so the row moves to its new sorted
+            // position when sort = Status (a no-op for sort = None/Due). This
+            // also re-applies the status filter — reorderToDoDOM runs the
+            // filter pass internally — so the pill counts and visibility stay
+            // correct.
+            reorderToDoDOM(projectName);
             hideStatusPopover();
         });
         popover.appendChild(opt);
