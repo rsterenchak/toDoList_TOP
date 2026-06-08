@@ -469,3 +469,16 @@
   - File: `toDoList_main/webpack.config.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d6269be6-5f4d-456c-b9ec-bbe95c2565c4 -->
+
+- [ ] **[LOW]** Remove obsolete double-evaluation listener guards from main.js
+  - Type: bug
+  - Description: With the webpack entry collapsed to a single bundle (prior task), `main.js`'s module-level code now evaluates exactly once, so the six `window.__*Registered` guards that existed only to prevent duplicate `addEventListener` registration under double-evaluation are now dead weight. Remove them: `__hydrateListenerRegistered`, `__dueDateChangedListenerRegistered`, `__swipeCompleteFlashListenerRegistered`, `__todoMdViewerListenerRegistered`, `__completedMobileSheetListenersRegistered`, and `__viewerMobileSheetListenersRegistered` (around lines 6135 / 6169 / 6210 / 7148 / 7508 / 7668 — they may have shifted slightly). For each block, drop only the `&& !window.__XRegistered` condition and the `window.__XRegistered = true;` assignment, leaving the `document.addEventListener(...)` call and any `typeof document`/`typeof window` environment guard intact — do not delete the listener itself.
+  - Acceptance criteria:
+    - `grep "window.__" src/main.js` returns no `*Registered` flags.
+    - Each affected document listener still registers exactly once at module load; app behavior is unchanged.
+    - The full Vitest suite (`npm run test:run`) stays green, including `tests/todoMdViewer.test.js` and `tests/todoMdViewerShowCompleted.test.js` (the only two suites that import `main.js`).
+  - Implementation notes: Safe in the browser because the single-entry collapse means one module evaluation. Safe in tests too — `main.js` is imported only by the two `todoMdViewer` suites, each under Vitest's default per-file isolation (one evaluation), and the only `vi.resetModules()` + re-import pattern in the suite targets `listLogic.js`, not `main.js`. `main.js` is over 25k tokens — find the six blocks with grep + offset/limit rather than reading it in full.
+  - Out of scope: Any change to the listeners' handlers or behavior; removing the `typeof document`/`typeof window` environment guards (a separate concern); the Phase B feature extractions (calendar / today / inbox / TODO.md viewer / mobile sheets).
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c9477cf0-a99e-45c3-b020-eb52e10f5842 -->
