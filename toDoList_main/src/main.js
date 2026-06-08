@@ -6730,7 +6730,7 @@ function buildTodoMdViewerCard(projectName, target) {
     // correlation_id is internal plumbing for the dispatch/status calls and
     // is NEVER rendered in the UI.
     const RUN_POLL_INTERVAL_MS = 5000;
-    const RUN_GIVE_UP_MS = 10 * 60 * 1000;
+    const RUN_GIVE_UP_MS = 20 * 60 * 1000;
 
     const runPillCheckGlyph =
         '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 7.5 6 10.5 11 4.5"/></svg>';
@@ -6849,7 +6849,7 @@ function buildTodoMdViewerCard(projectName, target) {
     }
 
     async function pollRunOnce(correlationId, startedAt) {
-        // Give-up timeout: stop watching after 10 minutes without a terminal
+        // Give-up timeout: stop watching after 20 minutes without a terminal
         // status. The run may still be going on GitHub; the client just
         // stops polling and offers a link to check.
         if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {

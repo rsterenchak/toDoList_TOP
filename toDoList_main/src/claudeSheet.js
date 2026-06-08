@@ -39,7 +39,7 @@ const SWIPE_CLOSE_PX = 60;
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
-const RUN_GIVE_UP_MS = 10 * 60 * 1000;
+const RUN_GIVE_UP_MS = 20 * 60 * 1000;
 
 // Repos the file-attach picker can pull source from. The list is projected from
 // the user's Inject targets at runtime (via `loadWorkspaceRepos`, reading the
