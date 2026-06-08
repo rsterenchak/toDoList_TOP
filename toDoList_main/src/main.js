@@ -59,6 +59,7 @@ import {
     applyPendingUpdate,
     hasPendingUpdate,
     isAnyModalOrPopoverOpen,
+    showDescEditorModal,
 } from './modals.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
@@ -8042,6 +8043,13 @@ function buildInboxRow(item, projectName) {
     row.setAttribute('data-value', projectName);
     row.__item = item;
 
+    // Whole-row tap opens the existing description editor — expose the row as
+    // a focusable button so keyboard and assistive-tech users get the same
+    // affordance (Enter/Space activate the tap).
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-label', 'Open idea: ' + (item.tit || ''));
+
     // Non-interactive checkbox-style glyph on the left, echoing the per-
     // project row affordance. Status changes happen through the label.
     const check = document.createElement('div');
@@ -8052,6 +8060,14 @@ function buildInboxRow(item, projectName) {
     const body = document.createElement('div');
     body.className = 'inboxRowBody';
 
+    // Compact one-line layout: the title sits on a single line (truncated to
+    // an ellipsis via CSS) with the status pill + project name on a metadata
+    // row below it.
+    const title = document.createElement('div');
+    title.className = 'inboxRowTitle';
+    title.textContent = item.tit;
+    body.appendChild(title);
+
     const meta = document.createElement('div');
     meta.className = 'inboxRowMeta';
     meta.appendChild(buildStatusLabel(item));
@@ -8061,12 +8077,49 @@ function buildInboxRow(item, projectName) {
     meta.appendChild(proj);
     body.appendChild(meta);
 
-    const title = document.createElement('div');
-    title.className = 'inboxRowTitle';
-    title.textContent = item.tit;
-    body.appendChild(title);
-
     row.appendChild(body);
+
+    // Decorative chevron signalling tappability. It carries NO own handler —
+    // clicks on it propagate up to the row's whole-row tap handler.
+    const chev = document.createElement('span');
+    chev.className = 'inboxRowChev';
+    chev.setAttribute('aria-hidden', 'true');
+    chev.textContent = '›';
+    row.appendChild(chev);
+
+    // Whole-row tap → the EXISTING description editor (showDescEditorModal),
+    // the same modal the project-page row tap uses (toDoRow.js). That modal
+    // has no completion wiring whatsoever, so no dismiss path can ever mark an
+    // idea complete. After a save commits, route the persist through
+    // listLogic.editToDoItem (so the Supabase mirror fires, matching
+    // toDoRow.js) and call renderInbox() to refresh the row's preview.
+    function openInboxEditor() {
+        showDescEditorModal(item, {
+            projectName: projectName,
+            onSave: function () {
+                if (projectName) listLogic.editToDoItem(projectName, item);
+                renderInbox();
+            },
+            onTitleSave: function () {
+                if (projectName) listLogic.editToDoItem(projectName, item);
+                renderInbox();
+            }
+        });
+    }
+    // Bail on the status-label chip (its delegated popover wins) and the
+    // check glyph — mirrors the target-check idiom in wireToDoRowClick.
+    row.addEventListener('click', function (e) {
+        if (e.target.closest('.todoStatusLabel') ||
+            e.target.closest('.inboxRowCheck')) return;
+        openInboxEditor();
+    });
+    row.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            openInboxEditor();
+        }
+    });
+
     return row;
 }
 

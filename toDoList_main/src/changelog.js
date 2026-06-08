@@ -12,6 +12,9 @@ export const changelog = [
             "The TODO.md viewer's 'Show completed' control now uses a checkmark icon and moves to the header's right edge, and the redundant fullscreen-expand button was removed to ease crowding.",
             "Idea entries once again appear in both the Projects and Inbox tabs after the recent Inbox card redesign was rolled back.",
         ],
+        changed: [
+            "Inbox idea rows are now compact one-line cards you can tap anywhere to open the description editor.",
+        ],
     },
 ];
 
