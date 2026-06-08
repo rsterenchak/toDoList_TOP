@@ -332,3 +332,29 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 789eee60-3efd-4480-bbb1-8850865162ea -->
+
+- [ ] **[LOW]** Raise companion ghost z-index above all other UI so it never wanders behind elements
+  - Type: bug
+  - Description: The wandering companion ghost mascot (`.companion` in style.css, position:fixed, animated via `companionIdle`/`companionCheer`/`companionBigCheer`) currently has `z-index: 2`, which is below virtually every other stacking layer in the app: `#desktopChatPane` (z-index 10), the desktop view sub-band (z-index 9), all modal backdrops (z-index 100), context menus (z-index 200-250), the status popover (z-index 1000), the mobile completed/viewer sheet backdrops (z-index 4000), and the top floating layer (z-index 10000). User-reported visible symptom: when the ghost wanders across the screen and its position overlaps `#claudeChatView` (or its surrounding chat-pane/sheet chrome), the ghost disappears behind that surface. The user wants the ghost on top of everything — a mascot is decorative and should be a consistent visual anchor regardless of what UI is open. Fix: raise `.companion`'s z-index above the existing top floating layer. Pick `z-index: 10001` — one above the highest current value (`10000` for the top-floating element at style.css line 3380), so the ghost sits on the topmost layer while preserving the existing relative order of everything else. The ghost is `pointer-events: none` already, so raising its stacking has no interaction-blocking risk — clicks pass through to whatever's beneath.
+  - Behavior:
+    1. `.companion` element renders ABOVE all other elements at all times during its wander, idle, and cheer animations. Specifically: above `#claudeChatView`, `#claudeSheet` (mobile slide-up), `#desktopChatPane`, all modals and their backdrops, the status popover, context menus, the top floating layer.
+    2. The ghost remains `pointer-events: none` — clicks pass through to whatever is beneath. Modals and popovers stay fully interactive regardless of whether the ghost is visually overlapping them at the moment.
+    3. No other element's z-index changes. The relative stacking of all other UI is preserved.
+    4. The ghost's visual appearance (sprite, animations, blink behavior) is unchanged.
+    5. When the companion is disabled (`body.companion-ghost-off` class is set), the ghost is hidden — that hide behavior is unchanged.
+    6. The mobile-empty-state ghosts (separate `.viewGhostMascot` elements at lower z-indexes) are NOT touched. Those are different elements (decorative empty-state spacers) and don't have the wander/overlap issue.
+  - Test-first regression set:
+    1. Source-pattern: the `.companion` CSS rule has `z-index: 10001`. Pin via grep on the rule block.
+    2. The `pointer-events: none` declaration on `.companion` is preserved (so clicks still pass through). Pin via grep.
+    3. No other selector's z-index value changes. Diff style.css after the change — only the one line should differ.
+    4. Behavioral (jsdom layout limitation may apply — fall back to computed-style assertion): `getComputedStyle(document.querySelector('.companion')).zIndex === '10001'`.
+    5. `companion-ghost-off` hide behavior preserved: with `body.companion-ghost-off` set, the existing `display: none` (or whichever rule hides it) still applies. Pin via grep on the companion-off rule.
+  - Implementation notes:
+    - **Single-line change** in `toDoList_main/src/style.css` at the `.companion` rule (around line 7800-7812). Change `z-index: 2;` to `z-index: 10001;`. No other edits.
+    - Do NOT modify any other selector. Do NOT consolidate z-index values into CSS variables as part of this entry (separate refactor, out of scope).
+    - Do NOT touch `companion.js` — the bug is purely a CSS stacking issue; the JS positioning logic is correct.
+    - **Sanity check before committing**: grep `z-index` in the diff. There should be exactly one line changed — the `.companion` rule's z-index value. If any other z-index line appears in the diff, revert it.
+  - Out of scope: extracting z-index values into a layered CSS-variable system (e.g. `--z-companion`, `--z-modal`, etc.); changing other elements' z-indexes; changing the companion's pointer-events, position, or animation behavior; adding a user setting to control whether the ghost overlays modals (separate enhancement if ever wanted); the mobile-empty-state ghost mascots; the companion-disabled hide path; the music-visualizer ghost (`.musicVizGhost` is a separate element entirely).
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 73937df2-9074-48e1-bd91-8d4f1d823f53 -->
