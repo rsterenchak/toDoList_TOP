@@ -189,3 +189,66 @@
   - File: `toDoList_main/src/main.js` (buildInboxRow, renderInbox, import line for showDescEditorModal), `toDoList_main/src/style.css` (`.inboxRow*` selectors only), `toDoList_main/tests/` (extend existing inbox tests or add a new `inboxRowTap.test.js`)
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: dea60389-89df-4e52-9bb9-f389708402a6 -->
+
+- [ ] **[MEDIUM]** Exclude completed items from filter pill counts and empty-state trigger in applyTaskFilter
+  - Type: bug
+  - Description: The task filter cycle pill ("ACTIVE 175", "IDEAS N", "ALL N") inflates its count by including items whose `__item.completed === true`. Visible symptom in the user-supplied screenshot: the ACTIVE pill reads "175" on a project where only ~5 active items are visible and 170 items are in the collapsed COMPLETED section (5 + 170 = 175 — the completed are being double-counted under their original status). Same root cause as the previously-diagnosed IDEAS count inflation: completed items retain their `status` field, so a `status === 'active'` item with `completed: true` still gets counted by `counts.active += 1` in the filter's iteration. Fix: in `applyTaskFilter`'s count loop, exclude rows where `__item.completed === true` from ALL count increments (`counts.all`, `counts.active`, `counts.ideas`, `total`, and `visible`). Leave the `setRowHidden(row, !show)` call unchanged — the visibility behavior is correct as-is; only the counting is wrong. Completed items remain in the DOM (under the collapsed COMPLETED section), keep their `taskFilterHidden` class set by filter-match logic, and the dedicated "COMPLETED (170)" indicator continues to show the completed count separately. Net effect: filter pills show the count of *non-completed* matching items, which matches what the user perceives.
+  - Behavior:
+    1. ACTIVE pill: shows the count of items with `(status === 'active' || status === 'in_progress')` AND `completed === false`. In the screenshot's project, this should drop from 175 to ~5.
+    2. IDEAS pill: shows the count of items with `status === 'idea'` AND `completed === false`. Pre-fix (per the earlier diagnostic) this was 9; post-fix it should be the count of non-completed ideas.
+    3. ALL pill: shows the count of all items with `completed === false`.
+    4. The "COMPLETED (N)" indicator (the section header, owned by `updateCompletedSection` in `emptyState.js`) is UNCHANGED. It already counts completed items separately and that count is correct.
+    5. Empty-state trigger (`updateFilterEmptyState`): if the active filter matches zero non-completed items but the project has completed items, the filter-empty-state message shows ("No active tasks" or whichever message — the existing copy is unchanged). The trigger condition `total > 0 && visible === 0` now operates on non-completed-only counts.
+    6. `setRowHidden(row, !show)` is unchanged — completed items still get their `taskFilterHidden` class set based on filter-status match, the same as today. Their visibility under the COMPLETED collapse is governed by the `completedCollapsed` class on `#mainList` and the `.completed` class on the row (unchanged).
+    7. Real-time count update: filter pill count recalculates on every `applyTaskFilter()` call, which already happens when tasks are added, completed, un-completed, status-changed, or filter changes. After a user un-completes a previously-completed item (e.g. via the checkbox or the row's status path), the count updates on the same render pass — no extra wiring needed.
+    8. Cross-project behavior: per the existing scope of `applyTaskFilter` (operates on `#mainList`, current-project-only), no change. The inbox view aggregates across projects through a different path (`getIdeaTodosAcrossProjects`), unaffected by this entry.
+  - Test-first regression set:
+    1. With a fixture project containing 3 active-non-completed items and 5 active-but-completed items, `counts.active` after `applyTaskFilter` is 3 (not 8).
+    2. With a fixture project containing 2 idea-non-completed items and 7 idea-but-completed items, `counts.ideas` is 2 (not 9).
+    3. With a fixture project containing only completed items (0 non-completed), `total` is 0 and the filter empty-state message renders.
+    4. The COMPLETED section header count (`updateCompletedSection`) is unchanged — assert it still shows the count of `.completed` rows.
+    5. `setRowHidden` is called for every committed row (completed or not) and applies the same hide/show based on filter-status match as before this entry. Pin via spy.
+    6. Real-time update: simulate un-completing one of the 5 completed-active items → `applyTaskFilter` re-runs → `counts.active` is now 4 (not 3).
+    7. Filter switching is unaffected: cycle ALL → ACTIVE → IDEAS → ALL, each shows the correct non-completed count for its category.
+    8. Source-pattern: the count loop in `applyTaskFilter` (taskFilter.js around line 156-168) contains an early-skip or guard for `row.__item.completed`. Pin via a grep-style assertion that the count-incrementing lines are gated on a not-completed check.
+  - Implementation notes:
+    - **Single-file change**: only `toDoList_main/src/taskFilter.js` and its test file. No other file is modified.
+    - **The exact fix** in `applyTaskFilter` (around lines 156-168). Current code:
+```js
+      rows.forEach(function (row) {
+          if (!isCommittedRow(row)) return;
+          const status = rowStatus(row);
+          total += 1;
+          counts.all += 1;
+          if (status === 'active' || status === 'in_progress') counts.active += 1;
+          if (status === 'idea') counts.ideas += 1;
+          const show = activeFilter.match(status);
+          if (show) visible += 1;
+          setRowHidden(row, !show);
+      });
+```
+      Patched form:
+```js
+      rows.forEach(function (row) {
+          if (!isCommittedRow(row)) return;
+          const status = rowStatus(row);
+          const isCompleted = !!(row.__item && row.__item.completed);
+          if (!isCompleted) {
+              total += 1;
+              counts.all += 1;
+              if (status === 'active' || status === 'in_progress') counts.active += 1;
+              if (status === 'idea') counts.ideas += 1;
+          }
+          const show = activeFilter.match(status);
+          if (show && !isCompleted) visible += 1;
+          setRowHidden(row, !show);
+      });
+```
+      Note the `setRowHidden(row, !show)` line is UNCHANGED — completed rows still get filter-match hiding applied, preserving behavior in the COMPLETED-section-expanded case (where a user expands completed and would expect filter-status to still partition visibility).
+    - **Do NOT touch** `setRowHidden`, `updateCounts`, `updateFilterEmptyState`, `isCommittedRow`, `rowStatus`, `FILTERS`, the cycle-pill DOM construction, or `updateCompletedSection` in `emptyState.js`. The fix is purely inside the forEach body.
+    - **Tests**: extend `toDoList_main/tests/taskFilter.test.js` (already exists from the earlier saga and was kept). Add the fixture-based count assertions from the regression set above.
+    - **Sanity check before committing**: with a fresh test project containing exactly 3 non-completed active items + 5 completed active items, verify in jsdom that `counts.active === 3` and that `setRowHidden` was called 8 times (once per committed row). If `setRowHidden` is called fewer than 8 times, the patch accidentally added an early return for completed items — fix by restoring the `setRowHidden` call outside the completed-skip block.
+  - Out of scope: any change to `setRowHidden` (visibility behavior is correct as-is); any change to the completed-section header count (already correct); any change to the empty-state copy or the conditions for showing the project empty-state (only the filter-empty-state's input counts change); any change to status-popover behavior; any change to `getIdeaTodosAcrossProjects` (the inbox aggregator already excludes completed); any change to `buildToDoRow`, `buildInboxRow`, or any rendering function; any change to CSS; any change to the COMPLETED section's collapse/expand behavior; the data model (completed items continue to retain their `status` field — this is by design so un-completing restores the original category).
+  - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/tests/taskFilter.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a1062b59-6aaf-452c-a049-32bb8a26b66f -->
