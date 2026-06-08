@@ -449,10 +449,10 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5d4d927a-2d3e-4a44-aa8c-63242529974b -->
 
-- [ ] **[MEDIUM]** Fix variable gap between bolt icon and project name in project picker dropdown
+- [x] **[MEDIUM]** Fix variable gap between bolt icon and project name in project picker dropdown
 
   - Type: bug
   - Description: In `.projectPickerRow.hasInjectBolt`, the `.projInjectBolt` span is a flex sibling of `.projectPickerName` and `.projectPickerCount`, so flex gap or space-between distribution creates visible space between the bolt and the name that varies as the active row's count badge changes width. The fix is to treat the bolt as a prefix to the name rather than a standalone flex child: wrap `.projInjectBolt` and `.projectPickerName` together (or use negative margin / zero gap on the bolt) so the bolt sits flush left of the name with a fixed, predictable offset regardless of count badge width. Change is CSS-only in `style.css` targeting `.projectPickerRow`, `.projInjectBolt`, and `.projectPickerName`.
   - File: `toDoList_main/src/style.css`
-  - Completed:
+  - Completed: 2026-06-08
   <!-- id: 5726f2cf-2069-47e0-a22a-6ac50bd4fab3 -->
