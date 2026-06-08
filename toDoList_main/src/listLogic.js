@@ -2198,6 +2198,33 @@ export const listLogic = (function () {
     // runs, because `finally` releases the flag.
     let hydrationInFlight = false;
 
+    // Snapshot of the project ids the server acknowledged on the previous
+    // successful hydrate. Lets the next hydrate tell a project the server
+    // deleted (id was in this snapshot, now absent from the remote
+    // response) apart from one created offline (id never in the snapshot).
+    // Stored as a JSON id array under the todoapp_ prefix convention.
+    const LAST_SEEN_SERVER_PROJECT_IDS_KEY = 'todoapp_lastSeenServerProjectIds';
+
+    function readLastSeenServerProjectIds() {
+        try {
+            const raw = localStorage.getItem(LAST_SEEN_SERVER_PROJECT_IDS_KEY);
+            if (!raw) return new Set();
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? new Set(arr) : new Set();
+        } catch (_) {
+            return new Set();
+        }
+    }
+
+    function writeLastSeenServerProjectIds(ids) {
+        try {
+            localStorage.setItem(
+                LAST_SEEN_SERVER_PROJECT_IDS_KEY,
+                JSON.stringify(Array.isArray(ids) ? ids : [])
+            );
+        } catch (_) { /* ignore */ }
+    }
+
     // Reconcile the offline cache against Supabase. Runs once after the
     // auth gate confirms a session. Strategy:
     //   • Pull all of the user's projects + todos from Supabase
@@ -2267,6 +2294,9 @@ export const listLogic = (function () {
                 if (e && e.id) localById[e.id] = { name: name, entry: e };
             });
 
+            // Server-acknowledged project ids from the previous hydrate.
+            const lastSeenServerProjectIds = readLastSeenServerProjectIds();
+
             const todosByProjectId = {};
             remoteTodos.forEach(function(t) {
                 if (!todosByProjectId[t.project_id]) {
@@ -2331,6 +2361,16 @@ export const listLogic = (function () {
                 // re-INSERTed (which would collide on the id primary key
                 // and leave a duplicate under the stale name).
                 if (local.id && remoteById[local.id]) return;
+                // Cross-device deletion: this id was acknowledged by the
+                // server on a prior hydrate (it's in the snapshot) but is
+                // absent from the current remote response — the server
+                // removed it on another device. Drop the entry from the
+                // merged tree and skip the INSERT that would resurrect it.
+                // Its todos live nested under the entry, so omitting the
+                // entry cascade-drops them to match the server's cascade.
+                if (local.id && lastSeenServerProjectIds.has(local.id) && !remoteById[local.id]) {
+                    return;
+                }
                 if (!local.id) local.id = genId();
                 merged[name] = {
                     id: local.id,
@@ -2365,6 +2405,10 @@ export const listLogic = (function () {
 
             allProjectsTotal = Object.keys(allProjects).length;
             saveFromRealtime({ fromSync: true });
+
+            // Refresh the baseline so the next hydrate measures deletions
+            // against the server set this run actually saw.
+            writeLastSeenServerProjectIds(remoteProjects.map(function(p) { return p.id; }));
 
             if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
                 try {
