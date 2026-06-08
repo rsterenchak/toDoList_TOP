@@ -1,8 +1,9 @@
 {
-  "generatedAt": "2026-06-08T10:34:38.193Z",
-  "sha": "c99f8537e0a404998ab3b863c51e9b7389071633",
+  "generatedAt": "2026-06-08T10:59:50.181Z",
+  "sha": "f1d90637a876d75ee8f11e9be65d09fa1d6f527c",
   "files": [
     "auth.js",
+    "calendarView.js",
     "changelog.js",
     "claudeSheet.js",
     "coachmark.js",
