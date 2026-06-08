@@ -418,7 +418,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e8fa0a67-4664-45eb-87d2-24e56b8e8527 -->
 
-- [ ] **[LOW]** Add green thunderbolt indicator to all project rows when inject is configured
+- [x] **[LOW]** Add green thunderbolt indicator to all project rows when inject is configured — Completed: 2026-06-08
   - Type: feature
   - Description: When the user has configured inject (a Worker URL is saved in localStorage under the inject config key written by the Configure Inject flow), prepend a green ⚡ Unicode character to every project row title in the sidebar. When no inject config is present, no icon appears and titles render as they do today. The icon must not intercept click/tap or long-press events on the row, must not break title text truncation, and must be hidden when a project title is in edit/rename mode. On config change (user saves or clears the inject URL), the indicators must update without requiring a page reload.
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/inject.js`
