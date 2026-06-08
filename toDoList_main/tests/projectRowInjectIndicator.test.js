@@ -259,6 +259,38 @@ describe('project-picker dropdown inject thunderbolt — runtime behavior', () =
         syncProjectRowInjectBolt(row, 'Alpha');
         expect(row.querySelectorAll('.projInjectBolt').length).toBe(1);
     });
+
+    it('inserts no .projInjectBolt span at all on a non-qualifying row (inject not configured)', () => {
+        // Regression: the span must only exist in the DOM on rows that actually
+        // qualify. A non-qualifying row should carry NO span — not a hidden one
+        // — so it never contributes layout width / flex gap.
+        makeProject('Alpha', { target: true });
+        const row = makePickerRow('Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+        expect(row.querySelector('.projInjectBolt')).toBeNull();
+    });
+
+    it('inserts no .projInjectBolt span on a configured-but-unrouted row', () => {
+        configureInject();
+        makeProject('Beta', { target: false });
+        const row = makePickerRow('Beta');
+        syncProjectRowInjectBolt(row, 'Beta');
+        expect(row.querySelector('.projInjectBolt')).toBeNull();
+    });
+
+    it('removes a stale bolt span when a previously-qualifying row stops qualifying', () => {
+        configureInject();
+        makeProject('Alpha', { target: true });
+        const row = makePickerRow('Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+        expect(row.querySelector('.projInjectBolt')).not.toBeNull();
+
+        // project loses its routing → the span must be removed, not just hidden
+        listLogic.setProjectTargetId('Alpha', null);
+        syncProjectRowInjectBolt(row, 'Alpha');
+        expect(row.querySelector('.projInjectBolt')).toBeNull();
+        expect(row.classList.contains('hasInjectBolt')).toBe(false);
+    });
 });
 
 // Source / CSS invariants that jsdom can't exercise (it applies no

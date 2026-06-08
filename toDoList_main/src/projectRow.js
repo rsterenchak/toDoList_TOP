@@ -86,17 +86,25 @@ export function attachProjectInjectIndicator(projChild, titleInput) {
 // rebuilds these rows on each open, so the bolt state is always recomputed
 // fresh and there are no leaked closures over discarded rows.
 export function syncProjectRowInjectBolt(row, projectName) {
-    let bolt = row.querySelector('.projInjectBolt');
-    if (!bolt) {
-        bolt = document.createElement('span');
-        bolt.className = 'projInjectBolt';
-        bolt.textContent = INJECT_BOLT_CHAR;
-        bolt.setAttribute('aria-hidden', 'true');
-        // first child → lands ahead of the project name
-        row.insertBefore(bolt, row.firstChild);
-    }
     const hasTarget = isInjectConfigured()
         && !!listLogic.getProjectTargetId(projectName);
+    let bolt = row.querySelector('.projInjectBolt');
+    // Insert the span ONLY when the row qualifies — a non-qualifying row keeps
+    // no `.projInjectBolt` at all, so it can never contribute layout width or a
+    // flex gap. If a row stops qualifying (e.g. its routing was cleared), drop
+    // any stale span rather than leaving it hidden.
+    if (hasTarget) {
+        if (!bolt) {
+            bolt = document.createElement('span');
+            bolt.className = 'projInjectBolt';
+            bolt.textContent = INJECT_BOLT_CHAR;
+            bolt.setAttribute('aria-hidden', 'true');
+            // first child → lands ahead of the project name
+            row.insertBefore(bolt, row.firstChild);
+        }
+    } else if (bolt && bolt.parentNode) {
+        bolt.parentNode.removeChild(bolt);
+    }
     row.classList.toggle('hasInjectBolt', hasTarget);
 }
 
