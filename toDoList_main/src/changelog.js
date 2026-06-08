@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-08',
+        fixed: [
+            "Deleting a project on one device now sticks across all your devices instead of reappearing after the next sync.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-07',
         fixed: [
-            "Filter pill counts (Active, Ideas, All) no longer include completed tasks, so they reflect only outstanding work.",
             "When sorting by status, changing a task's status now moves the task to its new position immediately instead of waiting for a manual re-sort.",
             "Pipeline runs are now watched for up to 20 minutes before showing 'Unknown', so longer runs no longer dead-end while still in progress.",
             "The wandering ghost companion now stays on top of every other interface element instead of disappearing behind the chat pane or open dialogs.",
