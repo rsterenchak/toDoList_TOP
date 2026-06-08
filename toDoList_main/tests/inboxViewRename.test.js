@@ -74,14 +74,17 @@ describe('TODAY → INBOX internal rename', () => {
         it('keeps the Calendar-shared .todayRow row card and its builders', () => {
             // buildTodayRow + handleTodayCheckboxToggle are the shared task-row
             // card the Calendar day-detail panel renders — not a view
-            // identifier, so the rename leaves them alone.
-            expect(main).toMatch(/function\s+buildTodayRow\b/);
-            expect(main).toMatch(/function\s+handleTodayCheckboxToggle\b/);
-            expect(main).toMatch(/row\.className\s*=\s*['"]todayRow todoRowCard['"]/);
+            // identifier, so the rename leaves them alone. They now live in
+            // calendarView.js (extracted from main.js).
+            const calendar = read('calendarView.js');
+            expect(calendar).toMatch(/function\s+buildTodayRow\b/);
+            expect(calendar).toMatch(/function\s+handleTodayCheckboxToggle\b/);
+            expect(calendar).toMatch(/row\.className\s*=\s*['"]todayRow todoRowCard['"]/);
         });
 
         it('keeps the calendar/due-date "today" date semantics', () => {
-            expect(main).toMatch(/function\s+resetCalendarStateToToday\b/);
+            const calendar = read('calendarView.js');
+            expect(calendar).toMatch(/function\s+resetCalendarStateToToday\b/);
         });
     });
 

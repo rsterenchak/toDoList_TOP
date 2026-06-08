@@ -212,7 +212,10 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
         // renderCalendarView so a freshly-loaded calendar with no prior
         // selection still lands on a visible day.
         const body = extractViewArrowHandler();
-        expect(body).toMatch(/calendarSelectedKey/);
+        // The selected key is read through the getCalendarSelectedKey()
+        // accessor exported by calendarView.js (the calendar state moved
+        // out of main.js).
+        expect(body).toMatch(/getCalendarSelectedKey\(\s*\)/);
         // Today-key fallback uses the existing formatCalendarKeyForDate helper.
         expect(body).toMatch(/formatCalendarKeyForDate\(\s*new Date\(\s*\)\s*\)/);
         // Last-cell fallback so the cold-start case never strands focus.
