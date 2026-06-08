@@ -233,10 +233,12 @@ describe('todo.md viewer — expand/collapse toggle', () => {
     });
 
     // The diagonal-arrows expand toggle button (#todoMdViewerExpandBtn) was
-    // removed from the header; its DOM construction, click wiring, aria/icon
-    // flipping, and dedicated CSS no longer exist. The per-project expand
-    // state helpers and the height-fill machinery are intentionally left in
-    // place (inert) and remain covered by the tests below.
+    // removed from the header; its DOM construction, aria/icon flipping, and
+    // dedicated CSS no longer exist. The fill-to-bottom semantic now rides on
+    // the surviving collapse button — uncollapsing the body also applies the
+    // `--expanded` class and calls applyExpandedHeight() (see the
+    // "collapse button fills body to bottom" block below). The per-project
+    // expand state localStorage helpers remain inert and covered below.
 
     it('computes the expanded body height from #mainList and the card header', () => {
         // The expanded body fills the room from the header's bottom edge
@@ -302,6 +304,47 @@ describe('todo.md viewer — body collapse toggle', () => {
 
     it('hides the body via display:none when the card carries the collapsed class', () => {
         expect(css).toMatch(/\.todoMdViewerCard\.collapsed\s+\.todoMdViewerBody\s*\{[\s\S]{0,80}display:\s*none/);
+    });
+});
+
+describe('todo.md viewer — collapse button fills body to bottom on expand', () => {
+
+    const main = read('main.js');
+
+    // The collapse button is the only surviving expand affordance. Previously
+    // it toggled only the `collapsed` class, so uncollapsing showed the body at
+    // its default max-height ceiling — leaving a large blank gap below the card.
+    // The handler now also drives the `--expanded` class (which lifts the
+    // max-height ceiling) and calls applyExpandedHeight() so the body fills to
+    // the bottom of #mainList on every tap.
+    const handler = (() => {
+        const anchor = main.indexOf("collapseBodyBtn.addEventListener('click'");
+        expect(anchor).toBeGreaterThan(-1);
+        return main.slice(anchor, anchor + 600);
+    })();
+
+    it('derives the next collapsed state once and passes it to applyCollapsedState', () => {
+        expect(handler).toMatch(
+            /const\s+willBeCollapsed\s*=\s*!card\.classList\.contains\(\s*['"]collapsed['"]\s*\)/
+        );
+        expect(handler).toMatch(/applyCollapsedState\(\s*willBeCollapsed\s*\)/);
+    });
+
+    it('syncs the --expanded class to the un-collapsed state in the same handler', () => {
+        // Toggled ON when uncollapsing, OFF when collapsing, so the body's
+        // max-height ceiling lifts and drops in lockstep with visibility.
+        expect(handler).toMatch(
+            /card\.classList\.toggle\(\s*['"]todoMdViewerCard--expanded['"]\s*,\s*!willBeCollapsed\s*\)/
+        );
+    });
+
+    it('calls applyExpandedHeight() after toggling so the body fills (or clears) immediately on tap', () => {
+        // applyExpandedHeight computes the fill height when --expanded is
+        // present and clears the inline height when it is absent, so a single
+        // call covers both the expand and the collapse direction.
+        const togglePos = handler.indexOf('todoMdViewerCard--expanded');
+        const applyPos = handler.indexOf('applyExpandedHeight()');
+        expect(applyPos).toBeGreaterThan(togglePos);
     });
 });
 
