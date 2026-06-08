@@ -501,7 +501,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 31ea6f44-9e98-4b3c-a173-6957f542111f -->
 
-- [ ] **[MEDIUM]** Extract the Inbox view into its own inboxView.js module
+- [x] **[MEDIUM]** Extract the Inbox view into its own inboxView.js module — Completed: 2026-06-08
   - Type: feature
   - Description: Move the Inbox subsystem out of `main.js` into a new `toDoList_main/src/inboxView.js`, with no behavior change. The unit is `buildInboxRow`, the `_inboxStatusRerenderWired` flag + `ensureInboxStatusRerender`, and `renderInbox` (roughly lines 8057–8210). All three reach DOM via `document.getElementById`/`createElement` at call time (no `component()` closure capture), and the cluster never calls `applyActiveView`, so there is no back-edge into `main.js` and no injection or accessor is needed — unlike the calendar extraction. Keep the `_inboxStatusRerenderWired` guard: it's legitimate idempotency for a function called on every `renderInbox`, not a double-evaluation artifact.
   - Imports the new module needs: `{ listLogic } from './listLogic.js'`; `{ getActiveView } from './prefs.js'`; `{ buildStatusLabel, wireStatusLabelDelegation } from './todoStatus.js'`; `{ showDescEditorModal } from './modals.js'` (where it's defined).
