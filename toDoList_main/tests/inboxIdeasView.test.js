@@ -20,20 +20,24 @@ function read(relative) {
 // inboxIdeasQuery.test.js.
 describe('Cross-project INBOX ideas view', () => {
     const main = read('main.js');
+    const inbox = read('inboxView.js');
     const css = read('style.css');
 
     // Extract a top-level `function <name>(...) { ... }` body by brace
-    // matching, matching the approach the sibling view tests use.
-    function extractFn(name) {
-        const idx = main.indexOf('function ' + name);
+    // matching, matching the approach the sibling view tests use. The inbox
+    // render cluster now lives in inboxView.js; applyActiveView stays in
+    // main.js — pass the right source for each.
+    function extractFn(name, source) {
+        source = source || main;
+        const idx = source.indexOf('function ' + name);
         expect(idx).toBeGreaterThan(-1);
-        const braceStart = main.indexOf('{', idx);
+        const braceStart = source.indexOf('{', idx);
         let depth = 0;
-        for (let i = braceStart; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (let i = braceStart; i < source.length; i++) {
+            if (source[i] === '{') depth++;
+            else if (source[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(braceStart, i + 1);
+                if (depth === 0) return source.slice(braceStart, i + 1);
             }
         }
         throw new Error('unterminated ' + name + ' body');
@@ -54,8 +58,8 @@ describe('Cross-project INBOX ideas view', () => {
         });
     });
 
-    describe('renderInbox (main.js)', () => {
-        const body = extractFn('renderInbox');
+    describe('renderInbox (inboxView.js)', () => {
+        const body = extractFn('renderInbox', inbox);
 
         it('short-circuits when #inboxView is missing (boot-order safe)', () => {
             expect(body).toMatch(/getElementById\(\s*['"]inboxView['"]\s*\)/);
@@ -84,8 +88,8 @@ describe('Cross-project INBOX ideas view', () => {
         });
     });
 
-    describe('buildInboxRow (main.js) — popover reuse contract (f)', () => {
-        const body = extractFn('buildInboxRow');
+    describe('buildInboxRow (inboxView.js) — popover reuse contract (f)', () => {
+        const body = extractFn('buildInboxRow', inbox);
 
         it('shapes the row like a committed todo row so the delegated popover resolves it', () => {
             expect(body).toMatch(/\.id\s*=\s*['"]toDoChild['"]/);
@@ -105,7 +109,7 @@ describe('Cross-project INBOX ideas view', () => {
     });
 
     describe('status-change re-render (g)', () => {
-        const body = extractFn('ensureInboxStatusRerender');
+        const body = extractFn('ensureInboxStatusRerender', inbox);
 
         it('re-renders the inbox after a status option commit, scoped to the inbox view', () => {
             expect(body).toMatch(/todoStatusOption/);
