@@ -606,7 +606,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     it('marks a record dispatched past the give-up window as unconfirmed on mount (never asserts FAILED)', async () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'Stale running', status: 'RUNNING', dispatchedAt: Date.now() - 11 * 60 * 1000 },
+            { entryId: 'e1', correlationId: 'c1', title: 'Stale running', status: 'RUNNING', dispatchedAt: Date.now() - 21 * 60 * 1000 },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
@@ -617,6 +617,28 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).not.toBe('FAILED');
         expect(stored[0].unconfirmed).toBe(true);
+    });
+
+    it('defines a 20-minute give-up window and leaves the 5-second poll interval untouched', () => {
+        const claude = read('claudeSheet.js');
+        expect(claude).toMatch(/RUN_GIVE_UP_MS\s*=\s*20\s*\*\s*60\s*\*\s*1000/);
+        expect(claude).not.toMatch(/RUN_GIVE_UP_MS\s*=\s*10\s*\*\s*60\s*\*\s*1000/);
+        expect(claude).toMatch(/RUN_POLL_INTERVAL_MS\s*=\s*5000/);
+    });
+
+    it('keeps watching a record 19 minutes after dispatch — within the 20-minute give-up window', async () => {
+        // Before the window was extended to 20 minutes a 19-minute-old record
+        // would have aged out and rendered "Unknown". With the longer window it
+        // is still in-flight, so the pill keeps its last-known RUNNING state.
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Long running', status: 'RUNNING', dispatchedAt: Date.now() - 19 * 60 * 1000 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Running');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].unconfirmed).not.toBe(true);
     });
 
     it('marks the run unconfirmed when the poll reports completed with a non-failure conclusion', async () => {

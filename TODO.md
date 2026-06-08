@@ -305,7 +305,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bbe4cc28-f6fb-408b-8d96-7bda7e248b56 -->
 
-- [ ] **[LOW]** Extend run-watch timeout from 10 minutes to 20 minutes so long pipeline runs don't dead-end at "Unknown"
+- [x] **[LOW]** Extend run-watch timeout from 10 minutes to 20 minutes so long pipeline runs don't dead-end at "Unknown" — Completed: 2026-06-07
   - Type: bug
   - Description: Pipeline runs that take longer than 10 minutes get labeled "Unknown" by both run-watch surfaces (the TODO.md viewer's inline Run-backlog pill, and the Runs tab inside the chat pane) even though the run is still progressing on GitHub. Root cause: the give-up timeout `RUN_GIVE_UP_MS = 10 * 60 * 1000` in both `claudeSheet.js:42` and `main.js:6732`. After this window expires without a terminal status, the client stops polling and the pill switches to the dimmed "Unknown" treatment (claudeSheet.js:1746, plus the equivalent path in main.js via `showRunTimeout()`). The 10-minute window is shorter than how long the pipeline agent can plausibly take on a complex entry: with `max_turns: 100` in `.github/workflows/claude-run.yml`, runs that involve multi-file diagnosis, test rounds, and PR creation routinely reach 12-15 minutes. Bump both constants to 20 minutes (`20 * 60 * 1000`). This is a single-value change in two files — both call sites use the same constant name and the same semantic ("give up polling, render Unknown after this window"), so they must move together to keep the two surfaces consistent. Genuinely hung runs (>20 min) will still surface as "Unknown" with the existing affordance to open GitHub Actions and check directly.
   - Behavior:

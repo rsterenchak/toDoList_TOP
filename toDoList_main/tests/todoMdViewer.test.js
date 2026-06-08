@@ -465,8 +465,8 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
         expect(main).toMatch(/dataset\.dismissible\s*===\s*['"]1['"]\s*\)\s*restoreRunButton\(\)/);
     });
 
-    it('gives up after 10 minutes with a neutral "still running" state, not a failure', () => {
-        expect(main).toMatch(/RUN_GIVE_UP_MS\s*=\s*10\s*\*\s*60\s*\*\s*1000/);
+    it('gives up after 20 minutes with a neutral "still running" state, not a failure', () => {
+        expect(main).toMatch(/RUN_GIVE_UP_MS\s*=\s*20\s*\*\s*60\s*\*\s*1000/);
         const start = main.indexOf('function showRunTimeout');
         const block = main.slice(start, start + 400);
         expect(block).toMatch(/state:\s*['"]timeout['"]/);
@@ -558,7 +558,7 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
         );
     });
 
-    it('computes the 10-minute give-up against the persisted dispatch timestamp, not the re-attach time', () => {
+    it('computes the 20-minute give-up against the persisted dispatch timestamp, not the re-attach time', () => {
         const start = main.indexOf('function startRunPill');
         const block = main.slice(start, start + 1400);
         // startedAt comes from the persisted record's dispatchedAt.
