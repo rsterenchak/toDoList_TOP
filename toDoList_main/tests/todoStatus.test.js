@@ -15,6 +15,7 @@ import {
 } from '../src/todoStatus.js';
 import { wireToDoRowClick } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
+import { setTaskSort } from '../src/prefs.js';
 
 
 // buildToDoRow itself is too heavily wired to instantiate end-to-end here (see
@@ -388,6 +389,113 @@ function makeWiredRow(item, projectName) {
     wireToDoRowClick(row, input, null);
     return { mainList, row, input, title, label };
 }
+
+// ── Regression: committing a status change in the popover must re-sort the
+// row to its new sorted position when the global sort is "Status". The bug was
+// the handler calling applyTaskFilter() (counts + visibility only) but never
+// reorderToDoDOM(), so the row stayed at its old index until a manual re-sort.
+// reorderToDoDOM internally calls applyTaskFilter(), so the counts pass is
+// preserved by the switch.
+describe('(f) status change in the popover re-sorts the row (sort = Status)', () => {
+    // Build a #mainList holding one #toDoChild row per item, each anchored to
+    // the SAME item object listLogic owns, so reorderToDoDOM finds existing
+    // rows by __item and never needs the (un-loadable here) buildToDoRow path.
+    function buildMainListFor(projectName) {
+        const mainList = document.createElement('div');
+        mainList.id = 'mainList';
+        document.body.appendChild(mainList);
+        const items = listLogic.listItems(projectName);
+        items.forEach(function (item) {
+            mainList.appendChild(makeRow(item, projectName));
+        });
+        wireStatusLabelDelegation(mainList);
+        return mainList;
+    }
+
+    function rowTitles(mainList) {
+        return Array.from(mainList.querySelectorAll('#toDoChild'))
+            .map(function (r) { return r.__item.tit; });
+    }
+
+    function commitStatus(mainList, item, status) {
+        const row = Array.from(mainList.querySelectorAll('#toDoChild'))
+            .find(function (r) { return r.__item === item; });
+        row.querySelector('.todoStatusLabel').click();
+        const popover = document.getElementById('todoStatusPopover');
+        popover.querySelector('.todoStatusOption[data-status="' + status + '"]').click();
+    }
+
+    beforeEach(() => {
+        try { localStorage.clear(); } catch (e) { /* ignore */ }
+        listLogic._reset();
+        listLogic.addProject('Proj');
+        listLogic.addToDo('Proj', 'Active task');
+        listLogic.addToDo('Proj', 'Idea task');
+        const items = listLogic.listItems('Proj');
+        const idea = items.find((i) => i.tit === 'Idea task');
+        listLogic.setToDoStatus('Proj', idea, 'idea');
+    });
+
+    it('moves an idea row above an active row when changed to in_progress', () => {
+        setTaskSort('status');
+        const mainList = buildMainListFor('Proj');
+        const ideaItem = listLogic.listItems('Proj').find((i) => i.tit === 'Idea task');
+
+        // Before commit: build order — Active precedes Idea.
+        expect(rowTitles(mainList)).toEqual(['', 'Active task', 'Idea task']);
+
+        commitStatus(mainList, ideaItem, 'in_progress');
+
+        // in_progress (rank 0) sorts above active (rank 1): the row repositions.
+        expect(rowTitles(mainList)).toEqual(['', 'Idea task', 'Active task']);
+    });
+
+    it('does NOT reposition the row when sort = None', () => {
+        setTaskSort('none');
+        const mainList = buildMainListFor('Proj');
+        const ideaItem = listLogic.listItems('Proj').find((i) => i.tit === 'Idea task');
+
+        commitStatus(mainList, ideaItem, 'in_progress');
+
+        // sort=none → renderOrderForSort is identity → build order preserved.
+        expect(rowTitles(mainList)).toEqual(['', 'Active task', 'Idea task']);
+    });
+
+    it('persists the change and closes the popover on commit', () => {
+        setTaskSort('status');
+        const spy = vi.spyOn(listLogic, 'setToDoStatus');
+        const mainList = buildMainListFor('Proj');
+        const ideaItem = listLogic.listItems('Proj').find((i) => i.tit === 'Idea task');
+
+        commitStatus(mainList, ideaItem, 'in_progress');
+
+        expect(spy).toHaveBeenCalledWith('Proj', ideaItem, 'in_progress');
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+    });
+});
+
+
+describe('(g) popover commit wiring is reorderToDoDOM, not applyTaskFilter', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const src = readFileSync(resolve(here, '../src/todoStatus.js'), 'utf8');
+
+    it('imports reorderToDoDOM from toDoRow.js', () => {
+        expect(src).toMatch(/import\s*\{\s*reorderToDoDOM\s*\}\s*from\s*'\.\/toDoRow\.js'/);
+    });
+
+    it('the popover option handler calls reorderToDoDOM(projectName)', () => {
+        expect(src).toMatch(/reorderToDoDOM\(projectName\)/);
+    });
+
+    it('no longer imports applyTaskFilter from taskFilter.js (the dead import is removed)', () => {
+        expect(src).not.toMatch(/import\s*\{[^}]*applyTaskFilter[^}]*\}\s*from\s*'\.\/taskFilter\.js'/);
+    });
+
+    it('no longer invokes applyTaskFilter() directly (reorderToDoDOM runs it internally)', () => {
+        expect(src).not.toMatch(/[^.\w]applyTaskFilter\s*\(/);
+    });
+});
+
 
 describe('status label click is excluded from the row activate/focus path', () => {
     ['active', 'in_progress', 'idea'].forEach((status) => {
