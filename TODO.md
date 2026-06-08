@@ -470,7 +470,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d6269be6-5f4d-456c-b9ec-bbe95c2565c4 -->
 
-- [ ] **[LOW]** Remove obsolete double-evaluation listener guards from main.js
+- [x] **[LOW]** Remove obsolete double-evaluation listener guards from main.js — Completed: 2026-06-08
   - Type: bug
   - Description: With the webpack entry collapsed to a single bundle (prior task), `main.js`'s module-level code now evaluates exactly once, so the six `window.__*Registered` guards that existed only to prevent duplicate `addEventListener` registration under double-evaluation are now dead weight. Remove them: `__hydrateListenerRegistered`, `__dueDateChangedListenerRegistered`, `__swipeCompleteFlashListenerRegistered`, `__todoMdViewerListenerRegistered`, `__completedMobileSheetListenersRegistered`, and `__viewerMobileSheetListenersRegistered` (around lines 6135 / 6169 / 6210 / 7148 / 7508 / 7668 — they may have shifted slightly). For each block, drop only the `&& !window.__XRegistered` condition and the `window.__XRegistered = true;` assignment, leaving the `document.addEventListener(...)` call and any `typeof document`/`typeof window` environment guard intact — do not delete the listener itself.
   - Acceptance criteria:
