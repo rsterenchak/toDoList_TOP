@@ -23,20 +23,25 @@ import {
 } from './toDoRow.js';
 
 
-// Green ⚡ shown at the start of every project row's title while inject is
-// configured. The trailing variation selector (U+FE0E) forces text-style
-// (monochrome) rendering so the glyph honors the CSS `color` (theme green)
-// instead of falling back to a platform emoji.
+// Green ⚡ shown at the start of a project row's title while that specific
+// project has a configured inject target. The trailing variation selector
+// (U+FE0E) forces text-style (monochrome) rendering so the glyph honors the
+// CSS `color` (theme green) instead of falling back to a platform emoji.
 const INJECT_BOLT_CHAR = '⚡︎';
 
-// Attach (once per row) the inject-configured thunderbolt indicator. The bolt
+// Attach (once per row) the inject-target thunderbolt indicator. The bolt
 // lives in its own leading grid cell, surfaced by toggling `hasInjectBolt` on
 // the row — so it never disturbs the title input's ellipsis truncation, and
 // its CSS `pointer-events: none` lets taps / long-presses fall straight
 // through to the row's own click, drag, and context-menu handlers. It is
-// hidden whenever the title is mid-rename (the input holds focus) and shown
-// again on blur, and it reacts live to the `injectConfigChanged` event so
-// saving or clearing the inject config updates every row without a reload.
+// shown only when this row's project has a per-project inject target routed
+// (a non-null `target_id`) — not merely when inject is configured globally —
+// so rows with no routing stay bare. It renders identically at every
+// breakpoint (no mobile/desktop guard). It is hidden whenever the title is
+// mid-rename (the input holds focus) and shown again on blur, and it reacts
+// live to the `injectConfigChanged` / `injectTargetsChanged` events so
+// saving/clearing config or routing a project updates every row without a
+// reload.
 export function attachProjectInjectIndicator(projChild, titleInput) {
     let bolt = projChild.querySelector('.projInjectBolt');
     if (!bolt) {
@@ -50,7 +55,12 @@ export function attachProjectInjectIndicator(projChild, titleInput) {
 
     function sync() {
         const editing = document.activeElement === titleInput;
-        projChild.classList.toggle('hasInjectBolt', isInjectConfigured() && !editing);
+        // Per-project gate: only show the bolt when THIS project has a routed
+        // inject target, not merely when inject is configured globally. A
+        // project with no routing (null target_id) shows no bolt.
+        const hasTarget = isInjectConfigured()
+            && !!listLogic.getProjectTargetId(titleInput.value);
+        projChild.classList.toggle('hasInjectBolt', hasTarget && !editing);
     }
 
     sync();
@@ -59,8 +69,10 @@ export function attachProjectInjectIndicator(projChild, titleInput) {
     titleInput.addEventListener('focus', sync);
     titleInput.addEventListener('blur', sync);
 
-    // reflect inject config save/clear live (no reload)
+    // reflect inject config save/clear and per-project routing changes live
+    // (no reload)
     document.addEventListener('injectConfigChanged', sync);
+    document.addEventListener('injectTargetsChanged', sync);
 }
 
 

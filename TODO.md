@@ -425,7 +425,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c597b03e-521f-4795-b828-033f8b405759 -->
 
-- [ ] **[HIGH]** Fix inject bolt showing on all project rows instead of only configured ones, and ensure it renders on desktop
+- [x] **[HIGH]** Fix inject bolt showing on all project rows instead of only configured ones, and ensure it renders on desktop — Completed: 2026-06-08
 
   - Type: bug
   - Description: The ⚡︎ bolt indicator currently appears on every project row whenever inject is configured globally, but it should only appear on rows whose specific project has a configured inject target. The `sync()` function in `projectRow.js` must check per-project inject config (keyed by project id or name) rather than the global "is inject configured" flag. Separately, the bolt is not rendering on desktop — remove any mobile-only guard (media query or touch-device condition) that hides it; the bolt should be visible at all breakpoints. Keep the original orange unicode thunderbolt (⚡︎) styling as-is; do not change the glyph or its color treatment. Acceptance criteria: (1) a row shows the bolt only when that project has a configured inject target; (2) rows with no target show no bolt; (3) the bolt renders on both desktop and mobile; (4) existing `projectRowInjectIndicator` tests still pass and at least one new test covers the per-project filtering behavior.
