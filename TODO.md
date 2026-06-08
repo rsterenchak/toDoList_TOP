@@ -482,3 +482,21 @@
   - File: `toDoList_main/src/main.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c9477cf0-a99e-45c3-b020-eb52e10f5842 -->
+
+- [ ] **[MEDIUM]** Extract the Calendar view into its own calendarView.js module
+  - Type: feature
+  - Description: Move the entire Calendar subsystem out of `main.js` into a new `toDoList_main/src/calendarView.js`, with no behavior change. The unit to move is cohesive: the module-scope state (`calendarVisibleYear`, `calendarVisibleMonth`, `calendarSelectedKey`), the constants (`CALENDAR_MONTH_NAMES`, `CALENDAR_WEEKDAY_NAMES`), the helpers (`formatCalendarKeyForDate`, `parseCalendarKey`), the state mutators (`resetCalendarStateToToday`, `shiftCalendarMonth`), the renderers (`renderCalendarView`, `renderCalendarDayPanel`), AND the day-panel row builders `buildTodayRow`, `handleTodayCheckboxToggle`, and `jumpToProjectTodo` — despite the "Today" naming there is no Today view, and those three are reachable only from `renderCalendarDayPanel`, so they belong with the calendar. The renderers already fetch their DOM nodes via `document.getElementById` at call time (no closure capture from `component()`), so no DOM needs to be threaded in.
+  - Imports the new module needs: `{ listLogic } from './listLogic.js'`; `{ updateDuePillLabel, applyDueUrgency } from './dueDate.js'`; `{ prefersReducedMotion } from './dragDrop.js'` (the exported copy).
+  - Breaking the one back-edge: `jumpToProjectTodo` calls `applyActiveView`, which stays in `main.js` and itself calls `renderCalendarView` — importing `applyActiveView` back into the calendar module would create a circular import. Instead, inject it: `calendarView.js` exports an `initCalendarView({ applyActiveView })` that stashes the callback for `jumpToProjectTodo`, and `main.js` calls `initCalendarView({ applyActiveView })` once at module load after the import.
+  - Export surface (what `main.js` imports): `renderCalendarView`, `resetCalendarStateToToday`, `shiftCalendarMonth`, `formatCalendarKeyForDate`, a new `getCalendarSelectedKey()` accessor, and `initCalendarView`. Keep `renderCalendarDayPanel`, `parseCalendarKey`, and the three row builders module-private.
+  - main.js call-site rewrites: the prev/next-month handlers keep calling `shiftCalendarMonth` (now imported); the switcher's calendar branch keeps calling `resetCalendarStateToToday` + `renderCalendarView` (now imported); and the Calendar arrow-key re-focus block that currently reads the module-local `calendarSelectedKey` directly must read it through `getCalendarSelectedKey()` (it also calls `formatCalendarKeyForDate`, now imported).
+  - Test update: `tests/calendarKeyboardNav.test.js` reads `main.js` as text (`readFileSync`) and locates `function renderCalendarView` by string search — repoint that read to `../src/calendarView.js` and update the "not found in main.js" message. The assertion logic is unchanged since `renderCalendarView` stays a `function` declaration. The other three calendar tests read only `style.css` and need no change.
+  - Acceptance criteria:
+    - `main.js` no longer defines any of the moved symbols; `calendarView.js` exports the surface above; no circular import between the two.
+    - Full Vitest suite (`npm run test:run`) green, including the repointed `calendarKeyboardNav.test.js`.
+    - Switching to Calendar, paging months, selecting a day, and toggling a day-panel checkbox (including a recurring item) behave exactly as before; jump-to-project from a day-panel row still switches to Projects and scrolls to the row.
+  - Out of scope: Any behavior or styling change; extracting the Inbox view (`renderInbox`/`buildInboxRow` — separate follow-up); moving `applyActiveView` out of `main.js`; the shared due-pill-builder TODO noted above `buildTodayRow`.
+  - Implementation notes: `main.js` is over 25k tokens — locate the blocks with grep + offset/limit (calendar cluster roughly lines 8298–8634, prev/next handlers ~3746/3749, arrow-key read ~5244), never read it in full. Move additively: create `calendarView.js`, wire the imports + `initCalendarView`, confirm the suite is green, then delete the originals from `main.js`.
+  - File: `toDoList_main/src/calendarView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/calendarKeyboardNav.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 31ea6f44-9e98-4b3c-a173-6957f542111f -->
