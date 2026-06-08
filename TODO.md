@@ -333,7 +333,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 789eee60-3efd-4480-bbb1-8850865162ea -->
 
-- [ ] **[LOW]** Raise companion ghost z-index above all other UI so it never wanders behind elements
+- [x] **[LOW]** Raise companion ghost z-index above all other UI so it never wanders behind elements — Completed: 2026-06-07
   - Type: bug
   - Description: The wandering companion ghost mascot (`.companion` in style.css, position:fixed, animated via `companionIdle`/`companionCheer`/`companionBigCheer`) currently has `z-index: 2`, which is below virtually every other stacking layer in the app: `#desktopChatPane` (z-index 10), the desktop view sub-band (z-index 9), all modal backdrops (z-index 100), context menus (z-index 200-250), the status popover (z-index 1000), the mobile completed/viewer sheet backdrops (z-index 4000), and the top floating layer (z-index 10000). User-reported visible symptom: when the ghost wanders across the screen and its position overlaps `#claudeChatView` (or its surrounding chat-pane/sheet chrome), the ghost disappears behind that surface. The user wants the ghost on top of everything — a mascot is decorative and should be a consistent visual anchor regardless of what UI is open. Fix: raise `.companion`'s z-index above the existing top floating layer. Pick `z-index: 10001` — one above the highest current value (`10000` for the top-floating element at style.css line 3380), so the ghost sits on the topmost layer while preserving the existing relative order of everything else. The ghost is `pointer-events: none` already, so raising its stacking has no interaction-blocking risk — clicks pass through to whatever's beneath.
   - Behavior:

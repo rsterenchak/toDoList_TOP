@@ -83,6 +83,24 @@ describe('ghost companion — sprite asset', () => {
         const css = read('style.css');
         expect(css).toMatch(/\.companion\s*\{[^}]*background-image:\s*url\(\s*['"]?\.\/assets\/companion-ghost\.svg/);
     });
+
+    // The wandering ghost is decorative and must sit above every other
+    // stacking layer (top floating layer is z-index:10000) so it never
+    // disappears behind the chat pane, modals, popovers, or sheets while it
+    // wanders. It stays pointer-events:none so clicks pass through.
+    it('the base .companion rule sits above the top floating layer (z-index 10001)', () => {
+        const css = read('style.css');
+        const block = css.match(/\.companion\s*\{([^}]*)\}/);
+        expect(block).not.toBeNull();
+        expect(block[1]).toMatch(/z-index:\s*10001\b/);
+    });
+
+    it('preserves pointer-events: none on .companion so clicks pass through', () => {
+        const css = read('style.css');
+        const block = css.match(/\.companion\s*\{([^}]*)\}/);
+        expect(block).not.toBeNull();
+        expect(block[1]).toMatch(/pointer-events:\s*none/);
+    });
 });
 
 describe('ghost companion — main.js wiring', () => {
