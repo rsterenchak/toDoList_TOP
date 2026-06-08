@@ -500,3 +500,20 @@
   - File: `toDoList_main/src/calendarView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/calendarKeyboardNav.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 31ea6f44-9e98-4b3c-a173-6957f542111f -->
+
+- [ ] **[MEDIUM]** Extract the Inbox view into its own inboxView.js module
+  - Type: feature
+  - Description: Move the Inbox subsystem out of `main.js` into a new `toDoList_main/src/inboxView.js`, with no behavior change. The unit is `buildInboxRow`, the `_inboxStatusRerenderWired` flag + `ensureInboxStatusRerender`, and `renderInbox` (roughly lines 8057–8210). All three reach DOM via `document.getElementById`/`createElement` at call time (no `component()` closure capture), and the cluster never calls `applyActiveView`, so there is no back-edge into `main.js` and no injection or accessor is needed — unlike the calendar extraction. Keep the `_inboxStatusRerenderWired` guard: it's legitimate idempotency for a function called on every `renderInbox`, not a double-evaluation artifact.
+  - Imports the new module needs: `{ listLogic } from './listLogic.js'`; `{ getActiveView } from './prefs.js'`; `{ buildStatusLabel, wireStatusLabelDelegation } from './todoStatus.js'`; `{ showDescEditorModal } from './modals.js'` (where it's defined).
+  - Export surface: only `renderInbox`. `buildInboxRow` and `ensureInboxStatusRerender` are reachable only from inside the cluster, so keep them module-private.
+  - main.js change: remove the three definitions, import `renderInbox`, and leave the switcher's inbox branch (`applyActiveView`, ~line 8271) calling `renderInbox` — now resolved to the import. No other call sites exist.
+  - Test updates: `tests/inboxIdeasView.test.js` and `tests/inboxRowTap.test.js` both read source as text (`readFileSync` / an `extractFn` helper) to assert against `renderInbox` and `buildInboxRow` — repoint their source read from `main.js` to `../src/inboxView.js` (and update the `(main.js)` describe label in `inboxIdeasView`). `tests/inboxIdeasQuery.test.js` only tests `listLogic.getIdeaTodosAcrossProjects` and needs no change; `tests/inboxViewRename.test.js` asserts the inbox-pill click routes through `applyActiveView('inbox')` — that wiring stays in `main.js`, so it's unaffected.
+  - Acceptance criteria:
+    - `main.js` no longer defines `buildInboxRow`, `ensureInboxStatusRerender`, `_inboxStatusRerenderWired`, or `renderInbox`; `inboxView.js` exports `renderInbox`; no circular import.
+    - Full Vitest suite (`npm run test:run`) green, including the two repointed inbox tests.
+    - Switching to Inbox lists cross-project ideas newest-first, the empty state shows when there are none, tapping a row opens the description editor (saving persists via `listLogic.editToDoItem` and re-renders), and promoting an idea out of `idea` status while on Inbox drops it from the list on the next tick.
+  - Out of scope: Any behavior or styling change; touching the status popover (`todoStatus.js`) or the editor modal (`modals.js`); moving `applyActiveView`; the per-project row code in `main.js`/`toDoRow.js`.
+  - Implementation notes: `main.js` is over 25k tokens — grep for the cluster (around lines 8057–8210) with offset/limit, don't read it in full. Move additively: create `inboxView.js`, wire the imports, confirm the suite is green, then delete the originals from `main.js`.
+  - File: `toDoList_main/src/inboxView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/inboxIdeasView.test.js`, `toDoList_main/tests/inboxRowTap.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 86977b6a-2de9-4583-8951-9420471bf5de -->
