@@ -6125,15 +6125,10 @@ export { component, restoreFromStorage, notifyUpdateAvailable };
 // restoreFromStorage so the rebuild is mechanical — same code path
 // as initial load, no special-case "diff and patch" logic to keep
 // in sync with the renderer.
-// One-shot guard: main.js's module body evaluates more than once during
-// boot (the webpack-generated HTML loads multiple entry bundles that all
-// pull main.js in), so a naked addEventListener would register the
-// listener twice and dispatch fires both callbacks. The second pass would
-// re-enter restoreFromStorage on an empty in-memory tree and wipe the
-// sidebar. The window-scoped flag short-circuits the re-registration on
-// any subsequent module evaluation, regardless of cause.
-if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__hydrateListenerRegistered) {
-    window.__hydrateListenerRegistered = true;
+// The webpack entry was collapsed to a single bundle, so main.js's module
+// body evaluates exactly once at boot and this listener registers a single
+// time — no double-eval guard is needed.
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     document.addEventListener('listLogicHydrated', function onHydrate() {
         const sideMaDiv = document.getElementById('sideMa');
         const mainListDiv = document.getElementById('mainList');
@@ -6166,8 +6161,7 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
 // the next sort change or page reload. reorderToDoDOM re-parents existing rows
 // via appendChild so event listeners + open description/stats panels survive
 // the reorder.
-if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__dueDateChangedListenerRegistered) {
-    window.__dueDateChangedListenerRegistered = true;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     document.addEventListener('todoDueDateChanged', function onDueChange(evt) {
         const project = evt && evt.detail && evt.detail.project;
         if (!project) return;
@@ -6184,9 +6178,8 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.
 // toDoRow.js dispatches `todoSwipeRightComplete` from its swipe onRight handler
 // when the row goes uncompleted → completed (swiping right to un-complete an
 // already-completed row stays silent). The listener is registered once at
-// module-eval time and guards against double-registration the same way the
-// hydrate listener above does, since main.js evaluates more than once during
-// boot. Each fire spawns a short-lived DOM node that removes itself when the
+// module-eval time (the single-entry bundle evaluates main.js exactly once).
+// Each fire spawns a short-lived DOM node that removes itself when the
 // animation ends, so rapid-fire swipes never leak overlapping overlays.
 function playSwipeCompleteCheckmark() {
     if (prefersReducedMotion()) return;
@@ -6207,8 +6200,7 @@ function playSwipeCompleteCheckmark() {
     }, 1200);
 }
 
-if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__swipeCompleteFlashListenerRegistered) {
-    window.__swipeCompleteFlashListenerRegistered = true;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     document.addEventListener('todoSwipeRightComplete', playSwipeCompleteCheckmark);
 }
 
@@ -7145,8 +7137,7 @@ function updateTodoMdViewerCard() {
     viewerActiveProject = projectName;
 }
 
-if (typeof document !== 'undefined' && typeof window !== 'undefined' && !window.__todoMdViewerListenerRegistered) {
-    window.__todoMdViewerListenerRegistered = true;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     document.addEventListener('mainListRendered', function() {
         try { updateTodoMdViewerCard(); }
         catch (e) { console.warn('[mainListRendered] viewer update failed:', e); }
@@ -7504,9 +7495,7 @@ function closeCompletedMobileSheet() {
     }
 }
 
-if (typeof document !== 'undefined' && typeof window !== 'undefined'
-        && !window.__completedMobileSheetListenersRegistered) {
-    window.__completedMobileSheetListenersRegistered = true;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     // Re-renders that rebuild rows in #mainList (e.g. a swipe-complete
     // that calls reorderToDoDOM while the sheet is open) can leave the
     // sheet's moved rows orphaned. Re-collect on every render pass so
@@ -7664,9 +7653,7 @@ function closeViewerMobileSheet() {
     }
 }
 
-if (typeof document !== 'undefined' && typeof window !== 'undefined'
-        && !window.__viewerMobileSheetListenersRegistered) {
-    window.__viewerMobileSheetListenersRegistered = true;
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     // mainListRendered may rebuild the viewer card in #mainList (e.g.
     // project switch) while the sheet is open — re-collect so the sheet
     // body always shows the live viewer card.

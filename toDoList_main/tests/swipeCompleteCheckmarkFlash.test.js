@@ -107,9 +107,10 @@ describe('Swipe-to-complete center-screen checkmark flash', () => {
         const main = read('main.js');
 
         it('registers a single document-level listener for todoSwipeRightComplete', () => {
-            // Guarded by window.__swipeCompleteFlashListenerRegistered so the
-            // module re-eval during boot does not stack two listeners.
-            expect(main).toMatch(/window\.__swipeCompleteFlashListenerRegistered/);
+            // The single-entry webpack bundle evaluates main.js once at boot,
+            // so the listener registers a single time without the former
+            // window.__swipeCompleteFlashListenerRegistered double-eval guard.
+            expect(main).not.toMatch(/window\.__swipeCompleteFlashListenerRegistered/);
             expect(main).toMatch(/document\.addEventListener\(\s*['"]todoSwipeRightComplete['"]\s*,\s*playSwipeCompleteCheckmark\s*\)/);
         });
 
