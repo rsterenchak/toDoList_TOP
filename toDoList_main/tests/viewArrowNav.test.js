@@ -56,8 +56,10 @@ describe('view-aware arrow-key navigation — Inbox and Calendar', () => {
     it('buildTodayRow gives every row tabindex="-1" so it can be focused for nav', () => {
         // The row element itself must be programmatically focusable so the
         // arrow-nav handler can hand it focus without putting it in the
-        // browser tab order. Pinned at the buildTodayRow site.
-        const buildRowRegion = main.slice(main.indexOf('function buildTodayRow'));
+        // browser tab order. Pinned at the buildTodayRow site, which lives
+        // in calendarView.js (extracted from main.js).
+        const calendar = read('calendarView.js');
+        const buildRowRegion = calendar.slice(calendar.indexOf('function buildTodayRow'));
         expect(buildRowRegion).toMatch(/row\.setAttribute\(\s*["']tabindex["']\s*,\s*["']-1["']\s*\)/);
     });
 

@@ -331,8 +331,11 @@ describe('Inbox view + view switcher', () => {
         });
 
         it('keeps buildTodayRow and handleTodayCheckboxToggle — shared with the Calendar day-detail panel', () => {
-            expect(main).toMatch(/function\s+buildTodayRow\b/);
-            expect(main).toMatch(/function\s+handleTodayCheckboxToggle\b/);
+            // These row builders moved with the Calendar view into
+            // calendarView.js; assert they survive there.
+            const calendar = read('calendarView.js');
+            expect(calendar).toMatch(/function\s+buildTodayRow\b/);
+            expect(calendar).toMatch(/function\s+handleTodayCheckboxToggle\b/);
         });
     });
 });

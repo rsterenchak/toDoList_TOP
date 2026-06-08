@@ -121,7 +121,9 @@ describe('todo completion slide-out fade animation — project view wiring', () 
 
 
 describe('todo completion slide-out fade animation — Today / Calendar wiring', () => {
-    const main = read('main.js');
+    // handleTodayCheckboxToggle and its prefersReducedMotion import live in
+    // calendarView.js (extracted from main.js); read that module here.
+    const main = read('calendarView.js');
 
     function handleTodayCheckboxToggleBody() {
         const start = main.indexOf('function handleTodayCheckboxToggle(');

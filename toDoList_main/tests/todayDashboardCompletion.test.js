@@ -29,7 +29,9 @@ function read(relative) {
 // silently.
 
 describe('Today dashboard checkbox toggle — routes through listLogic.setToDoCompleted', () => {
-    const main = read('main.js');
+    // handleTodayCheckboxToggle lives in calendarView.js (extracted from
+    // main.js); read that module here.
+    const main = read('calendarView.js');
 
     function handleTodayCheckboxToggleBody() {
         const start = main.indexOf('function handleTodayCheckboxToggle(');

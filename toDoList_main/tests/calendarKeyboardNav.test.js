@@ -26,11 +26,11 @@ function read(relative) {
 // — where the cell never received focus — don't auto-focus and summon
 // the on-screen keyboard.
 describe('calendar keyboard nav — focus survives Enter re-render', () => {
-    const main = read('main.js');
+    const main = read('calendarView.js');
 
     function extractRenderCalendarView() {
         const idx = main.indexOf('function renderCalendarView');
-        if (idx < 0) throw new Error('renderCalendarView not found in main.js');
+        if (idx < 0) throw new Error('renderCalendarView not found in calendarView.js');
         const braceStart = main.indexOf('{', idx);
         let depth = 0;
         for (let i = braceStart; i < main.length; i++) {
