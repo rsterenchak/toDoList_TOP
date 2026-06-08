@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { beforeEach } from 'vitest';
-import { attachProjectInjectIndicator } from '../src/projectRow.js';
+import { attachProjectInjectIndicator, syncProjectRowInjectBolt } from '../src/projectRow.js';
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 
@@ -180,6 +180,87 @@ describe('project-row inject thunderbolt — runtime behavior', () => {
     });
 });
 
+// Build a minimal project-picker dropdown row mirroring main.js's
+// buildProjectPickerRows: a .projectPickerRow with a .projectPickerName label
+// and a .projectPickerCount. The dropdown variant of the indicator
+// (syncProjectRowInjectBolt) takes the project name directly because these rows
+// have no rename <input> of their own.
+function makePickerRow(name = 'Alpha') {
+    const row = document.createElement('div');
+    row.className = 'projectPickerRow';
+    const label = document.createElement('span');
+    label.className = 'projectPickerName';
+    label.textContent = name;
+    const count = document.createElement('span');
+    count.className = 'projectPickerCount';
+    row.appendChild(label);
+    row.appendChild(count);
+    document.body.appendChild(row);
+    return row;
+}
+
+describe('project-picker dropdown inject thunderbolt — runtime behavior', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        clearInject();
+        clearProjects();
+    });
+
+    it('shows no bolt when inject is not configured (even with a routed target)', () => {
+        makeProject('Alpha', { target: true });
+        const row = makePickerRow('Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+        expect(row.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
+    it('surfaces an ⚡ at the start of the dropdown row when the project has a routed inject target', () => {
+        configureInject();
+        makeProject('Alpha', { target: true });
+        const row = makePickerRow('Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+
+        expect(row.classList.contains('hasInjectBolt')).toBe(true);
+        const bolt = row.querySelector('.projInjectBolt');
+        expect(bolt).not.toBeNull();
+        expect(bolt.textContent).toContain('⚡');
+        // leads the row so it reads as a prefix to the project name
+        expect(row.firstChild).toBe(bolt);
+        // decorative only — kept out of the accessibility tree
+        expect(bolt.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('shows no bolt when inject is configured but the project has no routed target', () => {
+        configureInject();
+        makeProject('Beta', { target: false });
+        const row = makePickerRow('Beta');
+        syncProjectRowInjectBolt(row, 'Beta');
+        expect(row.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
+    it('shows the bolt on the routed dropdown row and not on the unrouted one (per-project filtering)', () => {
+        configureInject();
+        makeProject('Routed', { target: true });
+        makeProject('Bare', { target: false });
+
+        const routed = makePickerRow('Routed');
+        const bare = makePickerRow('Bare');
+        syncProjectRowInjectBolt(routed, 'Routed');
+        syncProjectRowInjectBolt(bare, 'Bare');
+
+        expect(routed.classList.contains('hasInjectBolt')).toBe(true);
+        expect(bare.classList.contains('hasInjectBolt')).toBe(false);
+    });
+
+    it('does not insert a second bolt when re-synced on the same row (idempotent rebuilds)', () => {
+        configureInject();
+        makeProject('Alpha', { target: true });
+        const row = makePickerRow('Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+        syncProjectRowInjectBolt(row, 'Alpha');
+        expect(row.querySelectorAll('.projInjectBolt').length).toBe(1);
+    });
+});
+
 // Source / CSS invariants that jsdom can't exercise (it applies no
 // stylesheet): the bolt must not steal pointer events, must not eat the
 // title's truncation budget when absent, renders at every breakpoint (no
@@ -195,8 +276,8 @@ describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
         expect(idx).toBeGreaterThan(-1);
         const block = css.slice(idx, idx + 400);
         expect(block).toMatch(/pointer-events:\s*none/);
-        // tinted with the app's theme-aware green, not a hardcoded one-off
-        expect(block).toMatch(/color:\s*var\(--type-feature/);
+        // tinted with the amber accent that reads against both themes
+        expect(block).toMatch(/color:\s*#ffbd5e/);
     });
 
     it('the bolt only occupies a grid column when present, preserving title truncation', () => {
@@ -220,6 +301,20 @@ describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
         // the single default-hidden base rule
         const hideMatches = css.match(/\.projInjectBolt[^{]*\{[^}]*display:\s*none/g) || [];
         expect(hideMatches.length).toBe(1);
+    });
+
+    it('the dropdown rows have their own show rule so the bolt surfaces inside the picker', () => {
+        // The sidebar show rule is `#projChild`-scoped, so the desktop
+        // project-picker dropdown needs an explicit, non-ancestor-excluded
+        // rule to reveal the same bolt on its own rows.
+        expect(css).toMatch(/\.projectPickerRow\.hasInjectBolt\s+\.projInjectBolt\s*\{[^}]*display:\s*inline/);
+    });
+
+    it('the dropdown row build wires the per-project bolt sync', () => {
+        const main = read('main.js');
+        // attached for every dropdown row regardless of mount point
+        expect(main).toMatch(/syncProjectRowInjectBolt\s*\(\s*row\s*,\s*name\s*\)/);
+        expect(main).toMatch(/import[\s\S]{0,200}syncProjectRowInjectBolt[\s\S]{0,200}from\s*['"]\.\/projectRow\.js['"]/);
     });
 
     it('saveInjectConfig broadcasts injectConfigChanged so rows can refresh live', () => {

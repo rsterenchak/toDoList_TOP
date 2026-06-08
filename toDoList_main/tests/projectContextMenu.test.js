@@ -227,6 +227,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         'document', 'window', 'listLogic', 'projectPickerDropdown', 'mobileProjName',
         'mobileProjHeader', 'mobileProjChevron', 'sideMain', 'navigateToProjectByIndex',
         'deleteProjectFlow', 'updateFooterCounts', 'applyProjectInitial',
+        'syncProjectRowInjectBolt',
         region +
         '\n; return { buildProjectPickerRows: buildProjectPickerRows,' +
         ' enterRowEditMode: enterRowEditMode,' +
@@ -302,7 +303,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         api = makeApi(
             document, window, listLogic, dropdown, mobileProjName,
             mobileProjHeader, mobileProjChevron, sideMain, navSpy,
-            vi.fn(), vi.fn(), vi.fn()
+            vi.fn(), vi.fn(), vi.fn(), vi.fn()
         );
         api.buildProjectPickerRows();
     });

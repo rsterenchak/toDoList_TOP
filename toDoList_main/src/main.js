@@ -68,6 +68,7 @@ import {
     attachProjectContextMenu,
     attachProjectDrag,
     attachProjectInjectIndicator,
+    syncProjectRowInjectBolt,
     deleteProjectFlow,
 } from './projectRow.js';
 import {
@@ -3087,6 +3088,12 @@ function component() {
 
             row.appendChild(label);
             row.appendChild(countEl);
+
+            // Leading ⚡ when this project has a routed inject target — same
+            // per-project gate as the sidebar rows, mounted here so the bolt
+            // surfaces inside the dropdown too (rows are rebuilt on each open,
+            // so a one-shot sync is enough — no persistent listeners).
+            syncProjectRowInjectBolt(row, name);
 
             row.addEventListener('click', function() {
                 // Active row: just dismiss (no project change). Otherwise
