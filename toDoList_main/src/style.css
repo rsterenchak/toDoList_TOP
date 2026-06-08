@@ -7821,7 +7821,7 @@ body.row-dragging * { cursor: grabbing !important; }
   background-size: 100% 100%;
   image-rendering: pixelated;
   pointer-events: none;
-  z-index: 2;
+  z-index: 10001;
   transform-origin: center bottom;
   will-change: transform;
 }
