@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-09T05:27:45.973Z",
-  "sha": "41690095e4ce2ab8351513812b7f7020a30b8e01",
+  "generatedAt": "2026-06-09T05:55:46.787Z",
+  "sha": "64570ba849e9fa54615c20e824367c4f15c2b981",
   "files": [
     "auth.js",
     "calendarView.js",
@@ -20,6 +20,7 @@
     "listLogic.js",
     "main.js",
     "migration.js",
+    "mobileSheets.js",
     "mobileTaskCreate.js",
     "modals.js",
     "music.js",
@@ -38,6 +39,7 @@
     "todoMdViewer.js",
     "todoStatus.js",
     "undoToast.js",
+    "viewport.js",
     "welcomeCarousel.js"
   ]
 }
