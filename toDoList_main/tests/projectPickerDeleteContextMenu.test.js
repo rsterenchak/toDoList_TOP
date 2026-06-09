@@ -11,24 +11,24 @@ function read(relative) {
 
 // The desktop project-picker dropdown gains a right-click / long-press
 // "Delete project…" context menu — the affordance the desktop revamp dropped
-// when it removed the per-row ×. main.js is too large to instantiate in jsdom
-// (per CLAUDE.md), so these invariants are pinned by source inspection,
-// mirroring projectPickerDropdown.test.js.
+// when it removed the per-row ×. The picker subsystem now lives in
+// projectPicker.js (extracted from component()), so these invariants are pinned
+// by source inspection of that module, mirroring projectPickerDropdown.test.js.
 describe('desktop project-picker delete context menu', () => {
-    const main = read('main.js');
+    const picker = read('projectPicker.js');
     const css = read('style.css');
 
-    // Slice a named function declaration's body from main.js.
+    // Slice a named function declaration's body from projectPicker.js.
     function fnBody(name) {
-        const start = main.indexOf('function ' + name + '(');
+        const start = picker.indexOf('function ' + name + '(');
         expect(start).toBeGreaterThan(-1);
-        let i = main.indexOf('{', start);
+        let i = picker.indexOf('{', start);
         let depth = 0;
-        for (; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (; i < picker.length; i++) {
+            if (picker[i] === '{') depth++;
+            else if (picker[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(start, i + 1);
+                if (depth === 0) return picker.slice(start, i + 1);
             }
         }
         throw new Error('unbalanced braces for ' + name);
@@ -173,18 +173,18 @@ describe('desktop project-picker delete context menu', () => {
 // invariants are pinned by source inspection (mirroring the delete suite
 // above). Deeper inline-edit invariants live in projectContextMenu.test.js.
 describe('desktop project-picker rename context menu', () => {
-    const main = read('main.js');
+    const picker = read('projectPicker.js');
 
     function fnBody(name) {
-        const start = main.indexOf('function ' + name + '(');
+        const start = picker.indexOf('function ' + name + '(');
         expect(start).toBeGreaterThan(-1);
-        let i = main.indexOf('{', start);
+        let i = picker.indexOf('{', start);
         let depth = 0;
-        for (; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (; i < picker.length; i++) {
+            if (picker[i] === '{') depth++;
+            else if (picker[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(start, i + 1);
+                if (depth === 0) return picker.slice(start, i + 1);
             }
         }
         throw new Error('unbalanced braces for ' + name);
@@ -215,9 +215,9 @@ describe('desktop project-picker rename context menu', () => {
 
     it('the Rename path no longer routes through the sidebar #projInput rename flow', () => {
         // beginProjectRename activated the off-screen drawer field — the bug
-        // this entry fixes. main.js no longer references it at all (the import
-        // is dropped; the sidebar still uses it from within projectRow.js).
-        expect(main).not.toMatch(/beginProjectRename/);
+        // this entry fixes. The picker module never references it (the sidebar
+        // still uses it from within projectRow.js).
+        expect(picker).not.toMatch(/beginProjectRename/);
     });
 
     it('the row geometry is threaded into the context menu so Rename can target it', () => {

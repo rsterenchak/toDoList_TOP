@@ -343,10 +343,12 @@ describe('project-row inject thunderbolt — CSS & wiring invariants', () => {
     });
 
     it('the dropdown row build wires the per-project bolt sync', () => {
-        const main = read('main.js');
+        // buildProjectPickerRows now lives in projectPicker.js, which imports the
+        // bolt sync directly from projectRow.js.
+        const picker = read('projectPicker.js');
         // attached for every dropdown row regardless of mount point
-        expect(main).toMatch(/syncProjectRowInjectBolt\s*\(\s*row\s*,\s*name\s*\)/);
-        expect(main).toMatch(/import[\s\S]{0,200}syncProjectRowInjectBolt[\s\S]{0,200}from\s*['"]\.\/projectRow\.js['"]/);
+        expect(picker).toMatch(/syncProjectRowInjectBolt\s*\(\s*row\s*,\s*name\s*\)/);
+        expect(picker).toMatch(/import[\s\S]{0,200}syncProjectRowInjectBolt[\s\S]{0,200}from\s*['"]\.\/projectRow\.js['"]/);
     });
 
     it('saveInjectConfig broadcasts injectConfigChanged so rows can refresh live', () => {
