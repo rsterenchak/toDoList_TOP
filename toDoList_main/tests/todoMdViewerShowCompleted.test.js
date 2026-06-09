@@ -6,7 +6,7 @@ import {
     filterCompletedTokens,
     countCompletedTodoMdEntries,
     buildViewerRenderedBody,
-} from '../src/main.js';
+} from '../src/todoMdViewer.js';
 import {
     isTodoMdShowCompleted,
     setTodoMdShowCompleted,
@@ -150,7 +150,7 @@ describe('todo.md viewer — buildViewerRenderedBody hideCompleted option', () =
 });
 
 describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
 
     it('imports the show-completed pref helpers from prefs.js', () => {
         expect(main).toMatch(
@@ -232,7 +232,7 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
 });
 
 describe('todo.md viewer — expand-button removal & show-completed relocation (main.js)', () => {
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('removes the #todoMdViewerExpandBtn (diagonal-arrows) button entirely', () => {
