@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { parseTodoMdChecklist } from '../src/main.js';
+import { parseTodoMdChecklist } from '../src/todoMdViewer.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -48,7 +48,7 @@ describe('todo.md viewer — inject.js worker-read helper', () => {
 
 describe('todo.md viewer — main.js card wiring', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
 
     it('imports findTargetById and readTodoMdFromWorker from inject.js', () => {
         expect(main).toMatch(
@@ -222,7 +222,7 @@ describe('todo.md viewer — parseTodoMdChecklist', () => {
 
 describe('todo.md viewer — expand/collapse toggle', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('persists expand state per project under the todoapp_ prefix', () => {
@@ -276,7 +276,7 @@ describe('todo.md viewer — expand/collapse toggle', () => {
 
 describe('todo.md viewer — body collapse toggle', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('renders a body-collapse toggle button in the header meta row', () => {
@@ -309,7 +309,7 @@ describe('todo.md viewer — body collapse toggle', () => {
 
 describe('todo.md viewer — collapse button fills body to bottom on expand', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
 
     // The collapse button is the only surviving expand affordance. Previously
     // it toggled only the `collapsed` class, so uncollapsing showed the body at
@@ -351,7 +351,7 @@ describe('todo.md viewer — collapse button fills body to bottom on expand', ()
 describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
 
     const inject = read('inject.js');
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('exports dispatchRun from inject.js', () => {
@@ -427,7 +427,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
 describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
 
     const inject = read('inject.js');
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('exports pollRunStatus from inject.js', () => {
@@ -564,7 +564,7 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
 
 describe('todo.md viewer — run-status pill persistence across navigation/reload', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
 
     it('stores the active run in a single localStorage slot under the todoapp_ prefix', () => {
         expect(main).toMatch(/ACTIVE_RUN_KEY\s*=\s*['"]todoapp_activeRun['"]/);
@@ -630,7 +630,7 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
 
 describe('todo.md viewer — per-entry "Run this entry" control', () => {
 
-    const main = read('main.js');
+    const main = read('todoMdViewer.js');
     const css = read('style.css');
 
     it('passes an onRunEntry callback into the rendered-body builder', () => {
@@ -770,7 +770,7 @@ describe('todo.md viewer — style.css', () => {
         // card. Fix removes the repo·path label entirely (project name
         // already tells the user which file they're viewing) and
         // collapses to a single header layout, no breakpoint fork.
-        const mainJs = read('main.js');
+        const mainJs = read('todoMdViewer.js');
         expect(mainJs).not.toMatch(/todoMdViewerRepo/);
         expect(mainJs).not.toMatch(/target\.repo\s*\+\s*['"][^'"]*['"]\s*\+\s*target\.file_path/);
         expect(css).not.toMatch(/\.todoMdViewerRepo\b/);

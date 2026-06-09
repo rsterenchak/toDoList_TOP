@@ -19,41 +19,51 @@ function read(relative) {
 // CLAUDE.md).
 describe('Mobile TODO.md viewer bottom sheet', () => {
     const main = read('main.js');
+    const viewer = read('todoMdViewer.js');
     const css  = read('style.css');
 
     it('attaches a click handler on the viewer card that opens the sheet on mobile only', () => {
-        // The handler lives inside buildTodoMdViewerCard so the listener
-        // is wired exactly once per card built (the card's click bubble
-        // would otherwise multiplied across rebuilds).
-        const buildIdx = main.indexOf('function buildTodoMdViewerCard(');
+        // The card-level click listener lives in buildTodoMdViewerCard
+        // (todoMdViewer.js) and delegates to a handler registered by main.js
+        // via setViewerCardTapHandler — the mobile-sheet machinery stays in
+        // main.js without a circular import. The guard logic (mobile-only,
+        // skip internal controls, #mainList-only, not-already-in-a-sheet)
+        // lives in that registered handler.
+        const buildIdx = viewer.indexOf('function buildTodoMdViewerCard(');
         expect(buildIdx).toBeGreaterThan(-1);
         // Walk to the next top-level function so the slice stays scoped
         // to this builder.
-        const nextFnIdx = main.indexOf('\nfunction ', buildIdx + 1);
-        const slice = main.slice(buildIdx, nextFnIdx > -1 ? nextFnIdx : buildIdx + 8000);
-        // Card-level click handler that bails when not on mobile.
+        const nextFnIdx = viewer.indexOf('\nfunction ', buildIdx + 1);
+        const slice = viewer.slice(buildIdx, nextFnIdx > -1 ? nextFnIdx : buildIdx + 8000);
+        // Card-level click handler that delegates to the injected tap handler.
         expect(slice).toMatch(/card\.addEventListener\(\s*['"]click['"]/);
-        expect(slice).toMatch(/isMobileViewport\(\s*\)/);
+        expect(slice).toMatch(/viewerCardTapHandler\(\s*card\s*,\s*event\s*\)/);
+
+        // The registered handler in main.js carries the guards + sheet open.
+        const handlerIdx = main.indexOf('setViewerCardTapHandler(function');
+        expect(handlerIdx).toBeGreaterThan(-1);
+        const handler = main.slice(handlerIdx, handlerIdx + 800);
+        // Bails when not on mobile.
+        expect(handler).toMatch(/isMobileViewport\(\s*\)/);
         // Skip clicks on internal interactive controls (button / tab /
         // anchor / input / label) so Sync / tabs / expand still work
         // without opening a redundant sheet.
-        expect(slice).toMatch(/event\.target\.closest\(/);
-        expect(slice).toMatch(/button/);
+        expect(handler).toMatch(/event\.target\.closest\(/);
+        expect(handler).toMatch(/button/);
         // Open the sheet only when the card lives in #mainList (i.e.
         // not when it has already been moved into a sheet body).
-        expect(slice).toMatch(/openViewerMobileSheet\(\s*card\s*\)/);
-        expect(slice).toMatch(/mainListDiv\.contains\(\s*card\s*\)/);
+        expect(handler).toMatch(/openViewerMobileSheet\(\s*card\s*\)/);
+        expect(handler).toMatch(/mainListDiv\.contains\(\s*card\s*\)/);
     });
 
     it('declines to open when the COMPLETED sheet is already showing the viewer', () => {
         // The COMPLETED sheet moves the viewer card into its own body —
         // a second sheet on top of it would be redundant and would
-        // strand the card in the wrong overlay. The click guard must
-        // bail when completedMobileSheetState is open.
-        const buildIdx = main.indexOf('function buildTodoMdViewerCard(');
-        const nextFnIdx = main.indexOf('\nfunction ', buildIdx + 1);
-        const slice = main.slice(buildIdx, nextFnIdx > -1 ? nextFnIdx : buildIdx + 8000);
-        expect(slice).toMatch(/completedMobileSheetState[\s\S]{0,80}\.open/);
+        // strand the card in the wrong overlay. The registered tap handler
+        // in main.js must bail when completedMobileSheetState is open.
+        const handlerIdx = main.indexOf('setViewerCardTapHandler(function');
+        const handler = main.slice(handlerIdx, handlerIdx + 800);
+        expect(handler).toMatch(/completedMobileSheetState[\s\S]{0,80}\.open/);
     });
 
     it('builds the sheet as a dialog with role + aria-modal + an aria label tying to its title', () => {
