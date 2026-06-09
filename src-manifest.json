@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-09T06:28:23.563Z",
-  "sha": "4b7ab9830e9adca2100f747420fc3f5bf7cd0af5",
+  "generatedAt": "2026-06-09T07:03:15.140Z",
+  "sha": "b487b3000de45d5a269ab1b43179f289f724fefe",
   "files": [
     "auth.js",
     "calendarView.js",
@@ -30,6 +30,7 @@
     "projectMenu.js",
     "projectPicker.js",
     "projectRow.js",
+    "settingsMenu.js",
     "style.css",
     "supabaseClient.js",
     "sw.js",
