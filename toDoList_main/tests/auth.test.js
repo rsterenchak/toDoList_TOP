@@ -175,19 +175,19 @@ describe('Auth gate boot-time wiring in index.js', () => {
 });
 
 
-describe('Sign-out row — desktop ghost menu (showSettingsMenu in main.js)', () => {
-    const main = read('main.js');
+describe('Sign-out row — desktop ghost menu (showSettingsMenu in settingsMenu.js)', () => {
+    const settingsMenu = read('settingsMenu.js');
 
     it('imports the shared supabase client', () => {
-        expect(main).toMatch(
+        expect(settingsMenu).toMatch(
             /import\s*\{[^}]*\bsupabase\b[^}]*\}\s*from\s*['"]\.\/supabaseClient\.js['"]/
         );
     });
 
     it('renders an Account section heading inside showSettingsMenu', () => {
-        const idx = main.indexOf('function showSettingsMenu');
+        const idx = settingsMenu.indexOf('function showSettingsMenu');
         expect(idx).toBeGreaterThan(-1);
-        const fn = main.slice(idx, idx + 20000);
+        const fn = settingsMenu.slice(idx, idx + 20000);
         // Mirrors the HELP section heading pattern — a
         // settingsMenuSectionHeading div with the label text.
         expect(fn).toMatch(/Account/);
@@ -195,9 +195,9 @@ describe('Sign-out row — desktop ghost menu (showSettingsMenu in main.js)', ()
     });
 
     it('renders a Sign out row that calls supabase.auth.signOut()', () => {
-        const idx = main.indexOf('function showSettingsMenu');
+        const idx = settingsMenu.indexOf('function showSettingsMenu');
         expect(idx).toBeGreaterThan(-1);
-        const fn = main.slice(idx, idx + 20000);
+        const fn = settingsMenu.slice(idx, idx + 20000);
         expect(fn).toMatch(/Sign out/);
         expect(fn).toMatch(/supabase\.auth\.signOut\s*\(/);
     });

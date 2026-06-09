@@ -293,6 +293,10 @@ describe('welcome carousel — wired into the app', () => {
     const index = read('index.js');
     const modals = read('modals.js');
     const css = read('style.css');
+    // The desktop ghost-menu (incl. its Replay welcome tour row + HELP
+    // heading) was extracted into settingsMenu.js; the mobile settings
+    // modal's Replay row + #settingsHelpSection stay in main.js.
+    const settingsMenu = read('settingsMenu.js');
 
     it('index.js imports and triggers the welcome carousel on mount', () => {
         expect(index).toMatch(/from\s+['"]\.\/welcomeCarousel\.js['"]/);
@@ -311,10 +315,10 @@ describe('welcome carousel — wired into the app', () => {
         // coachmark tour everywhere else. Pin the row label and the
         // carousel reference inside the row's activation handler so a
         // future refactor can't silently drop one half of the dispatch.
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
-        const idx = main.indexOf("'Replay welcome tour'");
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
+        const idx = settingsMenu.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1000);
+        const slice = settingsMenu.slice(idx, idx + 1000);
         expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
         expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
     });
@@ -326,13 +330,13 @@ describe('welcome carousel — wired into the app', () => {
         // (settingsMenuSectionHeading); the mobile modal uses the same
         // settingsSectionHeading class the View / Appearance sections use,
         // wrapped in a section with id #settingsHelpSection.
-        expect(main).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
+        expect(settingsMenu).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
         expect(main).toMatch(/settingsHelpSection/);
         // The desktop popover HELP heading is the one bound to the
         // `helpHeading` local. Match against the helpHeading-specific
         // wiring so this test stays scoped to HELP.
-        expect(main).toMatch(/helpHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
-        expect(main).toMatch(/helpHeading\.textContent\s*=\s*['"]Help['"]/);
+        expect(settingsMenu).toMatch(/helpHeading\.className\s*=\s*['"]settingsMenuSectionHeading['"]/);
+        expect(settingsMenu).toMatch(/helpHeading\.textContent\s*=\s*['"]Help['"]/);
     });
 
     it('mobile settings modal Replay row dispatches by viewport and closes the modal', () => {

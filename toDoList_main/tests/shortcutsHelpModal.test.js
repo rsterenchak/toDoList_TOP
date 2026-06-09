@@ -18,6 +18,9 @@ function read(relative) {
 describe('help modal + triggers', () => {
     const main = read('main.js');
     const modals = read('modals.js');
+    // The desktop ghost-menu Help item lives in settingsMenu.js after the
+    // closure-to-factory extraction; main.js keeps the gear trigger + `?` key.
+    const settingsMenu = read('settingsMenu.js');
     const css = read('style.css');
 
     function extractTopLevelRule(selector) {
@@ -77,10 +80,10 @@ describe('help modal + triggers', () => {
         // Anchor on the 'Help', literal inside the buildSettingsMenuItem
         // call (the trailing comma disambiguates from the HELP section
         // heading which also writes 'Help' as a literal).
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
-        const idx = main.indexOf("'Help',");
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
+        const idx = settingsMenu.indexOf("'Help',");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 400);
+        const slice = settingsMenu.slice(idx, idx + 400);
         expect(slice).toMatch(/showHelpModal\s*\(\s*\)/);
     });
 

@@ -20,6 +20,12 @@ function read(relative) {
 // the trigger while idle for discoverability.
 describe('ghost menu — top-nav trigger + dropdown', () => {
     const main = read('main.js');
+    // The desktop settings-menu builders + handlers were extracted from
+    // component() into settingsMenu.js (closure-to-factory carve-out). The
+    // gear trigger (settingsToggle) and its nav wiring stay in main.js, so
+    // assertions split by surface: toggle/nav read main, menu content reads
+    // settingsMenu.
+    const settings = read('settingsMenu.js');
     const modals = read('modals.js');
     const css = read('style.css');
 
@@ -78,25 +84,25 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         // removed when Drive sync was retired. The remaining toggle items
         // go through buildSettingsMenuItem so a future row addition picks
         // up the same chrome.
-        expect(main).toMatch(/function\s+buildSettingsMenuItem\s*\(/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Theme'\s*,/);
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'\s*,/);
+        expect(settings).toMatch(/function\s+buildSettingsMenuItem\s*\(/);
+        expect(settings).toMatch(/buildSettingsMenuItem\(\s*'Theme'\s*,/);
+        expect(settings).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'\s*,/);
     });
 
     it('renders a divider between the toggle group and the HELP section', () => {
         // The CSS class is consumed both for visual styling and as the
         // semantic anchor — the divider's render order in showSettingsMenu
         // determines which items sit above and below it.
-        expect(main).toMatch(/function\s+buildSettingsMenuDivider\s*\(/);
-        expect(main).toMatch(/settingsMenuDivider/);
+        expect(settings).toMatch(/function\s+buildSettingsMenuDivider\s*\(/);
+        expect(settings).toMatch(/settingsMenuDivider/);
 
         // Order in source: Theme → Toggle floating ghost → divider → Help
         // heading → Replay welcome tour. The previous DRIVE heading +
         // Sync row are gone.
-        const themeIdx     = main.indexOf("'Theme'");
-        const ghostIdx     = main.indexOf("'Toggle floating ghost'");
-        const dividerIdx   = main.indexOf('menu.appendChild(buildSettingsMenuDivider()');
-        const helpHeadIdx  = main.indexOf("helpHeading.textContent = 'Help'");
+        const themeIdx     = settings.indexOf("'Theme'");
+        const ghostIdx     = settings.indexOf("'Toggle floating ghost'");
+        const dividerIdx   = settings.indexOf('menu.appendChild(buildSettingsMenuDivider()');
+        const helpHeadIdx  = settings.indexOf("helpHeading.textContent = 'Help'");
         expect(themeIdx).toBeGreaterThan(-1);
         expect(ghostIdx).toBeGreaterThan(themeIdx);
         expect(dividerIdx).toBeGreaterThan(themeIdx);
@@ -106,48 +112,48 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
     it('does not render a DRIVE section heading or Drive Sync row builder', () => {
         // Drive sync was removed; no DRIVE heading, sync row builder, or
         // Drive-anchored menu hooks should remain in source.
-        expect(main).not.toMatch(/driveHeadingLabel\.textContent\s*=\s*['"]Drive['"]/);
-        expect(main).not.toMatch(/function\s+buildDriveSyncRow\s*\(/);
-        expect(main).not.toMatch(/menu\.appendChild\(\s*buildDriveSyncRow\s*\(\s*\)\s*\)/);
+        expect(settings).not.toMatch(/driveHeadingLabel\.textContent\s*=\s*['"]Drive['"]/);
+        expect(settings).not.toMatch(/function\s+buildDriveSyncRow\s*\(/);
+        expect(settings).not.toMatch(/menu\.appendChild\(\s*buildDriveSyncRow\s*\(\s*\)\s*\)/);
         // No LOCAL section heading either — long since removed.
-        expect(main).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
+        expect(settings).not.toMatch(/localHeading\.textContent\s*=\s*['"]Local['"]/);
     });
 
     it('Toggle floating ghost item flips the companion pref and mounts/destroys the singleton', () => {
-        const idx = main.indexOf("'Toggle floating ghost'");
+        const idx = settings.indexOf("'Toggle floating ghost'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 800);
+        const slice = settings.slice(idx, idx + 800);
         expect(slice).toMatch(/setCompanionEnabled\s*\(\s*next\s*\)/);
         expect(slice).toMatch(/ensureCompanion\s*\(\s*\)/);
         expect(slice).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 
     it('Theme item flips data-theme via applyTheme and persists under THEME_KEY', () => {
-        const idx = main.indexOf("'Theme'");
+        const idx = settings.indexOf("'Theme'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1000);
+        const slice = settings.slice(idx, idx + 1000);
         expect(slice).toMatch(/applyTheme\s*\(\s*next\s*\)/);
         expect(slice).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
     });
 
     it('shows the current state on the toggle items — ON/OFF for floating ghost, Light/Dark for theme', () => {
-        expect(main).toMatch(/isCompanionEnabled\(\)\s*\?\s*'ON'\s*:\s*'OFF'/);
-        expect(main).toMatch(/getCurrentTheme\(\)\s*===\s*'light'\s*\?\s*'Light'\s*:\s*'Dark'/);
+        expect(settings).toMatch(/isCompanionEnabled\(\)\s*\?\s*'ON'\s*:\s*'OFF'/);
+        expect(settings).toMatch(/getCurrentTheme\(\)\s*===\s*'light'\s*\?\s*'Light'\s*:\s*'Dark'/);
     });
 
     it('closes the dropdown on selection, outside click, and Escape', () => {
-        const itemBuilderStart = main.indexOf('function buildSettingsMenuItem');
+        const itemBuilderStart = settings.indexOf('function buildSettingsMenuItem');
         expect(itemBuilderStart).toBeGreaterThan(-1);
-        const itemBuilder = main.slice(itemBuilderStart, itemBuilderStart + 1200);
+        const itemBuilder = settings.slice(itemBuilderStart, itemBuilderStart + 1200);
         expect(itemBuilder).toMatch(/hideSettingsMenu\s*\(\s*\)/);
 
-        expect(main).toMatch(/function\s+onSettingsOutsideClick\s*\(/);
-        expect(main).toMatch(/function\s+onSettingsKeydown\s*\(/);
-        const escHandler = main.slice(main.indexOf('function onSettingsKeydown'));
+        expect(settings).toMatch(/function\s+onSettingsOutsideClick\s*\(/);
+        expect(settings).toMatch(/function\s+onSettingsKeydown\s*\(/);
+        const escHandler = settings.slice(settings.indexOf('function onSettingsKeydown'));
         expect(escHandler.slice(0, 400)).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
         expect(escHandler.slice(0, 400)).toMatch(/hideSettingsMenu\s*\(\s*\)/);
 
-        const outsideHandler = main.slice(main.indexOf('function onSettingsOutsideClick'));
+        const outsideHandler = settings.slice(settings.indexOf('function onSettingsOutsideClick'));
         expect(outsideHandler.slice(0, 600)).toMatch(/menu\.contains\s*\(\s*event\.target\s*\)/);
         expect(outsideHandler.slice(0, 600)).toMatch(/settingsToggle\.contains\s*\(\s*event\.target\s*\)/);
     });

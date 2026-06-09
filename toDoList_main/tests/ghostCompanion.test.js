@@ -112,6 +112,10 @@ describe('ghost companion — main.js wiring', () => {
     // companion.js itself, so callers don't have to thread a deps bag — every
     // importer gets the same instance via ensureCompanion()/destroyCompanion().
     const companion = read('companion.js');
+    // The desktop ghost-menu "Toggle floating ghost" item was extracted into
+    // settingsMenu.js (closure-to-factory carve-out); main.js still imports
+    // ensure/destroyCompanion for the mobile settings modal + boot wiring.
+    const settingsMenu = read('settingsMenu.js');
 
     it('imports ensureCompanion and destroyCompanion from ./companion.js', () => {
         expect(js).toMatch(/import\s*\{[^}]*ensureCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
@@ -178,10 +182,10 @@ describe('ghost companion — main.js wiring', () => {
         // right of the nav. The handler still flips isCompanionEnabled and
         // calls ensureCompanion / destroyCompanion the same way the old
         // switch did.
-        expect(js).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'/);
-        expect(js).toMatch(/setCompanionEnabled\s*\(\s*next\s*\)/);
-        expect(js).toMatch(/ensureCompanion\s*\(\s*\)/);
-        expect(js).toMatch(/destroyCompanion\s*\(\s*\)/);
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*'Toggle floating ghost'/);
+        expect(settingsMenu).toMatch(/setCompanionEnabled\s*\(\s*next\s*\)/);
+        expect(settingsMenu).toMatch(/ensureCompanion\s*\(\s*\)/);
+        expect(settingsMenu).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 });
 
