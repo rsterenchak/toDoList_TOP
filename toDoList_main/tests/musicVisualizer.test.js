@@ -292,59 +292,61 @@ describe('prefs — music visualizer keys', () => {
 });
 
 
-describe('musicVisualizer — CSS and main.js wiring', () => {
-    const main = read('main.js');
+describe('musicVisualizer — CSS and music.js wiring', () => {
+    // The popover (and its visualizer row) lives in music.js's createMusicUI
+    // factory; the visualizer imports moved there alongside it.
+    const music = read('music.js');
     const css  = read('style.css');
 
-    it('main.js imports the visualizer helpers from musicVisualizer.js', () => {
-        expect(main).toMatch(/import\s*\{[^}]*ensureVisualizer[^}]*\}\s*from\s*['"]\.\/musicVisualizer\.js['"]/);
-        expect(main).toMatch(/destroyVisualizer/);
-        expect(main).toMatch(/setVisualizerStyle/);
-        expect(main).toMatch(/setVisualizerPlaying/);
-        expect(main).toMatch(/VISUALIZER_STYLES/);
+    it('music.js imports the visualizer helpers from musicVisualizer.js', () => {
+        expect(music).toMatch(/import\s*\{[^}]*ensureVisualizer[^}]*\}\s*from\s*['"]\.\/musicVisualizer\.js['"]/);
+        expect(music).toMatch(/destroyVisualizer/);
+        expect(music).toMatch(/setVisualizerStyle/);
+        expect(music).toMatch(/setVisualizerPlaying/);
+        expect(music).toMatch(/VISUALIZER_STYLES/);
     });
 
-    it('main.js imports the visualizer pref accessors', () => {
-        expect(main).toMatch(/isMusicVisualizerEnabled/);
-        expect(main).toMatch(/setMusicVisualizerEnabled/);
-        expect(main).toMatch(/getMusicVisualizerStyle/);
-        expect(main).toMatch(/setMusicVisualizerStyle/);
+    it('music.js imports the visualizer pref accessors', () => {
+        expect(music).toMatch(/isMusicVisualizerEnabled/);
+        expect(music).toMatch(/setMusicVisualizerEnabled/);
+        expect(music).toMatch(/getMusicVisualizerStyle/);
+        expect(music).toMatch(/setMusicVisualizerStyle/);
     });
 
     it('builds a musicVizRow with a checkbox and a native select dropdown', () => {
-        expect(main).toMatch(/vizRow\.className\s*=\s*['"]musicVizRow['"]/);
-        expect(main).toMatch(/vizCheckbox\s*=\s*document\.createElement\(\s*['"]input['"]\s*\)/);
-        expect(main).toMatch(/vizCheckbox\.type\s*=\s*['"]checkbox['"]/);
-        expect(main).toMatch(/vizStyleSelect\s*=\s*document\.createElement\(\s*['"]select['"]\s*\)/);
+        expect(music).toMatch(/vizRow\.className\s*=\s*['"]musicVizRow['"]/);
+        expect(music).toMatch(/vizCheckbox\s*=\s*document\.createElement\(\s*['"]input['"]\s*\)/);
+        expect(music).toMatch(/vizCheckbox\.type\s*=\s*['"]checkbox['"]/);
+        expect(music).toMatch(/vizStyleSelect\s*=\s*document\.createElement\(\s*['"]select['"]\s*\)/);
     });
 
     it('appends the visualizer row to the popover before the controls row', () => {
-        const vizIdx = main.indexOf("pop.appendChild(vizRow)");
-        const controlsIdx = main.indexOf("pop.appendChild(controls)");
+        const vizIdx = music.indexOf("pop.appendChild(vizRow)");
+        const controlsIdx = music.indexOf("pop.appendChild(controls)");
         expect(vizIdx).toBeGreaterThan(-1);
         expect(controlsIdx).toBeGreaterThan(-1);
         expect(vizIdx).toBeLessThan(controlsIdx);
     });
 
     it('appends the visualizer row to the popover after the picker', () => {
-        const pickerIdx = main.indexOf("pop.appendChild(picker)");
-        const vizIdx = main.indexOf("pop.appendChild(vizRow)");
+        const pickerIdx = music.indexOf("pop.appendChild(picker)");
+        const vizIdx = music.indexOf("pop.appendChild(vizRow)");
         expect(pickerIdx).toBeGreaterThan(-1);
         expect(vizIdx).toBeGreaterThan(pickerIdx);
     });
 
     it('checkbox change handler persists the pref via setMusicVisualizerEnabled', () => {
-        const idx = main.indexOf('vizCheckbox.addEventListener');
+        const idx = music.indexOf('vizCheckbox.addEventListener');
         expect(idx).toBeGreaterThan(-1);
-        const block = main.slice(idx, idx + 600);
+        const block = music.slice(idx, idx + 600);
         expect(block).toMatch(/['"]change['"]/);
         expect(block).toMatch(/setMusicVisualizerEnabled/);
     });
 
     it('dropdown change handler persists the pref and swaps the active style', () => {
-        const idx = main.indexOf('vizStyleSelect.addEventListener');
+        const idx = music.indexOf('vizStyleSelect.addEventListener');
         expect(idx).toBeGreaterThan(-1);
-        const block = main.slice(idx, idx + 600);
+        const block = music.slice(idx, idx + 600);
         expect(block).toMatch(/['"]change['"]/);
         expect(block).toMatch(/setMusicVisualizerStyle/);
         expect(block).toMatch(/setVisualizerStyle/);
