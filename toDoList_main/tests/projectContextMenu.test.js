@@ -16,20 +16,23 @@ function read(relative) {
 // source inspection; the shared rename mutation is exercised directly against
 // listLogic.
 describe('desktop project-picker inline rename', () => {
+    // The picker's rename + context-menu functions now live in projectPicker.js;
+    // the sidebar #projInput rename mutation still lives in main.js.
+    const picker = read('projectPicker.js');
     const main = read('main.js');
     const css = read('style.css');
 
-    // Slice a named function declaration's body from main.js.
+    // Slice a named function declaration's body from projectPicker.js.
     function fnBody(name) {
-        const start = main.indexOf('function ' + name + '(');
+        const start = picker.indexOf('function ' + name + '(');
         expect(start).toBeGreaterThan(-1);
-        let i = main.indexOf('{', start);
+        let i = picker.indexOf('{', start);
         let depth = 0;
-        for (; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (; i < picker.length; i++) {
+            if (picker[i] === '{') depth++;
+            else if (picker[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(start, i + 1);
+                if (depth === 0) return picker.slice(start, i + 1);
             }
         }
         throw new Error('unbalanced braces for ' + name);
@@ -193,24 +196,27 @@ describe('sidebar project rename parity (unchanged)', () => {
 // region is extracted and given mocked dependencies — the same runtime-smoke
 // pattern todoRowSubControlKeyboardNav.test.js uses.
 describe('desktop project-picker inline rename — runtime behavior', () => {
-    const main = read('main.js');
+    // The picker functions were extracted to projectPicker.js; the contiguous
+    // function-declaration span the runtime smoke test slices + executes moved
+    // with them, still referencing only injectable externals.
+    const picker = read('projectPicker.js');
 
     // Slice the contiguous dropdown region (projectPickerIsOpen …
     // attachProjectPickerRowContextMenu) — every function the rename + context
     // menu flow touches lives in this span and references only injectable
     // externals.
     function sliceRegion(startSig, lastSig) {
-        const start = main.indexOf(startSig);
+        const start = picker.indexOf(startSig);
         if (start === -1) throw new Error('start signature not found: ' + startSig);
-        const lastStart = main.indexOf(lastSig);
+        const lastStart = picker.indexOf(lastSig);
         if (lastStart === -1) throw new Error('last signature not found: ' + lastSig);
-        const braceStart = main.indexOf('{', lastStart);
+        const braceStart = picker.indexOf('{', lastStart);
         let depth = 0;
-        for (let i = braceStart; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (let i = braceStart; i < picker.length; i++) {
+            if (picker[i] === '{') depth++;
+            else if (picker[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(start, i + 1);
+                if (depth === 0) return picker.slice(start, i + 1);
             }
         }
         throw new Error('unterminated region for: ' + lastSig);

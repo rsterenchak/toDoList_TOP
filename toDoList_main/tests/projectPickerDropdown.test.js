@@ -10,25 +10,29 @@ function read(relative) {
 }
 
 // The desktop anchored project-picker dropdown replaces the slide-in drawer
-// at ≥1024px while leaving the mobile (<1024px) drawer untouched. main.js is
-// too large to instantiate in jsdom (per CLAUDE.md), so these invariants are
-// pinned by source inspection, mirroring mobileProjHeaderDesktopRow.test.js.
+// at ≥1024px while leaving the mobile (<1024px) drawer untouched. The picker
+// subsystem now lives in projectPicker.js (extracted from component()); the pill
+// activation + the document-level outside-click / Escape dismissers stay in
+// main.js. Both files are too large / closure-bound to instantiate in jsdom (per
+// CLAUDE.md), so these invariants are pinned by source inspection, mirroring
+// mobileProjHeaderDesktopRow.test.js.
 describe('desktop project-picker dropdown', () => {
     const main = read('main.js');
+    const picker = read('projectPicker.js');
     const css = read('style.css');
 
-    // Slice a named function declaration's body from main.js.
-    function fnBody(name) {
-        const start = main.indexOf('function ' + name + '(');
+    // Slice a named function declaration's body from a source string.
+    function fnBody(src, name) {
+        const start = src.indexOf('function ' + name + '(');
         expect(start).toBeGreaterThan(-1);
         // Walk braces to find the matching close.
-        let i = main.indexOf('{', start);
+        let i = src.indexOf('{', start);
         let depth = 0;
-        for (; i < main.length; i++) {
-            if (main[i] === '{') depth++;
-            else if (main[i] === '}') {
+        for (; i < src.length; i++) {
+            if (src[i] === '{') depth++;
+            else if (src[i] === '}') {
                 depth--;
-                if (depth === 0) return main.slice(start, i + 1);
+                if (depth === 0) return src.slice(start, i + 1);
             }
         }
         throw new Error('unbalanced braces for ' + name);
@@ -40,21 +44,21 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('(a/b) at desktop the pill activation opens the dropdown, NOT the drawer', () => {
-        const body = fnBody('activateProjectPicker');
+        const body = fnBody(main, 'activateProjectPicker');
         // Branches on the 1024px breakpoint.
         expect(body).toMatch(/window\.innerWidth\s*>=\s*1024/);
-        // Desktop branch toggles the dropdown.
-        expect(body).toMatch(/toggleProjectPicker\(\)/);
+        // Desktop branch toggles the dropdown through the picker's public API.
+        expect(body).toMatch(/projectPicker\.toggle\(\)/);
     });
 
     it('(f) at mobile the pill activation opens the slide-in drawer', () => {
-        const body = fnBody('activateProjectPicker');
+        const body = fnBody(main, 'activateProjectPicker');
         // The else branch (mobile) routes to the existing drawer opener.
         expect(body).toMatch(/openMobileDrawer\(\)/);
     });
 
     it('(c) clicking a dropdown row routes through the shared selection path then dismisses', () => {
-        const body = fnBody('buildProjectPickerRows');
+        const body = fnBody(picker, 'buildProjectPickerRows');
         // Reuses the same project-selection codepath the drawer rows use.
         expect(body).toMatch(/navigateToProjectByIndex\(/);
         // And closes the dropdown after selection.
@@ -62,13 +66,13 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('reuses listLogic project data + counts (no duplicated project list)', () => {
-        const body = fnBody('buildProjectPickerRows');
+        const body = fnBody(picker, 'buildProjectPickerRows');
         expect(body).toMatch(/listLogic\.listProjectsArray\(\)/);
         expect(body).toMatch(/listLogic\.getProjectIncompleteCount/);
     });
 
     it('highlights the active project row', () => {
-        const body = fnBody('buildProjectPickerRows');
+        const body = fnBody(picker, 'buildProjectPickerRows');
         // Active row is flagged off the live header name and gets the
         // .active class (purple accent + ✓ in CSS / markup).
         expect(body).toMatch(/mobileProjName\.textContent/);
@@ -77,7 +81,7 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('does NOT introduce a new create-project path (footer omitted)', () => {
-        const body = fnBody('buildProjectPickerRows');
+        const body = fnBody(picker, 'buildProjectPickerRows');
         // The drawer's create flow (#projButton) is not invoked from the
         // dropdown — the footer is intentionally omitted.
         expect(body).not.toMatch(/projButton/);
@@ -91,15 +95,16 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('(e) closes on Escape', () => {
-        // A keydown handler guarded on the open dropdown closes it on Escape.
-        expect(main).toMatch(/if \(!projectPickerIsOpen\(\)\) return;[\s\S]{0,120}?closeProjectPicker\(\)/);
+        // A keydown handler in main.js guarded on the open dropdown closes it on
+        // Escape, routing through the picker's public API.
+        expect(main).toMatch(/if \(!projectPicker\.isOpen\(\)\) return;[\s\S]{0,120}?projectPicker\.close\(\)/);
         expect(main).toMatch(/e\.key !== ['"]Escape['"]/);
     });
 
     it('closes the dropdown when the viewport drops to mobile widths', () => {
-        // A resize listener dismisses the dropdown when it would otherwise be
-        // stranded below the 1024px breakpoint.
-        expect(main).toMatch(/addEventListener\(['"]resize['"][\s\S]*?window\.innerWidth\s*<\s*1024[\s\S]*?closeProjectPicker\(\)/);
+        // A resize listener inside the picker factory dismisses the dropdown when
+        // it would otherwise be stranded below the 1024px breakpoint.
+        expect(picker).toMatch(/addEventListener\(['"]resize['"][\s\S]*?window\.innerWidth\s*<\s*1024[\s\S]*?closeProjectPicker\(\)/);
     });
 
     it('(g) CSS force-hides the dropdown below 1024px', () => {
@@ -138,7 +143,7 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('toggles open/closed so a second pill click dismisses the dropdown', () => {
-        const body = fnBody('toggleProjectPicker');
+        const body = fnBody(picker, 'toggleProjectPicker');
         expect(body).toMatch(/projectPickerIsOpen\(\)/);
         expect(body).toMatch(/closeProjectPicker\(\)/);
         expect(body).toMatch(/openProjectPicker\(\)/);
