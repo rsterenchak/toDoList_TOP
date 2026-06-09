@@ -19,6 +19,9 @@ describe('theme toggle — sun/moon icon button', () => {
     const main = read('main.js');
     const theme = read('theme.js');
     const css = read('style.css');
+    // The desktop ghost-menu Theme item was extracted into settingsMenu.js;
+    // the nav-level negative assertion (no standalone themeToggle) stays on main.
+    const settingsMenu = read('settingsMenu.js');
 
     it('renders both moon and sun glyphs as inline SVG inside #themeToggle', () => {
         expect(theme).toMatch(/themeIconMoon/);
@@ -36,9 +39,9 @@ describe('theme toggle — sun/moon icon button', () => {
         // The standalone theme button has been replaced by an item inside the
         // new settings dropdown. main.js wires the menu item to the same
         // applyTheme + THEME_KEY persistence flow theme.js's button used.
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*'Theme'/);
-        expect(main).toMatch(/applyTheme\s*\(\s*next\s*\)/);
-        expect(main).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*'Theme'/);
+        expect(settingsMenu).toMatch(/applyTheme\s*\(\s*next\s*\)/);
+        expect(settingsMenu).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
         // No longer appended directly to the nav as a standalone button.
         expect(main).not.toMatch(/nav\.appendChild\s*\(\s*themeToggle\s*\)/);
     });

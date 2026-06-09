@@ -247,6 +247,9 @@ describe('Claude sheet — module surface and styling', () => {
     const css = read('style.css');
     const main = read('main.js');
     const modals = read('modals.js');
+    // The desktop ghost-menu (incl. its Help item) was extracted into
+    // settingsMenu.js; the gear trigger + mount stay in main.js.
+    const settingsMenu = read('settingsMenu.js');
 
     function extractTopLevelRule(selector) {
         let depth = 0;
@@ -333,10 +336,10 @@ describe('Claude sheet — module surface and styling', () => {
     });
 
     it('keeps help reachable via the ghost-menu Help item (never orphaned)', () => {
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
-        const idx = main.indexOf("'Help',");
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*['"]Help['"]\s*,/);
+        const idx = settingsMenu.indexOf("'Help',");
         expect(idx).toBeGreaterThan(-1);
-        expect(main.slice(idx, idx + 400)).toMatch(/showHelpModal\s*\(\s*\)/);
+        expect(settingsMenu.slice(idx, idx + 400)).toMatch(/showHelpModal\s*\(\s*\)/);
         // showHelpModal still exists in modals.js for that menu item + `?` key.
         expect(modals).toMatch(/export\s+function\s+showHelpModal\s*\(/);
     });

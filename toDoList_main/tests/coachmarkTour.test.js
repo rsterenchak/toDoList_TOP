@@ -300,6 +300,9 @@ describe('coachmark tour — wired into the app', () => {
     const modals = read('modals.js');
     const css = read('style.css');
     const prefs = read('prefs.js');
+    // The desktop ghost-menu "Replay welcome tour" item was extracted into
+    // settingsMenu.js; the mobile settings modal's replay handler stays in main.
+    const settingsMenu = read('settingsMenu.js');
 
     it('main.js imports the coachmark module', () => {
         expect(main).toMatch(/from\s+['"]\.\/coachmark\.js['"]/);
@@ -318,10 +321,10 @@ describe('coachmark tour — wired into the app', () => {
     });
 
     it('settings menu exposes a Replay welcome tour entry', () => {
-        expect(main).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
-        const idx = main.indexOf("'Replay welcome tour'");
+        expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*['"]Replay welcome tour['"]/);
+        const idx = settingsMenu.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1500);
+        const slice = settingsMenu.slice(idx, idx + 1500);
         expect(slice).toMatch(/startCoachmarkTour\s*\(\s*\)/);
     });
 
