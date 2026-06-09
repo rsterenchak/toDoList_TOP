@@ -554,7 +554,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 68eacd66-79da-4cbe-95bf-31f076670211 -->
 
-- [ ] **[MEDIUM]** Extract the project picker into a projectPicker.js factory (first component() subsystem)
+- [x] **[MEDIUM]** Extract the project picker into a projectPicker.js factory (first component() subsystem) — Completed: 2026-06-09
   - Type: feature
   - Description: Pull the project-picker dropdown subsystem out of the ~5,900-line `component()` into a new `toDoList_main/src/projectPicker.js`, with no behavior change. Unlike the Phase B tail extractions, these are nested closures inside `component()`, so the pattern is closure-to-factory: `projectPicker.js` exports `createProjectPicker({...deps})` that takes its captured DOM nodes and the `component()` functions it calls as arguments and returns the picker's public methods. This is the template for the remaining Phase C extractions, so keep the seam clean. Functions to move (currently ≈3046–3464): the dropdown core — `projectPickerIsOpen`, the `activeRowEditor` state + `cancelActiveRowEditor`, `buildProjectPickerRows`, `enterRowEditMode`, `positionProjectPicker`, `openProjectPicker`, `closeProjectPicker`, `toggleProjectPicker` — and the context-menu sub-cluster it owns — the `projRowContextMenu` state, `onProjRowCtxOutsideClick`, `onProjRowCtxOutsideCtx`, `onProjRowCtxKeydown`, `hideProjectRowContextMenu`, `findProjChildByName`, `showProjectRowContextMenu`, `attachProjectPickerRowContextMenu`. All move together; `activeRowEditor` and `projRowContextMenu` become module-private factory state.
   - Factory dependencies — `createProjectPicker({ ... })` takes:
