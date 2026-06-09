@@ -252,6 +252,9 @@ describe('music — pomodoro coordination', () => {
 
 describe('music — main.js wiring', () => {
     const main = read('main.js');
+    // The popover open/close logic moved into music.js's createMusicUI factory;
+    // the toggle button + factory call + imports stay in main.js.
+    const music = read('music.js');
     const css  = read('style.css');
     const modals = read('modals.js');
 
@@ -269,15 +272,15 @@ describe('music — main.js wiring', () => {
     });
 
     it('opens / dismisses the popover via showMusicPopover / hideMusicPopover', () => {
-        expect(main).toMatch(/function\s+showMusicPopover\s*\(/);
-        expect(main).toMatch(/function\s+hideMusicPopover\s*\(/);
-        expect(main).toMatch(/onMusicOutsideClick/);
-        expect(main).toMatch(/onMusicKeydown/);
+        expect(music).toMatch(/function\s+showMusicPopover\s*\(/);
+        expect(music).toMatch(/function\s+hideMusicPopover\s*\(/);
+        expect(music).toMatch(/onMusicOutsideClick/);
+        expect(music).toMatch(/onMusicKeydown/);
     });
 
     it('uses .open / .remove("open") instead of detaching the popover so the iframe survives close', () => {
-        expect(main).toMatch(/musicPopover\.classList\.add\(\s*['"]open['"]\s*\)/);
-        expect(main).toMatch(/musicPopover\.classList\.remove\(\s*['"]open['"]\s*\)/);
+        expect(music).toMatch(/musicPopover\.classList\.add\(\s*['"]open['"]\s*\)/);
+        expect(music).toMatch(/musicPopover\.classList\.remove\(\s*['"]open['"]\s*\)/);
     });
 
     it('registers the popover with isAnyModalOrPopoverOpen via the .open class selector', () => {
@@ -410,38 +413,43 @@ describe('music — youTubeUrlForStation sign-in fallback', () => {
 
 
 describe('music — Focus Music modal header carries an Open-in-YouTube icon button', () => {
-    const main = readFileSync(resolve(srcDir, 'main.js'), 'utf8');
+    // The popover (and its header button) is built in music.js's createMusicUI
+    // factory, co-located with the youTubeUrlForStation / getStationById
+    // helpers it uses.
+    const music = readFileSync(resolve(srcDir, 'music.js'), 'utf8');
     const css  = readFileSync(resolve(srcDir, 'style.css'), 'utf8');
 
-    it('imports the youTubeUrlForStation and getStationById helpers from music.js', () => {
-        expect(main).toMatch(/import\s*\{[^}]*youTubeUrlForStation[^}]*\}\s*from\s*['"]\.\/music\.js['"]/);
-        expect(main).toMatch(/import\s*\{[^}]*getStationById[^}]*\}\s*from\s*['"]\.\/music\.js['"]/);
+    it('resolves the header URL via the co-located youTubeUrlForStation and getStationById helpers', () => {
+        // Both helpers are defined in music.js, so the folded-in popover header
+        // references them directly rather than importing them across modules.
+        expect(music).toMatch(/export function youTubeUrlForStation/);
+        expect(music).toMatch(/export function getStationById/);
     });
 
     it('builds the header as a real <button> element (not an anchor)', () => {
-        const idx = main.indexOf('musicHeaderOpenExt');
+        const idx = music.indexOf('musicHeaderOpenExt');
         expect(idx).toBeGreaterThan(-1);
         // Find the createElement call attached to the headerOpenExt variable.
-        expect(main).toMatch(/headerOpenExt\s*=\s*document\.createElement\(\s*['"]button['"]\s*\)/);
+        expect(music).toMatch(/headerOpenExt\s*=\s*document\.createElement\(\s*['"]button['"]\s*\)/);
     });
 
     it('opens the URL in a new tab via window.open with the noopener feature', () => {
-        const idx = main.indexOf('musicHeaderOpenExt');
-        const block = main.slice(idx, idx + 1500);
+        const idx = music.indexOf('musicHeaderOpenExt');
+        const block = music.slice(idx, idx + 1500);
         expect(block).toMatch(/window\.open\(\s*[^,]+,\s*['"]_blank['"]\s*,\s*['"]noopener['"]\s*\)/);
     });
 
     it('resolves the URL from the active station at click time, falling back to youtube.com', () => {
-        const idx = main.indexOf('musicHeaderOpenExt');
-        const block = main.slice(idx, idx + 1500);
+        const idx = music.indexOf('musicHeaderOpenExt');
+        const block = music.slice(idx, idx + 1500);
         expect(block).toMatch(/getStationById\s*\(/);
         expect(block).toMatch(/youTubeUrlForStation\s*\(/);
         expect(block).toMatch(/https:\/\/www\.youtube\.com/);
     });
 
     it('labels the icon button for assistive tech and tooltip on hover', () => {
-        const idx = main.indexOf('musicHeaderOpenExt');
-        const block = main.slice(idx, idx + 1500);
+        const idx = music.indexOf('musicHeaderOpenExt');
+        const block = music.slice(idx, idx + 1500);
         expect(block).toMatch(/aria-label['"\s,]+Open in YouTube/);
         expect(block).toMatch(/title\s*=\s*['"]Open in YouTube['"]/);
     });
@@ -464,9 +472,9 @@ describe('music — Focus Music modal header carries an Open-in-YouTube icon but
     });
 
     it('removes the per-row Open-in-YouTube arrows from the station rows', () => {
-        const stationRowIdx = main.indexOf('function stationRow');
+        const stationRowIdx = music.indexOf('function stationRow');
         expect(stationRowIdx).toBeGreaterThan(-1);
-        const block = main.slice(stationRowIdx, stationRowIdx + 3000);
+        const block = music.slice(stationRowIdx, stationRowIdx + 3000);
         expect(block).not.toContain('musicStationOpenExt');
         // The rendered ↗ glyph that lived in the row should no longer be there.
         expect(block).not.toContain('↗');

@@ -18,6 +18,20 @@
 // requiring an actual YT player. The `_loadIframeApi()` helper short-circuits
 // in environments where `window.YT` (or the API script tag) cannot land.
 
+import {
+    isMusicVisualizerEnabled,
+    setMusicVisualizerEnabled,
+    getMusicVisualizerStyle,
+    setMusicVisualizerStyle,
+} from './prefs.js';
+import {
+    VISUALIZER_STYLES,
+    ensureVisualizer,
+    destroyVisualizer,
+    setVisualizerStyle,
+    setVisualizerPlaying,
+} from './musicVisualizer.js';
+
 export const MUSIC_STATE_KEY = 'todoapp_music_state';
 
 export const DEFAULT_VOLUME = 0.5;
@@ -533,6 +547,545 @@ export function createMusic(doc) {
         _setNowPlaying:             setNowPlaying,
         _setStatus:                 setStatus,
     };
+}
+
+
+// Builds and wires the now-playing strip + the focus-music popover, returning
+// the strip element for the host to place. Folds the popover UI out of
+// main.js's component() so the audio engine and its chrome live together.
+//
+// Dependencies injected from main.js's component() (the only three things that
+// can't be resolved locally):
+//   - musicToggle:        the header button DOM node (built + placed by
+//                         component()); this factory only wires its click +
+//                         status sweep.
+//   - isFocusInTextInput: shared popover-keyboard closure (also used by the
+//                         settings + pomodoro popovers).
+//   - popoverArrowNav:    shared arrow-key navigation closure.
+//
+// Everything else (the controller, station registry, URL parsing, visualizer
+// prefs) is resolved from this module's own imports. Returns
+// `{ nowPlayingStrip }`.
+export function createMusicUI(deps) {
+    deps = deps || {};
+    const musicToggle = deps.musicToggle;
+    const isFocusInTextInput = deps.isFocusInTextInput;
+    const popoverArrowNav = deps.popoverArrowNav;
+
+    function syncMusicIcon() {
+        const ctl = ensureMusic();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        musicToggle.setAttribute('data-music-status', snap.status);
+    }
+
+    // NOW-PLAYING STRIP — a thin horizontal row that lives directly below the
+    // header and only earns its space while music is PLAYING or BUFFERING. It
+    // mirrors the music controller's status through the same subscribe pattern
+    // syncMusicIcon uses; when the status is anything else (PAUSED / IDLE) the
+    // strip is hidden entirely and the musicToggle button alone signals state.
+    // The strip never owns visibility state of its own — it always follows the
+    // controller — so pomodoro auto-pause/resume reflows it for free.
+    const nowPlayingStrip = document.createElement('div');
+    nowPlayingStrip.id = 'nowPlayingStrip';
+    nowPlayingStrip.className = 'nowPlayingStrip';
+    nowPlayingStrip.setAttribute('role', 'status');
+    nowPlayingStrip.setAttribute('aria-live', 'polite');
+
+    const nowPlayingIcon = document.createElement('span');
+    nowPlayingIcon.className = 'nowPlayingStripIcon';
+    nowPlayingIcon.setAttribute('aria-hidden', 'true');
+    nowPlayingIcon.innerHTML =
+        '<svg viewBox="0 0 12 12" width="12" height="12" fill="currentColor" aria-hidden="true">' +
+        '<path d="M3 2.25v7.5l6-3.75z"/>' +
+        '</svg>';
+
+    const nowPlayingName = document.createElement('span');
+    nowPlayingName.className = 'nowPlayingStripName';
+
+    const nowPlayingSep = document.createElement('span');
+    nowPlayingSep.className = 'nowPlayingStripSep';
+    nowPlayingSep.setAttribute('aria-hidden', 'true');
+    nowPlayingSep.textContent = '·';
+
+    const nowPlayingStatus = document.createElement('span');
+    nowPlayingStatus.className = 'nowPlayingStripStatus';
+
+    const nowPlayingControls = document.createElement('div');
+    nowPlayingControls.className = 'nowPlayingStripControls';
+
+    const nowPlayingPause = document.createElement('button');
+    nowPlayingPause.type = 'button';
+    nowPlayingPause.className = 'nowPlayingStripPause';
+    nowPlayingPause.setAttribute('aria-label', 'Pause music');
+    nowPlayingPause.title = 'Pause';
+    nowPlayingPause.textContent = '⏸';
+
+    const nowPlayingDismiss = document.createElement('button');
+    nowPlayingDismiss.type = 'button';
+    nowPlayingDismiss.className = 'nowPlayingStripDismiss';
+    nowPlayingDismiss.setAttribute('aria-label', 'Dismiss now playing');
+    nowPlayingDismiss.title = 'Dismiss';
+    nowPlayingDismiss.textContent = '×';
+
+    nowPlayingControls.appendChild(nowPlayingPause);
+    nowPlayingControls.appendChild(nowPlayingDismiss);
+
+    nowPlayingStrip.appendChild(nowPlayingIcon);
+    nowPlayingStrip.appendChild(nowPlayingName);
+    nowPlayingStrip.appendChild(nowPlayingSep);
+    nowPlayingStrip.appendChild(nowPlayingStatus);
+    nowPlayingStrip.appendChild(nowPlayingControls);
+
+    // Pause reuses the controller's pause() — the exact call the popover's
+    // primary control makes when PLAYING. The subscribe callback then flips
+    // status to PAUSED and hides the strip on its own.
+    nowPlayingPause.addEventListener('click', function() {
+        const ctl = ensureMusic();
+        if (ctl) ctl.pause();
+    });
+
+    // Dismiss is a stronger "hide this now" action: it pauses AND collapses
+    // the strip immediately rather than waiting for the subscribe callback.
+    nowPlayingDismiss.addEventListener('click', function() {
+        const ctl = ensureMusic();
+        if (ctl) ctl.pause();
+        nowPlayingStrip.classList.remove('nowPlayingStrip--visible');
+    });
+
+    function syncNowPlayingStrip() {
+        const ctl = ensureMusic();
+        if (!ctl) return;
+        const snap = ctl.getState();
+        if (snap.status === 'PLAYING' || snap.status === 'BUFFERING') {
+            const station = getStationById(snap, snap.activeStationId);
+            nowPlayingName.textContent = station ? station.name : 'Unknown station';
+            nowPlayingStatus.textContent = snap.status === 'BUFFERING' ? 'buffering' : 'playing';
+            nowPlayingStrip.classList.add('nowPlayingStrip--visible');
+        } else {
+            nowPlayingStrip.classList.remove('nowPlayingStrip--visible');
+        }
+    }
+
+    // Hidden popover lives in the DOM after the first open so the iframe
+    // (and therefore the audio stream) isn't destroyed on close.
+    let musicPopover = null;
+    let musicSyncFromState = null;
+
+    function hideMusicPopover() {
+        if (!musicPopover) return;
+        musicPopover.classList.remove('open');
+        musicToggle.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onMusicOutsideClick, true);
+        document.removeEventListener('keydown', onMusicKeydown, true);
+        window.removeEventListener('resize', repositionMusicPopover);
+        window.removeEventListener('scroll', repositionMusicPopover, true);
+    }
+
+    function onMusicOutsideClick(event) {
+        if (!musicPopover) return;
+        if (musicPopover.contains(event.target) || musicToggle.contains(event.target)) return;
+        hideMusicPopover();
+    }
+
+    function onMusicKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            hideMusicPopover();
+            musicToggle.focus();
+            return;
+        }
+
+        // Backspace closes the popover from anywhere — the volume slider's
+        // native ↑↓ handling traps keyboard users with no arrow-key exit, so
+        // a "back out" key is essential. Skipped when typing in the paste-
+        // URL form so Backspace still deletes characters there.
+        if (event.key === 'Backspace' && !isFocusInTextInput()) {
+            if (!musicPopover || !musicPopover.classList.contains('open')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            hideMusicPopover();
+            musicToggle.focus();
+            return;
+        }
+
+        if (!musicPopover || !musicPopover.classList.contains('open')) return;
+        popoverArrowNav(musicPopover, event);
+    }
+
+    function repositionMusicPopover() {
+        if (!musicPopover || !musicPopover.classList.contains('open')) return;
+        const rect = musicToggle.getBoundingClientRect();
+        const popRect = musicPopover.getBoundingClientRect();
+        let top  = rect.bottom + 4;
+        let left = rect.right - popRect.width;
+        if (left < 4) left = 4;
+        if (top + popRect.height > window.innerHeight) {
+            top = Math.max(4, window.innerHeight - popRect.height - 4);
+        }
+        musicPopover.style.top  = top + 'px';
+        musicPopover.style.left = left + 'px';
+    }
+
+    function buildMusicPopover() {
+        const ctl = ensureMusic();
+        if (!ctl) return null;
+
+        const pop = document.createElement('div');
+        pop.id = 'musicPopover';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', 'Focus music');
+
+        const header = document.createElement('div');
+        header.className = 'musicPopoverHeader';
+
+        // Empty left slot keeps the centered title true-centered regardless
+        // of the right-side icon-button width.
+        const headerLeft = document.createElement('span');
+        headerLeft.className = 'musicPopoverHeaderSpacer';
+        headerLeft.setAttribute('aria-hidden', 'true');
+
+        const headerTitle = document.createElement('span');
+        headerTitle.className = 'musicPopoverHeaderTitle';
+        headerTitle.textContent = 'Focus music';
+
+        // Icon-only "open the active station on youtube.com" button, sitting
+        // where users expect a modal control. Click resolves the URL from the
+        // current controller state at click time so swapping stations doesn't
+        // require rebuilding the header.
+        const headerOpenExt = document.createElement('button');
+        headerOpenExt.type = 'button';
+        headerOpenExt.className = 'musicHeaderOpenExt';
+        headerOpenExt.setAttribute('aria-label', 'Open in YouTube');
+        headerOpenExt.title = 'Open in YouTube';
+        headerOpenExt.innerHTML =
+            '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M14 4h6v6"/>' +
+            '<path d="M10 14 20 4"/>' +
+            '<path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/>' +
+            '</svg>';
+        headerOpenExt.addEventListener('click', function() {
+            const snap = ctl.getState();
+            const station = getStationById(snap, snap.activeStationId);
+            const href = youTubeUrlForStation(station) || 'https://www.youtube.com';
+            window.open(href, '_blank', 'noopener');
+        });
+
+        header.appendChild(headerLeft);
+        header.appendChild(headerTitle);
+        header.appendChild(headerOpenExt);
+        pop.appendChild(header);
+
+        // Iframe target — the YT IFrame Player API replaces this <div> with
+        // an actual iframe. Visible at 240×135 inside the popover so the
+        // stream artwork shows through and YouTube's TOS embed-visibility
+        // terms are honoured.
+        const playerWrap = document.createElement('div');
+        playerWrap.className = 'musicPlayerWrap';
+        const playerTarget = document.createElement('div');
+        playerTarget.id = 'musicPlayerTarget';
+        playerWrap.appendChild(playerTarget);
+        pop.appendChild(playerWrap);
+
+        const nowPlaying = document.createElement('div');
+        nowPlaying.className = 'musicNowPlaying';
+        pop.appendChild(nowPlaying);
+
+        // Station picker — custom first, curated below.
+        const picker = document.createElement('div');
+        picker.className = 'musicPicker';
+        pop.appendChild(picker);
+
+        function renderPicker(snap) {
+            picker.textContent = '';
+
+            if (snap.customStations && snap.customStations.length) {
+                const head = document.createElement('div');
+                head.className = 'musicPickerSection';
+                head.textContent = 'Your stations';
+                picker.appendChild(head);
+                snap.customStations.forEach(function(station) {
+                    picker.appendChild(stationRow(station, snap, true));
+                });
+            }
+
+            const head = document.createElement('div');
+            head.className = 'musicPickerSection';
+            head.textContent = 'Curated';
+            picker.appendChild(head);
+            snap.curatedStations.forEach(function(station) {
+                picker.appendChild(stationRow(station, snap, false));
+            });
+
+            // Paste-URL row at the bottom.
+            const pasteRow = document.createElement('div');
+            pasteRow.className = 'musicPasteRow';
+            const pasteBtn = document.createElement('button');
+            pasteBtn.type = 'button';
+            pasteBtn.className = 'musicPasteBtn';
+            pasteBtn.textContent = '+ Paste YouTube URL';
+            pasteRow.appendChild(pasteBtn);
+
+            const pasteForm = document.createElement('div');
+            pasteForm.className = 'musicPasteForm';
+            pasteForm.style.display = 'none';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'musicPasteNameInput';
+            nameInput.placeholder = 'Station name (optional)';
+
+            const urlInput = document.createElement('input');
+            urlInput.type = 'text';
+            urlInput.className = 'musicPasteUrlInput';
+            urlInput.placeholder = 'https://youtube.com/watch?v=…';
+
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'musicPasteError';
+            errorMsg.style.display = 'none';
+
+            pasteForm.appendChild(nameInput);
+            pasteForm.appendChild(urlInput);
+            pasteForm.appendChild(errorMsg);
+            pasteRow.appendChild(pasteForm);
+            picker.appendChild(pasteRow);
+
+            pasteBtn.addEventListener('click', function() {
+                const open = pasteForm.style.display !== 'none';
+                pasteForm.style.display = open ? 'none' : '';
+                if (!open) {
+                    setTimeout(function() { urlInput.focus(); }, 0);
+                }
+            });
+
+            urlInput.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                const parsed = parseYouTubeUrl(urlInput.value);
+                if (!parsed) {
+                    errorMsg.textContent = "Couldn't read that URL. Try a watch / playlist / live link.";
+                    errorMsg.style.display = '';
+                    return;
+                }
+                const station = ctl.addCustomStation(nameInput.value, urlInput.value);
+                if (!station) {
+                    errorMsg.textContent = "Couldn't add that station.";
+                    errorMsg.style.display = '';
+                    return;
+                }
+                nameInput.value = '';
+                urlInput.value = '';
+                errorMsg.style.display = 'none';
+                pasteForm.style.display = 'none';
+            });
+        }
+
+        function stationRow(station, snap, isCustom) {
+            const row = document.createElement('div');
+            row.className = 'musicStationRow' + (snap.activeStationId === station.id ? ' active' : '');
+            row.dataset.stationId = station.id;
+
+            const nameBtn = document.createElement('button');
+            nameBtn.type = 'button';
+            nameBtn.className = 'musicStationName';
+            nameBtn.textContent = station.name;
+            nameBtn.addEventListener('click', function() {
+                ctl.setStation(station.id);
+            });
+
+            const genre = document.createElement('span');
+            genre.className = 'musicStationGenre';
+            genre.textContent = (station.genre || '').toUpperCase();
+
+            row.appendChild(nameBtn);
+            row.appendChild(genre);
+
+            if (isCustom) {
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'musicStationRemove';
+                removeBtn.setAttribute('aria-label', 'Remove ' + station.name);
+                removeBtn.textContent = '×';
+                removeBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    ctl.removeCustomStation(station.id);
+                });
+                row.appendChild(removeBtn);
+            }
+            return row;
+        }
+
+        // Visualizer toggle + style picker. Sits between the station list
+        // and the play/pause + slider row so the popover's top-down rhythm
+        // reads as: artwork → station list → visualizer prefs → controls.
+        // The checkbox shows / hides the overlay; the dropdown swaps style
+        // without remounting. Both feed prefs.js so the choice persists.
+        const vizRow = document.createElement('div');
+        vizRow.className = 'musicVizRow';
+
+        const vizCheckLabel = document.createElement('label');
+        vizCheckLabel.className = 'musicVizCheckLabel';
+        const vizCheckbox = document.createElement('input');
+        vizCheckbox.type = 'checkbox';
+        vizCheckbox.className = 'musicVizCheckbox';
+        vizCheckbox.checked = isMusicVisualizerEnabled();
+        const vizCheckText = document.createElement('span');
+        vizCheckText.className = 'musicVizCheckText';
+        vizCheckText.textContent = 'Visualizer';
+        vizCheckLabel.appendChild(vizCheckbox);
+        vizCheckLabel.appendChild(vizCheckText);
+
+        const vizStyleLabel = document.createElement('label');
+        vizStyleLabel.className = 'musicVizStyleLabel';
+        const vizStyleText = document.createElement('span');
+        vizStyleText.className = 'musicVizStyleText';
+        vizStyleText.textContent = 'STYLE';
+        const vizStyleSelect = document.createElement('select');
+        vizStyleSelect.className = 'musicVizStyleSelect';
+        VISUALIZER_STYLES.forEach(function(s) {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.label;
+            vizStyleSelect.appendChild(opt);
+        });
+        vizStyleSelect.value = getMusicVisualizerStyle();
+        vizStyleSelect.disabled = !vizCheckbox.checked;
+        vizStyleLabel.appendChild(vizStyleText);
+        vizStyleLabel.appendChild(vizStyleSelect);
+
+        vizRow.appendChild(vizCheckLabel);
+        vizRow.appendChild(vizStyleLabel);
+        pop.appendChild(vizRow);
+
+        function applyVisualizerFromPrefs() {
+            if (isMusicVisualizerEnabled()) {
+                ensureVisualizer(playerWrap, getMusicVisualizerStyle());
+                const status = ctl.getState().status;
+                setVisualizerPlaying(status === 'PLAYING' || status === 'BUFFERING');
+            } else {
+                destroyVisualizer();
+            }
+            vizStyleSelect.disabled = !isMusicVisualizerEnabled();
+        }
+
+        vizCheckbox.addEventListener('change', function() {
+            setMusicVisualizerEnabled(!!vizCheckbox.checked);
+            applyVisualizerFromPrefs();
+        });
+        vizStyleSelect.addEventListener('change', function() {
+            setMusicVisualizerStyle(vizStyleSelect.value);
+            if (isMusicVisualizerEnabled()) {
+                setVisualizerStyle(vizStyleSelect.value);
+            }
+        });
+
+        // Primary play/pause + volume row.
+        const controls = document.createElement('div');
+        controls.className = 'musicControls';
+
+        const primaryBtn = document.createElement('button');
+        primaryBtn.type = 'button';
+        primaryBtn.className = 'musicPrimaryBtn';
+        primaryBtn.textContent = 'Play';
+        primaryBtn.addEventListener('click', function() {
+            const status = ctl.getState().status;
+            if (status === 'PLAYING' || status === 'BUFFERING') {
+                ctl.pause();
+            } else {
+                ctl.play(playerTarget);
+            }
+        });
+
+        const volumeWrap = document.createElement('label');
+        volumeWrap.className = 'musicVolumeWrap';
+        const volumeInput = document.createElement('input');
+        volumeInput.type = 'range';
+        volumeInput.min = '0';
+        volumeInput.max = '100';
+        volumeInput.className = 'musicVolume';
+        volumeInput.setAttribute('aria-label', 'Volume');
+        volumeInput.addEventListener('input', function() {
+            const v = parseInt(volumeInput.value, 10);
+            if (isFinite(v)) ctl.setVolume(v / 100);
+        });
+        volumeWrap.appendChild(volumeInput);
+
+        controls.appendChild(primaryBtn);
+        controls.appendChild(volumeWrap);
+        pop.appendChild(controls);
+
+        function syncFromState(snap) {
+            renderPicker(snap);
+            volumeInput.value = String(Math.round((snap.volume || 0) * 100));
+            const playing = snap.status === 'PLAYING' || snap.status === 'BUFFERING';
+            primaryBtn.textContent = playing ? 'Pause' : 'Play';
+            if (snap.nowPlaying && snap.nowPlaying.title) {
+                nowPlaying.textContent = snap.nowPlaying.title +
+                    (snap.nowPlaying.author ? ' — ' + snap.nowPlaying.author : '');
+            } else {
+                nowPlaying.textContent = '';
+            }
+            // Match the visualizer's animation-play-state to the audio
+            // status so pausing music freezes the overlay in place.
+            if (isMusicVisualizerEnabled()) setVisualizerPlaying(playing);
+        }
+        musicSyncFromState = syncFromState;
+        ctl.subscribe(syncFromState);
+        // Mount the visualizer if the user opted in on a prior session, so
+        // the overlay is up the moment the popover opens rather than after
+        // the first status flip.
+        applyVisualizerFromPrefs();
+        syncFromState(ctl.getState());
+
+        return pop;
+    }
+
+    function showMusicPopover() {
+        if (!musicPopover) {
+            musicPopover = buildMusicPopover();
+            if (!musicPopover) return;
+            document.body.appendChild(musicPopover);
+        }
+        musicPopover.classList.add('open');
+        // Force a sync now so a station added via setStation while the
+        // popover was closed shows up active on next open.
+        if (musicSyncFromState) {
+            const ctl = ensureMusic();
+            if (ctl) musicSyncFromState(ctl.getState());
+        }
+        repositionMusicPopover();
+        musicToggle.setAttribute('aria-expanded', 'true');
+        document.addEventListener('click', onMusicOutsideClick, true);
+        document.addEventListener('keydown', onMusicKeydown, true);
+        window.addEventListener('resize', repositionMusicPopover);
+        window.addEventListener('scroll', repositionMusicPopover, true);
+    }
+
+    musicToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (musicPopover && musicPopover.classList.contains('open')) {
+            hideMusicPopover();
+        } else {
+            showMusicPopover();
+        }
+    });
+
+    // Keep the icon's playing/paused/idle treatment in sync regardless of
+    // whether the popover is open, and keep the now-playing strip in lockstep
+    // with the controller too, so it appears/disappears as status flips
+    // (including pomodoro-driven auto-pause/resume, which routes through the
+    // same status changes).
+    setTimeout(function() {
+        const ctl = ensureMusic();
+        if (!ctl) return;
+        ctl.subscribe(syncMusicIcon);
+        syncMusicIcon();
+
+        ctl.subscribe(syncNowPlayingStrip);
+        syncNowPlayingStrip();
+    }, 0);
+
+    return { nowPlayingStrip: nowPlayingStrip };
 }
 
 

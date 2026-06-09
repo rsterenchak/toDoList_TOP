@@ -34,10 +34,14 @@ function clearMusicStorage() {
 
 
 describe('now-playing strip — DOM markup', () => {
+    // The strip is built (and its controls wired) inside music.js's
+    // createMusicUI factory; main.js only places the returned element in the
+    // layout via musicUI.nowPlayingStrip.
     const main = read('main.js');
+    const music = read('music.js');
 
     it('creates a #nowPlayingStrip element', () => {
-        expect(main).toMatch(/nowPlayingStrip\.id\s*=\s*['"]nowPlayingStrip['"]/);
+        expect(music).toMatch(/nowPlayingStrip\.id\s*=\s*['"]nowPlayingStrip['"]/);
     });
 
     it('inserts the strip between the nav and the main section', () => {
@@ -45,28 +49,31 @@ describe('now-playing strip — DOM markup', () => {
         // directly after the nav and before the main pane so it owns its own
         // horizontal row beneath the header. The main pane is wrapped in the
         // D2 two-pane split (#mainSplit), so the strip precedes that wrapper.
+        // The factory returns the strip; component() places it.
         expect(main).toMatch(
-            /base\.appendChild\(nav\);\s*base\.appendChild\(nowPlayingStrip\);\s*base\.appendChild\(mainSplit\);/
+            /base\.appendChild\(nav\);\s*base\.appendChild\(musicUI\.nowPlayingStrip\);\s*base\.appendChild\(mainSplit\);/
         );
     });
 
     it('gives the strip a pause control and a dismiss control', () => {
-        expect(main).toMatch(/nowPlayingStripPause/);
-        expect(main).toMatch(/nowPlayingStripDismiss/);
+        expect(music).toMatch(/nowPlayingStripPause/);
+        expect(music).toMatch(/nowPlayingStripDismiss/);
         // Both are real buttons with accessible labels.
-        const idx = main.indexOf('nowPlayingPause');
+        const idx = music.indexOf('nowPlayingPause');
         expect(idx).toBeGreaterThan(-1);
-        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Pause music['"]/);
-        expect(main).toMatch(/aria-label['"]\s*,\s*['"]Dismiss now playing['"]/);
+        expect(music).toMatch(/aria-label['"]\s*,\s*['"]Pause music['"]/);
+        expect(music).toMatch(/aria-label['"]\s*,\s*['"]Dismiss now playing['"]/);
     });
 });
 
 
 describe('now-playing strip — syncNowPlayingStrip wiring', () => {
-    const main = read('main.js');
+    // syncNowPlayingStrip and the strip control handlers live in music.js's
+    // createMusicUI factory.
+    const music = read('music.js');
 
     function syncBody() {
-        const m = /function\s+syncNowPlayingStrip\s*\([\s\S]*?\n    \}/.exec(main);
+        const m = /function\s+syncNowPlayingStrip\s*\([\s\S]*?\n    \}/.exec(music);
         expect(m).toBeTruthy();
         return m[0];
     }
@@ -84,21 +91,21 @@ describe('now-playing strip — syncNowPlayingStrip wiring', () => {
     });
 
     it('is subscribed to the music controller alongside syncMusicIcon', () => {
-        expect(main).toMatch(/ctl\.subscribe\(syncNowPlayingStrip\)/);
+        expect(music).toMatch(/ctl\.subscribe\(syncNowPlayingStrip\)/);
     });
 
     it('pause control routes through the controller pause() method', () => {
         // The pause button reuses the controller's pause — no bespoke logic.
-        const idx = main.indexOf('nowPlayingPause.addEventListener');
+        const idx = music.indexOf('nowPlayingPause.addEventListener');
         expect(idx).toBeGreaterThan(-1);
-        const handler = main.slice(idx, idx + 200);
+        const handler = music.slice(idx, idx + 200);
         expect(handler).toMatch(/ctl\.pause\(\)/);
     });
 
     it('dismiss control pauses AND collapses the strip immediately', () => {
-        const idx = main.indexOf('nowPlayingDismiss.addEventListener');
+        const idx = music.indexOf('nowPlayingDismiss.addEventListener');
         expect(idx).toBeGreaterThan(-1);
-        const handler = main.slice(idx, idx + 260);
+        const handler = music.slice(idx, idx + 260);
         expect(handler).toMatch(/ctl\.pause\(\)/);
         expect(handler).toMatch(/classList\.remove\(\s*['"]nowPlayingStrip--visible['"]\s*\)/);
     });
