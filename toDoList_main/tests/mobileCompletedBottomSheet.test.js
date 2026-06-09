@@ -17,7 +17,12 @@ function read(relative) {
 // Verified via source inspection because main.js is too large to
 // instantiate end-to-end in jsdom (per CLAUDE.md).
 describe('Mobile COMPLETED bottom sheet', () => {
-    const main = read('main.js');
+    // The sheet contract is split across three modules after the
+    // mobileSheets.js extraction: main.js keeps the #completedHeader tap
+    // intercept, mobileSheets.js owns the sheet machinery, and viewport.js
+    // owns isMobileViewport. Read all three so the source-pattern pins
+    // below match wherever the contract now lives.
+    const main = read('main.js') + '\n' + read('mobileSheets.js') + '\n' + read('viewport.js');
     const css  = read('style.css');
 
     it('exposes a mobile viewport helper gated on a 1024px width threshold', () => {

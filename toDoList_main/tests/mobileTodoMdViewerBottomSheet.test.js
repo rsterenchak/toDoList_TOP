@@ -18,7 +18,12 @@ function read(relative) {
 // because main.js is too large to instantiate end-to-end in jsdom (per
 // CLAUDE.md).
 describe('Mobile TODO.md viewer bottom sheet', () => {
-    const main = read('main.js');
+    // After the mobileSheets.js extraction the viewer-sheet contract spans
+    // main.js (the setViewerCardTapHandler registration + its guards) and
+    // mobileSheets.js (the open/close/refresh machinery + isAnyMobileSheetOpen).
+    // Read both so the source-pattern pins below match wherever the contract
+    // now lives.
+    const main = read('main.js') + '\n' + read('mobileSheets.js');
     const viewer = read('todoMdViewer.js');
     const css  = read('style.css');
 
@@ -60,10 +65,15 @@ describe('Mobile TODO.md viewer bottom sheet', () => {
         // The COMPLETED sheet moves the viewer card into its own body —
         // a second sheet on top of it would be redundant and would
         // strand the card in the wrong overlay. The registered tap handler
-        // in main.js must bail when completedMobileSheetState is open.
+        // in main.js bails via isAnyMobileSheetOpen(), whose implementation
+        // in mobileSheets.js checks completedMobileSheetState.open.
         const handlerIdx = main.indexOf('setViewerCardTapHandler(function');
         const handler = main.slice(handlerIdx, handlerIdx + 800);
-        expect(handler).toMatch(/completedMobileSheetState[\s\S]{0,80}\.open/);
+        expect(handler).toMatch(/isAnyMobileSheetOpen\(\s*\)/);
+        const accessorIdx = main.indexOf('function isAnyMobileSheetOpen(');
+        expect(accessorIdx).toBeGreaterThan(-1);
+        const accessor = main.slice(accessorIdx, accessorIdx + 300);
+        expect(accessor).toMatch(/completedMobileSheetState[\s\S]{0,80}\.open/);
     });
 
     it('builds the sheet as a dialog with role + aria-modal + an aria label tying to its title', () => {
