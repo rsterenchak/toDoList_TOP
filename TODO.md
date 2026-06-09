@@ -574,7 +574,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5941c50c-d666-45a9-b876-ae42637a619d -->
 
-- [ ] **[MEDIUM]** Extract the settings menu into a settingsMenu.js factory
+- [x] **[MEDIUM]** Extract the settings menu into a settingsMenu.js factory — Completed: 2026-06-09
   - Type: feature
   - Description: Pull the desktop settings-menu (gear dropdown) subsystem out of `component()` into a new `toDoList_main/src/settingsMenu.js`, using the same closure-to-factory pattern as the project picker, with no behavior change. Functions to move (currently ≈1412–1700+): `focusAfterSettingsClose`, `hideSettingsMenu`, `onSettingsOutsideClick`, `onSettingsKeydown`, `buildSettingsMenuItem`, `buildSettingsMenuDivider`, and `showSettingsMenu` (the ~170-line builder that assembles the Theme / ghost-toggle / Help / Data / Account items). `settingsMenu.js` exports `createSettingsMenu(deps)` returning the menu's public methods.
   - Most dependencies are clean imports — the menu items already delegate to existing modules, so the new module imports them directly (no injection): `isCompanionEnabled, setCompanionEnabled, ensureCompanion, destroyCompanion` from `./companion.js`; `applyTheme, getCurrentTheme, THEME_KEY` from `./theme.js`; `showHelpModal` from `./modals.js`; `exportToJson, openImportPicker` from `./jsonImportExport.js`; `startCoachmarkTour` from `./coachmark.js`; `startWelcomeCarousel, isMobileCarouselViewport` from `./welcomeCarousel.js`; `supabase` from `./supabaseClient.js`; `wipeLocalUserDataOnSignOut` from `./migration.js`; `showInjectSettingsModal` from `./inject.js`; and `listLogic` from `./listLogic.js`.
