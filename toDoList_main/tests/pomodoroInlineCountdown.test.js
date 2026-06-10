@@ -51,7 +51,8 @@ describe('pomodoro inline countdown — toggle markup', () => {
 
 
 describe('pomodoro inline countdown — syncPomodoroIcon wiring', () => {
-    const main = read('main.js');
+    // syncPomodoroIcon moved into pomodoro.js's createPomodoroUI factory.
+    const main = read('pomodoro.js');
 
     function syncBody() {
         const m = /function\s+syncPomodoroIcon\s*\([\s\S]*?\n    \}/.exec(main);

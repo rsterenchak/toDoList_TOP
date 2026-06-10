@@ -343,13 +343,20 @@ describe('pomodoro — alert layers', () => {
 
 describe('pomodoro — main.js wiring', () => {
     const main = read('main.js');
+    // The popover UI (build + wiring) folded out of component() into
+    // pomodoro.js's createPomodoroUI factory; component() keeps only the
+    // pomodoroToggle button, getPomodoroController, and the music coupling.
+    const pomodoro = read('pomodoro.js');
     const css  = read('style.css');
     const modals = read('modals.js');
 
-    it('imports the pomodoro module helpers in main.js', () => {
+    it('imports the pomodoro module and mounts the UI factory in main.js', () => {
         expect(main).toMatch(/import\s*\{[^}]*ensurePomodoro[^}]*\}\s*from\s*['"]\.\/pomodoro\.js['"]/);
-        expect(main).toMatch(/formatMMSS/);
-        expect(main).toMatch(/parseMMSS/);
+        expect(main).toMatch(/import\s*\{[^}]*createPomodoroUI[^}]*\}\s*from\s*['"]\.\/pomodoro\.js['"]/);
+        expect(main).toMatch(/createPomodoroUI\(\s*\{\s*pomodoroToggle\s*\}\s*\)/);
+        // The MM:SS helpers now live with the popover code in pomodoro.js.
+        expect(pomodoro).toMatch(/formatMMSS/);
+        expect(pomodoro).toMatch(/parseMMSS/);
     });
 
     it('creates a #pomodoroToggle button in the nav', () => {
@@ -358,12 +365,12 @@ describe('pomodoro — main.js wiring', () => {
     });
 
     it('opens / dismisses the popover via showPomodoroPopover / hidePomodoroPopover', () => {
-        expect(main).toMatch(/function\s+showPomodoroPopover\s*\(/);
-        expect(main).toMatch(/function\s+hidePomodoroPopover\s*\(/);
+        expect(pomodoro).toMatch(/function\s+showPomodoroPopover\s*\(/);
+        expect(pomodoro).toMatch(/function\s+hidePomodoroPopover\s*\(/);
         // Popover dismissal mirrors the existing context-menu and due-date
         // popover patterns: outside click, Escape, scroll, resize.
-        expect(main).toMatch(/onPomodoroOutsideClick/);
-        expect(main).toMatch(/onPomodoroKeydown/);
+        expect(pomodoro).toMatch(/onPomodoroOutsideClick/);
+        expect(pomodoro).toMatch(/onPomodoroKeydown/);
     });
 
     it('registers the popover with isAnyModalOrPopoverOpen so global shortcuts pause', () => {
