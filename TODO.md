@@ -610,3 +610,21 @@
   - File: `toDoList_main/src/music.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/mobileMusicVolumeSlider.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e3157581-e630-4e67-99a6-192189332f33 -->
+
+- [ ] **[MEDIUM]** Centralize the shared popover-keyboard helpers into popoverNav.js
+  - Type: feature
+  - Description: Extract the two popover-keyboard helpers — `isFocusInTextInput` (currently `main.js` ~line 325) and `popoverArrowNav` (~line 343) — out of `component()` into a new `toDoList_main/src/popoverNav.js` that exports both, with no behavior change. They were defined in the pomodoro region but are cross-cutting: `isFocusInTextInput` is used by the pomodoro, music, and settings popovers (the latter two already receive it by injection), and `popoverArrowNav` is used by the music popover. Pulling them into a shared module gives them one home, removes the inject-the-same-helper-three-ways pattern, and clears the pomodoro region so the upcoming pomodoro extraction moves a clean block.
+  - main.js changes: remove both function definitions; add `import { isFocusInTextInput, popoverArrowNav } from './popoverNav.js';`. The still-inline pomodoro popover keeps calling `isFocusInTextInput` (now the imported one). Drop `isFocusInTextInput` and `popoverArrowNav` from the `createMusicUI({ ... })` call (≈line 853) and drop `isFocusInTextInput` from the `createSettingsMenu({ ... })` call (≈line 899) — those modules now import them directly. After this, `main.js` no longer references `popoverArrowNav` and uses the imported `isFocusInTextInput` only for the pomodoro popover.
+  - music.js changes: replace the `const isFocusInTextInput = deps.isFocusInTextInput; const popoverArrowNav = deps.popoverArrowNav;` lines (≈572–573) with `import { isFocusInTextInput, popoverArrowNav } from './popoverNav.js';` at the top; `createMusicUI`'s deps no longer include them.
+  - settingsMenu.js changes: remove `isFocusInTextInput` from the `deps` destructuring (≈line 42); add `import { isFocusInTextInput } from './popoverNav.js';`; `createSettingsMenu`'s deps no longer include it.
+  - Imports popoverNav.js needs: none — both helpers are self-contained (`document`/DOM queries only). Verify `isFocusInTextInput`'s body references no `component()` closure (it should just inspect `document.activeElement`).
+  - Test updates: if any test text-reads `main.js` for these helpers' source, repoint that read to `../src/popoverNav.js`. The music/settings popover tests exercise behavior (unchanged) and should stay green; run the suite and repoint only direct source reads of the moved helpers.
+  - Acceptance criteria:
+    - `component()` no longer defines `isFocusInTextInput` or `popoverArrowNav`; `popoverNav.js` exports both; `music.js` and `settingsMenu.js` import them (not via injected deps); no circular import.
+    - Full Vitest suite (`npm run test:run`) green.
+    - Behavior unchanged: Backspace still closes the music/pomodoro/settings popovers except while typing in their text inputs, and arrow-key nav in the music popover still works.
+  - Out of scope: Any behavior change; the pomodoro popover extraction (next step — this only relocates the helpers it shares); changing where `popoverArrowNav` is used (it stays music-only); folding these into `viewport.js` (keep popover-keyboard helpers separate from the viewport check).
+  - Implementation notes: `main.js` is over 25k tokens — grep for the two functions (≈325, 343) with offset/limit. Move additively: create `popoverNav.js`, switch `music.js`/`settingsMenu.js` to import + update the two factory calls in `main.js`, confirm the suite is green, then delete the originals.
+  - File: `toDoList_main/src/popoverNav.js`, `toDoList_main/src/main.js`, `toDoList_main/src/music.js`, `toDoList_main/src/settingsMenu.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ffc6789f-9881-4f9e-abf3-ac6bd2a7f639 -->
