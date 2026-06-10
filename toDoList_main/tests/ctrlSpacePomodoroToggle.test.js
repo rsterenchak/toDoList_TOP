@@ -109,8 +109,10 @@ describe('pomodoro — toggle() controller method', () => {
 });
 
 
-describe('Ctrl+Space — main.js shortcut wiring', () => {
-    const main = read('main.js');
+describe('Ctrl+Space — pomodoro.js shortcut wiring', () => {
+    // The Ctrl+Space handler + status pill live in pomodoro.js's
+    // createPomodoroUI factory (folded out of component() in main.js).
+    const main = read('pomodoro.js');
     const css  = read('style.css');
     const modals = read('modals.js');
 

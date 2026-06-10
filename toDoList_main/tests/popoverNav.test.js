@@ -140,12 +140,16 @@ describe('popoverArrowNav', () => {
 });
 
 describe('popoverNav — wiring contract across modules', () => {
-    it('main.js no longer defines the helpers and imports isFocusInTextInput', () => {
+    it('main.js no longer defines the helpers; pomodoro.js imports isFocusInTextInput', () => {
         const main = readSrc('main.js');
+        const pomodoro = readSrc('pomodoro.js');
         expect(main).not.toMatch(/function\s+isFocusInTextInput\s*\(/);
         expect(main).not.toMatch(/function\s+popoverArrowNav\s*\(/);
-        expect(main).toMatch(/import\s*\{[^}]*isFocusInTextInput[^}]*\}\s*from\s*['"]\.\/popoverNav\.js['"]/);
-        // main.js no longer references popoverArrowNav at all.
+        // The pomodoro popover (the lone main.js consumer of isFocusInTextInput)
+        // folded into pomodoro.js's createPomodoroUI factory, which now owns the
+        // import. main.js no longer references either helper.
+        expect(pomodoro).toMatch(/import\s*\{[^}]*isFocusInTextInput[^}]*\}\s*from\s*['"]\.\/popoverNav\.js['"]/);
+        expect(main).not.toMatch(/isFocusInTextInput/);
         expect(main).not.toMatch(/popoverArrowNav/);
     });
 
