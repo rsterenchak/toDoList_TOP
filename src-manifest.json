@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-09T16:35:25.211Z",
-  "sha": "92c31a7551fd1212d4157ea3f122788d23dd7517",
+  "generatedAt": "2026-06-10T14:21:19.289Z",
+  "sha": "1855b412ef6904ced9c6f686250134da85e1fc69",
   "files": [
     "auth.js",
     "calendarView.js",
@@ -26,6 +26,7 @@
     "music.js",
     "musicVisualizer.js",
     "pomodoro.js",
+    "popoverNav.js",
     "prefs.js",
     "projectMenu.js",
     "projectPicker.js",
