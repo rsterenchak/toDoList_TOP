@@ -31,6 +31,7 @@ import {
     setVisualizerStyle,
     setVisualizerPlaying,
 } from './musicVisualizer.js';
+import { isFocusInTextInput, popoverArrowNav } from './popoverNav.js';
 
 export const MUSIC_STATE_KEY = 'todoapp_music_state';
 
@@ -554,23 +555,19 @@ export function createMusic(doc) {
 // the strip element for the host to place. Folds the popover UI out of
 // main.js's component() so the audio engine and its chrome live together.
 //
-// Dependencies injected from main.js's component() (the only three things that
-// can't be resolved locally):
+// Dependencies injected from main.js's component() (the only thing that can't
+// be resolved locally):
 //   - musicToggle:        the header button DOM node (built + placed by
 //                         component()); this factory only wires its click +
 //                         status sweep.
-//   - isFocusInTextInput: shared popover-keyboard closure (also used by the
-//                         settings + pomodoro popovers).
-//   - popoverArrowNav:    shared arrow-key navigation closure.
 //
-// Everything else (the controller, station registry, URL parsing, visualizer
-// prefs) is resolved from this module's own imports. Returns
-// `{ nowPlayingStrip }`.
+// The shared popover-keyboard helpers (`isFocusInTextInput`, `popoverArrowNav`)
+// are imported directly from popoverNav.js. Everything else (the controller,
+// station registry, URL parsing, visualizer prefs) is resolved from this
+// module's own imports. Returns `{ nowPlayingStrip }`.
 export function createMusicUI(deps) {
     deps = deps || {};
     const musicToggle = deps.musicToggle;
-    const isFocusInTextInput = deps.isFocusInTextInput;
-    const popoverArrowNav = deps.popoverArrowNav;
 
     function syncMusicIcon() {
         const ctl = ensureMusic();

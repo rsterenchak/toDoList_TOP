@@ -1,7 +1,7 @@
 // Desktop settings-menu (gear dropdown) subsystem, extracted from the
 // ~5,900-line component() in main.js following the same closure-to-factory
 // pattern as projectPicker.js. createSettingsMenu() receives the gear button
-// DOM node component() builds plus the five component()/main.js functions the
+// DOM node component() builds plus the four component()/main.js functions the
 // menu calls (injected, never imported back from main.js — that would be
 // circular) and returns the menu's public methods { open, close, toggle }.
 //
@@ -10,8 +10,9 @@
 // ghost toggle through companion.js, Help/Export/Import/Configure-inject/
 // Sign-out through modals.js / jsonImportExport.js / inject.js / migration.js /
 // supabaseClient.js, and the replay-tour entry through coachmark.js +
-// welcomeCarousel.js. Only what is built or defined inside main.js's
-// component() — the gear button and the five view/render helpers — is injected.
+// welcomeCarousel.js. The shared `isFocusInTextInput` popover-keyboard helper
+// is imported from popoverNav.js. Only what is built or defined inside main.js's
+// component() — the gear button and the four view/render helpers — is injected.
 import { listLogic } from './listLogic.js';
 import {
     isCompanionEnabled,
@@ -31,6 +32,7 @@ import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarouse
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { showInjectSettingsModal } from './inject.js';
+import { isFocusInTextInput } from './popoverNav.js';
 
 export function createSettingsMenu(deps) {
     const {
@@ -39,7 +41,6 @@ export function createSettingsMenu(deps) {
         applyCompanionGhostPreference,
         rebuildAfterImport,
         seedSampleTodosIntoActiveProjectIfEmpty,
-        isFocusInTextInput,
     } = deps;
 
     // When the no-projects empty state is showing, its Create button is the
