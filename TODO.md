@@ -611,7 +611,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e3157581-e630-4e67-99a6-192189332f33 -->
 
-- [ ] **[MEDIUM]** Centralize the shared popover-keyboard helpers into popoverNav.js
+- [x] **[MEDIUM]** Centralize the shared popover-keyboard helpers into popoverNav.js — Completed: 2026-06-10
   - Type: feature
   - Description: Extract the two popover-keyboard helpers — `isFocusInTextInput` (currently `main.js` ~line 325) and `popoverArrowNav` (~line 343) — out of `component()` into a new `toDoList_main/src/popoverNav.js` that exports both, with no behavior change. They were defined in the pomodoro region but are cross-cutting: `isFocusInTextInput` is used by the pomodoro, music, and settings popovers (the latter two already receive it by injection), and `popoverArrowNav` is used by the music popover. Pulling them into a shared module gives them one home, removes the inject-the-same-helper-three-ways pattern, and clears the pomodoro region so the upcoming pomodoro extraction moves a clean block.
   - main.js changes: remove both function definitions; add `import { isFocusInTextInput, popoverArrowNav } from './popoverNav.js';`. The still-inline pomodoro popover keeps calling `isFocusInTextInput` (now the imported one). Drop `isFocusInTextInput` and `popoverArrowNav` from the `createMusicUI({ ... })` call (≈line 853) and drop `isFocusInTextInput` from the `createSettingsMenu({ ... })` call (≈line 899) — those modules now import them directly. After this, `main.js` no longer references `popoverArrowNav` and uses the imported `isFocusInTextInput` only for the pomodoro popover.
