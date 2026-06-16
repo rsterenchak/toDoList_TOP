@@ -9,12 +9,14 @@ export const changelog = [
         changed: [
             "The mobile description editor now shows the task title in readable wrapping text under a small \"Description\" label, instead of cutting it off mid-word on one line.",
         ],
+        fixed: [
+            "Task sorting is reachable again on mobile via a Sort control in the status-filter row.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-08',
         fixed: [
-            "The green ⚡ on project rows now appears only on projects routed to an inject target, and shows on desktop as well as mobile.",
             "The inject ⚡ now appears on project rows in the desktop picker dropdown too, and is now amber instead of green.",
             "The inject ⚡ no longer leaves a stray gap on project picker rows that aren't routed to an inject target.",
             "The inject ⚡ now stays flush beside the project name in the picker dropdown instead of drifting as the count badge width changes.",
