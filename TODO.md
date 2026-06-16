@@ -647,3 +647,11 @@
   - File: `toDoList_main/src/pomodoro.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/ctrlSpacePomodoroToggle.test.js`, `toDoList_main/tests/pomodoroInlineCountdown.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: da991dc4-812c-4c45-84e7-449523f03509 -->
+
+- [ ] **[MEDIUM]** Restructure the mobile description-editor modal title into a label plus a readable wrapped title
+  - Type: feature
+  - Description: The description editor modal is the touch-only drafting surface — it's shown on `(pointer: coarse)` devices where the in-row single-line desc input can't fit multi-line markdown — and its title (`#descEditorModalTitle`) currently renders in uppercase `SpaceMono` with 0.14em letter-spacing on a single ellipsised line, so longer titles are hard to scan and get cut off mid-word. Restructure the header built in `showDescEditorModal` into two tiers: a small static accent eyebrow reading "Description" (`SpaceMono`, ~10px, uppercase, ~0.14em tracking, `--accent-text`), and beneath it the actual task title in the proportional body font the app already uses (Trebuchet MS — no new font dependency), natural case, ~14px, `--text-primary`, wrapping up to two lines via `-webkit-line-clamp: 2` before it truncates. Move the existing pencil affordance (`#descEditorModalTitleEdit`) into the eyebrow row, right-aligned, and keep tap-to-rename fully intact: tapping the title text or the pencil swaps `#descEditorModalTitleText` for `#descEditorModalTitleInput` (which must keep its 16px font-size floor for the iOS auto-zoom rule), with Enter/blur committing, Escape reverting, and an empty value snapping back to the prior title. Presentation-only — keep the dialog's `aria-labelledby` resolving to the task title.
+  - Out of scope: the desktop in-row description input and desktop inline-rename flow (this modal is the `(pointer: coarse)`-only path); no change to how the description is persisted on close.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8b0100df-385e-45c2-8395-249b549c5ebf -->
