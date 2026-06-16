@@ -7610,6 +7610,13 @@ body.row-dragging * { cursor: grabbing !important; }
      the "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
+  /* The mobile Sort trigger shares the .bulkDescBtn class but must keep its
+     "Sort" label readable here — the chevron-only collapse above targets the
+     desktop overlay buttons (already display:none at this breakpoint). The ID
+     selector restores the base font-size and horizontal padding so the label
+     shows alongside the caret; flex-shrink: 0 keeps it from crowding the
+     status pills. */
+  #taskSortBtnMobile { font-size: 10px; padding: 6px 8px; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }

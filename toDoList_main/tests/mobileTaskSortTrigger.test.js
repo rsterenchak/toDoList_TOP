@@ -94,3 +94,50 @@ describe('mobile Sort trigger — CSS visibility', () => {
         expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]/);
     });
 });
+
+describe('mobile Sort trigger — label stays readable at ≤420px', () => {
+    const css = read('style.css');
+
+    function extractNarrowRule(selector) {
+        // Grab the declaration block for `selector` inside the
+        // `@media (max-width: 420px)` block — same naive parse as the
+        // mobile-layout tests above, retargeted at the narrow-phone breakpoint.
+        const media = css.indexOf('@media (max-width: 420px)');
+        expect(media).toBeGreaterThan(-1);
+        let mediaEnd = css.length;
+        let depth = 0;
+        for (let i = css.indexOf('{', media); i < css.length; i++) {
+            if (css[i] === '{') depth++;
+            else if (css[i] === '}') {
+                depth--;
+                if (depth === 0) { mediaEnd = i; break; }
+            }
+        }
+        const haystack = css.slice(media, mediaEnd).replace(/\/\*[\s\S]*?\*\//g, '');
+        const ruleRe = new RegExp(
+            selector.replace(/[#.]/g, m => '\\' + m) + '\\s*\\{([^}]*)\\}'
+        );
+        const match = haystack.match(ruleRe);
+        return match ? match[1] : null;
+    }
+
+    it('still collapses generic .bulkDescBtn labels to chevron-only here', () => {
+        // The narrow-phone chevron-only collapse this fix must override for the
+        // mobile Sort trigger. Pinned so the override below stays meaningful —
+        // if the collapse rule ever goes away, the override is moot.
+        const rule = extractNarrowRule('.bulkDescBtn');
+        expect(rule).not.toBeNull();
+        expect(rule).toMatch(/font-size:\s*0/);
+    });
+
+    it('keeps the mobile Sort trigger label visible despite the collapse', () => {
+        // #taskSortBtnMobile carries the .bulkDescBtn class but must NOT lose its
+        // "Sort" label to the chevron-only collapse — an ID-specificity override
+        // restores a non-zero font-size so the label reads on narrow phones.
+        const rule = extractNarrowRule('#taskSortBtnMobile');
+        expect(rule).not.toBeNull();
+        const fontMatch = rule.match(/font-size:\s*([^;]+);/);
+        expect(fontMatch).not.toBeNull();
+        expect(fontMatch[1].trim()).not.toBe('0');
+    });
+});
