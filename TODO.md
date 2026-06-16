@@ -664,7 +664,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 99833c77-3015-4d6d-8211-e92f41fbdf47 -->
 
-- [ ] **[LOW]** Add the "Sort" text label to the mobile task-sort trigger
+- [x] **[LOW]** Add the "Sort" text label to the mobile task-sort trigger — Completed: 2026-06-16
   - Type: bug
   - Description: On the mobile view, the task-sort trigger in the status-filter row (the Option C control) renders as a bare caret (`▾`) with no text, so the button's purpose isn't readable. Give it the "Sort" label the desktop `taskSortBtn` uses — reuse the same `taskSortButtonText(key)` output so it reads "Sort" at rest and "Sort: Due" / "Sort: Status" when a sort is active, with the caret kept alongside and the existing active-state accent tint intact. The likely cause is that the mobile trigger was built without the `.bulkDescLabel` text span (or CSS-hides it on mobile); add or unhide the label and make sure `syncTaskSortButton()` keeps both the desktop and mobile triggers' text in sync. Keep the trigger compact (e.g. `flex: 0 0 auto`) so the label doesn't crowd the status-filter pills on narrow phones — if the active-state strings get tight there, the resting "Sort" label takes priority.
   - Out of scope: the desktop `#bulkDescActions` Sort button (already labeled correctly) and the sort logic, menu, and option set (None / Due date / Status) — unchanged; this only adds the visible label to the mobile trigger.
