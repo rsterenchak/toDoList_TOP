@@ -2135,6 +2135,32 @@ function component() {
     bulkDescActions.appendChild(taskSortBtn);
     main2.appendChild(bulkDescActions);
 
+    // ── Mobile Sort trigger ──
+    // The desktop Sort dropdown lives in #bulkDescActions, which is
+    // display:none at the mobile breakpoint — leaving phones with no way to
+    // change the task sort after the Expand-All→Sort refactor. This compact
+    // trigger rides at the right end of the status-filter row (#taskFilterBar),
+    // opposite the status pills, and is shown ONLY where #bulkDescActions is
+    // hidden (CSS-gated to the mobile breakpoint), so exactly one Sort trigger
+    // is ever visible. It opens the SAME #taskSortMenu and drives the same
+    // getTaskSort/setTaskSort/applyTaskSortChoice/syncTaskSortButton machinery,
+    // so desktop and mobile share one sort state.
+    const mobileSortBtn = document.createElement('button');
+    mobileSortBtn.type = 'button';
+    mobileSortBtn.id = 'taskSortBtnMobile';
+    mobileSortBtn.className = 'bulkDescBtn taskSortBtn taskSortBtnMobile';
+    mobileSortBtn.setAttribute('aria-haspopup', 'menu');
+    mobileSortBtn.setAttribute('aria-expanded', 'false');
+    const mobileSortBtnLabel = document.createElement('span');
+    mobileSortBtnLabel.className = 'bulkDescLabel';
+    const mobileSortBtnCaret = document.createElement('span');
+    mobileSortBtnCaret.className = 'bulkDescCaret';
+    mobileSortBtnCaret.textContent = '▾';
+    mobileSortBtnCaret.setAttribute('aria-hidden', 'true');
+    mobileSortBtn.appendChild(mobileSortBtnLabel);
+    mobileSortBtn.appendChild(mobileSortBtnCaret);
+    taskFilterBar.appendChild(mobileSortBtn);
+
     function taskSortButtonText(key) {
         if (key === 'due') return 'Sort: Due';
         if (key === 'status') return 'Sort: Status';
@@ -2143,8 +2169,11 @@ function component() {
 
     function syncTaskSortButton() {
         const key = getTaskSort();
-        taskSortBtnLabel.textContent = taskSortButtonText(key);
+        const text = taskSortButtonText(key);
+        taskSortBtnLabel.textContent = text;
         taskSortBtn.setAttribute('data-sort', key);
+        mobileSortBtnLabel.textContent = text;
+        mobileSortBtn.setAttribute('data-sort', key);
     }
     syncTaskSortButton();
 
@@ -2157,18 +2186,30 @@ function component() {
         addAllToDo_DOM(listLogic.listItems(activeName), activeName);
     }
 
+    // Whichever Sort trigger is currently on-screen anchors the menu and is
+    // exempted from the outside-click dismissal. offsetParent is null for a
+    // display:none element, so this resolves to the desktop overlay button on
+    // wide layouts and the filter-row button on mobile.
+    function activeSortTrigger() {
+        if (mobileSortBtn.offsetParent !== null) return mobileSortBtn;
+        return taskSortBtn;
+    }
+
     function onTaskSortOutsideClick(event) {
         const menu = document.getElementById('taskSortMenu');
         if (!menu) return;
-        if (menu.contains(event.target) || taskSortBtn.contains(event.target)) return;
+        if (menu.contains(event.target) ||
+            taskSortBtn.contains(event.target) ||
+            mobileSortBtn.contains(event.target)) return;
         hideTaskSortMenu();
     }
 
     function onTaskSortKeydown(event) {
         if (event.key === 'Escape') {
             event.stopPropagation();
+            const trigger = activeSortTrigger();
             hideTaskSortMenu();
-            taskSortBtn.focus();
+            trigger.focus();
         }
     }
 
@@ -2176,6 +2217,7 @@ function component() {
         const existing = document.getElementById('taskSortMenu');
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
         taskSortBtn.setAttribute('aria-expanded', 'false');
+        mobileSortBtn.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', onTaskSortOutsideClick, true);
         document.removeEventListener('keydown', onTaskSortKeydown, true);
         window.removeEventListener('resize', hideTaskSortMenu);
@@ -2221,9 +2263,10 @@ function component() {
         });
         document.body.appendChild(menu);
 
-        // Anchor beneath the trigger, right-aligned, clamped to the viewport —
+        // Anchor beneath whichever trigger is on-screen (desktop overlay or the
+        // mobile filter-row button), right-aligned, clamped to the viewport —
         // mirrors the settings menu's positioning.
-        const rect = taskSortBtn.getBoundingClientRect();
+        const rect = activeSortTrigger().getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
         let top = rect.bottom + 4;
         let left = rect.right - menuRect.width;
@@ -2235,20 +2278,23 @@ function component() {
         menu.style.left = left + 'px';
 
         taskSortBtn.setAttribute('aria-expanded', 'true');
+        mobileSortBtn.setAttribute('aria-expanded', 'true');
         document.addEventListener('click', onTaskSortOutsideClick, true);
         document.addEventListener('keydown', onTaskSortKeydown, true);
         window.addEventListener('resize', hideTaskSortMenu);
         window.addEventListener('scroll', hideTaskSortMenu, true);
     }
 
-    taskSortBtn.addEventListener('click', function(event) {
+    function toggleTaskSortMenu(event) {
         event.stopPropagation();
         if (document.getElementById('taskSortMenu')) {
             hideTaskSortMenu();
         } else {
             showTaskSortMenu();
         }
-    });
+    }
+    taskSortBtn.addEventListener('click', toggleTaskSortMenu);
+    mobileSortBtn.addEventListener('click', toggleTaskSortMenu);
 
     // ── bulk description expand/collapse state ──
     // Formerly owned by the on-screen "Expand All" button (retired in favour of

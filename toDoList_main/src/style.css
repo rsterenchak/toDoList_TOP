@@ -3063,7 +3063,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 .bulkDescBtn.expanded .bulkDescCaret,
-#taskSortBtn[aria-expanded="true"] .bulkDescCaret {
+#taskSortBtn[aria-expanded="true"] .bulkDescCaret,
+#taskSortBtnMobile[aria-expanded="true"] .bulkDescCaret {
   transform: rotate(180deg);
 }
 
@@ -3071,9 +3072,22 @@ button.claudeAttachChipLabel { cursor: pointer; }
    button so the active state reads at a glance, matching the filter pills'
    selected cadence. */
 #taskSortBtn[data-sort="due"],
-#taskSortBtn[data-sort="status"] {
+#taskSortBtn[data-sort="status"],
+#taskSortBtnMobile[data-sort="due"],
+#taskSortBtnMobile[data-sort="status"] {
   color: var(--accent-text);
   border-color: var(--accent-text);
+}
+
+/* The mobile Sort trigger rides in the status-filter row but is desktop-hidden:
+   on wide layouts the #bulkDescActions overlay owns the Sort dropdown. It is
+   revealed only at the mobile breakpoint (where #bulkDescActions is display:none)
+   so exactly one Sort trigger is ever visible. margin-left:auto pushes it to the
+   right end of the row, opposite the status pills. */
+#taskSortBtnMobile {
+  display: none;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* TODO LIST */
@@ -6175,6 +6189,10 @@ body.row-dragging * { cursor: grabbing !important; }
   #taskFilterBar   { grid-row: 2; }
   #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
+  /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so
+     the task sort stays reachable on phones. Shown only here, so exactly one
+     Sort trigger is ever visible. */
+  #taskSortBtnMobile { display: inline-flex; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and
      nav gaps so the four 36px nav buttons still fit alongside three
