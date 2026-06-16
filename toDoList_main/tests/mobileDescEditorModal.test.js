@@ -565,6 +565,85 @@ describe('mobile desc editor modal — footer button labels fit narrow viewports
     });
 });
 
+describe('mobile desc editor modal — two-tier header (eyebrow + wrapped title)', () => {
+
+    const modals = read('modals.js');
+    const css = read('style.css');
+
+    it('renders a static "Description" eyebrow row above the task title', () => {
+        // The header is restructured into two tiers: a small accent eyebrow
+        // reading "Description" and, beneath it, the real task title in the
+        // body font. The eyebrow is a dedicated element so the pencil can sit
+        // in it right-aligned without competing with the title for the line.
+        expect(modals).toMatch(/['"]descEditorModalTitleEyebrow['"]/);
+        expect(modals).toMatch(/['"]descEditorModalTitleEyebrowLabel['"]/);
+        const labelIdx = modals.indexOf("'descEditorModalTitleEyebrowLabel'");
+        expect(labelIdx).toBeGreaterThan(-1);
+        const tail = modals.slice(labelIdx, labelIdx + 300);
+        expect(tail).toMatch(/textContent\s*=\s*['"]Description['"]/);
+    });
+
+    it('moves the pencil affordance into the eyebrow row', () => {
+        // The rename pencil is appended to the eyebrow (right-aligned via the
+        // eyebrow's space-between), not to the title text line.
+        expect(modals).toMatch(/eyebrow\.appendChild\(\s*titleEdit\s*\)/);
+    });
+
+    it('appends the eyebrow before the task title in the title shell', () => {
+        // Order matters: eyebrow on top, then the wrapped title, then the
+        // hidden rename input that swaps in over the title.
+        const fnIdx = modals.indexOf('function showDescEditorModal(');
+        const fn = modals.slice(fnIdx);
+        const eyebrowAppend = fn.search(/title\.appendChild\(\s*eyebrow\s*\)/);
+        const textAppend = fn.search(/title\.appendChild\(\s*titleText\s*\)/);
+        expect(eyebrowAppend).toBeGreaterThan(-1);
+        expect(textAppend).toBeGreaterThan(-1);
+        expect(eyebrowAppend).toBeLessThan(textAppend);
+    });
+
+    it('points the dialog aria-labelledby at the task title (not the eyebrow shell)', () => {
+        // The accessible name must remain the task title, so aria-labelledby
+        // resolves to the title-text element rather than the whole shell,
+        // which now also contains the static "Description" eyebrow text.
+        expect(modals).toMatch(
+            /dialog\.setAttribute\(\s*['"]aria-labelledby['"]\s*,\s*['"]descEditorModalTitleText['"]\s*\)/
+        );
+    });
+
+    it('the eyebrow label is the small uppercase monospace accent style', () => {
+        // SpaceMono, ~10px, uppercase, ~0.14em tracking, accent color — the
+        // eyebrow keeps the original label aesthetic the title shed.
+        const ruleMatch = css.match(/#descEditorModalTitleEyebrowLabel\s*\{([\s\S]{0,400}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/font-family:[^;]*SpaceMono/);
+        expect(body).toMatch(/text-transform:\s*uppercase/);
+        expect(body).toMatch(/letter-spacing:\s*0\.14em/);
+        expect(body).toMatch(/color:\s*var\(--accent[^)]*\)/);
+        const sizeMatch = body.match(/font-size:\s*(\d+)px/);
+        expect(sizeMatch).toBeTruthy();
+        expect(parseInt(sizeMatch[1], 10)).toBeLessThanOrEqual(11);
+    });
+
+    it('the task title renders in the proportional body font, natural case, wrapping up to two lines', () => {
+        // The title moves to Trebuchet MS (the app's existing body font — no
+        // new dependency), ~14px, primary text color, and clamps to two lines
+        // instead of the old single ellipsised monospace line.
+        const ruleMatch = css.match(/#descEditorModalTitleText\s*\{([\s\S]{0,500}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/font-family:[^;]*Trebuchet/);
+        expect(body).toMatch(/color:\s*var\(--text-primary\)/);
+        expect(body).toMatch(/-webkit-line-clamp:\s*2/);
+        // Natural case — the title must NOT be uppercased the way the old
+        // single-line monospace label was.
+        expect(body).not.toMatch(/text-transform:\s*uppercase/);
+        const sizeMatch = body.match(/font-size:\s*(\d+)px/);
+        expect(sizeMatch).toBeTruthy();
+        expect(parseInt(sizeMatch[1], 10)).toBe(14);
+    });
+});
+
 describe('mobile desc editor modal — copy feedback label', () => {
 
     const modals = read('modals.js');

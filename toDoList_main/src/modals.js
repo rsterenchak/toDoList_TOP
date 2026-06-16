@@ -140,25 +140,42 @@ export function showDescEditorModal(item, options) {
     dialog.id = 'descEditorModal';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-labelledby', 'descEditorModalTitle');
+    // The accessible name resolves to the task title element specifically —
+    // not the whole title shell — so screen readers announce the task title
+    // rather than the static "Description" eyebrow that precedes it.
+    dialog.setAttribute('aria-labelledby', 'descEditorModalTitleText');
 
     const header = document.createElement('div');
     header.id = 'descEditorModalHeader';
 
     const title = document.createElement('div');
     title.id = 'descEditorModalTitle';
-    // Title shell wraps a static text span, a pencil affordance, and a hidden
-    // input the user can swap to with a tap so titles are renamable from the
-    // touch-device editor (the desktop inline-rename flow is unreachable on
-    // mobile because the row's input never gets focused on `(pointer: coarse)`).
-    const titleText = document.createElement('span');
-    titleText.id = 'descEditorModalTitleText';
-    titleText.textContent = (item && item.tit) ? item.tit : 'Description';
+    // Two-tier title shell: a static "Description" eyebrow row carrying the
+    // pencil rename affordance, and beneath it the actual task title rendered
+    // in the proportional body font so long titles wrap to two lines and stay
+    // readable instead of ellipsising mid-word in the old uppercase monospace.
+    // The hidden input swaps in over the task title on tap so titles are
+    // renamable from the touch-device editor (the desktop inline-rename flow
+    // is unreachable on mobile because the row's input never gets focused on
+    // `(pointer: coarse)`).
+    const eyebrow = document.createElement('div');
+    eyebrow.id = 'descEditorModalTitleEyebrow';
+
+    const eyebrowLabel = document.createElement('span');
+    eyebrowLabel.id = 'descEditorModalTitleEyebrowLabel';
+    eyebrowLabel.textContent = 'Description';
 
     const titleEdit = document.createElement('span');
     titleEdit.id = 'descEditorModalTitleEdit';
     titleEdit.setAttribute('aria-hidden', 'true');
     titleEdit.textContent = '✎';
+
+    eyebrow.appendChild(eyebrowLabel);
+    eyebrow.appendChild(titleEdit);
+
+    const titleText = document.createElement('span');
+    titleText.id = 'descEditorModalTitleText';
+    titleText.textContent = (item && item.tit) ? item.tit : 'Description';
 
     const titleInput = document.createElement('input');
     titleInput.id = 'descEditorModalTitleInput';
@@ -169,8 +186,8 @@ export function showDescEditorModal(item, options) {
     titleInput.value = (item && item.tit) ? item.tit : '';
     titleInput.style.display = 'none';
 
+    title.appendChild(eyebrow);
     title.appendChild(titleText);
-    title.appendChild(titleEdit);
     title.appendChild(titleInput);
 
     const closeX = document.createElement('button');
