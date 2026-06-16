@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-16',
+        changed: [
+            "The mobile description editor now shows the task title in readable wrapping text under a small \"Description\" label, instead of cutting it off mid-word on one line.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-08',
         fixed: [
-            "Deleting a project on one device now sticks across all your devices instead of reappearing after the next sync.",
             "The green ⚡ on project rows now appears only on projects routed to an inject target, and shows on desktop as well as mobile.",
             "The inject ⚡ now appears on project rows in the desktop picker dropdown too, and is now amber instead of green.",
             "The inject ⚡ no longer leaves a stray gap on project picker rows that aren't routed to an inject target.",
