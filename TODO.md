@@ -655,3 +655,11 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8b0100df-385e-45c2-8395-249b549c5ebf -->
+
+- [ ] **[MEDIUM]** Restore task sorting on mobile with a Sort control in the status-filter row
+  - Type: bug
+  - Description: On the mobile view the task-sort control is unreachable: the Sort dropdown (`taskSortBtn`) lives only inside `#bulkDescActions` — the desktop overlay pinned to the add-task row — and that overlay is `display: none` at the mobile breakpoint, while the mobile drawer's Settings modal carries only the View/Appearance toggles (Show completed, Expand all descriptions, Dark theme, Companion ghost) and not sort, so after the Expand-All→Sort refactor there is no way to change the task sort on a phone. Add a compact Sort trigger at the right end of the mobile status-filter row (`#taskFilterBar`), opposite the status pills, styled to the existing `.bulkDescBtn` cadence (uppercase ~10px, accent-tinted when a sort other than None is active); it must open the same `taskSortMenu` and drive the existing machinery (`getTaskSort` / `setTaskSort` / `applyTaskSortChoice` / `syncTaskSortButton`) so desktop and mobile share one sort state and the None / Due date / Status options behave identically. Scope it so the new trigger appears only where `#bulkDescActions` is hidden — exactly one sort trigger is ever visible, with no gap and no overlap across widths — and leave the desktop overlay and its `display: none` mobile rule untouched so the `#bulkDescActions is hidden at the mobile breakpoint` assertion in `stackMobileLayoutCollapse.test.js` stays green.
+  - Out of scope: the desktop `#bulkDescActions` Sort button (unchanged) and any change to the sort logic or option set — None / Due date / Status stay as-is; this entry only adds the mobile trigger.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 99833c77-3015-4d6d-8211-e92f41fbdf47 -->
