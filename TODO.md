@@ -671,3 +671,13 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fe1744a9-b1cd-48a8-9456-46407abf19ac -->
+
+- [ ] **[HIGH]** Fix mobile swipe-to-complete and swipe-to-delete dying when a task sort is active
+  - Type: bug
+  - Description: On mobile, an active task sort (Sort: Due or Sort: Status) silently disables both swipe-to-complete and swipe-to-delete. Because the per-row checkbox (`#checkToDo`) and delete button (`#closeButtonToDo`) are `display:none` at the mobile breakpoint, swipe is the *only* touch path for these actions — so with a sort on, checking off and deleting become unreachable on phones. The choice persists in `todoapp_taskSort`, so it stays broken across reloads until the sort is cleared. Root cause: `setupRowDrag`'s `touchstart` handler in `dragDrop.js` returns early on `!cfg.isDraggable()`, and a row's `isDraggable()` in `toDoRow.js` returns false whenever `getTaskSort() !== 'none'`. The gate is correct for drag-reorder (manual order can't coexist with a sort) but wrongly sits in front of the swipe path too. This surfaced after the mobile Sort control landed (PRs #457/#458) gave phones a way to set a sort for the first time.
+  - Behavior: Swipe-to-complete and swipe-to-delete must arm and commit on any committed (non-blank) row regardless of the active sort. Manual drag-to-reorder must stay disabled while a sort is active. Blank placeholder rows must stay non-swipeable, as today.
+  - Implementation notes: Separate swipe-eligibility from drag-eligibility in the `touchstart` gate — let the gesture arm when the row has a swipe config and committed content even under an active sort, while keeping the drag branch gated on the full `isDraggable()` (content AND `getTaskSort() === 'none'`). Likely cleanest via a content-only swipe-eligibility predicate passed alongside `isDraggable` from `toDoRow.js`, leaving sort out of it. The existing `onRight`/`onLeft` no-op guards (skip when `checkToDo`/`closeButtonToDo` inline `display === 'none'`) already block blank placeholder rows, so those stay safe. No existing test pins the current behavior; add a regression test asserting a swipe arms and commits on a committed row while a sort is active.
+  - Out of scope: drag-to-reorder under an active sort (must remain disabled); swipe thresholds, animation, and snap-back timing; the desktop pointer/mouse path.
+  - File: `toDoList_main/src/dragDrop.js`, `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3c57fdcb-c4dd-4449-8fdc-f7fb1d80426e -->
