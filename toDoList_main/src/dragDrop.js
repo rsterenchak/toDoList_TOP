@@ -154,10 +154,14 @@ function autoScrollIfNeeded(scrollEl, clientY) {
 //   getIndex        — () => current index of this row among siblings
 //   isDraggable     — () => boolean, row is eligible to drag right now
 //                     (blank placeholder or not-yet-committed rows return false)
+//   isSwipeable     — optional () => boolean, row is eligible to swipe right now.
+//                     Content-only on purpose: unlike drag, swipe stays available
+//                     under an active task sort. Defaults to isDraggable when omitted.
 //   onReorder       — (fromIdx, toIdx) => void, commits the reorder to the model
 //                     and/or re-renders the DOM
 //   swipe           — optional { onRight, onLeft } — enables horizontal swipe
-//                     gestures on touch devices. Same isDraggable gate applies.
+//                     gestures on touch devices, gated by isSwipeable (or
+//                     isDraggable when isSwipeable is not provided).
 export function setupRowDrag(row, cfg) {
 
     // Caller sets/unsets row.draggable based on row state — blank placeholder
@@ -218,7 +222,21 @@ export function setupRowDrag(row, cfg) {
     // commits, the other is locked out for that gesture.
     row.addEventListener('touchstart', function(event) {
         if (event.touches.length !== 1) return;
-        if (!cfg.isDraggable()) return;
+
+        // Drag and swipe have independent eligibility. Drag (manual reorder)
+        // is gated by isDraggable(), which goes false while a task sort is
+        // active — manual order can't coexist with a sort. Swipe (complete /
+        // delete) must stay armable on any committed row regardless of the
+        // sort: on mobile the per-row checkbox and delete button are
+        // display:none, so swipe is the only touch path for those actions.
+        // Swipe-eligibility comes from the content-only `isSwipeable`
+        // predicate when supplied (falling back to the drag gate for callers
+        // that don't distinguish the two, e.g. project rows). A row with
+        // neither path available bails so blank placeholders stay inert.
+        const canDrag  = cfg.isDraggable();
+        const canSwipe = !!(cfg.swipe && isCoarsePointer() &&
+                            (cfg.isSwipeable ? cfg.isSwipeable() : canDrag));
+        if (!canDrag && !canSwipe) return;
 
         // Single-swipe-at-a-time: a new gesture starting on this row resets
         // any other row that's currently mid-swipe or mid-snapback in the
@@ -257,8 +275,12 @@ export function setupRowDrag(row, cfg) {
             moved: false,  // first-move flag — visual state applied only then
             mode: null,    // null | 'swipe'; drag mode uses `armed + moved` flags
             swipeDx: 0,
-            swipeCfg: (cfg.swipe && isCoarsePointer()) ? cfg.swipe : null,
-            armTimer: setTimeout(function() { state.armed = true; }, TOUCH_ARM_MS)
+            swipeCfg: canSwipe ? cfg.swipe : null,
+            // Only arm a reorder drag when the row is actually draggable. Under
+            // an active sort the gesture can still become a swipe, but it must
+            // never promote to a manual reorder — so we skip the arm timer and
+            // `state.armed` stays false for the life of the gesture.
+            armTimer: canDrag ? setTimeout(function() { state.armed = true; }, TOUCH_ARM_MS) : null
         };
 
         touchDragState = state;

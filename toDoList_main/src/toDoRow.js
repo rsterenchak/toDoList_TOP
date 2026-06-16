@@ -2030,6 +2030,16 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
             if (getTaskSort() !== 'none') return false;
             return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
         },
+        isSwipeable: function() {
+            // Swipe-to-complete / swipe-to-delete stay available on any
+            // committed row regardless of the active sort — completing or
+            // deleting via swipe doesn't conflict with a sort the way manual
+            // reorder does. On mobile the per-row checkbox and delete button
+            // are display:none, so swipe is the only touch path for these
+            // actions; gating it behind the sort would strand them. Blank
+            // placeholder rows (no committed title) stay non-swipeable.
+            return !!(toDoInput && toDoInput.value && toDoInput.value.trim().length > 0);
+        },
         onReorder: function(fromIdx, toIdx) {
             const mainDiv = document.getElementById('mainList');
             // Read current project from DOM — the closed-over `project` may be
