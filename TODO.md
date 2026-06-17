@@ -760,3 +760,23 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b36e5976-a369-4589-abf8-311ee80e0f33 -->
+
+- [ ] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering
+  - Type: bug
+  - Description: In the in-app Claude sheet, assistant replies containing SVG show as raw `<svg>…</svg>` markup text instead of rendering as a visual. Expected: the SVG renders inline, as it already does for a clean fenced ```svg block (covered by existing tests in `claudeSheet.test.js`). Root cause: `splitRenderableBlocks` only recognizes a fenced block whose opening is a lowercase `html`/`svg` label followed by optional spaces and a required newline (`/```(html|svg)[ \t]*\r?\n([\s\S]*?)```/`). The model frequently emits SVG in a form that misses this — most often un-fenced (the Worker system prompt currently tells the model not to emit ```svg blocks), or with a casing/whitespace variant — so the block falls through into a text segment and `renderAssistantContent` renders it via `textContent`.
+  - Behavior:
+    1. `splitRenderableBlocks` recognizes the fence more tolerantly: the match is case-insensitive (```SVG / ```Svg also match — completing the intent of the existing `.toLowerCase()` on the captured label), and the SVG may start on the same line as the label (the newline is no longer required).
+    2. New fallback: within any remaining text segment, a complete top-level `<svg …>…</svg>` element (balanced open + close) is promoted to an `svg` segment and rendered, so an un-fenced SVG in the reply still renders.
+    3. The fallback runs AFTER fenced-block extraction, so an `<svg>` already inside an extracted ```svg/```html fence is never matched twice.
+    4. Every promoted SVG still routes through `sanitizeSvgBlock` (DOMPurify SVG profile, forbidding `foreignObject`/`image`/`script`) exactly as the fenced path does.
+    5. Prose that only mentions `<svg>` without a closing tag is not promoted (only complete elements render).
+  - Implementation notes:
+    - Keep the existing fenced semantics intact (```md stays text; ```html → html; ```svg → svg) — pinned in `tests/claudeSheet.test.js`. The bare-`<svg>` promotion is additive; the existing fence-free pins ('just prose…', 'plain reply') contain no `<svg>`, so they stay text and stay green.
+    - For the bare-svg match, a non-greedy `/<svg[\s\S]*?<\/svg>/i` over the text segment is adequate since the content is sanitized afterward. If feasible, avoid promoting an `<svg>` that sits inside an inline-code/backtick run in the prose (low priority — the sanitizer keeps a stray render inert, just visually unexpected).
+    - Trim leading/trailing whitespace on the now-optional-newline fenced capture so a same-line `<svg>` doesn't carry stray indentation into the sanitizer.
+    - This is the rendering side only. The cleaner root-cause fix is in the Worker system prompt (`todo-injector-worker` repo): instruct the model to emit SVGs in a fenced ```svg block rather than forbidding them. This parser hardening is the durable defense regardless of prompt wording, worth keeping even after the prompt is fixed.
+    - Extend `tests/claudeSheet.test.js`: (a) an un-fenced `<svg>…</svg>` in a reply yields an `svg` segment and renders a real `<svg>` node; (b) an uppercase ```SVG fence renders; (c) an `<svg>` with no closing tag stays text; (d) existing fence / `md` / plain-text pins stay green.
+  - Out of scope: changing the Worker system prompt (separate repo/entry); MathML or other foreign content; SVG that streams in partially before the reply completes (moot if the sheet re-renders on stream-complete — revisit only if observed).
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0fb18657-0ea7-4a17-853e-8bc23fe9b06b -->
