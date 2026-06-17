@@ -724,3 +724,23 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/listLogicSupabase.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cc851edf-6bdd-4971-b915-0ed4fd0ff9e7 -->
+
+- [ ] **[MEDIUM]** Re-subscribe to Supabase realtime on wake to recover a dropped socket
+  - Type: feature
+  - Description: Realtime is the app's primary live-sync path, but when the PWA is backgrounded (mobile suspend, laptop sleep) the websocket can die and the channels are left stale with no recovery — so after a long background the app stops receiving live cross-device updates until the next full re-hydrate, and never resumes live push on its own. Add a wake trigger that re-opens the realtime channels so live updates resume when the user returns. This pairs with the periodic/visibility re-hydrate already in place: on wake, the re-hydrate backfills anything missed during the gap and this re-subscribe resumes the live stream going forward.
+  - Behavior:
+    1. Add `resubscribeToRealtime()` to `listLogic` (new export): tear down the current channels, then re-open them via the existing `subscribeToRealtime()`.
+    2. Trigger it on `document` `visibilitychange` → `visible` — extend the existing visibility-visible handler in `index.js` (the one added with the periodic re-hydrate) to also call `listLogic.resubscribeToRealtime()` alongside the re-hydrate. If that handler isn't present in the branch, add the call to the same `document` visibilitychange → visible path.
+    3. Optionally also trigger on the `window` `online` event, which catches a network drop/restore that didn't involve backgrounding.
+    4. No-op when signed out — don't open channels without an active session.
+  - Implementation notes:
+    - Critical ordering: `subscribeToRealtime()` early-returns when `_realtimeChannels.length > 0`, so the teardown must reset `_realtimeChannels = []` *before* re-subscribing or the re-open silently no-ops. This is the same ordering the existing tests rely on — `wireRealtimeHandlers` in `tests/listLogicRenameReconcile.test.js` calls `handleSignOut()` then `subscribeToRealtime()` precisely to clear that guard.
+    - The teardown is the channel-removal loop from `handleSignOut` (`_realtimeChannels.forEach(removeChannel)` then `_realtimeChannels = []`) — but `resubscribeToRealtime` must NOT clear `_selfEchoIds` or wipe `allProjects`; those are sign-out-only. Inline the removal loop in the new function rather than extracting a shared helper: `handleSignOut`'s body pins in `tests/listLogicSupabase.test.js` assert `_realtimeChannels` and `removeChannel` appear in `handleSignOut` itself, so factoring them out would fail those pins (repoint them if you do extract).
+    - Signed-out guard: gate `resubscribeToRealtime` on a module flag set when realtime is first established (e.g. `_realtimeWanted = true` at the end of `subscribeToRealtime`, cleared in `handleSignOut`) so it can't open channels post-sign-out. `subscribeToRealtime` is only called at boot after the session is confirmed, so the flag reliably tracks "signed in and want channels."
+    - Churn: wake is user-initiated and infrequent, and the co-firing re-hydrate backfills any momentary gap during the re-join, so an unconditional teardown+re-open on wake is acceptable. If rapid tab-toggling churn becomes a concern, debounce to rebuild at most once per ~30s (a plain timestamp check — avoid gating on supabase-js-internal channel state, which isn't stable across versions and isn't present on the test stub).
+    - Add `resubscribeToRealtime` to the IIFE's returned object next to `subscribeToRealtime`.
+    - Regression: mirror the `wireRealtimeHandlers` mock pattern (spy `supabase.channel` / `supabase.removeChannel`) — after subscribing, call `resubscribeToRealtime()` and assert the prior channels are removed and `channel()` is called again to re-open, and that `_selfEchoIds` survives (a self-echo id recorded before the resubscribe still suppresses its echo afterward).
+  - Out of scope: an offline write-retry queue or visible sync-status indicator (the Phase 6 work the persistence-layer comments already reference); changing the re-hydrate triggers or cadence; reconciling realtime events by stable id (the known rename-by-name reconciliation issue is tracked separately).
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogicSupabase.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c82c95ff-53c0-441d-b263-d7459ac3809d -->
