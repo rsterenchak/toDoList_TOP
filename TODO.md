@@ -706,7 +706,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 664f44bc-853c-483a-a08b-bbb24e3b5ba2 -->
 
-- [ ] **[HIGH]** Fix re-hydrate re-render snapping the active project to the last one in the sidebar
+- [x] **[HIGH]** Fix re-hydrate re-render snapping the active project to the last one in the sidebar — Completed: 2026-06-17
   - Type: bug
   - Description: After the periodic Supabase re-hydrate (every ~5 min, and on return-to-visible), the active project selection jumps to the last project in the sidebar instead of staying on the one being worked in — the view "randomly changes" every few minutes. Expected: the re-hydrate refreshes data in place and leaves the user on their current project and view. Root cause: the `listLogicHydrated` listener in `main.js` rebuilds the UI by replaying `restoreFromStorage`, whose tail unconditionally auto-selects the last project (`savedProjects[savedProjects.length - 1]`, marking the last `#projChild` `.selectedProject` and rendering its todos). That's the correct cold-boot default but wrong for an in-session re-render, which should preserve the current selection.
   - Behavior:
