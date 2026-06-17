@@ -761,7 +761,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b36e5976-a369-4589-abf8-311ee80e0f33 -->
 
-- [ ] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering
+- [x] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering — Completed: 2026-06-17
   - Type: bug
   - Description: In the in-app Claude sheet, assistant replies containing SVG show as raw `<svg>…</svg>` markup text instead of rendering as a visual. Expected: the SVG renders inline, as it already does for a clean fenced ```svg block (covered by existing tests in `claudeSheet.test.js`). Root cause: `splitRenderableBlocks` only recognizes a fenced block whose opening is a lowercase `html`/`svg` label followed by optional spaces and a required newline (`/```(html|svg)[ \t]*\r?\n([\s\S]*?)```/`). The model frequently emits SVG in a form that misses this — most often un-fenced (the Worker system prompt currently tells the model not to emit ```svg blocks), or with a casing/whitespace variant — so the block falls through into a text segment and `renderAssistantContent` renders it via `textContent`.
   - Behavior:

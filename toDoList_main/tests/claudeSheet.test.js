@@ -2885,4 +2885,61 @@ describe('Inline html/svg rendering in the chat surface', () => {
         expect(bubble.textContent).toBe('plain reply');
         expect(bubble.children).toHaveLength(0);
     });
+
+    it('promotes an un-fenced <svg>…</svg> in a reply to an svg segment', () => {
+        const reply = 'Here is an icon:\n<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>\nDone';
+        const segs = splitRenderableBlocks(reply);
+        expect(segs.map(s => s.type)).toEqual(['text', 'svg', 'text']);
+        expect(segs[1].value).toContain('<svg');
+        expect(segs[1].value).toContain('</svg>');
+    });
+
+    it('renders an un-fenced <svg> as an actual <svg> visual, not markup text', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, 'Icon: <svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>');
+        const svg = bubble.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.querySelector('circle')).toBeTruthy();
+        expect(bubble.textContent).toContain('Icon:');
+    });
+
+    it('routes a promoted un-fenced <svg> through the SVG sanitizer', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(
+            bubble,
+            '<svg><script>alert(1)<\/script><foreignObject><body/></foreignObject>' +
+            '<image href="https://evil.example/x.png"/><rect width="4" height="4"/></svg>'
+        );
+        expect(bubble.querySelector('svg')).toBeTruthy();
+        expect(bubble.querySelector('script')).toBeNull();
+        expect(bubble.querySelector('foreignObject')).toBeNull();
+        expect(bubble.querySelector('image')).toBeNull();
+        expect(bubble.querySelector('rect')).toBeTruthy();
+    });
+
+    it('matches an uppercase ```SVG fence case-insensitively', () => {
+        const bubble = document.createElement('div');
+        renderAssistantContent(bubble, '```SVG\n<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>\n```');
+        const svg = bubble.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.querySelector('circle')).toBeTruthy();
+    });
+
+    it('matches a fence whose markup starts on the same line as the label', () => {
+        const segs = splitRenderableBlocks('```svg<svg></svg>```');
+        expect(segs.map(s => s.type)).toEqual(['svg']);
+        expect(segs[0].value).toContain('<svg></svg>');
+    });
+
+    it('does not promote a bare <svg> that has no closing tag — stays text', () => {
+        const segs = splitRenderableBlocks('Mentioning <svg> without a close tag.');
+        expect(segs).toHaveLength(1);
+        expect(segs[0].type).toBe('text');
+        expect(segs[0].value).toContain('<svg>');
+    });
+
+    it('does not double-match an <svg> already inside a fenced ```svg block', () => {
+        const segs = splitRenderableBlocks('```svg\n<svg></svg>\n```');
+        expect(segs.map(s => s.type)).toEqual(['svg']);
+    });
 });
