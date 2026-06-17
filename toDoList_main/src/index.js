@@ -222,8 +222,30 @@ function rehydrateUnlessEditing() {
     } catch (_) { /* hydrate guards its own errors; belt-and-suspenders */ }
 }
 
+// On wake (return-to-visible), pair the re-hydrate with a realtime
+// re-subscribe: the re-hydrate backfills whatever was missed during the
+// background gap, and resubscribeToRealtime re-opens the channels so live
+// cross-device push resumes going forward (a backgrounded PWA or sleeping
+// tab can silently drop the websocket with no recovery). resubscribe is
+// a no-op when signed out and not gated on editing — re-opening channels
+// never discards in-progress input.
+function wakeRecoverRealtime() {
+    try {
+        listLogic.resubscribeToRealtime();
+    } catch (_) { /* resubscribe guards its own errors; belt-and-suspenders */ }
+}
+
 document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') rehydrateUnlessEditing();
+    if (document.visibilityState === 'visible') wakeRecoverRealtime();
+});
+
+// A network drop/restore that didn't involve backgrounding (e.g. wifi
+// blip on a continuously-visible tab) also leaves the socket dead — catch
+// it via the online event so live push recovers there too.
+window.addEventListener('online', function () {
+    rehydrateUnlessEditing();
+    wakeRecoverRealtime();
 });
 
 setInterval(rehydrateUnlessEditing, 5 * 60 * 1000);

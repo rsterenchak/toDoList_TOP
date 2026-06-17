@@ -464,6 +464,43 @@ describe('listLogic Phase 5 — realtime subscription wiring', () => {
 });
 
 
+describe('listLogic — resubscribeToRealtime (wake-recovery re-open)', () => {
+    const body = functionBody(SRC, 'resubscribeToRealtime');
+
+    it('exists as a declared function and is exported from the IIFE', () => {
+        expect(body).toBeTruthy();
+        expect(SRC).toMatch(/\bresubscribeToRealtime\b/);
+        // Listed in the returned object next to subscribeToRealtime.
+        expect(SRC).toMatch(/subscribeToRealtime\s*,\s*\n\s*resubscribeToRealtime\s*,/);
+    });
+
+    it('no-ops when signed out — gated on the realtime-wanted flag', () => {
+        expect(body).toMatch(/if\s*\(\s*!\s*_realtimeWanted\s*\)\s*return/);
+    });
+
+    it('removes the prior channels then resets the array before re-opening', () => {
+        expect(body).toMatch(/removeChannel/);
+        // _realtimeChannels MUST be reset to [] before subscribeToRealtime,
+        // whose length-guard otherwise short-circuits the re-open.
+        expect(body).toMatch(/_realtimeChannels\s*=\s*\[\s*\]/);
+        const resetIdx = body.search(/_realtimeChannels\s*=\s*\[\s*\]/);
+        const reopenIdx = body.search(/subscribeToRealtime\s*\(\s*\)/);
+        expect(resetIdx).toBeGreaterThanOrEqual(0);
+        expect(reopenIdx).toBeGreaterThan(resetIdx);
+    });
+
+    it('does NOT clear the self-echo set or wipe allProjects (those are sign-out-only)', () => {
+        expect(body).not.toMatch(/_selfEchoIds\.clear/);
+        expect(body).not.toMatch(/delete\s+allProjects/);
+    });
+
+    it('subscribeToRealtime marks realtime as wanted once channels are established', () => {
+        const subBody = functionBody(SRC, 'subscribeToRealtime');
+        expect(subBody).toMatch(/_realtimeWanted\s*=\s*true/);
+    });
+});
+
+
 describe('listLogic Phase 5 — handleSignOut tears down state and subscriptions', () => {
     const body = functionBody(SRC, 'handleSignOut');
 
@@ -478,6 +515,10 @@ describe('listLogic Phase 5 — handleSignOut tears down state and subscriptions
 
     it('clears the self-echo id set so the next user does not inherit prior ids', () => {
         expect(body).toMatch(/_selfEchoIds\.clear\s*\(\s*\)/);
+    });
+
+    it('clears the realtime-wanted flag so a post-sign-out wake cannot re-open channels', () => {
+        expect(body).toMatch(/_realtimeWanted\s*=\s*false/);
     });
 
     it('wipes the in-memory allProjects map and the localStorage cache', () => {
@@ -500,6 +541,13 @@ describe('listLogic Phase 5 — boot path and event wiring in index.js', () => {
 
     it('calls listLogic.handleSignOut on the sign-out branch of onAuthStateChange', () => {
         expect(indexSrc).toMatch(/listLogic\.handleSignOut\s*\(\s*\)/);
+    });
+
+    it('re-subscribes to realtime on wake (visibility-visible and online events)', () => {
+        expect(indexSrc).toMatch(/listLogic\.resubscribeToRealtime\s*\(\s*\)/);
+        // Armed on the same return-to-visible seam as the re-hydrate, plus
+        // the online event for a network restore without backgrounding.
+        expect(indexSrc).toMatch(/addEventListener\s*\(\s*['"]online['"]/);
     });
 });
 

@@ -725,7 +725,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cc851edf-6bdd-4971-b915-0ed4fd0ff9e7 -->
 
-- [ ] **[MEDIUM]** Re-subscribe to Supabase realtime on wake to recover a dropped socket
+- [x] **[MEDIUM]** Re-subscribe to Supabase realtime on wake to recover a dropped socket — Completed: 2026-06-17
   - Type: feature
   - Description: Realtime is the app's primary live-sync path, but when the PWA is backgrounded (mobile suspend, laptop sleep) the websocket can die and the channels are left stale with no recovery — so after a long background the app stops receiving live cross-device updates until the next full re-hydrate, and never resumes live push on its own. Add a wake trigger that re-opens the realtime channels so live updates resume when the user returns. This pairs with the periodic/visibility re-hydrate already in place: on wake, the re-hydrate backfills anything missed during the gap and this re-subscribe resumes the live stream going forward.
   - Behavior:
