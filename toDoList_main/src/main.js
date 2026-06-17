@@ -4426,6 +4426,19 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     document.addEventListener('listLogicHydrated', function onHydrate() {
         const sideMaDiv = document.getElementById('sideMa');
         const mainListDiv = document.getElementById('mainList');
+        // Preserve the user's current project across this in-session
+        // re-render. restoreFromStorage's tail otherwise auto-selects the
+        // last project — the right cold-boot default but wrong here, where
+        // the periodic Supabase re-hydrate would snap the view away from the
+        // project being worked in every few minutes. Capture the selection
+        // by name (mirroring how restoreFromStorage addresses projects)
+        // before the sidebar is cleared.
+        let activeProject = '';
+        const selectedRow = document.querySelector('#projChild.selectedProject');
+        if (selectedRow) {
+            const projInput = selectedRow.querySelector('#projInput');
+            activeProject = projInput ? (projInput.value || '').trim() : '';
+        }
         if (sideMaDiv) {
             while (sideMaDiv.firstChild) sideMaDiv.removeChild(sideMaDiv.firstChild);
         }
@@ -4433,7 +4446,7 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
             while (mainListDiv.firstChild) mainListDiv.removeChild(mainListDiv.firstChild);
         }
         try {
-            restoreFromStorage({ fromSync: true });
+            restoreFromStorage({ fromSync: true, selectProject: activeProject || undefined });
         } catch (e) {
             console.warn('[listLogicHydrated] re-render failed:', e);
         }
@@ -4893,23 +4906,46 @@ function restoreFromStorage(opts) {
 
     });
 
-    // auto-select last project and render its todos
-    const lastProject     = savedProjects[savedProjects.length - 1];
+    // auto-select last project and render its todos. An in-session
+    // re-render (the Supabase re-hydrate) may pass opts.selectProject to
+    // preserve the active project; honour it when that project still exists
+    // after the reconcile, otherwise fall back to the cold-boot last-project
+    // default. Cold boot and post-import keep the existing default.
+    const honorSelect     = !!(opts && opts.selectProject &&
+        savedProjects.indexOf(opts.selectProject) !== -1);
+    const targetProject   = honorSelect
+        ? opts.selectProject
+        : savedProjects[savedProjects.length - 1];
     const allProjChildren = document.querySelectorAll('#projChild');
-    const lastChild       = allProjChildren[allProjChildren.length - 1];
 
-    if (lastChild) {
-        lastChild.classList.remove("unselectedProject");
-        lastChild.classList.add("selectedProject");
+    let targetChild = null;
+    if (honorSelect) {
+        // Locate the preserved project's row by its #projInput value rather
+        // than by DOM index, since it may not be the last child.
+        for (let i = 0; i < allProjChildren.length; i++) {
+            const projInput = allProjChildren[i].querySelector('#projInput');
+            if (projInput && (projInput.value || '').trim() === targetProject) {
+                targetChild = allProjChildren[i];
+                break;
+            }
+        }
     }
-    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(lastProject));
+    if (!targetChild) {
+        targetChild = allProjChildren[allProjChildren.length - 1];
+    }
 
-    const lastItems       = listLogic.listItems(lastProject);
+    if (targetChild) {
+        targetChild.classList.remove("unselectedProject");
+        targetChild.classList.add("selectedProject");
+    }
+    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(targetProject));
+
+    const lastItems       = listLogic.listItems(targetProject);
     const lastHasReal     = lastItems && lastItems.some(function(i){ return i.tit !== ""; });
     if (lastHasReal) {
-        addToDos_restore(lastItems, lastProject, opts);
+        addToDos_restore(lastItems, targetProject, opts);
     } else if (lastItems) {
-        addAllToDo_DOM(lastItems, lastProject);
+        addAllToDo_DOM(lastItems, targetProject);
     }
     focusBlankToDoInputIfDesktop();
 

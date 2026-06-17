@@ -12,12 +12,14 @@ export const changelog = [
         changed: [
             "Long lines in the mobile description editor now wrap inside the box instead of running off the right edge.",
         ],
+        fixed: [
+            "Your current project now stays selected when tasks refresh from the cloud, instead of jumping to another project.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-16',
         fixed: [
-            "Task sorting is reachable again on mobile via a Sort control in the status-filter row.",
             "The mobile Sort control now shows its \"Sort\" label instead of only a bare caret on narrow phones.",
             "Swipe-to-complete and swipe-to-delete work on mobile again even when a task sort is active.",
         ],
