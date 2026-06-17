@@ -214,7 +214,7 @@ describe('Claude sheet shell + launcher', () => {
         expect(send.disabled).toBe(false);
     });
 
-    it('mounts the file-picker button in the composer between the input and Send', () => {
+    it('mounts the file-picker button as the leading composer control', () => {
         const attach = document.getElementById('claudeComposerAttach');
         const header = document.getElementById('claudeSheetTabs');
         const composer = document.getElementById('claudeComposer');
@@ -223,12 +223,12 @@ describe('Claude sheet shell + launcher', () => {
         expect(attach).toBeTruthy();
         expect(composer.contains(attach)).toBe(true);
         expect(header.contains(attach)).toBe(false);
-        // Row order is [input] [📎] [Send]: the attach wrapper follows the input
-        // and precedes Send in document order.
+        // Row order is [📎] [🎤] [input] [Send]: the attach wrapper leads the row
+        // (precedes the input) and Send is last in document order.
         const attachWrap = attach.closest('.claudeAttach');
-        expect(input.compareDocumentPosition(attachWrap) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(attachWrap.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
-        expect(attachWrap.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(input.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
     });
 
