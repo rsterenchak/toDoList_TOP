@@ -318,18 +318,18 @@ function buildWorkspace() {
     return wrap;
 }
 
-// The composer file-picker button + its dropdown panel. The button sits in the
-// composer row between the input and Send; the panel anchors directly above the
-// button (the composer lives at the bottom of the sheet) and overlays the chat
-// surface rather than displacing it, so tapping it drops the picker open right
-// where it lives.
+// The composer file-picker button + its dropdown panel. The button leads the
+// composer row (before the mic, textarea, and Send); the panel anchors directly
+// above the button (the composer lives at the bottom of the sheet) and overlays
+// the chat surface rather than displacing it, so tapping it drops the picker
+// open right where it lives.
 function buildAttach() {
     const wrap = document.createElement('div');
     wrap.className = 'claudeAttach';
 
-    // File-picker button — a composer control between the input and Send. It
-    // toggles the attach panel that opens above it; setActiveTab hides it on the
-    // Runs tab since attachments are chat-only.
+    // File-picker button — the leading composer control, before the mic, input,
+    // and Send. It toggles the attach panel that opens above it; setActiveTab
+    // hides it on the Runs tab since attachments are chat-only.
     const attach = document.createElement('button');
     attach.id = 'claudeComposerAttach';
     attach.type = 'button';
@@ -438,16 +438,16 @@ function buildChatView() {
     send.className = 'claudeComposerSend';
     send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
-    // Composer row reads [input] [📎] [🎤] [Send]: the attach button + its
-    // dropdown panel sit between the textarea and Send, with the mic button just
-    // before Send. buildAttach() carries the attach button's click listener and
-    // the panel; buildMicButton() carries the mic's listener (and returns null on
-    // browsers without speech recognition, so the affordance is hidden entirely
-    // rather than shown broken).
-    composer.appendChild(input);
+    // Composer row reads [📎] [🎤] [input] [Send]: the attach button + its
+    // dropdown panel lead the row, the mic button follows, then the textarea,
+    // with Send last. buildAttach() carries the attach button's click listener
+    // and the panel; buildMicButton() carries the mic's listener (and returns
+    // null on browsers without speech recognition, so the affordance is hidden
+    // entirely rather than shown broken).
     composer.appendChild(buildAttach());
     const mic = buildMicButton();
     if (mic) composer.appendChild(mic);
+    composer.appendChild(input);
     composer.appendChild(send);
 
     send.addEventListener('click', function() { sendChatTurn(); });
