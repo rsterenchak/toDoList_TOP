@@ -1213,9 +1213,10 @@ body {
   font-size: 16px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   line-height: 1.5;
-  /* `pre` preserves indentation, tabs, and explicit newlines — needed for
-     drafting markdown TODO.md entries without normalization. */
-  white-space: pre;
+  /* `pre-wrap` preserves indentation, tabs, and explicit newlines — needed
+     for drafting markdown TODO.md entries without normalization — while also
+     wrapping long lines so they don't run off the right edge. */
+  white-space: pre-wrap;
   overflow: auto;
   background: var(--bg-elevated);
   color: var(--text-primary);
