@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-17',
         added: [
             "Your tasks now refresh from the cloud automatically when you return to the app and every few minutes, so data stays in sync across devices.",
+            "Live updates from other devices resume automatically when you return to the app after it has been in the background.",
         ],
         changed: [
             "Long lines in the mobile description editor now wrap inside the box instead of running off the right edge.",
@@ -20,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-16',
         fixed: [
-            "The mobile Sort control now shows its \"Sort\" label instead of only a bare caret on narrow phones.",
             "Swipe-to-complete and swipe-to-delete work on mobile again even when a task sort is active.",
         ],
     },

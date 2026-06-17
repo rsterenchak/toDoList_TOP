@@ -1999,6 +1999,13 @@ export const listLogic = (function () {
     const _selfEchoIds = new Set();
     let _realtimeChannels = [];
 
+    // Tracks whether realtime channels are wanted — set true once
+    // subscribeToRealtime establishes channels (only reached at boot
+    // after the session is confirmed), cleared on sign-out. resubscribe-
+    // ToRealtime gates on this so a wake trigger can't open channels for
+    // a signed-out user.
+    let _realtimeWanted = false;
+
     // In-flight project INSERT promises keyed by project id. Any todo
     // operation referencing one of these ids awaits the parent INSERT
     // before issuing its own request, so the FK relationship is
@@ -2445,9 +2452,35 @@ export const listLogic = (function () {
                     handleTodosRealtime)
                 .subscribe();
             _realtimeChannels.push(projectsChannel, todosChannel);
+            _realtimeWanted = true;
         } catch (e) {
             console.warn('[subscribeToRealtime] failed:', e);
         }
+    }
+
+    // Re-open the realtime channels after a wake (return-to-visible or
+    // network restore). A backgrounded PWA or sleeping desktop tab can
+    // silently drop the websocket, leaving the channels stale with no
+    // recovery; tearing them down and re-subscribing resumes live push.
+    // The co-firing re-hydrate backfills whatever was missed during the
+    // gap, so an unconditional teardown+re-open on wake is acceptable.
+    function resubscribeToRealtime() {
+        // No-op when signed out — never open channels without a session.
+        if (!_realtimeWanted) return;
+        // Inline only the channel-removal loop here — the self-echo set and
+        // the in-memory project cache are deliberately left untouched (those
+        // are torn down on sign-out, not on a wake). subscribeToRealtime
+        // early-returns when _realtimeChannels.length > 0, so the array
+        // MUST be reset before re-subscribing or the re-open no-ops.
+        _realtimeChannels.forEach(function(ch) {
+            try {
+                if (supabase && typeof supabase.removeChannel === 'function') {
+                    supabase.removeChannel(ch);
+                }
+            } catch (_) { /* ignore */ }
+        });
+        _realtimeChannels = [];
+        subscribeToRealtime();
     }
 
     // Thin wrapper around saveToStorage so the realtime handlers stay
@@ -2578,6 +2611,7 @@ export const listLogic = (function () {
             } catch (_) { /* ignore */ }
         });
         _realtimeChannels = [];
+        _realtimeWanted = false;
         _selfEchoIds.clear();
 
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
@@ -2630,6 +2664,7 @@ export const listLogic = (function () {
         persistMutation,
         hydrateFromSupabase,
         subscribeToRealtime,
+        resubscribeToRealtime,
         handleSignOut,
         _reset
     };
