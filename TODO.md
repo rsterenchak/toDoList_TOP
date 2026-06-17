@@ -705,3 +705,22 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/tests/serviceWorkerUpdate.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 664f44bc-853c-483a-a08b-bbb24e3b5ba2 -->
+
+- [ ] **[HIGH]** Fix re-hydrate re-render snapping the active project to the last one in the sidebar
+  - Type: bug
+  - Description: After the periodic Supabase re-hydrate (every ~5 min, and on return-to-visible), the active project selection jumps to the last project in the sidebar instead of staying on the one being worked in — the view "randomly changes" every few minutes. Expected: the re-hydrate refreshes data in place and leaves the user on their current project and view. Root cause: the `listLogicHydrated` listener in `main.js` rebuilds the UI by replaying `restoreFromStorage`, whose tail unconditionally auto-selects the last project (`savedProjects[savedProjects.length - 1]`, marking the last `#projChild` `.selectedProject` and rendering its todos). That's the correct cold-boot default but wrong for an in-session re-render, which should preserve the current selection.
+  - Behavior:
+    1. Before the `listLogicHydrated` listener clears `#sideMa`/`#mainList`, capture the currently active project by name (the `.selectedProject` row's `#projInput` value), consistent with how `restoreFromStorage` already addresses projects.
+    2. After the rebuild, the captured project is re-selected (its `#projChild` marked `.selectedProject`, accent applied, todos rendered) instead of the last-project default.
+    3. If the captured project no longer exists after the reconcile (e.g., deleted on the other device), fall back to the existing last-project default.
+    4. The top-level view (projects/inbox/calendar) is already preserved via the persisted `getActiveView()` call at the end of `restoreFromStorage`, so no change is needed there.
+  - Implementation notes:
+    - `restoreFromStorage` already accepts an `opts` object (`fromSync`, `deferSave`). Cleanest path: add an optional `opts.selectProject` (project name) and have the tail selection block honor it over the last-project default when present and still in `savedProjects`; have only the `listLogicHydrated` listener pass it. Leave the no-arg boot path and `rebuildAfterImport` on the existing last-project default — don't change cold-boot behavior.
+    - The tail block currently picks the row by DOM index (`allProjChildren[allProjChildren.length - 1]`); when honoring a target selection, locate the matching `#projChild` by its `#projInput` value instead of by index.
+    - Keep the existing `listLogicHydrated` contract intact (clear `#sideMa`/`#mainList`, then `restoreFromStorage`) — pinned in `tests/listLogicSupabase.test.js`; this only adds a capture-and-restore around the same rebuild.
+    - `main.js` is large — grep for `auto-select last project` and the `listLogicHydrated` listener with offset/limit rather than reading it in full.
+    - Add a regression (behavioral jsdom if feasible, else a source-level pin matching the existing style in `tests/listLogicSupabase.test.js`) verifying the re-hydrate path preserves the active selection rather than jumping to the last project.
+  - Out of scope: preserving the todo-list scroll position across the re-render (separate follow-up); skipping the re-render entirely when the reconcile produced no changes (perf optimization, separate entry); changing the cold-boot or post-import default of selecting the last project.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/tests/listLogicSupabase.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cc851edf-6bdd-4971-b915-0ed4fd0ff9e7 -->
