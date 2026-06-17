@@ -2304,6 +2304,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
      below is the scrollable list. The Today / Calendar overlays still span
      1 / -1 so they cover both tracks when active. */
   grid-template-rows: auto 1fr;
+  /* A single `minmax(0, 1fr)` column pins the task pane to its container
+     width. Without an explicit column the implicit `auto` track grows to the
+     widest row's max-content — on narrow (mobile) viewports a long todo title
+     blows the track past the viewport, and since this pane is `overflow:
+     hidden` the right edge of every row (and the right-aligned mobile sort
+     button in #taskFilterBar, which stretches to this column's width) is
+     clipped with no horizontal scroll. The `0` minimum lets long content be
+     truncated inside the row rather than forcing the track wider. */
+  grid-template-columns: minmax(0, 1fr);
   background: var(--bg-base);
   overflow: hidden;
   min-width: 0;
@@ -3101,6 +3110,13 @@ button.claudeAttachChipLabel { cursor: pointer; }
      their content. A fixed clamp here previously cropped the stats drawer's
      stat strip + grid + missed-dates list to the top ~54px. */
   grid-auto-rows: minmax(54px, auto);
+  /* Pin the list to a single full-width column. With no explicit column the
+     implicit `auto` track sizes to the widest row's max-content, so a long
+     todo title would push rows past the viewport and `overflow-x: hidden`
+     would clip their right edge with no scroll. `minmax(0, 1fr)` caps the
+     column at the available width and the `0` minimum lets row content
+     (#toDoChild already carries `min-width: 0`) truncate instead of overflow. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   background: var(--bg-base);
   overflow-y: auto;

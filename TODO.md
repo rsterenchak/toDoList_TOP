@@ -781,7 +781,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0fb18657-0ea7-4a17-853e-8bc23fe9b06b -->
 
-- [ ] **[HIGH]** Fix todo rows and sort button clipping on the right edge on mobile
+- [x] **[HIGH]** Fix todo rows and sort button clipping on the right edge on mobile — Completed: 2026-06-17
 
   - Type: bug
   - Description: On mobile viewports, todo list rows and the sort button are clipped on the right side — content is cut off with no horizontal scroll, indicating an element is overflowing its container width. The likely cause is a fixed or min-width value, missing `box-sizing: border-box`, or a flex/grid child not respecting the viewport width. Check `.todoRow`, the sort button container, and the main project content wrapper in `style.css` for width or overflow rules that break at narrow viewports. Ensure all rows and controls fit within 100vw with appropriate padding.
