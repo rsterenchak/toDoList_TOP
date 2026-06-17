@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-16T13:22:22.645Z",
-  "sha": "4bd97c9382f6990474caa09a8f3760926d054e5a",
+  "generatedAt": "2026-06-17T08:00:24.282Z",
+  "sha": "de455e7806c5b849f8d470003cbdd62b0e146b20",
   "files": [
     "auth.js",
     "calendarView.js",
