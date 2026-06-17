@@ -786,3 +786,49 @@ describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged event',
         expect(body).toMatch(/['"]dataChanged['"]/);
     });
 });
+
+
+// The Supabase re-hydrate replays restoreFromStorage to rebuild the UI in
+// place. restoreFromStorage's tail auto-selects the last project — correct
+// for cold boot but wrong for an in-session re-render, which must keep the
+// user on their current project rather than snapping to the last sidebar
+// entry. These pins verify the capture-and-restore wiring lives in main.js.
+describe('main.js — re-hydrate preserves the active project selection', () => {
+    const MAIN = readFileSync(resolve(srcDir, 'main.js'), 'utf8');
+
+    // Isolate the listLogicHydrated listener body so the assertions don't
+    // match an unrelated occurrence elsewhere in the file.
+    const hydrateIdx = MAIN.indexOf("addEventListener('listLogicHydrated'");
+    const hydrateSlice = hydrateIdx === -1
+        ? null
+        : MAIN.slice(hydrateIdx, hydrateIdx + 1600);
+
+    const restoreBody = functionBody(MAIN, 'restoreFromStorage');
+
+    it('the listLogicHydrated listener captures the selected project before clearing the sidebar', () => {
+        expect(hydrateSlice).toBeTruthy();
+        // Reads the currently selected sidebar row's project name.
+        expect(hydrateSlice).toMatch(/#projChild\.selectedProject/);
+        expect(hydrateSlice).toMatch(/#projInput/);
+    });
+
+    it('the listLogicHydrated listener passes selectProject into restoreFromStorage', () => {
+        expect(hydrateSlice).toBeTruthy();
+        expect(hydrateSlice).toMatch(/restoreFromStorage\(\s*\{[^}]*selectProject/);
+    });
+
+    it('restoreFromStorage honours opts.selectProject when the project still exists', () => {
+        expect(restoreBody).toBeTruthy();
+        // Guards the honour path on the project still being present after
+        // the reconcile (indexOf !== -1), so a deleted project falls back.
+        expect(restoreBody).toMatch(/opts\.selectProject/);
+        expect(restoreBody).toMatch(/savedProjects\.indexOf\(\s*opts\.selectProject\s*\)/);
+    });
+
+    it('restoreFromStorage still falls back to the last-project default', () => {
+        expect(restoreBody).toBeTruthy();
+        // The cold-boot / deleted-project fallback selects the last child.
+        expect(restoreBody).toMatch(/savedProjects\[savedProjects\.length - 1\]/);
+        expect(restoreBody).toMatch(/allProjChildren\[allProjChildren\.length - 1\]/);
+    });
+});
