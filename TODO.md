@@ -753,7 +753,7 @@
   - Completed:
   <!-- id: d9ac7a94-a841-45fb-8598-c6bbde4c03d1 -->
 
-- [ ] **[MEDIUM]** Fix mobile horizontal overflow by tightening todo list wrapper padding
+- [x] **[MEDIUM]** Fix mobile horizontal overflow by tightening todo list wrapper padding — Completed: 2026-06-17
 
   - Type: bug
   - Description: On mobile viewports, the right side of todo rows and the sort selection bar are clipped off-screen. The wrapper around the todo list and sort bar has too much horizontal padding for narrow screens. Under a mobile `@media` breakpoint, reduce the left and right padding on the main content wrapper and sort bar container to approximately 4px so all row content and sort controls fit within the viewport without horizontal scrolling. Desktop layout must remain completely unchanged.
