@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-17',
+        added: [
+            "Your tasks now refresh from the cloud automatically when you return to the app and every few minutes, so data stays in sync across devices.",
+        ],
         changed: [
             "Long lines in the mobile description editor now wrap inside the box instead of running off the right edge.",
         ],
@@ -13,9 +16,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-16',
-        changed: [
-            "The mobile description editor now shows the task title in readable wrapping text under a small \"Description\" label, instead of cutting it off mid-word on one line.",
-        ],
         fixed: [
             "Task sorting is reachable again on mobile via a Sort control in the status-filter row.",
             "The mobile Sort control now shows its \"Sort\" label instead of only a bare caret on narrow phones.",

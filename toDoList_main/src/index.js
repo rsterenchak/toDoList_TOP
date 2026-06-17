@@ -180,6 +180,55 @@ if ('serviceWorker' in navigator) {
 }
 
 
+// ── SUPABASE RE-HYDRATE TRIGGERS ──
+// The app hydrates once on boot, then relies on the realtime subscription for
+// live updates. A backgrounded tab — a suspended mobile PWA, a sleeping
+// desktop tab — can silently drop or miss realtime events, so moving between
+// phone and desktop can leave stale data with nothing to trigger a catch-up.
+// Two triggers call listLogic.hydrateFromSupabase(), which runs a last-write-
+// wins reconcile and dispatches `listLogicHydrated` for an in-place re-render
+// (no scroll jump, no lost input) — deliberately NOT a location.reload(),
+// which would interrupt an in-progress edit:
+//
+//   1. Return-to-visible (primary): a visibilitychange where the tab becomes
+//      visible re-hydrates the instant the PWA is foregrounded or the desktop
+//      tab is refocused — exactly the seam where cross-device data goes stale.
+//   2. Backstop interval: a 5-minute re-hydrate covers a tab that stays
+//      continuously visible for a long stretch while the socket quietly dropped.
+//
+// Both skip the pull when an editable element is focused so a background
+// re-render never discards a task edit in progress; the next interval (or the
+// next visibility regain after blur) catches it up. hydrateFromSupabase
+// early-returns without a session and single-flights overlapping calls, so the
+// triggers are safe to arm unconditionally and a tick that races a visibility
+// regain just short-circuits.
+//
+// This wiring is kept independent of the service-worker block above — it's a
+// data concern, not an SW one, and decoupling it avoids disturbing the
+// SW-update visibility/interval pins. The 5-minute setInterval here sits AFTER
+// the hourly SW-update setInterval so the latter stays the first setInterval in
+// this file (a test asserts the first interval is ≥ 15 min).
+function isEditableElementFocused() {
+    const el = document.activeElement;
+    if (!el || typeof el.matches !== 'function') return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || el.matches('[contenteditable]');
+}
+
+function rehydrateUnlessEditing() {
+    if (isEditableElementFocused()) return;
+    try {
+        listLogic.hydrateFromSupabase();
+    } catch (_) { /* hydrate guards its own errors; belt-and-suspenders */ }
+}
+
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') rehydrateUnlessEditing();
+});
+
+setInterval(rehydrateUnlessEditing, 5 * 60 * 1000);
+
+
 
 // ******** PROJECT TIPS ********
 // 1 - define todo objects in own module

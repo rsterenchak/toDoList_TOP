@@ -196,6 +196,109 @@ describe('service worker update discovery — src/index.js', () => {
 });
 
 
+describe('supabase re-hydrate triggers — src/index.js', () => {
+    const index = read('index.js');
+
+    // Helper: brace-walk a top-level `function NAME(...) { ... }` and return
+    // its body source. Mirrors the lifting pattern used elsewhere in this file.
+    function liftFunctionBody(source, signature) {
+        const idx = source.indexOf(signature);
+        if (idx === -1) return null;
+        const braceStart = source.indexOf('{', idx);
+        let depth = 0;
+        for (let i = braceStart; i < source.length; i++) {
+            if (source[i] === '{') depth++;
+            else if (source[i] === '}') {
+                depth--;
+                if (depth === 0) return source.slice(braceStart + 1, i);
+            }
+        }
+        return null;
+    }
+
+    describe('return-to-visible trigger', () => {
+        it('registers a visibilitychange listener that re-hydrates only when visible', () => {
+            // There are two visibilitychange listeners in the file (the SW
+            // update check and this re-hydrate); pin that a visible-gated
+            // re-hydrate path exists.
+            expect(index).toMatch(/document\.addEventListener\(\s*['"]visibilitychange['"]/);
+            expect(index).toMatch(/document\.visibilityState\s*===\s*['"]visible['"]\s*\)\s*rehydrateUnlessEditing\(\s*\)/);
+        });
+    });
+
+    describe('5-minute backstop interval', () => {
+        it('schedules a setInterval(rehydrateUnlessEditing, 5 minutes)', () => {
+            expect(index).toMatch(/setInterval\(\s*rehydrateUnlessEditing\s*,\s*5\s*\*\s*60\s*\*\s*1000\s*\)/);
+        });
+
+        it('keeps the SW-update interval (≥ 15 min) as the FIRST setInterval in the file', () => {
+            // The serviceWorkerUpdate first-match interval test depends on the
+            // re-hydrate interval not jumping ahead of the hourly SW poll.
+            const firstMatch = index.match(/setInterval\(\s*([^,]+)\s*,\s*([^\)]+)\)/);
+            expect(firstMatch).not.toBeNull();
+            const ms = Function('"use strict"; return (' + firstMatch[2].trim() + ');')();
+            expect(ms).toBeGreaterThanOrEqual(15 * 60 * 1000);
+        });
+    });
+
+    describe('runtime — mid-edit guard skips the pull, otherwise hydrates', () => {
+        it('rehydrateUnlessEditing calls hydrateFromSupabase unless an editable element is focused', () => {
+            const guardBody = liftFunctionBody(index, 'function isEditableElementFocused(');
+            const rehydrateBody = liftFunctionBody(index, 'function rehydrateUnlessEditing(');
+            expect(guardBody).not.toBeNull();
+            expect(rehydrateBody).not.toBeNull();
+
+            let activeTag = 'DIV';
+            let activeContentEditable = false;
+            const fakeDocument = {
+                get activeElement() {
+                    return {
+                        tagName: activeTag,
+                        matches: (sel) => sel === '[contenteditable]' && activeContentEditable,
+                    };
+                },
+            };
+
+            let hydrateCalls = 0;
+            const fakeListLogic = { hydrateFromSupabase: () => { hydrateCalls++; } };
+
+            // Build rehydrateUnlessEditing with isEditableElementFocused in scope.
+            const factory = new Function(
+                'document', 'listLogic',
+                'function isEditableElementFocused(){' + guardBody + '}\n' +
+                'return function rehydrateUnlessEditing(){' + rehydrateBody + '};'
+            );
+            const rehydrate = factory(fakeDocument, fakeListLogic);
+
+            // Non-editable focus → hydrate runs.
+            rehydrate();
+            expect(hydrateCalls).toBe(1);
+
+            // INPUT focused → skip.
+            activeTag = 'INPUT';
+            rehydrate();
+            expect(hydrateCalls).toBe(1);
+
+            // TEXTAREA focused → skip.
+            activeTag = 'TEXTAREA';
+            rehydrate();
+            expect(hydrateCalls).toBe(1);
+
+            // contenteditable element focused → skip.
+            activeTag = 'DIV';
+            activeContentEditable = true;
+            rehydrate();
+            expect(hydrateCalls).toBe(1);
+
+            // Back to a plain focus → hydrate runs again.
+            activeContentEditable = false;
+            rehydrate();
+            expect(hydrateCalls).toBe(2);
+        });
+    });
+});
+
+
 describe('mobile update cue — src/modals.js', () => {
     const modals = read('modals.js');
 
