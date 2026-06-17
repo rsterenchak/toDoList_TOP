@@ -690,7 +690,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a73183b8-3ad4-4239-90bb-4b5bfd23ebd3 -->
 
-- [ ] **[MEDIUM]** Re-hydrate from Supabase on return-to-visible plus a 5-minute backstop interval
+- [x] **[MEDIUM]** Re-hydrate from Supabase on return-to-visible plus a 5-minute backstop interval — Completed: 2026-06-17
   - Type: feature
   - Description: Keep data current across devices by pulling fresh state from Supabase without a full page reload. The app hydrates once on boot and then leans on the realtime subscription, but when a tab is backgrounded — mobile PWA suspended, desktop tab asleep — the realtime socket can silently drop or miss events, so moving between phone and desktop can leave stale data with nothing to trigger a catch-up. Add re-hydrate triggers that call the existing `listLogic.hydrateFromSupabase()`, which runs a last-write-wins reconcile and dispatches `listLogicHydrated` for an in-place re-render (no scroll jump, no lost input) — deliberately not a `location.reload()`, which would interrupt an in-progress edit.
   - Behavior:
