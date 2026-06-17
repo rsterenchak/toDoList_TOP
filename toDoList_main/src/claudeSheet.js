@@ -1166,17 +1166,42 @@ function appendMessageBubble(role, text) {
 // handled elsewhere and must not be rendered as live markup.
 export function splitRenderableBlocks(text) {
     const src = String(text || '');
-    const re = /```(html|svg)[ \t]*\r?\n([\s\S]*?)```/g;
-    const segments = [];
+    // Fenced ```html / ```svg blocks. Case-insensitive label (```SVG / ```Svg
+    // also match) and the markup may start on the same line as the label — the
+    // newline after the label is optional. The captured body is trimmed so a
+    // same-line ```svg<svg…> doesn't carry stray indentation into the sanitizer.
+    const re = /```(html|svg)[ \t]*\r?\n?([\s\S]*?)```/gi;
+    const fenced = [];
     let last = 0;
     let m;
     while ((m = re.exec(src)) !== null) {
-        if (m.index > last) segments.push({ type: 'text', value: src.slice(last, m.index) });
-        segments.push({ type: m[1].toLowerCase(), value: m[2] });
+        if (m.index > last) fenced.push({ type: 'text', value: src.slice(last, m.index) });
+        fenced.push({ type: m[1].toLowerCase(), value: m[2].trim() });
         last = re.lastIndex;
     }
-    if (last < src.length || !segments.length) {
-        segments.push({ type: 'text', value: src.slice(last) });
+    if (last < src.length || !fenced.length) {
+        fenced.push({ type: 'text', value: src.slice(last) });
+    }
+    // Fallback: promote a complete, top-level <svg>…</svg> element found inside a
+    // remaining text segment to an svg segment so an un-fenced SVG in the reply
+    // still renders. This runs AFTER fenced-block extraction, so an <svg> already
+    // inside an extracted ```svg/```html fence is never matched twice. Only
+    // balanced elements (open + close) are promoted; a bare <svg> mention with no
+    // closing tag stays plain text.
+    const segments = [];
+    for (const seg of fenced) {
+        if (seg.type !== 'text') { segments.push(seg); continue; }
+        const svgRe = /<svg[\s\S]*?<\/svg>/gi;
+        let li = 0;
+        let sm;
+        while ((sm = svgRe.exec(seg.value)) !== null) {
+            if (sm.index > li) segments.push({ type: 'text', value: seg.value.slice(li, sm.index) });
+            segments.push({ type: 'svg', value: sm[0] });
+            li = svgRe.lastIndex;
+        }
+        if (li === 0 || li < seg.value.length) {
+            segments.push({ type: 'text', value: seg.value.slice(li) });
+        }
     }
     return segments;
 }
