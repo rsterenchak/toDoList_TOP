@@ -745,7 +745,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c82c95ff-53c0-441d-b263-d7459ac3809d -->
 
-- [ ] **[MEDIUM]** Align composer buttons and textarea into a single horizontal inline row
+- [x] **[MEDIUM]** Align composer buttons and textarea into a single horizontal inline row — Completed: 2026-06-17
 
   - Type: feature
   - Description: The claudeComposer area currently has inconsistent horizontal alignment between the attach button, mic button, textarea, and send button. Restructure the composer into a single flex row in the order: [📎 attach] [🎤 mic] [textarea] [▶ send], all vertically centered on the same baseline. The textarea should remain functional and auto-resize on input via its existing listener in claudeSheet.js. The attach button's file picker panel must re-anchor to the button's new position in the row; the mic button's recording toggle and active-state class swap must survive the restructure; and the send button's enabled/disabled state tied to textarea content must continue firing correctly. The chatWithWorker call in inject.js reads the textarea value on submit — confirm the DOM reference is unchanged after restructure.
