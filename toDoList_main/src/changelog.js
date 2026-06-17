@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-17',
         added: [
-            "Your tasks now refresh from the cloud automatically when you return to the app and every few minutes, so data stays in sync across devices.",
             "Live updates from other devices resume automatically when you return to the app after it has been in the background.",
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "Your current project now stays selected when tasks refresh from the cloud, instead of jumping to another project.",
+            "Todo rows and the sort controls no longer get clipped off the right edge on narrow mobile screens.",
         ],
     },
 ];

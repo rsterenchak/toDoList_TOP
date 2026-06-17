@@ -10464,6 +10464,32 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 
+/* ── Mobile horizontal overflow — tighten list + Sort gutters ──
+   On narrow phones the Sort/status-filter row (#taskFilterBar) carried the
+   desktop 12px side padding and the todo rows (#toDoChild) carried 8px side
+   margins, which pushed the right-aligned Sort control and the right edge of
+   each row past the viewport, where #mainBar / #mainList's overflow:hidden
+   clipped them off-screen. Tighten both gutters to 4px so all row content and
+   the Sort control fit without horizontal scrolling. The attached drawers
+   (#descSibling, #statsSibling) tighten to match so they stay flush with their
+   row's edges. Scoped to ≤480px, so tablet and desktop layouts are untouched. */
+@media (max-width: 480px) {
+  #taskFilterBar {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  #toDoChild {
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+  #descSibling,
+  #statsSibling {
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+}
+
+
 /* ── INJECT TO TODO.MD ──
    Per-row button inside the description panel + per-device settings modal
    opened from the ghost menu. Sends the row's description text to a
