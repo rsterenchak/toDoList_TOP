@@ -780,3 +780,11 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0fb18657-0ea7-4a17-853e-8bc23fe9b06b -->
+
+- [ ] **[HIGH]** Fix todo rows and sort button clipping on the right edge on mobile
+
+  - Type: bug
+  - Description: On mobile viewports, todo list rows and the sort button are clipped on the right side — content is cut off with no horizontal scroll, indicating an element is overflowing its container width. The likely cause is a fixed or min-width value, missing `box-sizing: border-box`, or a flex/grid child not respecting the viewport width. Check `.todoRow`, the sort button container, and the main project content wrapper in `style.css` for width or overflow rules that break at narrow viewports. Ensure all rows and controls fit within 100vw with appropriate padding.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/toDo.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4118f705-d96d-4ecc-94b7-0efe028d35b2 -->
