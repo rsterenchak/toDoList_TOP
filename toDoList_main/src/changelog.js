@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-17',
+        changed: [
+            "Long lines in the mobile description editor now wrap inside the box instead of running off the right edge.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-16',
         changed: [
             "The mobile description editor now shows the task title in readable wrapping text under a small \"Description\" label, instead of cutting it off mid-word on one line.",
@@ -13,13 +20,6 @@ export const changelog = [
             "Task sorting is reachable again on mobile via a Sort control in the status-filter row.",
             "The mobile Sort control now shows its \"Sort\" label instead of only a bare caret on narrow phones.",
             "Swipe-to-complete and swipe-to-delete work on mobile again even when a task sort is active.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-08',
-        fixed: [
-            "The inject ⚡ now stays flush beside the project name in the picker dropdown instead of drifting as the count badge width changes.",
         ],
     },
 ];

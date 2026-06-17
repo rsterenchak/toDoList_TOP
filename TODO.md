@@ -682,7 +682,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3c57fdcb-c4dd-4449-8fdc-f7fb1d80426e -->
 
-- [ ] **[MEDIUM]** Wrap long lines in the mobile description editor textarea instead of clipping
+- [x] **[MEDIUM]** Wrap long lines in the mobile description editor textarea instead of clipping — Completed: 2026-06-17
   - Type: feature
   - Description: On the mobile description editor modal, `#descEditorModalTextarea` uses `white-space: pre`, so long markdown lines run off the right edge and force sideways scrolling to read — visible when drafting TODO.md entries with long Behavior/File lines. Change `white-space: pre` to `pre-wrap` on that rule in `style.css` so lines wrap inside the box. Keep `font-size: 16px` unchanged so the textarea stays compliant with the iOS-no-auto-zoom rule (do not shrink it). `pre-wrap` still preserves leading spaces, tabs, and explicit newlines, so markdown indentation round-trips exactly as before — the textarea's raw `.value` is unaffected and only the visual line-wrapping changes. Also update the whitespace assertion in `mobileDescEditorModal.test.js`: change the `white-space: pre` check (and its comment) to expect `pre-wrap`, since the current regex passes either way but should track the intended value rather than matching `pre-wrap` only by accident.
   - Out of scope: no change to `font-size` or `line-height` (line-height stays at 1.5); leave the desktop inline `#descInput` editor untouched.

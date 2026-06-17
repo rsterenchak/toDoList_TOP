@@ -289,12 +289,13 @@ describe('mobile desc editor modal — textarea styling', () => {
         expect(parseInt(sizeMatch[1], 10)).toBeGreaterThanOrEqual(16);
     });
 
-    it('the textarea preserves explicit whitespace (white-space: pre) so markdown indentation round-trips', () => {
+    it('the textarea preserves explicit whitespace (white-space: pre-wrap) so markdown indentation round-trips while long lines wrap', () => {
         // Brief: "preserve markdown formatting (backticks, indentation,
-        // multi-line)". white-space: pre keeps tabs, leading spaces, and
+        // multi-line)". white-space: pre-wrap keeps tabs, leading spaces, and
         // explicit newlines intact in the textarea\'s rendered display
-        // (saving is already raw via textarea.value).
-        expect(css).toMatch(/#descEditorModalTextarea\s*\{[\s\S]{0,800}white-space:\s*pre/);
+        // (saving is already raw via textarea.value) while wrapping long lines
+        // so they don\'t run off the right edge.
+        expect(css).toMatch(/#descEditorModalTextarea\s*\{[\s\S]{0,800}white-space:\s*pre-wrap/);
     });
 });
 
