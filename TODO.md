@@ -689,3 +689,19 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileDescEditorModal.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a73183b8-3ad4-4239-90bb-4b5bfd23ebd3 -->
+
+- [ ] **[MEDIUM]** Re-hydrate from Supabase on return-to-visible plus a 5-minute backstop interval
+  - Type: feature
+  - Description: Keep data current across devices by pulling fresh state from Supabase without a full page reload. The app hydrates once on boot and then leans on the realtime subscription, but when a tab is backgrounded — mobile PWA suspended, desktop tab asleep — the realtime socket can silently drop or miss events, so moving between phone and desktop can leave stale data with nothing to trigger a catch-up. Add re-hydrate triggers that call the existing `listLogic.hydrateFromSupabase()`, which runs a last-write-wins reconcile and dispatches `listLogicHydrated` for an in-place re-render (no scroll jump, no lost input) — deliberately not a `location.reload()`, which would interrupt an in-progress edit.
+  - Behavior:
+    1. Return-to-visible (primary): on a `document` `visibilitychange` where `document.visibilityState === 'visible'`, re-hydrate. This fires the instant the PWA is foregrounded on one device or the desktop tab is refocused — exactly the seam where data goes stale.
+    2. Backstop interval: a `setInterval` re-hydrate every 5 minutes (`5 * 60 * 1000`), covering a tab that stays continuously visible for a long stretch while the socket quietly dropped.
+    3. Mid-edit guard: both triggers skip the pull when an editable element is focused (`document.activeElement` is an `INPUT`/`TEXTAREA` or matches `[contenteditable]`), so a background re-render never discards a task edit in progress; the next interval (or next visibility regain after blur) catches it up.
+  - Implementation notes:
+    - Wire both triggers independently of the existing `if ('serviceWorker' in navigator)` block in `index.js` — this is a data concern, not a service-worker one, and nesting it risks disturbing the SW-update visibility/interval pins.
+    - `tests/serviceWorkerUpdate.test.js` source-inspects `index.js` with a first-match `setInterval(...)` regex and asserts that interval is ≥ 15 min (the hourly SW poll). Keep the new 5-minute re-hydrate `setInterval` from becoming the first `setInterval` match in `index.js` — place it after the existing SW-update interval (preferred, no test change), or otherwise tighten that test to target the SW interval specifically.
+    - `hydrateFromSupabase` already early-returns without a session and has a single-flight guard (`hydrationInFlight`), so the triggers can be armed unconditionally and an interval firing just as the tab regains visibility is safe — the second, overlapping call short-circuits.
+  - Out of scope: re-opening the realtime channels when the socket has genuinely died (separate entry); any `location.reload()` path; changes to the reconcile logic inside `hydrateFromSupabase`.
+  - File: `toDoList_main/src/index.js`, `toDoList_main/tests/serviceWorkerUpdate.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 664f44bc-853c-483a-a08b-bbb24e3b5ba2 -->
