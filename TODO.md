@@ -809,10 +809,10 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d5a46c13-c394-4a48-84de-5f27f36adf2c -->
 
-- [ ] **[MEDIUM]** Fix composer bar alignment so attach, mic, input, and send sit in a single horizontally-aligned row
+- [x] **[MEDIUM]** Fix composer bar alignment so attach, mic, input, and send sit in a single horizontally-aligned row
 
   - Type: bug
   - Description: The attach (📎), mic (🎤), input field, and send button are currently misaligned in the composer area — elements are not vertically centered within the same row. The correct layout is a single composer bar with attach and mic buttons flush left, the text input expanding in the center, and the send button flush right, all baseline-aligned. Attachment chips should appear in a row immediately above the composer bar, unchanged. Fix the flexbox alignment and any conflicting positioning in the composer container.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-18
   <!-- id: 9c130ea9-66af-4a2b-b43d-44de51c2f916 -->
