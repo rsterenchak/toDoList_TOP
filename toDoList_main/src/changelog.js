@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-06-18',
         fixed: [
             "SVG markup inside a drafted TODO entry now stays as text instead of rendering as an image in the Claude chat.",
+            "The attach, mic, text field, and send controls in the Claude chat composer now sit in a single, vertically aligned row.",
         ],
     },
     {
         version: '1.1',
         date: '2026-06-17',
-        changed: [
-            "The Claude chat composer now arranges the attach, mic, text field, and send controls in a single aligned row.",
-        ],
         fixed: [
             "Your current project now stays selected when tasks refresh from the cloud, instead of jumping to another project.",
             "Todo rows and the sort controls no longer get clipped off the right edge on narrow mobile screens.",

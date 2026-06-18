@@ -1740,7 +1740,7 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeComposer {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center;
   border-top: 0.5px solid var(--border-dim);
   padding-top: 12px;
 }
@@ -1757,7 +1757,6 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 .claudeComposerSend {
   flex-shrink: 0;
-  align-self: center;
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -1768,7 +1767,6 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 .claudeComposerAttach {
   flex-shrink: 0;
-  align-self: center;
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -1790,7 +1788,6 @@ body:has(#settingsMenu) #claudeLauncher {
    purple accent with a pulse; denied fades it back. */
 .micButton {
   flex-shrink: 0;
-  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
