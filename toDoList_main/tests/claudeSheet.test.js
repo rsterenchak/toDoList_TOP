@@ -320,6 +320,22 @@ describe('Claude sheet — module surface and styling', () => {
         expect(close).not.toMatch(/position:\s*absolute/);
     });
 
+    it('aligns the composer controls (attach, mic, input, send) in one vertically-centered row', () => {
+        const composer = extractTopLevelRule('.claudeComposer');
+        expect(composer).toMatch(/display:\s*flex/);
+        // The row centers every control on the cross axis. The old
+        // `align-items: flex-end` (container) + `align-self: center`
+        // (buttons only) mix left the textarea bottom-aligned while the
+        // buttons centered — the misalignment this fixes.
+        expect(composer).toMatch(/align-items:\s*center/);
+        expect(composer).not.toMatch(/align-items:\s*flex-end/);
+        // No per-control alignment override remains to fight the container's
+        // centering — every control inherits the single, uniform alignment.
+        expect(extractTopLevelRule('.claudeComposerAttach')).not.toMatch(/align-self/);
+        expect(extractTopLevelRule('.claudeComposerSend')).not.toMatch(/align-self/);
+        expect(extractTopLevelRule('.micButton')).not.toMatch(/align-self/);
+    });
+
     it('pins the launcher to the bottom-right and hides it under other modals', () => {
         const rule = extractTopLevelRule('#claudeLauncher');
         expect(rule).toMatch(/position:\s*fixed/);
