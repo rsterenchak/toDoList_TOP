@@ -788,3 +788,23 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/toDo.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4118f705-d96d-4ecc-94b7-0efe028d35b2 -->
+
+- [ ] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering
+  - Type: bug
+  - Description: In the in-app Claude sheet, assistant replies containing SVG show as raw `<svg>…</svg>` markup text instead of rendering as a visual. Expected: the SVG renders inline, as it already does for a clean fenced ```svg block (covered by existing tests in `claudeSheet.test.js`). Root cause: `splitRenderableBlocks` only recognizes a fenced block whose opening is a lowercase `html`/`svg` label followed by optional spaces/tabs and a REQUIRED newline (`/```(html|svg)[ \t]*\r?\n([\s\S]*?)```/`). The model's real SVG output frequently misses this exact shape — an un-fenced `<svg>` in prose, a label/text on the fence line, a same-line `<svg>`, or a casing variant — so the block falls through into a text segment and `renderAssistantContent` renders it via `textContent`. The regex is also case-sensitive, so its own `.toLowerCase()` on the captured label is currently dead code (an uppercase ```SVG never matches in the first place).
+  - Behavior:
+    1. `splitRenderableBlocks` recognizes the fence more tolerantly: the match is case-insensitive (```SVG / ```Svg also match — completing the intent of the existing `.toLowerCase()`), and the markup may start on the same line as the label (the newline after the tag is no longer required).
+    2. New fallback: within any remaining text segment, a complete top-level `<svg …>…</svg>` element (balanced open + close) is promoted to an `svg` segment and rendered, so an un-fenced SVG in the reply still renders.
+    3. The fallback runs AFTER fenced-block extraction, so an `<svg>` already inside an extracted ```svg/```html fence is never matched twice.
+    4. Every promoted SVG still routes through `sanitizeSvgBlock` (DOMPurify SVG profile, forbidding `foreignObject`/`image`/`script`) exactly as the fenced path does.
+    5. Prose that only mentions `<svg>` without a closing tag is not promoted (only complete elements render).
+  - Implementation notes:
+    - Keep the existing fenced semantics intact (```md stays text; ```html → html; ```svg → svg) — pinned in `tests/claudeSheet.test.js`. The bare-`<svg>` promotion is additive; the existing fence-free pins ('just prose…', 'plain reply', the ```md draft block) contain no `<svg>`, so they stay text and stay green.
+    - For the bare-svg match, a non-greedy `/<svg[\s\S]*?<\/svg>/i` over the text segment is adequate since the content is sanitized afterward. Do not let it reach into a fenced span inside the text segment (e.g. an `<svg>` written literally inside a ```md draft block) — scan only text genuinely outside any ``` fence. Low-severity even if missed (the sanitizer keeps a stray render inert), but the ```md case is the concrete one to guard.
+    - Trim leading/trailing whitespace on the now-optional-newline fenced capture so a same-line `<svg>` doesn't carry stray indentation into the sanitizer.
+    - Fix the stale comment on `sanitizeSvgBlock` while here: it currently says the Worker prompt tells the model NOT to emit these — now the opposite of true (the Worker `SYSTEM_PROMPT` instructs fenced ```svg blocks for mockups, with an explicit FENCE FORMAT rule). Reword to: the sanitizer is defense-in-depth that renders the model's SVG safely regardless of what arrives.
+    - Extend `tests/claudeSheet.test.js`: (a) an un-fenced `<svg>…</svg>` in a reply yields an `svg` segment and renders a real `<svg>` node; (b) an uppercase ```SVG fence renders; (c) an `<svg>` with no closing tag stays text; (d) existing fence / `md` / plain-text pins stay green.
+  - Out of scope: MathML or other foreign content; SVG that streams in partially before the reply completes (moot if the sheet re-renders on stream-complete — revisit only if observed); the Worker `SYSTEM_PROMPT` FENCE FORMAT change (separate repo, deployed manually).
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d5a46c13-c394-4a48-84de-5f27f36adf2c -->
