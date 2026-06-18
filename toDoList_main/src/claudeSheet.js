@@ -1187,14 +1187,28 @@ export function splitRenderableBlocks(text) {
     // still renders. This runs AFTER fenced-block extraction, so an <svg> already
     // inside an extracted ```svg/```html fence is never matched twice. Only
     // balanced elements (open + close) are promoted; a bare <svg> mention with no
-    // closing tag stays plain text.
+    // closing tag stays plain text. The scan also skips any ``` fenced span that
+    // survived into a text segment (e.g. a ```md draft block) so an <svg> written
+    // literally inside such a fence stays text rather than rendering mid-draft.
     const segments = [];
     for (const seg of fenced) {
         if (seg.type !== 'text') { segments.push(seg); continue; }
+        // Map out any ``` fenced spans that survived into this text segment (e.g. a
+        // ```md draft block) so an <svg> written literally inside one is ignored.
+        const fences = [];
+        const fenceRe = /```[\s\S]*?```/g;
+        let fm;
+        while ((fm = fenceRe.exec(seg.value)) !== null) {
+            fences.push([fm.index, fenceRe.lastIndex]);
+        }
+        const insideFence = (i) => fences.some(([s, e]) => i >= s && i < e);
+        // Promote each balanced <svg>…</svg> that lies outside every fenced span,
+        // leaving the surrounding (and fenced) text contiguous and unrendered.
         const svgRe = /<svg[\s\S]*?<\/svg>/gi;
         let li = 0;
         let sm;
         while ((sm = svgRe.exec(seg.value)) !== null) {
+            if (insideFence(sm.index)) continue;
             if (sm.index > li) segments.push({ type: 'text', value: seg.value.slice(li, sm.index) });
             segments.push({ type: 'svg', value: sm[0] });
             li = svgRe.lastIndex;
@@ -1212,9 +1226,10 @@ function sanitizeHtmlBlock(html) {
     return DOMPurify.sanitize(String(html));
 }
 
-// Sanitize a ```svg block. Belt-and-suspenders even though the Worker prompt
-// tells the model not to emit these: restrict to the SVG profile and explicitly
-// forbid <script>, <foreignObject>, and <image> (the external-href vector).
+// Sanitize an svg block. Defense-in-depth that renders the model's SVG safely
+// regardless of what arrives (the Worker prompt now instructs fenced ```svg
+// blocks for mockups): restrict to the SVG profile and explicitly forbid
+// <script>, <foreignObject>, and <image> (the external-href vector).
 function sanitizeSvgBlock(svg) {
     return DOMPurify.sanitize(String(svg), {
         USE_PROFILES: { svg: true, svgFilters: true },

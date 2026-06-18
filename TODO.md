@@ -789,7 +789,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4118f705-d96d-4ecc-94b7-0efe028d35b2 -->
 
-- [ ] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering
+- [x] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering — Completed: 2026-06-18
   - Type: bug
   - Description: In the in-app Claude sheet, assistant replies containing SVG show as raw `<svg>…</svg>` markup text instead of rendering as a visual. Expected: the SVG renders inline, as it already does for a clean fenced ```svg block (covered by existing tests in `claudeSheet.test.js`). Root cause: `splitRenderableBlocks` only recognizes a fenced block whose opening is a lowercase `html`/`svg` label followed by optional spaces/tabs and a REQUIRED newline (`/```(html|svg)[ \t]*\r?\n([\s\S]*?)```/`). The model's real SVG output frequently misses this exact shape — an un-fenced `<svg>` in prose, a label/text on the fence line, a same-line `<svg>`, or a casing variant — so the block falls through into a text segment and `renderAssistantContent` renders it via `textContent`. The regex is also case-sensitive, so its own `.toLowerCase()` on the captured label is currently dead code (an uppercase ```SVG never matches in the first place).
   - Behavior:

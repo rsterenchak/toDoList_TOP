@@ -2942,4 +2942,13 @@ describe('Inline html/svg rendering in the chat surface', () => {
         const segs = splitRenderableBlocks('```svg\n<svg></svg>\n```');
         expect(segs.map(s => s.type)).toEqual(['svg']);
     });
+
+    it('does not promote an <svg> written literally inside a ```md draft block', () => {
+        const reply = 'Draft:\n```md\n- [ ] Add an <svg viewBox="0 0 1 1"></svg> icon\n```';
+        const segs = splitRenderableBlocks(reply);
+        // The ```md fence is left as text (handled by the draft path), so the
+        // bare-svg fallback must not reach inside it and promote the <svg>.
+        expect(segs.some(s => s.type === 'svg')).toBe(false);
+        expect(segs.map(s => s.value).join('')).toContain('<svg viewBox="0 0 1 1"></svg>');
+    });
 });
