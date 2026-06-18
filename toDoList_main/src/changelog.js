@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-18',
+        fixed: [
+            "SVG markup inside a drafted TODO entry now stays as text instead of rendering as an image in the Claude chat.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-17',
         changed: [
-            "Long lines in the mobile description editor now wrap inside the box instead of running off the right edge.",
             "The Claude chat composer now arranges the attach, mic, text field, and send controls in a single aligned row.",
         ],
         fixed: [
