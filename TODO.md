@@ -824,10 +824,10 @@
   - Completed: 2026-06-19
   <!-- id: 188de566-ce14-4fe8-8e00-52eb5328457d -->
 
-- [ ] **[MEDIUM]** Fix `claudeComposerInput` textarea not adopting light-mode styles when theme is toggled
+- [x] **[MEDIUM]** Fix `claudeComposerInput` textarea not adopting light-mode styles when theme is toggled
 
   - Type: bug
   - Description: The `#claudeComposerInput` textarea retains its dark-mode appearance (background, text color, border) when the user switches to light mode via the Theme settings menu item. The light-mode theme class is applied to the page but no corresponding light-mode override rules exist for `#claudeComposerInput` in `style.css`. Add light-mode CSS rules scoped to the active light-theme class: background `#f5f5fa`, text color `#1c1c1e`, border `1.5px solid #9D93EE`, and placeholder color `#8a8a99`, matching the same scoping pattern used by other light-mode overrides in `style.css`.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-19
   <!-- id: 45500d2b-26c5-4142-af05-2375aa82b227 -->
