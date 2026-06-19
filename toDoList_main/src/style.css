@@ -7438,6 +7438,20 @@ body.row-dragging * { cursor: grabbing !important; }
     color: #e8e8f0;
     font-weight: 700;
   }
+  /* Light theme: the segmented control's hardcoded dark palette is invisible
+     on the light page background, so retint the container and pills to the
+     light-purple Option B palette. */
+  :root[data-theme="light"] #desktopChatPane .claudeTabGroup {
+    background: #ddddf0;
+    border-color: #c0c0e0;
+  }
+  :root[data-theme="light"] #desktopChatPane .claudeTabGroup .claudeTab {
+    color: #5a5a7a;
+  }
+  :root[data-theme="light"] #desktopChatPane .claudeTabGroup .claudeTab[aria-selected="true"] {
+    background: #6C5DF5;
+    color: #ffffff;
+  }
   /* The persistent pane is the desktop chat surface; the slide-up sheet and
      its bottom-right launcher are retired here. */
   #claudeSheet { display: none; }
