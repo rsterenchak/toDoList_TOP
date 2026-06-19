@@ -9,6 +9,7 @@ export const changelog = [
         fixed: [
             "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
             "The Claude chat message box now adopts light-theme colors when you switch to light mode instead of staying dark.",
+            "The Run button in the TODO.md viewer now switches to a light outlined style in light mode instead of staying a heavy dark fill.",
         ],
     },
     {
@@ -17,13 +18,6 @@ export const changelog = [
         fixed: [
             "SVG markup inside a drafted TODO entry now stays as text instead of rendering as an image in the Claude chat.",
             "The attach, mic, text field, and send controls in the Claude chat composer now sit in a single, vertically aligned row.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-17',
-        fixed: [
-            "SVG visuals in Claude's chat replies now render as images instead of showing as raw markup text.",
         ],
     },
 ];
