@@ -831,3 +831,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-19
   <!-- id: 45500d2b-26c5-4142-af05-2375aa82b227 -->
+
+- [ ] **[LOW]** Fix `.todoMdViewerRunBtn` to render as a ghost button in light mode
+  - Type: bug
+  - Description: In light mode the `.todoMdViewerRunBtn` button does not adapt its appearance — it retains its dark-mode solid purple fill (`#6C5DF5`) against a light background, making it feel visually heavy and inconsistent with the light theme. In light mode the button should switch to a ghost style: transparent background, a `1.5px` solid `#6C5DF5` border, and `#6C5DF5` for both the text label and the SVG icon (via `color`/`fill: currentColor`). Add a `body.light-theme .todoMdViewerRunBtn` (or equivalent light-mode selector already used in the project) rule in `style.css` to apply these overrides; no JS changes are needed.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 2071ee0b-b6f0-4e21-9abe-efd215f96790 -->
