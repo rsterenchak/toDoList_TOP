@@ -305,6 +305,26 @@ describe('todo.md viewer — body collapse toggle', () => {
     it('hides the body via display:none when the card carries the collapsed class', () => {
         expect(css).toMatch(/\.todoMdViewerCard\.collapsed\s+\.todoMdViewerBody\s*\{[\s\S]{0,80}display:\s*none/);
     });
+
+    it('renders the collapse button as a purple ghost in dark mode (no fill, faint #9D93EE border, #9D93EE chevron)', () => {
+        const ruleMatch = css.match(/\.todoMdViewerCollapseBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/background:\s*none/);
+        expect(rule).toMatch(/border:[^;]*rgba\(157,\s*147,\s*238/);
+        expect(rule).toMatch(/color:\s*#9D93EE/);
+    });
+
+    it('swaps the collapse button to the deeper #6C5DF5 purple ghost in light mode', () => {
+        const btnMatch = css.match(
+            /:root\[data-theme="light"\]\s+\.todoMdViewerCollapseBtn\s*\{[^}]*\}/
+        );
+        expect(btnMatch).not.toBeNull();
+        const btnRule = btnMatch[0];
+        expect(btnRule).toMatch(/background:\s*none/);
+        expect(btnRule).toMatch(/border-color:\s*rgba\(108,\s*93,\s*245/);
+        expect(btnRule).toMatch(/color:\s*#6C5DF5/);
+    });
 });
 
 describe('todo.md viewer — collapse button fills body to bottom on expand', () => {
