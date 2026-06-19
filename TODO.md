@@ -839,9 +839,9 @@
   - Completed: 2026-06-19
   <!-- id: 2071ee0b-b6f0-4e21-9abe-efd215f96790 -->
 
-- [ ] **[MEDIUM]** Fix todoMdViewer collapse button to use purple ghost style in both light and dark themes
+- [x] **[MEDIUM]** Fix todoMdViewer collapse button to use purple ghost style in both light and dark themes
   - Type: bug
   - Description: The `.todoMdViewerCollapseBtn` button does not update its styling when switching from dark to light mode. In both themes the button should be unfilled with a faint purple border (low opacity) and a purple chevron stroke — using `#9D93EE` on dark and `#6C5DF5` on light. The fix is a CSS-only change: ensure the button has `background: none`, a `border` using the appropriate purple token at ~35–40% opacity, and `color`/`stroke` set to the purple accent; add a `[data-theme="light"] .todoMdViewerCollapseBtn` override (or equivalent light-theme selector matching the existing pattern in the file) to swap to the deeper purple values.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-19
   <!-- id: f69365e8-fb8b-4022-89b4-32f78a25ed4f -->
