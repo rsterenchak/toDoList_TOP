@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-19',
+        fixed: [
+            "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-18',
         fixed: [
             "SVG markup inside a drafted TODO entry now stays as text instead of rendering as an image in the Claude chat.",
@@ -15,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-17',
         fixed: [
-            "Your current project now stays selected when tasks refresh from the cloud, instead of jumping to another project.",
             "Todo rows and the sort controls no longer get clipped off the right edge on narrow mobile screens.",
             "SVG visuals in Claude's chat replies now render as images instead of showing as raw markup text.",
         ],
