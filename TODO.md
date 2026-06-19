@@ -816,3 +816,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-06-18
   <!-- id: 9c130ea9-66af-4a2b-b43d-44de51c2f916 -->
+
+- [ ] **[MEDIUM]** Fix claudeTabGroup toggle to respond to light theme in CSS
+  - Type: bug
+  - Description: The `.claudeTabGroup` tab toggle does not update its colors when the user switches to light mode via the Theme settings menu item. In dark mode the tab group uses dark backgrounds that become invisible or low-contrast on a light page background. The fix should add a light-theme CSS rule (scoped to whatever class `theme.js` applies to `<body>` or the root element when light mode is active — grep `theme.js` and `style.css` for the existing light-theme selector) that sets the tab group container to a light purple tint (approx `#ddddf0`, border `#c0c0e0`), the active pill to the brand purple (`#6C5DF5`), the active label to `#ffffff`, and the inactive label to `#5a5a7a`. No JS changes are needed — CSS selector override only. Acceptance criteria: switching to light mode via the Theme menu item updates the tab group colors to the Option B palette; tab switching (Chat ↔ Runs) still works correctly in both themes; the active-tab indicator remains clearly visible in both themes.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/theme.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 188de566-ce14-4fe8-8e00-52eb5328457d -->
