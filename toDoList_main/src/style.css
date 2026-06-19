@@ -1755,6 +1755,16 @@ body:has(#settingsMenu) #claudeLauncher {
   font-family: inherit;
   font-size: 16px;
 }
+/* Light theme: the composer textarea's hardcoded dark background and muted
+   border are low-contrast on the light page, so retint to the light palette. */
+:root[data-theme="light"] #claudeComposerInput {
+  background: #f5f5fa;
+  color: #1c1c1e;
+  border: 1.5px solid #9D93EE;
+}
+:root[data-theme="light"] #claudeComposerInput::placeholder {
+  color: #8a8a99;
+}
 .claudeComposerSend {
   flex-shrink: 0;
   width: 36px;
