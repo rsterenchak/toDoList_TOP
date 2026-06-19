@@ -422,6 +422,23 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
         expect(rule).toMatch(/border:[^;]*#2a2a38/);
         expect(rule).toMatch(/color:\s*#9D93EE/);
     });
+
+    it('renders the Run backlog button as a ghost in light mode (transparent fill, #6C5DF5 border/text, currentColor icon)', () => {
+        const btnMatch = css.match(
+            /:root\[data-theme="light"\]\s+\.todoMdViewerRunBtn\s*\{[^}]*\}/
+        );
+        expect(btnMatch).not.toBeNull();
+        const btnRule = btnMatch[0];
+        expect(btnRule).toMatch(/background:\s*transparent/);
+        expect(btnRule).toMatch(/border:[^;]*1\.5px[^;]*#6C5DF5/);
+        expect(btnRule).toMatch(/color:\s*#6C5DF5/);
+
+        const iconMatch = css.match(
+            /:root\[data-theme="light"\]\s+\.todoMdViewerRunIcon\s*\{[^}]*\}/
+        );
+        expect(iconMatch).not.toBeNull();
+        expect(iconMatch[0]).toMatch(/fill:\s*currentColor/);
+    });
 });
 
 describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {

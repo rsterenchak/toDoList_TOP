@@ -5090,6 +5090,17 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoMdViewerRunIcon {
   flex: none;
 }
+/* Light theme: the run button's dark fill reads heavy on the light page, so
+   switch it to a ghost style — transparent fill with the accent purple on the
+   border, label, and icon (icon inherits via currentColor). */
+:root[data-theme="light"] .todoMdViewerRunBtn {
+  background: transparent;
+  color: #6C5DF5;
+  border: 1.5px solid #6C5DF5;
+}
+:root[data-theme="light"] .todoMdViewerRunIcon {
+  fill: currentColor;
+}
 
 /* Per-entry "Run this entry" control — lives inline on a rendered checklist
    row for entries whose <!-- id: --> marker resolved. Shares the Run backlog
