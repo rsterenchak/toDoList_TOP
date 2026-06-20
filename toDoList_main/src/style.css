@@ -1832,10 +1832,11 @@ body:has(#settingsMenu) #claudeLauncher {
   box-shadow: 0 0 0 3px rgba(108, 93, 245, 0.25);
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-/* Hover feedback: a soft purple wash with a lighter purple glyph, matching the
-   attach/send button hover family. */
+/* Hover feedback: a 1.5px purple border and a lighter purple glyph, mirroring
+   the .claudeComposerAttach:hover values verbatim so the two composer buttons
+   share one hover affordance. */
 .micButton:hover {
-  background-color: rgba(108, 93, 245, 0.22);
+  border: 1.5px solid #6C5DF5;
   color: #9D93EE;
 }
 .micButton--recording {
