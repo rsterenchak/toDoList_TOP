@@ -44,6 +44,7 @@ import {
     isAnyModalOrPopoverOpen,
 } from './modals.js';
 import { mountClaudeSheet } from './claudeSheet.js';
+import { syncClaudeSheetForProject } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
@@ -3912,6 +3913,10 @@ function component() {
                         }
                         focusBlankToDoInputIfDesktop();
 
+                        // Auto-open the Claude sheet for repo-backed projects,
+                        // auto-close it for projects with no repo configured.
+                        syncClaudeSheetForProject(innerValue);
+
                         return;
                     }
 
@@ -4881,6 +4886,10 @@ function restoreFromStorage(opts) {
                     addAllToDo_DOM(items, name);
                 }
                 focusBlankToDoInputIfDesktop();
+
+                // Auto-open the Claude sheet for repo-backed projects,
+                // auto-close it for projects with no repo configured.
+                syncClaudeSheetForProject(name);
 
                 return;
             }
