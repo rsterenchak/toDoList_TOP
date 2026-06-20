@@ -14,5 +14,206 @@
     <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">
   </head>
   <body>
+    <!--
+      Boot watchdog. Inline on purpose: the shell ships from an empty <body>
+      and is entirely JS-injected, with style.css bundled through style-loader.
+      When a stale or mismatched service-worker cache serves an app bundle that
+      fails to evaluate, nothing renders and no in-app cue can run — the
+      recovery code itself never executes. Living inline here means a dead
+      bundle can't take the watchdog down with it, and carrying its own styles
+      means it still paints when style.css is absent. It detects a failed boot
+      (window.__appBooted never set within ~10s, and no #outerContainer), then
+      silently self-heals by busting caches and reloading; only if that doesn't
+      take does it surface a one-tap "Reload" prompt. The app sets
+      window.__appBooted (and calls window.__clearBootWatchdog) once interactive
+      chrome is in the DOM — see src/index.js (markAppBooted).
+    -->
+    <script>
+    (function () {
+      try {
+        var KEY = 'todoapp_bootRecoveryAttempt';
+        var TIMEOUT_MS = 10000;
+        // Void palette, hardcoded — style.css isn't loaded on a failed boot.
+        var C = {
+          bg: '#0e0f14', surface: '#191a22', accent: '#8b7bff',
+          text: '#e6e7ee', muted: '#8a8d9c', border: '#23242e'
+        };
+
+        function readAttempt() {
+          try { return parseInt(sessionStorage.getItem(KEY), 10) || 0; }
+          catch (_) { return 0; }
+        }
+        function writeAttempt(n) {
+          try { sessionStorage.setItem(KEY, String(n)); } catch (_) { /* noop */ }
+        }
+        function hasBooted() {
+          return !!window.__appBooted || !!document.getElementById('outerContainer');
+        }
+
+        var overlay = null;
+        function removeOverlay() {
+          if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          overlay = null;
+        }
+        function mountOverlay(el) {
+          removeOverlay();
+          overlay = el;
+          (document.body || document.documentElement).appendChild(el);
+        }
+        function baseOverlay() {
+          var el = document.createElement('div');
+          el.id = 'bootWatchdogOverlay';
+          el.setAttribute('role', 'alert');
+          el.style.cssText =
+            'position:fixed;inset:0;z-index:2147483647;display:flex;' +
+            'flex-direction:column;align-items:center;justify-content:center;' +
+            'gap:18px;padding:24px;box-sizing:border-box;background:' + C.bg +
+            ';color:' + C.text + ';text-align:center;' +
+            'font-family:system-ui,-apple-system,sans-serif;';
+          return el;
+        }
+
+        function ensureSpinKeyframes() {
+          if (document.getElementById('bootWatchdogStyle')) return;
+          var st = document.createElement('style');
+          st.id = 'bootWatchdogStyle';
+          st.textContent = '@keyframes bootWatchdogSpin{to{transform:rotate(360deg)}}';
+          (document.head || document.documentElement).appendChild(st);
+        }
+
+        // Stage 1 — silent self-heal in progress.
+        function showSpinner() {
+          ensureSpinKeyframes();
+          var el = baseOverlay();
+          var sp = document.createElement('div');
+          sp.style.cssText =
+            'width:34px;height:34px;border-radius:50%;border:3px solid ' + C.border +
+            ';border-top-color:' + C.accent + ';animation:bootWatchdogSpin .8s linear infinite;';
+          var cap = document.createElement('div');
+          cap.textContent = 'UPDATING…';
+          cap.style.cssText =
+            'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;' +
+            'letter-spacing:2px;text-transform:uppercase;color:' + C.muted + ';';
+          el.appendChild(sp);
+          el.appendChild(cap);
+          mountOverlay(el);
+        }
+
+        // Stage 2 — give up auto-reloading and offer a manual refresh.
+        function showPrompt() {
+          var el = baseOverlay();
+          var wrap = document.createElement('div');
+          wrap.style.cssText =
+            'display:flex;flex-direction:column;align-items:center;gap:14px;max-width:300px;';
+          wrap.innerHTML =
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="' + C.accent +
+            '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M5 21V8a7 7 0 0 1 14 0v13l-2.5-2-2.5 2-2-2-2 2-2.5-2L5 21Z"/>' +
+            '<circle cx="9.5" cy="11" r="1"/><circle cx="14.5" cy="11" r="1"/></svg>';
+          var msg = document.createElement('div');
+          msg.textContent = 'This update needs a refresh to finish.';
+          msg.style.cssText = 'font-size:15px;line-height:1.4;color:' + C.text + ';';
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = 'Reload';
+          btn.style.cssText =
+            'appearance:none;border:0;cursor:pointer;background:' + C.accent +
+            ';color:#fff;font-size:15px;font-weight:600;padding:0 22px;' +
+            'min-height:44px;border-radius:10px;font-family:inherit;';
+          btn.addEventListener('click', function () {
+            showSpinner();
+            deepBust(function () { location.reload(); });
+          });
+          var sub = document.createElement('div');
+          sub.textContent = 'Still stuck? Fully close and reopen the app.';
+          sub.style.cssText = 'font-size:12px;color:' + C.muted + ';';
+          wrap.appendChild(msg);
+          wrap.appendChild(btn);
+          wrap.appendChild(sub);
+          el.appendChild(wrap);
+          mountOverlay(el);
+        }
+
+        // Deep bust: drop all Cache Storage entries and unregister every
+        // service worker, then run done(). A 3s ceiling guarantees recovery
+        // even if a cache API call hangs.
+        function deepBust(done) {
+          var tasks = [];
+          try {
+            if (window.caches && caches.keys) {
+              tasks.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+          } catch (_) { /* noop */ }
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+          } catch (_) { /* noop */ }
+          var finished = false;
+          function finish() { if (!finished) { finished = true; done(); } }
+          if (tasks.length) {
+            try { Promise.all(tasks).then(finish, finish); } catch (_) { finish(); }
+            setTimeout(finish, 3000);
+          } else {
+            finish();
+          }
+        }
+
+        function reloadOnce() {
+          var done = false;
+          return function () { if (!done) { done = true; location.reload(); } };
+        }
+
+        function escalate() {
+          if (hasBooted()) { removeOverlay(); return; }
+          var n = readAttempt();
+          if (n <= 0) {
+            // Attempt 0 — silent: nudge the SW to update, then reload.
+            writeAttempt(1);
+            showSpinner();
+            var go = reloadOnce();
+            try {
+              if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+                navigator.serviceWorker.getRegistration().then(function (reg) {
+                  try { if (reg && reg.update) reg.update(); } catch (_) { /* noop */ }
+                  go();
+                }, go);
+                setTimeout(go, 2000);
+              } else {
+                go();
+              }
+            } catch (_) { go(); }
+          } else if (n === 1) {
+            // Attempt 1 — silent, deeper bust: clear caches + SWs, then
+            // reload uncontrolled so the next load fetches fresh.
+            writeAttempt(2);
+            showSpinner();
+            deepBust(function () { location.reload(); });
+          } else {
+            // Attempt >= 2 — stop auto-reloading and surface the prompt.
+            showPrompt();
+          }
+        }
+
+        // The app calls this once interactive chrome is up: cancel the
+        // pending check and clear any overlay shown mid-recovery.
+        window.__clearBootWatchdog = function () {
+          try { clearTimeout(timer); } catch (_) { /* noop */ }
+          removeOverlay();
+        };
+
+        // If we're already mid-recovery on this load, paint the spinner
+        // immediately so the heal sequence doesn't flash white between
+        // reloads. A successful boot will clear it via __clearBootWatchdog.
+        if (readAttempt() > 0) showSpinner();
+
+        var timer = setTimeout(escalate, TIMEOUT_MS);
+      } catch (_) { /* the watchdog must never throw and break a healthy boot */ }
+    })();
+    </script>
   </body>
 </html>

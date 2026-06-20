@@ -13,13 +13,7 @@ export const changelog = [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",
             "The Claude assistant's voice-input button now shows the same purple border and glyph highlight on hover as the other composer buttons.",
             "Switching projects now actually shows or hides the Claude chat pane based on the project's repo configuration, instead of leaving it unchanged.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-19',
-        fixed: [
-            "The collapse button in the TODO.md viewer now uses a consistent purple outlined style in both light and dark themes.",
+            "The app now recovers on its own from a blank screen after an update, refreshing itself automatically instead of needing a manual hard refresh.",
         ],
     },
 ];
