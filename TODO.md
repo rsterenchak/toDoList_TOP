@@ -853,10 +853,10 @@
   - Completed: 2026-06-19
   <!-- id: 5de98300-270b-49dd-ac66-d2b5422d7da4 -->
 
-- [ ] **[LOW]** Change focused chat input border glow to purple and add purple hover tint to mic button
+- [x] **[LOW]** Change focused chat input border glow to purple and add purple hover tint to mic button
 
   - Type: feature
   - Description: Currently the chat textarea in the Claude sheet glows white on focus (`box-shadow` / `border-color` resolves to white or a near-white value). Change the focused border and glow to `#6C5DF5` with a soft `box-shadow` using that color at low opacity (~0.25) to match Option A. Additionally, the mic button (the voice-input button in the composer row) has no hover state — add a `background-color: rgba(108, 93, 245, 0.22)` hover style and set the icon color to `#9D93EE` on hover to match the same purple family. Both changes are CSS-only and should use the existing CSS variables where available.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-19
   <!-- id: e3c68a6e-6bff-417a-b9f1-030351a72142 -->
