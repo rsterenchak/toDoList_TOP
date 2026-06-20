@@ -24,11 +24,29 @@ document.body.appendChild(component()); // build and attach DOM
 // in-memory + localStorage state is left untouched — Phase 5 will
 // route data through Supabase, and Phase 6 will migrate the local
 // snapshot to the backend.
+// Boot-watchdog contract: signal that interactive chrome is in the DOM so
+// the inline watchdog in template.html stands down. Setting window.__appBooted
+// is the success flag the watchdog's timer checks; we also clear its recovery
+// counter and ask it to remove any overlay it surfaced (via the
+// window.__clearBootWatchdog hook the inline script exposes). This is set
+// independent of Supabase hydration — the moment the shell/auth chrome renders,
+// not after the data pull — so a slow or failed hydrate never trips the
+// watchdog. Wrapped in try/catch so a missing API (sessionStorage, etc.) can't
+// turn the boot signal into a boot failure.
+function markAppBooted() {
+    try { window.__appBooted = true; } catch (_) { /* noop */ }
+    try { sessionStorage.removeItem('todoapp_bootRecoveryAttempt'); } catch (_) { /* noop */ }
+    try {
+        if (typeof window.__clearBootWatchdog === 'function') window.__clearBootWatchdog();
+    } catch (_) { /* noop */ }
+}
+
 let booted = false;
 function bootApp(userId) {
     if (booted) return;
     booted = true;
     restoreFromStorage();              // now that DOM is live, restore saved projects
+    markAppBooted();                   // signed-in shell is up — stand the watchdog down
     // First-run welcome carousel for mobile new users. The flag check and
     // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
     // so callers don't need to know the gating rules; runs after restoreFromStorage
@@ -70,6 +88,7 @@ supabase.auth.getSession().then(function(result) {
         bootApp(session.user && session.user.id);
     } else {
         showAuthModal();
+        markAppBooted();               // auth front door is up — stand the watchdog down
     }
 }).catch(function() {
     // Network failure on initial session probe — render the modal so
@@ -77,6 +96,7 @@ supabase.auth.getSession().then(function(result) {
     // on the magic-link callback when the URL hash carries the
     // exchanged tokens.
     showAuthModal();
+    markAppBooted();                   // auth front door is up — stand the watchdog down
 });
 
 supabase.auth.onAuthStateChange(function(_event, session) {
@@ -91,6 +111,7 @@ supabase.auth.onAuthStateChange(function(_event, session) {
         // previous user's data.
         try { listLogic.handleSignOut(); } catch (_) { /* noop */ }
         showAuthModal();
+        markAppBooted();               // auth front door is up — stand the watchdog down
     }
 });
 

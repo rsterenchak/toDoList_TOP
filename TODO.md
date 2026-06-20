@@ -892,7 +892,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f2cf4cfc-becf-4197-b790-f97ddaef1181 -->
 
-- [ ] **[HIGH]** Add boot watchdog to recover from post-update white screens
+- [x] **[HIGH]** Add boot watchdog to recover from post-update white screens — Completed: 2026-06-20
   - Type: bug
   - Description: After a deploy, some clients open to a blank white screen and can't recover without a manual hard refresh. The shell ships from an empty `<body>` and is entirely JS-injected, and `style.css` is bundled through `style-loader`, so when a stale or mismatched service-worker cache serves an app bundle that fails to evaluate, nothing renders and no in-app cue (the existing `modals.js` update dot) can run — the recovery code itself never executes. Add a self-contained boot watchdog inline in `template.html`: it must be inline so it survives a dead bundle, and must carry its own styles because the app stylesheet isn't present on a failed boot. The watchdog detects a failed boot and silently self-heals by busting the cache and reloading; only if that doesn't take does it surface a visible "Reload" prompt — so most users never see anything and the rest get a one-tap fix instead of needing to know how to hard-refresh an installed PWA.
   - Behavior:
