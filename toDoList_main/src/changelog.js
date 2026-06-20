@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-06-20',
         fixed: [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",
+            "The Claude assistant's voice-input button now shows the same purple border and glyph highlight on hover as the other composer buttons.",
         ],
     },
     {
         version: '1.1',
         date: '2026-06-19',
         fixed: [
-            "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
             "The Claude chat message box now adopts light-theme colors when you switch to light mode instead of staying dark.",
             "The Run button in the TODO.md viewer now switches to a light outlined style in light mode instead of staying a heavy dark fill.",
             "The collapse button in the TODO.md viewer now uses a consistent purple outlined style in both light and dark themes.",
