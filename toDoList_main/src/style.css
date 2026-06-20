@@ -1754,6 +1754,14 @@ body:has(#settingsMenu) #claudeLauncher {
   padding: 10px;
   font-family: inherit;
   font-size: 16px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* Focus state: a purple border and a soft glow in the same family as the
+   composer button hovers, replacing the browser's default near-white outline. */
+.claudeComposerInput:focus {
+  outline: none;
+  border-color: #6C5DF5;
+  box-shadow: 0 0 0 3px rgba(108, 93, 245, 0.25);
 }
 /* Light theme: the composer textarea's hardcoded dark background and muted
    border are low-contrast on the light page, so retint to the light palette. */
@@ -1818,6 +1826,13 @@ body:has(#settingsMenu) #claudeLauncher {
   color: var(--text-secondary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+/* Hover feedback: a soft purple wash with a lighter purple glyph, matching the
+   attach/send button hover family. */
+.micButton:hover {
+  background-color: rgba(108, 93, 245, 0.22);
+  color: #9D93EE;
 }
 .micButton--recording {
   background: var(--accent-dim);
