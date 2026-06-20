@@ -6,18 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-19',
+        added: [
+            "The Claude chat composer's attach, send, and layout-inspector buttons now show a purple border and lighter glyph on hover.",
+        ],
         fixed: [
             "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
             "The Claude chat message box now adopts light-theme colors when you switch to light mode instead of staying dark.",
             "The Run button in the TODO.md viewer now switches to a light outlined style in light mode instead of staying a heavy dark fill.",
             "The collapse button in the TODO.md viewer now uses a consistent purple outlined style in both light and dark themes.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-18',
-        fixed: [
-            "The attach, mic, text field, and send controls in the Claude chat composer now sit in a single, vertically aligned row.",
         ],
     },
 ];

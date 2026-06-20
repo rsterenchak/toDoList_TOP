@@ -1774,6 +1774,7 @@ body:has(#settingsMenu) #claudeLauncher {
   color: var(--accent-text);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .claudeComposerAttach {
   flex-shrink: 0;
@@ -1785,8 +1786,17 @@ body:has(#settingsMenu) #claudeLauncher {
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
   font-size: 16px;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .claudeComposerAttach[hidden] { display: none; }
+/* Hover feedback for the composer controls: a 1.5px purple border and a lighter
+   purple glyph/text, fading in via the transitions above. The send button skips
+   the cue while disabled so the not-allowed state still reads as inert. */
+.claudeComposerAttach:hover,
+.claudeComposerSend:hover:not(:disabled) {
+  border: 1.5px solid #6C5DF5;
+  color: #9D93EE;
+}
 .claudeComposerInput:disabled,
 .claudeComposerSend:disabled {
   opacity: 0.5;
@@ -2178,6 +2188,11 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.claudeInspectBtn:hover {
+  border: 1.5px solid #6C5DF5;
+  color: #9D93EE;
 }
 .claudeInspectNotice {
   margin: 8px 0 0;
