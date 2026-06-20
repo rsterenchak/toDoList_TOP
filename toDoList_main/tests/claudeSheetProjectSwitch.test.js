@@ -4,13 +4,11 @@ import { dirname, resolve } from 'node:path';
 import { vi } from 'vitest';
 import {
     mountClaudeSheet,
-    openClaudeSheet,
-    closeClaudeSheet,
-    isClaudeSheetOpen,
     syncClaudeSheetForProject,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
+import { isChatPaneCollapsed, setChatPaneCollapsed } from '../src/prefs.js';
 
 // claudeSheet → inject → supabaseClient. Stub the shared client so module import
 // doesn't reach the network; this mirrors the minimal surface other claudeSheet
@@ -65,69 +63,69 @@ function seedProject(name, targetId) {
     if (targetId) listLogic.setProjectTargetId(name, targetId);
 }
 
-describe('syncClaudeSheetForProject — auto-open/close on project switch', () => {
+// The Claude chat surface on desktop is the docked pane (#desktopChatPane),
+// shown/hidden by the `chatPaneCollapsed` body class that the chat expand /
+// collapse buttons drive — NOT the mobile slide-up sheet. So a project switch
+// must toggle that pane: repo-backed projects expand it, repo-less projects
+// collapse it, and the choice persists via setChatPaneCollapsed.
+describe('syncClaudeSheetForProject — auto-expand/collapse chat pane on project switch', () => {
     beforeEach(() => {
         localStorage.clear();
         document.body.innerHTML = '';
+        document.body.className = '';
         listLogic._reset();
         mountClaudeSheet(document.body);
     });
 
-    it('opens the sheet when a repo-backed project becomes active', () => {
+    it('expands the chat pane when a repo-backed project becomes active', () => {
         setInjectConfigured(true);
         seedProject('Repo', 'tgt-1');
-        expect(isClaudeSheetOpen()).toBe(false);
+        // Start from a collapsed pane to prove the switch expands it.
+        document.body.classList.add('chatPaneCollapsed');
+        setChatPaneCollapsed(true);
 
         syncClaudeSheetForProject('Repo');
-        expect(isClaudeSheetOpen()).toBe(true);
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(false);
+        expect(isChatPaneCollapsed()).toBe(false);
     });
 
-    it('closes an open sheet when the new project has no repo configured', () => {
+    it('collapses the chat pane when the new project has no repo configured', () => {
         setInjectConfigured(true);
         seedProject('NoRepo', null);
-        openClaudeSheet();
-        expect(isClaudeSheetOpen()).toBe(true);
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(false);
 
         syncClaudeSheetForProject('NoRepo');
-        expect(isClaudeSheetOpen()).toBe(false);
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(true);
+        expect(isChatPaneCollapsed()).toBe(true);
     });
 
-    it('leaves a closed sheet closed when the new project has no repo', () => {
-        setInjectConfigured(true);
-        seedProject('NoRepo', null);
-        expect(isClaudeSheetOpen()).toBe(false);
-
-        syncClaudeSheetForProject('NoRepo');
-        expect(isClaudeSheetOpen()).toBe(false);
-    });
-
-    it('does NOT auto-open when inject is unconfigured even if the project has a target', () => {
-        // No bolt shows without global inject config, so no auto-open either.
+    it('collapses the pane when inject is unconfigured even if the project has a target', () => {
+        // No bolt shows without global inject config, so no auto-expand either.
         setInjectConfigured(false);
         seedProject('Repo', 'tgt-1');
 
         syncClaudeSheetForProject('Repo');
-        expect(isClaudeSheetOpen()).toBe(false);
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(true);
+        expect(isChatPaneCollapsed()).toBe(true);
     });
 
-    it('closes the sheet for an unconfigured-inject project even with a target id set', () => {
-        setInjectConfigured(false);
-        seedProject('Repo', 'tgt-1');
-        openClaudeSheet();
-        expect(isClaudeSheetOpen()).toBe(true);
-
-        syncClaudeSheetForProject('Repo');
-        expect(isClaudeSheetOpen()).toBe(false);
-    });
-
-    it('keeps an already-open repo-backed sheet open (idempotent re-switch)', () => {
+    it('keeps an already-expanded repo-backed pane expanded (idempotent re-switch)', () => {
         setInjectConfigured(true);
         seedProject('Repo', 'tgt-1');
-        openClaudeSheet();
-        expect(isClaudeSheetOpen()).toBe(true);
+        syncClaudeSheetForProject('Repo');
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(false);
 
         syncClaudeSheetForProject('Repo');
-        expect(isClaudeSheetOpen()).toBe(true);
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(false);
+        expect(isChatPaneCollapsed()).toBe(false);
+    });
+
+    it('persists the collapsed preference so the pane state survives reload', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+
+        syncClaudeSheetForProject('NoRepo');
+        expect(isChatPaneCollapsed()).toBe(true);
     });
 });
 
