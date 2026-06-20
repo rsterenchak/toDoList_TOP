@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-19',
-        changed: [
-            "The Claude chat input now glows purple when focused, and the voice-input button shows a purple tint on hover.",
+        date: '2026-06-20',
+        fixed: [
+            "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-19',
         fixed: [
             "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
             "The Claude chat message box now adopts light-theme colors when you switch to light mode instead of staying dark.",

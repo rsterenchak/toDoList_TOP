@@ -1826,7 +1826,11 @@ body:has(#settingsMenu) #claudeLauncher {
   color: var(--text-secondary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  /* Purple outer halo matching the composer's purple-glow family (same accent
+     as the input focus ring). The recording-state micPulse animation overrides
+     this while dictating, so the static halo only shows when idle/denied. */
+  box-shadow: 0 0 0 3px rgba(108, 93, 245, 0.25);
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 /* Hover feedback: a soft purple wash with a lighter purple glyph, matching the
    attach/send button hover family. */

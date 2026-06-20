@@ -336,6 +336,15 @@ describe('Claude sheet — module surface and styling', () => {
         expect(extractTopLevelRule('.micButton')).not.toMatch(/align-self/);
     });
 
+    it('gives the mic button the composer purple outer glow (box-shadow halo)', () => {
+        // The mic button was missing the purple halo the rest of the composer's
+        // purple-glow family carries (the input focus ring uses the same
+        // rgba(108, 93, 245, …) accent). Assert the base .micButton rule now
+        // paints an outer box-shadow glow in that purple.
+        const mic = extractTopLevelRule('.micButton');
+        expect(mic).toMatch(/box-shadow:[^;]*rgba\(\s*108\s*,\s*93\s*,\s*245\b/);
+    });
+
     it('pins the launcher to the bottom-right and hides it under other modals', () => {
         const rule = extractTopLevelRule('#claudeLauncher');
         expect(rule).toMatch(/position:\s*fixed/);
