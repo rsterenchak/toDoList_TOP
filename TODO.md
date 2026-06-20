@@ -868,3 +868,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-20
   <!-- id: 84a7ef74-af81-4f62-b5bc-e113ffff563a -->
+
+- [ ] **[MEDIUM]** Match `.claudeComposerAttach:hover` styling on `.claudeComposerMic:hover`
+  - Type: bug
+  - Description: The `.claudeComposerMic` button does not apply the same hover effect as `.claudeComposerAttach`. On hover, `.claudeComposerAttach` gains a purple-tinted background (`rgba(108, 93, 245, ~0.18)`) and its icon shifts to the accent color (`#9D93EE`); `.claudeComposerMic:hover` currently shows no equivalent change. Add or correct the `.claudeComposerMic:hover` rule in `style.css` so its background and icon color exactly mirror the `.claudeComposerAttach:hover` values — inspect the existing rule and copy the property values verbatim rather than approximating them.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 03c4430e-a4d2-4651-84d1-4dabf11c115b -->
