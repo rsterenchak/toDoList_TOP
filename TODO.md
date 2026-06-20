@@ -875,3 +875,11 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-20
   <!-- id: 03c4430e-a4d2-4651-84d1-4dabf11c115b -->
+
+- [ ] **[MEDIUM]** Auto-open or auto-close the Claude sheet when switching projects based on repo configuration
+
+  - Type: feature
+  - Description: When the user switches projects, check whether the newly selected project has a repo configured (indicated by the thunderbolt icon in the project dropdown). If the project has a repo configured, auto-open the Claude sheet. If it does not, auto-close the Claude sheet if it is currently open. The project-switch event is handled in `main.js`; the thunderbolt/repo association per project is readable from `listLogic.js`. The Claude sheet open/close API lives in `claudeSheet.js` — use whatever function already drives the sheet's open and close states rather than manipulating the DOM directly.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ad39b7a6-8e3d-41a8-a8ec-ea8dc5e37432 -->
