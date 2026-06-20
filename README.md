@@ -123,6 +123,27 @@ Because the full PWA update lifecycle depends on real browser behavior (especial
 
 ---
 
+## QUICKSTART - Add existing repo (fill-in)
+
+NAME=test-console     # repo name
+SHAPE=console         # repo-only | console | desktop | maui | web-build | web-served
+
+cd /workspaces
+if gh repo view rsterenchak/$NAME >/dev/null 2>&1; then [ -d "$NAME/.git" ] || gh repo clone rsterenchak/$NAME "$NAME"; else gh repo create rsterenchak/$NAME --private --clone "$NAME"; fi
+cd "$NAME"
+case "$SHAPE" in
+  repo-only)  : ;;
+  console)    dotnet new console ;;
+  desktop)    dotnet new winforms ;;
+  maui)       dotnet new maui ;;            # needs: dotnet workload install maui
+  web-build)  printf '{"name":"web","scripts":{"build":"vite build","test":"vitest run --passWithNoTests"},"devDependencies":{"vite":"^5","vitest":"^2"}}' > package.json; echo 'export default {}' > vite.config.js; printf '<!doctype html><script type="module" src="/src/main.js"></script>' > index.html; mkdir -p src; echo 'console.log(1)' > src/main.js ;;
+  web-served) printf '<!doctype html><h1>served</h1>' > index.html; mkdir -p src; echo 'console.log(1)' > src/app.js ;;
+esac
+[ -e README.md ] || echo "# $NAME ($SHAPE)" > README.md
+git add -A && git commit -q -m fixture 2>/dev/null; git branch -M main && git push -u origin main
+cd /workspaces/claude-routine-template && ./onboard.sh ../$NAME
+
+
 ## Claude run pipeline — adding repos
 
 Quick reference for wiring a new or existing repo into the routine that reads `TODO.md`, opens a PR, and auto-merges. `onboard.sh` is **shape-aware** — it detects the kind of project and scaffolds the matching files — so the file set and the deploy/Pages steps below depend on the shape.
