@@ -845,3 +845,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-19
   <!-- id: f69365e8-fb8b-4022-89b4-32f78a25ed4f -->
+
+- [ ] **[LOW]** Add purple border and icon tint on hover to Claude sheet composer buttons
+  - Type: feature
+  - Description: The attach (📎), layout inspector, and send buttons in the Claude sheet chat composer have no hover feedback. On hover, each button should display a 1.5px solid `#6C5DF5` border (border-radius matching the button's existing rounding) and the icon/text color should transition to `#9D93EE`. Apply a CSS transition (e.g. `transition: border-color 0.15s ease, color 0.15s ease`) for a smooth fade. Target the relevant button selectors inside `.claudeSheet` in `style.css`.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 5de98300-270b-49dd-ac66-d2b5422d7da4 -->
