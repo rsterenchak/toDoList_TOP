@@ -138,7 +138,7 @@
     - **Sanity check before committing**: load a fixture with idea-type entries, set the IDEAS filter on the Projects tab → ideas render. Switch to the Inbox tab → inbox entries render. Both must show cards, not the empty state. This is the whole point of the revert.
   - Out of scope: re-implementing the card-clipping fix (deliberately deferred — will be a separate, narrow, CSS-only entry later); re-implementing the Inbox modal (deferred — separate isolated entry later, only if still wanted, built to provably not touch the Projects render path); reverting any unrelated feature (show-completed icon button, sub-band fixes, chat pane, anything not part of the two named Inbox-card entries); changing the data model; changing the filter pills or their counts; the bottom tab bar; the TODO.md viewer.
   - File: same files the two Inbox-card entries touched (identify via `git show --stat` on the relevant commits — likely `toDoList_main/src/main.js` and/or `toDoList_main/src/inboxView.js` or whichever module owns Inbox + Projects card rendering, plus `toDoList_main/src/style.css`), and the test files those entries added under `toDoList_main/tests/` (remove them)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: bc0fc180-5bc5-4d4c-8dfa-eae5159f02fb -->
 
 - [x] **[MEDIUM]** Make Inbox rows tap-to-open the existing description editor; switch to compact one-line + chevron layout — Completed: 2026-06-07
@@ -187,7 +187,7 @@
     - **CRITICAL second sanity check**: grep `buildToDoRow` across the diff — there should be ZERO matches in modified files (only references in unchanged code). If `buildToDoRow` appears in the diff, the entry has crossed into shared-render territory and must be rolled back.
   - Out of scope: any change to `buildToDoRow`, `wireToDoRowClick`, `toDoRow.js`, `taskFilter.js`, `applyTaskFilter`, `showDescEditorModal` itself (reused as-is, no modification), the description editor's title-edit or description-save behavior, the project-page IDEAS view, the project-page row tap handler, the inbox empty-state copy, `getIdeaTodosAcrossProjects`, the status-label popover, the `listLogic` data model, the chat pane, the TODO.md viewer, the calendar tab, the bottom tab bar; adding a "Done" labeled button to the modal (separate follow-up if wanted — would benefit both inbox and project-row contexts).
   - File: `toDoList_main/src/main.js` (buildInboxRow, renderInbox, import line for showDescEditorModal), `toDoList_main/src/style.css` (`.inboxRow*` selectors only), `toDoList_main/tests/` (extend existing inbox tests or add a new `inboxRowTap.test.js`)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: dea60389-89df-4e52-9bb9-f389708402a6 -->
 
 - [x] **[MEDIUM]** Exclude completed items from filter pill counts and empty-state trigger in applyTaskFilter — Completed: 2026-06-07
@@ -250,7 +250,7 @@
     - **Sanity check before committing**: with a fresh test project containing exactly 3 non-completed active items + 5 completed active items, verify in jsdom that `counts.active === 3` and that `setRowHidden` was called 8 times (once per committed row). If `setRowHidden` is called fewer than 8 times, the patch accidentally added an early return for completed items — fix by restoring the `setRowHidden` call outside the completed-skip block.
   - Out of scope: any change to `setRowHidden` (visibility behavior is correct as-is); any change to the completed-section header count (already correct); any change to the empty-state copy or the conditions for showing the project empty-state (only the filter-empty-state's input counts change); any change to status-popover behavior; any change to `getIdeaTodosAcrossProjects` (the inbox aggregator already excludes completed); any change to `buildToDoRow`, `buildInboxRow`, or any rendering function; any change to CSS; any change to the COMPLETED section's collapse/expand behavior; the data model (completed items continue to retain their `status` field — this is by design so un-completing restores the original category).
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/tests/taskFilter.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: a1062b59-6aaf-452c-a049-32bb8a26b66f -->
 
 - [x] **[MEDIUM]** Auto-resort current project's row after status change in popover (when sort = Status) — Completed: 2026-06-07
@@ -302,7 +302,7 @@
     - **Sanity check before committing**: grep `applyTaskFilter` in the diff. If the patched todoStatus.js still imports or calls `applyTaskFilter`, remove the import (it becomes dead after the substitution). Grep `reorderToDoDOM` in todoStatus.js — should be exactly two matches: the import line and the call site inside the popover handler.
   - Out of scope: any change to `setToDoStatus`, `reorderToDoDOM`, `sortItemsByStatusForRender`, `renderOrderForSort`, `applyTaskFilter`, or the sort dropdown UI; any change to the inbox status-change path; any change to the status popover's appearance, positioning, or non-commit behavior (ESC, tap-outside, hover); any change to the checkbox completion path (already correctly calls reorderToDoDOM); the data model; CSS; the COMPLETED section collapse; the filter pill counts (this entry just preserves their correctness via the internal applyTaskFilter call).
   - File: `toDoList_main/src/todoStatus.js`, `toDoList_main/tests/` (extend `todoStatus.test.js` if it exists, or add a small `todoStatusResortOnChange.test.js`)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: bbe4cc28-f6fb-408b-8d96-7bda7e248b56 -->
 
 - [x] **[LOW]** Extend run-watch timeout from 10 minutes to 20 minutes so long pipeline runs don't dead-end at "Unknown" — Completed: 2026-06-07
@@ -330,7 +330,7 @@
     - **Sanity check before committing**: grep for `10 * 60 * 1000` in the patched files — there should be zero matches. Grep for `20 * 60 * 1000` — there should be exactly two matches (one in each file).
   - Out of scope: extracting the constant into a shared module; changing the poll interval; changing the "Unknown" pill's visual treatment or messaging; adding a user-configurable timeout; changing the `max_turns` setting in the workflow; changing the give-up behavior itself (still dimmed Unknown pill with link to GitHub); changing how the run watcher hands off between mobile and desktop chat surfaces; the `RUNS_KEY` localStorage schema.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 789eee60-3efd-4480-bbb1-8850865162ea -->
 
 - [x] **[LOW]** Raise companion ghost z-index above all other UI so it never wanders behind elements — Completed: 2026-06-07
@@ -356,7 +356,7 @@
     - **Sanity check before committing**: grep `z-index` in the diff. There should be exactly one line changed — the `.companion` rule's z-index value. If any other z-index line appears in the diff, revert it.
   - Out of scope: extracting z-index values into a layered CSS-variable system (e.g. `--z-companion`, `--z-modal`, etc.); changing other elements' z-indexes; changing the companion's pointer-events, position, or animation behavior; adding a user setting to control whether the ghost overlays modals (separate enhancement if ever wanted); the mobile-empty-state ghost mascots; the companion-disabled hide path; the music-visualizer ghost (`.musicVizGhost` is a separate element entirely).
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 73937df2-9074-48e1-bd91-8d4f1d823f53 -->
 
 - [x] **[MEDIUM]** Wire the ▾ expand toggle to actually fill the viewer body to the bottom of #mainList — Completed: 2026-06-07
@@ -408,21 +408,21 @@
     - **Sanity check before committing**: grep `--expanded` in the diff. There should be exactly one new line — the `classList.toggle('todoMdViewerCard--expanded', ...)` call. If any CSS rule, other JS site, or any other reference appears in the diff, revert it.
   - Out of scope: tying the expanded state to localStorage persistence (the `viewerExpandedKey` machinery is orphan code; wiring it in is a worthwhile follow-up but separate); fixing the mobile-sheet expand path (`applyExpandedHeight` uses `#mainList` as anchor which is wrong when the card is hosted by `#todoMdViewerMobileSheet` — separate entry); changing the `▾` chevron glyph or position; changing the default collapsed state on viewer construction; changing `applyExpandedHeight`'s formula (the `mainListRect.bottom - headerRect.bottom - 16` calculation is preserved as-is); renaming the `collapsed` class or the `applyCollapsedState` function (it does what it does today, plus is now paired with the `--expanded` toggle); changing the default `max-height: 280px` on `.todoMdViewerBody` (only the expanded state lifts it via the existing `--expanded` rule).
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/` (extend any existing viewer expand/collapse test, or add `todoMdViewerExpandFill.test.js`)
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 27b6155a-58a8-476f-b051-80fc3debe824 -->
 
 - [x] **[HIGH]** Fix hydrate re-inserting projects deleted on another device — Completed: 2026-06-08
   - Type: bug
   - Description: When a project is deleted on Device A while Device B is offline (or missed the realtime DELETE event), Device B's next hydrate resurrects the project locally AND re-INSERTs it back to Supabase, undoing the deletion across all devices. Root cause is the local-only push branch in `hydrateFromSupabase` (`listLogic.js`): a local entry whose id is absent from the server response is treated identically to a "created while offline" project — kept in the merged tree and pushed via `persistMutation({ op: 'insert', ... })`. The two cases are indistinguishable without a record of what the server previously acknowledged. Fix by snapshotting the set of server-known project ids at the end of every successful hydrate into a new `todoapp_lastSeenServerProjectIds` localStorage key (per the existing `todoapp_` prefix convention; stored as a JSON id array). On the next hydrate's local-only loop: if `local.id` is in the snapshot but absent from the current remote response → the server had this row and removed it; drop the entry from the merged tree, skip the INSERT, and cascade-drop its local todos to match the server's cascade. If `local.id` is NOT in the snapshot → genuinely new offline-created project; push as today. The snapshot must be rewritten at the very end of every successful hydrate (after the merge, before the `listLogicHydrated` dispatch) so subsequent runs have a fresh baseline. Add a behavioral regression test (mirroring `tests/listLogicRenameReconcile.test.js` in shape) that seeds a local project with id `proj-X`, seeds the snapshot to include `proj-X`, runs hydrate with a remote response that omits `proj-X`, and asserts (a) the project is gone from `listProjectsArray()`, (b) no `insert` call fires for projects, and (c) the snapshot after hydrate matches the new server set. Out of scope: the same bug shape for individual todos deleted across devices (separate follow-up entry); any server-side schema change (tombstones table, `deleted_at` column) — this fix is client-only.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogicDeleteReconcile.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: e8fa0a67-4664-45eb-87d2-24e56b8e8527 -->
 
 - [x] **[LOW]** Add green thunderbolt indicator to all project rows when inject is configured — Completed: 2026-06-08
   - Type: feature
   - Description: When the user has configured inject (a Worker URL is saved in localStorage under the inject config key written by the Configure Inject flow), prepend a green ⚡ Unicode character to every project row title in the sidebar. When no inject config is present, no icon appears and titles render as they do today. The icon must not intercept click/tap or long-press events on the row, must not break title text truncation, and must be hidden when a project title is in edit/rename mode. On config change (user saves or clears the inject URL), the indicators must update without requiring a page reload.
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/inject.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: c597b03e-521f-4795-b828-033f8b405759 -->
 
 - [x] **[HIGH]** Fix inject bolt showing on all project rows instead of only configured ones, and ensure it renders on desktop — Completed: 2026-06-08
@@ -430,7 +430,7 @@
   - Type: bug
   - Description: The ⚡︎ bolt indicator currently appears on every project row whenever inject is configured globally, but it should only appear on rows whose specific project has a configured inject target. The `sync()` function in `projectRow.js` must check per-project inject config (keyed by project id or name) rather than the global "is inject configured" flag. Separately, the bolt is not rendering on desktop — remove any mobile-only guard (media query or touch-device condition) that hides it; the bolt should be visible at all breakpoints. Keep the original orange unicode thunderbolt (⚡︎) styling as-is; do not change the glyph or its color treatment. Acceptance criteria: (1) a row shows the bolt only when that project has a configured inject target; (2) rows with no target show no bolt; (3) the bolt renders on both desktop and mobile; (4) existing `projectRowInjectIndicator` tests still pass and at least one new test covers the per-project filtering behavior.
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 4e1cb527-5e61-4db1-8662-dacdbc064628 -->
 
 - [x] **[HIGH]** Fix inject bolt visibility in project picker dropdown and change bolt color to amber accent — Completed: 2026-06-08
@@ -438,7 +438,7 @@
   - Type: bug
   - Description: The inject bolt (`projInjectBolt`) does not appear on project rows rendered inside `#projectPickerDropdown`, even when a project has a routed inject target. The `attachProjectInjectIndicator` wiring likely only runs for sidebar project rows and is not called for dropdown-rendered rows — or the CSS display rule for `.hasInjectBolt .projInjectBolt` is scoped to a sidebar container and does not apply inside the dropdown. Fix by ensuring `attachProjectInjectIndicator` (or equivalent `sync()` logic) runs for every project row regardless of mount point, and verify the CSS selector is not ancestor-scoped in a way that excludes the dropdown. Additionally, change the bolt icon color from green to the existing amber/orange accent token (approximately `#ffbd5e`) in `style.css`.
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: e1baf03f-5f98-4047-95f4-f93f4242bcbd -->
 
 - [x] **[HIGH]** Fix projectPickerRow bolt span being inserted into every row regardless of inject gate
@@ -446,7 +446,7 @@
   - Type: bug
   - Description: `syncProjectRowInjectBolt` inserts the `.projInjectBolt` span unconditionally into every dropdown row, then uses the `hasInjectBolt` class + CSS `display` to hide it on non-qualifying rows. The span is present in the DOM on all rows even when the project has no inject target configured. This causes a visible layout gap on at least one row where the hidden span contributes non-zero width. Fix: move the span insertion inside the gate check so the span is only appended to rows that actually qualify (same condition used to add `hasInjectBolt`); rows that don't qualify should have no `.projInjectBolt` span at all.
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 5d4d927a-2d3e-4a44-aa8c-63242529974b -->
 
 - [x] **[MEDIUM]** Fix variable gap between bolt icon and project name in project picker dropdown
@@ -467,7 +467,7 @@
   - Implementation notes: Nothing hardcodes the individual bundle filenames — verified `template.html` and `sw.js` — and Workbox `InjectManifest` globs `dist/` output, so dropping the extra entries is contained. Vitest runs against source modules in jsdom, not the bundle, so the suite will NOT catch a bundling regression; verify single-evaluation manually in the browser (or dev server) before merging. For that reason this is best applied as a direct commit to main with a local build/boot check rather than an unattended pipeline auto-merge.
   - Out of scope: Removing the six `window.__*Registered` guards (that's the A2 follow-up, done only after this confirms single-evaluation); any `optimization.splitChunks` / `runtimeChunk` / code-splitting or production-mode tuning; any change to application behavior, listeners, or DOM.
   - File: `toDoList_main/webpack.config.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: d6269be6-5f4d-456c-b9ec-bbe95c2565c4 -->
 
 - [x] **[LOW]** Remove obsolete double-evaluation listener guards from main.js — Completed: 2026-06-08
@@ -480,7 +480,7 @@
   - Implementation notes: Safe in the browser because the single-entry collapse means one module evaluation. Safe in tests too — `main.js` is imported only by the two `todoMdViewer` suites, each under Vitest's default per-file isolation (one evaluation), and the only `vi.resetModules()` + re-import pattern in the suite targets `listLogic.js`, not `main.js`. `main.js` is over 25k tokens — find the six blocks with grep + offset/limit rather than reading it in full.
   - Out of scope: Any change to the listeners' handlers or behavior; removing the `typeof document`/`typeof window` environment guards (a separate concern); the Phase B feature extractions (calendar / today / inbox / TODO.md viewer / mobile sheets).
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: c9477cf0-a99e-45c3-b020-eb52e10f5842 -->
 
 - [x] **[MEDIUM]** Extract the Calendar view into its own calendarView.js module — Completed: 2026-06-08
@@ -498,7 +498,7 @@
   - Out of scope: Any behavior or styling change; extracting the Inbox view (`renderInbox`/`buildInboxRow` — separate follow-up); moving `applyActiveView` out of `main.js`; the shared due-pill-builder TODO noted above `buildTodayRow`.
   - Implementation notes: `main.js` is over 25k tokens — locate the blocks with grep + offset/limit (calendar cluster roughly lines 8298–8634, prev/next handlers ~3746/3749, arrow-key read ~5244), never read it in full. Move additively: create `calendarView.js`, wire the imports + `initCalendarView`, confirm the suite is green, then delete the originals from `main.js`.
   - File: `toDoList_main/src/calendarView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/calendarKeyboardNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 31ea6f44-9e98-4b3c-a173-6957f542111f -->
 
 - [x] **[MEDIUM]** Extract the Inbox view into its own inboxView.js module — Completed: 2026-06-08
@@ -515,7 +515,7 @@
   - Out of scope: Any behavior or styling change; touching the status popover (`todoStatus.js`) or the editor modal (`modals.js`); moving `applyActiveView`; the per-project row code in `main.js`/`toDoRow.js`.
   - Implementation notes: `main.js` is over 25k tokens — grep for the cluster (around lines 8057–8210) with offset/limit, don't read it in full. Move additively: create `inboxView.js`, wire the imports, confirm the suite is green, then delete the originals from `main.js`.
   - File: `toDoList_main/src/inboxView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/inboxIdeasView.test.js`, `toDoList_main/tests/inboxRowTap.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 86977b6a-2de9-4583-8951-9420471bf5de -->
 
 - [x] **[MEDIUM]** Extract the TODO.md viewer into its own todoMdViewer.js module — Completed: 2026-06-09
@@ -533,7 +533,7 @@
   - Out of scope: Any behavior or styling change; the `expandAllDescriptions`/`collapseAllDescriptions`/`wireExclusiveCompletedDescCollapse` block (serves the projects view, stays); the completed + viewer mobile sheets (later step); `inject.js`/Worker internals; the per-entry "Run this entry" control (the active-run machinery moves verbatim — no new feature here).
   - Implementation notes: `main.js` is over 25k tokens — grep for the cluster (≈6237–7160) with offset/limit, never read it in full, and move `buildTodoMdViewerCard` as a single verbatim block rather than reconstructing it. Move additively: create `todoMdViewer.js`, wire the two imports + `placeViewerCard` export, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/todoMdViewer.test.js`, `toDoList_main/tests/todoMdViewerShowCompleted.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 06cefc3e-c7a3-42a3-bb95-5bc53280394e -->
 
 - [x] **[MEDIUM]** Extract the completed + viewer mobile sheets into a mobileSheets.js module — Completed: 2026-06-09
@@ -551,7 +551,7 @@
   - Out of scope: Any behavior or styling change (including the known `applyExpandedHeight` anchor bug — move it as-is); the `expandAllDescriptions`/`collapseAllDescriptions`/`wireExclusiveCompletedDescCollapse` block that triggers the completed sheet (stays in `main.js`); the `claudeSheet.js` AI sheet; `todoMdViewer.js` internals.
   - Implementation notes: `main.js` is over 25k tokens — grep for the clusters (≈6333–6740) with offset/limit, never read it in full. Create `viewport.js` first, then `mobileSheets.js` importing from it; move additively (wire imports + the `isAnyMobileSheetOpen` accessor + the tap-handler rewrite, confirm the suite is green) then delete the originals.
   - File: `toDoList_main/src/viewport.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/bottomSheetSwipeDownContainer.test.js`, `toDoList_main/tests/bottomSheetSwipeUp.test.js`, `toDoList_main/tests/mobileCompletedBottomSheet.test.js`, `toDoList_main/tests/mobileTodoMdViewerBottomSheet.test.js`, `toDoList_main/tests/stackBottomSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 68eacd66-79da-4cbe-95bf-31f076670211 -->
 
 - [x] **[MEDIUM]** Extract the project picker into a projectPicker.js factory (first component() subsystem) — Completed: 2026-06-09
@@ -571,7 +571,7 @@
   - Out of scope: Any behavior or styling change; moving `navigateToProjectByIndex`/`updateFooterCounts`/`applyProjectInitial` out of `main.js` (they're injected, not relocated — relocating `applyProjectInitial` to `projectRow.js` is a possible later cleanup); the drawer/sidebar `#projChild` rows and `#projInput` (the picker only reads/mirrors them); the other `component()` subsystems.
   - Implementation notes: `main.js` is over 25k tokens — grep for the picker functions (≈3046–3464) with offset/limit, never read it in full. The injected closures are function declarations, so hoisting makes them available at the factory-creation point even though they're defined later in `component()`. Move additively: create `projectPicker.js`, construct the factory and rewire the call sites, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/projectPickerDropdown.test.js`, `toDoList_main/tests/projectPickerDeleteContextMenu.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 5941c50c-d666-45a9-b876-ae42637a619d -->
 
 - [x] **[MEDIUM]** Extract the settings menu into a settingsMenu.js factory — Completed: 2026-06-09
@@ -589,7 +589,7 @@
   - Out of scope: Any behavior or styling change; the mobile settings *modal* (separate, stays in `main.js`); relocating the injected `main.js` functions (they stay; `isFocusInTextInput` may later move to a shared util once music/pomodoro are extracted); the other `component()` subsystems.
   - Implementation notes: `main.js` is over 25k tokens — grep for the settings functions (≈1412–1700) with offset/limit, never read it in full. Hoisting makes the five injected declarations available at the factory point. Move additively: create `settingsMenu.js`, construct the factory + rewire the gear handler, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/settingsDropdown.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 0aed5b3f-e010-46a1-982c-a1372d835bf3 -->
 
 - [x] **[MEDIUM]** Fold the music popover UI into the existing music.js (extract from component()) — Completed: 2026-06-09
@@ -608,7 +608,7 @@
   - Out of scope: Any behavior or styling change; the audio engine in `music.js` (`createMusic` etc., untouched); `getMusicController` and the ≈1915–2238 music-control integration (stays in `component()`); the pomodoro popover (next step); centralizing `isFocusInTextInput`/`popoverArrowNav` (a cleanup once pomodoro also needs them — after C4, not now).
   - Implementation notes: `main.js` is over 25k tokens — grep for the music block (≈838–1372) with offset/limit, never read it in full, and move `buildMusicPopover` (+ nested helpers) as a verbatim block. Move additively: add `createMusicUI` + the new imports to `music.js`, wire the factory + strip placement in `component()`, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/music.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/mobileMusicVolumeSlider.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: e3157581-e630-4e67-99a6-192189332f33 -->
 
 - [x] **[MEDIUM]** Centralize the shared popover-keyboard helpers into popoverNav.js — Completed: 2026-06-10
@@ -626,7 +626,7 @@
   - Out of scope: Any behavior change; the pomodoro popover extraction (next step — this only relocates the helpers it shares); changing where `popoverArrowNav` is used (it stays music-only); folding these into `viewport.js` (keep popover-keyboard helpers separate from the viewport check).
   - Implementation notes: `main.js` is over 25k tokens — grep for the two functions (≈325, 343) with offset/limit. Move additively: create `popoverNav.js`, switch `music.js`/`settingsMenu.js` to import + update the two factory calls in `main.js`, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/popoverNav.js`, `toDoList_main/src/main.js`, `toDoList_main/src/music.js`, `toDoList_main/src/settingsMenu.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: ffc6789f-9881-4f9e-abf3-ac6bd2a7f639 -->
 
 - [x] **[MEDIUM]** Fold the pomodoro popover UI into the existing pomodoro.js (final component() subsystem) — Completed: 2026-06-10
@@ -645,7 +645,7 @@
   - Out of scope: Any behavior or styling change; the timer engine in `pomodoro.js` (`createPomodoro` etc., untouched); `getPomodoroController` and the music-coupling block (stay in `component()`); `music.js`/the music UI (untouched).
   - Implementation notes: `main.js` is over 25k tokens — grep for the pomodoro block (≈245–752) with offset/limit, never read it in full, and move `showPomodoroPopover` (+ nested helpers) as a verbatim block. Move additively: add `createPomodoroUI` + the `popoverNav.js` import to `pomodoro.js`, wire the factory in `component()`, confirm the suite is green, then delete the originals.
   - File: `toDoList_main/src/pomodoro.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/ctrlSpacePomodoroToggle.test.js`, `toDoList_main/tests/pomodoroInlineCountdown.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: da991dc4-812c-4c45-84e7-449523f03509 -->
 
 - [x] **[MEDIUM]** Restructure the mobile description-editor modal title into a label plus a readable wrapped title — Completed: 2026-06-16
@@ -653,7 +653,7 @@
   - Description: The description editor modal is the touch-only drafting surface — it's shown on `(pointer: coarse)` devices where the in-row single-line desc input can't fit multi-line markdown — and its title (`#descEditorModalTitle`) currently renders in uppercase `SpaceMono` with 0.14em letter-spacing on a single ellipsised line, so longer titles are hard to scan and get cut off mid-word. Restructure the header built in `showDescEditorModal` into two tiers: a small static accent eyebrow reading "Description" (`SpaceMono`, ~10px, uppercase, ~0.14em tracking, `--accent-text`), and beneath it the actual task title in the proportional body font the app already uses (Trebuchet MS — no new font dependency), natural case, ~14px, `--text-primary`, wrapping up to two lines via `-webkit-line-clamp: 2` before it truncates. Move the existing pencil affordance (`#descEditorModalTitleEdit`) into the eyebrow row, right-aligned, and keep tap-to-rename fully intact: tapping the title text or the pencil swaps `#descEditorModalTitleText` for `#descEditorModalTitleInput` (which must keep its 16px font-size floor for the iOS auto-zoom rule), with Enter/blur committing, Escape reverting, and an empty value snapping back to the prior title. Presentation-only — keep the dialog's `aria-labelledby` resolving to the task title.
   - Out of scope: the desktop in-row description input and desktop inline-rename flow (this modal is the `(pointer: coarse)`-only path); no change to how the description is persisted on close.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 8b0100df-385e-45c2-8395-249b549c5ebf -->
 
 - [x] **[MEDIUM]** Restore task sorting on mobile with a Sort control in the status-filter row — Completed: 2026-06-16
@@ -661,7 +661,7 @@
   - Description: On the mobile view the task-sort control is unreachable: the Sort dropdown (`taskSortBtn`) lives only inside `#bulkDescActions` — the desktop overlay pinned to the add-task row — and that overlay is `display: none` at the mobile breakpoint, while the mobile drawer's Settings modal carries only the View/Appearance toggles (Show completed, Expand all descriptions, Dark theme, Companion ghost) and not sort, so after the Expand-All→Sort refactor there is no way to change the task sort on a phone. Add a compact Sort trigger at the right end of the mobile status-filter row (`#taskFilterBar`), opposite the status pills, styled to the existing `.bulkDescBtn` cadence (uppercase ~10px, accent-tinted when a sort other than None is active); it must open the same `taskSortMenu` and drive the existing machinery (`getTaskSort` / `setTaskSort` / `applyTaskSortChoice` / `syncTaskSortButton`) so desktop and mobile share one sort state and the None / Due date / Status options behave identically. Scope it so the new trigger appears only where `#bulkDescActions` is hidden — exactly one sort trigger is ever visible, with no gap and no overlap across widths — and leave the desktop overlay and its `display: none` mobile rule untouched so the `#bulkDescActions is hidden at the mobile breakpoint` assertion in `stackMobileLayoutCollapse.test.js` stays green.
   - Out of scope: the desktop `#bulkDescActions` Sort button (unchanged) and any change to the sort logic or option set — None / Due date / Status stay as-is; this entry only adds the mobile trigger.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 99833c77-3015-4d6d-8211-e92f41fbdf47 -->
 
 - [x] **[LOW]** Add the "Sort" text label to the mobile task-sort trigger — Completed: 2026-06-16
@@ -669,7 +669,7 @@
   - Description: On the mobile view, the task-sort trigger in the status-filter row (the Option C control) renders as a bare caret (`▾`) with no text, so the button's purpose isn't readable. Give it the "Sort" label the desktop `taskSortBtn` uses — reuse the same `taskSortButtonText(key)` output so it reads "Sort" at rest and "Sort: Due" / "Sort: Status" when a sort is active, with the caret kept alongside and the existing active-state accent tint intact. The likely cause is that the mobile trigger was built without the `.bulkDescLabel` text span (or CSS-hides it on mobile); add or unhide the label and make sure `syncTaskSortButton()` keeps both the desktop and mobile triggers' text in sync. Keep the trigger compact (e.g. `flex: 0 0 auto`) so the label doesn't crowd the status-filter pills on narrow phones — if the active-state strings get tight there, the resting "Sort" label takes priority.
   - Out of scope: the desktop `#bulkDescActions` Sort button (already labeled correctly) and the sort logic, menu, and option set (None / Due date / Status) — unchanged; this only adds the visible label to the mobile trigger.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: fe1744a9-b1cd-48a8-9456-46407abf19ac -->
 
 - [x] **[HIGH]** Fix mobile swipe-to-complete and swipe-to-delete dying when a task sort is active — Completed: 2026-06-16
@@ -679,7 +679,7 @@
   - Implementation notes: Separate swipe-eligibility from drag-eligibility in the `touchstart` gate — let the gesture arm when the row has a swipe config and committed content even under an active sort, while keeping the drag branch gated on the full `isDraggable()` (content AND `getTaskSort() === 'none'`). Likely cleanest via a content-only swipe-eligibility predicate passed alongside `isDraggable` from `toDoRow.js`, leaving sort out of it. The existing `onRight`/`onLeft` no-op guards (skip when `checkToDo`/`closeButtonToDo` inline `display === 'none'`) already block blank placeholder rows, so those stay safe. No existing test pins the current behavior; add a regression test asserting a swipe arms and commits on a committed row while a sort is active.
   - Out of scope: drag-to-reorder under an active sort (must remain disabled); swipe thresholds, animation, and snap-back timing; the desktop pointer/mouse path.
   - File: `toDoList_main/src/dragDrop.js`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 3c57fdcb-c4dd-4449-8fdc-f7fb1d80426e -->
 
 - [x] **[MEDIUM]** Wrap long lines in the mobile description editor textarea instead of clipping — Completed: 2026-06-17
@@ -687,7 +687,7 @@
   - Description: On the mobile description editor modal, `#descEditorModalTextarea` uses `white-space: pre`, so long markdown lines run off the right edge and force sideways scrolling to read — visible when drafting TODO.md entries with long Behavior/File lines. Change `white-space: pre` to `pre-wrap` on that rule in `style.css` so lines wrap inside the box. Keep `font-size: 16px` unchanged so the textarea stays compliant with the iOS-no-auto-zoom rule (do not shrink it). `pre-wrap` still preserves leading spaces, tabs, and explicit newlines, so markdown indentation round-trips exactly as before — the textarea's raw `.value` is unaffected and only the visual line-wrapping changes. Also update the whitespace assertion in `mobileDescEditorModal.test.js`: change the `white-space: pre` check (and its comment) to expect `pre-wrap`, since the current regex passes either way but should track the intended value rather than matching `pre-wrap` only by accident.
   - Out of scope: no change to `font-size` or `line-height` (line-height stays at 1.5); leave the desktop inline `#descInput` editor untouched.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileDescEditorModal.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: a73183b8-3ad4-4239-90bb-4b5bfd23ebd3 -->
 
 - [x] **[MEDIUM]** Re-hydrate from Supabase on return-to-visible plus a 5-minute backstop interval — Completed: 2026-06-17
@@ -703,7 +703,7 @@
     - `hydrateFromSupabase` already early-returns without a session and has a single-flight guard (`hydrationInFlight`), so the triggers can be armed unconditionally and an interval firing just as the tab regains visibility is safe — the second, overlapping call short-circuits.
   - Out of scope: re-opening the realtime channels when the socket has genuinely died (separate entry); any `location.reload()` path; changes to the reconcile logic inside `hydrateFromSupabase`.
   - File: `toDoList_main/src/index.js`, `toDoList_main/tests/serviceWorkerUpdate.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 664f44bc-853c-483a-a08b-bbb24e3b5ba2 -->
 
 - [x] **[HIGH]** Fix re-hydrate re-render snapping the active project to the last one in the sidebar — Completed: 2026-06-17
@@ -722,7 +722,7 @@
     - Add a regression (behavioral jsdom if feasible, else a source-level pin matching the existing style in `tests/listLogicSupabase.test.js`) verifying the re-hydrate path preserves the active selection rather than jumping to the last project.
   - Out of scope: preserving the todo-list scroll position across the re-render (separate follow-up); skipping the re-render entirely when the reconcile produced no changes (perf optimization, separate entry); changing the cold-boot or post-import default of selecting the last project.
   - File: `toDoList_main/src/main.js`, `toDoList_main/tests/listLogicSupabase.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: cc851edf-6bdd-4971-b915-0ed4fd0ff9e7 -->
 
 - [x] **[MEDIUM]** Re-subscribe to Supabase realtime on wake to recover a dropped socket — Completed: 2026-06-17
@@ -742,7 +742,7 @@
     - Regression: mirror the `wireRealtimeHandlers` mock pattern (spy `supabase.channel` / `supabase.removeChannel`) — after subscribing, call `resubscribeToRealtime()` and assert the prior channels are removed and `channel()` is called again to re-open, and that `_selfEchoIds` survives (a self-echo id recorded before the resubscribe still suppresses its echo afterward).
   - Out of scope: an offline write-retry queue or visible sync-status indicator (the Phase 6 work the persistence-layer comments already reference); changing the re-hydrate triggers or cadence; reconciling realtime events by stable id (the known rename-by-name reconciliation issue is tracked separately).
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/listLogicSupabase.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: c82c95ff-53c0-441d-b263-d7459ac3809d -->
 
 - [x] **[MEDIUM]** Align composer buttons and textarea into a single horizontal inline row — Completed: 2026-06-17
@@ -758,7 +758,7 @@
   - Type: bug
   - Description: On mobile viewports, the right side of todo rows and the sort selection bar are clipped off-screen. The wrapper around the todo list and sort bar has too much horizontal padding for narrow screens. Under a mobile `@media` breakpoint, reduce the left and right padding on the main content wrapper and sort bar container to approximately 4px so all row content and sort controls fit within the viewport without horizontal scrolling. Desktop layout must remain completely unchanged.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: b36e5976-a369-4589-abf8-311ee80e0f33 -->
 
 - [x] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering — Completed: 2026-06-17
@@ -778,7 +778,7 @@
     - Extend `tests/claudeSheet.test.js`: (a) an un-fenced `<svg>…</svg>` in a reply yields an `svg` segment and renders a real `<svg>` node; (b) an uppercase ```SVG fence renders; (c) an `<svg>` with no closing tag stays text; (d) existing fence / `md` / plain-text pins stay green.
   - Out of scope: changing the Worker system prompt (separate repo/entry); MathML or other foreign content; SVG that streams in partially before the reply completes (moot if the sheet re-renders on stream-complete — revisit only if observed).
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 0fb18657-0ea7-4a17-853e-8bc23fe9b06b -->
 
 - [x] **[HIGH]** Fix todo rows and sort button clipping on the right edge on mobile — Completed: 2026-06-17
@@ -786,7 +786,7 @@
   - Type: bug
   - Description: On mobile viewports, todo list rows and the sort button are clipped on the right side — content is cut off with no horizontal scroll, indicating an element is overflowing its container width. The likely cause is a fixed or min-width value, missing `box-sizing: border-box`, or a flex/grid child not respecting the viewport width. Check `.todoRow`, the sort button container, and the main project content wrapper in `style.css` for width or overflow rules that break at narrow viewports. Ensure all rows and controls fit within 100vw with appropriate padding.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/toDo.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: 4118f705-d96d-4ecc-94b7-0efe028d35b2 -->
 
 - [x] **[MEDIUM]** Fix chat-sheet SVGs showing as raw text instead of rendering — Completed: 2026-06-18
@@ -806,7 +806,7 @@
     - Extend `tests/claudeSheet.test.js`: (a) an un-fenced `<svg>…</svg>` in a reply yields an `svg` segment and renders a real `<svg>` node; (b) an uppercase ```SVG fence renders; (c) an `<svg>` with no closing tag stays text; (d) existing fence / `md` / plain-text pins stay green.
   - Out of scope: MathML or other foreign content; SVG that streams in partially before the reply completes (moot if the sheet re-renders on stream-complete — revisit only if observed); the Worker `SYSTEM_PROMPT` FENCE FORMAT change (separate repo, deployed manually).
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: d5a46c13-c394-4a48-84de-5f27f36adf2c -->
 
 - [x] **[MEDIUM]** Fix composer bar alignment so attach, mic, input, and send sit in a single horizontally-aligned row
@@ -876,10 +876,10 @@
   - Completed: 2026-06-20
   <!-- id: 03c4430e-a4d2-4651-84d1-4dabf11c115b -->
 
-- [ ] **[MEDIUM]** Auto-open or auto-close the Claude sheet when switching projects based on repo configuration
+- [x] **[MEDIUM]** Auto-open or auto-close the Claude sheet when switching projects based on repo configuration
 
   - Type: feature
   - Description: When the user switches projects, check whether the newly selected project has a repo configured (indicated by the thunderbolt icon in the project dropdown). If the project has a repo configured, auto-open the Claude sheet. If it does not, auto-close the Claude sheet if it is currently open. The project-switch event is handled in `main.js`; the thunderbolt/repo association per project is readable from `listLogic.js`. The Claude sheet open/close API lives in `claudeSheet.js` — use whatever function already drives the sheet's open and close states rather than manipulating the DOM directly.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/listLogic.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-20
   <!-- id: ad39b7a6-8e3d-41a8-a8ec-ea8dc5e37432 -->

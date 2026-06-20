@@ -29,7 +29,9 @@ import {
     resolveEntryByMarker,
     getCachedTargets,
     loadInjectTargets,
+    isInjectConfigured,
 } from './inject.js';
+import { listLogic } from './listLogic.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 import DOMPurify from 'dompurify';
@@ -210,6 +212,24 @@ export function closeClaudeSheet() {
 export function toggleClaudeSheet() {
     if (isClaudeSheetOpen()) closeClaudeSheet();
     else openClaudeSheet();
+}
+
+// Auto-open / auto-close the sheet when the active project changes. A project
+// "has a repo configured" by the SAME gate the sidebar project-row thunderbolt
+// (⚡) uses — inject is configured globally AND this project carries a routed
+// inject target — so the auto-behavior tracks the visible bolt indicator
+// exactly (see projectRow.js). A project with a repo surfaces the assistant; a
+// project without one dismisses the sheet if it happens to be open. Both
+// branches are guarded by the current open state so a no-op switch doesn't
+// re-fire openClaudeSheet's workspace refresh or closeClaudeSheet's mic stop.
+export function syncClaudeSheetForProject(projectName) {
+    const hasRepo = isInjectConfigured()
+        && !!listLogic.getProjectTargetId(projectName);
+    if (hasRepo) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else if (isClaudeSheetOpen()) {
+        closeClaudeSheet();
+    }
 }
 
 // ── RUN RECORDS (localStorage-backed) ──
