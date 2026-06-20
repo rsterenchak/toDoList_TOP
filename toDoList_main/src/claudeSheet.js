@@ -32,6 +32,7 @@ import {
     isInjectConfigured,
 } from './inject.js';
 import { listLogic } from './listLogic.js';
+import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 import DOMPurify from 'dompurify';
@@ -214,22 +215,27 @@ export function toggleClaudeSheet() {
     else openClaudeSheet();
 }
 
-// Auto-open / auto-close the sheet when the active project changes. A project
-// "has a repo configured" by the SAME gate the sidebar project-row thunderbolt
-// (⚡) uses — inject is configured globally AND this project carries a routed
-// inject target — so the auto-behavior tracks the visible bolt indicator
-// exactly (see projectRow.js). A project with a repo surfaces the assistant; a
-// project without one dismisses the sheet if it happens to be open. Both
-// branches are guarded by the current open state so a no-op switch doesn't
-// re-fire openClaudeSheet's workspace refresh or closeClaudeSheet's mic stop.
+// Auto-expand / auto-collapse the Claude chat pane when the active project
+// changes. A project "has a repo configured" by the SAME gate the sidebar
+// project-row thunderbolt (⚡) uses — inject is configured globally AND this
+// project carries a routed inject target — so the auto-behavior tracks the
+// visible bolt indicator exactly (see projectRow.js).
+//
+// The chat surface this drives is the docked desktop pane (#desktopChatPane),
+// whose visibility rides the `chatPaneCollapsed` body class — NOT the mobile
+// slide-up sheet element (open/closeClaudeSheet toggle that, but on desktop the
+// chat content is relocated out of it into the pane, so toggling it is a no-op
+// there). A repo-backed project expands the pane (the state the chat expand
+// button drives); a project without one collapses it (the state the collapse
+// button drives). We toggle the canonical body class and persist via
+// setChatPaneCollapsed — the exact pair the buttons' applyChatPaneCollapsed
+// runs — so the pane and its stored preference stay in sync across reloads.
 export function syncClaudeSheetForProject(projectName) {
     const hasRepo = isInjectConfigured()
         && !!listLogic.getProjectTargetId(projectName);
-    if (hasRepo) {
-        if (!isClaudeSheetOpen()) openClaudeSheet();
-    } else if (isClaudeSheetOpen()) {
-        closeClaudeSheet();
-    }
+    const collapsed = !hasRepo;
+    document.body.classList.toggle('chatPaneCollapsed', collapsed);
+    setChatPaneCollapsed(collapsed);
 }
 
 // ── RUN RECORDS (localStorage-backed) ──
