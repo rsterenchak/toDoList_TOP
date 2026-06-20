@@ -137,7 +137,7 @@ Quick reference for wiring a new or existing repo into the routine that reads `T
 
 Roughly 7 steps. Order matters for steps 1–3.
 
-1. **Scaffold the pipeline files.** From the `todo-injector-worker` repo, run `./onboard.sh` against the target repo. It drops in `.claude/routine.md`, `.claude/routine-base.md`, `.github/workflows/claude-run.yml`, `test.yml`, `deploy.yml`, `CLAUDE.md`, and an initial `TODO.md`. Review and commit directly to `main`.
+1. **Scaffold the pipeline files.** From the `claude-routine-template` repo, run `./onboard.sh` against the target repo. It drops in `.claude/routine.md`, `.claude/routine-base.md`, `.github/workflows/claude-run.yml`, `test.yml`, `deploy.yml`, `CLAUDE.md`, and an initial `TODO.md`. Review and commit directly to `main`.
 
 2. **Install the Claude GitHub app** on the new repo: https://github.com/apps/claude — grant access to just this repo.
 
