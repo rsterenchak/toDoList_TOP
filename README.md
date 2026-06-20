@@ -1,12 +1,125 @@
-# Project and Task Manager Application
+# Task Manager PWA
+
+Offline-first task management as an installable Progressive Web App — projects, recurring tasks, realtime multi-device sync, a built-in Pomodoro timer, and an in-app Claude assistant that drafts and ships its own backlog.
 
 ![Tests](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/test.yml/badge.svg)
 
+---
+
 ## Overview
 
-This project is a simple front-end task management application built as part of CS307 (Software Engineering). The main goal of the application is to allow users to create projects and manage tasks within those projects.
+A personal, offline-first task manager built as an installable PWA. Projects and tasks live in **Supabase** (Postgres) with realtime sync across devices, the app installs to the home screen and works offline, and an **in-app Claude assistant** can draft backlog entries that flow through an automated pipeline which opens and auto-merges its own pull requests.
 
-The core feature implemented is the ability to add and edit tasks, including updating task titles, descriptions, and due dates. The application is designed to be lightweight and focused on basic task organization.
+It's built and maintained solo — a daily-driver tool first, and a sandbox for trying out full-stack architecture ideas second. The UI is a dark "Void" theme with a keyboard-first interaction model (add with `Enter`, arrow-key navigation across rows and panes).
+
+---
+
+## Live Application
+
+https://rsterenchak.github.io/toDoList_TOP/
+
+---
+
+## Features
+
+**Tasks & projects**
+
+* Multiple projects, each with its own task list
+* Tasks with titles, descriptions, due dates, and completion
+* Drag-and-drop reordering
+* Recurring tasks (advance-on-check) with a per-task completion stats drawer
+* Three views — **Projects**, **Today**, and **Calendar**
+* Keyboard-first: add with `Enter`, arrow-key navigation across rows and panes
+
+**Sync & data**
+
+* Supabase Postgres as the source of truth, with per-user row-level security
+* Realtime sync across devices and tabs (self-echo filtered)
+* Passwordless **magic-link** authentication
+* Offline-first: localStorage cache plus first-login migration of any pre-auth data
+* Google Drive export
+
+**Focus tools**
+
+* Pomodoro timer — Focus / Short / Long modes, inline-editable countdown, audio + browser-notification alerts, survives a page refresh
+* A ghost "study companion" that wanders and studies alongside the timer
+* Built-in focus-music stations (YouTube-backed)
+
+**In-app Claude assistant**
+
+* Chat panel that can draft `TODO.md` backlog entries
+* One-tap **Inject & run** dispatches an automated pipeline run that opens a PR and auto-merges
+* A **Runs** tab tracks each dispatch QUEUED → RUNNING → SHIPPED
+
+**Platform**
+
+* Installable PWA — works offline, with an in-app update flow
+* Two-pane desktop layout (task list + persistent chat); mobile bottom tab bar + bottom sheets
+* Changelog and stats modals
+
+---
+
+## Tech Stack
+
+* **Language:** Vanilla JavaScript (ES modules) — no UI framework
+* **Build:** Webpack 5 + Babel
+* **PWA:** Workbox (`workbox-webpack-plugin` `InjectManifest`) service worker
+* **Data:** Supabase — Postgres + Realtime + Auth (magic link), per-user RLS
+* **Backend proxy:** Cloudflare Worker (Wrangler) — GitHub Contents API operations and the in-app Claude chat surface
+* **Tests:** Vitest + jsdom
+* **CI/CD:** GitHub Actions, deployed to GitHub Pages
+* **Client storage:** localStorage (offline cache of project data + device-scoped UI prefs)
+
+---
+
+## Architecture
+
+All projects and tasks live in an in-memory model (`allProjects`) backed by Supabase Postgres, which is the source of truth. Every user mutation updates memory, writes a localStorage cache, and mirrors the change to Supabase. Access is scoped per user by row-level security — the `todos` table has no `user_id` column, so ownership is enforced via a sub-select against the parent `projects` row.
+
+On load, the cached snapshot renders immediately, then reconciles against Supabase using last-write-wins on `updated_at`, then subscribes to a realtime channel so changes made on other devices or tabs appear without a refresh (the client filters echoes of its own writes). The service worker precaches the app shell so the app opens instantly and works offline.
+
+A passwordless magic-link sign-in gates the app. On a user's first sign-in on a given device, any pre-auth local data is migrated up to Supabase (cloud wins if both sides hold data); sign-out wipes that user's local data while preserving device-scoped UI prefs.
+
+A Cloudflare Worker proxies GitHub Contents API operations and backs the in-app Claude chat. From chat, a drafted entry can be injected into `TODO.md` and dispatched to an automated routine that opens a pull request, runs the test suite, and auto-merges — see the pipeline section below. Webpack bundles the app, GitHub Actions builds and deploys it to GitHub Pages, and Workbox emits the precaching service worker.
+
+---
+
+## Project Structure
+
+Representative module map (`toDoList_main/src/`). `main.js` is the app's spine and is being progressively decomposed into the focused modules below.
+
+**Core & data**
+
+* `listLogic.js` — in-memory model (`allProjects`) + Supabase persistence + realtime
+* `toDo.js` — task factory
+* `supabaseClient.js` — Supabase client (with a test stub for jsdom)
+* `auth.js` — magic-link sign-in modal and auth gate
+* `migration.js` — first-login localStorage → Supabase migration + sign-out wipe
+
+**UI & interaction**
+
+* `main.js` — DOM construction, layout shells, and event wiring
+* `toDoRow.js` / `dueDate.js` / `dragDrop.js` — task rows, due-date & recurrence popovers, drag reorder
+* `claudeSheet.js` — in-app Claude chat + Runs panel
+* `inject.js` — TODO.md inject + pipeline dispatch/status (via the Worker)
+* `modals.js` / `changelog.js` — modals, update cue, changelog
+* `pomodoro.js` / `companion.js` — focus timer and ghost companion
+* `driveExport.js` — Google Drive export
+* `index.js` / `sw.js` — entry point and service worker
+
+**Build & infra**
+
+* `webpack.config.js` — bundling + Workbox service-worker generation
+* `tests/` — Vitest + jsdom suite
+* `.github/workflows/` — CI plus the Claude run pipeline
+
+---
+
+## Testing
+
+Automated testing runs on a **Vitest + jsdom** suite, executed in CI on every push (the badge above tracks it). Coverage spans model and persistence logic, the service-worker update lifecycle (`tests/serviceWorkerUpdate.test.js`), and mobile layout invariants — for example, a test pins task inputs at a 16px+ font size to prevent iOS Safari's auto-zoom-on-focus.
+
+Because the full PWA update lifecycle depends on real browser behavior (especially `controllerchange` semantics, which differ across engines), it's also validated manually on Desktop Chrome, iOS Safari, and Android Chrome — see the **PWA updates → Validating updates empirically** section below for the per-platform checklist.
 
 ---
 
@@ -46,72 +159,6 @@ Roughly 7 steps. Order matters for steps 1–3.
 
 ---
 
-
----
-
-## Live Application
-
-You can access the deployed application here:
-https://rsterenchak.github.io/toDoList_TOP/
-
----
-
-## Features
-
-* Create and manage multiple projects
-* Add new tasks to a project
-* Edit task titles
-* Edit task descriptions
-* Assign due dates to tasks
-* Delete tasks
-* Persist data using localStorage
-
----
-
-## Technologies Used
-
-* JavaScript (ES Modules)
-* HTML
-* CSS
-* localStorage (for data persistence)
-
----
-
-## Project Structure
-
-* **main.js**
-  Handles DOM creation, event listeners, and user interaction
-
-* **listLogic.js**
-  Manages all project and task data using the `allProjects` object
-
-* **toDo.js**
-  Factory function used to create task objects
-
----
-
-## How It Works
-
-User input is captured through the UI and handled by event listeners in `main.js`. When a task is created or updated, the data is passed into the `listLogic` module, which updates the correct project inside the `allProjects` object.
-
-Each task is created using the `toDo` factory function, which ensures all task objects follow the same structure. After updates are made, the data is saved to `localStorage`, and the UI is re-rendered to reflect the changes.
-
----
-
-## Google Drive Export Setup
-
-The "Export to Drive" menu item requires an OAuth 2.0 Client ID provisioned in the Google Cloud Console (see the comment block at the top of `toDoList_main/src/driveExport.js` for step-by-step instructions). The Client ID is injected at build time from the `GOOGLE_OAUTH_CLIENT_ID` environment variable — it is **never** committed to source.
-
-* **Production (GitHub Pages):** add `GOOGLE_OAUTH_CLIENT_ID` as a repository secret under *Settings → Secrets and variables → Actions*. The deploy workflow forwards it to the build step automatically.
-* **Local development:** export it in your shell before `npm start`:
-  ```
-  export GOOGLE_OAUTH_CLIENT_ID=<your-client-id>.apps.googleusercontent.com
-  npm start
-  ```
-  Without the env var, the menu item appears but surfaces a "Drive export not configured for this build" toast — the rest of the app works normally.
-
----
-
 ## PWA updates
 
 The app installs as a Progressive Web App. The service worker (built by `workbox-webpack-plugin`'s `InjectManifest` and emitted as `dist/sw.js`) precaches the app shell, so installed clients load instantly and work offline. When a new build is deployed, installed clients need to discover the update, fetch it, and reload — this section documents that flow so future contributors know the contract.
@@ -148,38 +195,6 @@ For each platform, the validation step is: deploy a known version bump, open the
 
 ---
 
-## Testing
-
-Testing was performed manually by interacting with the application. This included:
-
-* Creating tasks
-* Editing titles and descriptions
-* Assigning due dates
-* Deleting tasks
-* Refreshing the page to verify data persistence
-
-The application was also tested for basic edge cases such as empty inputs and duplicate task entries.
-
----
-
-## Known Limitations
-
-* No input validation for empty or duplicate tasks
-* No user authentication or multi-user support
-* Priority and task assignment features are not fully implemented
-
----
-
-## Future Improvements
-
-* Add input validation for task creation
-* Implement task prioritization
-* Add user authentication for multi-user support
-* Improve UI/UX for better usability
-
----
-
 ## Author
 
-Robert Sterenchak
-CS307 - Software Engineering
+Robert Sterenchak — solo developer.
