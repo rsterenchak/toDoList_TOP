@@ -123,7 +123,7 @@ Because the full PWA update lifecycle depends on real browser behavior (especial
 
 ---
 
-## QUICKSTART - Add existing repo (fill-in)
+## Quickstart - Add existing repo (copy raw cmd & fill-in)
 
 NAME=test-console     # repo name
 SHAPE=console         # repo-only | console | desktop | maui | web-build | web-served
