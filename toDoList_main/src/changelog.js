@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-19',
-        added: [
-            "The Claude chat composer's attach, send, and layout-inspector buttons now show a purple border and lighter glyph on hover.",
+        changed: [
+            "The Claude chat input now glows purple when focused, and the voice-input button shows a purple tint on hover.",
         ],
         fixed: [
             "The Claude assistant's Chat / Runs tab switcher now stays legible in light theme instead of using dark, low-contrast colors.",
