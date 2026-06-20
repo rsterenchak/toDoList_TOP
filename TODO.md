@@ -884,7 +884,7 @@
   - Completed: 2026-06-20
   <!-- id: ad39b7a6-8e3d-41a8-a8ec-ea8dc5e37432 -->
 
-- [ ] **[MEDIUM]** Auto-open or auto-close the Claude sheet when switching projects based on injection configuration
+- [x] **[MEDIUM]** Auto-open or auto-close the Claude sheet when switching projects based on injection configuration — Completed: 2026-06-20
 
   - Type: bug
   - Description: When the user switches to a different project, the Claude sheet does not respond to the new project's injection configuration. The correct behavior is: if the newly selected project has injection configured (thunderbolt icon present), the sheet should auto-open using the same function triggered by the chat expand button; if the project does not have injection configured, the sheet should auto-close using the same function triggered by `chatCollapseButton`'s click handler. Find the project-switch event handler in `main.js` (grep for where `activeProject` or the sidebar project row click is handled) and call the existing expand/collapse functions conditionally based on whether the newly active project has injection enabled. Check `listLogic.js` for the property that flags a project as injection-configured (likely the same flag that controls thunderbolt rendering in `projectRow.js`).
