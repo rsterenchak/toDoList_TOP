@@ -860,3 +860,11 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-06-19
   <!-- id: e3c68a6e-6bff-417a-b9f1-030351a72142 -->
+
+- [ ] **[LOW]** Add purple outer glow to `claudeComposerMic` button to match other composer buttons
+
+  - Type: bug
+  - Description: The `#claudeComposerMic` button in the Claude sheet composer row is missing the purple outer halo (`box-shadow`) that the other composer buttons (e.g. send, attach) already have. Find the existing `box-shadow` glow rule applied to the other composer buttons in `style.css` and apply the same rule to `#claudeComposerMic`. No JS changes needed — this is a pure CSS fix.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 84a7ef74-af81-4f62-b5bc-e113ffff563a -->
