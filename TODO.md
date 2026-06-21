@@ -956,7 +956,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cecb874d-a793-41c5-ad6c-e3d77098cd73 -->
 
-- [ ] **[LOW]** Restyle the chat composer buttons to match the approved dual-send design
+- [x] **[LOW]** Restyle the chat composer buttons to match the approved dual-send design — Completed: 2026-06-21
   - Type: bug
   - Description: After the dual-send change shipped, the composer doesn't match the render that was signed off on. Right now the Fast (↑) and Deep buttons render as rounded squares, the Deep button carries the Claude-logo glyph, and the attach/mic pair sits inside a visibly bordered group. Bring it in line with the render: every composer control — attach, mic, Fast (↑), and Deep — should be a uniformly sized round icon button. Fast is a neutral circle (transparent fill, muted ↑); Deep is an accent-filled circle (`#6C5DF5` fill, light glyph) carrying a 🧠 brain glyph to match the emoji convention of the other buttons (📎 🎤 ↑). The two send buttons sit together as a pair at the right edge with small lowercase "fast" and "deep" labels beneath them (the "deep" label in accent `#9D93EE`). Attach and mic become plain borderless icon buttons in the row — drop the boxed grouping treatment.
   - Out of scope: any behavior change — Fast still sends a normal turn and Deep still sends with `deep_think: true`. This is purely visual. The 🧠 glyph matches the render, but swapping it back to the Claude-logo glyph is a one-line change if preferred; leave the shape, fill, sizing, and label alignment as specced regardless.
