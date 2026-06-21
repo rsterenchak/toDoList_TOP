@@ -969,7 +969,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 36eb925a-2c4e-4bb8-93a0-1182baefb1e4 -->
 
-- [ ] **[LOW]** Finalize the Deep send symbol and add a purple hover halo to the composer buttons
+- [x] **[LOW]** Finalize the Deep send symbol and add a purple hover halo to the composer buttons — Completed: 2026-06-21
   - Type: feature
   - Description: Two visual refinements to the just-shipped dual-send composer. First, swap the Deep button's symbol to a double-chevron pointing up (replacing its current glyph) — it reads as "boost the send" and is the chosen direction over the brain. Second, give all four composer buttons (attach 📎, mic 🎤, Fast ↑, Deep) a clearer button affordance: a subtle resting surface so the neutral three read as buttons rather than bare icons (Deep stays accent-filled `#6C5DF5`), plus a soft purple halo on hover. The halo is a layered box-shadow — a tight purple ring with a soft outer glow in the accent purple — applied to all four buttons, and it also fires on `:active` so touch devices get press feedback (there's no hover there). Purely visual; no behavior changes.
   - Implementation notes:
