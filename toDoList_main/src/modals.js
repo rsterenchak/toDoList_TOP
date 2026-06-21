@@ -12,7 +12,7 @@
 // pending service-worker updates so the same visual cue surfaces both
 // "new release notes" and "reload to apply update".
 
-import { changelog, getNewestChangelogDate } from './changelog.js';
+import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton } from './inject.js';
@@ -532,52 +532,7 @@ export function showChangelogModal() {
     const body = document.createElement('div');
     body.id = 'changelogModalBody';
 
-    changelog.forEach(function(entry) {
-        const block = document.createElement('section');
-        block.className = 'changelogEntry';
-
-        const heading = document.createElement('div');
-        heading.className = 'changelogEntryHeading';
-
-        const ver = document.createElement('span');
-        ver.className = 'changelogEntryVersion';
-        ver.textContent = 'v' + entry.version;
-
-        const date = document.createElement('span');
-        date.className = 'changelogEntryDate';
-        date.textContent = entry.date;
-
-        heading.appendChild(ver);
-        heading.appendChild(date);
-        block.appendChild(heading);
-
-        [
-            ['Added',   entry.added],
-            ['Changed', entry.changed],
-            ['Fixed',   entry.fixed]
-        ].forEach(function(pair) {
-            const label = pair[0];
-            const bullets = pair[1];
-            if (!bullets || !bullets.length) return;
-
-            const groupLabel = document.createElement('div');
-            groupLabel.className = 'changelogGroupLabel';
-            groupLabel.textContent = label;
-
-            const list = document.createElement('ul');
-            list.className = 'changelogBullets';
-            bullets.forEach(function(text) {
-                const li = document.createElement('li');
-                li.textContent = text;
-                list.appendChild(li);
-            });
-
-            block.appendChild(groupLabel);
-            block.appendChild(list);
-        });
-
-        body.appendChild(block);
-    });
+    renderChangelogEntries(body);
 
     const actions = document.createElement('div');
     actions.id = 'changelogModalActions';

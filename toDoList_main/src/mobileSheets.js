@@ -11,6 +11,8 @@
 import { updateCompletedSection } from './emptyState.js';
 import { placeViewerCard } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
+import { renderChangelogEntries, getNewestChangelogDate } from './changelog.js';
+import { writeChangelogLastSeen } from './prefs.js';
 
 // ── Mobile completed-section bottom sheet ──
 // The inline accordion that reveals the COMPLETED list (and the TODO.md
@@ -429,12 +431,140 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
     });
 }
 
-// True when either mobile sheet is currently open. main.js's viewer card
+// ── Mobile changelog bottom sheet ──
+// The mobile Settings modal's About → Version row taps to open this
+// slide-up sheet, which renders the changelog via the shared
+// renderChangelogEntries() so it stays identical to the desktop footer's
+// changelog modal. Unlike the other two sheets this one builds fresh DOM
+// (the changelog has no inline home to move from), so close() simply
+// discards the sheet. Three-affordance close per CLAUDE.md — X button,
+// backdrop tap, Escape — plus the touch swipe-down on the drag handle.
+
+let changelogMobileSheetState = null;
+
+export function openChangelogMobileSheet() {
+    if (changelogMobileSheetState && changelogMobileSheetState.open) return;
+
+    const prior = document.getElementById('changelogMobileSheetBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'changelogMobileSheetBackdrop';
+
+    const sheet = document.createElement('div');
+    sheet.id = 'changelogMobileSheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-labelledby', 'changelogMobileSheetTitle');
+
+    const handle = document.createElement('span');
+    handle.className = 'completedMobileSheetHandle';
+    handle.setAttribute('aria-hidden', 'true');
+
+    const headerEl = document.createElement('div');
+    headerEl.className = 'completedMobileSheetHeader';
+
+    const title = document.createElement('div');
+    title.id = 'changelogMobileSheetTitle';
+    title.className = 'completedMobileSheetTitle';
+    title.textContent = 'Changelog';
+
+    const closeX = document.createElement('button');
+    closeX.type = 'button';
+    closeX.className = 'completedMobileSheetClose';
+    closeX.setAttribute('aria-label', 'Close changelog');
+    closeX.textContent = '×';
+
+    headerEl.appendChild(title);
+    headerEl.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.className = 'completedMobileSheetBody';
+    body.id = 'changelogMobileSheetBody';
+    renderChangelogEntries(body);
+
+    sheet.appendChild(handle);
+    sheet.appendChild(headerEl);
+    sheet.appendChild(body);
+    backdrop.appendChild(sheet);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+
+    changelogMobileSheetState = {
+        open: true,
+        backdrop: backdrop,
+        sheet: sheet,
+        previouslyFocused: previouslyFocused,
+        onKeydown: null,
+    };
+
+    function onKeydown(event) {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeChangelogMobileSheet();
+    }
+    changelogMobileSheetState.onKeydown = onKeydown;
+
+    closeX.addEventListener('click', closeChangelogMobileSheet);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) closeChangelogMobileSheet();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    attachCompletedSheetSwipeDown(handle, sheet, closeChangelogMobileSheet);
+    attachCompletedSheetSwipeDown(headerEl, sheet, closeChangelogMobileSheet);
+
+    requestAnimationFrame(function() {
+        backdrop.classList.add('is-open');
+    });
+
+    // Mark the newest entry seen on open so the unseen-dot baseline stays
+    // consistent with the desktop changelog modal across viewport switches.
+    const newest = getNewestChangelogDate();
+    if (newest) writeChangelogLastSeen(newest);
+
+    try { closeX.focus(); } catch (_) { /* defensive */ }
+}
+
+function closeChangelogMobileSheet() {
+    const state = changelogMobileSheetState;
+    if (!state || !state.open) return;
+    state.open = false;
+    if (state.onKeydown) {
+        document.removeEventListener('keydown', state.onKeydown, true);
+    }
+    if (state.backdrop && state.backdrop.parentNode) {
+        state.backdrop.parentNode.removeChild(state.backdrop);
+    }
+    changelogMobileSheetState = null;
+    if (state.previouslyFocused &&
+        typeof state.previouslyFocused.focus === 'function' &&
+        document.contains(state.previouslyFocused)) {
+        try { state.previouslyFocused.focus(); } catch (_) { /* defensive */ }
+    }
+}
+
+if (typeof window !== 'undefined') {
+    // Resize past the mobile breakpoint — the desktop footer's changelog
+    // modal affordance is available again, so dismiss the sheet so the
+    // affordance matches the active viewport.
+    window.addEventListener('resize', function() {
+        if (changelogMobileSheetState && changelogMobileSheetState.open
+                && !isMobileViewport()) {
+            closeChangelogMobileSheet();
+        }
+    });
+}
+
+// True when any mobile sheet is currently open. main.js's viewer card
 // tap handler uses this to bail before opening a second sheet on top of
 // an already-open one.
 export function isAnyMobileSheetOpen() {
     return !!(
         (viewerMobileSheetState && viewerMobileSheetState.open) ||
-        (completedMobileSheetState && completedMobileSheetState.open)
+        (completedMobileSheetState && completedMobileSheetState.open) ||
+        (changelogMobileSheetState && changelogMobileSheetState.open)
     );
 }

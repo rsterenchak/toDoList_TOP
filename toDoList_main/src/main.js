@@ -89,7 +89,7 @@ import {
 } from './inject.js';
 import { placeViewerCard, setViewerCardTapHandler } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
-import { openCompletedMobileSheet, openViewerMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
+import { openCompletedMobileSheet, openViewerMobileSheet, openChangelogMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
 import button from './addProj_button.svg';
 
 // Hydrate the inject config cache from localStorage before any inject
@@ -2456,7 +2456,11 @@ function component() {
             updatePill.className = 'settingsAboutUpdatePill';
             updatePill.textContent = 'Update available';
             updatePill.setAttribute('aria-label', 'Update available — tap to reload');
-            updatePill.addEventListener('click', function() {
+            updatePill.addEventListener('click', function(event) {
+                // The Version row itself taps to open the changelog; stop the
+                // pill's click bubbling so an "Update available" tap applies
+                // the update instead of also opening the changelog sheet.
+                event.stopPropagation();
                 applyPendingUpdate();
             });
             versionRow.appendChild(updatePill);
@@ -2720,6 +2724,32 @@ function component() {
         // footer's "task management v1.1" label).
         if (versionRow) versionRow.setAttribute('title', 'task management v1.1');
         paintAboutVersionUpdateCue(versionRow);
+
+        // Tap the Version row to open the changelog (mobile parity for the
+        // desktop footer's #footVersion).
+        if (versionRow) {
+            versionRow.classList.add('drawerInfoRow--tappable');
+            versionRow.setAttribute('role', 'button');
+            versionRow.setAttribute('tabindex', '0');
+            versionRow.setAttribute('aria-haspopup', 'dialog');
+            versionRow.setAttribute('aria-label', 'Open changelog');
+            const versionChevron = document.createElement('span');
+            versionChevron.className = 'drawerActionChevron';
+            versionChevron.setAttribute('aria-hidden', 'true');
+            versionChevron.textContent = '›';
+            versionRow.appendChild(versionChevron);
+            function openChangelogFromVersionRow() {
+                close();
+                openChangelogMobileSheet();
+            }
+            versionRow.addEventListener('click', openChangelogFromVersionRow);
+            versionRow.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openChangelogFromVersionRow();
+                }
+            });
+        }
 
         // HELP section — single Replay welcome tour entry that dispatches
         // by viewport. On touch / narrow viewports the carousel runs; on
