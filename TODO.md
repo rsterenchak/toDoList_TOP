@@ -994,3 +994,9 @@
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/style.css`
   - Completed: 2026-06-21
   <!-- id: 13a19279-05e0-49a4-aab2-e18e57391068 -->
+
+- [ ] **[MEDIUM]** Open to the first project on app launch instead of the last-selected one
+  - Type: feature
+  - Description: On startup the app currently restores whichever project was last selected (read from a persisted `todoapp_`-prefixed localStorage value). Change the initial selection so the app always activates the FIRST project in the project list on load, regardless of the last-selected value. Locate the bootstrap/initial-project-selection logic in `toDoList_main/src/main.js` and the active-project accessor in `toDoList_main/src/listLogic.js`; default to index 0 of the projects array when there is at least one project, and fall back gracefully (empty state) when there are none.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
+  <!-- id: 93b98c97-2c41-4349-95b1-079feb8f1879 -->
