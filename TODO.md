@@ -937,7 +937,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9699cfd2-4b1f-4362-a505-d060b5a30b13 -->
 
-- [ ] **[MEDIUM]** Add a Deep send button to the Claude chat composer for deep-think turns
+- [x] **[MEDIUM]** Add a Deep send button to the Claude chat composer for deep-think turns — Completed: 2026-06-21
   - Type: feature
   - Description: Add a second send button to the chat composer so a turn can be sent in one of two modes — the existing "Fast" send (the ↑ button, unchanged) and a new "Deep" send rendered as a 🧠 glyph with the accent treatment. The mode is strictly per-message: tapping Fast sends as today; tapping Deep sends the same turn with a `deep_think: true` flag added to the Worker request, which the Worker uses to route that one turn to a heavier model (handled separately — see Out of scope). No sticky state, so a follow-up never inherits Deep. While a Deep request is in flight, swap the pending bubble's placeholder from "…" to a "Thinking deeply…" label so the slower turn reads as intentional rather than stalled.
   - Behavior:
