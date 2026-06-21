@@ -1012,3 +1012,10 @@
   - Description: In the mobile settings menu the "Version" row is currently static text. Make it a tappable affordance that opens the current changelog when tapped, reusing the existing changelog rendering from `changelog.js` presented in a mobile sheet (`mobileSheets.js`). Give the row clear tappable styling (cursor/tap feedback) and proper touch-target sizing, and ensure the sheet closes via close button, backdrop tap, and Escape per app modal conventions.
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/changelog.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/style.css`
   <!-- id: daf7a0f7-dd35-4107-950b-76405af0fa1a -->
+
+- [ ] **[MEDIUM]** Fix connected notification overflowing the inject settings modal when worker is connected
+  - Type: bug
+  - Description: When the inject settings menu connects to the Cloudflare Worker, the "connected" status notification expands beyond the modal's visible bounds, pushing content past the immediate view. Constrain the notification so it stays within the modal's visible area—cap its width/height, wrap or truncate long text, and ensure the modal content doesn't overflow the viewport on connect. Likely the status element rendered in the settings/inject UI plus its CSS sizing rules.
+  - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6f2c85ed-78a7-4388-b57e-808e43231ff2 -->
