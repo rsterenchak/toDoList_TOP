@@ -336,13 +336,29 @@ describe('Claude sheet — module surface and styling', () => {
         expect(extractTopLevelRule('.micButton')).not.toMatch(/align-self/);
     });
 
-    it('gives the mic button the composer purple outer glow (box-shadow halo)', () => {
-        // The mic button was missing the purple halo the rest of the composer's
-        // purple-glow family carries (the input focus ring uses the same
-        // rgba(108, 93, 245, …) accent). Assert the base .micButton rule now
-        // paints an outer box-shadow glow in that purple.
+    it('renders the mic as a plain borderless round icon button (no boxed grouping)', () => {
+        // The composer restyle drops the boxed/glow treatment from the attach and
+        // mic controls so they read as plain borderless round icon buttons. Assert
+        // the base .micButton rule is borderless, round, and carries no static
+        // outer glow.
         const mic = extractTopLevelRule('.micButton');
-        expect(mic).toMatch(/box-shadow:[^;]*rgba\(\s*108\s*,\s*93\s*,\s*245\b/);
+        expect(mic).toMatch(/border:\s*none/);
+        expect(mic).toMatch(/border-radius:\s*50%/);
+        expect(mic).not.toMatch(/box-shadow:/);
+    });
+
+    it('styles the composer sends as round icon buttons (Fast neutral, Deep accent-filled)', () => {
+        const fast = extractTopLevelRule('.claudeComposerSend');
+        // Fast: round, transparent fill (no boxed background).
+        expect(fast).toMatch(/border-radius:\s*50%/);
+        expect(fast).toMatch(/background:\s*transparent/);
+        // Deep: accent-filled circle.
+        const deep = extractTopLevelRule('.claudeComposerSendDeep');
+        expect(deep).toMatch(/background:\s*#6C5DF5/i);
+        // Attach: plain borderless round icon button.
+        const attach = extractTopLevelRule('.claudeComposerAttach');
+        expect(attach).toMatch(/border-radius:\s*50%/);
+        expect(attach).toMatch(/border:\s*none/);
     });
 
     it('pins the launcher to the bottom-right and hides it under other modals', () => {
@@ -488,6 +504,28 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         // Deep sits last in the send cluster, after the Fast send.
         expect(send.compareDocumentPosition(deep) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
+    });
+
+    it('labels the Fast and Deep sends with small lowercase captions', () => {
+        const send = document.getElementById('claudeComposerSend');
+        const deep = document.getElementById('claudeComposerSendDeep');
+        // Each send button is stacked over its caption inside a send column.
+        const fastCol = send.closest('.claudeSendCol');
+        const deepCol = deep.closest('.claudeSendCol');
+        expect(fastCol).toBeTruthy();
+        expect(deepCol).toBeTruthy();
+        const fastLabel = fastCol.querySelector('.claudeSendLabel');
+        const deepLabel = deepCol.querySelector('.claudeSendLabel');
+        expect(fastLabel.textContent).toBe('fast');
+        expect(deepLabel.textContent).toBe('deep');
+        // The captions are decorative — the buttons' aria-labels carry the
+        // accessible name — so they're hidden from assistive tech.
+        expect(fastLabel.getAttribute('aria-hidden')).toBe('true');
+        expect(deepLabel.getAttribute('aria-hidden')).toBe('true');
+        // The deep caption gets the accent class that paints it purple.
+        expect(deepLabel.classList.contains('claudeSendLabelDeep')).toBe(true);
+        // The pair sits inside a single send group.
+        expect(send.closest('.claudeSendGroup')).toBe(deep.closest('.claudeSendGroup'));
     });
 
     it('Deep send POSTs deep_think: true; Fast send omits the field', async () => {
