@@ -913,7 +913,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 50eb1ca3-849c-471e-bbbf-0d14c42db391 -->
 
-- [ ] **[MEDIUM]** Add "new project" button to the projectPickerDropdown header row
+- [x] **[MEDIUM]** Add "new project" button to the projectPickerDropdown header row — Completed: 2026-06-20
   - Type: feature
   - Description: A `+` button is currently only available on mobile to create a new project, but it is absent from the `projectPickerDropdown` panel used on desktop/larger viewports. Add a small `+` button to the right side of the dropdown's header row (the row containing the "Projects" label), styled with the purple accent (`#6C5DF5`) to match the design in the approved mockup. Tapping it must fire the same new-project creation handler already wired to the mobile button (in `main.js`), opening the existing naming modal/input. After the project is named and created it must become the active selection, identical to the mobile flow. The mobile `+` button is unchanged — this is a purely additive change.
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
