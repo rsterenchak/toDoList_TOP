@@ -936,3 +936,22 @@
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/projectPickerDropdown.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9699cfd2-4b1f-4362-a505-d060b5a30b13 -->
+
+- [ ] **[MEDIUM]** Add a Deep send button to the Claude chat composer for deep-think turns
+  - Type: feature
+  - Description: Add a second send button to the chat composer so a turn can be sent in one of two modes — the existing "Fast" send (the ↑ button, unchanged) and a new "Deep" send rendered as a 🧠 glyph with the accent treatment. The mode is strictly per-message: tapping Fast sends as today; tapping Deep sends the same turn with a `deep_think: true` flag added to the Worker request, which the Worker uses to route that one turn to a heavier model (handled separately — see Out of scope). No sticky state, so a follow-up never inherits Deep. While a Deep request is in flight, swap the pending bubble's placeholder from "…" to a "Thinking deeply…" label so the slower turn reads as intentional rather than stalled.
+  - Behavior:
+    1. The composer keeps the existing left-to-right order — attach (📎), mic (🎤), input, then the send cluster — with two buttons in the send cluster: Fast (↑) and Deep (🧠), both flush right and baseline-aligned in the same single row as today. Do not regress the composer single-row alignment.
+    2. Deep send mirrors Fast send's gating: disabled when the input is empty, and disabled alongside Fast while any request is in flight, with both re-enabling together when the turn resolves.
+    3. Deep send pushes the user message and runs the turn exactly like Fast, the only difference being that the request carries `deep_think: true`.
+  - Implementation notes:
+    - The composer is built in `buildChatView()` in `claudeSheet.js`; add the Deep button beside `#claudeComposerSend` (e.g. `#claudeComposerSendDeep`) and bind its click to the send path with a deep flag.
+    - Thread the flag without breaking existing callers: give `sendChatTurn(deep)` a `deep` param (Fast passes false/omits, Deep passes true), pass it to `requestAssistantReply(entryId, deep)` as a new trailing param, and pass it through `chatWithWorker(...)` in `inject.js` as a new trailing `deepThink` param that sets `payload.deep_think = true` only when truthy. Existing calls — `requestAssistantReply()`, the iterate seed `requestAssistantReply(rec.entryId)`, and the pasted-draft and inspect-turn paths — stay Fast since `deep` is undefined.
+    - The in-flight disable/enable block in `requestAssistantReply` currently toggles only `#claudeComposerSend`; extend it to toggle the Deep button too.
+    - Use a 🧠 glyph to match the existing emoji-glyph buttons (📎 🎤 ↑) — no icon-font or other new dependency. Style the Deep button in `style.css` with the accent treatment (`#6C5DF5`/`#9D93EE`), reusing the existing composer-button structure so alignment holds.
+    - Authorized: update any assertions in `tests/claudeSheet.test.js` that enumerate the composer's buttons or assume a single send button, to reflect the new two-button send cluster.
+    - Add coverage for the new invariant: `chatWithWorker` includes `deep_think: true` in the POST body when the deep arg is set and omits the field otherwise, and the Deep button renders and is wired in the composer.
+  - Out of scope: the Worker side (`rsterenchak/todo-injector-worker`) that reads `deep_think` and switches to Opus + extended thinking — separate repo, deployed manually via `wrangler deploy`, not through this pipeline. This entry only adds the button and the flag; an un-updated Worker just ignores `deep_think` (Deep behaves like Fast) until that deploy lands.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cecb874d-a793-41c5-ad6c-e3d77098cd73 -->
