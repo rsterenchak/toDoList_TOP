@@ -981,9 +981,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: db284a64-24e9-4f64-bc91-9ef7f66eb3be -->
 
-- [ ] **[LOW]** Remove mobileProjOpen and mobileProjDone count badges from the mobile navbar
+- [x] **[LOW]** Remove mobileProjOpen and mobileProjDone count badges from the mobile navbar
   - Type: feature
   - Description: The mobile navbar currently shows two count badges — `mobileProjOpen` (open todo count) and `mobileProjDone` (completed count) — for the active project. Remove both elements from the navbar markup so they no longer render. Also remove or guard the code that recalculates and writes into these nodes on todo add/check/delete/reorder, so nothing throws or wastes work updating elements that no longer exist. After the change the navbar should lay out cleanly with the freed space reclaimed and no console errors when todos change.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-21
   <!-- id: eb039168-98da-4069-9bec-1c4964997870 -->
