@@ -7209,50 +7209,76 @@ body.row-dragging * { cursor: grabbing !important; }
   display: flex;
 }
 
-/* 16px font-size keeps iOS Safari from auto-zooming the input on focus. */
+/* Soft "create card" — wraps the leading + adornment, the borderless input,
+   and the labeled Create button. The purple border appears only on
+   :focus-within (matching the rename input / inject sub-modal) so purple
+   signals focus rather than rest state. */
+.projectPickerCreateCard {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+}
+
+.projectPickerCreateCard:focus-within {
+  border-color: #6C5DF5;
+}
+
+/* Leading muted + adornment glyph inside the create card. */
+.projectPickerCreateAdorn {
+  flex: 0 0 auto;
+  font-size: 14px;
+  line-height: 1;
+  color: #6f6f80;
+  user-select: none;
+}
+
+/* Borderless, transparent input inside the create card. 16px font-size keeps
+   iOS Safari from auto-zooming the input on focus. The transparent 1px border
+   reserves layout so the reject state can swap in a red border without shift. */
 .projectPickerCreateInput {
   flex: 1 1 auto;
   min-width: 0;
-  height: 28px;
+  height: 24px;
   box-sizing: border-box;
-  padding: 0 8px;
+  padding: 0;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 16px;
   color: #e8e8f0;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid #6C5DF5;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 4px;
   caret-color: #6C5DF5;
 }
 
 .projectPickerCreateInput:focus {
   outline: none;
-  border-color: #6C5DF5;
 }
 
-/* Reject treatment (empty / duplicate name) — red, matching the rename
-   input's reject path. */
+/* Reject treatment (empty / duplicate name) — red border on the otherwise
+   borderless input, matching the rename input's reject path. */
 .projectPickerCreateInput.error {
   border-color: #e5484d;
   color: #e5484d;
   caret-color: #e5484d;
 }
 
-/* Confirm + button — purple accent to match the header add button. */
+/* Labeled Create button — purple fill to match the header add button. */
 .projectPickerCreateConfirm {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  font-size: 18px;
+  font-family: 'Trebuchet MS', ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
   line-height: 1;
   color: #fff;
   background: #6C5DF5;
   border: none;
   border-radius: 4px;
+  padding: 6px 12px;
   cursor: pointer;
 }
 
