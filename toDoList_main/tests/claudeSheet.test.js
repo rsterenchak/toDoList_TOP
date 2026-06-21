@@ -336,29 +336,32 @@ describe('Claude sheet — module surface and styling', () => {
         expect(extractTopLevelRule('.micButton')).not.toMatch(/align-self/);
     });
 
-    it('renders the mic as a plain borderless round icon button (no boxed grouping)', () => {
-        // The composer restyle drops the boxed/glow treatment from the attach and
-        // mic controls so they read as plain borderless round icon buttons. Assert
-        // the base .micButton rule is borderless, round, and carries no static
-        // outer glow.
+    it('renders the mic as a round icon button with a resting surface and hairline border', () => {
+        // The neutral composer buttons carry a faint resting fill plus a hairline
+        // border so they read as buttons rather than bare glyphs. Assert the base
+        // .micButton rule is round, filled, bordered, and carries no static outer
+        // glow (the purple halo lives on a separate :hover/:active rule).
         const mic = extractTopLevelRule('.micButton');
-        expect(mic).toMatch(/border:\s*none/);
+        expect(mic).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
+        expect(mic).toMatch(/background:\s*var\(--bg-elevated\)/);
         expect(mic).toMatch(/border-radius:\s*50%/);
         expect(mic).not.toMatch(/box-shadow:/);
     });
 
-    it('styles the composer sends as round icon buttons (Fast neutral, Deep accent-filled)', () => {
+    it('styles the composer sends as round icon buttons (neutral filled, Deep accent-filled)', () => {
         const fast = extractTopLevelRule('.claudeComposerSend');
-        // Fast: round, transparent fill (no boxed background).
+        // Fast: round, with a faint resting surface and hairline border.
         expect(fast).toMatch(/border-radius:\s*50%/);
-        expect(fast).toMatch(/background:\s*transparent/);
+        expect(fast).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(fast).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
         // Deep: accent-filled circle.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
         expect(deep).toMatch(/background:\s*#6C5DF5/i);
-        // Attach: plain borderless round icon button.
+        // Attach: round icon button with the same resting surface and border.
         const attach = extractTopLevelRule('.claudeComposerAttach');
         expect(attach).toMatch(/border-radius:\s*50%/);
-        expect(attach).toMatch(/border:\s*none/);
+        expect(attach).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(attach).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
     });
 
     it('pins the launcher to the bottom-right and hides it under other modals', () => {
@@ -493,12 +496,16 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         await flush();
     }
 
-    it('renders a Deep (🧠) send button beside the Fast (↑) send', () => {
+    it('renders a Deep (double-chevron) send button beside the Fast (↑) send', () => {
         const send = document.getElementById('claudeComposerSend');
         const deep = document.getElementById('claudeComposerSendDeep');
         const composer = document.getElementById('claudeComposer');
         expect(deep).toBeTruthy();
-        expect(deep.textContent).toBe('🧠');
+        // The Deep glyph is a hand-rolled double-chevron-up SVG (two stacked
+        // chevron strokes), not a text glyph.
+        const svg = deep.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.querySelectorAll('polyline').length).toBe(2);
         expect(deep.getAttribute('aria-label')).toBe('Send deep');
         expect(composer.contains(deep)).toBe(true);
         // Deep sits last in the send cluster, after the Fast send.

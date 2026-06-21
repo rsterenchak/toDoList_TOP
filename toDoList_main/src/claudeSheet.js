@@ -472,7 +472,15 @@ function buildChatView() {
     sendDeep.id = 'claudeComposerSendDeep';
     sendDeep.type = 'button';
     sendDeep.className = 'claudeComposerSend claudeComposerSendDeep';
-    sendDeep.textContent = '🧠';
+    // Double-chevron pointing up: reads as "boost the send" — the heavier deep
+    // path stacking on top of the ordinary send. Hand-rolled inline SVG (no icon
+    // font), sized to match the other composer glyphs.
+    sendDeep.innerHTML =
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="6 17 12 11 18 17"></polyline>' +
+        '<polyline points="6 13 12 7 18 13"></polyline></svg>';
     sendDeep.setAttribute('aria-label', 'Send deep');
     // The Fast (↑) and Deep (🧠) sends pair at the right edge of the composer,
     // each stacked over a small lowercase label so the two modes read at a

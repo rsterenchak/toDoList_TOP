@@ -1784,13 +1784,15 @@ body:has(#settingsMenu) #claudeLauncher {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: transparent;
+  background: var(--bg-elevated);
   color: var(--text-secondary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-/* Attach (📎) — a plain borderless round icon button, no boxed grouping. */
+/* Attach (📎) — a round icon button. It carries the same faint resting fill and
+   hairline border as the other neutral composer buttons so it reads as a button
+   rather than a bare glyph. */
 .claudeComposerAttach {
   flex-shrink: 0;
   display: inline-flex;
@@ -1799,24 +1801,37 @@ body:has(#settingsMenu) #claudeLauncher {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: transparent;
+  background: var(--bg-elevated);
   color: var(--text-secondary);
-  border: none;
+  border: 0.5px solid var(--border-mid);
   cursor: pointer;
   font-size: 16px;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, box-shadow 0.15s ease;
 }
 .claudeComposerAttach[hidden] { display: none; }
 /* Hover feedback. The Fast send carries a neutral ring, so its hover deepens the
-   ring to purple and lightens the glyph; the borderless attach/mic controls have
-   no ring to color, so they only lighten the glyph. The send skips the cue while
-   disabled so the not-allowed state still reads as inert. */
+   ring to purple and lightens the glyph; the attach/mic controls lighten the
+   glyph. The send skips the cue while disabled so the not-allowed state still
+   reads as inert. */
+/* Purple halo — a tight accent ring plus a soft outer glow — layers onto each
+   composer button's hover alongside its existing glyph/ring cue. The Deep button
+   keeps its accent fill underneath; the halo layers on top. */
 .claudeComposerSend:hover:not(:disabled) {
   border: 1.5px solid #6C5DF5;
   color: #9D93EE;
+  box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 .claudeComposerAttach:hover {
   color: #9D93EE;
+  box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
+}
+/* Press feedback for touch devices (no hover): the same purple halo fires on
+   :active for all four composer buttons. .claudeComposerSend covers both the
+   Fast and Deep sends (Deep carries that class too). */
+.claudeComposerAttach:active:not(:disabled),
+.micButton:active:not(:disabled),
+.claudeComposerSend:active:not(:disabled) {
+  box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 .claudeComposerInput:disabled,
 .claudeComposerSend:disabled {
@@ -1873,16 +1888,17 @@ body:has(#settingsMenu) #claudeLauncher {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: transparent;
+  background: var(--bg-elevated);
   color: var(--text-secondary);
-  border: none;
+  border: 0.5px solid var(--border-mid);
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-/* Hover feedback: a lighter purple glyph, matching the borderless attach
-   button's hover so the two composer controls share one affordance. */
+/* Hover feedback: a lighter purple glyph plus the purple halo, mirroring the
+   attach button's hover so the two composer controls share one affordance. */
 .micButton:hover {
   color: #9D93EE;
+  box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 .micButton--recording {
   background: var(--accent-dim);

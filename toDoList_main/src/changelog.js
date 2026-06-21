@@ -12,12 +12,14 @@ export const changelog = [
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
         ],
+        changed: [
+            "The Claude assistant's Deep send button now shows a double-chevron symbol, and the composer buttons gain a subtle resting surface and a purple glow on hover and press.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-20',
         fixed: [
-            "The Claude assistant's voice-input button now shows the same purple border and glyph highlight on hover as the other composer buttons.",
             "Switching projects now actually shows or hides the Claude chat pane based on the project's repo configuration, instead of leaving it unchanged.",
             "The app now recovers on its own from a blank screen after an update, refreshing itself automatically instead of needing a manual hard refresh.",
         ],
