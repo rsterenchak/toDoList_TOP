@@ -1698,6 +1698,16 @@ function component() {
         navigateToProjectByIndex,
         updateFooterCounts,
         applyProjectInitial,
+        // The desktop dropdown's header "+ new project" button routes here.
+        // The drawer is revealed so the in-place naming input the create flow
+        // mounts into #sideMa is on-screen at desktop (the dropdown surface
+        // has no inline input), then the EXACT same handler the mobile +
+        // button (#projButton) uses runs — so naming and the post-create
+        // active-selection behave identically across both surfaces.
+        onCreateProject: function() {
+            openMobileDrawer();
+            projButton.click();
+        },
     });
 
     // Single entry point for activating the project picker from the pill —

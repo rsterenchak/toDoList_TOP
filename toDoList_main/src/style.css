@@ -7066,11 +7066,50 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 .projectPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 8px 16px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: #5a5a6a;
+}
+
+.projectPickerHeaderLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "+ new project" button on the right of the header row — purple accent to
+   match the approved mockup. Routes to the shared create-project flow. */
+.projectPickerAddBtn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: #fff;
+  background: #6C5DF5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.projectPickerAddBtn:hover {
+  background: #7d6ff7;
+}
+
+.projectPickerAddBtn:focus-visible {
+  outline: 2px solid #9D93EE;
+  outline-offset: 1px;
 }
 
 .projectPickerRow {
