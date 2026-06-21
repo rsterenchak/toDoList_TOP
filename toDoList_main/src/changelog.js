@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-20',
-        added: [
-            "You can now name and create a new project inline at the top of the desktop project dropdown, without opening the sidebar.",
+        changed: [
+            "The desktop project dropdown's inline create row is now a soft input card with a leading + and a labeled Create button.",
         ],
         fixed: [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",

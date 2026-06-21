@@ -155,6 +155,18 @@ export function createProjectPicker(deps) {
         row.className = 'projectPickerCreateRow';
         if (inlineCreateOpen) row.classList.add('open');
 
+        // Soft "create card" wrapping the leading + adornment, the borderless
+        // input, and the labeled Create button. Purple signals focus via the
+        // card's :focus-within (matching the rename input / inject sub-modal)
+        // rather than the input wearing an always-on purple border.
+        const card = document.createElement('div');
+        card.className = 'projectPickerCreateCard';
+
+        const adorn = document.createElement('span');
+        adorn.className = 'projectPickerCreateAdorn';
+        adorn.setAttribute('aria-hidden', 'true');
+        adorn.textContent = '+';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'projectPickerCreateInput';
@@ -165,7 +177,7 @@ export function createProjectPicker(deps) {
         confirm.type = 'button';
         confirm.className = 'projectPickerCreateConfirm';
         confirm.setAttribute('aria-label', 'Create project');
-        confirm.textContent = '+';
+        confirm.textContent = 'Create';
 
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -192,8 +204,10 @@ export function createProjectPicker(deps) {
             submitInlineCreate();
         });
 
-        row.appendChild(input);
-        row.appendChild(confirm);
+        card.appendChild(adorn);
+        card.appendChild(input);
+        card.appendChild(confirm);
+        row.appendChild(card);
 
         inlineCreateRow = row;
         inlineCreateInput = input;
