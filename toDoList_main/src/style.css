@@ -6309,9 +6309,6 @@ body.row-dragging * { cursor: grabbing !important; }
     white-space: nowrap;
   }
 
-  #mobileProjOpen { color: var(--text-primary); }
-  #mobileProjDone { color: var(--text-muted); }
-
   /* Mobile-only layout: the mobile project header sits in row 1 (auto)
      and #mainList lands in the final 1fr track. The view-switch pills
      live in the top nav, and the desktop title bar (mainTitle) has
@@ -6452,10 +6449,9 @@ body.row-dragging * { cursor: grabbing !important; }
     visibility: hidden;
   }
 
-  /* The mobile header's #mobileProjCounts already shows open/done
-     counts under the project name; the desktop footer counts would
-     duplicate them in the bottom chrome. Hide them on mobile so the
-     footer collapses to the version label only. */
+  /* The desktop footer's open/done counts belong to the bottom chrome,
+     which is suppressed on mobile — hide them so the footer collapses to
+     the version label only. */
   #footCounts { display: none; }
 
   /* ── Mobile drawer X close button ──
@@ -7493,7 +7489,7 @@ body.row-dragging * { cursor: grabbing !important; }
      left, so no extra spacer is needed now that the view tabs have moved out
      of #navBar into the sub-band. */
 
-  /* ── Open/done counts, inline beside the pill ── */
+  /* ── Stats container, inline beside the pill ── */
   #navBar #mobileProjStats {
     display: inline-flex;
     align-items: center;
@@ -7512,18 +7508,6 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 11px;
     letter-spacing: 0.04em;
   }
-  /* "N open" is a unified purple unit (number + word together); "N done"
-     is de-emphasized muted gray, with a medium-gray middot separating the
-     two. Mirrors the dense mobile header so the coloring is consistent at
-     every breakpoint. */
-  #navBar #mobileProjOpen { color: #6C5DF5; }
-  #navBar #mobileProjDone { color: #5a5a6a; }
-  #navBar #mobileProjDone::before {
-    content: '·';
-    margin-right: 8px;
-    color: #8a8a99;
-  }
-
   /* In INBOX / CALENDAR the pill + counts describe a project context that the
      active view doesn't show, so hide them — mirrors the #mainBar[data-view]
      rules that handled this when the pill still lived inside #mainBar. */
@@ -10692,10 +10676,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     user-select: none;
   }
 
-  /* Inline counts — plain text ("15 open · 127 done"), no pills. Pushed
-     to the right edge of the row via margin-left:auto so they land just
-     left of the absolute hamburger. The count text comes from JS as
-     "N open" / "N done"; a ::before middot separates the two. */
+  /* Stats container, pushed to the right edge of the row via
+     margin-left:auto so it lands just left of the absolute hamburger. */
   #mobileProjStats {
     flex: 0 0 auto;
     min-height: 0;
@@ -10708,22 +10690,6 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     letter-spacing: 0.02em;
     align-items: baseline;
   }
-  #mobileProjOpen,
-  #mobileProjDone {
-    display: inline;
-    padding: 0;
-    background: transparent;
-    border-radius: 0;
-    text-transform: none;
-  }
-  #mobileProjOpen { color: #6C5DF5; }
-  #mobileProjDone { color: #5a5a6a; }
-  #mobileProjDone::before {
-    content: '·';
-    margin-right: 6px;
-    color: #8a8a99;
-  }
-
   /* ── App-root safe-area paint ──
      Belt-and-suspenders for notched devices: the header already absorbs
      safe-area-inset-top via its padding, but painting the inset region

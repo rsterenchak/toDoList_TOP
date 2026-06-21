@@ -1607,8 +1607,6 @@ function component() {
     const mobileProjNext     = document.createElement('button');
     const mobileProjStats    = document.createElement('div');
     const mobileProjCounts   = document.createElement('div');
-    const mobileProjOpen     = document.createElement('span');
-    const mobileProjDone     = document.createElement('span');
 
     mobileProjHeader.id   = 'mobileProjHeader';
     mobileProjLabel.id    = 'mobileProjLabel';
@@ -1618,11 +1616,6 @@ function component() {
     mobileProjNext.id     = 'mobileProjNext';
     mobileProjStats.id    = 'mobileProjStats';
     mobileProjCounts.id   = 'mobileProjCounts';
-    mobileProjOpen.id     = 'mobileProjOpen';
-    mobileProjDone.id     = 'mobileProjDone';
-
-    mobileProjOpen.textContent = '0 open';
-    mobileProjDone.textContent = '0 done';
 
     mobileProjPrev.type = 'button';
     mobileProjNext.type = 'button';
@@ -1633,8 +1626,6 @@ function component() {
     mobileProjPrev.setAttribute('aria-label', 'Previous project');
     mobileProjNext.setAttribute('aria-label', 'Next project');
 
-    mobileProjCounts.appendChild(mobileProjOpen);
-    mobileProjCounts.appendChild(mobileProjDone);
     mobileProjStats.appendChild(mobileProjCounts);
     mobileProjTitleRow.appendChild(mobileProjPrev);
     mobileProjTitleRow.appendChild(mobileProjName);
@@ -4336,9 +4327,6 @@ function component() {
             mobileProjHeader.setAttribute('data-empty', 'true');
             applyProjectAccent(mobileProjHeader, null);
         }
-
-        mobileProjOpen.textContent = open + ' open';
-        mobileProjDone.textContent = done + ' done';
 
         const atStart = activeIdx <= 0;
         const atEnd   = activeIdx < 0 || activeIdx >= total - 1;

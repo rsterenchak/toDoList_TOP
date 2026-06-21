@@ -211,11 +211,6 @@ describe('desktop project-picker dropdown', () => {
         expect(css).toMatch(/#projectPickerDropdown\.open\s*\{[^}]*display:\s*block/);
     });
 
-    it('(h) desktop header counts color "open" purple and "done" muted gray', () => {
-        expect(css).toMatch(/#navBar #mobileProjOpen\s*\{\s*color:\s*#6C5DF5/);
-        expect(css).toMatch(/#navBar #mobileProjDone\s*\{\s*color:\s*#5a5a6a/);
-    });
-
     // Regression: the dropdown "only opens sometimes" race. activateProjectPicker
     // toggles at desktop (open ↔ close). The pill name (#mobileProjName) and the
     // ▾ indicator (#mobileProjChevron) carry their own click→activate handlers
