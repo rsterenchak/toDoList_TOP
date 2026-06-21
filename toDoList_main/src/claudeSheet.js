@@ -474,18 +474,45 @@ function buildChatView() {
     sendDeep.className = 'claudeComposerSend claudeComposerSendDeep';
     sendDeep.textContent = '🧠';
     sendDeep.setAttribute('aria-label', 'Send deep');
+    // The Fast (↑) and Deep (🧠) sends pair at the right edge of the composer,
+    // each stacked over a small lowercase label so the two modes read at a
+    // glance. The labels are decorative (aria-hidden) — the buttons' aria-labels
+    // already announce "Send" / "Send deep" to assistive tech.
+    const sendGroup = document.createElement('div');
+    sendGroup.className = 'claudeSendGroup';
+
+    const fastCol = document.createElement('div');
+    fastCol.className = 'claudeSendCol';
+    const fastLabel = document.createElement('span');
+    fastLabel.className = 'claudeSendLabel';
+    fastLabel.setAttribute('aria-hidden', 'true');
+    fastLabel.textContent = 'fast';
+    fastCol.appendChild(send);
+    fastCol.appendChild(fastLabel);
+
+    const deepCol = document.createElement('div');
+    deepCol.className = 'claudeSendCol';
+    const deepLabel = document.createElement('span');
+    deepLabel.className = 'claudeSendLabel claudeSendLabelDeep';
+    deepLabel.setAttribute('aria-hidden', 'true');
+    deepLabel.textContent = 'deep';
+    deepCol.appendChild(sendDeep);
+    deepCol.appendChild(deepLabel);
+
+    sendGroup.appendChild(fastCol);
+    sendGroup.appendChild(deepCol);
+
     // Composer row reads [📎] [🎤] [input] [Send] [Deep]: the attach button + its
     // dropdown panel lead the row, the mic button follows, then the textarea,
-    // with the Fast (↑) and Deep (🧠) send cluster last. buildAttach() carries
-    // the attach button's click listener and the panel; buildMicButton() carries
-    // the mic's listener (and returns null on browsers without speech
+    // with the paired Fast (↑) / Deep (🧠) send cluster last. buildAttach()
+    // carries the attach button's click listener and the panel; buildMicButton()
+    // carries the mic's listener (and returns null on browsers without speech
     // recognition, so the affordance is hidden entirely rather than shown broken).
     composer.appendChild(buildAttach());
     const mic = buildMicButton();
     if (mic) composer.appendChild(mic);
     composer.appendChild(input);
-    composer.appendChild(send);
-    composer.appendChild(sendDeep);
+    composer.appendChild(sendGroup);
 
     send.addEventListener('click', function() { sendChatTurn(); });
     sendDeep.addEventListener('click', function() { sendChatTurn(true); });
