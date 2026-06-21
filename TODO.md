@@ -1013,7 +1013,7 @@
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/changelog.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/style.css`
   <!-- id: daf7a0f7-dd35-4107-950b-76405af0fa1a -->
 
-- [ ] **[MEDIUM]** Fix connected notification overflowing the inject settings modal when worker is connected
+- [x] **[MEDIUM]** Fix connected notification overflowing the inject settings modal when worker is connected — Completed: 2026-06-21
   - Type: bug
   - Description: When the inject settings menu connects to the Cloudflare Worker, the "connected" status notification expands beyond the modal's visible bounds, pushing content past the immediate view. Constrain the notification so it stays within the modal's visible area—cap its width/height, wrap or truncate long text, and ensure the modal content doesn't overflow the viewport on connect. Likely the status element rendered in the settings/inject UI plus its CSS sizing rules.
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`

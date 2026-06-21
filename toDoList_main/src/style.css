@@ -10964,8 +10964,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   justify-content: flex-start;
 }
 .injectStatusPill {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
+  max-width: 100%;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
@@ -10973,6 +10973,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   border: 0.5px solid var(--border-bright);
   background: var(--bg-elevated);
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 .injectStatusPill--unconfigured { color: var(--text-muted); }
 .injectStatusPill--idle         { color: var(--text-secondary); }
@@ -11118,7 +11122,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 .injectSettingsSection #injectSettingsStatusRow {
   padding: 0;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 .injectSectionEditBtn {
   display: none;
