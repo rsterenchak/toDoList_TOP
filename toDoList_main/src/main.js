@@ -1689,6 +1689,32 @@ function component() {
     // hoisted component() closures defined later; applyProjectInitial is
     // top-level in main.js). They are injected, never imported back from
     // main.js, so the module stays free of a circular dependency.
+    // Desktop inline-create: the project-picker dropdown collects the new
+    // project's name in its own input row, then routes the committed name
+    // here. Rather than inventing a parallel create path, this drives the SAME
+    // #projButton row-build + Enter-commit the mobile + button uses — so the
+    // backing sidebar #projChild row, the active selection, the badges, and the
+    // todo render all land identically — but supplies the name programmatically
+    // instead of opening the drawer for the user to type. The picker has
+    // already validated the name (non-empty, unique); the guards here are
+    // defensive against a future caller.
+    function createProjectByName(name) {
+        const trimmed = (name || '').trim();
+        if (trimmed.length === 0) return false;
+        const existing = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        if (existing.indexOf(trimmed) !== -1) return false;
+        projButton.click();
+        const sideMaDiv = document.getElementById('sideMa');
+        const rows = sideMaDiv ? sideMaDiv.querySelectorAll('#projChild') : [];
+        const newRow = rows.length ? rows[rows.length - 1] : null;
+        if (!newRow) return false;
+        const input = newRow.querySelector('#projInput');
+        if (!input) return false;
+        input.value = trimmed;
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        return true;
+    }
+
     const projectPicker = createProjectPicker({
         projectPickerDropdown,
         mobileProjName,
@@ -1698,16 +1724,13 @@ function component() {
         navigateToProjectByIndex,
         updateFooterCounts,
         applyProjectInitial,
-        // The desktop dropdown's header "+ new project" button routes here.
-        // The drawer is revealed so the in-place naming input the create flow
-        // mounts into #sideMa is on-screen at desktop (the dropdown surface
-        // has no inline input), then the EXACT same handler the mobile +
-        // button (#projButton) uses runs — so naming and the post-create
-        // active-selection behave identically across both surfaces.
-        onCreateProject: function() {
-            openMobileDrawer();
-            projButton.click();
-        },
+        // The desktop dropdown's header "+ new project" button reveals an
+        // inline name input in the dropdown; committing it routes here with the
+        // typed name. createProjectByName drives the EXACT same #projButton
+        // create+select path the mobile + button uses, so naming and the
+        // post-create active-selection behave identically across both surfaces
+        // — the dropdown just supplies the name instead of the sidebar drawer.
+        onCreateProjectNamed: createProjectByName,
     });
 
     // Single entry point for activating the project picker from the pill —
@@ -1737,6 +1760,10 @@ function component() {
         if (!projectPicker.isOpen()) return;
         e.preventDefault();
         e.stopPropagation();
+        // The inline create input owns Escape first: cancel + clear it without
+        // collapsing the whole dropdown. Only when no inline input is open does
+        // Escape dismiss the dropdown itself.
+        if (projectPicker.cancelInlineCreate()) return;
         projectPicker.close();
     }, true);
 

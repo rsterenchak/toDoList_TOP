@@ -7193,6 +7193,78 @@ body.row-dragging * { cursor: grabbing !important; }
   caret-color: #e5484d;
 }
 
+/* Inline "create project" row — mounted between the header and the project
+   list, hidden until the header + button reveals it (.open). The bottom
+   divider separates it from the project rows below. Desktop-only naming
+   happens here so the create flow never opens the sidebar drawer. */
+.projectPickerCreateRow {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.projectPickerCreateRow.open {
+  display: flex;
+}
+
+/* 16px font-size keeps iOS Safari from auto-zooming the input on focus. */
+.projectPickerCreateInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  color: #e8e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #6C5DF5;
+  border-radius: 4px;
+  caret-color: #6C5DF5;
+}
+
+.projectPickerCreateInput:focus {
+  outline: none;
+  border-color: #6C5DF5;
+}
+
+/* Reject treatment (empty / duplicate name) — red, matching the rename
+   input's reject path. */
+.projectPickerCreateInput.error {
+  border-color: #e5484d;
+  color: #e5484d;
+  caret-color: #e5484d;
+}
+
+/* Confirm + button — purple accent to match the header add button. */
+.projectPickerCreateConfirm {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: #fff;
+  background: #6C5DF5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.projectPickerCreateConfirm:hover {
+  background: #7d6ff7;
+}
+
+.projectPickerCreateConfirm:focus-visible {
+  outline: 2px solid #9D93EE;
+  outline-offset: 1px;
+}
+
 /* The dropdown is a desktop-only affordance — the slide-in drawer remains
    the project switcher below 1024px. Force it hidden there even if a stale
    `.open` class survives a viewport change. */
