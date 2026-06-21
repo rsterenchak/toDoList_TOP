@@ -1007,7 +1007,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   <!-- id: 45d597fc-a0fe-44a0-9e42-c29f9f9d6784 -->
 
-- [ ] **[MEDIUM]** Make the Version row in the mobile settings menu tap to open the changelog
+- [x] **[MEDIUM]** Make the Version row in the mobile settings menu tap to open the changelog — Completed: 2026-06-21
   - Type: feature
   - Description: In the mobile settings menu the "Version" row is currently static text. Make it a tappable affordance that opens the current changelog when tapped, reusing the existing changelog rendering from `changelog.js` presented in a mobile sheet (`mobileSheets.js`). Give the row clear tappable styling (cursor/tap feedback) and proper touch-target sizing, and ensure the sheet closes via close button, backdrop tap, and Escape per app modal conventions.
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/changelog.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/style.css`
