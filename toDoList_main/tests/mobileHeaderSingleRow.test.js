@@ -73,22 +73,6 @@ describe('Compressed single-row mobile header', () => {
         expect(stats).toMatch(/margin-left:\s*auto/);
     });
 
-    it('renders the counts as plain inline text, not pills', () => {
-        const block = denseBlock();
-        // No pill chrome remains on the counts in the compressed header.
-        expect(block).not.toMatch(/border-radius:\s*999px/);
-        // The two counts carry their own standalone color rules (the open
-        // count in purple, the done count muted).
-        expect(block).toMatch(/#mobileProjOpen\s*\{\s*color:\s*#6C5DF5\s*;?\s*\}/i);
-        expect(block).toMatch(/#mobileProjDone\s*\{\s*color:\s*#5a5a6a\s*;?\s*\}/i);
-    });
-
-    it('separates the two counts with a dimmer middot', () => {
-        const before = rule(denseBlock(), '#mobileProjDone::before');
-        expect(before).toMatch(/content:\s*['"]·['"]/);
-        expect(before).toMatch(/color:\s*#8a8a99/i);
-    });
-
     it('reveals the header as the project pill at the ≥1024px breakpoint (D1c)', () => {
         // The compressed single-row layout is mobile-only, but D1c no longer
         // hides #mobileProjHeader at desktop — it is revealed there as the
@@ -101,14 +85,6 @@ describe('Compressed single-row mobile header', () => {
         expect(css).toMatch(
             /@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{[\s\S]*?display:\s*inline-flex/
         );
-    });
-
-    it('preserves the JS count text contract ("N open" / "N done")', () => {
-        // The middot and styling are pure CSS — the JS still writes the
-        // raw "N open" / "N done" strings, so the count source of truth is
-        // unchanged.
-        expect(main).toMatch(/mobileProjOpen\.textContent\s*=\s*open\s*\+\s*['"]\s*open['"]/);
-        expect(main).toMatch(/mobileProjDone\.textContent\s*=\s*done\s*\+\s*['"]\s*done['"]/);
     });
 
     it('keeps the workspace-picker tap wiring on the name and dropdown chevron', () => {

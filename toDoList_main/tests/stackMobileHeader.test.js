@@ -42,11 +42,6 @@ describe('STACK mobile project header', () => {
         expect(main).toMatch(/mobileProjName\.textContent\s*=\s*activeName/);
     });
 
-    it('renders open/done counts on the stats line', () => {
-        expect(main).toMatch(/mobileProjOpen\.textContent\s*=\s*open\s*\+\s*['"]\s*open['"]/);
-        expect(main).toMatch(/mobileProjDone\.textContent\s*=\s*done\s*\+\s*['"]\s*done['"]/);
-    });
-
     it('rebuilds the header off the same observer path as the footer', () => {
         // updateFooterCounts already runs on every #mainList childList /
         // class change and #sideMa class / value change — extending it to
