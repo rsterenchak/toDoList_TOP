@@ -837,9 +837,9 @@ describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged event',
 
 
 // The Supabase re-hydrate replays restoreFromStorage to rebuild the UI in
-// place. restoreFromStorage's tail auto-selects the last project — correct
+// place. restoreFromStorage's tail auto-selects the first project — correct
 // for cold boot but wrong for an in-session re-render, which must keep the
-// user on their current project rather than snapping to the last sidebar
+// user on their current project rather than snapping to the first sidebar
 // entry. These pins verify the capture-and-restore wiring lives in main.js.
 describe('main.js — re-hydrate preserves the active project selection', () => {
     const MAIN = readFileSync(resolve(srcDir, 'main.js'), 'utf8');
@@ -873,10 +873,13 @@ describe('main.js — re-hydrate preserves the active project selection', () => 
         expect(restoreBody).toMatch(/savedProjects\.indexOf\(\s*opts\.selectProject\s*\)/);
     });
 
-    it('restoreFromStorage still falls back to the last-project default', () => {
+    it('restoreFromStorage falls back to the first-project default', () => {
         expect(restoreBody).toBeTruthy();
-        // The cold-boot / deleted-project fallback selects the last child.
-        expect(restoreBody).toMatch(/savedProjects\[savedProjects\.length - 1\]/);
-        expect(restoreBody).toMatch(/allProjChildren\[allProjChildren\.length - 1\]/);
+        // The cold-boot / deleted-project fallback selects the first child
+        // (top of the sidebar's display order), not the last.
+        expect(restoreBody).toMatch(/savedProjects\[0\]/);
+        expect(restoreBody).toMatch(/allProjChildren\[0\]/);
+        expect(restoreBody).not.toMatch(/savedProjects\[savedProjects\.length - 1\]/);
+        expect(restoreBody).not.toMatch(/allProjChildren\[allProjChildren\.length - 1\]/);
     });
 });

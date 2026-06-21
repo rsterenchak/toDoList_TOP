@@ -4933,16 +4933,17 @@ function restoreFromStorage(opts) {
 
     });
 
-    // auto-select last project and render its todos. An in-session
-    // re-render (the Supabase re-hydrate) may pass opts.selectProject to
-    // preserve the active project; honour it when that project still exists
-    // after the reconcile, otherwise fall back to the cold-boot last-project
-    // default. Cold boot and post-import keep the existing default.
+    // auto-select the FIRST project (top of the sidebar's display order,
+    // honouring drag-and-drop reorder — listProjectsArray returns projects
+    // in that order) and render its todos. An in-session re-render (the
+    // Supabase re-hydrate) may pass opts.selectProject to preserve the
+    // active project; honour it when that project still exists after the
+    // reconcile, otherwise fall back to the cold-boot first-project default.
     const honorSelect     = !!(opts && opts.selectProject &&
         savedProjects.indexOf(opts.selectProject) !== -1);
     const targetProject   = honorSelect
         ? opts.selectProject
-        : savedProjects[savedProjects.length - 1];
+        : savedProjects[0];
     const allProjChildren = document.querySelectorAll('#projChild');
 
     let targetChild = null;
@@ -4958,7 +4959,7 @@ function restoreFromStorage(opts) {
         }
     }
     if (!targetChild) {
-        targetChild = allProjChildren[allProjChildren.length - 1];
+        targetChild = allProjChildren[0];
     }
 
     if (targetChild) {
