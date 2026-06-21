@@ -919,3 +919,11 @@
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8d8f4746-ac9f-4a88-97ef-36aab3097ed3 -->
+
+- [ ] **[MEDIUM]** Add inline project creation input at top of `projectPickerDropdown` on desktop
+
+  - Type: feature
+  - Description: On desktop, clicking `projectPickerAddBtn` should reveal an inline input row at the top of the `projectPickerDropdown` list (above existing projects, below the header, separated by a divider) instead of opening the sidebar. The input row contains a text field (placeholder "New project name…") and a confirm `+` button; pressing Enter or clicking `+` calls the existing project-creation function in `listLogic.js`, refreshes the dropdown project list, auto-selects the new project, and clears/hides the input. Escape while the input is focused cancels and clears the input without closing the dropdown (the input's cancel must take priority over the dropdown's Escape-to-close handler). The dropdown's outside-click listener must treat clicks and focus events inside the input row as "inside" so typing does not dismiss the dropdown. Empty or duplicate project names must show inline validation feedback (e.g. red border) without closing the dropdown. This behavior is desktop-only; mobile retains the existing sidebar-open flow.
+  - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6d5a959f-d7e4-4e48-a1e2-b1c9b533fa44 -->
