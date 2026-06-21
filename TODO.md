@@ -988,8 +988,9 @@
   - Completed: 2026-06-21
   <!-- id: eb039168-98da-4069-9bec-1c4964997870 -->
 
-- [ ] **[LOW]** Replace the ghost symbol on the ghost menu button with a solid gear icon
+- [x] **[LOW]** Replace the ghost symbol on the ghost menu button with a solid gear icon
   - Type: feature
   - Description: The ghost menu button currently displays a ghost symbol as its glyph; replace it with a solid settings-style gear icon (filled gear with a hollow center hub) so it reads as a settings/menu control. Update the rendered symbol (text glyph or inline SVG reference) and any associated CSS sizing/centering so the gear renders at the same size and alignment as the old ghost. Honor the current theme by using existing CSS color variables rather than hardcoded colors, so the gear adapts to both dark and light themes. Likely in the menu's render/wiring code and its style rules.
   - File: `toDoList_main/src/settingsMenu.js`, `toDoList_main/src/style.css`
+  - Completed: 2026-06-21
   <!-- id: 13a19279-05e0-49a4-aab2-e18e57391068 -->
