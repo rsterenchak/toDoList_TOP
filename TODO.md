@@ -968,3 +968,15 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 36eb925a-2c4e-4bb8-93a0-1182baefb1e4 -->
+
+- [ ] **[LOW]** Finalize the Deep send symbol and add a purple hover halo to the composer buttons
+  - Type: feature
+  - Description: Two visual refinements to the just-shipped dual-send composer. First, swap the Deep button's symbol to a double-chevron pointing up (replacing its current glyph) — it reads as "boost the send" and is the chosen direction over the brain. Second, give all four composer buttons (attach 📎, mic 🎤, Fast ↑, Deep) a clearer button affordance: a subtle resting surface so the neutral three read as buttons rather than bare icons (Deep stays accent-filled `#6C5DF5`), plus a soft purple halo on hover. The halo is a layered box-shadow — a tight purple ring with a soft outer glow in the accent purple — applied to all four buttons, and it also fires on `:active` so touch devices get press feedback (there's no hover there). Purely visual; no behavior changes.
+  - Implementation notes:
+    - The Deep symbol lives on the Deep button built in `buildChatView()` in `claudeSheet.js`: replace its current glyph (the inline logo/icon SVG) with a small inline double-chevron-up SVG sized to match the other composer glyphs. Hand-roll the inline SVG (two stacked chevron strokes) — no icon-font or other new dependency.
+    - The resting surface and the hover/active halo live in `style.css`. Give the neutral buttons (attach, mic, Fast) a faint fill plus hairline border at rest — this supersedes the transparent-fill treatment from the prior restyle so they read as buttons; keep Deep accent-filled. For the halo, on `:hover` and `:active` apply a layered box-shadow such as `0 0 0 2px rgba(108,93,245,.35), 0 0 12px 2px rgba(108,93,245,.22)` (a tight ring plus a soft glow) to all four buttons; the values are a starting point, tune to taste. Reuse the existing composer-button classes (`#claudeComposerSend`, the Deep button's id/class, `.micButton`, `.claudeAttach`) so sizing and the single-row alignment hold.
+    - Authorized: update any composer/Deep-button assertions in `tests/claudeSheet.test.js` to match — e.g. if a test pins a specific glyph or the logo SVG on the Deep button, point it at the new chevron SVG. The test surface is structural only (the Deep button still renders with its id/class); don't add visual, pixel, or hover assertions (jsdom doesn't paint).
+  - Out of scope: any behavior change — Fast still sends a normal turn, Deep still sends with `deep_think: true`. The double-chevron is the chosen symbol, but swapping the inline SVG for a different glyph later is a one-line change; leave the resting surface, sizing, and halo as specced regardless.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: db284a64-24e9-4f64-bc91-9ef7f66eb3be -->
