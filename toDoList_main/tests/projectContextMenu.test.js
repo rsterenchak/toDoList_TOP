@@ -343,8 +343,9 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         expect(rowName(0)).toBe('Renamed');
         expect(rowName(1)).toBe('Beta');
         expect(rowName(2)).toBe('Gamma');
-        // no stray input survives the commit
-        expect(dropdown.querySelector('input')).toBeNull();
+        // no stray rename editor survives the commit (the always-present,
+        // hidden inline-create input is not a rename editor and is ignored)
+        expect(dropdown.querySelector('.projectPickerRenameInput')).toBeNull();
     });
 
     it('Escape cancels: the input is removed and the row shows the prior name', () => {

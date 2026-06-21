@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-20',
         added: [
-            "You can now start a new project from the desktop project dropdown's header with a new + button.",
+            "You can now name and create a new project inline at the top of the desktop project dropdown, without opening the sidebar.",
         ],
         fixed: [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",

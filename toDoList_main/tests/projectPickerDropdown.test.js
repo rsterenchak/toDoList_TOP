@@ -87,28 +87,95 @@ describe('desktop project-picker dropdown', () => {
         expect(body).not.toMatch(/projButton/);
     });
 
-    it('header row carries a purple "+ new project" button routed to the shared flow', () => {
+    it('header row carries a purple "+ new project" button that reveals the inline create input', () => {
         const body = fnBody(picker, 'buildProjectPickerRows');
         // The header builds an add button with the create class + accessible label.
         expect(body).toMatch(/projectPickerAddBtn/);
         expect(body).toMatch(/aria-label['"]\s*,\s*['"]Add new project['"]/);
-        // Clicking it dismisses the dropdown, then runs the injected create flow.
-        expect(body).toMatch(/closeProjectPicker\(\)[\s\S]{0,80}?onCreateProject\(\)/);
-        // The click is stopped from bubbling so it isn't read as an outside-click.
-        expect(body).toMatch(/event\.stopPropagation\(\)/);
+        // Clicking it toggles the inline create input (no sidebar drawer).
+        expect(body).toMatch(/event\.stopPropagation\(\)[\s\S]{0,40}?toggleInlineCreate\(\)/);
+        // It no longer routes the add button through the drawer-based create flow.
+        expect(body).not.toMatch(/onCreateProjectNamed/);
     });
 
-    it('main.js wires onCreateProject to the SAME mobile create handler (#projButton)', () => {
-        // The picker is constructed with an onCreateProject callback that opens
-        // the drawer (so the in-place naming input is visible at desktop) and
-        // fires the exact same #projButton click the mobile + button uses.
-        expect(main).toMatch(
-            /onCreateProject:\s*function\s*\(\)\s*\{[\s\S]{0,200}?openMobileDrawer\(\)[\s\S]{0,80}?projButton\.click\(\)/
-        );
+    it('mounts the inline create input row between the header and the project list', () => {
+        const body = fnBody(picker, 'buildProjectPickerRows');
+        // The create row is appended after the header and before the list, so
+        // it sits above existing projects and below the header label.
+        const headerIdx = body.indexOf("appendChild(header)");
+        const createIdx = body.indexOf("appendChild(buildInlineCreateRow())");
+        const listIdx   = body.indexOf("projectPickerList");
+        expect(headerIdx).toBeGreaterThan(-1);
+        expect(createIdx).toBeGreaterThan(headerIdx);
+        expect(listIdx).toBeGreaterThan(createIdx);
+    });
+
+    it('inline create input: placeholder, Enter/confirm commit, Escape cancel, validation', () => {
+        const build = fnBody(picker, 'buildInlineCreateRow');
+        expect(build).toMatch(/projectPickerCreateInput/);
+        expect(build).toMatch(/placeholder\s*=\s*['"]New project name…['"]/);
+        expect(build).toMatch(/projectPickerCreateConfirm/);
+        // Enter and the confirm + button both commit through submitInlineCreate.
+        expect(build).toMatch(/e\.key === ['"]Enter['"][\s\S]{0,80}?submitInlineCreate\(\)/);
+        expect(build).toMatch(/submitInlineCreate\(\)/);
+        // Escape cancels the input and stops the event so the dropdown's own
+        // Escape-to-close doesn't also fire.
+        expect(build).toMatch(/e\.key === ['"]Escape['"][\s\S]{0,320}?cancelInlineCreate\(\)/);
+
+        const submit = fnBody(picker, 'submitInlineCreate');
+        // Empty and duplicate names are rejected (no create) and stay open.
+        expect(submit).toMatch(/trimmed\.length === 0[\s\S]{0,60}?rejectInlineCreate\(\)/);
+        expect(submit).toMatch(/indexOf\(trimmed\)\s*!==\s*-1[\s\S]{0,60}?rejectInlineCreate\(\)/);
+        // Valid commit routes through the injected create flow, then refreshes
+        // the dropdown + repaints counts so the new project shows as active.
+        expect(submit).toMatch(/onCreateProjectNamed\(trimmed\)/);
+        expect(submit).toMatch(/buildProjectPickerRows\(\)/);
+
+        const reject = fnBody(picker, 'rejectInlineCreate');
+        expect(reject).toMatch(/classList\.add\(['"]error['"]\)/);
+    });
+
+    it('cancelInlineCreate clears the input, hides the row, and is exposed on the public API', () => {
+        const cancel = fnBody(picker, 'cancelInlineCreate');
+        // No-op (returns false) when nothing is open; otherwise clears + hides.
+        expect(cancel).toMatch(/if \(!inlineCreateOpen\) return false/);
+        expect(cancel).toMatch(/inlineCreateInput\.value = ['"]['"]/);
+        expect(cancel).toMatch(/classList\.remove\(['"]open['"]\)/);
+        expect(cancel).toMatch(/return true/);
+        // Exposed so main.js's Escape handler can give it priority.
+        expect(picker).toMatch(/cancelInlineCreate:\s*cancelInlineCreate/);
+    });
+
+    it('closeProjectPicker cancels a half-typed inline create', () => {
+        const body = fnBody(picker, 'closeProjectPicker');
+        expect(body).toMatch(/cancelInlineCreate\(\)/);
+    });
+
+    it('main.js wires onCreateProjectNamed to the SAME #projButton create+select path', () => {
+        // The picker is constructed with an onCreateProjectNamed callback bound
+        // to createProjectByName, which drives the #projButton row-build and a
+        // synthetic Enter commit (no parallel create path).
+        expect(main).toMatch(/onCreateProjectNamed:\s*createProjectByName/);
+        const body = fnBody(main, 'createProjectByName');
+        expect(body).toMatch(/projButton\.click\(\)/);
+        expect(body).toMatch(/#projInput/);
+        expect(body).toMatch(/KeyboardEvent\(['"]keydown['"][\s\S]{0,60}?Enter/);
+        // The drawer is NOT opened — desktop names in the dropdown, not the sidebar.
+        expect(body).not.toMatch(/openMobileDrawer/);
     });
 
     it('CSS styles the header add button with the purple accent', () => {
         expect(css).toMatch(/\.projectPickerAddBtn\s*\{[^}]*background:\s*#6C5DF5/);
+    });
+
+    it('CSS hides the inline create row by default and reveals it via .open', () => {
+        expect(css).toMatch(/\.projectPickerCreateRow\s*\{[^}]*display:\s*none/);
+        expect(css).toMatch(/\.projectPickerCreateRow\.open\s*\{[^}]*display:\s*flex/);
+        // Confirm + button carries the purple accent; the input shows a red
+        // border on validation reject; the input is 16px to avoid iOS zoom.
+        expect(css).toMatch(/\.projectPickerCreateConfirm\s*\{[^}]*background:\s*#6C5DF5/);
+        expect(css).toMatch(/\.projectPickerCreateInput\.error\s*\{[^}]*border-color:\s*#e5484d/);
+        expect(css).toMatch(/\.projectPickerCreateInput\s*\{[^}]*font-size:\s*16px/);
     });
 
     it('(d) closes on outside click but ignores clicks on the pill itself', () => {
@@ -118,11 +185,14 @@ describe('desktop project-picker dropdown', () => {
         expect(main).toMatch(/mobileProjHeader\.contains\(e\.target\)/);
     });
 
-    it('(e) closes on Escape', () => {
-        // A keydown handler in main.js guarded on the open dropdown closes it on
-        // Escape, routing through the picker's public API.
-        expect(main).toMatch(/if \(!projectPicker\.isOpen\(\)\) return;[\s\S]{0,120}?projectPicker\.close\(\)/);
+    it('(e) Escape cancels the inline create input first, else closes the dropdown', () => {
+        // A keydown handler in main.js guarded on the open dropdown gives the
+        // inline create input first claim on Escape (cancel + clear, dropdown
+        // stays open), and only closes the dropdown when nothing is being typed.
         expect(main).toMatch(/e\.key !== ['"]Escape['"]/);
+        expect(main).toMatch(
+            /if \(projectPicker\.cancelInlineCreate\(\)\) return;[\s\S]{0,40}?projectPicker\.close\(\)/
+        );
     });
 
     it('closes the dropdown when the viewport drops to mobile widths', () => {

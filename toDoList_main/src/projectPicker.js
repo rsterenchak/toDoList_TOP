@@ -25,7 +25,7 @@ export function createProjectPicker(deps) {
         navigateToProjectByIndex,
         updateFooterCounts,
         applyProjectInitial,
-        onCreateProject,
+        onCreateProjectNamed,
     } = deps;
 
     function projectPickerIsOpen() {
@@ -40,13 +40,24 @@ export function createProjectPicker(deps) {
         if (activeRowEditor) activeRowEditor.cancel();
     }
 
+    // The single inline "create project" input mounted at the top of the
+    // dropdown list (or hidden when closed). Desktop-only: the dropdown's
+    // header + button reveals it in place instead of opening the sidebar
+    // drawer; the user names the project there and Enter / the confirm +
+    // button commits through the injected create flow. Tracked at picker
+    // scope so dropdown dismissal (outside click, Escape, resize) can cancel a
+    // half-typed name cleanly — no orphan input, no stale value.
+    let inlineCreateOpen = false;
+    let inlineCreateRow = null;
+    let inlineCreateInput = null;
+
     // Rebuild the dropdown rows from the authoritative project list. Active
     // project gets the purple accent + ✓; zero-count projects get a quieter
     // count color. The header row carries a "+ new project" button on its
-    // right: the dropdown surface has no inline create input of its own, so
-    // the button routes through the injected onCreateProject callback, which
-    // fires the SAME create-project handler the mobile + button (#projButton)
-    // uses — no parallel create path is invented here.
+    // right that reveals the inline create input mounted just below the header;
+    // committing that input routes through the injected onCreateProjectNamed
+    // callback, which drives the SAME create-project handler the mobile +
+    // button (#projButton) uses — no parallel create path is invented here.
     function buildProjectPickerRows() {
         projectPickerDropdown.innerHTML = '';
 
@@ -58,11 +69,11 @@ export function createProjectPicker(deps) {
         headerLabel.textContent = 'PROJECTS';
         header.appendChild(headerLabel);
 
-        // "+ new project" affordance on the right of the header row. The
-        // dropdown is dismissed first, then onCreateProject runs the shared
-        // create flow that opens the naming input and makes the new project
-        // the active selection — identical to the mobile + button. The click
-        // is stopped from bubbling so it isn't read as an outside-click.
+        // "+ new project" affordance on the right of the header row. On
+        // desktop it reveals the inline create input mounted just below the
+        // header (instead of opening the sidebar drawer) so the user names the
+        // project in place. The click is stopped from bubbling so it isn't
+        // read as an outside-click dismissal.
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'projectPickerAddBtn';
@@ -70,12 +81,17 @@ export function createProjectPicker(deps) {
         addBtn.textContent = '+';
         addBtn.addEventListener('click', function(event) {
             event.stopPropagation();
-            closeProjectPicker();
-            if (typeof onCreateProject === 'function') onCreateProject();
+            toggleInlineCreate();
         });
         header.appendChild(addBtn);
 
         projectPickerDropdown.appendChild(header);
+
+        // Inline "create project" input row, mounted directly beneath the
+        // header and above the project list (hidden until the + button reveals
+        // it). Desktop naming happens here so the create flow never has to
+        // open the sidebar drawer.
+        projectPickerDropdown.appendChild(buildInlineCreateRow());
 
         const list = document.createElement('div');
         list.className = 'projectPickerList';
@@ -124,6 +140,127 @@ export function createProjectPicker(deps) {
 
             list.appendChild(row);
         });
+    }
+
+    // Build the inline "create project" row that sits between the header and
+    // the project list. Hidden by default (no `.open`); the header + button
+    // toggles it. Contains a text input (placeholder "New project name…") and
+    // a confirm + button. Enter or the confirm button commit; Escape cancels
+    // and clears without closing the dropdown; empty / duplicate names show
+    // inline red validation and keep the input open. Commit routes through the
+    // injected onCreateProjectNamed — the SAME create+select path the mobile +
+    // button drives — so no parallel create path is invented here.
+    function buildInlineCreateRow() {
+        const row = document.createElement('div');
+        row.className = 'projectPickerCreateRow';
+        if (inlineCreateOpen) row.classList.add('open');
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'projectPickerCreateInput';
+        input.placeholder = 'New project name…';
+        input.setAttribute('aria-label', 'New project name');
+
+        const confirm = document.createElement('button');
+        confirm.type = 'button';
+        confirm.className = 'projectPickerCreateConfirm';
+        confirm.setAttribute('aria-label', 'Create project');
+        confirm.textContent = '+';
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitInlineCreate();
+            } else if (e.key === 'Escape') {
+                // Cancel only the inline create; keep the dropdown open. The
+                // document-level Escape handler in main.js defers to this via
+                // the picker's cancelInlineCreate(), so the dropdown's own
+                // Escape-to-close never fires while a name is being typed.
+                e.preventDefault();
+                e.stopPropagation();
+                cancelInlineCreate();
+            } else {
+                input.classList.remove('error');
+            }
+        });
+
+        confirm.addEventListener('click', function(e) {
+            // The row lives inside the dropdown, so this is already an "inside"
+            // click; stopPropagation keeps it from racing any outside-click
+            // handler and matches the header button's guard.
+            e.stopPropagation();
+            submitInlineCreate();
+        });
+
+        row.appendChild(input);
+        row.appendChild(confirm);
+
+        inlineCreateRow = row;
+        inlineCreateInput = input;
+        return row;
+    }
+
+    function toggleInlineCreate() {
+        if (inlineCreateOpen) {
+            cancelInlineCreate();
+        } else {
+            openInlineCreate();
+        }
+    }
+
+    function openInlineCreate() {
+        inlineCreateOpen = true;
+        if (inlineCreateRow) inlineCreateRow.classList.add('open');
+        if (inlineCreateInput) {
+            inlineCreateInput.classList.remove('error');
+            inlineCreateInput.focus();
+        }
+    }
+
+    // Cancel + clear the inline create input without closing the dropdown.
+    // Returns true when an inline create input was actually open (so the
+    // shared Escape handler in main.js can give it priority over the
+    // dropdown's Escape-to-close), false when there was nothing to cancel.
+    function cancelInlineCreate() {
+        if (!inlineCreateOpen) return false;
+        inlineCreateOpen = false;
+        if (inlineCreateInput) {
+            inlineCreateInput.value = '';
+            inlineCreateInput.classList.remove('error');
+        }
+        if (inlineCreateRow) inlineCreateRow.classList.remove('open');
+        return true;
+    }
+
+    // Inline error treatment (empty / duplicate name) — red border, keep the
+    // input open and re-selected so the user can correct it. Mirrors the
+    // rename editor's rejectAndStayOpen.
+    function rejectInlineCreate() {
+        if (!inlineCreateInput) return;
+        inlineCreateInput.classList.add('error');
+        inlineCreateInput.focus();
+        if (typeof inlineCreateInput.select === 'function') inlineCreateInput.select();
+    }
+
+    function submitInlineCreate() {
+        if (!inlineCreateInput) return;
+        const trimmed = inlineCreateInput.value.trim();
+        // Reject empty / whitespace-only — keep the input open + red.
+        if (trimmed.length === 0) { rejectInlineCreate(); return; }
+        // Reject duplicates (mirror the rename collision guard).
+        const names = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        if (names.indexOf(trimmed) !== -1) { rejectInlineCreate(); return; }
+
+        // Commit through the injected create flow (mobile + button parity):
+        // it builds the backing #projChild row, makes the new project the
+        // active selection, and renders its todos. Mark the inline input
+        // closed first so the rebuild below renders it hidden + cleared, then
+        // repaint the badges + active pill name and rebuild the dropdown rows
+        // so the freshly-created project shows as the active row.
+        inlineCreateOpen = false;
+        if (typeof onCreateProjectNamed === 'function') onCreateProjectNamed(trimmed);
+        updateFooterCounts();
+        buildProjectPickerRows();
     }
 
     // Swap a dropdown row in place into a focused text input pre-populated
@@ -266,10 +403,11 @@ export function createProjectPicker(deps) {
     }
 
     function closeProjectPicker() {
-        // Dismissing the dropdown cancels any in-progress inline rename so a
-        // half-finished edit never strands an orphan input or commits a stale
-        // value.
+        // Dismissing the dropdown cancels any in-progress inline rename or
+        // inline create so a half-finished edit never strands an orphan input
+        // or commits a stale value.
         cancelActiveRowEditor();
+        cancelInlineCreate();
         projectPickerDropdown.classList.remove('open');
         projectPickerDropdown.setAttribute('aria-hidden', 'true');
         mobileProjHeader.classList.remove('picker-open');
@@ -479,5 +617,6 @@ export function createProjectPicker(deps) {
         close: closeProjectPicker,
         toggle: toggleProjectPicker,
         isOpen: projectPickerIsOpen,
+        cancelInlineCreate: cancelInlineCreate,
     };
 }
