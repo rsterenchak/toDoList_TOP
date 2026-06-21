@@ -4920,6 +4920,48 @@ body.row-dragging * { cursor: grabbing !important; }
   padding: 6px 0 12px;
 }
 
+/* ── MOBILE CHANGELOG BOTTOM SHEET ──
+   Same slide-up shell as the COMPLETED sheet; the inner header / handle /
+   close button reuse the .completedMobileSheet* classes so the palette and
+   dimensions stay in sync. Opened from the Settings modal's About →
+   Version row to show the changelog on touch viewports. */
+#changelogMobileSheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 4000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+#changelogMobileSheetBackdrop.is-open {
+  opacity: 1;
+}
+#changelogMobileSheet {
+  width: 100%;
+  max-height: 85vh;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-dim);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+#changelogMobileSheetBackdrop.is-open #changelogMobileSheet {
+  transform: translateY(0);
+}
+/* Give the changelog entries breathing room inside the sheet body —
+   the modal body uses 8px 16px padding, mirror that here. */
+#changelogMobileSheetBody {
+  padding: 6px 16px 12px;
+}
+
 /* ── MOBILE TODO.MD VIEWER BOTTOM SHEET ──
    Same slide-up shell as the COMPLETED sheet above; the inner header /
    handle / close button reuse the .completedMobileSheet* classes so the
@@ -6919,6 +6961,24 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 .drawerInfoLabel { color: var(--text-primary); }
+
+/* Tappable variant — the About → Version row taps to open the changelog
+   sheet, so it gains a pointer cursor, a press/tap feedback tint, and a
+   focus ring while keeping the same 44px touch target as the read-only
+   info rows. */
+.drawerInfoRow--tappable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background 0.12s ease;
+}
+.drawerInfoRow--tappable:hover { background: var(--bg-hover); }
+.drawerInfoRow--tappable:active { background: var(--bg-elevated); }
+.drawerInfoRow--tappable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 /* Mirrors the OFF state of .drawerTogglePill (muted color, uppercase,
    spaced) so the read-only About rows visually align with the toggle
