@@ -1810,6 +1810,20 @@ body:has(#settingsMenu) #claudeLauncher {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Deep send — the 🧠 sibling of the ↑ send. It reuses .claudeComposerSend's
+   sizing/structure (so the two stay baseline-aligned in the single composer
+   row) and overrides the fill with the solid purple accent, marking the heavier
+   "deep think" send as distinct from the ordinary send. */
+.claudeComposerSendDeep {
+  background: #6C5DF5;
+  color: #fff;
+  border-color: #6C5DF5;
+}
+.claudeComposerSendDeep:hover:not(:disabled) {
+  background: #9D93EE;
+  border-color: #9D93EE;
+  color: #fff;
+}
 
 /* Voice dictation button — sits in the composer just before Send. Idle is a
    muted glyph matching the attach button's weight; recording flips to the

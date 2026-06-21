@@ -241,11 +241,15 @@ export async function injectEntry(options) {
 // Returns `{ reply, suggestedFiles }`: `reply` is the assistant's text, and
 // `suggestedFiles` is the array of paths the Worker proposed attaching this
 // turn (empty when none).
-export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles) {
+export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles, deepThink) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
         if (repo) payload.repo = repo;
+        // Per-message "deep think" flag: the Deep send button sets this so the
+        // Worker routes just this turn to a heavier model. Omitted entirely on
+        // Fast turns, so an un-updated Worker simply never sees the field.
+        if (deepThink) payload.deep_think = true;
         if (Array.isArray(attachFiles) && attachFiles.length) {
             payload.attach_files = attachFiles.slice();
         }
