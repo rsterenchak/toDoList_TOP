@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-20',
-        changed: [
-            "The desktop project dropdown's inline create row is now a soft input card with a leading + and a labeled Create button.",
+        date: '2026-06-21',
+        added: [
+            "A new Deep (🧠) send button in the Claude assistant chat composer sends a single message for deeper, heavier-model processing.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-20',
         fixed: [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",
             "The Claude assistant's voice-input button now shows the same purple border and glyph highlight on hover as the other composer buttons.",

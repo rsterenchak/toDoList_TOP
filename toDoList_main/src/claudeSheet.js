@@ -464,19 +464,31 @@ function buildChatView() {
     send.className = 'claudeComposerSend';
     send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
-    // Composer row reads [📎] [🎤] [input] [Send]: the attach button + its
+    // Deep send: a second send button that routes the same turn through the
+    // heavier "deep think" path (the Worker reads the deep_think flag). The mode
+    // is strictly per-message — Deep never sticks to follow-up turns — so it's a
+    // sibling button rather than a toggle on the ↑ send.
+    const sendDeep = document.createElement('button');
+    sendDeep.id = 'claudeComposerSendDeep';
+    sendDeep.type = 'button';
+    sendDeep.className = 'claudeComposerSend claudeComposerSendDeep';
+    sendDeep.textContent = '🧠';
+    sendDeep.setAttribute('aria-label', 'Send deep');
+    // Composer row reads [📎] [🎤] [input] [Send] [Deep]: the attach button + its
     // dropdown panel lead the row, the mic button follows, then the textarea,
-    // with Send last. buildAttach() carries the attach button's click listener
-    // and the panel; buildMicButton() carries the mic's listener (and returns
-    // null on browsers without speech recognition, so the affordance is hidden
-    // entirely rather than shown broken).
+    // with the Fast (↑) and Deep (🧠) send cluster last. buildAttach() carries
+    // the attach button's click listener and the panel; buildMicButton() carries
+    // the mic's listener (and returns null on browsers without speech
+    // recognition, so the affordance is hidden entirely rather than shown broken).
     composer.appendChild(buildAttach());
     const mic = buildMicButton();
     if (mic) composer.appendChild(mic);
     composer.appendChild(input);
     composer.appendChild(send);
+    composer.appendChild(sendDeep);
 
     send.addEventListener('click', function() { sendChatTurn(); });
+    sendDeep.addEventListener('click', function() { sendChatTurn(true); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -1319,7 +1331,7 @@ function stripInspectDirective(reply) {
         .trim();
 }
 
-async function sendChatTurn() {
+async function sendChatTurn(deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
     if (!input) return;
@@ -1339,7 +1351,8 @@ async function sendChatTurn() {
 
     // Manual turns never carry an entry id — the iterate seed (turn 1) is the
     // only place it's sent; the Worker assembles the diff context from there.
-    await requestAssistantReply();
+    // `deep` is per-message: Fast passes undefined, Deep passes true.
+    await requestAssistantReply(undefined, deep);
 }
 
 // Send the running history to the Worker, render the assistant reply in place
@@ -1348,17 +1361,22 @@ async function sendChatTurn() {
 // `entryId` is only supplied on an iterate session's first turn; a Worker 404
 // for that seed means no merged PR carries the entry's marker yet, so it's
 // shown as a gentle "nothing to iterate on" note rather than an error.
-async function requestAssistantReply(entryId) {
+async function requestAssistantReply(entryId, deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
+    const sendDeep = sheetQuery('#claudeComposerSendDeep');
     if (send) send.disabled = true;
+    if (sendDeep) sendDeep.disabled = true;
     if (input) input.disabled = true;
 
-    let pending = appendMessageBubble('assistant', '…');
+    // A Deep turn routes to a heavier model, so its placeholder reads
+    // "Thinking deeply…" rather than the plain "…" — the slower turn should
+    // look intentional, not stalled.
+    let pending = appendMessageBubble('assistant', deep ? 'Thinking deeply…' : '…');
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles);
+        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
         chatHistory.push({ role: 'assistant', content: reply });
@@ -1384,6 +1402,7 @@ async function requestAssistantReply(entryId) {
         }
     } finally {
         if (send) send.disabled = false;
+        if (sendDeep) sendDeep.disabled = false;
         if (input) {
             input.disabled = false;
             try { input.focus(); } catch (err) { /* defensive */ }

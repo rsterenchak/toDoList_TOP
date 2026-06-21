@@ -470,6 +470,63 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('Sure');
     });
 
+    async function sendDeepMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSendDeep').click();
+        await flush();
+    }
+
+    it('renders a Deep (🧠) send button beside the Fast (↑) send', () => {
+        const send = document.getElementById('claudeComposerSend');
+        const deep = document.getElementById('claudeComposerSendDeep');
+        const composer = document.getElementById('claudeComposer');
+        expect(deep).toBeTruthy();
+        expect(deep.textContent).toBe('🧠');
+        expect(deep.getAttribute('aria-label')).toBe('Send deep');
+        expect(composer.contains(deep)).toBe(true);
+        // Deep sits last in the send cluster, after the Fast send.
+        expect(send.compareDocumentPosition(deep) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+    });
+
+    it('Deep send POSTs deep_think: true; Fast send omits the field', async () => {
+        await sendDeepMessage('think hard about this');
+        const deepCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect(JSON.parse(deepCall[1].body).deep_think).toBe(true);
+
+        fetchSpy.mockClear();
+        await sendMessage('quick one');
+        const fastCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect('deep_think' in JSON.parse(fastCall[1].body)).toBe(false);
+    });
+
+    it('Deep send shows a "Thinking deeply…" pending placeholder', () => {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'deep dive';
+        document.getElementById('claudeComposerSendDeep').click();
+        // Synchronously after the click, the pending bubble is on the surface
+        // (the awaited Worker call hasn't resolved yet).
+        const pending = document.querySelector('.claudeMsg--pending');
+        expect(pending).toBeTruthy();
+        expect(pending.textContent).toBe('Thinking deeply…');
+    });
+
+    it('disables and re-enables both send buttons together while in flight', async () => {
+        const send = document.getElementById('claudeComposerSend');
+        const deep = document.getElementById('claudeComposerSendDeep');
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'in flight';
+        document.getElementById('claudeComposerSendDeep').click();
+        // Mid-flight: both send buttons are disabled.
+        expect(send.disabled).toBe(true);
+        expect(deep.disabled).toBe(true);
+        await flush();
+        // Resolved: both re-enable together.
+        expect(send.disabled).toBe(false);
+        expect(deep.disabled).toBe(false);
+    });
+
     it('surfaces a drafted-entry card when the reply contains a fenced md block', async () => {
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');
