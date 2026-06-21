@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-20',
         added: [
-            "The Claude assistant now opens automatically when you switch to a project that has a repo configured, and closes when you switch to one that doesn't.",
+            "You can now start a new project from the desktop project dropdown's header with a new + button.",
         ],
         fixed: [
             "The Claude assistant's voice-input button now carries the same purple outer glow as the other composer buttons.",

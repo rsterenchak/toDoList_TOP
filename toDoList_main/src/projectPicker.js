@@ -25,6 +25,7 @@ export function createProjectPicker(deps) {
         navigateToProjectByIndex,
         updateFooterCounts,
         applyProjectInitial,
+        onCreateProject,
     } = deps;
 
     function projectPickerIsOpen() {
@@ -41,16 +42,39 @@ export function createProjectPicker(deps) {
 
     // Rebuild the dropdown rows from the authoritative project list. Active
     // project gets the purple accent + ✓; zero-count projects get a quieter
-    // count color. No "+ New project" footer: the existing create-project
-    // flow (#projButton) appends an input into the drawer's #sideMa, which is
-    // hidden at desktop — wiring it here would create an off-screen input, so
-    // per the task it is omitted rather than inventing a new code path.
+    // count color. The header row carries a "+ new project" button on its
+    // right: the dropdown surface has no inline create input of its own, so
+    // the button routes through the injected onCreateProject callback, which
+    // fires the SAME create-project handler the mobile + button (#projButton)
+    // uses — no parallel create path is invented here.
     function buildProjectPickerRows() {
         projectPickerDropdown.innerHTML = '';
 
         const header = document.createElement('div');
         header.className = 'projectPickerHeader';
-        header.textContent = 'PROJECTS';
+
+        const headerLabel = document.createElement('span');
+        headerLabel.className = 'projectPickerHeaderLabel';
+        headerLabel.textContent = 'PROJECTS';
+        header.appendChild(headerLabel);
+
+        // "+ new project" affordance on the right of the header row. The
+        // dropdown is dismissed first, then onCreateProject runs the shared
+        // create flow that opens the naming input and makes the new project
+        // the active selection — identical to the mobile + button. The click
+        // is stopped from bubbling so it isn't read as an outside-click.
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'projectPickerAddBtn';
+        addBtn.setAttribute('aria-label', 'Add new project');
+        addBtn.textContent = '+';
+        addBtn.addEventListener('click', function(event) {
+            event.stopPropagation();
+            closeProjectPicker();
+            if (typeof onCreateProject === 'function') onCreateProject();
+        });
+        header.appendChild(addBtn);
+
         projectPickerDropdown.appendChild(header);
 
         const list = document.createElement('div');

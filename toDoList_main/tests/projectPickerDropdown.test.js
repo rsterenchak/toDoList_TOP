@@ -87,6 +87,30 @@ describe('desktop project-picker dropdown', () => {
         expect(body).not.toMatch(/projButton/);
     });
 
+    it('header row carries a purple "+ new project" button routed to the shared flow', () => {
+        const body = fnBody(picker, 'buildProjectPickerRows');
+        // The header builds an add button with the create class + accessible label.
+        expect(body).toMatch(/projectPickerAddBtn/);
+        expect(body).toMatch(/aria-label['"]\s*,\s*['"]Add new project['"]/);
+        // Clicking it dismisses the dropdown, then runs the injected create flow.
+        expect(body).toMatch(/closeProjectPicker\(\)[\s\S]{0,80}?onCreateProject\(\)/);
+        // The click is stopped from bubbling so it isn't read as an outside-click.
+        expect(body).toMatch(/event\.stopPropagation\(\)/);
+    });
+
+    it('main.js wires onCreateProject to the SAME mobile create handler (#projButton)', () => {
+        // The picker is constructed with an onCreateProject callback that opens
+        // the drawer (so the in-place naming input is visible at desktop) and
+        // fires the exact same #projButton click the mobile + button uses.
+        expect(main).toMatch(
+            /onCreateProject:\s*function\s*\(\)\s*\{[\s\S]{0,200}?openMobileDrawer\(\)[\s\S]{0,80}?projButton\.click\(\)/
+        );
+    });
+
+    it('CSS styles the header add button with the purple accent', () => {
+        expect(css).toMatch(/\.projectPickerAddBtn\s*\{[^}]*background:\s*#6C5DF5/);
+    });
+
     it('(d) closes on outside click but ignores clicks on the pill itself', () => {
         // A document click listener closes the open dropdown when the click
         // lands outside both the dropdown and the pill (the pill toggles).
