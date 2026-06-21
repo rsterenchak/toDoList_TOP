@@ -1001,7 +1001,7 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
   <!-- id: 93b98c97-2c41-4349-95b1-079feb8f1879 -->
 
-- [ ] **[MEDIUM]** Open to the first project on app launch instead of the last-selected one
+- [x] **[MEDIUM]** Open to the first project on app launch instead of the last-selected one — Completed: 2026-06-21
   - Type: feature
   - Description: On app launch the app currently restores the last-selected project from localStorage. Change the launch default so the app always selects the FIRST project in current sidebar display order (top of the reorderable list, honoring drag-and-drop order — not creation order) on each fresh load. Only the launch-time default changes: selecting a project during a session must still update and persist the selection in localStorage as it does today, so in-session behavior is unchanged. Look in the bootstrap/selection path in `toDoList_main/src/main.js` for where the last-selected project key is read on startup, and route project ordering/selection through `toDoList_main/src/listLogic.js` rather than mutating state from the UI layer.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`
