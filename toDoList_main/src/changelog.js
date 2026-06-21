@@ -6,11 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-21',
-        added: [
-            "The Version row in the mobile settings menu now taps to open the changelog.",
-        ],
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
+            "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
         ],
         changed: [
             "The mobile navbar no longer shows the open and done count badges for the active project, reclaiming that space.",
