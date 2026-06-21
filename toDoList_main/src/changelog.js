@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-21',
-        added: [
-            "A new Deep (🧠) send button in the Claude assistant chat composer sends a single message for deeper, heavier-model processing.",
-        ],
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
         ],
@@ -16,6 +13,7 @@ export const changelog = [
             "The Claude assistant's Deep send button now shows a double-chevron symbol, and the composer buttons gain a subtle resting surface and a purple glow on hover and press.",
             "The mobile navbar no longer shows the open and done count badges for the active project, reclaiming that space.",
             "The menu button in the top navbar now shows a solid gear icon instead of the ghost symbol.",
+            "The app now opens to the first project in the sidebar on launch instead of the last-selected one.",
         ],
     },
 ];
