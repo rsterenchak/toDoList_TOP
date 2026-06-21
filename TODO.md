@@ -927,3 +927,12 @@
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6d5a959f-d7e4-4e48-a1e2-b1c9b533fa44 -->
+
+- [ ] **[MEDIUM]** Restyle the desktop project-picker inline-create row as a labeled "Create" card
+  - Type: feature
+  - Description: On desktop (≥1024px) the `projectPickerDropdown` inline-create row currently shows a bare `+` confirm button beside an input that wears an always-on purple border — redundant against the header's `+` opener and the active-row accent stripe. Per the approved mockup (Option C), wrap the input and confirm button in a single soft "create card" (`background: rgba(255,255,255,.04)`, `border: 0.5px solid rgba(255,255,255,.12)`, `border-radius: 6px`, padding ~6px 8px) with a leading muted `+` adornment glyph (`#6f6f80`), make the input borderless and transparent inside the card, and replace the bare `+` confirm with a labeled `Create` button (purple `#6C5DF5` fill, white text, Trebuchet/sans, ~12px, `padding: 6px 12px`, `border-radius: 4px`, hover `#7d6ff7`, focus ring `#9D93EE`). Move the purple-accent treatment onto the card's `:focus-within` (purple border) so purple signals focus — matching the rename input and inject sub-modal pattern — rather than the input being purple at rest. Behavior is unchanged: the header `+` still toggles the card open/closed, Enter and the `Create` button both commit through the existing `onCreateProjectNamed` path, Escape cancels and clears without closing the dropdown, and empty/duplicate names keep the existing red reject treatment; keep the input at `font-size: 16px` (iOS no-zoom rule).
+  - Out of scope: the mobile sidebar-drawer create flow (`#projButton` / `#projInput`) and every non-desktop surface — this is the ≥1024px dropdown only; the header `+` opener's own styling; and the create/validation logic itself (only the create-row markup in `buildInlineCreateRow` and its CSS change).
+  - Tests: authorized to update `tests/projectPickerDropdown.test.js` if it asserts on the confirm button's `+` text or the `.projectPickerCreateConfirm` class, so the assertions match the new labeled `Create` button; otherwise no test change is needed.
+  - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/projectPickerDropdown.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9699cfd2-4b1f-4362-a505-d060b5a30b13 -->
