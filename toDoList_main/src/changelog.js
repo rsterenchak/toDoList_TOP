@@ -15,13 +15,7 @@ export const changelog = [
         changed: [
             "The Claude assistant's Deep send button now shows a double-chevron symbol, and the composer buttons gain a subtle resting surface and a purple glow on hover and press.",
             "The mobile navbar no longer shows the open and done count badges for the active project, reclaiming that space.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-20',
-        fixed: [
-            "The app now recovers on its own from a blank screen after an update, refreshing itself automatically instead of needing a manual hard refresh.",
+            "The menu button in the top navbar now shows a solid gear icon instead of the ghost symbol.",
         ],
     },
 ];

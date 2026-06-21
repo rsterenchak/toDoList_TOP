@@ -8009,12 +8009,10 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 }
 
-/* Ghost glyph — currentColor body with eye holes punched out by painting
-   them in the surrounding nav background colour. Switching themes flips
-   --bg-base, so the eyes stay legible against both palettes without per-
-   theme overrides. */
-.ghostIcon { display: block; }
-.ghostIconEye { fill: var(--bg-base); }
+/* Gear glyph — currentColor body with the centre hub left hollow via the
+   path's fill-rule="evenodd". The body inherits #settingsToggle's themed
+   `color`, so the gear adapts to both palettes without per-theme overrides. */
+.gearIcon { display: block; }
 
 /* Settings menu — visual treatment mirrors #projContextMenu so the dropdown
    reads as the same kind of surface the rest of the app already uses. The Sort

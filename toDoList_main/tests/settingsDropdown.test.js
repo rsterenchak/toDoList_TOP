@@ -52,16 +52,18 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         expect(main).toMatch(/nav\.appendChild\(\s*settingsToggle\s*\)/);
     });
 
-    it('renders a ghost glyph (not a kebab) inside the trigger', () => {
-        // The trigger's icon is a pixel-art ghost. The kebab three-circle
-        // SVG it replaced should be gone from the trigger markup. Scope the
-        // assertions to the captured `settingsToggle.innerHTML` value (up to
-        // its terminating `;`) so an unrelated `<circle` elsewhere in main.js
+    it('renders a solid gear glyph (not a kebab) inside the trigger', () => {
+        // The trigger's icon is a solid settings gear. Both the kebab
+        // three-circle SVG and the earlier pixel-art ghost it replaced
+        // should be gone from the trigger markup. Scope the assertions to
+        // the captured `settingsToggle.innerHTML` value (up to its
+        // terminating `;`) so an unrelated `<circle` elsewhere in main.js
         // can't be picked up by an unanchored match.
         const assignment = main.match(/settingsToggle\.innerHTML\s*=\s*([\s\S]*?);/);
         expect(assignment).not.toBeNull();
         const triggerMarkup = assignment[1];
-        expect(triggerMarkup).toMatch(/ghostIcon/);
+        expect(triggerMarkup).toMatch(/gearIcon/);
+        expect(triggerMarkup).not.toMatch(/ghostIcon/);
         expect(triggerMarkup).not.toMatch(/<circle/);
     });
 

@@ -326,21 +326,14 @@ function component() {
     settingsToggle.setAttribute('aria-expanded', 'false');
     settingsToggle.setAttribute('aria-label', 'Open menu');
     settingsToggle.title = 'Menu';
+    // Solid settings gear: a filled gear body in currentColor with a hollow
+    // centre hub punched out via fill-rule="evenodd" (the inner circle subpath
+    // overlaps the gear body, so the overlap renders empty). currentColor ties
+    // the glyph to #settingsToggle's themed `color`, so it adapts to dark and
+    // light without per-theme overrides.
     settingsToggle.innerHTML =
-        '<svg class="ghostIcon" viewBox="0 0 12 14" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">' +
-        '<g class="ghostIconBody" fill="currentColor">' +
-        '<rect x="3" y="0" width="6" height="1"/>' +
-        '<rect x="2" y="1" width="8" height="1"/>' +
-        '<rect x="0" y="2" width="12" height="10"/>' +
-        '<rect x="0" y="12" width="2" height="2"/>' +
-        '<rect x="3" y="12" width="2" height="2"/>' +
-        '<rect x="6" y="12" width="2" height="2"/>' +
-        '<rect x="9" y="12" width="2" height="2"/>' +
-        '</g>' +
-        '<g class="ghostIconEye">' +
-        '<rect x="4" y="5" width="1" height="2"/>' +
-        '<rect x="7" y="5" width="1" height="2"/>' +
-        '</g>' +
+        '<svg class="gearIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">' +
+        '<path fill="currentColor" fill-rule="evenodd" d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14.1 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.27 11.02c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.14.24.43.34.69.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.05.24.25.42.49.42h4c.24 0 .44-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.26.12.55.02.69-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/>' +
         '</svg>';
 
     // Desktop settings-menu (gear dropdown) subsystem — extracted into
