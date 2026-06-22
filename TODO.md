@@ -85,3 +85,30 @@
   - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/conceiveStageHints.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0f2c416f-6ea3-4f7d-84e5-0c7a9433656f -->
+
+- [ ] **[MEDIUM]** Remove the Inbox view and its navigation (keep idea status + the per-project Ideas filter)
+  - Type: feature
+  - Description: The Inbox view (a cross-project list of idea-status todos) is no longer useful now that Conceive handles idea work, so remove the view and every navigation path to it. This removes the Inbox surface only — it intentionally leaves the idea-status system (`todoStatus.js`, the status popover, `buildStatusLabel`) and the per-project Ideas filter (`taskFilter.js` / `applyTaskFilter` / the ALL·Active·Ideas pills) fully intact, so idea-status todos are still creatable and still visible via the Ideas filter on each project — they are not deleted, just no longer aggregated into a dedicated view. This is a deliberate feature removal: the Inbox view/row/pill tests are expected to be deleted as part of this change (authorized below), not treated as regressions.
+  - What changes:
+    1. `main.js` — `applyActiveView`: remove the `inbox` handling (the `if (view === 'inbox') safe = 'inbox';` branch, the `if (safe === 'inbox') {…}` block, the `viewPillInbox` active-state sync, and the `mobileTabInbox` active-state sync). Leave the handling for the other current views (Projects, Conceive) untouched, and do not reintroduce any removed view.
+    2. `main.js` — view switcher construction: remove the `viewPillInbox` button, its `appendChild` into `#viewSwitcher`, and its click listener. Leave the remaining pills and their wiring as-is.
+    3. `main.js` — mobile tab bar: remove the Inbox tab (`mobileTabInbox` / the Inbox `buildMobileTab(...)` call and its icon). Leave the remaining tabs as-is.
+    4. `main.js` — pill ArrowDown handler: remove the Inbox/Today destination branch (the one that targets `.todayRow`/`#inboxSections`). The Projects branch (and any other current view's branch) stays.
+    5. `main.js` — layout shell: remove the `#inboxView` container node if it's constructed there (renderInbox is being removed, so a leftover `#inboxView` would be dead DOM).
+    6. `main.js` — remove the `renderInbox` import from `inboxView.js`.
+    7. `prefs.js` — `getActiveView`: remove the `if (v === 'inbox' || v === 'today') return 'inbox';` line so a persisted `inbox` (or legacy `today`) value falls through to the existing `'projects'` default. `setActiveView`: remove the `if (view === 'inbox') stored = 'inbox';` branch so `inbox` can no longer be persisted. Leave the other current view tokens intact.
+    8. Delete `toDoList_main/src/inboxView.js` entirely (the module's `buildInboxRow`, the `_inboxStatusRerenderWired` capture-phase status-rerender listener, and `renderInbox` all go with it — they have no other consumers once steps 1 and 6 land).
+    9. `style.css` — remove the Inbox-only rules: `#inboxView` (including its mobile `padding-top` rule), `#inboxSections`, `.inboxRow`, `.inboxRowCheck`, `.inboxRowBody`, `.inboxRowTitle`, `.inboxRowMeta`, `.inboxRowProject`, `.inboxRowChev`, `.inboxEmptyState`, and any `[data-view="inbox"]`-scoped rules. Leave the generic `.viewPill` / `#viewSwitcher` styling (it's shared by the remaining pills).
+  - Behavior:
+    1. The nav (desktop pills and mobile tab bar) no longer shows Inbox; the remaining views switch and render exactly as before.
+    2. A user whose persisted active view was `inbox` (or legacy `today`) lands on Projects on next load — no blank pane, no error.
+    3. Idea-status todos remain creatable and remain visible under the Ideas filter on each project; the status popover and filter pills are unchanged.
+    4. No console errors, no orphaned listeners, and no dead `#inboxView` node after the change.
+  - Implementation notes:
+    - `main.js` is over 25k tokens — grep for `inbox`, `viewPillInbox`, `mobileTabInbox`, and `renderInbox` with offset/limit; don't read the file whole. Scope edits to the Inbox identifiers only; do not alter the Projects or Conceive nav paths.
+    - Keep `listLogic.getIdeaTodosAcrossProjects` and its test (`tests/inboxIdeasQuery.test.js`) — the idea-status data layer stays intact on purpose, so leaving this query and its test green is intended even though the view that consumed it is gone.
+    - Authorized test removals (this is the point of the entry, not a regression): delete `tests/inboxIdeasView.test.js`, `tests/inboxRowTap.test.js`, and `tests/inboxViewRename.test.js` (they assert the inbox view, inbox row tap, and inbox-pill routing — all removed here). Run the full Vitest suite after and confirm it's green with those files gone.
+  - Out of scope: removing the idea status itself, the Ideas filter, the status popover, or `getIdeaTodosAcrossProjects` (a separate, larger removal if wanted later); any change to the Conceive or Projects views; any data-model or Supabase change (idea-status todos are untouched); the concept overview/preview surface.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/src/inboxView.js` (delete), `toDoList_main/tests/inboxIdeasView.test.js` (delete), `toDoList_main/tests/inboxRowTap.test.js` (delete), `toDoList_main/tests/inboxViewRename.test.js` (delete)
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 436d4778-6d2c-47d3-b6fb-1335d3d66164 -->
