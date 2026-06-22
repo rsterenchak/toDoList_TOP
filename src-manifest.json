@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-22T01:14:35.307Z",
-  "sha": "349e7b23a5bb3d7d3c4008a1c4dabc4f4d9bc5d4",
+  "generatedAt": "2026-06-22T02:43:24.487Z",
+  "sha": "0561534a0669a5ad3070303167040323e8233aa3",
   "files": [
     "auth.js",
     "calendarView.js",
@@ -8,6 +8,8 @@
     "claudeSheet.js",
     "coachmark.js",
     "companion.js",
+    "conceiveView.js",
+    "conceptsLogic.js",
     "dragDrop.js",
     "dueDate.js",
     "emptyState.js",
