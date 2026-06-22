@@ -129,3 +129,25 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/tests/serviceWorkerUpdate.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 71769d7a-e3e9-44c1-92df-4ec6bf64931e -->
+
+- [ ] **[MEDIUM]** Default new projects to the Iterative stage shape; make Generate tasks, Suggest plan, and hints shape-aware
+  - Type: feature
+  - Description: Introduce two Conceive stage shapes — Iterative (Why / Concept / Next up / Iterations) and Spec (the current Why / Concept / Requirements / Design / Build plan) — and make Iterative the default for new projects, since most personal apps are built iteratively. This is the foundation run for the per-project shape feature: it defines both seed sets, switches the default, and teaches the Conceive tools and stage hints which stage is the actionable "task source" in each shape ("Next up" for Iterative, "Build plan" for Spec) instead of assuming the SDLC label. It does NOT add the shape chooser UI (that's the follow-up run) — new projects simply seed Iterative, existing projects keep their current stages, nothing migrates. The `lifecycle` field records the shape ('iterative' or 'spec').
+  - What changes:
+    1. Seed sets: define the Iterative seed (ordered stages Why, Concept, Next up, Iterations — labels only, empty bodies) alongside the existing Spec seed, where the current default-stage seed lives (the seeding helper the Supabase-sync entry reuses for null→default backfill).
+    2. Default at creation: new projects seed with the Iterative set and `lifecycle: 'iterative'`. The Spec set + `lifecycle: 'spec'` stay available for the follow-up chooser to select. Already-seeded projects are untouched.
+    3. Shape-aware actionable stage: add a small map, shape → actionable stage label (iterative → 'Next up', spec → 'Build plan'), defined once and shared. Update Generate tasks and Suggest plan to locate the actionable stage via the project's `lifecycle` + this map — read that stage's body as the task source and treat every other stage as the upstream/context set — replacing the literal 'Build plan' match. For Iterative projects the Generate tasks / Suggest plan buttons sit on "Next up"; for Spec, on "Build plan".
+    4. Shape-aware hints: extend the stage-guidance map with prompts for the Iterative labels so all four show guidance — Next up: "The slice you're building right now; each line becomes a task." Iterations: "A running log of what you've added, removed, and why." Keep the existing Spec prompts.
+  - Behavior:
+    1. A newly created project opens in Conceive with the Iterative stages, each showing its guidance prompt.
+    2. Generate tasks and Suggest plan operate on "Next up" for Iterative projects and "Build plan" for Spec projects; the context/upstream stages are all the others in that project. Existing Spec-shaped projects behave exactly as before.
+    3. Existing projects keep whatever stages they already have — no reseed, no migration.
+  - Implementation notes:
+    - The default-stage seed is the helper reused for the Supabase null→default backfill — change its default to the Iterative set and add the Spec set as a named alternative selected by `lifecycle`. Do NOT add a per-stage "role" field; the shape→actionable-label map is enough to identify the task-source stage.
+    - Define the shape→actionable-label map once (in `conceiveView.js` or a small shared constants spot) and import it into `seedTasksModal.js` so Generate tasks and Suggest plan resolve the same way. Resolution: actionableLabel = map[project.lifecycle], defaulting to the Iterative label when lifecycle is unset/unknown; find that stage by label; derive context stages as the remaining ones.
+    - Depends on the seed-todos, Suggest plan, and stage-hints entries having landed (this generalizes their stage targeting and extends their hints map) — sequence it after all three. `getProjectStages`, `setProjectStageBody`, and the `lifecycle` field are unchanged in shape; only the produced seed and the actionable-stage resolution change.
+    - Tests: assert a new project seeds the Iterative set with `lifecycle: 'iterative'`; the map resolves 'Next up' for iterative and 'Build plan' for spec; Generate tasks / Suggest plan target the correct stage per shape (mock the resolution); the hints map returns prompts for Next up and Iterations; and an existing Spec-shaped project still resolves 'Build plan'. Keep the suite green.
+  - Out of scope: the shape chooser UI and reseed-while-pristine logic (the follow-up run); switching or migrating an existing project's shape; any change to seed-todos' decomposition or Suggest plan's drafting beyond which stage they read; reordering/renaming stages from the UI; the concept overview/preview surface.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/conceiveView.js`, `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/conceiveShapes.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ec1df5f7-203f-415d-8fcf-d30982297179 -->
