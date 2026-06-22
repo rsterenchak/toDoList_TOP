@@ -314,8 +314,11 @@ export function openSeedTasksModal(projectName) {
         const prompt = buildPrompt(stages);
         // One-off messages array so the live chat-pane conversation is never
         // touched; repo is null so the Worker falls back to its default,
-        // matching the test-connection path.
-        chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, null, undefined)
+        // matching the test-connection path. The trailing `true` is the deep
+        // flag: task decomposition routes through the Worker's heavier model
+        // (deep_think), unlike ordinary chat turns which stay on the fast
+        // default.
+        chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, null, undefined, true)
             .then(function (res) {
                 if (closed) return;
                 const reply = res && typeof res.reply === 'string' ? res.reply : '';

@@ -109,6 +109,9 @@ describe('openSeedTasksModal — outbound prompt', () => {
         // null repo (Worker default).
         expect(chatWithWorker.mock.calls[0][1]).toBeUndefined(); // entryId
         expect(chatWithWorker.mock.calls[0][3]).toBeNull();      // repo
+        // Seed-todos decomposition routes through the heavier model: the
+        // trailing deep flag is true. Every other chat turn omits it.
+        expect(chatWithWorker.mock.calls[0][5]).toBe(true);      // deep
     });
 });
 
