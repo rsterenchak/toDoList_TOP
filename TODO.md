@@ -59,3 +59,29 @@
   - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/conceiveSuggestPlan.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5434f655-40e7-44ee-ba7a-647f2e94e820 -->
+
+- [ ] **[MEDIUM]** Add persistent guidance prompts under each Conceive stage label
+  - Type: feature
+  - Description: The Conceive stages (Why / Concept / Requirements / Design / Build plan) are empty fields with no indication of what belongs in each, making them hard to fill well — which also weakens them as inputs to Suggest plan and Generate tasks. Add a short, always-visible guidance prompt under each stage's label: a muted one-line question describing what that stage is asking for. The prompts are static presentation copy keyed by stage label — not stored on the stage objects, not synced — so they cost nothing in the data model and never round-trip through Supabase. The line stays visible whether or not the field has content (it's a persistent reference, not a placeholder that vanishes when you type).
+  - What changes:
+    1. `conceiveView.js`: add a static label→prompt map for the default SDLC stages, and in the stage-rendering code render a non-interactive hint element directly under each stage's label when the stage's label matches a key. Stages whose label isn't in the map (e.g. a future custom/renamed stage) render no hint — graceful, no error.
+    2. `style.css`: style the hint line — muted secondary text, sized below the label, sitting between the stage header and the body field.
+  - Prompt copy (per default stage label):
+    - Why — Who is it for, and what problem does it solve?
+    - Concept — In a sentence or two, what is it and how does it work?
+    - Requirements — What must it do? Key capabilities, constraints, and what's out of scope.
+    - Design — How does it look and work — UI, data model, and tech choices?
+    - Build plan — The ordered steps to build it; each line becomes a task.
+  - Behavior:
+    1. Each of the five default stages shows its prompt under the label at all times — when the field is empty and after the user has typed into it.
+    2. The prompt is display-only: not editable, not part of the stage body, not persisted or synced; it never appears in the text sent to Claude or saved to Supabase.
+    3. A stage whose label has no entry in the map shows no prompt, and the stage renders exactly as today.
+  - Implementation notes:
+    - Key the map by the default stage labels (Why / Concept / Requirements / Design / Build plan); match the stage's `label`. Keep the map as a module-level constant in `conceiveView.js` — no new module, no data-model field, no migration. This is purely additive rendering: it must not change the stage object shape, `getProjectStages`, persistence, or sync.
+    - Render the hint as its own element under the label so it's visually distinct from the editable body; reuse existing muted-text styling where possible.
+    - Touches the same stage-rendering code as seed-todos and suggest-plan, so sequence it after seed-todos lands; order against suggest-plan is flexible but not concurrent (same file/region).
+    - Tests: add `conceiveStageHints.test.js` asserting each of the five default stages renders its mapped prompt text under the label, and that a stage with an unknown label renders none. Confirm the prompt text is not included in the stage body or any persisted/sent payload. Keep the suite green.
+  - Out of scope: storing guidance as stage data or syncing it; a faint in-field example (the rejected option C); editing guidance from the UI; guidance for custom or renamed stages (later, once add/rename ships); any change to seed-todos or suggest-plan behavior; the concept overview/preview surface (its own run).
+  - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/conceiveStageHints.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0f2c416f-6ea3-4f7d-84e5-0c7a9433656f -->
