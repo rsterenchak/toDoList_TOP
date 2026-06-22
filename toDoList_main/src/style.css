@@ -2997,6 +2997,11 @@ button.claudeAttachChipLabel { cursor: pointer; }
   gap: 4px;
 }
 
+.seedTasksModalItem {
+  display: flex;
+  flex-direction: column;
+}
+
 .seedTasksModalRow {
   display: flex;
   align-items: center;
@@ -3006,6 +3011,45 @@ button.claudeAttachChipLabel { cursor: pointer; }
   cursor: pointer;
 }
 .seedTasksModalRow:hover { background: var(--bg-hover); }
+
+/* Per-row Details toggle — pushed to the right end of the compact row; reveals
+   the proposed task's TODO.md entry beneath it. */
+.seedTasksModalDetailsToggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0.5px solid var(--border-dim);
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.seedTasksModalDetailsToggle:hover {
+  color: var(--text-primary);
+  border-color: var(--border-bright);
+}
+
+/* Collapsible TODO.md entry preview — preformatted so the bullet structure
+   reads, scrollable when tall. */
+.seedTasksModalDetails {
+  margin: 2px 10px 8px 36px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+}
 
 .seedTasksModalCheckbox {
   flex: 0 0 auto;
