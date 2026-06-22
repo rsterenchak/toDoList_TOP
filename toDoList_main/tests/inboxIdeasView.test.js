@@ -123,16 +123,21 @@ describe('Cross-project INBOX ideas view', () => {
     describe('applyActiveView wiring (main.js)', () => {
         const body = extractFn('applyActiveView');
 
-        it('renders the inbox from the INBOX branch only, never the calendar path', () => {
+        it('renders the inbox from the INBOX branch, after the data-view write', () => {
             const calls = body.match(/renderInbox\(\s*\)/g) || [];
             expect(calls.length).toBe(1);
+            // The data-view attribute must be written before the render
+            // branches so the CSS show/hide hook is in place by the time
+            // renderInbox paints the surface.
+            const dataViewIdx = body.indexOf("setAttribute('data-view', safe)");
             const callIdx = body.indexOf('renderInbox(');
             const inboxIdx = body.lastIndexOf("safe === 'inbox'");
-            const calendarIdx = body.indexOf("safe === 'calendar'", inboxIdx);
+            expect(dataViewIdx).toBeGreaterThan(-1);
             expect(inboxIdx).toBeGreaterThan(-1);
-            expect(calendarIdx).toBeGreaterThan(-1);
+            // renderInbox is reached only via the safe === 'inbox' branch...
             expect(callIdx).toBeGreaterThan(inboxIdx);
-            expect(callIdx).toBeLessThan(calendarIdx);
+            // ...and the data-view flip happens before that render branch.
+            expect(dataViewIdx).toBeLessThan(inboxIdx);
         });
 
         it('still flips #mainBar data-view so switching to PROJECTS hides the Inbox surface', () => {

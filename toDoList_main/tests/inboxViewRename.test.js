@@ -17,12 +17,6 @@ function read(relative) {
 // now identified by 'inbox' across the routing layer. Only the visible
 // tab label changes for the user (TODAY → INBOX); the view still renders
 // blank until the INBOX placeholder ships in a follow-up entry.
-//
-// Deliberately OUT of scope (and asserted to survive): the `.todayRow`
-// task-row card and its buildTodayRow / handleTodayCheckboxToggle
-// builders, which the Calendar day-detail panel shares, and the
-// calendar/due-date "today" semantics (resetCalendarStateToToday,
-// todayKey, isToday) that have nothing to do with the view identifier.
 describe('TODAY → INBOX internal rename', () => {
     const main = read('main.js');
     const css = read('style.css');
@@ -67,24 +61,6 @@ describe('TODAY → INBOX internal rename', () => {
         it('drops the old [data-view="today"] routing value from JS and CSS', () => {
             expect(main).not.toMatch(/data-view="today"|data-view='today'/);
             expect(css).not.toMatch(/\[data-view="today"\]/);
-        });
-    });
-
-    describe('shared / unrelated "today" code is intentionally preserved', () => {
-        it('keeps the Calendar-shared .todayRow row card and its builders', () => {
-            // buildTodayRow + handleTodayCheckboxToggle are the shared task-row
-            // card the Calendar day-detail panel renders — not a view
-            // identifier, so the rename leaves them alone. They now live in
-            // calendarView.js (extracted from main.js).
-            const calendar = read('calendarView.js');
-            expect(calendar).toMatch(/function\s+buildTodayRow\b/);
-            expect(calendar).toMatch(/function\s+handleTodayCheckboxToggle\b/);
-            expect(calendar).toMatch(/row\.className\s*=\s*['"]todayRow todoRowCard['"]/);
-        });
-
-        it('keeps the calendar/due-date "today" date semantics', () => {
-            const calendar = read('calendarView.js');
-            expect(calendar).toMatch(/function\s+resetCalendarStateToToday\b/);
         });
     });
 

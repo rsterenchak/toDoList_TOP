@@ -67,14 +67,6 @@ import { wireStatusLabelDelegation } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import {
-    initCalendarView,
-    renderCalendarView,
-    resetCalendarStateToToday,
-    shiftCalendarMonth,
-    formatCalendarKeyForDate,
-    getCalendarSelectedKey,
-} from './calendarView.js';
 import { renderInbox } from './inboxView.js';
 import { renderConceiveView } from './conceiveView.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -97,11 +89,6 @@ import button from './addProj_button.svg';
 // button gets rendered — buildToDoRow / showDescEditorModal both call
 // isInjectConfigured() at render time, which reads the cached values.
 initInjectConfig();
-
-// Inject the applyActiveView back-edge into the calendar module so
-// jumpToProjectTodo can switch to the Projects view without a circular
-// import (applyActiveView lives here and itself calls renderCalendarView).
-initCalendarView({ applyActiveView });
 
 // touch: verify SW revisioning 2026-05-31 //
 
@@ -176,13 +163,13 @@ function component() {
     // where the attribute is unset; if any later code path checks the
     // attribute during that window, the mobile tab bar's .active class
     // and the data-view attribute can drift out of sync, leaving
-    // #mobileProjHeader hidden by the [data-view="inbox"] / "calendar"
+    // #mobileProjHeader hidden by the [data-view="inbox"]
     // rules even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
     // Mirror the routing attribute onto <body> as well. At desktop widths the
     // workspace pill + counts are lifted out of #mainBar into #navBar, so the
-    // #mainBar[data-view] rules that hide them in INBOX / CALENDAR no longer
+    // #mainBar[data-view] rules that hide them in INBOX no longer
     // reach them; body[data-view] gives a hook that still does. applyActiveView
     // keeps the two in lockstep on every flip.
     document.body.dataset.view = 'projects';
@@ -364,13 +351,9 @@ function component() {
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
-    // → viewPillInbox → viewPillCalendar → pomodoroToggle → musicToggle
-    // → settingsToggle) so keyboard users can flow across the chrome
-    // without tabbing. When the Calendar view is active, the walk also
-    // includes calendarPrevBtn and calendarNextBtn between
-    // viewPillCalendar and pomodoroToggle so the month-nav buttons stay
-    // reachable; on other views they're hidden and skipped. The pill
-    // references resolve at handler execution time, by which point
+    // → viewPillInbox → pomodoroToggle → musicToggle → settingsToggle)
+    // so keyboard users can flow across the chrome without tabbing. The
+    // pill references resolve at handler execution time, by which point
     // component() has finished initialising them. Bails when any
     // popover/modal is open so the in-popover focus management owns the
     // keystrokes; bails on any modifier so OS-level chords pass through.
@@ -380,11 +363,7 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, viewPillInbox, viewPillCalendar];
-        if (getActiveView() === 'calendar') {
-            order.push(calendarPrevBtn, calendarNextBtn);
-        }
-        order.push(pomodoroToggle, musicToggle, settingsToggle);
+        const order = [sidebarToggle, viewPillProjects, viewPillInbox, pomodoroToggle, musicToggle, settingsToggle];
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
@@ -910,7 +889,7 @@ function component() {
     base.appendChild(bottomSheet);
 
     // ── Persistent bottom tab bar (mobile only) ──
-    // Three destinations — Projects, Today, Calendar — pinned to the
+    // Three destinations — Projects, Inbox, Conceive — pinned to the
     // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
@@ -947,7 +926,7 @@ function component() {
     }
 
     // Inline SVG icons (24×24, currentColor stroke) — no icon library per
-    // CLAUDE.md. List, inbox-tray, and calendar glyphs. Built from <rect>
+    // CLAUDE.md. List and inbox-tray glyphs. Built from <rect>
     // and <path> primitives so the SVG markup stays distinct from the
     // ghost / kebab assertions in unrelated tests.
     const ICON_LIST =
@@ -964,13 +943,6 @@ function component() {
         '<path d="M4 13 L8 13 L9.5 16 L14.5 16 L16 13 L20 13"/>' +
         '<path d="M4 13 L6.5 5 L17.5 5 L20 13 L20 19 L4 19 Z"/>' +
         '</svg>';
-    const ICON_CALENDAR =
-        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<rect x="3" y="5" width="18" height="16" rx="2"/>' +
-        '<line x1="3" y1="10" x2="21" y2="10"/>' +
-        '<line x1="8" y1="3" x2="8" y2="7"/>' +
-        '<line x1="16" y1="3" x2="16" y2="7"/>' +
-        '</svg>';
     // Conceive — a lightbulb glyph signalling the "incubate an idea" intent,
     // built from path primitives like the others (no icon library).
     const ICON_CONCEIVE =
@@ -982,16 +954,13 @@ function component() {
 
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
     const mobileTabInbox    = buildMobileTab('inbox',    'Inbox',    ICON_INBOX);
-    const mobileTabCalendar = buildMobileTab('calendar', 'Calendar', ICON_CALENDAR);
     const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
     mobileTabProjects.id = 'mobileTabProjects';
     mobileTabInbox.id    = 'mobileTabInbox';
-    mobileTabCalendar.id = 'mobileTabCalendar';
     mobileTabConceive.id = 'mobileTabConceive';
 
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabInbox);
-    mobileTabBar.appendChild(mobileTabCalendar);
     mobileTabBar.appendChild(mobileTabConceive);
     base.appendChild(mobileTabBar);
 
@@ -1823,14 +1792,6 @@ function component() {
     viewPillProjects.setAttribute('aria-pressed', 'false');
     viewPillProjects.textContent = 'PROJECTS';
 
-    const viewPillCalendar = document.createElement('button');
-    viewPillCalendar.id = 'viewPillCalendar';
-    viewPillCalendar.type = 'button';
-    viewPillCalendar.className = 'viewPill';
-    viewPillCalendar.setAttribute('role', 'tab');
-    viewPillCalendar.setAttribute('aria-pressed', 'false');
-    viewPillCalendar.textContent = 'CALENDAR';
-
     const viewPillConceive = document.createElement('button');
     viewPillConceive.id = 'viewPillConceive';
     viewPillConceive.type = 'button';
@@ -1841,7 +1802,6 @@ function component() {
 
     viewSwitcher.appendChild(viewPillProjects);
     viewSwitcher.appendChild(viewPillInbox);
-    viewSwitcher.appendChild(viewPillCalendar);
     viewSwitcher.appendChild(viewPillConceive);
 
     viewPillInbox.addEventListener('click', function() {
@@ -1849,9 +1809,6 @@ function component() {
     });
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
-    });
-    viewPillCalendar.addEventListener('click', function() {
-        applyActiveView('calendar');
     });
     viewPillConceive.addEventListener('click', function() {
         applyActiveView('conceive');
@@ -1870,10 +1827,6 @@ function component() {
     //     .todayRowTitle button, so the subsequent ArrowDown advances rows
     //     via the document-level Today nav handler instead of being eaten
     //     by the "anchor focus to the row container" branch.
-    //   • CALENDAR — the selected (.isSelected) .calendarCell, falling
-    //     back to the first in-month cell (.calendarCell:not(.outOfMonth))
-    //     so the cold-start case (no prior selection) lands inside the
-    //     visible month rather than on a leading day from the prior month.
     // Without these handlers the document-level todo arrow-nav handler at
     // best lands focus on a stale .todo-active row and at worst silently
     // no-ops — leaving the rendered items unreachable from the header
@@ -1883,17 +1836,6 @@ function component() {
         if (e.key !== 'ArrowDown') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        // Calendar pill drops focus onto the month-nav arrow pair
-        // first rather than straight into the grid, so the arrows are
-        // reachable from the keyboard. The arrows then own their own
-        // ArrowDown drop-in into the grid using the same fallback chain
-        // as firstFocusableInActiveMainView's calendar branch.
-        if (e.target === viewPillCalendar && getActiveView() === 'calendar') {
-            e.preventDefault();
-            e.stopPropagation();
-            calendarPrevBtn.focus();
-            return;
-        }
         const target = firstFocusableInActiveMainView();
         if (!target) return;
         e.preventDefault();
@@ -1914,7 +1856,6 @@ function component() {
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
     viewPillInbox.addEventListener('keydown', dropFocusIntoMainView);
-    viewPillCalendar.addEventListener('keydown', dropFocusIntoMainView);
     viewPillConceive.addEventListener('keydown', dropFocusIntoMainView);
 
     // ── Today dashboard shell ──
@@ -1963,154 +1904,13 @@ function component() {
     inboxView.appendChild(inboxEmpty);
     inboxView.appendChild(inboxGhostSpacer);
 
-    // ── Calendar view shell ──
-    // Month grid on the left + day-detail panel on the right. The grid
-    // renders 7 columns × 5-6 rows including leading/trailing days from
-    // adjacent months; clicking a cell selects that date and re-renders
-    // the day-detail panel. The panel reuses buildTodayRow with
-    // { hideDuePill: true } so the row layout matches the Today view
-    // sans the redundant date pill (the date is implied by selection).
-    // Calendar visible-month + selected-date state lives in module-level
-    // vars (calendarVisibleYear/Month/SelectedDate) so the prev/next
-    // buttons and cell-click handlers can mutate them without threading
-    // refs through every callback.
-    const calendarView = document.createElement('div');
-    calendarView.id = 'calendarView';
-
-    const calendarGridSide = document.createElement('div');
-    calendarGridSide.id = 'calendarGridSide';
-
-    const calendarHeader = document.createElement('div');
-    calendarHeader.id = 'calendarHeader';
-
-    const calendarPrevBtn = document.createElement('button');
-    calendarPrevBtn.type = 'button';
-    calendarPrevBtn.id = 'calendarPrev';
-    calendarPrevBtn.className = 'calendarNavBtn';
-    calendarPrevBtn.setAttribute('aria-label', 'Previous month');
-    calendarPrevBtn.textContent = '‹';
-
-    const calendarMonthLabel = document.createElement('div');
-    calendarMonthLabel.id = 'calendarMonthLabel';
-
-    const calendarNextBtn = document.createElement('button');
-    calendarNextBtn.type = 'button';
-    calendarNextBtn.id = 'calendarNext';
-    calendarNextBtn.className = 'calendarNavBtn';
-    calendarNextBtn.setAttribute('aria-label', 'Next month');
-    calendarNextBtn.textContent = '›';
-
-    calendarHeader.appendChild(calendarPrevBtn);
-    calendarHeader.appendChild(calendarMonthLabel);
-    calendarHeader.appendChild(calendarNextBtn);
-
-    const calendarDowRow = document.createElement('div');
-    calendarDowRow.id = 'calendarDowRow';
-    ['S','M','T','W','T','F','S'].forEach(function(c, idx) {
-        const cell = document.createElement('div');
-        cell.className = 'calendarDowCell';
-        cell.textContent = c;
-        cell.setAttribute('data-dow', String(idx));
-        calendarDowRow.appendChild(cell);
-    });
-
-    const calendarGrid = document.createElement('div');
-    calendarGrid.id = 'calendarGrid';
-
-    calendarGridSide.appendChild(calendarHeader);
-    calendarGridSide.appendChild(calendarDowRow);
-    calendarGridSide.appendChild(calendarGrid);
-
-    const calendarPanel = document.createElement('div');
-    calendarPanel.id = 'calendarDayPanel';
-    const calendarPanelHeader = document.createElement('h3');
-    calendarPanelHeader.id = 'calendarDayHeader';
-    const calendarPanelCount = document.createElement('div');
-    calendarPanelCount.id = 'calendarDayCount';
-    const calendarPanelList = document.createElement('div');
-    calendarPanelList.id = 'calendarDayList';
-    calendarPanel.appendChild(calendarPanelHeader);
-    calendarPanel.appendChild(calendarPanelCount);
-    calendarPanel.appendChild(calendarPanelList);
-
-    calendarView.appendChild(calendarGridSide);
-    calendarView.appendChild(calendarPanel);
-
     // ── Conceive view shell ──
     // Empty container the conceiveView module owns at runtime — renderConceiveView()
     // fills it with either the concept index or the single-concept editor. Toggled
-    // via #mainBar's data-view attribute like the inbox / calendar surfaces, so
-    // none of the four views re-renders another on switch.
+    // via #mainBar's data-view attribute like the inbox surface, so
+    // none of the three views re-renders another on switch.
     const conceiveView = document.createElement('div');
     conceiveView.id = 'conceiveView';
-
-    calendarPrevBtn.addEventListener('click', function() {
-        shiftCalendarMonth(-1);
-    });
-    calendarNextBtn.addEventListener('click', function() {
-        shiftCalendarMonth(1);
-    });
-
-    // Arrow-key navigation for the calendar month-nav pair. The buttons
-    // form an isolated horizontal pair reached vertically via ArrowDown
-    // from #viewPillCalendar: ArrowLeft/ArrowRight traverse between
-    // calendarPrev and calendarNext as the inter-arrow path; on the
-    // matching-direction edge (ArrowLeft on calendarPrev, ArrowRight on
-    // calendarNext) the keystroke activates the button instead of
-    // clamping, advancing or retreating the visible month via the
-    // existing click handler. Focus stays on the same arrow afterward
-    // because renderCalendarView() only rebuilds #calendarGrid, not
-    // the header that owns these buttons. ArrowUp returns to
-    // #viewPillCalendar; ArrowDown drops into the grid using the same
-    // fallback chain as firstFocusableInActiveMainView's calendar branch.
-    // The buttons live inside #calendarView (not #nav), so their keydown
-    // never bubbles to the nav listener — they need their own handler.
-    // The nine-control walk order documented here mirrors the nav
-    // handler's extended order when the active view is calendar.
-    // Bails on modifier chords and while any modal/popover is open;
-    // bails entirely when the active view is not calendar so the
-    // listeners no-op for views where the buttons are hidden.
-    // preventDefault + stopPropagation keep the document-level
-    // cross-pane handler from also firing.
-    function calendarNavArrowKey(e) {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' &&
-            e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-        if (isAnyModalOrPopoverOpen()) return;
-        if (getActiveView() !== 'calendar') return;
-        const order = [sidebarToggle, viewPillProjects, viewPillInbox, viewPillCalendar, calendarPrevBtn, calendarNextBtn, pomodoroToggle, musicToggle, settingsToggle];
-        if (order.indexOf(e.target) === -1) return;
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            e.stopPropagation();
-            viewPillCalendar.focus();
-            return;
-        }
-        if (e.key === 'ArrowDown') {
-            const target = firstFocusableInActiveMainView();
-            if (!target) return;
-            e.preventDefault();
-            e.stopPropagation();
-            target.focus();
-            return;
-        }
-        if (e.key === 'ArrowRight') {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.target === calendarPrevBtn) calendarNextBtn.focus();
-            else if (e.target === calendarNextBtn) calendarNextBtn.click();
-            return;
-        }
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.target === calendarNextBtn) calendarPrevBtn.focus();
-            else if (e.target === calendarPrevBtn) calendarPrevBtn.click();
-            return;
-        }
-    }
-    calendarPrevBtn.addEventListener('keydown', calendarNavArrowKey);
-    calendarNextBtn.addEventListener('keydown', calendarNavArrowKey);
 
     // The view tabs ride in the desktop sub-band beneath the top header, not
     // in #navBar. They are desktop-only (display:none on mobile, where
@@ -2120,7 +1920,6 @@ function component() {
     const taskFilterBar = buildTaskFilterBar();
 
     main2.appendChild(inboxView);
-    main2.appendChild(calendarView);
     main2.appendChild(conceiveView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
@@ -3116,11 +2915,10 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        // Gated to the Projects view so the Calendar view can claim
-        // ArrowLeft / ArrowRight for grid traversal without conflict.
-        // The Today view does not need these cross-pane shortcuts — the
-        // sidebar is the same projects column either way, but the right
-        // side has no new-task input to receive ArrowRight.
+        // Gated to the Projects view. The Inbox view does not need these
+        // cross-pane shortcuts — the sidebar is the same projects column
+        // either way, but the right side has no new-task input to receive
+        // ArrowRight.
         if (getActiveView() !== 'projects') return;
         const ae = document.activeElement;
         const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
@@ -3248,9 +3046,9 @@ function component() {
         if (!isArrow && !isEnter && !isDelete) return;
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        // Gated to the Projects view. Today and Calendar have their own
-        // arrow-nav handler that walks their own surfaces; firing this one
-        // on those views would yank focus to a stale .todo-active row in
+        // Gated to the Projects view. The Inbox view has its own
+        // arrow-nav handler that walks its own surface; firing this one
+        // on that view would yank focus to a stale .todo-active row in
         // the hidden #mainList.
         if (getActiveView() !== 'projects') return;
 
@@ -3426,11 +3224,11 @@ function component() {
         }
     });
 
-    // ── Today / Calendar view arrow-key navigation ──
-    // Mirrors the Projects-view arrow-nav contract for the two dashboard
-    // views so each surface has the same "press Down, focus the next item"
+    // ── Inbox view arrow-key navigation ──
+    // Mirrors the Projects-view arrow-nav contract for the Inbox dashboard
+    // so the surface has the same "press Down, focus the next item"
     // affordance. Branches off #mainBar's data-view attribute so a single
-    // global listener covers both views without duplicating guards.
+    // global listener covers the view.
     //
     //   • TODAY    — ArrowUp / ArrowDown walk between .todayRow.todoRowCard
     //                rows inside #inboxSections in DOM order, clamping at
@@ -3439,14 +3237,6 @@ function component() {
     //                project) — when focus is on the title button instead,
     //                native Enter on the button bubbles to the row's click
     //                so the existing keyboard path keeps working.
-    //   • CALENDAR — .calendarCell elements inside #calendarGrid form a
-    //                7-column grid. ArrowLeft / ArrowRight move ±1 cell,
-    //                ArrowUp / ArrowDown move ±7 cells, all clamped to the
-    //                rendered range (no auto-advance to prev/next month).
-    //                Enter fires the cell's existing click so the day-
-    //                detail panel updates. Calendar cells are <button>s,
-    //                so native Enter already activates them; we still
-    //                handle Enter here to keep the contract uniform.
     //
     // Guards mirror the Projects-view handler: skip when any modal/popover
     // is open, when modifier keys are held, and when focus is in an editable
@@ -3464,12 +3254,12 @@ function component() {
         const mainBar = document.getElementById('mainBar');
         if (!mainBar) return;
         const view = mainBar.getAttribute('data-view');
-        if (view !== 'inbox' && view !== 'calendar') return;
+        if (view !== 'inbox') return;
 
         const ae = document.activeElement;
         const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
 
-        if (view === 'inbox') {
+        {
             // ArrowLeft / ArrowRight are unused on Today — let them fall
             // through so caret movement in any focused input still works.
             if (isLeft || isRight) return;
@@ -3548,176 +3338,6 @@ function component() {
             }
             return;
         }
-
-        // view === 'calendar'
-        const grid = document.getElementById('calendarGrid');
-        if (!grid) return;
-        const cells = Array.prototype.slice.call(grid.querySelectorAll('.calendarCell'));
-        if (cells.length === 0) return;
-
-        let currentCell = ae && ae.closest ? ae.closest('.calendarCell') : null;
-        if (currentCell && !grid.contains(currentCell)) currentCell = null;
-
-        if (isInputLike && !currentCell) return;
-
-        if (isEnter) {
-            // Cells are <button>s, so native Enter already activates them.
-            // Only handle the explicit-focus case to preserve the contract
-            // with Today; skip otherwise to avoid double-fire.
-            if (currentCell && ae === currentCell) {
-                currentCell.click();
-                e.preventDefault();
-                return;
-            }
-            // Enter on a focused day-detail row fires the row's click
-            // handler (jump to the parent project) — mirrors the Today
-            // view's contract so keyboard users get the same affordance
-            // as a mouse click on the row.
-            const dayList = document.getElementById('calendarDayList');
-            const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
-            if (dayList && panelRow && dayList.contains(panelRow) && ae === panelRow) {
-                panelRow.click();
-                e.preventDefault();
-            }
-            return;
-        }
-
-        if (!currentCell) {
-            // Day-detail panel branch: ArrowUp/ArrowDown walk
-            // .todayRow.todoRowCard rows inside #calendarDayList in DOM
-            // order, clamping at the ends (no wrap). Mirrors the Today
-            // view's row-walk so the two views feel uniform. Descendant
-            // focus (e.g. .todayRowTitle button) anchors to the row
-            // container with .todo-active applied before the next
-            // keystroke walks rows — same contract committed Projects-
-            // view rows have.
-            const dayList = document.getElementById('calendarDayList');
-            const panelRows = dayList
-                ? Array.prototype.slice.call(dayList.querySelectorAll('.todayRow.todoRowCard'))
-                : [];
-            const panelRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
-            const inPanel = !!(dayList && panelRow && dayList.contains(panelRow));
-
-            if ((isUp || isDown) && inPanel && panelRows.length > 0) {
-                // Anchor to the row container when focus is on a descendant.
-                // Mirrors the Today branch above and the committed-row
-                // .todo-active nav mode.
-                if (ae !== panelRow) {
-                    dayList.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
-                        if (el !== panelRow) el.classList.remove('todo-active');
-                    });
-                    panelRow.classList.add('todo-active');
-                    panelRow.focus();
-                    e.preventDefault();
-                    return;
-                }
-
-                // Panel→grid boundary: ArrowUp from the first
-                // .todayRow.todoRowCard lifts focus back into the grid,
-                // mirroring the grid→panel ArrowDown boundary below.
-                // Resolves the landing cell via the same fallback chain
-                // as renderCalendarView's post-rebuild re-focus:
-                // calendarSelectedKey → today → last cell.
-                if (isUp && panelRow === panelRows[0]) {
-                    let target = null;
-                    const selectedKey = getCalendarSelectedKey();
-                    if (selectedKey) {
-                        target = grid.querySelector('.calendarCell[data-date="' + selectedKey + '"]');
-                    }
-                    if (!target) {
-                        const todayKey = formatCalendarKeyForDate(new Date());
-                        target = grid.querySelector('.calendarCell[data-date="' + todayKey + '"]');
-                    }
-                    if (!target) target = cells[cells.length - 1];
-                    if (target) {
-                        panelRow.classList.remove('todo-active');
-                        target.focus();
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return;
-                    }
-                }
-
-                // In-panel row walk: ArrowUp/ArrowDown step by one row,
-                // clamping at the ends. The first-row ArrowUp escape
-                // above runs before this branch, so the clamp here only
-                // bites at the bottom edge (ArrowDown on the last row).
-                const idx = panelRows.indexOf(panelRow);
-                if (idx === -1) return;
-                const nextIdx = isDown
-                    ? Math.min(idx + 1, panelRows.length - 1)
-                    : Math.max(idx - 1, 0);
-                if (nextIdx === idx) {
-                    e.preventDefault();
-                    return;
-                }
-                const targetRow = panelRows[nextIdx];
-                dayList.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
-                    if (el !== targetRow) el.classList.remove('todo-active');
-                });
-                targetRow.classList.add('todo-active');
-                targetRow.focus();
-                e.preventDefault();
-                return;
-            }
-            return;
-        }
-        const idx = cells.indexOf(currentCell);
-        if (idx === -1) return;
-
-        // ArrowUp boundary: escape the top row of cells (idx < 7 in the
-        // 7-column grid) up to the side-nearest month-nav arrow so the
-        // arrow pair is reachable from the grid without Tab. Columns 0-2
-        // (Sun/Mon/Tue) escape to #calendarPrev; columns 3-6
-        // (Wed/Thu/Fri/Sat) escape to #calendarNext — the Wednesday tie
-        // goes right because reading order is already moving rightward
-        // when focus hits the middle column. outOfMonth cells in the top
-        // row follow the same rule (the visual leading-day distinction
-        // doesn't affect the return path). stopPropagation keeps the
-        // cross-pane ArrowLeft/ArrowRight handler from also firing.
-        if (isUp && idx < 7) {
-            const target = document.getElementById((idx % 7) <= 2 ? 'calendarPrev' : 'calendarNext');
-            if (target) {
-                target.focus();
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
-        }
-
-        // Grid→panel boundary: ArrowDown from a cell in the last rendered
-        // grid row (idx >= totalCells - 7) drops focus into the first
-        // .todayRow.todoRowCard inside #calendarDayList when at least one
-        // is present, instead of clamping. "Last row" reads off grid child
-        // count so the rule works whether the month renders 5 rows or 6,
-        // and treats in-month and outOfMonth cells in that trailing row
-        // identically (the visual difference is opacity, not navigability).
-        if (isDown) {
-            const totalCells = grid.children.length;
-            if (idx >= totalCells - 7) {
-                const dayList = document.getElementById('calendarDayList');
-                const firstPanelRow = dayList ? dayList.querySelector('.todayRow.todoRowCard') : null;
-                if (firstPanelRow) {
-                    firstPanelRow.focus();
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return;
-                }
-            }
-        }
-
-        // ±1 for left/right, ±7 for up/down (7-column grid). Clamp to the
-        // rendered range — no auto-advance to prev/next month.
-        let nextIdx = idx;
-        if (isLeft)       nextIdx = Math.max(idx - 1, 0);
-        else if (isRight) nextIdx = Math.min(idx + 1, cells.length - 1);
-        else if (isUp)    nextIdx = (idx - 7) >= 0 ? idx - 7 : idx;
-        else if (isDown)  nextIdx = (idx + 7) < cells.length ? idx + 7 : idx;
-
-        e.preventDefault();
-        if (nextIdx === idx) return;
-        const target = cells[nextIdx];
-        if (target) target.focus();
     });
 
     // *** HELPER: clears all toDo DOM elements from mainList (index 1 onward) ***
@@ -5072,21 +4692,6 @@ function firstFocusableInActiveMainView() {
         // hand the keystroke to.
         return null;
     }
-    if (view === 'calendar') {
-        const grid = document.getElementById('calendarGrid');
-        if (grid) {
-            const selected = grid.querySelector('.calendarCell.isSelected');
-            if (selected) return selected;
-            // Skip leading days from the prior month so the cold-start case
-            // (no prior selection) lands inside the visible month instead
-            // of on a dimmed outOfMonth cell.
-            const firstInMonth = grid.querySelector('.calendarCell:not(.outOfMonth)');
-            if (firstInMonth) return firstInMonth;
-            const first = grid.querySelector('.calendarCell');
-            if (first) return first;
-        }
-        return null;
-    }
     // PROJECTS view (default) — prefer the empty-state input when the
     // project has no todos, then the blank-placeholder row's #toDoInput,
     // then the first committed row's tabindex="-1" focus target.
@@ -5118,21 +4723,19 @@ function firstFocusableInActiveMainView() {
 function applyActiveView(view) {
     let safe = 'projects';
     if (view === 'inbox') safe = 'inbox';
-    else if (view === 'calendar') safe = 'calendar';
     else if (view === 'conceive') safe = 'conceive';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
     if (mainBar) mainBar.setAttribute('data-view', safe);
     // Mirror onto <body> so the desktop header's relocated pill + counts hide
-    // in INBOX / CALENDAR — at desktop widths they live in the top header, no
+    // in INBOX — at desktop widths they live in the top header, no
     // longer under the task-pane grid, so the pane-scoped rules can't reach
     // them.
     document.body.setAttribute('data-view', safe);
 
     const pillInbox    = document.getElementById('viewPillInbox');
     const pillProjects = document.getElementById('viewPillProjects');
-    const pillCalendar = document.getElementById('viewPillCalendar');
     if (pillInbox) {
         pillInbox.classList.toggle('active', safe === 'inbox');
         pillInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
@@ -5140,10 +4743,6 @@ function applyActiveView(view) {
     if (pillProjects) {
         pillProjects.classList.toggle('active', safe === 'projects');
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
-    }
-    if (pillCalendar) {
-        pillCalendar.classList.toggle('active', safe === 'calendar');
-        pillCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
     const pillConceive = document.getElementById('viewPillConceive');
     if (pillConceive) {
@@ -5156,7 +4755,6 @@ function applyActiveView(view) {
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
     const tabInbox    = document.getElementById('mobileTabInbox');
-    const tabCalendar = document.getElementById('mobileTabCalendar');
     const tabConceive = document.getElementById('mobileTabConceive');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
@@ -5165,10 +4763,6 @@ function applyActiveView(view) {
     if (tabInbox) {
         tabInbox.classList.toggle('active', safe === 'inbox');
         tabInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
-    }
-    if (tabCalendar) {
-        tabCalendar.classList.toggle('active', safe === 'calendar');
-        tabCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
     if (tabConceive) {
         tabConceive.classList.toggle('active', safe === 'conceive');
@@ -5183,15 +4777,8 @@ function applyActiveView(view) {
         // the still-selected row instead of being stuck with
         // data-empty="true".
         renderInbox();
-    } else if (safe === 'calendar') {
-        // Same reasoning as TODAY — keep .selectedProject set so PROJECTS
-        // returns to a populated mobile header. CALENDAR owns the main
-        // panel; the sidebar is hidden so the lingering class is
-        // invisible until PROJECTS reactivates.
-        resetCalendarStateToToday();
-        renderCalendarView();
     } else if (safe === 'conceive') {
-        // Same reasoning as INBOX / CALENDAR — the sidebar selection persists
+        // Same reasoning as INBOX — the sidebar selection persists
         // across the switch but is hidden while CONCEIVE owns the main panel,
         // so the lingering .selectedProject has no visual effect.
         renderConceiveView();

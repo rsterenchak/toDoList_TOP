@@ -15,7 +15,7 @@ import { showConfirmModal } from './modals.js';
 // concept's ordered stages as collapsible sections with a filled/empty status
 // dot and an editable multi-line body).
 //
-// Like inboxView.js / calendarView.js this cluster reaches the DOM via
+// Like inboxView.js this cluster reaches the DOM via
 // getElementById/createElement at call time and only exports renderConceiveView
 // — there is no back-edge into main.js. All persistence routes through
 // conceptsLogic.js; this module never touches localStorage.

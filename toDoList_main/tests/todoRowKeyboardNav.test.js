@@ -135,8 +135,8 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
     });
 
     // Reaches into the SECOND global keydown handler — the view-aware one
-    // that branches off #mainBar's data-view for Inbox / Calendar. Identified
-    // by referencing both #inboxSections and #calendarGrid; distinct from
+    // that branches off #mainBar's data-view for Inbox. Identified by
+    // referencing #inboxSections and the 'inbox' view token; distinct from
     // the Projects-view handler above.
     function extractViewArrowHandler() {
         const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
@@ -151,7 +151,7 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
                     depth--;
                     if (depth === 0) {
                         const body = main.slice(bodyStart + 1, i);
-                        if (/inboxSections/.test(body) && /calendarGrid/.test(body)) {
+                        if (/inboxSections/.test(body) && /['"]inbox['"]/.test(body)) {
                             return body;
                         }
                         break;
@@ -182,47 +182,4 @@ describe('todo row keyboard navigation — Up/Down/Enter/Delete', () => {
         expect(body).toMatch(/currentRow\.focus\(\s*\)/);
     });
 
-    it('Calendar: ArrowDown off the last grid row jumps into the first day-detail row', () => {
-        // The Calendar grid clamps ±7 moves to the rendered range, so
-        // ArrowDown from the last row used to do nothing even though
-        // #calendarDayList contains focusable .todayRow.todoRowCard
-        // children just below the grid. The boundary check computes
-        // "last row" from grid.children.length so a 5-row month and a
-        // 6-row month behave identically, and treats outOfMonth cells in
-        // the trailing row the same as in-month cells.
-        const body = extractViewArrowHandler();
-        // "Last row" is computed from totalCells, not from cells.length —
-        // the rule must use the full grid child count so the trailing
-        // outOfMonth cells participate in the boundary.
-        expect(body).toMatch(/grid\.children\.length/);
-        // idx >= totalCells - 7 is the explicit last-row predicate.
-        expect(body).toMatch(/idx\s*>=\s*totalCells\s*-\s*7/);
-        // The landing target is the first .todayRow.todoRowCard inside
-        // #calendarDayList; querySelector returns the first match.
-        expect(body).toMatch(/getElementById\(\s*['"]calendarDayList['"]\s*\)/);
-        expect(body).toMatch(/querySelector\(\s*['"]\.todayRow\.todoRowCard['"]\s*\)/);
-        // Both transitions preventDefault and stopPropagation.
-        expect(body).toMatch(/firstPanelRow\.focus\(\s*\)/);
-    });
-
-    it('Calendar: ArrowUp from the first day-detail row jumps back to a calendar cell', () => {
-        // Mirrors the grid→panel ArrowDown above. The fallback chain for
-        // picking the landing cell — calendarSelectedKey → today key →
-        // last cell — matches the post-rebuild re-focus logic in
-        // renderCalendarView so a freshly-loaded calendar with no prior
-        // selection still lands on a visible day.
-        const body = extractViewArrowHandler();
-        // The selected key is read through the getCalendarSelectedKey()
-        // accessor exported by calendarView.js (the calendar state moved
-        // out of main.js).
-        expect(body).toMatch(/getCalendarSelectedKey\(\s*\)/);
-        // Today-key fallback uses the existing formatCalendarKeyForDate helper.
-        expect(body).toMatch(/formatCalendarKeyForDate\(\s*new Date\(\s*\)\s*\)/);
-        // Last-cell fallback so the cold-start case never strands focus.
-        expect(body).toMatch(/cells\[\s*cells\.length\s*-\s*1\s*\]/);
-        // The boundary only fires when the active element is the FIRST
-        // panel row — subsequent rows would be served by row-nav between
-        // them, which is a separate concern.
-        expect(body).toMatch(/panelRow\s*===\s*panelRows\[\s*0\s*\]/);
-    });
 });

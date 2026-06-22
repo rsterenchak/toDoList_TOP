@@ -35,9 +35,9 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
-    it("returns 'calendar' when 'calendar' is persisted", () => {
-        setActiveView('calendar');
-        expect(getActiveView()).toBe('calendar');
+    it("falls back to 'projects' when a legacy 'calendar' value is persisted", () => {
+        localStorage.setItem(ACTIVE_VIEW_KEY, 'calendar');
+        expect(getActiveView()).toBe('projects');
     });
 
     it("falls back to 'projects' for a stale or hand-edited pref", () => {
