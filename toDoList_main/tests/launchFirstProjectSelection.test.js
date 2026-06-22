@@ -48,4 +48,16 @@ describe('launch selects the first project, not the last', () => {
         // re-hydrate does not snap the user back to the first project.
         expect(slice).toMatch(/honorSelect\s*\n?\s*\?\s*opts\.selectProject/);
     });
+
+    it('falls back to the empty state when no saved projects exist', () => {
+        // With zero projects the function must take the early-return branch
+        // — render the empty state and skip the auto-select block — so a
+        // fresh install does not throw on savedProjects[0] of an empty array.
+        const earlyIdx = main.indexOf('if (savedProjects.length === 0)', fnIdx);
+        expect(earlyIdx).toBeGreaterThan(fnIdx);
+        expect(earlyIdx).toBeLessThan(selIdx);
+        const earlySlice = main.slice(earlyIdx, earlyIdx + 400);
+        expect(earlySlice).toMatch(/updateEmptyState/);
+        expect(earlySlice).toMatch(/\breturn\b/);
+    });
 });

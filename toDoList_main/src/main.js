@@ -4481,7 +4481,7 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
         const mainListDiv = document.getElementById('mainList');
         // Preserve the user's current project across this in-session
         // re-render. restoreFromStorage's tail otherwise auto-selects the
-        // last project — the right cold-boot default but wrong here, where
+        // first project — the right cold-boot default but wrong here, where
         // the periodic Supabase re-hydrate would snap the view away from the
         // project being worked in every few minutes. Capture the selection
         // by name (mirroring how restoreFromStorage addresses projects)
