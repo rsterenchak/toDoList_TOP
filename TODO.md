@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Add "Generate tasks" to the Build-plan stage — decompose it into todos via Claude
+- [x] **[MEDIUM]** Add "Generate tasks" to the Build-plan stage — decompose it into todos via Claude — Completed: 2026-06-22
   - Type: feature
   - Description: Add a "Generate tasks" action to the Build-plan stage in the Conceive view that turns the plan you wrote into real todos in that project. Tapping it sends the Build-plan stage's text as the task source — plus the project's other stages (Why / Concept / Requirements / Design) as background context — to the in-app Claude (the existing Worker chat path), asking it to decompose the plan into short, well-scoped task titles. Tasks are derived only from the Build plan; the other stages inform scope and phrasing only, never invent tasks of their own. The reply opens a review modal listing the proposed tasks as a checklist (all checked by default). You uncheck any you don't want and hit "Add N tasks," which creates them as committed todos in the currently selected project. Tasks whose title already exists in the project are auto-skipped — shown greyed with an "in tasks" tag, unchecked, and excluded from the count — so re-running can't spawn duplicates. This is pure client: it reuses the exported `chatWithWorker` chat call and needs no Worker change. The modal is the review surface from the approved mockup (a focused, dismissible overlay).
   - Behavior:

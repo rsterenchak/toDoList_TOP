@@ -1,4 +1,9 @@
 import { listLogic } from './listLogic.js';
+import { openSeedTasksModal } from './seedTasksModal.js';
+
+// The SDLC stage that seeds tasks — its header gets the "Generate tasks"
+// action. Kept in sync with the label seeded by listLogic.seedStages.
+const BUILD_PLAN_LABEL = 'Build plan';
 
 // The CONCEIVE view: a per-project lifecycle surface. It renders the
 // *currently selected* project's ordered lifecycle stages (seeded with the
@@ -69,7 +74,33 @@ function buildStageSection(projectName, stage) {
         section.classList.toggle('expanded', nowOpen);
         head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
     });
-    section.appendChild(head);
+
+    // The Build-plan stage gets a "Generate tasks" action in its header — it
+    // decomposes the plan into todos via the in-app Claude. A nested <button>
+    // inside the header <button> would be invalid markup, so the header lives
+    // in a flex row alongside the action. Enabled only when the stage body is
+    // non-empty; its disabled state tracks edits via persist() below.
+    let genBtn = null;
+    if (stage.label === BUILD_PLAN_LABEL) {
+        const headerRow = document.createElement('div');
+        headerRow.className = 'conceiveStageHeaderRow';
+        headerRow.appendChild(head);
+
+        genBtn = document.createElement('button');
+        genBtn.type = 'button';
+        genBtn.className = 'conceiveGenerateTasksBtn';
+        genBtn.textContent = 'Generate tasks';
+        genBtn.setAttribute('aria-label', 'Generate tasks from the Build plan');
+        genBtn.disabled = !(stage.body && stage.body.trim());
+        genBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            openSeedTasksModal(projectName);
+        });
+        headerRow.appendChild(genBtn);
+        section.appendChild(headerRow);
+    } else {
+        section.appendChild(head);
+    }
 
     const body = document.createElement('div');
     body.className = 'conceiveStageBody';
@@ -85,6 +116,9 @@ function buildStageSection(projectName, stage) {
         listLogic.setProjectStageBody(projectName, stage.id, textarea.value);
         const nowFilled = !!(textarea.value && textarea.value.trim());
         dot.classList.toggle('filled', nowFilled);
+        // Keep the Generate-tasks action's enabled state in lockstep with the
+        // Build-plan body — it's only actionable with a non-empty plan.
+        if (genBtn) genBtn.disabled = !nowFilled;
     }
     textarea.addEventListener('input', function () {
         if (debounce) clearTimeout(debounce);

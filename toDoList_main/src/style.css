@@ -1541,6 +1541,7 @@ body {
 body:has(#confirmModalBackdrop) #claudeLauncher,
 body:has(#changelogModalBackdrop) #claudeLauncher,
 body:has(#descEditorModalBackdrop) #claudeLauncher,
+body:has(#seedTasksModalBackdrop) #claudeLauncher,
 body:has(#helpModalBackdrop) #claudeLauncher,
 body:has(#missedDatesModalBackdrop) #claudeLauncher,
 body:has(#statsModalBackdrop) #claudeLauncher,
@@ -2912,6 +2913,223 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .conceiveStageInput:focus-visible {
   outline: none;
   border-color: #6C5DF5;
+}
+
+/* Build-plan stage header row: the collapsible toggle button (flex:1) plus the
+   "Generate tasks" action pinned to the right. */
+.conceiveStageHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conceiveStageHeaderRow .conceiveStageHeader {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.conceiveGenerateTasksBtn {
+  flex: 0 0 auto;
+  margin-right: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.conceiveGenerateTasksBtn:hover { background: var(--accent-text); border-color: var(--accent-text); }
+.conceiveGenerateTasksBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+.conceiveGenerateTasksBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
+#seedTasksModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#seedTasksModal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(108, 93, 245, 0.18);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+
+#seedTasksModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+#seedTasksModalTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+#seedTasksModalClose {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+#seedTasksModalClose:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+#seedTasksModalBody {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 16px;
+  min-height: 80px;
+}
+
+.seedTasksModalLoading {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.seedTasksModalError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 8px;
+  text-align: center;
+}
+.seedTasksModalErrorMsg {
+  margin: 0;
+  color: var(--text-danger);
+}
+
+.seedTasksModalList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.seedTasksModalRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.seedTasksModalRow:hover { background: var(--bg-hover); }
+
+.seedTasksModalCheckbox {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.seedTasksModalRowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.seedTasksModalRowDup {
+  cursor: default;
+}
+.seedTasksModalRowDup:hover { background: transparent; }
+.seedTasksModalRowDup .seedTasksModalRowTitle {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.seedTasksModalRowDup .seedTasksModalCheckbox { cursor: not-allowed; }
+
+.seedTasksModalDupTag {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 0.5px solid var(--border-dim);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+#seedTasksModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+.seedTasksModalBtn {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.seedTasksModalBtn:hover { background: var(--bg-hover); }
+.seedTasksModalBtn:focus-visible {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--text-primary);
+}
+
+.seedTasksModalBtnPrimary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.seedTasksModalBtnPrimary:hover { background: var(--accent-text); border-color: var(--accent-text); }
+.seedTasksModalBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* BULK DESCRIPTION CONTROL — wrapper for the Expand All toggle.
