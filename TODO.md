@@ -44,7 +44,7 @@
   - Completed: 2026-06-21
   <!-- id: b0d338bc-60af-4aa5-82c8-ebe073733b2b -->
 
-- [ ] **[MEDIUM]** Sync per-project Conceive stages to Supabase
+- [x] **[MEDIUM]** Sync per-project Conceive stages to Supabase
   - Type: feature
   - Description: Wire the per-project `stages` and `lifecycle` (added in the per-project Conceive reshape) into the Supabase persistence path so lifecycle thinking syncs across devices, exactly the way project `color` / `sortByDue` already do. The schema columns are added manually first (the `alter table` above); this entry is the client-side threading only. Because stages live on the existing `projects` row, there's no new table and no RLS change — the row's existing per-user policy covers the new columns, and stages ride the project's existing reconciliation (last-write-wins on `updated_at`). All changes are in `listLogic.js`.
   - What changes:
@@ -62,5 +62,5 @@
     - Tests: update the projects-payload/schema test (`listLogicSchema.test.js`) to expect `stages` and `lifecycle` in `toProjectRowPayload`'s output; add a round-trip test using the jsdom supabase stub — a project with stages serializes through `toProjectRowPayload`, a stubbed server row's `stages` / `lifecycle` map back into `allProjects` on hydrate, and a null-stages server row backfills to the SDLC default. Keep the todos-no-`user_id` test green.
   - Out of scope: the lifecycle/methodology preset picker and per-project add/reorder/remove of stages (later); seeding todos into a project from its Build-plan stage (later); per-stage "Ask Claude" assist (later); field-level (sub-row) merge of stages vs other project fields (intentionally not done — whole-row LWW matches existing project-field behavior); any schema change beyond the two columns added manually; any change to the todos table or the Projects/Inbox views.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogicSchema.test.js`, `toDoList_main/tests/listLogicStagesSync.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-21
   <!-- id: 68af6035-796e-419b-8cb7-5aed6c51bce8 -->
