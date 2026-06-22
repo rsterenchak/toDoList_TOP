@@ -11,9 +11,9 @@ export const changelog = [
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
         ],
         changed: [
-            "The menu button in the top navbar now shows a solid gear icon instead of the ghost symbol.",
             "The app now opens to the first project in the sidebar on launch instead of the last-selected one.",
             "The Calendar view has been removed; navigation now offers Projects, Inbox, and Conceive.",
+            "The Conceive tab now plans the selected project's own lifecycle stages instead of a separate list of concepts.",
         ],
     },
 ];

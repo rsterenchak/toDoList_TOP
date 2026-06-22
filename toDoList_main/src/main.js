@@ -3583,10 +3583,17 @@ function component() {
 
                     console.log("called project selection");
 
-                    // Clicking a project always means the user wants the
+                    // Clicking a project normally means the user wants the
                     // project view active — switch back from TODAY if
-                    // needed before resolving the selection.
-                    applyActiveView('projects');
+                    // needed before resolving the selection. The one
+                    // exception is CONCEIVE: it's a second lens on the SAME
+                    // selected project, so a click there keeps Conceive
+                    // active and just re-renders it for the newly selected
+                    // project (handled below once the selection resolves).
+                    const stayOnConceive = getActiveView() === 'conceive';
+                    if (!stayOnConceive) {
+                        applyActiveView('projects');
+                    }
 
                     const alreadySelected = projChild.classList.contains('selectedProject');
 
@@ -3621,6 +3628,13 @@ function component() {
                         // Auto-open the Claude sheet for repo-backed projects,
                         // auto-close it for projects with no repo configured.
                         syncClaudeSheetForProject(innerValue);
+
+                        // When Conceive is the active view, the click didn't
+                        // switch away from it — re-render it so its stage
+                        // editor reflects the newly selected project.
+                        if (stayOnConceive) {
+                            renderConceiveView();
+                        }
 
                         return;
                     }
