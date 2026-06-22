@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-22',
         added: [
-            "Each Conceive stage now shows a short guidance prompt under its label describing what belongs there.",
+            "Pick an Iterative or Spec plan shape in Conceive while a project is still empty; switching reseeds its stages and the chooser disappears once you start writing.",
         ],
         changed: [
             "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
