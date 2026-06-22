@@ -223,3 +223,24 @@
   - File: `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/seedTasksModal.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a4ca5bf-baca-4173-9f2f-3f0bcd4b165a -->
+
+- [ ] **[MEDIUM]** Re-render the active project's task list after seed-todos commits so new todos appear without a project switch
+  - Type: bug
+  - Description: After Generate tasks (seed-todos) commits, the new todos are created and persisted but don't appear in the project's list until the user switches to another project and back. Root cause: the bulk-create adds the todos through the data/persist path but never re-renders the active project's `#mainList`; the commit's `applyActiveView('projects')` only flips the visible surface (the `data-view` attribute) and shows whatever `#mainList` was last rendered — the stale list from before the add. Selecting a project is what rebuilds `#mainList` from data (clear + `addToDos_restore`), which is why a project switch makes the todos show. Fix: after the bulk commit, re-render the seeded project's list the same way project selection does, so the new todos appear immediately. All changes are in `seedTasksModal.js`.
+  - What changes:
+    1. After the bulk add commits (todos added to data + persisted) and the existing switch to the Projects view, re-render the seeded project's `#mainList` once: clear its current children, then render the project's items via `addToDos_restore(listLogic.listItems(projectName), projectName)` — the same path the project-selection handler uses for a project with real items (`addAllToDo_DOM` for the empty case). Both are exported from `toDoRow.js` and already call `updateCompletedSection` + `applyTaskFilter`.
+    2. Run the re-render exactly once per batch (after all selected todos are added), not per todo, and only for the seeded `projectName`.
+  - Behavior:
+    1. Confirming the seed-todos modal shows the newly created todos in the project's list right away — no manual project switch.
+    2. They render in order with the blank compose row still pinned at the top, the completed section intact, and the filter pill counts correct (via the `applyTaskFilter` that the render path already calls).
+    3. Switching projects and back still works and shows the same list — no duplicate rows, no double-render.
+  - Implementation notes:
+    - Reproduce the project-selection render rather than inventing a new one: clear `#mainList`'s children, then `addToDos_restore(items, name)` for the seeded project (the project being conceived is the active selection, and `#mainList` always reflects the active project, so targeting it is correct). Don't append without clearing — the stale pre-seed rows are still in `#mainList`, so appending would duplicate.
+    - `seedTasksModal.js` imports `addToDos_restore` / `addAllToDo_DOM` from `toDoRow.js`; no `main.js` change and no new render path. `addToDos_restore` early-returns on an empty array, which can't happen post-add (the items include the blank placeholder), so the batch always renders.
+    - Re-render after the add and the existing view switch; doing it once after the batch avoids per-row churn.
+    - This is a fix to the landed seed-todos commit and is independent of the description/entry-generation enhancements, but it touches the same `seedTasksModal.js` — run it on its own, not concurrently with the other entries touching that file.
+    - Tests: extend `seedTasksModal.test.js` — after a commit adding N selected tasks, assert the project's list re-render runs (spy `addToDos_restore` / `addAllToDo_DOM`, or assert `#mainList` contains the new rows) without a simulated project switch, and assert it fires once per batch rather than per task. Keep the suite green.
+  - Out of scope: changing the add/persist path itself (the data is already correct); the switch-to-Projects-view behavior (kept); preserving or adjusting scroll position after the add (separate if ever needed); any change to dup-skip, the review modal, or the decompose call; the per-task description/entry generation work.
+  - File: `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/seedTasksModal.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1088826e-0b64-4fae-be31-14b1362d3b54 -->
