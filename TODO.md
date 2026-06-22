@@ -1020,7 +1020,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6f2c85ed-78a7-4388-b57e-808e43231ff2 -->
 
-- [ ] **[MEDIUM]** Add a Conceive tab for incubating project ideas through staged lifecycle sections
+- [x] **[MEDIUM]** Add a Conceive tab for incubating project ideas through staged lifecycle sections — Completed: 2026-06-21
   - Type: feature
   - Description: Add a new top-level "Conceive" view — a place to develop a project idea before it becomes a real project, walking it through a set of lifecycle stages. The view has two surfaces: a concept index (list of in-progress concepts with a "+ New concept" action and an empty state) and, on tapping a concept, a single-concept editor that renders the concept's stages as a vertical stack of collapsible sections, each with a filled/empty status dot and a multi-line editable text area. Store stages as an ordered list (not fixed fields), seeded on creation with the SDLC set — Why, Concept, Requirements, Design, Build plan — and store a `lifecycle` label on the concept (default "SDLC") shown as a small chip beside the title. The editor renders whatever stages the concept has, in order; this entry only ships the SDLC seed, but the ordered-list shape means alternate stage sets (Lean MVP, Design Thinking, etc.) can be added later as presets rather than a schema migration. Persist concepts to localStorage only for now (the offline-cache layer; Supabase mirroring is a separate follow-up), under a new `todoapp_concepts` key, with the shape mapping cleanly to a future `concepts` row. This entry is additive — leave the Inbox and Calendar views in place (removal is a separate follow-up), so the nav temporarily carries four tabs.
   - Behavior:
