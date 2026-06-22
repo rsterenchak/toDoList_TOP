@@ -86,7 +86,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0f2c416f-6ea3-4f7d-84e5-0c7a9433656f -->
 
-- [ ] **[MEDIUM]** Remove the Inbox view and its navigation (keep idea status + the per-project Ideas filter)
+- [x] **[MEDIUM]** Remove the Inbox view and its navigation (keep idea status + the per-project Ideas filter) — Completed: 2026-06-22
   - Type: feature
   - Description: The Inbox view (a cross-project list of idea-status todos) is no longer useful now that Conceive handles idea work, so remove the view and every navigation path to it. This removes the Inbox surface only — it intentionally leaves the idea-status system (`todoStatus.js`, the status popover, `buildStatusLabel`) and the per-project Ideas filter (`taskFilter.js` / `applyTaskFilter` / the ALL·Active·Ideas pills) fully intact, so idea-status todos are still creatable and still visible via the Ideas filter on each project — they are not deleted, just no longer aggregated into a dedicated view. This is a deliberate feature removal: the Inbox view/row/pill tests are expected to be deleted as part of this change (authorized below), not treated as regressions.
   - What changes:
