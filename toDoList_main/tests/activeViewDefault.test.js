@@ -20,14 +20,16 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
-    it("returns 'inbox' when 'inbox' is persisted", () => {
-        setActiveView('inbox');
-        expect(getActiveView()).toBe('inbox');
+    it("falls back to 'projects' when a legacy 'inbox' value is persisted", () => {
+        // The Inbox view was removed; a persisted 'inbox' is no longer a
+        // live token and must fall through to the 'projects' default.
+        localStorage.setItem(ACTIVE_VIEW_KEY, 'inbox');
+        expect(getActiveView()).toBe('projects');
     });
 
-    it("migrates a legacy persisted 'today' value to 'inbox' on read", () => {
+    it("falls back to 'projects' when a legacy 'today' value is persisted", () => {
         localStorage.setItem(ACTIVE_VIEW_KEY, 'today');
-        expect(getActiveView()).toBe('inbox');
+        expect(getActiveView()).toBe('projects');
     });
 
     it("returns 'projects' when 'projects' is persisted", () => {

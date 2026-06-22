@@ -13,13 +13,7 @@ export const changelog = [
         ],
         changed: [
             "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-21',
-        fixed: [
-            "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
+            "Removed the Inbox view and its navigation; idea-status todos remain available via each project's Ideas filter.",
         ],
     },
 ];

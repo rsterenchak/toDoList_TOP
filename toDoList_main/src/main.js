@@ -67,7 +67,6 @@ import { wireStatusLabelDelegation } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import { renderInbox } from './inboxView.js';
 import { renderConceiveView } from './conceiveView.js';
 import { attachDragDropImport } from './exportImport.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
@@ -163,15 +162,13 @@ function component() {
     // where the attribute is unset; if any later code path checks the
     // attribute during that window, the mobile tab bar's .active class
     // and the data-view attribute can drift out of sync, leaving
-    // #mobileProjHeader hidden by the [data-view="inbox"]
+    // #mobileProjHeader hidden by the [data-view="conceive"]
     // rules even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
-    // Mirror the routing attribute onto <body> as well. At desktop widths the
-    // workspace pill + counts are lifted out of #mainBar into #navBar, so the
-    // #mainBar[data-view] rules that hide them in INBOX no longer
-    // reach them; body[data-view] gives a hook that still does. applyActiveView
-    // keeps the two in lockstep on every flip.
+    // Mirror the routing attribute onto <body> as well so any body-scoped
+    // data-view hooks stay in lockstep with #mainBar. applyActiveView keeps
+    // the two aligned on every flip.
     document.body.dataset.view = 'projects';
 
     sideTitle.id = 'sideTit';
@@ -351,7 +348,7 @@ function component() {
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
-    // → viewPillInbox → pomodoroToggle → musicToggle → settingsToggle)
+    // → pomodoroToggle → musicToggle → settingsToggle)
     // so keyboard users can flow across the chrome without tabbing. The
     // pill references resolve at handler execution time, by which point
     // component() has finished initialising them. Bails when any
@@ -363,7 +360,7 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, viewPillInbox, pomodoroToggle, musicToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, pomodoroToggle, musicToggle, settingsToggle];
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
@@ -889,7 +886,7 @@ function component() {
     base.appendChild(bottomSheet);
 
     // ── Persistent bottom tab bar (mobile only) ──
-    // Three destinations — Projects, Inbox, Conceive — pinned to the
+    // Two destinations — Projects, Conceive — pinned to the
     // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
@@ -926,7 +923,7 @@ function component() {
     }
 
     // Inline SVG icons (24×24, currentColor stroke) — no icon library per
-    // CLAUDE.md. List and inbox-tray glyphs. Built from <rect>
+    // CLAUDE.md. List glyph. Built from <rect>
     // and <path> primitives so the SVG markup stays distinct from the
     // ghost / kebab assertions in unrelated tests.
     const ICON_LIST =
@@ -938,11 +935,6 @@ function component() {
         '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
         '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
         '</svg>';
-    const ICON_INBOX =
-        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M4 13 L8 13 L9.5 16 L14.5 16 L16 13 L20 13"/>' +
-        '<path d="M4 13 L6.5 5 L17.5 5 L20 13 L20 19 L4 19 Z"/>' +
-        '</svg>';
     // Conceive — a lightbulb glyph signalling the "incubate an idea" intent,
     // built from path primitives like the others (no icon library).
     const ICON_CONCEIVE =
@@ -953,14 +945,11 @@ function component() {
         '</svg>';
 
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
-    const mobileTabInbox    = buildMobileTab('inbox',    'Inbox',    ICON_INBOX);
     const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
     mobileTabProjects.id = 'mobileTabProjects';
-    mobileTabInbox.id    = 'mobileTabInbox';
     mobileTabConceive.id = 'mobileTabConceive';
 
     mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabInbox);
     mobileTabBar.appendChild(mobileTabConceive);
     base.appendChild(mobileTabBar);
 
@@ -1758,10 +1747,10 @@ function component() {
         activateProjectPicker();
     });
 
-    // ── top-level view switcher (Today / Projects) ──
+    // ── top-level view switcher (Projects / Conceive) ──
     // Pill bar in the top nav (anchored immediately right of the
-    // hamburger) toggles between the Today dashboard shell and the
-    // existing project view. The active view is persisted in
+    // hamburger) toggles between the project view and the Conceive
+    // incubator. The active view is persisted in
     // localStorage under `todoapp_active_view` and restored on load;
     // the pill click handlers below route through applyActiveView so
     // the same code path runs for user clicks, initial restore, and
@@ -1775,14 +1764,6 @@ function component() {
     viewSwitcher.id = 'viewSwitcher';
     viewSwitcher.setAttribute('role', 'tablist');
     viewSwitcher.setAttribute('aria-label', 'Switch view');
-
-    const viewPillInbox = document.createElement('button');
-    viewPillInbox.id = 'viewPillInbox';
-    viewPillInbox.type = 'button';
-    viewPillInbox.className = 'viewPill';
-    viewPillInbox.setAttribute('role', 'tab');
-    viewPillInbox.setAttribute('aria-pressed', 'false');
-    viewPillInbox.textContent = 'INBOX';
 
     const viewPillProjects = document.createElement('button');
     viewPillProjects.id = 'viewPillProjects';
@@ -1801,12 +1782,8 @@ function component() {
     viewPillConceive.textContent = 'CONCEIVE';
 
     viewSwitcher.appendChild(viewPillProjects);
-    viewSwitcher.appendChild(viewPillInbox);
     viewSwitcher.appendChild(viewPillConceive);
 
-    viewPillInbox.addEventListener('click', function() {
-        applyActiveView('inbox');
-    });
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
     });
@@ -1814,19 +1791,14 @@ function component() {
         applyActiveView('conceive');
     });
 
-    // ArrowDown drop-in from any of the three view pills into the visible
-    // main pane. Mirrors the sidebarToggle → first project row transition
-    // for the spatially-adjacent content directly beneath the pills. The
+    // ArrowDown drop-in from the view pills into the visible main pane.
+    // Mirrors the sidebarToggle → first project row transition for the
+    // spatially-adjacent content directly beneath the pills. The
     // destination depends on the currently active view so the keystroke
     // lands on rendered items rather than a hidden node:
     //   • PROJECTS — the blank-placeholder #toDoInput in #mainList (or
     //     #emptyStateInput when the project is empty, or the first
     //     committed #toDoChild row as a last resort).
-    //   • TODAY    — the first .todayRow.todoRowCard div in #inboxSections.
-    //     Lands on the row container (tabindex="-1"), not the inner
-    //     .todayRowTitle button, so the subsequent ArrowDown advances rows
-    //     via the document-level Today nav handler instead of being eaten
-    //     by the "anchor focus to the row container" branch.
     // Without these handlers the document-level todo arrow-nav handler at
     // best lands focus on a stale .todo-active row and at worst silently
     // no-ops — leaving the rendered items unreachable from the header
@@ -1840,75 +1812,16 @@ function component() {
         if (!target) return;
         e.preventDefault();
         e.stopPropagation();
-        // For TODAY, mark the row .todo-active so the document-level Today
-        // nav handler treats it as the current row on the next keystroke
-        // instead of re-anchoring from "no current row → first row".
-        if (target.classList && target.classList.contains('todayRow')) {
-            const sections = document.getElementById('inboxSections');
-            if (sections) {
-                sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
-                    if (el !== target) el.classList.remove('todo-active');
-                });
-            }
-            target.classList.add('todo-active');
-        }
         target.focus();
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
-    viewPillInbox.addEventListener('keydown', dropFocusIntoMainView);
     viewPillConceive.addEventListener('keydown', dropFocusIntoMainView);
-
-    // ── Today dashboard shell ──
-    // Date header, count summary, overdue/today/upcoming sections, and
-    // an empty state that only shows when every bucket is empty. The
-    // shell sits in the main panel alongside the project view and
-    // toggles via #mainBar's data-view attribute so neither view
-    // re-renders the other on switch.
-    const inboxView = document.createElement('div');
-    inboxView.id = 'inboxView';
-
-    const inboxDateHeader = document.createElement('div');
-    inboxDateHeader.id = 'inboxDateHeader';
-
-    const inboxCountSummary = document.createElement('div');
-    inboxCountSummary.id = 'inboxCountSummary';
-
-    const inboxEmpty = document.createElement('div');
-    inboxEmpty.id = 'inboxEmpty';
-    inboxEmpty.textContent = 'No items due yet — add a todo from any project to see it here';
-
-    // Mobile-only ghost spacer that anchors the Today view when the bucket
-    // counts are short. The .viewGhostSpacer rule is gated to ≤1023px in
-    // style.css, so the element is inert on desktop. flex:1 fills the
-    // remaining vertical column inside #inboxView (which is already
-    // flex-direction: column), centering the ghost + caption in whatever
-    // space is left below the date header / counts / sections. The
-    // companion-ghost preference applies via the body class set in
-    // applyCompanionGhostPreference — it hides the painted ghost while
-    // leaving the spacer's reserved space intact so the layout doesn't
-    // shift when the user toggles it.
-    const inboxGhostSpacer = document.createElement('div');
-    inboxGhostSpacer.id = 'inboxGhostSpacer';
-    inboxGhostSpacer.className = 'viewGhostSpacer';
-    inboxGhostSpacer.setAttribute('aria-hidden', 'true');
-    const inboxGhostMascot = document.createElement('div');
-    inboxGhostMascot.className = 'viewGhostMascot';
-    const inboxGhostCaption = document.createElement('div');
-    inboxGhostCaption.className = 'viewGhostCaption';
-    inboxGhostCaption.textContent = 'Nothing else due';
-    inboxGhostSpacer.appendChild(inboxGhostMascot);
-    inboxGhostSpacer.appendChild(inboxGhostCaption);
-
-    inboxView.appendChild(inboxDateHeader);
-    inboxView.appendChild(inboxCountSummary);
-    inboxView.appendChild(inboxEmpty);
-    inboxView.appendChild(inboxGhostSpacer);
 
     // ── Conceive view shell ──
     // Empty container the conceiveView module owns at runtime — renderConceiveView()
     // fills it with either the concept index or the single-concept editor. Toggled
-    // via #mainBar's data-view attribute like the inbox surface, so
-    // none of the three views re-renders another on switch.
+    // via #mainBar's data-view attribute like the projects surface, so
+    // neither view re-renders the other on switch.
     const conceiveView = document.createElement('div');
     conceiveView.id = 'conceiveView';
 
@@ -1919,7 +1832,6 @@ function component() {
     desktopViewSubBand.appendChild(viewSwitcher);
     const taskFilterBar = buildTaskFilterBar();
 
-    main2.appendChild(inboxView);
     main2.appendChild(conceiveView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
@@ -3221,122 +3133,6 @@ function component() {
             const closeBtn = focusedTodoRow.querySelector('#closeButtonToDo');
             if (closeBtn) closeBtn.click();
             e.preventDefault();
-        }
-    });
-
-    // ── Inbox view arrow-key navigation ──
-    // Mirrors the Projects-view arrow-nav contract for the Inbox dashboard
-    // so the surface has the same "press Down, focus the next item"
-    // affordance. Branches off #mainBar's data-view attribute so a single
-    // global listener covers the view.
-    //
-    //   • TODAY    — ArrowUp / ArrowDown walk between .todayRow.todoRowCard
-    //                rows inside #inboxSections in DOM order, clamping at
-    //                the top and bottom (no wrap). Enter on a focused row
-    //                fires the row's click handler (jump to the parent
-    //                project) — when focus is on the title button instead,
-    //                native Enter on the button bubbles to the row's click
-    //                so the existing keyboard path keeps working.
-    //
-    // Guards mirror the Projects-view handler: skip when any modal/popover
-    // is open, when modifier keys are held, and when focus is in an editable
-    // input/textarea/contentEditable outside the navigable surface.
-    document.addEventListener('keydown', function(e) {
-        const isUp    = e.key === 'ArrowUp';
-        const isDown  = e.key === 'ArrowDown';
-        const isLeft  = e.key === 'ArrowLeft';
-        const isRight = e.key === 'ArrowRight';
-        const isEnter = e.key === 'Enter';
-        if (!isUp && !isDown && !isLeft && !isRight && !isEnter) return;
-        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-        if (isAnyModalOrPopoverOpen()) return;
-
-        const mainBar = document.getElementById('mainBar');
-        if (!mainBar) return;
-        const view = mainBar.getAttribute('data-view');
-        if (view !== 'inbox') return;
-
-        const ae = document.activeElement;
-        const isInputLike = !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable));
-
-        {
-            // ArrowLeft / ArrowRight are unused on Today — let them fall
-            // through so caret movement in any focused input still works.
-            if (isLeft || isRight) return;
-
-            const sections = document.getElementById('inboxSections');
-            if (!sections) return;
-            const rows = Array.prototype.slice.call(sections.querySelectorAll('.todayRow.todoRowCard'));
-            if (rows.length === 0) return;
-
-            // Focus may be on the row itself, on a descendant control
-            // (e.g. .todayRowTitle button when the user just dropped in
-            // from the view pill), or elsewhere on the page.
-            let currentRow = ae && ae.closest ? ae.closest('.todayRow.todoRowCard') : null;
-            if (currentRow && !sections.contains(currentRow)) currentRow = null;
-
-            // Skip when typing in an input outside the navigable surface;
-            // descendant <button>s (the title) are fine — buttons aren't
-            // editable so isInputLike is false there.
-            if (isInputLike && !currentRow) return;
-
-            if (isUp || isDown) {
-                // Anchor focus to the row container when the user is on a
-                // descendant (e.g. .todayRowTitle button). The next keystroke
-                // moves between rows; the title button remains reachable via
-                // Enter or Tab. Mirrors the .todo-active nav-mode behavior
-                // committed Projects-view rows have.
-                if (currentRow && ae !== currentRow) {
-                    sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
-                        if (el !== currentRow) el.classList.remove('todo-active');
-                    });
-                    currentRow.classList.add('todo-active');
-                    currentRow.focus();
-                    e.preventDefault();
-                    return;
-                }
-                // ArrowUp boundary: escape the first row up to the TODAY pill
-                // so keyboard users can walk into the header chrome without
-                // reaching for the mouse. stopPropagation keeps the cross-pane
-                // ArrowLeft/ArrowRight handler from also firing.
-                if (isUp && currentRow && currentRow === rows[0]) {
-                    const pill = document.getElementById('viewPillInbox');
-                    if (pill) {
-                        currentRow.classList.remove('todo-active');
-                        pill.focus();
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return;
-                    }
-                }
-                const idx = currentRow ? rows.indexOf(currentRow) : -1;
-                let nextIdx;
-                if (isDown) {
-                    nextIdx = idx === -1 ? 0 : Math.min(idx + 1, rows.length - 1);
-                } else {
-                    nextIdx = idx === -1 ? rows.length - 1 : Math.max(idx - 1, 0);
-                }
-                const target = rows[nextIdx];
-                if (!target) return;
-                sections.querySelectorAll('.todayRow.todoRowCard.todo-active').forEach(function(el) {
-                    if (el !== target) el.classList.remove('todo-active');
-                });
-                target.classList.add('todo-active');
-                target.focus();
-                e.preventDefault();
-                return;
-            }
-
-            if (isEnter) {
-                // Only fire row.click() when focus is on the row container
-                // itself. When focus is on the title <button>, native Enter
-                // already dispatches a click that bubbles up to the row's
-                // own click handler — handling it here too would double-fire.
-                if (!currentRow || ae !== currentRow) return;
-                currentRow.click();
-                e.preventDefault();
-            }
-            return;
         }
     });
 
@@ -4675,10 +4471,8 @@ function restoreFromStorage(opts) {
     }
     focusBlankToDoInputIfDesktop();
 
-    // Honour the persisted top-level view. When the saved view is
-    // 'inbox', this also clears the auto-selected last project so the
-    // sidebar reads as "no active project" — Today owns the main panel
-    // and the project list is just navigation chrome at that point.
+    // Honour the persisted top-level view (Projects or Conceive); a
+    // legacy stored 'inbox'/'today' value falls back to Projects.
     applyActiveView(getActiveView());
 
     // First-run welcome tour — fires once when the just-seeded sample
@@ -4698,14 +4492,6 @@ function restoreFromStorage(opts) {
 // pressed from. Returns null when no suitable target is found (e.g.,
 // before component() finishes wiring).
 function firstFocusableInActiveMainView() {
-    const view = getActiveView();
-    if (view === 'inbox') {
-        // The Inbox view renders the cross-project ideas list (renderInbox).
-        // Its rows expose a status-label control but no ArrowDown drop-in
-        // target is wired for this view, so there is no focusable element to
-        // hand the keystroke to.
-        return null;
-    }
     // PROJECTS view (default) — prefer the empty-state input when the
     // project has no todos, then the blank-placeholder row's #toDoInput,
     // then the first committed row's tabindex="-1" focus target.
@@ -4725,35 +4511,27 @@ function firstFocusableInActiveMainView() {
     return null;
 }
 
-// Apply the top-level Inbox / Projects view. Module-scope so both the
+// Apply the top-level Projects / Conceive view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
 // localStorage, flips #mainBar's data-view attribute (the CSS show/hide
-// hook for the two surfaces), syncs the pill .active state, and — when
-// switching to today — clears any selected project in the sidebar and
-// refreshes the date header text. Safe to call before component() has
-// run; missing nodes short-circuit silently so the boot order stays
-// flexible.
+// hook for the two surfaces), and syncs the pill .active state. Safe to
+// call before component() has run; missing nodes short-circuit silently so
+// the boot order stays flexible.
 function applyActiveView(view) {
     let safe = 'projects';
-    if (view === 'inbox') safe = 'inbox';
-    else if (view === 'conceive') safe = 'conceive';
+    if (view === 'conceive') safe = 'conceive';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
     if (mainBar) mainBar.setAttribute('data-view', safe);
-    // Mirror onto <body> so the desktop header's relocated pill + counts hide
-    // in INBOX — at desktop widths they live in the top header, no
+    // Mirror onto <body> so the desktop header's relocated pill + counts can
+    // be hidden per view — at desktop widths they live in the top header, no
     // longer under the task-pane grid, so the pane-scoped rules can't reach
     // them.
     document.body.setAttribute('data-view', safe);
 
-    const pillInbox    = document.getElementById('viewPillInbox');
     const pillProjects = document.getElementById('viewPillProjects');
-    if (pillInbox) {
-        pillInbox.classList.toggle('active', safe === 'inbox');
-        pillInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
-    }
     if (pillProjects) {
         pillProjects.classList.toggle('active', safe === 'projects');
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
@@ -4768,33 +4546,20 @@ function applyActiveView(view) {
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
-    const tabInbox    = document.getElementById('mobileTabInbox');
     const tabConceive = document.getElementById('mobileTabConceive');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
-    }
-    if (tabInbox) {
-        tabInbox.classList.toggle('active', safe === 'inbox');
-        tabInbox.setAttribute('aria-pressed', safe === 'inbox' ? 'true' : 'false');
     }
     if (tabConceive) {
         tabConceive.classList.toggle('active', safe === 'conceive');
         tabConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
     }
 
-    if (safe === 'inbox') {
-        // The sidebar selection persists across view switches. Sidebar
-        // and #mobileProjHeader are hidden on TODAY anyway, so the
-        // lingering .selectedProject has zero visual effect — and on the
-        // return trip to PROJECTS, updateMobileProjHeader re-paints from
-        // the still-selected row instead of being stuck with
-        // data-empty="true".
-        renderInbox();
-    } else if (safe === 'conceive') {
-        // Same reasoning as INBOX — the sidebar selection persists
-        // across the switch but is hidden while CONCEIVE owns the main panel,
-        // so the lingering .selectedProject has no visual effect.
+    if (safe === 'conceive') {
+        // The sidebar selection persists across the switch but is hidden
+        // while CONCEIVE owns the main panel, so the lingering
+        // .selectedProject has no visual effect.
         renderConceiveView();
     }
 

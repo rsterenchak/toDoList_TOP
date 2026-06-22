@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the sync between #mainBar's data-view attribute (the CSS routing
-// hook that hides #mobileProjHeader on the Inbox / Conceive views) and
+// hook that hides #mobileProjHeader on the Conceive view) and
 // the active mobile tab. Two guarantees:
 //   1. #mainBar is created with data-view="projects" at the DOM build
 //      site — never sits in the DOM without an attribute value, so no
@@ -64,14 +64,11 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             );
         });
 
-        it('toggles .active on all three mobile tabs in the same function', () => {
+        it('toggles .active on both mobile tabs in the same function', () => {
             // Mobile tab .active class is owned by applyActiveView so it
             // cannot be toggled out of band from the data-view write.
             expect(body).toMatch(
                 /mobileTabProjects[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
-            );
-            expect(body).toMatch(
-                /mobileTabInbox[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
                 /mobileTabConceive[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
@@ -126,17 +123,16 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         });
     });
 
-    describe('data-view write is symmetric across all three views', () => {
+    describe('data-view write is symmetric across both views', () => {
         // The bug pattern this guards against: a future refactor that
         // hardcodes the second argument to setAttribute (e.g. always
-        // writes 'today' or always writes a non-projects value), or
-        // moves the write inside an `if (viewKey !== 'projects')` guard
-        // so the projects case never re-asserts the attribute. The
-        // header CSS rules key off `data-view="inbox" / "conceive"` —
-        // if 'projects' is never written back on the return trip, the
-        // attribute stays stuck on the last non-Projects value and
-        // #mobileProjHeader stays hidden by the [data-view="inbox"] /
-        // "conceive" rule even when the Projects tab is active.
+        // writes a non-projects value), or moves the write inside an
+        // `if (viewKey !== 'projects')` guard so the projects case never
+        // re-asserts the attribute. The header CSS rules key off
+        // `data-view="conceive"` — if 'projects' is never written back on
+        // the return trip, the attribute stays stuck on the last
+        // non-Projects value and #mobileProjHeader stays hidden by the
+        // [data-view="conceive"] rule even when the Projects tab is active.
         function extractApplyActiveView() {
             const idx = main.indexOf('function applyActiveView');
             expect(idx).toBeGreaterThan(-1);
@@ -171,16 +167,6 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(secondArg).toMatch(/^[A-Za-z_$][A-Za-z0-9_$]*$/);
         });
 
-        it('maps view === "inbox" to the same normalized value', () => {
-            // The normalization step must preserve 'inbox' as 'inbox'.
-            // If a future edit drops this branch (or renames the
-            // constant), the inbox tab would silently fall through to
-            // the 'projects' default and never activate.
-            expect(body).toMatch(
-                /if\s*\(\s*view\s*===\s*['"]inbox['"]\s*\)\s*safe\s*=\s*['"]inbox['"]/
-            );
-        });
-
         it('maps view === "conceive" to the same normalized value', () => {
             expect(body).toMatch(
                 /view\s*===\s*['"]conceive['"]\s*\)\s*safe\s*=\s*['"]conceive['"]/
@@ -198,36 +184,29 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
         it('writes data-view before the view-specific render branches', () => {
             // The attribute must be set before any branch that depends
-            // on view-specific work (renderInbox, the conceive render,
-            // etc.) so a thrown exception in those branches still leaves
-            // the CSS routing attribute in a consistent state.
+            // on view-specific work (the conceive render, etc.) so a
+            // thrown exception in those branches still leaves the CSS
+            // routing attribute in a consistent state.
             const dataViewWriteIdx = body.search(
                 /setAttribute\(\s*['"]data-view['"]/
-            );
-            const inboxBranchIdx = body.search(
-                /if\s*\(\s*safe\s*===\s*['"]inbox['"]\s*\)/
             );
             const conceiveBranchIdx = body.search(
                 /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]conceive['"]\s*\)/
             );
             expect(dataViewWriteIdx).toBeGreaterThan(-1);
-            expect(inboxBranchIdx).toBeGreaterThan(-1);
             expect(conceiveBranchIdx).toBeGreaterThan(-1);
-            expect(dataViewWriteIdx).toBeLessThan(inboxBranchIdx);
             expect(dataViewWriteIdx).toBeLessThan(conceiveBranchIdx);
         });
 
         it('produces the correct data-view attribute for every view on round-trip (runtime)', () => {
             // Source patterns above pin the shape; this test pins the
             // BEHAVIOR by lifting the normalization-and-write slice from
-            // applyActiveView and executing it against a real DOM. This
-            // is the assertion that would have caught the round-trip
-            // bug the TODO entry describes — initial → inbox →
-            // projects → conceive → projects must each leave data-view
-            // correctly synced. Extracting just the data-view slice
-            // avoids depending on the rest of main.js (pill/tab
-            // toggles, renderTodayDashboard, etc.), which can't load
-            // standalone.
+            // applyActiveView and executing it against a real DOM. The
+            // round-trip — initial → conceive → projects, with a legacy
+            // 'inbox' value falling back to projects — must each leave
+            // data-view correctly synced. Extracting just the data-view
+            // slice avoids depending on the rest of main.js (pill/tab
+            // toggles, renderers, etc.), which can't load standalone.
             const sliceStart = body.search(/let\s+safe\s*=/);
             const writeMatch = body.match(
                 /mainBar\.setAttribute\(\s*['"]data-view['"]\s*,\s*[^)]+\)\s*;?/
@@ -258,13 +237,13 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
             const mainBar = document.getElementById('mainBar');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            applyActiveView('inbox');
-            expect(mainBar.getAttribute('data-view')).toBe('inbox');
-            applyActiveView('projects');
-            expect(mainBar.getAttribute('data-view')).toBe('projects');
             applyActiveView('conceive');
             expect(mainBar.getAttribute('data-view')).toBe('conceive');
             applyActiveView('projects');
+            expect(mainBar.getAttribute('data-view')).toBe('projects');
+            // A legacy 'inbox' value is no longer a live view — it falls
+            // back to the projects default.
+            applyActiveView('inbox');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
         });
     });

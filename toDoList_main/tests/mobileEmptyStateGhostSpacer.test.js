@@ -115,19 +115,8 @@ describe('Empty-state ghost spacer — CSS', () => {
     });
 });
 
-describe('Empty-state ghost spacer — main.js Inbox view wiring', () => {
+describe('Empty-state ghost spacer — main.js companion-ghost wiring', () => {
     const js = read('main.js');
-
-    it('appends a #inboxGhostSpacer with the painted mascot and caption to #inboxView', () => {
-        expect(js).toMatch(/inboxGhostSpacer\.id\s*=\s*['"]inboxGhostSpacer['"]/);
-        expect(js).toMatch(/inboxGhostSpacer\.className\s*=\s*['"]viewGhostSpacer['"]/);
-        expect(js).toMatch(/inboxGhostMascot\.className\s*=\s*['"]viewGhostMascot['"]/);
-        expect(js).toMatch(/inboxGhostCaption\.className\s*=\s*['"]viewGhostCaption['"]/);
-        expect(js).toMatch(/inboxGhostCaption\.textContent\s*=\s*['"]Nothing else due['"]/);
-        // The spacer is the last child appended to inboxView so it sits below
-        // the date header, count summary, sections, and #inboxEmpty.
-        expect(js).toMatch(/inboxView\.appendChild\(\s*inboxGhostSpacer\s*\)/);
-    });
 
     it('defines applyCompanionGhostPreference and wires it to the initial boot + the two ghost-toggle handlers', () => {
         expect(js).toMatch(/function\s+applyCompanionGhostPreference\s*\(/);

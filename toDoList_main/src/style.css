@@ -2398,14 +2398,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* MAIN BAR */
 #mainBar {
   display: grid;
-  /* Single 1fr track for the scrollable todo list. The Inbox dashboard
+  /* Single 1fr track for the scrollable todo list. The Conceive view
      declares grid-row: 1 / -1 so it overlays
      the same area when active. The view-switch pill bar lives in the
      top nav, and the title bar that previously sat above the list has
      been retired in favor of the sidebar's project rows + the EXPAND
      ALL overlay anchored to the add-task row below. The `auto` track at the
      top holds the status filter pill row (#taskFilterBar); the 1fr track
-     below is the scrollable list. The Inbox overlay still spans
+     below is the scrollable list. The Conceive overlay still spans
      1 / -1 so it covers both tracks when active. */
   grid-template-rows: auto 1fr;
   /* A single `minmax(0, 1fr)` column pins the task pane to its container
@@ -2426,7 +2426,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* ── STATUS FILTER PILLS (ALL / Active / Ideas) ──
    Row of toggle pills above the task list that filter visible rows by their
    workflow status. Sits in #mainBar's top auto track (grid-row 1), above the
-   compose row inside #mainList. Hidden in the Inbox view. */
+   compose row inside #mainList. Covered by the Conceive overlay. */
 #taskFilterBar {
   grid-row: 1;
   display: flex;
@@ -2555,207 +2555,12 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
-/* ── TODAY DASHBOARD SHELL ──
-   Overlays rows 1-2 of #mainBar's grid so it sits in the same area the
-   project view would occupy. Hidden by default; #mainBar's data-view
-   attribute toggles which surface is visible. */
-#inboxView {
-  grid-row: 1 / -1;
-  grid-column: 1;
-  display: none;
-  flex-direction: column;
-  padding: 24px 16px;
-  background: var(--bg-base);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  min-width: 0;
-}
-
-#mainBar[data-view="inbox"] #inboxView {
-  display: flex;
-}
-
-#mainBar[data-view="inbox"] #mainList,
-#mainBar[data-view="inbox"] #mobileProjHeader,
-#mainBar[data-view="inbox"] #taskFilterBar,
-#mainBar[data-view="inbox"] #bulkDescActions {
-  display: none;
-}
-
-#inboxDateHeader {
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
-  letter-spacing: 0.01em;
-}
-
-#inboxEmpty {
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* INBOX empty state — the only node renderInbox() leaves in #inboxView when
-   no idea-status todos exist anywhere. #inboxView is a flex column, so
-   margin:auto centers this single child on both axes within the view area. */
-.inboxEmptyState {
-  margin: auto;
-  max-width: 320px;
-  text-align: center;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* INBOX idea rows — one card per cross-project idea capture. The metadata
-   line carries the shared entry-#2 .todoStatusLabel ("○ IDEA") followed by
-   the originating project name; the title sits below, muted to match the
-   idea state. */
-.inboxRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border: 1px solid var(--border-subtle, var(--text-muted));
-  border-radius: 12px;
-  background: var(--bg-elevated, transparent);
-  cursor: pointer;
-}
-
-.inboxRow:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.inboxRowCheck {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--text-muted);
-  border-radius: 50%;
-}
-
-.inboxRowBody {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.inboxRowMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.inboxRowProject {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.inboxRowTitle {
-  font-family: inherit;
-  font-size: 16px;
-  line-height: 1.35;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Decorative tap-affordance chevron on the right of each compact inbox row.
-   Purely visual — the row itself owns the tap handler. */
-.inboxRowChev {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-}
-
-/* Count summary line ─ rendered directly under the date header. Each
-   segment carries a small dot (overdue / today) plus a label; upcoming
-   skips the dot per spec. Empty segments render in muted text so the
-   layout stays stable when a bucket has no items. */
-#inboxCountSummary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: lowercase;
-  color: var(--text-muted);
-  margin: 0 0 20px 0;
-}
-
-#inboxCountSummary .todayCountSegment {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#inboxCountSummary .todayCountDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-  display: inline-block;
-}
-
-#inboxCountSummary .todayCountSep {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-#inboxCountSummary .todayCountSegment[data-bucket="overdue"]  { color: var(--text-urgent); }
-#inboxCountSummary .todayCountSegment[data-bucket="today"]    { color: var(--accent-text); }
-#inboxCountSummary .todayCountSegment[data-bucket="upcoming"] { color: var(--text-muted); }
-#inboxCountSummary .todayCountSegment[data-empty="true"]      { color: var(--text-muted); }
-
-/* Sections container — vertical stack of OVERDUE / TODAY / UPCOMING. */
-#inboxSections {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.todaySection {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.todaySectionHeader {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--accent-text);
-  margin: 0 0 4px 0;
-}
-
-.todaySectionList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 /* ── CONCEIVE VIEW ──
    The per-project lifecycle surface: the selected project's name + lifecycle
    chip, followed by its ordered stages as collapsible sections. An empty
    state shows when no project is selected. renderConceiveView() fills
    #conceiveView at runtime. Hidden by default; #mainBar's data-view attribute
-   toggles visibility, the same hook as #inboxView. */
+   toggles visibility, the same hook the project view uses. */
 #conceiveView {
   grid-row: 1 / -1;
   grid-column: 1;
@@ -5774,7 +5579,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* The view-switch pill cluster duplicates the destinations offered
-     by the persistent bottom tab bar (Projects · Inbox · Conceive) and
+     by the persistent bottom tab bar (Projects · Conceive) and
      would otherwise clip into the iOS status bar / Dynamic Island on
      the collapsed mobile nav. Hide it entirely on mobile — the bottom
      tab bar is the sole navigator at this breakpoint. */
@@ -6483,22 +6288,12 @@ body.row-dragging * { cursor: grabbing !important; }
     #navBar { padding: 0 8px; gap: 6px; }
   }
 
-  /* Inbox view top padding on mobile: reserve the device's
-     safe-area inset (so the date header / count summary clear the iOS
-     status bar and Dynamic Island on notched devices and standalone
-     PWAs) with a 24px floor so regular browser-tab contexts that report
-     a 0 inset don't hug the viewport top. The +24px content offset
-     matches the existing visible gap inside the view. */
-  #inboxView {
-    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
-  }
-
   /* ── Empty-state ghost spacer ──
-     Flex-anchored slab below the Today / Projects content list. Reuses the
+     Flex-anchored slab below the Projects content list. Reuses the
      purple ghost from the no-projects welcome screen, dimmed to 50%, so
      short item lists no longer leave a large unanchored void above the
      bottom tab bar. flex:1 1 auto lets the spacer fill remaining column
-     space inside #inboxView; min-height carves out reserved space inside
+     space; min-height carves out reserved space inside
      #mainList's grid context where flex-grow doesn't apply. When the list
      grows enough to fill the viewport, the spacer scrolls naturally below
      the visible area — no extra logic is needed to hide it. */
@@ -6545,9 +6340,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* When the existing welcome / no-todos / all-caught-up empty state is
      active, the projects spacer would stack a second ghost on the same
      screen. Hide it so the existing empty state carries the visual weight
-     alone. The Today view keeps the spacer visible alongside #inboxEmpty
-     since that empty-state is just a single line of text and the slab
-     below it would otherwise be unanchored. */
+     alone. */
   #mainList.emptyStatePresent #projectsGhostSpacer {
     display: none;
   }
@@ -7156,8 +6949,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* No bare pill when there's no active project — matches the mobile
-     empty-state contract. The inbox data-view rules (outside
-     any media query) already hide the pill in that view. */
+     empty-state contract. */
   #mobileProjHeader[data-empty="true"] {
     display: none;
   }
@@ -7638,14 +7430,6 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 11px;
     letter-spacing: 0.04em;
   }
-  /* In INBOX the pill + counts describe a project context that the
-     active view doesn't show, so hide them — mirrors the #mainBar[data-view]
-     rules that handled this when the pill still lived inside #mainBar. */
-  body[data-view="inbox"] #mobileProjHeader,
-  body[data-view="inbox"] #mobileProjStats {
-    display: none;
-  }
-
   /* No active project → the empty pill hides (data-empty), and so do the
      counts that sit beside it. In the top header the counts are a sibling of
      the pill rather than a child, so reach them with a sibling combinator. */
@@ -10637,7 +10421,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* ══════════════════════════════════════════
    Persistent bottom tab bar (mobile only)
    ──────────────────────────────────────────
-   Three destinations — Projects · Inbox · Conceive — pinned to the
+   Two destinations — Projects · Conceive — pinned to the
    bottom of the viewport at ≤1023px. Hidden on desktop. The bar shares
    --mobile-tab-h with the bottom sheet so the IDLE nub, PEEK strip, and
    swipe-zone all stack directly above the tabs without per-element
@@ -10830,11 +10614,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   /* The persistent tab bar floats above the bottom of the main panel.
      Reserve scroll padding equal to its full height — including the
      home-indicator safe-area inset the bar now absorbs — so the last
-     todo row / inbox section is reachable instead
-     of being obscured behind the tabs. Applied to every scrollable view
-     inside #mainBar so the offset is uniform across Projects and Inbox. */
-  #mainList,
-  #inboxView {
+     todo row is reachable instead
+     of being obscured behind the tabs. Applied to the scrollable list
+     inside #mainBar so the offset clears the tab bar. */
+  #mainList {
     padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }
 }

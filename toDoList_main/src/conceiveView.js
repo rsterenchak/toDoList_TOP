@@ -62,7 +62,7 @@ function parsePlanText(reply) {
 // lenses on the same selected project: its tasks (Projects view) and its
 // lifecycle thinking (here).
 //
-// Like inboxView.js this module reaches the DOM via getElementById /
+// Like the other view modules this module reaches the DOM via getElementById /
 // createElement at call time and only exports renderConceiveView — there is
 // no back-edge into main.js. All persistence routes through listLogic.js;
 // this module never touches localStorage. The selected project is resolved

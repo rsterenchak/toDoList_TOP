@@ -9,17 +9,15 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract for the top-level Inbox / Projects view switcher.
+// Pins the contract for the top-level Projects / Conceive view switcher.
 //
-// A pill bar near the top of the main panel toggles between the Inbox
-// view shell and the existing project view. The active view is
-// persisted in localStorage under `todoapp_active_view` (default
-// 'projects'). A legacy stored 'today' value migrates to 'inbox'.
-// Clicking any project row auto-switches back to PROJECTS so a project
-// context always implies the PROJECTS pill is active. The Inbox view
-// rendering is still a follow-up entry; the shell's #inboxView /
-// #inboxDateHeader / #inboxEmpty nodes remain blank for now.
-describe('Inbox view + view switcher', () => {
+// A pill bar near the top of the main panel toggles between the project
+// view and the Conceive incubator. The active view is persisted in
+// localStorage under `todoapp_active_view` (default 'projects'). A
+// persisted legacy 'inbox' / 'today' value (from the retired Inbox view)
+// falls back to 'projects'. Clicking any project row auto-switches back to
+// PROJECTS so a project context always implies the PROJECTS pill is active.
+describe('Projects / Conceive view switcher', () => {
     const main   = read('main.js');
     const prefs  = read('prefs.js');
     const css    = read('style.css');
@@ -40,16 +38,16 @@ describe('Inbox view + view switcher', () => {
             const fnIdx = prefs.indexOf('function getActiveView');
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
-            // The three live view tokens are honored when persisted —
-            // 'inbox', 'projects', and 'conceive' — and a legacy stored
-            // 'today' migrates to 'inbox'. When the key is absent (first
-            // load, cleared storage) the fallback is 'projects'. A legacy
-            // 'calendar' is NOT a live token any more, so it must fall
-            // through to the 'projects' default.
+            // The two live view tokens are honored when persisted —
+            // 'projects' and 'conceive'. When the key is absent (first
+            // load, cleared storage) the fallback is 'projects'. Legacy
+            // tokens that are no longer live ('inbox', 'today', 'calendar')
+            // are NOT honored, so they fall through to the 'projects'
+            // default.
             expect(body).toMatch(/===\s*['"]projects['"]/);
             expect(body).toMatch(/===\s*['"]conceive['"]/);
-            expect(body).toMatch(/===\s*['"]inbox['"]/);
-            expect(body).toMatch(/===\s*['"]today['"]/);
+            expect(body).not.toMatch(/===\s*['"]inbox['"]/);
+            expect(body).not.toMatch(/===\s*['"]today['"]/);
             expect(body).not.toMatch(/===\s*['"]calendar['"]/);
             expect(body).toMatch(/return\s*['"]projects['"]/);
         });
@@ -59,11 +57,11 @@ describe('Inbox view + view switcher', () => {
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
             expect(body).toMatch(/setItem\(\s*ACTIVE_VIEW_KEY/);
-            // Only 'inbox' / 'conceive' are explicitly normalized; anything
-            // else (including a legacy 'calendar') falls back to the
+            // Only 'conceive' is explicitly normalized; anything else
+            // (including a legacy 'inbox' / 'calendar') falls back to the
             // 'projects' default so a stray string can't pollute the pref.
-            expect(body).toMatch(/===\s*['"]inbox['"]/);
             expect(body).toMatch(/===\s*['"]conceive['"]/);
+            expect(body).not.toMatch(/['"]inbox['"]/);
             expect(body).not.toMatch(/['"]calendar['"]/);
         });
     });
@@ -74,12 +72,16 @@ describe('Inbox view + view switcher', () => {
             expect(main).toMatch(/setActiveView/);
         });
 
-        it('renders #viewSwitcher with INBOX and PROJECTS pills', () => {
+        it('renders #viewSwitcher with PROJECTS and CONCEIVE pills', () => {
             expect(main).toMatch(/viewSwitcher\.id\s*=\s*['"]viewSwitcher['"]/);
-            expect(main).toMatch(/viewPillInbox\.id\s*=\s*['"]viewPillInbox['"]/);
             expect(main).toMatch(/viewPillProjects\.id\s*=\s*['"]viewPillProjects['"]/);
-            expect(main).toMatch(/viewPillInbox\.textContent\s*=\s*['"]INBOX['"]/);
+            expect(main).toMatch(/viewPillConceive\.id\s*=\s*['"]viewPillConceive['"]/);
             expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]PROJECTS['"]/);
+            expect(main).toMatch(/viewPillConceive\.textContent\s*=\s*['"]CONCEIVE['"]/);
+        });
+
+        it('does not render an INBOX pill', () => {
+            expect(main).not.toMatch(/viewPillInbox/);
         });
 
         it('mounts the pill bar in the desktop view sub-band beneath the header', () => {
@@ -91,38 +93,35 @@ describe('Inbox view + view switcher', () => {
             // at every breakpoint; the chip cluster's own margin-left:auto
             // keeps it right-anchored in #navBar without the tabs present.
             expect(main).toMatch(/desktopViewSubBand\.appendChild\(\s*viewSwitcher\s*\)/);
-            expect(main).toMatch(/main2\.appendChild\(\s*inboxView\s*\)/);
+            expect(main).toMatch(/main2\.appendChild\(\s*conceiveView\s*\)/);
         });
 
         it('wires both pill buttons to applyActiveView', () => {
-            expect(main).toMatch(/viewPillInbox\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]inbox['"]/);
             expect(main).toMatch(/viewPillProjects\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]projects['"]/);
+            expect(main).toMatch(/viewPillConceive\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]conceive['"]/);
         });
 
-        it('appends pills in PROJECTS, INBOX, CONCEIVE order', () => {
-            // Visual order in the top bar: PROJECTS first, then INBOX,
-            // then CONCEIVE. Pinned so a future refactor can't silently
-            // re-shuffle the pill sequence.
+        it('appends pills in PROJECTS, CONCEIVE order', () => {
+            // Visual order in the top bar: PROJECTS first, then CONCEIVE.
+            // Pinned so a future refactor can't silently re-shuffle the
+            // pill sequence.
             expect(main).toMatch(
-                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillInbox\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillConceive\s*\)/
+                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillConceive\s*\)/
             );
         });
     });
 
-    describe('Inbox shell DOM', () => {
-        it('creates #inboxView with a #inboxDateHeader and #inboxEmpty', () => {
-            expect(main).toMatch(/inboxView\.id\s*=\s*['"]inboxView['"]/);
-            expect(main).toMatch(/inboxDateHeader\.id\s*=\s*['"]inboxDateHeader['"]/);
-            expect(main).toMatch(/inboxEmpty\.id\s*=\s*['"]inboxEmpty['"]/);
+    describe('Inbox view removal', () => {
+        it('no longer constructs the #inboxView shell or its child nodes', () => {
+            expect(main).not.toMatch(/inboxView\.id\s*=\s*['"]inboxView['"]/);
+            expect(main).not.toMatch(/inboxDateHeader/);
+            expect(main).not.toMatch(/inboxEmpty/);
+            expect(main).not.toMatch(/inboxCountSummary/);
         });
 
-        it('uses the spec’s empty-state copy', () => {
-            // Pinning the exact text so the follow-up placeholder task can
-            // tell at a glance which surfaces still render the shell-only
-            // empty state vs. the aggregated sections.
-            expect(main).toMatch(
-                /inboxEmpty\.textContent\s*=\s*['"]No items due yet — add a todo from any project to see it here['"]/
-            );
+        it('drops the renderInbox import and any call to it', () => {
+            expect(main).not.toMatch(/renderInbox/);
+            expect(main).not.toMatch(/inboxView\.js/);
         });
     });
 
@@ -152,30 +151,14 @@ describe('Inbox view + view switcher', () => {
         });
 
         it('syncs .active and aria-pressed on both pills', () => {
-            expect(body).toMatch(/viewPillInbox[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
-            expect(body).toMatch(/viewPillProjects[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
+            expect(body).toMatch(/pillProjects[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
+            expect(body).toMatch(/pillConceive[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
             expect(body).toMatch(/aria-pressed/);
         });
 
-        it('does NOT clear .selectedProject when switching to INBOX', () => {
-            // The sidebar selection persists across view switches so that
-            // returning to PROJECTS re-paints the mobile header off the
-            // still-selected sidebar row. Clearing on INBOX left
-            // #mobileProjHeader stuck with data-empty="true" on the return
-            // trip — see TODO bug entry.
-            expect(body).not.toMatch(
-                /['"]inbox['"][\s\S]{0,400}querySelector\(\s*['"]\.selectedProject['"][\s\S]{0,300}classList\.remove\(\s*['"]selectedProject['"]/
-            );
-        });
-
-
-        it('still recognizes the INBOX view without calling the removed renderers', () => {
-            // The TODAY view code was removed and the routing identifier
-            // renamed to INBOX: switching to INBOX must still flip
-            // data-view="inbox" (covered above) without invoking the
-            // deleted dashboard / date-header renderers. The INBOX
-            // placeholder content ships in a follow-up entry.
-            expect(body).toMatch(/['"]inbox['"]/);
+        it('does not reference the removed inbox view or its renderer', () => {
+            expect(body).not.toMatch(/['"]inbox['"]/);
+            expect(body).not.toMatch(/renderInbox\(/);
             expect(body).not.toMatch(/refreshTodayDateHeader\(/);
             expect(body).not.toMatch(/renderTodayDashboard\(/);
         });
@@ -193,7 +176,7 @@ describe('Inbox view + view switcher', () => {
             // ≥3 calls: two project-row click handlers + the projButton
             // (add-project) click handler. The add-project path also has
             // to flip back so the new row's todo list lands in front of
-            // the user instead of behind the dashboard.
+            // the user instead of behind another view.
             expect(calls.length).toBeGreaterThanOrEqual(3);
         });
 
@@ -219,9 +202,8 @@ describe('Inbox view + view switcher', () => {
         it('uses an `auto 1fr` grid for #mainBar — the status filter pill row above the list', () => {
             // The top `auto` track holds the status filter pill row
             // (#taskFilterBar); the 1fr track below is the scrollable list.
-            // The Today shell and Calendar view each overlay the panel via
-            // grid-row: 1 / -1 (see assertion below), so they still cover
-            // both tracks when active.
+            // The Conceive view overlays the panel via grid-row: 1 / -1 (see
+            // assertion below), so it still covers both tracks when active.
             const idx = css.indexOf('#mainBar {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
@@ -251,25 +233,21 @@ describe('Inbox view + view switcher', () => {
             expect(rule).toMatch(/background:\s*rgba\(\s*108\s*,\s*93\s*,\s*245\s*,\s*0?\.20?\s*\)/);
         });
 
-        it('hides #inboxView by default and shows it via #mainBar[data-view="inbox"]', () => {
-            const baseIdx = css.indexOf('#inboxView {');
-            expect(baseIdx).toBeGreaterThan(-1);
-            const base = css.slice(baseIdx, css.indexOf('}', baseIdx));
-            expect(base).toMatch(/display:\s*none/);
-            // Active rule
-            expect(css).toMatch(/#mainBar\[data-view="inbox"\]\s+#inboxView[\s\S]{0,160}display:\s*flex/);
+        it('drops the #inboxView rules entirely', () => {
+            expect(css).not.toMatch(/#inboxView/);
+            expect(css).not.toMatch(/data-view="inbox"/);
         });
 
-        it('hides the project view surfaces when INBOX is active', () => {
+        it('hides the project view surfaces when CONCEIVE is active', () => {
             expect(css).toMatch(
-                /#mainBar\[data-view="inbox"\]\s+#mainList[\s\S]*#mainBar\[data-view="inbox"\]\s+#mobileProjHeader[\s\S]*#mainBar\[data-view="inbox"\]\s+#bulkDescActions[\s\S]*display:\s*none/
+                /#mainBar\[data-view="conceive"\]\s+#mainList[\s\S]*#mainBar\[data-view="conceive"\]\s+#mobileProjHeader[\s\S]*#mainBar\[data-view="conceive"\]\s+#bulkDescActions[\s\S]*display:\s*none/
             );
         });
 
-        it('places #inboxView across all of #mainBar so it overlays the project content area', () => {
-            // Single-row grid now; #inboxView still spans every track so
+        it('places #conceiveView across all of #mainBar so it overlays the project content area', () => {
+            // Single-row grid now; #conceiveView still spans every track so
             // the switch is a clean swap instead of a partial overlay.
-            const idx = css.indexOf('#inboxView {');
+            const idx = css.indexOf('#conceiveView {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
             expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
@@ -296,11 +274,9 @@ describe('Inbox view + view switcher', () => {
         });
     });
 
-    // The TODAY view rendering was deleted while the tab, routing
-    // identifier, CSS branch, and keyboard-nav handlers were intentionally
-    // left in place (TODAY → INBOX rename + INBOX placeholder ship in
-    // follow-up entries). These guards pin that the renderers are gone but
-    // the shared helpers the Calendar day-detail panel depends on survive.
+    // The TODAY/Inbox view rendering was deleted while the shared helpers
+    // the Calendar day-detail panel depends on survive. These guards pin
+    // that the renderers are gone.
     describe('TODAY view code removal', () => {
         it('drops the renderTodayDashboard renderer and its exclusive helpers', () => {
             expect(main).not.toMatch(/function\s+renderTodayDashboard\b/);
@@ -318,13 +294,9 @@ describe('Inbox view + view switcher', () => {
             expect(main).not.toMatch(/refreshTodayDateHeader\s*\(/);
         });
 
-        it('removes the #inboxSections container from the Inbox shell', () => {
-            // The render target the deleted dashboard wrote into is gone.
-            // The keyboard-nav handlers still reference it by id (renamed
-            // to #inboxSections) but no longer create the element.
+        it('removes the #inboxSections container', () => {
             expect(main).not.toMatch(/inboxSections\.id\s*=\s*['"]inboxSections['"]/);
             expect(main).not.toMatch(/appendChild\(\s*inboxSections\s*\)/);
         });
-
     });
 });
