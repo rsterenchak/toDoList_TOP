@@ -113,7 +113,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 436d4778-6d2c-47d3-b6fb-1335d3d66164 -->
 
-- [ ] **[HIGH]** Re-hydrate on window focus so waking a sleeping/locked desktop pulls cross-device changes
+- [x] **[HIGH]** Re-hydrate on window focus so waking a sleeping/locked desktop pulls cross-device changes — Completed: 2026-06-22
   - Type: bug
   - Description: A change made on one device (e.g. completing a task on mobile) doesn't appear on a desktop returning from sleep/lock until a manual refresh. The re-hydrate relies on `visibilitychange→visible`, the `online` event, and a 5-minute backstop interval — but waking a sleeping or unlocking a locked desktop fires none of them promptly: sleep/lock often doesn't toggle document visibility (so `visibilitychange` never fires), the `setInterval` is suspended while the machine sleeps and won't tick until its next boundary after wake (up to 5 min), and `online` only fires if the browser registered a network drop. The reliable signal for returning to a woken/unlocked desktop is the window regaining focus, which the app doesn't listen for. Add a `window` `focus` listener that runs the same re-hydrate and realtime re-subscribe the visibility handler does, so returning to the desktop pulls fresh state immediately. Confirmed this is not the mid-edit guard — no input was focused when the staleness occurred, so the guard correctly stayed out of it and is left unchanged.
   - Behavior:
