@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Remove the Calendar view, leaving Projects, Inbox, and Conceive
+- [x] **[MEDIUM]** Remove the Calendar view, leaving Projects, Inbox, and Conceive
   - Type: feature
   - Description: Retire the unused Calendar view (a month grid of todos by due date). `calendarView.js` is a standalone module, so this is a clean deletion of the module plus its nav wiring, keyboard-nav handlers, CSS, and tests. Preserve everything the calendar merely surfaced: due dates, due-date pills, and recurring-task behavior all live in the Projects view and stay untouched — only the month-grid visualization is dropped. After this entry the tab bar carries Projects, Inbox, and Conceive; the Inbox view is removed in a separate follow-up.
   - What to remove:
@@ -17,5 +17,5 @@
   - Implementation notes: `main.js` is over 25k tokens — find the blocks with grep + offset/limit (the `applyActiveView` switch, `viewSwitcher` / mobile-tab construction, `main2.appendChild`, `calendarNavArrowKey`, the prev/next handlers, the arrow re-focus block, `firstFocusableInActiveMainView`), never a full read. Do NOT remove `advanceRecurringTodo` or the listLogic date helpers — the Projects view uses recurrence and due-date logic. The calendar key formatter is calendar-local, so it goes with the module; if grep shows an imported calendar symbol is referenced outside the removed calendar code, replace that use with listLogic's equivalent rather than leaving a dangling import. Tear down additively: strip the wiring, confirm green, then delete the module file and CSS. This also retires the open "first Enter on Calendar jumps focus to today" bug.
   - Out of scope: any change to the Projects view, due-date or recurrence logic, the Inbox view, the Conceive view, or the TODO.md viewer; removing the Inbox view (separate follow-up).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/src/calendarView.js`, `toDoList_main/tests/calendarKeyboardNav.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-21
   <!-- id: d99ce555-8d9d-4ec0-bcb6-e4315093b80a -->

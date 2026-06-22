@@ -41,13 +41,16 @@ describe('Inbox view + view switcher', () => {
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
             // The three live view tokens are honored when persisted —
-            // 'inbox', 'projects', and 'calendar' — and a legacy stored
+            // 'inbox', 'projects', and 'conceive' — and a legacy stored
             // 'today' migrates to 'inbox'. When the key is absent (first
-            // load, cleared storage) the fallback is 'projects'.
+            // load, cleared storage) the fallback is 'projects'. A legacy
+            // 'calendar' is NOT a live token any more, so it must fall
+            // through to the 'projects' default.
             expect(body).toMatch(/===\s*['"]projects['"]/);
-            expect(body).toMatch(/===\s*['"]calendar['"]/);
+            expect(body).toMatch(/===\s*['"]conceive['"]/);
             expect(body).toMatch(/===\s*['"]inbox['"]/);
             expect(body).toMatch(/===\s*['"]today['"]/);
+            expect(body).not.toMatch(/===\s*['"]calendar['"]/);
             expect(body).toMatch(/return\s*['"]projects['"]/);
         });
 
@@ -56,11 +59,12 @@ describe('Inbox view + view switcher', () => {
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
             expect(body).toMatch(/setItem\(\s*ACTIVE_VIEW_KEY/);
-            // Reject anything other than 'inbox' / 'calendar' / 'projects'
-            // so a stray string can't pollute the stored pref ('projects'
-            // is the default fallback).
+            // Only 'inbox' / 'conceive' are explicitly normalized; anything
+            // else (including a legacy 'calendar') falls back to the
+            // 'projects' default so a stray string can't pollute the pref.
             expect(body).toMatch(/===\s*['"]inbox['"]/);
-            expect(body).toMatch(/===\s*['"]calendar['"]/);
+            expect(body).toMatch(/===\s*['"]conceive['"]/);
+            expect(body).not.toMatch(/['"]calendar['"]/);
         });
     });
 
@@ -95,12 +99,12 @@ describe('Inbox view + view switcher', () => {
             expect(main).toMatch(/viewPillProjects\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]projects['"]/);
         });
 
-        it('appends pills in PROJECTS, INBOX, CALENDAR order', () => {
+        it('appends pills in PROJECTS, INBOX, CONCEIVE order', () => {
             // Visual order in the top bar: PROJECTS first, then INBOX,
-            // then CALENDAR. Pinned so a future refactor can't silently
+            // then CONCEIVE. Pinned so a future refactor can't silently
             // re-shuffle the pill sequence.
             expect(main).toMatch(
-                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillInbox\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillCalendar\s*\)/
+                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillInbox\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillConceive\s*\)/
             );
         });
     });
@@ -164,14 +168,6 @@ describe('Inbox view + view switcher', () => {
             );
         });
 
-        it('does NOT clear .selectedProject when switching to CALENDAR', () => {
-            // Same reasoning as TODAY — the sidebar selection persists so
-            // PROJECTS returns to a populated mobile header instead of an
-            // empty one.
-            expect(body).not.toMatch(
-                /['"]calendar['"][\s\S]{0,400}querySelector\(\s*['"]\.selectedProject['"][\s\S]{0,300}classList\.remove\(\s*['"]selectedProject['"]/
-            );
-        });
 
         it('still recognizes the INBOX view without calling the removed renderers', () => {
             // The TODAY view code was removed and the routing identifier
@@ -330,12 +326,5 @@ describe('Inbox view + view switcher', () => {
             expect(main).not.toMatch(/appendChild\(\s*inboxSections\s*\)/);
         });
 
-        it('keeps buildTodayRow and handleTodayCheckboxToggle — shared with the Calendar day-detail panel', () => {
-            // These row builders moved with the Calendar view into
-            // calendarView.js; assert they survive there.
-            const calendar = read('calendarView.js');
-            expect(calendar).toMatch(/function\s+buildTodayRow\b/);
-            expect(calendar).toMatch(/function\s+handleTodayCheckboxToggle\b/);
-        });
     });
 });

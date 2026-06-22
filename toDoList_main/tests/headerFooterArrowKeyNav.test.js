@@ -14,9 +14,8 @@ function read(relative) {
 // Tab order is unchanged — these arrow handlers are additive so keyboard
 // users can flow between regions without reaching for the mouse:
 //   • ArrowUp from the top project row jumps to sidebarToggle.
-//   • ArrowLeft / ArrowRight cycle across the seven header controls
-//     (hamburger, PROJECTS / INBOX / CALENDAR pills, pomodoro, music,
-//     settings).
+//   • ArrowLeft / ArrowRight cycle across the six header controls
+//     (hamburger, PROJECTS / INBOX pills, pomodoro, music, settings).
 //   • ArrowDown from projButton lands on the footer version button.
 describe('header / footer arrow-key navigation', () => {
     const main = read('main.js');
@@ -106,14 +105,14 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/['"]ArrowRight['"]/);
     });
 
-    it('nav handler walks all seven header controls in on-screen order', () => {
+    it('nav handler walks all six header controls in on-screen order', () => {
         const body = extractNavKeydown();
-        // Order must mirror the visual layout: hamburger, the three
-        // view-switcher pills (PROJECTS, INBOX, CALENDAR — that's the
-        // sequence #viewSwitcher appendChilds them in), pomodoro, music,
-        // settings. A different order would make ArrowRight land on the
-        // wrong neighbor relative to where focus appears on screen.
-        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillInbox[\s\S]*?viewPillCalendar[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
+        // Order must mirror the visual layout: hamburger, the two
+        // view-switcher pills (PROJECTS, INBOX — that's the sequence
+        // #viewSwitcher appendChilds them in), pomodoro, music, settings.
+        // A different order would make ArrowRight land on the wrong
+        // neighbor relative to where focus appears on screen.
+        const seq = body.match(/sidebarToggle[\s\S]*?viewPillProjects[\s\S]*?viewPillInbox[\s\S]*?pomodoroToggle[\s\S]*?musicToggle[\s\S]*?settingsToggle/);
         expect(seq).toBeTruthy();
     });
 
@@ -184,9 +183,9 @@ describe('header / footer arrow-key navigation', () => {
         expect(body).toMatch(/shiftKey/);
     });
 
-    // Reaches into the view-aware Inbox / Calendar keydown handler —
-    // identified by referencing both #inboxSections and #calendarGrid.
-    // Distinct from the Projects-view handler.
+    // Reaches into the view-aware Inbox keydown handler — identified by
+    // referencing #inboxSections and the 'inbox' view token. Distinct from
+    // the Projects-view handler.
     function extractViewArrowHandler() {
         const re = /document\.addEventListener\(\s*['"]keydown['"]\s*,\s*function\s*\([^)]*\)\s*\{/g;
         let match;
@@ -200,7 +199,7 @@ describe('header / footer arrow-key navigation', () => {
                     depth--;
                     if (depth === 0) {
                         const body = main.slice(bodyStart + 1, i);
-                        if (/inboxSections/.test(body) && /calendarGrid/.test(body)) {
+                        if (/inboxSections/.test(body) && /['"]inbox['"]/.test(body)) {
                             return body;
                         }
                         break;
@@ -235,45 +234,11 @@ describe('header / footer arrow-key navigation', () => {
         expect(window).toMatch(/preventDefault\(\s*\)/);
     });
 
-    it('Calendar: ArrowUp on a top-row cell escapes to the side-nearest month-nav arrow', () => {
-        // Boundary is side-aware rather than always-pill: the month-nav
-        // arrow pair (#calendarPrev / #calendarNext) sits between the
-        // pill and the grid, so ArrowUp from a top-row cell must land
-        // on whichever arrow is spatially nearer. Cells in columns 0–2
-        // (Sun/Mon/Tue) escape up to #calendarPrev; cells in columns
-        // 3–6 (Wed/Thu/Fri/Sat) escape up to #calendarNext. The pill
-        // itself is reached via a second ArrowUp from the arrows.
-        const body = extractViewArrowHandler();
-        // Locate the top-row ArrowUp branch by its `idx < 7` predicate
-        // so the assertions only consider that branch (not, for example,
-        // arrow strings that might appear in unrelated handler logic).
-        const branchMatch = body.match(/if\s*\(\s*isUp\s*&&\s*idx\s*<\s*7\s*\)\s*\{[\s\S]*?\n\s*\}/);
-        expect(branchMatch).toBeTruthy();
-        expect(branchMatch[0]).toMatch(/['"]calendarPrev['"]|calendarPrevBtn/);
-        expect(branchMatch[0]).toMatch(/['"]calendarNext['"]|calendarNextBtn/);
-    });
-
-    it('Calendar: the ArrowUp escape stops propagation so the cross-pane handler does not also fire', () => {
-        const body = extractViewArrowHandler();
-        // Locate the top-row ArrowUp branch by its `idx < 7` predicate.
-        const branchMatch = body.match(/if\s*\(\s*isUp\s*&&\s*idx\s*<\s*7\s*\)\s*\{[\s\S]*?\n\s*\}/);
-        expect(branchMatch).toBeTruthy();
-        // Without stopPropagation, the cross-pane ArrowLeft/ArrowRight
-        // handler would also fire and could yank focus into the
-        // projects list or new-task input. Without preventDefault, the
-        // keystroke would still scroll the page.
-        expect(branchMatch[0]).toMatch(/stopPropagation\(\s*\)/);
-        expect(branchMatch[0]).toMatch(/preventDefault\(\s*\)/);
-    });
-
     // Pins the ArrowDown drop-in target for each pill. The INBOX view
     // rendering is not built yet, so its branch in firstFocusableInActiveMainView
     // returns null — there is nothing to focus until the INBOX placeholder
     // ships in a follow-up entry, and the helper must not reach for the
-    // now-nonexistent .todayRow rows. CALENDAR must fall back to the first
-    // in-month cell when no .isSelected cell exists so the cold-start case
-    // (no prior selection) lands inside the visible month rather than on a
-    // dimmed leading day from the prior month.
+    // now-nonexistent .todayRow rows.
     function extractFirstFocusableHelper() {
         return extractBlock("function firstFocusableInActiveMainView");
     }
@@ -301,17 +266,5 @@ describe('header / footer arrow-key navigation', () => {
         // active marker) and re-anchors instead of stepping forward.
         expect(body).toMatch(/classList\.add\(\s*['"]todo-active['"]\s*\)/);
         expect(body).toMatch(/todayRow/);
-    });
-
-    it("CALENDAR: pill ArrowDown falls back to the first in-month cell when no .isSelected cell exists", () => {
-        const body = extractFirstFocusableHelper();
-        // The cold-start case (no prior selection) must skip the leading
-        // days from the prior month so focus lands on a cell the user can
-        // actually interact with in the visible month. .outOfMonth cells
-        // are dimmed and feel like a dead target on first keystroke.
-        const calendarBranch = body.match(/view === ['"]calendar['"][\s\S]*?return null;/);
-        expect(calendarBranch).toBeTruthy();
-        expect(calendarBranch[0]).toMatch(/\.calendarCell\.isSelected/);
-        expect(calendarBranch[0]).toMatch(/\.calendarCell:not\(\.outOfMonth\)/);
     });
 });

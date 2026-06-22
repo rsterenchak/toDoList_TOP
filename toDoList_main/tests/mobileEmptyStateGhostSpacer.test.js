@@ -40,45 +40,14 @@ function extractMobileRule(css, selector) {
     return null;
 }
 
-// The mobile fix for two related layout issues:
-//   1. Calendar hamburger overlap — the absolute-positioned #sidebarToggle
-//      collided with the calendar's next-month chevron on narrow viewports.
-//      Bumping #calendarView's mobile padding-top from a +24px content offset
-//      to +64px lifts the calendar header onto its own row beneath the
-//      hamburger.
-//   2. Empty-state void — Today and Projects views on mobile left a large
-//      unanchored void below short item lists. A mobile-only flex spacer
-//      anchored to the bottom of each view fills that void with a dimmed
-//      purple ghost mascot and a short caption ("Nothing else due" for Today,
-//      "That's all for this project" for Projects). The spacer honors the
-//      existing companion-ghost preference toggle — when turned off, the
-//      mascot+caption hide via visibility:hidden so the layout doesn't shift.
-describe('Calendar hamburger overlap fix — #calendarView mobile padding-top', () => {
-    const css = read('style.css');
-
-    it('uses an offset of at least 60px above the safe-area floor so the calendar header clears the 44×44 hamburger button', () => {
-        const rule = extractMobileRule(css, '#calendarView');
-        expect(rule).not.toBeNull();
-        const match = rule.match(
-            /padding\s*:\s*calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*(\d+)px\s*\)/
-        );
-        expect(match).not.toBeNull();
-        const offset = parseInt(match[1], 10);
-        // Hamburger sits at max(inset, 24) + 8 and is 44px tall, so its bottom
-        // edge is max(inset, 24) + 52. The calendar header needs at least
-        // ~8px of breathing room below that bottom edge.
-        expect(offset).toBeGreaterThanOrEqual(60);
-    });
-
-    it('keeps the calendar safe-area inset floor at 24px so the hamburger / top chrome stay above the iOS Dynamic Island', () => {
-        const rule = extractMobileRule(css, '#calendarView');
-        expect(rule).not.toBeNull();
-        expect(rule).toMatch(
-            /max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)/
-        );
-    });
-});
-
+// The mobile fix for the empty-state void:
+//   Empty-state void — Today and Projects views on mobile left a large
+//   unanchored void below short item lists. A mobile-only flex spacer
+//   anchored to the bottom of each view fills that void with a dimmed
+//   purple ghost mascot and a short caption ("Nothing else due" for Today,
+//   "That's all for this project" for Projects). The spacer honors the
+//   existing companion-ghost preference toggle — when turned off, the
+//   mascot+caption hide via visibility:hidden so the layout doesn't shift.
 describe('Empty-state ghost spacer — CSS', () => {
     const css = read('style.css');
     const cleaned = stripCssComments(css);

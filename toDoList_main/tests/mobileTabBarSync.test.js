@@ -10,8 +10,8 @@ function read(relative) {
 }
 
 // Pins the sync between #mainBar's data-view attribute (the CSS routing
-// hook that hides #mobileProjHeader on Today / Calendar views) and the
-// active mobile tab. Two guarantees:
+// hook that hides #mobileProjHeader on the Inbox / Conceive views) and
+// the active mobile tab. Two guarantees:
 //   1. #mainBar is created with data-view="projects" at the DOM build
 //      site — never sits in the DOM without an attribute value, so no
 //      boot-time window where the value is unset.
@@ -74,7 +74,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
                 /mobileTabInbox[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
-                /mobileTabCalendar[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
+                /mobileTabConceive[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
         });
 
@@ -132,11 +132,11 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         // writes 'today' or always writes a non-projects value), or
         // moves the write inside an `if (viewKey !== 'projects')` guard
         // so the projects case never re-asserts the attribute. The
-        // header CSS rules key off `data-view="today" / "calendar"` —
+        // header CSS rules key off `data-view="inbox" / "conceive"` —
         // if 'projects' is never written back on the return trip, the
         // attribute stays stuck on the last non-Projects value and
-        // #mobileProjHeader stays hidden by the [data-view="today"] /
-        // "calendar" rule even when the Projects tab is active.
+        // #mobileProjHeader stays hidden by the [data-view="inbox"] /
+        // "conceive" rule even when the Projects tab is active.
         function extractApplyActiveView() {
             const idx = main.indexOf('function applyActiveView');
             expect(idx).toBeGreaterThan(-1);
@@ -181,9 +181,9 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             );
         });
 
-        it('maps view === "calendar" to the same normalized value', () => {
+        it('maps view === "conceive" to the same normalized value', () => {
             expect(body).toMatch(
-                /view\s*===\s*['"]calendar['"]\s*\)\s*safe\s*=\s*['"]calendar['"]/
+                /view\s*===\s*['"]conceive['"]\s*\)\s*safe\s*=\s*['"]conceive['"]/
             );
         });
 
@@ -198,24 +198,23 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
         it('writes data-view before the view-specific render branches', () => {
             // The attribute must be set before any branch that depends
-            // on view-specific work (refreshTodayDateHeader,
-            // renderCalendarView, etc.) so a thrown exception in those
-            // branches still leaves the CSS routing attribute in a
-            // consistent state.
+            // on view-specific work (renderInbox, the conceive render,
+            // etc.) so a thrown exception in those branches still leaves
+            // the CSS routing attribute in a consistent state.
             const dataViewWriteIdx = body.search(
                 /setAttribute\(\s*['"]data-view['"]/
             );
             const inboxBranchIdx = body.search(
                 /if\s*\(\s*safe\s*===\s*['"]inbox['"]\s*\)/
             );
-            const calendarBranchIdx = body.search(
-                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]calendar['"]\s*\)/
+            const conceiveBranchIdx = body.search(
+                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]conceive['"]\s*\)/
             );
             expect(dataViewWriteIdx).toBeGreaterThan(-1);
             expect(inboxBranchIdx).toBeGreaterThan(-1);
-            expect(calendarBranchIdx).toBeGreaterThan(-1);
+            expect(conceiveBranchIdx).toBeGreaterThan(-1);
             expect(dataViewWriteIdx).toBeLessThan(inboxBranchIdx);
-            expect(dataViewWriteIdx).toBeLessThan(calendarBranchIdx);
+            expect(dataViewWriteIdx).toBeLessThan(conceiveBranchIdx);
         });
 
         it('produces the correct data-view attribute for every view on round-trip (runtime)', () => {
@@ -223,8 +222,8 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             // BEHAVIOR by lifting the normalization-and-write slice from
             // applyActiveView and executing it against a real DOM. This
             // is the assertion that would have caught the round-trip
-            // bug the TODO entry describes — initial → today →
-            // projects → calendar → projects must each leave data-view
+            // bug the TODO entry describes — initial → inbox →
+            // projects → conceive → projects must each leave data-view
             // correctly synced. Extracting just the data-view slice
             // avoids depending on the rest of main.js (pill/tab
             // toggles, renderTodayDashboard, etc.), which can't load
@@ -263,8 +262,8 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(mainBar.getAttribute('data-view')).toBe('inbox');
             applyActiveView('projects');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            applyActiveView('calendar');
-            expect(mainBar.getAttribute('data-view')).toBe('calendar');
+            applyActiveView('conceive');
+            expect(mainBar.getAttribute('data-view')).toBe('conceive');
             applyActiveView('projects');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
         });
