@@ -151,3 +151,29 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/conceiveView.js`, `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/conceiveShapes.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ec1df5f7-203f-415d-8fcf-d30982297179 -->
+
+- [ ] **[MEDIUM]** Add the one-time Iterative/Spec shape chooser to Conceive (pristine-only, reseed on switch)
+  - Type: feature
+  - Description: Add the shape chooser from the approved design to the Conceive view. While a project's stages are still empty ("pristine"), show an Iterative | Spec selector at the top that reseeds the project's stages to the chosen shape; once any stage has text, the chooser disappears and the shape is locked. New projects default to Iterative (from run 1), so the chooser is the escape hatch to Spec for spec-driven course projects. Switching is non-destructive by construction — it only reseeds while every stage body is empty, so there's never written text to lose, which is the whole reason this lives in Conceive rather than in the create flow. Depends on run 1 (the Iterative/Spec seed sets, the `lifecycle` values, and the seed helper).
+  - What changes:
+    1. `listLogic.js`: add `setProjectShape(projectName, shape)` — build the seed stages for `shape` via run 1's seed helper, replace the project's `stages` with that seed (fresh stage ids, empty bodies) and set `lifecycle` to the shape, then persist through the same project-update path a stage edit uses (`toProjectRowPayload` + `persistMutation` update, bumping `updated_at`), so the reseed saves locally and mirrors to Supabase.
+    2. `conceiveView.js`:
+       - Compute `isPristine` for the selected project = every stage body is empty after trimming. Derive it from the stages on each render; don't store a flag.
+       - When pristine, render the chooser above the stages: a segmented Iterative | Spec control reflecting the project's current shape, plus a one-line hint ("Switches the stages — pick before you start; disappears once you write anything."). Active-state mapping: `lifecycle` 'iterative' → Iterative; 'spec' or legacy 'SDLC' → Spec.
+       - Tapping the inactive shape calls `setProjectShape(projectName, shape)` and re-renders Conceive — the new shape's stages appear and the chooser remains (still pristine) until something is written.
+       - When not pristine, render no chooser.
+    3. `style.css`: style the chooser row, reusing the segmented-control and hint styling; no inline style writes from JS.
+  - Behavior:
+    1. A new Iterative-default project's Conceive shows the chooser with Iterative active. Tapping Spec swaps the stages to Why / Concept / Requirements / Design / Build plan and sets `lifecycle: 'spec'`; tapping back restores the four Iterative stages.
+    2. The moment any stage body has text, the chooser is gone and the shape is fixed — no destructive switching is ever possible.
+    3. An untouched existing project (all stage bodies empty) also shows the chooser with its current shape reflected (legacy 'SDLC' shows Spec active); any project with Conceive text shows no chooser.
+    4. The reseed persists and syncs across devices like any other project edit.
+  - Implementation notes:
+    - `setProjectShape` swaps the whole `stages` array plus `lifecycle` and routes through the existing project-update persistence (the same mirror `setProjectStageBody` uses) — don't invent a separate sync path. Reuse run 1's seed helper so the chooser and the create-time default produce identical stage sets.
+    - Pristine is computed, never persisted: all stage bodies trimmed-empty. This naturally includes brand-new projects and any untouched existing one, and naturally excludes anything with written content.
+    - Touches `conceiveView.js`'s stage rendering and `listLogic.js`'s stage handling — sequence after run 1 (and therefore after seed-todos, Suggest plan, and the stage-hints entries). One Conceive entry at a time.
+    - Tests: pristine detection (all-empty = pristine, any non-empty = not); the chooser renders only when pristine and not otherwise; `setProjectShape('spec')` replaces stages with the Spec seed and sets `lifecycle: 'spec'` and persists (spy the save/mirror), and switching to 'iterative' restores the Iterative seed; after a non-empty stage body the chooser is absent; legacy 'SDLC' renders Spec active. Keep the suite green.
+  - Out of scope: switching a project's shape after any stage has content (intentionally disallowed — pristine-only is what sidesteps the destructive-reseed problem); migrating existing projects' shapes; adding/renaming/reordering/removing individual stages from the UI (later); any change to Generate tasks or Suggest plan beyond run 1's shape-aware targeting; the concept overview/preview surface.
+  - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/conceiveShapeChooser.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: afd09085-4f23-450b-aefa-a619462e53f3 -->
