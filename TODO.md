@@ -20,7 +20,7 @@
   - Completed: 2026-06-21
   <!-- id: d99ce555-8d9d-4ec0-bcb6-e4315093b80a -->
 
-- [ ] **[MEDIUM]** Rebind Conceive to per-project stages and remove the standalone concept store
+- [x] **[MEDIUM]** Rebind Conceive to per-project stages and remove the standalone concept store
   - Type: feature
   - Description: Reshape the Conceive tab (shipped in Run 1) from a standalone collection of concepts into a per-project lifecycle surface. Each project carries its own ordered `stages` (seeded SDLC) and a `lifecycle` label, and the Conceive view renders the *currently selected* project's stages. The standalone concept store goes away entirely — no index, no "+ New concept," no concept create/rename/delete, and no graduate-to-project step (the project already exists). Projects and Conceive become two lenses on the same selected project: its tasks, and its lifecycle thinking. The Run 1 concept data is throwaway, so `conceptsLogic.js` and its `todoapp_concepts` key are removed outright with no migration. The stacked-collapsible-section editor itself is unchanged — only its data source and header change.
   - What changes:
@@ -41,5 +41,5 @@
     - Tests: replace `conceptsLogic.test.js` with `listLogic` coverage — a newly-created project seeds the five SDLC stages in order plus `lifecycle: 'SDLC'`; `setProjectStageBody` targets a stage by id; `editProject` (rename) preserves `stages`; `snapshotProjects` / `replaceAllProjects` round-trip the new fields. If any existing `listLogic` test asserts the exact project-entry shape, update it to include `stages` / `lifecycle`.
   - Out of scope: Supabase persistence/sync for project stages (Run 3 adds the `projects.stages` jsonb column and threads it through `toProjectRowPayload` + hydrate); seeding todos into a project from its Build-plan stage (later); per-stage "Ask Claude" assist (later); the lifecycle/methodology preset picker and per-project add/reorder/remove of stages (later — this entry seeds and renders the SDLC list and edits bodies only); any change to the Projects list, Inbox, the status model, or the TODO.md viewer.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/conceiveView.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/src/conceptsLogic.js`, `toDoList_main/tests/conceptsLogic.test.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-21
   <!-- id: b0d338bc-60af-4aa5-82c8-ebe073733b2b -->
