@@ -7,11 +7,16 @@
 // 'Next up' for Iterative; resolved via conceiveShapes) into real todos: it
 // sends that stage's text as the task source — plus the other non-empty stages
 // as background context — to the in-app Claude (the existing `chatWithWorker`
-// chat path), asking it to decompose the plan into short, well-scoped task
-// titles. The reply opens here as a checklist (all checked by default); the
-// user unchecks any they don't want and confirms, which creates the checked
-// tasks as committed todos in the selected project through the normal add-todo
-// path.
+// chat path), asking it to decompose the plan into short, well-scoped tasks.
+// Each proposed task carries a short imperative title (for the row + dup-skip)
+// AND a TODO.md-format backlog entry (the project's standard entry shape), so
+// every generated todo is a pipeline-ready first draft. The reply opens here as
+// a checklist (all checked by default) with compact title rows; rows whose task
+// carries an entry get a per-row "Details" toggle that reveals the entry
+// preformatted. The user unchecks any they don't want and confirms, which
+// creates the checked tasks as committed todos in the selected project through
+// the normal add-todo path — each with its entry sitting in the todo's
+// description.
 //
 // Pure client: it reuses the exported chat call and needs no Worker change.
 // Tasks are derived ONLY from the actionable stage — the other stages inform
@@ -28,8 +33,11 @@ import { listLogic } from './listLogic.js';
 import { chatWithWorker, findTargetById } from './inject.js';
 import { actionableStageLabel } from './conceiveShapes.js';
 
-// Hard ceiling on proposed tasks so a runaway reply can't flood the list.
+// Hard ceiling on proposed tasks so a runaway reply can't flood the list. The
+// title-only paths (string array / line-split fallback) allow more rows; the
+// object path (title + full TODO.md entry) caps lower since each entry is long.
 const MAX_TASKS = 20;
+const MAX_ENTRY_TASKS = 10;
 
 // Resolve a Conceive project's linked repo so Generate tasks and Suggest plan
 // ground their generation in that app's real code instead of the Worker's
@@ -51,8 +59,9 @@ export function resolveProjectRepo(projectName) {
 // context block listing each non-empty non-actionable stage first, then the
 // actionable stage (the task source — 'Build plan' for Spec projects, 'Next
 // up' for Iterative ones), with an explicit instruction to derive tasks ONLY
-// from that stage and to return ONLY a JSON array of short, imperative
-// task-title strings.
+// from that stage and to return ONLY a JSON array of {title, entry} objects,
+// where each entry is a TODO.md backlog entry in the core shape — so each
+// generated todo is a pipeline-ready first draft.
 function buildPrompt(stages, actionableLabel) {
     const sourceStage = stages.find(function (s) { return s.label === actionableLabel; });
     const sourceBody = sourceStage && sourceStage.body ? sourceStage.body.trim() : '';
@@ -74,22 +83,50 @@ function buildPrompt(stages, actionableLabel) {
     lines.push(sourceBody);
     lines.push('');
     lines.push(
-        'Decompose the ' + actionableLabel + ' above into short, well-scoped, ' +
-        'imperative task titles for a todo list. Derive tasks ONLY from the ' +
+        'Decompose the ' + actionableLabel + ' above into a set of short, ' +
+        'well-scoped tasks for a todo list. Derive tasks ONLY from the ' +
         actionableLabel + '; treat the project context sections above as background ' +
-        'for scope and phrasing, never as a source of tasks. Return ONLY a JSON ' +
-        'array of task-title strings — no prose, no code fences, no numbering.'
+        'for scope and phrasing, never as a source of tasks.'
+    );
+    lines.push('');
+    lines.push(
+        'Return ONLY a JSON array of objects — no prose, no code fences, no ' +
+        'numbering. Each object has exactly two string fields:'
+    );
+    lines.push('  { "title": "<short imperative task title>", "entry": "<a TODO.md backlog entry for this task>" }');
+    lines.push('');
+    lines.push(
+        'The "entry" value is a single string holding a TODO.md backlog entry in ' +
+        'this exact core shape (literal newlines, two-space-indented sub-bullets):'
+    );
+    lines.push('- [ ] **[PRIORITY]** <imperative title>');
+    lines.push('  - Type: bug | feature');
+    lines.push('  - Description: 1-3 concrete sentences');
+    lines.push('  - Behavior: the expected result');
+    lines.push('  - File: <repo-relative path(s)>');
+    lines.push('');
+    lines.push(
+        'PRIORITY is one of [HIGH], [MEDIUM], or [LOW]; Type is exactly "bug" or ' +
+        '"feature". Use real file paths from the project\'s source manifest when ' +
+        'available. The "title" should match the entry\'s title.'
     );
     return lines.join('\n');
 }
 
-// Parse the Worker reply into an ordered list of task titles. Strips any
-// ```json code fences and tries JSON.parse first; a string array is used
-// directly. If parsing fails (or yields a non-array), fall back to splitting
-// the reply into non-empty lines with leading `-` / `*` / `1.` markers
-// stripped — this also absorbs any stray prose the Worker's system prompt
-// adds. Capped at MAX_TASKS either way.
-export function parseTaskTitles(reply) {
+// Parse the Worker reply into an ordered list of proposed tasks, each
+// `{ title, entry }`. Strips any ```json code fences and tries JSON.parse
+// first:
+//   • An array of objects → the title + entry path: use each object's `title`
+//     and `entry`, defaulting `entry` to '' when missing/non-string, and
+//     skipping objects without a usable title. Capped at MAX_ENTRY_TASKS since
+//     entries are long.
+//   • An array of strings → titles only: each becomes `{ title, entry: '' }`,
+//     capped at MAX_TASKS.
+// If parsing fails (or yields a non-array), fall back to splitting the reply
+// into non-empty lines with leading `-` / `*` / `1.` markers stripped — titles
+// only, `{ title, entry: '' }` — which also absorbs any stray prose the
+// Worker's system prompt adds. Capped at MAX_TASKS.
+export function parseTasks(reply) {
     if (typeof reply !== 'string') return [];
     const text = reply.replace(/```(?:json)?/gi, '').trim();
     if (!text) return [];
@@ -97,10 +134,27 @@ export function parseTaskTitles(reply) {
     try {
         const parsed = JSON.parse(text);
         if (Array.isArray(parsed)) {
+            const hasObject = parsed.some(function (t) {
+                return t && typeof t === 'object' && !Array.isArray(t);
+            });
+            if (hasObject) {
+                return parsed
+                    .filter(function (t) {
+                        return t && typeof t === 'object' && typeof t.title === 'string';
+                    })
+                    .map(function (t) {
+                        return {
+                            title: t.title.trim(),
+                            entry: typeof t.entry === 'string' ? t.entry.trim() : '',
+                        };
+                    })
+                    .filter(function (t) { return t.title; })
+                    .slice(0, MAX_ENTRY_TASKS);
+            }
             return parsed
                 .filter(function (t) { return typeof t === 'string'; })
-                .map(function (t) { return t.trim(); })
-                .filter(Boolean)
+                .map(function (t) { return { title: t.trim(), entry: '' }; })
+                .filter(function (t) { return t.title; })
                 .slice(0, MAX_TASKS);
         }
     } catch (e) {
@@ -111,6 +165,7 @@ export function parseTaskTitles(reply) {
         .split('\n')
         .map(function (line) { return line.replace(/^\s*(?:[-*]|\d+[.)])\s*/, '').trim(); })
         .filter(Boolean)
+        .map(function (t) { return { title: t, entry: '' }; })
         .slice(0, MAX_TASKS);
 }
 
@@ -259,23 +314,25 @@ export function openSeedTasksModal(projectName) {
     }
 
     // ── checklist state ──
+    // Each row record holds its checkbox plus the proposed task's title and
+    // entry markdown, so confirm can recover the entry without re-parsing.
     // Tracks the live count of checked, non-duplicate rows and reflects it on
     // the footer button (label + disabled).
-    let checkboxes = [];
+    let rows = [];
     function refreshCount() {
         let n = 0;
-        checkboxes.forEach(function (cb) {
-            if (!cb.disabled && cb.checked) n += 1;
+        rows.forEach(function (r) {
+            if (!r.cb.disabled && r.cb.checked) n += 1;
         });
         addBtn.textContent = 'Add ' + n + ' task' + (n === 1 ? '' : 's');
         addBtn.disabled = n === 0;
     }
 
-    function renderChecklist(titles) {
+    function renderChecklist(tasks) {
         clear(body);
-        checkboxes = [];
+        rows = [];
 
-        if (!titles.length) {
+        if (!tasks.length) {
             renderError('No tasks could be generated from the ' + actionableLabel + '.');
             return;
         }
@@ -285,14 +342,20 @@ export function openSeedTasksModal(projectName) {
         const list = document.createElement('div');
         list.className = 'seedTasksModalList';
 
-        titles.forEach(function (rawTitle, i) {
-            const titleVal = rawTitle.trim();
+        tasks.forEach(function (task, i) {
+            const titleVal = (task.title || '').trim();
             if (!titleVal) return;
+            const entryVal = typeof task.entry === 'string' ? task.entry : '';
             const key = titleVal.toLowerCase();
             // Treat a duplicate within the proposed list itself the same as an
             // existing-task dup so the same title can't be added twice.
             const isDup = existing.has(key) || seenInList.has(key);
             seenInList.add(key);
+
+            // Each task is one item: the compact row, plus an optional
+            // collapsible entry panel beneath it.
+            const item = document.createElement('div');
+            item.className = 'seedTasksModalItem';
 
             const row = document.createElement('label');
             row.className = 'seedTasksModalRow';
@@ -314,14 +377,45 @@ export function openSeedTasksModal(projectName) {
             row.appendChild(text);
 
             if (isDup) {
+                // Dup rows stay greyed with the "in tasks" tag and no toggle.
                 const tag = document.createElement('span');
                 tag.className = 'seedTasksModalDupTag';
                 tag.textContent = 'in tasks';
                 row.appendChild(tag);
+                item.appendChild(row);
+            } else if (entryVal) {
+                // Non-duplicate task with an entry: a per-row Details toggle
+                // reveals the entry preformatted (monospace, preserved line
+                // breaks), collapsed by default and independent per row.
+                const details = document.createElement('pre');
+                details.className = 'seedTasksModalDetails';
+                details.textContent = entryVal;
+                details.hidden = true;
+
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'seedTasksModalDetailsToggle';
+                toggle.textContent = 'Details ▾';
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function (event) {
+                    // Prevent the surrounding <label> from toggling the checkbox.
+                    event.preventDefault();
+                    const willOpen = details.hidden;
+                    details.hidden = !willOpen;
+                    toggle.textContent = willOpen ? 'Details ▴' : 'Details ▾';
+                    toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                });
+
+                row.appendChild(toggle);
+                item.appendChild(row);
+                item.appendChild(details);
+            } else {
+                // Non-duplicate task with no entry: no toggle.
+                item.appendChild(row);
             }
 
-            checkboxes.push(cb);
-            list.appendChild(row);
+            rows.push({ cb: cb, title: titleVal, entry: entryVal });
+            list.appendChild(item);
         });
 
         body.appendChild(list);
@@ -345,12 +439,12 @@ export function openSeedTasksModal(projectName) {
             .then(function (res) {
                 if (closed) return;
                 const reply = res && typeof res.reply === 'string' ? res.reply : '';
-                const titles = parseTaskTitles(reply);
-                if (!titles.length) {
+                const tasks = parseTasks(reply);
+                if (!tasks.length) {
                     renderError('Couldn’t read any tasks from the reply. Please try again.');
                     return;
                 }
-                renderChecklist(titles);
+                renderChecklist(tasks);
             })
             .catch(function (e) {
                 if (closed) return;
@@ -361,15 +455,29 @@ export function openSeedTasksModal(projectName) {
 
     // Confirm: create each checked, non-duplicate task as a committed todo in
     // the selected project through the existing add-todo path (saveToStorage +
-    // Supabase insert), in list order. Then close and switch to Projects so
-    // the new tasks are immediately visible.
+    // Supabase insert), in list order. When the task carries a TODO.md entry,
+    // set it as the todo's description right after create via the existing
+    // description-update path (editToDoItem) so the mirror carries it — the
+    // add path takes only a title. Then close and switch to Projects so the
+    // new tasks are immediately visible.
     addBtn.addEventListener('click', function () {
-        const toAdd = checkboxes
-            .filter(function (cb) { return !cb.disabled && cb.checked; })
-            .map(function (cb) { return cb.value; });
+        const toAdd = rows.filter(function (r) { return !r.cb.disabled && r.cb.checked; });
         if (!toAdd.length) return;
-        toAdd.forEach(function (titleVal) {
-            listLogic.addToDo(projectName, titleVal);
+        toAdd.forEach(function (r) {
+            listLogic.addToDo(projectName, r.title);
+            if (r.entry) {
+                const items = listLogic.listItems(projectName) || [];
+                // The title is non-duplicate within the project (dups are
+                // skipped above), so exactly one item carries it — the one
+                // just added. Backfill its description and mirror the update.
+                const created = items.filter(function (it) {
+                    return it && it.tit === r.title;
+                }).pop();
+                if (created) {
+                    created.desc = r.entry;
+                    listLogic.editToDoItem(projectName, created);
+                }
+            }
         });
         close();
         // Switch to the Projects view via its pill so the wiring stays in

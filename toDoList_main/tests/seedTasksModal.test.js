@@ -15,6 +15,7 @@ const { state } = vi.hoisted(() => ({
         stages: [],
         items: [],
         added: [],
+        edited: [],
         targetId: null,
         targets: [],
     },
@@ -40,11 +41,19 @@ vi.mock('../src/listLogic.js', () => ({
         getProjectLifecycle: function () { return 'spec'; },
         getProjectTargetId: function () { return state.targetId; },
         listItems: function () { return state.items; },
-        addToDo: vi.fn(function (project, title) { state.added.push(title); }),
+        // Mirror the real add path: append a committed item (empty desc) so the
+        // confirm flow can find it by title and backfill its description.
+        addToDo: vi.fn(function (project, title) {
+            state.added.push(title);
+            state.items.push({ tit: title, desc: '' });
+            return { array: state.items };
+        }),
+        // Description-update path the confirm flow routes the entry through.
+        editToDoItem: vi.fn(function (project, item) { state.edited.push(item); }),
     },
 }));
 
-import { openSeedTasksModal, parseTaskTitles, resolveProjectRepo } from '../src/seedTasksModal.js';
+import { openSeedTasksModal, parseTasks, resolveProjectRepo } from '../src/seedTasksModal.js';
 import { chatWithWorker } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 
@@ -70,31 +79,70 @@ beforeEach(() => {
     ];
     state.items = [];
     state.added = [];
+    state.edited = [];
     state.targetId = null;
     state.targets = [];
     chatWithWorker.mockClear();
     listLogic.addToDo.mockClear();
+    listLogic.editToDoItem.mockClear();
 });
 
-describe('parseTaskTitles', () => {
-    it('parses a clean JSON array of titles', () => {
-        expect(parseTaskTitles('["Add login", "Wire logout"]'))
-            .toEqual(['Add login', 'Wire logout']);
+describe('parseTasks', () => {
+    it('parses an object array of {title, entry} pairs', () => {
+        const reply = JSON.stringify([
+            { title: 'Add login', entry: '- [ ] **[HIGH]** Add login\n  - Type: feature' },
+            { title: 'Wire logout', entry: '- [ ] **[LOW]** Wire logout\n  - Type: feature' },
+        ]);
+        expect(parseTasks(reply)).toEqual([
+            { title: 'Add login', entry: '- [ ] **[HIGH]** Add login\n  - Type: feature' },
+            { title: 'Wire logout', entry: '- [ ] **[LOW]** Wire logout\n  - Type: feature' },
+        ]);
+    });
+
+    it('defaults entry to "" when an object omits it or it is non-string', () => {
+        const reply = JSON.stringify([{ title: 'A' }, { title: 'B', entry: 42 }]);
+        expect(parseTasks(reply)).toEqual([
+            { title: 'A', entry: '' },
+            { title: 'B', entry: '' },
+        ]);
+    });
+
+    it('skips objects without a usable title', () => {
+        const reply = JSON.stringify([{ entry: 'orphan' }, { title: '  ' }, { title: 'Keep me' }]);
+        expect(parseTasks(reply)).toEqual([{ title: 'Keep me', entry: '' }]);
+    });
+
+    it('parses a plain string array as titles with empty entries', () => {
+        expect(parseTasks('["Add login", "Wire logout"]'))
+            .toEqual([
+                { title: 'Add login', entry: '' },
+                { title: 'Wire logout', entry: '' },
+            ]);
     });
 
     it('strips ```json code fences before parsing', () => {
-        expect(parseTaskTitles('```json\n["A", "B"]\n```')).toEqual(['A', 'B']);
+        expect(parseTasks('```json\n["A", "B"]\n```'))
+            .toEqual([{ title: 'A', entry: '' }, { title: 'B', entry: '' }]);
     });
 
     it('falls back to line-splitting (stripping -, *, 1. markers) for non-JSON replies', () => {
         const reply = 'Here are tasks:\n- First task\n* Second task\n1. Third task';
-        expect(parseTaskTitles(reply))
-            .toEqual(['Here are tasks:', 'First task', 'Second task', 'Third task']);
+        expect(parseTasks(reply)).toEqual([
+            { title: 'Here are tasks:', entry: '' },
+            { title: 'First task', entry: '' },
+            { title: 'Second task', entry: '' },
+            { title: 'Third task', entry: '' },
+        ]);
     });
 
-    it('caps the result at 20 titles', () => {
+    it('caps a title-only (string array) reply at 20', () => {
         const arr = Array.from({ length: 30 }, (_, i) => 'Task ' + i);
-        expect(parseTaskTitles(JSON.stringify(arr)).length).toBe(20);
+        expect(parseTasks(JSON.stringify(arr)).length).toBe(20);
+    });
+
+    it('caps an entry (object array) reply lower than the title-only path (10)', () => {
+        const arr = Array.from({ length: 30 }, (_, i) => ({ title: 'Task ' + i, entry: 'e' + i }));
+        expect(parseTasks(JSON.stringify(arr)).length).toBe(10);
     });
 });
 
@@ -117,6 +165,12 @@ describe('openSeedTasksModal — outbound prompt', () => {
         expect(prompt).not.toMatch(/###\s+Requirements/);
         // The derive-only-from-the-Build-plan instruction is present.
         expect(prompt).toMatch(/ONLY from the Build plan/i);
+        // The prompt requests title + entry objects in the core TODO.md shape.
+        expect(prompt).toContain('"title"');
+        expect(prompt).toContain('"entry"');
+        expect(prompt).toMatch(/JSON array of objects/i);
+        expect(prompt).toContain('- [ ] **[PRIORITY]**');
+        expect(prompt).toContain('- Type: bug | feature');
 
         // The call must not touch the live chat conversation: no entry_id,
         // null repo (Worker default).
@@ -258,6 +312,57 @@ describe('openSeedTasksModal — confirm creates tasks', () => {
         document.getElementById('seedTasksModalAdd').click();
 
         expect(state.added).toEqual(['Fresh']);
+    });
+});
+
+describe('openSeedTasksModal — entry Details toggle', () => {
+    it('renders a Details toggle only for non-duplicate rows that carry an entry, and reveals the preformatted entry on toggle', async () => {
+        state.items = [{ tit: 'Already there' }];
+        state.reply = JSON.stringify([
+            { title: 'Has entry', entry: '- [ ] **[MEDIUM]** Has entry\n  - Type: feature' },
+            { title: 'No entry', entry: '' },
+            { title: 'Already there', entry: '- [ ] **[LOW]** Already there\n  - Type: feature' },
+        ]);
+        openSeedTasksModal('Proj');
+        await flush();
+
+        const toggles = document.querySelectorAll('.seedTasksModalDetailsToggle');
+        // Only the non-duplicate task with a non-empty entry gets a toggle.
+        expect(toggles.length).toBe(1);
+
+        const details = document.querySelector('.seedTasksModalDetails');
+        expect(details).toBeTruthy();
+        expect(details.hidden).toBe(true);
+        expect(details.textContent).toContain('- [ ] **[MEDIUM]** Has entry');
+
+        const toggle = toggles[0];
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        toggle.click();
+        expect(details.hidden).toBe(false);
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+        toggle.click();
+        expect(details.hidden).toBe(true);
+    });
+});
+
+describe('openSeedTasksModal — confirm sets the entry as the todo description', () => {
+    it('creates each checked task and backfills its entry via editToDoItem', async () => {
+        state.reply = JSON.stringify([
+            { title: 'First', entry: '- [ ] **[HIGH]** First\n  - Type: feature' },
+            { title: 'Second', entry: '' },
+        ]);
+        openSeedTasksModal('Proj');
+        await flush();
+
+        document.getElementById('seedTasksModalAdd').click();
+
+        // Both titles created through the add path.
+        expect(state.added).toEqual(['First', 'Second']);
+        // Only the task with a non-empty entry gets a description-update call.
+        expect(listLogic.editToDoItem).toHaveBeenCalledTimes(1);
+        const editedItem = state.edited[0];
+        expect(editedItem.tit).toBe('First');
+        expect(editedItem.desc).toBe('- [ ] **[HIGH]** First\n  - Type: feature');
     });
 });
 
