@@ -19,3 +19,21 @@
   - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/seedTasksModal.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/seedTasksModal.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3523bcc2-4d92-47fb-a92b-7e86b9560a38 -->
+
+- [ ] **[LOW]** Route seed-todos decomposition through deep-think (Opus) via a deep flag on chatWithWorker
+  - Type: feature
+  - Description: The seed-todos "Generate tasks" call currently goes through `chatWithWorker` with no deep flag, so the Worker runs it on the default fast model (`claude-sonnet-4-6`). Task decomposition benefits from the stronger model, and the Worker already supports it — its chat branch routes `body.deep_think === true` to `claude-opus-4-8` with adaptive thinking + high effort, falling back to Sonnet otherwise. `chatWithWorker` just doesn't forward that flag yet. Add an optional `deep` parameter to `chatWithWorker` that sets `deep_think: true` on the Worker payload when truthy, and pass it only from the seed-todos call — so seed-todos goes heavy while every other chat turn (the normal composer chat, iterate, layout-inspector turns) stays on the fast default untouched. No Worker change — `deep_think` already exists server-side and is backward-compatible (an absent flag is today's behavior).
+  - What changes:
+    1. `inject.js` — `chatWithWorker`: add a trailing optional parameter (e.g. `deep`) to the signature, and in the payload assembly add `if (deep) payload.deep_think = true;` alongside the existing optional fields. Default falsy, so every current caller is unaffected.
+    2. `seedTasksModal.js` — the decompose call: pass the new flag as true. Since it's a trailing positional arg after the existing five (`messages, entryId, attachFiles, repo, suggestedAttachFiles`), the call becomes `chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, null, undefined, true)`.
+  - Behavior:
+    1. Tapping "Generate tasks" sends `deep_think: true`; the Worker runs the decomposition on Opus 4.8 with adaptive thinking — slower and pricier per call, but better-scoped tasks. The review modal's loading/error/commit flow is otherwise unchanged.
+    2. The normal composer chat, the iterate seed, and layout-inspector turns continue to send no deep flag and run on the fast Sonnet default — no cost or latency change anywhere except the seed-todos call.
+  - Implementation notes:
+    - This is purely additive to `chatWithWorker`'s signature — do not change how the existing five parameters are passed at any current call site. Only the seed-todos call supplies the sixth arg.
+    - `repo` stays `null` on the seed-todos call (decomposition needs no repo context); `deep` rides independently of it.
+    - Tests: extend `seedTasksModal.test.js` to assert the outbound `chatWithWorker` call passes the deep flag as true (or, if asserting at the payload level, that `deep_think: true` is set); add/extend an `inject.js` chat test to assert `chatWithWorker(..., true)` sets `deep_think: true` on the payload while a call without it omits the field. Keep the suite green.
+  - Out of scope: any Worker change (the `deep_think` branch and Opus routing already exist server-side); a user-facing fast/deep toggle for seed-todos (it's always deep by design); changing the composer's own deep-send path; changing the default chat model; the deep model choice or effort level (set in the Worker).
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/seedTasksModal.test.js`, `toDoList_main/tests/inject.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3ae418e7-08ca-45ff-8808-15c196420ce1 -->
