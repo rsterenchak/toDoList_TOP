@@ -62,23 +62,19 @@ export function hasSidebarWidthPref() {
     }
 }
 
-// ── active top-level view (inbox vs. projects vs. calendar vs. conceive) ──
-// The main panel hosts four top-level views: the Inbox view, the
-// project view, the Calendar month grid, and the Conceive incubator.
-// The pill bar in the top nav switches between them; this pref restores
-// the active view across reloads. Default is 'projects' so first-time
-// users (or anyone whose storage was cleared) land on the project list;
-// any stored value other than the four known tokens also falls back to
-// 'projects' so a stale or hand-edited pref can't desync the renderer. A
-// legacy stored value of 'today' (from before the Inbox rename) migrates
-// to 'inbox' on read so existing users don't see undefined behavior.
+// ── active top-level view (projects vs. conceive) ──
+// The main panel hosts two top-level views: the project view and the
+// Conceive incubator. The pill bar in the top nav switches between them;
+// this pref restores the active view across reloads. Default is 'projects'
+// so first-time users (or anyone whose storage was cleared) land on the
+// project list; any stored value other than the two known tokens also
+// falls back to 'projects' so a stale or hand-edited pref can't desync the
+// renderer — this includes legacy 'inbox' / 'calendar' / 'today' values
+// from before those views were retired, which now resolve to 'projects'.
 export function getActiveView() {
     try {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
-        if (v === 'projects') return 'projects';
-        if (v === 'calendar') return 'calendar';
         if (v === 'conceive') return 'conceive';
-        if (v === 'inbox' || v === 'today') return 'inbox';
         return 'projects';
     } catch (e) {
         return 'projects';
@@ -87,10 +83,7 @@ export function getActiveView() {
 
 export function setActiveView(view) {
     try {
-        let stored = 'projects';
-        if (view === 'inbox') stored = 'inbox';
-        else if (view === 'calendar') stored = 'calendar';
-        else if (view === 'conceive') stored = 'conceive';
+        const stored = view === 'conceive' ? 'conceive' : 'projects';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }

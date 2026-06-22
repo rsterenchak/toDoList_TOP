@@ -53,32 +53,6 @@ function extractMobileRule(css, selector) {
 //      "That's all for this project" for Projects). The spacer honors the
 //      existing companion-ghost preference toggle — when turned off, the
 //      mascot+caption hide via visibility:hidden so the layout doesn't shift.
-describe('Calendar hamburger overlap fix — #calendarView mobile padding-top', () => {
-    const css = read('style.css');
-
-    it('uses an offset of at least 60px above the safe-area floor so the calendar header clears the 44×44 hamburger button', () => {
-        const rule = extractMobileRule(css, '#calendarView');
-        expect(rule).not.toBeNull();
-        const match = rule.match(
-            /padding\s*:\s*calc\(\s*max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)\s*\+\s*(\d+)px\s*\)/
-        );
-        expect(match).not.toBeNull();
-        const offset = parseInt(match[1], 10);
-        // Hamburger sits at max(inset, 24) + 8 and is 44px tall, so its bottom
-        // edge is max(inset, 24) + 52. The calendar header needs at least
-        // ~8px of breathing room below that bottom edge.
-        expect(offset).toBeGreaterThanOrEqual(60);
-    });
-
-    it('keeps the calendar safe-area inset floor at 24px so the hamburger / top chrome stay above the iOS Dynamic Island', () => {
-        const rule = extractMobileRule(css, '#calendarView');
-        expect(rule).not.toBeNull();
-        expect(rule).toMatch(
-            /max\(\s*env\(\s*safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*24px\s*\)/
-        );
-    });
-});
-
 describe('Empty-state ghost spacer — CSS', () => {
     const css = read('style.css');
     const cleaned = stripCssComments(css);
@@ -148,17 +122,6 @@ describe('Empty-state ghost spacer — CSS', () => {
 
 describe('Empty-state ghost spacer — main.js Inbox view wiring', () => {
     const js = read('main.js');
-
-    it('appends a #inboxGhostSpacer with the painted mascot and caption to #inboxView', () => {
-        expect(js).toMatch(/inboxGhostSpacer\.id\s*=\s*['"]inboxGhostSpacer['"]/);
-        expect(js).toMatch(/inboxGhostSpacer\.className\s*=\s*['"]viewGhostSpacer['"]/);
-        expect(js).toMatch(/inboxGhostMascot\.className\s*=\s*['"]viewGhostMascot['"]/);
-        expect(js).toMatch(/inboxGhostCaption\.className\s*=\s*['"]viewGhostCaption['"]/);
-        expect(js).toMatch(/inboxGhostCaption\.textContent\s*=\s*['"]Nothing else due['"]/);
-        // The spacer is the last child appended to inboxView so it sits below
-        // the date header, count summary, sections, and #inboxEmpty.
-        expect(js).toMatch(/inboxView\.appendChild\(\s*inboxGhostSpacer\s*\)/);
-    });
 
     it('defines applyCompanionGhostPreference and wires it to the initial boot + the two ghost-toggle handlers', () => {
         expect(js).toMatch(/function\s+applyCompanionGhostPreference\s*\(/);

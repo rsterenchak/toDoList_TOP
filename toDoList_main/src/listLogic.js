@@ -1671,44 +1671,6 @@ export const listLogic = (function () {
     }
 
 
-    // Cross-project read backing the INBOX view: every committed, not-yet-
-    // completed todo whose workflow status is 'idea', gathered from every
-    // project, newest capture first. Mirrors getAllTodosDueOn's shape and
-    // intent — it walks the same in-memory `allProjects` model the per-
-    // project views render from, so the LIVE item reference is returned.
-    // That live reference matters: the INBOX rows reuse the entry-#2 status
-    // popover, which mutates the item in place through setToDoStatus, so the
-    // returned object must be the same one the model holds (a detached
-    // Supabase row would corrupt the persisted payload). Blank placeholders
-    // (empty title) and completed items are skipped. Sorted by `created_at`
-    // descending; items without a timestamp sort last so a legacy cache row
-    // can't jump to the top. Returns an array of `{ item, project }`.
-    function getIdeaTodosAcrossProjects() {
-        const out = [];
-        const projectNames = Object.keys(allProjects);
-        projectNames.forEach(function(projectName) {
-            const entry = allProjects[projectName];
-            if (!entry || !Array.isArray(entry.items)) return;
-            entry.items.forEach(function(item) {
-                if (!item || !item.tit) return;
-                if (item.completed) return;
-                if (normalizeTodoStatus(item.status) !== 'idea') return;
-                out.push({ item: item, project: projectName });
-            });
-        });
-        out.sort(function(a, b) {
-            const ca = (a.item && a.item.created_at) || '';
-            const cb = (b.item && b.item.created_at) || '';
-            if (ca === cb) return 0;
-            // Newest first; missing timestamps ('') sink to the bottom.
-            if (!ca) return 1;
-            if (!cb) return -1;
-            return ca < cb ? 1 : -1;
-        });
-        return out;
-    }
-
-
     function _reset() {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
@@ -2658,7 +2620,6 @@ export const listLogic = (function () {
         getTodayAggregation,
         getCalendarMonth,
         getAllTodosDueOn,
-        getIdeaTodosAcrossProjects,
         seedSampleProject,
         seedSampleTodos,
         persistMutation,

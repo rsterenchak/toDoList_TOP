@@ -20,14 +20,9 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
-    it("returns 'inbox' when 'inbox' is persisted", () => {
-        setActiveView('inbox');
-        expect(getActiveView()).toBe('inbox');
-    });
-
-    it("migrates a legacy persisted 'today' value to 'inbox' on read", () => {
-        localStorage.setItem(ACTIVE_VIEW_KEY, 'today');
-        expect(getActiveView()).toBe('inbox');
+    it("returns 'conceive' when 'conceive' is persisted", () => {
+        setActiveView('conceive');
+        expect(getActiveView()).toBe('conceive');
     });
 
     it("returns 'projects' when 'projects' is persisted", () => {
@@ -35,9 +30,11 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
-    it("returns 'calendar' when 'calendar' is persisted", () => {
-        setActiveView('calendar');
-        expect(getActiveView()).toBe('calendar');
+    it("falls back to 'projects' for a retired 'inbox' / 'calendar' / 'today' pref", () => {
+        ['inbox', 'calendar', 'today'].forEach((stale) => {
+            localStorage.setItem(ACTIVE_VIEW_KEY, stale);
+            expect(getActiveView()).toBe('projects');
+        });
     });
 
     it("falls back to 'projects' for a stale or hand-edited pref", () => {

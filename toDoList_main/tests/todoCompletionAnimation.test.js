@@ -36,10 +36,8 @@ describe('todo completion slide-out fade animation — CSS surface', () => {
     });
 
     it('binds the keyframes to .todoCompleting with a ~280ms duration', () => {
-        // Both surfaces (the project view #toDoChild and the Today/Calendar
-        // .todayRow.todoRowCard) share the same animation rule.
+        // The project-view row (#toDoChild) carries the animation rule.
         expect(css).toMatch(/#toDoChild\.todoCompleting/);
-        expect(css).toMatch(/\.todayRow\.todoRowCard\.todoCompleting/);
         expect(css).toMatch(/\.todoCompleting[\s\S]*?animation:\s*todoCompletingSlideFade\s+280ms/);
     });
 
@@ -116,76 +114,6 @@ describe('todo completion slide-out fade animation — project view wiring', () 
         // the checkbox change event — the animation is purely visual.
         expect(body).toMatch(/item\.completed\s*=\s*checkToDo\.checked/);
         expect(body).toMatch(/listLogic\.sortCompletedToBottom\(/);
-    });
-});
-
-
-describe('todo completion slide-out fade animation — Today / Calendar wiring', () => {
-    // handleTodayCheckboxToggle and its prefersReducedMotion import live in
-    // calendarView.js (extracted from main.js); read that module here.
-    const main = read('calendarView.js');
-
-    function handleTodayCheckboxToggleBody() {
-        const start = main.indexOf('function handleTodayCheckboxToggle(');
-        expect(start).toBeGreaterThan(-1);
-        let depth = 0;
-        let end = -1;
-        for (let i = main.indexOf('{', start); i < main.length; i++) {
-            const c = main[i];
-            if (c === '{') depth++;
-            else if (c === '}') {
-                depth--;
-                if (depth === 0) { end = i + 1; break; }
-            }
-        }
-        expect(end).toBeGreaterThan(start);
-        return main.slice(start, end);
-    }
-
-    it('imports prefersReducedMotion from dragDrop.js', () => {
-        expect(main).toMatch(/import\s*\{\s*prefersReducedMotion\s*\}\s*from\s*['"]\.\/dragDrop\.js['"]/);
-    });
-
-    it('adds .todoCompleting to the row on the open → done edge', () => {
-        const body = handleTodayCheckboxToggleBody();
-        expect(body).toMatch(/checkbox\.checked\s*&&\s*!wasCompleted/);
-        expect(body).toMatch(/classList\.add\(\s*['"]completed['"]\s*,\s*['"]todoCompleting['"]\s*\)/);
-    });
-
-    it('defers the view re-render until animationend so the row is not unmounted mid-animation', () => {
-        const body = handleTodayCheckboxToggleBody();
-        // The Today/Calendar surfaces rebuild their row list on every
-        // toggle. Without deferring the re-render, the row carrying
-        // .todoCompleting would be destroyed before the keyframes could
-        // play and the user would see nothing.
-        expect(body).toMatch(/addEventListener\(\s*['"]animationend['"]/);
-        expect(body).toMatch(/animationName\s*[!=]==?\s*['"]todoCompletingSlideFade['"]/);
-    });
-
-    it('skips the animation under prefers-reduced-motion (re-renders immediately)', () => {
-        const body = handleTodayCheckboxToggleBody();
-        // The animate gate combines the open→done edge, a committed title,
-        // and the reduced-motion check — same trio the project view uses.
-        expect(body).toMatch(/!prefersReducedMotion\s*\(\s*\)/);
-    });
-
-    it('persists the toggled state on the same tick as the checkbox change', () => {
-        const body = handleTodayCheckboxToggleBody();
-        // The setToDoCompleted call and the sortCompletedToBottom
-        // follow-up sit ABOVE the animation branch, so they always run —
-        // animation deferral never blocks persistence. Routing the
-        // toggle through listLogic.setToDoCompleted makes the
-        // localStorage write unconditional even when the
-        // sortCompletedToBottom partition would be a no-op (toggling
-        // the last open task in its project from the Today view).
-        const completedIdx = body.indexOf(
-            'listLogic.setToDoCompleted(project, item, checkbox.checked)'
-        );
-        const animateIdx = body.indexOf("'todoCompleting'");
-        expect(completedIdx).toBeGreaterThan(-1);
-        expect(animateIdx).toBeGreaterThan(-1);
-        expect(completedIdx).toBeLessThan(animateIdx);
-        expect(body).toMatch(/listLogic\.sortCompletedToBottom\(\s*project\s*\)/);
     });
 });
 

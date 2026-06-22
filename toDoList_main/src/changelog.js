@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-21',
-        added: [
-            "New Conceive tab for incubating project ideas through editable lifecycle stages — Why, Concept, Requirements, Design, and Build plan.",
-        ],
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
@@ -16,6 +13,7 @@ export const changelog = [
         changed: [
             "The menu button in the top navbar now shows a solid gear icon instead of the ghost symbol.",
             "The app now opens to the first project in the sidebar on launch instead of the last-selected one.",
+            "Removed the Inbox and Calendar views — the app now navigates between just the Projects and Conceive tabs.",
         ],
     },
 ];

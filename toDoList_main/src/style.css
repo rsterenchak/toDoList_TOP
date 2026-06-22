@@ -2397,15 +2397,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* MAIN BAR */
 #mainBar {
   display: grid;
-  /* Single 1fr track for the scrollable todo list. The Today dashboard
-     and Calendar view each declare grid-row: 1 / -1 so they overlay
-     the same area when active. The view-switch pill bar lives in the
-     top nav, and the title bar that previously sat above the list has
-     been retired in favor of the sidebar's project rows + the EXPAND
-     ALL overlay anchored to the add-task row below. The `auto` track at the
-     top holds the status filter pill row (#taskFilterBar); the 1fr track
-     below is the scrollable list. The Today / Calendar overlays still span
-     1 / -1 so they cover both tracks when active. */
+  /* Single 1fr track for the scrollable todo list. The Conceive view
+     declares grid-row: 1 / -1 so it overlays the same area when active.
+     The view-switch pill bar lives in the top nav, and the title bar that
+     previously sat above the list has been retired in favor of the
+     sidebar's project rows + the EXPAND ALL overlay anchored to the
+     add-task row below. The `auto` track at the top holds the status
+     filter pill row (#taskFilterBar); the 1fr track below is the
+     scrollable list. The Conceive overlay still spans 1 / -1 so it covers
+     both tracks when active. */
   grid-template-rows: auto 1fr;
   /* A single `minmax(0, 1fr)` column pins the task pane to its container
      width. Without an explicit column the implicit `auto` track grows to the
@@ -2425,7 +2425,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* ── STATUS FILTER PILLS (ALL / Active / Ideas) ──
    Row of toggle pills above the task list that filter visible rows by their
    workflow status. Sits in #mainBar's top auto track (grid-row 1), above the
-   compose row inside #mainList. Hidden in the Today / Calendar views. */
+   compose row inside #mainList. Hidden in the Conceive view. */
 #taskFilterBar {
   grid-row: 1;
   display: flex;
@@ -2554,391 +2554,12 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
-/* ── TODAY DASHBOARD SHELL ──
-   Overlays rows 1-2 of #mainBar's grid so it sits in the same area the
-   project view would occupy. Hidden by default; #mainBar's data-view
-   attribute toggles which surface is visible. */
-#inboxView {
-  grid-row: 1 / -1;
-  grid-column: 1;
-  display: none;
-  flex-direction: column;
-  padding: 24px 16px;
-  background: var(--bg-base);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  min-width: 0;
-}
-
-#mainBar[data-view="inbox"] #inboxView {
-  display: flex;
-}
-
-#mainBar[data-view="inbox"] #mainList,
-#mainBar[data-view="inbox"] #mobileProjHeader,
-#mainBar[data-view="inbox"] #taskFilterBar,
-#mainBar[data-view="inbox"] #bulkDescActions {
-  display: none;
-}
-
-#inboxDateHeader {
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
-  letter-spacing: 0.01em;
-}
-
-#inboxEmpty {
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* INBOX empty state — the only node renderInbox() leaves in #inboxView when
-   no idea-status todos exist anywhere. #inboxView is a flex column, so
-   margin:auto centers this single child on both axes within the view area. */
-.inboxEmptyState {
-  margin: auto;
-  max-width: 320px;
-  text-align: center;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* INBOX idea rows — one card per cross-project idea capture. The metadata
-   line carries the shared entry-#2 .todoStatusLabel ("○ IDEA") followed by
-   the originating project name; the title sits below, muted to match the
-   idea state. */
-.inboxRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border: 1px solid var(--border-subtle, var(--text-muted));
-  border-radius: 12px;
-  background: var(--bg-elevated, transparent);
-  cursor: pointer;
-}
-
-.inboxRow:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.inboxRowCheck {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--text-muted);
-  border-radius: 50%;
-}
-
-.inboxRowBody {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.inboxRowMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.inboxRowProject {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.inboxRowTitle {
-  font-family: inherit;
-  font-size: 16px;
-  line-height: 1.35;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Decorative tap-affordance chevron on the right of each compact inbox row.
-   Purely visual — the row itself owns the tap handler. */
-.inboxRowChev {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-}
-
-/* Count summary line ─ rendered directly under the date header. Each
-   segment carries a small dot (overdue / today) plus a label; upcoming
-   skips the dot per spec. Empty segments render in muted text so the
-   layout stays stable when a bucket has no items. */
-#inboxCountSummary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: lowercase;
-  color: var(--text-muted);
-  margin: 0 0 20px 0;
-}
-
-#inboxCountSummary .todayCountSegment {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#inboxCountSummary .todayCountDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-  display: inline-block;
-}
-
-#inboxCountSummary .todayCountSep {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-#inboxCountSummary .todayCountSegment[data-bucket="overdue"]  { color: var(--text-urgent); }
-#inboxCountSummary .todayCountSegment[data-bucket="today"]    { color: var(--accent-text); }
-#inboxCountSummary .todayCountSegment[data-bucket="upcoming"] { color: var(--text-muted); }
-#inboxCountSummary .todayCountSegment[data-empty="true"]      { color: var(--text-muted); }
-
-/* Sections container — vertical stack of OVERDUE / TODAY / UPCOMING. */
-#inboxSections {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.todaySection {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.todaySectionHeader {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--accent-text);
-  margin: 0 0 4px 0;
-}
-
-.todaySectionList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Task row in the Today dashboard — checkbox | project pill | title |
-   due pill (right-aligned). Mirrors the Projects-view row card (dark fill,
-   rounded corners, generous padding) so the two views read as the same
-   surface. The project pill sits in the leading context slot as a purple-
-   outline chip; the due pill is markup-identical to the Projects-view
-   pill (calendar icon + label + chevron) but display-only — interactivity
-   ships in a follow-up entry. Urgency recoloring is driven by .due-soon /
-   .due-overdue classes added by applyDueUrgency, matching the
-   Projects-view amber / red treatment. */
-.todayRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  background: var(--bg-row);
-  border: 0.5px solid var(--border-bright);
-  border-radius: var(--radius-md);
-  min-width: 0;
-  cursor: pointer;
-  transition: background 0.10s ease, border-color 0.12s ease;
-}
-
-.todayRow:hover { background: var(--bg-hover); }
-
-.todayRow .todayRowCheck {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  margin: 0;
-  cursor: pointer;
-  background: var(--bg-base);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-.todayRow .todayRowCheck:hover { border-color: var(--accent-text); }
-.todayRow .todayRowCheck:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.todayRow .todayRowCheck:checked::after {
-  content: '';
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) translate(-1px, -1px);
-}
-
-.todayRow .todayRowProjectPill {
-  flex-shrink: 0;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  background: transparent;
-  border: 1px solid var(--accent-text);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  line-height: 1.2;
-  max-width: 110px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
-}
-
-.todayRow .todayRowTitle {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: inherit;
-  font-size: 16px;
-  color: var(--text-primary);
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin: 0;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.todayRow .todayRowTitle:hover {
-  color: var(--accent-text);
-}
-
-.todayRow .todayRowTitle:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* Display-only mirror of #duePill. border:1px solid currentColor lets the
-   urgency text recolor (amber for due-soon / today, red for overdue) carry
-   to the border without extra rules. pointer-events:none keeps the row's
-   jump-to-project click handler firing when the user clicks the pill. */
-.todayRow .todayRowDuePill {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  padding: 3px 6px 3px 5px;
-  background: transparent;
-  border: 1px solid currentColor;
-  border-radius: var(--radius-sm);
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  line-height: 1;
-  max-width: 160px;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.todayRow .todayRowDuePill .duePillIcon { flex-shrink: 0; }
-.todayRow .todayRowDuePill .duePillLabel { line-height: 1; }
-.todayRow .todayRowDuePill .duePillChevron {
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-
-.todayRow.due-soon    .todayRowDuePill { color: var(--text-warning); }
-.todayRow.due-overdue .todayRowDuePill { color: var(--text-urgent); }
-
-/* ── CALENDAR VIEW ──
-   Third top-level surface alongside TODAY and PROJECTS. The view splits
-   into a month grid on the left and a day-detail panel on the right;
-   the grid drives the panel via the module-scope calendarSelectedKey
-   state in main.js. Both panes share the same vertical scroll area on
-   small viewports — at ≤1023px the panel stacks beneath the grid (see
-   the mobile @media block further down). Hidden by default; #mainBar's
-   data-view attribute toggles which surface is visible (same hook as
-   #inboxView). */
-#calendarView {
-  grid-row: 1 / -1;
-  grid-column: 1;
-  display: none;
-  /* Stack the calendar grid above the day-detail panel on every viewport.
-     Previously the layout was `flex-direction: row` with a 300px right-hand
-     panel, which squished the grid against the right edge on wide screens
-     and left a large empty area below. Column flow lets the grid breathe at
-     its natural intrinsic height and the panel fill the remainder. The
-     mobile @media block below relies on this default rather than re-setting
-     `flex-direction: column`. */
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  /* Horizontal gutter (~48px each side) keeps the grid and day-detail panel
-     off the content-area edges on wide viewports so the 1:1 cells shrink
-     proportionally instead of stranding the day numbers in oversized boxes.
-     The mobile @media block further down narrows the gutter so small
-     viewports still use near-full width. */
-  padding: 24px 48px;
-  background: var(--bg-base);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  min-width: 0;
-}
-
-#mainBar[data-view="calendar"] #calendarView {
-  display: flex;
-}
-
-#mainBar[data-view="calendar"] #mainList,
-#mainBar[data-view="calendar"] #mobileProjHeader,
-#mainBar[data-view="calendar"] #taskFilterBar,
-#mainBar[data-view="calendar"] #bulkDescActions {
-  display: none;
-}
-
 /* ── CONCEIVE VIEW ──
    The incubator surface: a concept index (list + "+ New concept" + empty
    state) and a single-concept editor (lifecycle stages as collapsible
    sections). renderConceiveView() fills #conceiveView at runtime. Hidden by
-   default; #mainBar's data-view attribute toggles visibility, the same hook
-   as #inboxView / #calendarView. */
+   default; #mainBar's data-view attribute toggles visibility, overlaying the
+   project view the same way the project surface itself sits in the grid. */
 #conceiveView {
   grid-row: 1 / -1;
   grid-column: 1;
@@ -3263,195 +2884,6 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .conceiveStageInput:focus-visible {
   outline: none;
   border-color: #6C5DF5;
-}
-
-#calendarGridSide {
-  /* Fills 100% of the content area so day cells scale up on wide viewports
-     rather than sitting in a narrow centered column. Cell size is governed
-     by aspect-ratio: 1/1 on .calendarCell + grid-template-columns:
-     repeat(7, 1fr), so the grid grows proportionally with available width. */
-  flex: 0 0 auto;
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-#calendarHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-#calendarMonthLabel {
-  font-family: inherit;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: 0.02em;
-  flex: 1 1 auto;
-  text-align: center;
-}
-
-.calendarNavBtn {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.calendarNavBtn:hover {
-  background: var(--bg-hover);
-  color: var(--accent-text);
-  border-color: var(--accent-text);
-}
-
-.calendarNavBtn:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-
-#calendarDowRow {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.calendarDowCell {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-  text-align: center;
-  padding: 4px 0;
-}
-
-#calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  /* Row height is driven by each cell's aspect-ratio: 1/1, so the track
-     sizes to the cell's intrinsic square height — no minmax floor that
-     would overrule the aspect ratio on narrow viewports. */
-  grid-auto-rows: auto;
-  gap: 4px;
-}
-
-.calendarCell {
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--bg-row);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-family: inherit;
-  cursor: pointer;
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 4px;
-  min-width: 0;
-  /* Square cells so the grid scales proportionally with available width.
-     Combined with grid-template-columns: repeat(7, 1fr), each cell's height
-     equals its computed 1/7 column width on every viewport. */
-  aspect-ratio: 1 / 1;
-  transition: background 0.10s ease, border-color 0.12s ease;
-}
-
-.calendarCell:hover {
-  background: var(--bg-hover);
-}
-
-.calendarCell:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-
-.calendarCell.outOfMonth {
-  color: var(--text-muted);
-  opacity: 0.5;
-}
-
-.calendarCell.isToday {
-  border-color: var(--accent-text);
-}
-
-.calendarCell.isSelected {
-  background: var(--bg-hover);
-  border-color: var(--accent-text);
-  box-shadow: inset 0 0 0 1px var(--accent-text);
-}
-
-.calendarCellDay {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.calendarCellDots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.calendarCellDot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-text);
-  display: inline-block;
-}
-
-/* Day-detail panel — stacks beneath the calendar grid on every viewport
-   (the parent uses flex-direction: column). Fills the remaining vertical
-   space below the grid on desktop and matches the grid's 700px max width
-   so both surfaces share a centered column. The list reuses the .todayRow
-   card style so the row layout matches what users see in the Today view,
-   minus the due pill (the date is implied by the selected cell). */
-#calendarDayPanel {
-  flex: 1 1 auto;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-#calendarDayHeader {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  margin: 0;
-}
-
-#calendarDayCount {
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-#calendarDayList {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 /* BULK DESCRIPTION CONTROL — wrapper for the Expand All toggle.
@@ -4025,16 +3457,13 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* Slide-out fade completion animation — transient `.todoCompleting` class
-   added on the unchecked → checked edge of any row (project view, Today
-   view, Calendar day-detail panel — all three surfaces share the row
-   markup). The row briefly translates right while fading, then settles
-   back to its final position in the standard `.completed` appearance.
-   Total duration ~280ms. Removed via animationend in JS so subsequent
-   renders don't re-fire. Done → open does NOT add the class — see the
-   wireCheckbox / handleTodayCheckboxToggle guards. */
+   added on the unchecked → checked edge of a project-view row. The row
+   briefly translates right while fading, then settles back to its final
+   position in the standard `.completed` appearance. Total duration ~280ms.
+   Removed via animationend in JS so subsequent renders don't re-fire.
+   Done → open does NOT add the class — see the wireCheckbox guard. */
 @media (prefers-reduced-motion: no-preference) {
-  #toDoChild.todoCompleting,
-  .todayRow.todoRowCard.todoCompleting {
+  #toDoChild.todoCompleting {
     animation: todoCompletingSlideFade 280ms ease-in-out forwards;
   }
   @keyframes todoCompletingSlideFade {
@@ -6013,7 +5442,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* The view-switch pill cluster duplicates the destinations offered
-     by the persistent bottom tab bar (Projects · Today · Calendar) and
+     by the persistent bottom tab bar (Projects · Conceive) and
      would otherwise clip into the iOS status bar / Dynamic Island on
      the collapsed mobile nav. Hide it entirely on mobile — the bottom
      tab bar is the sole navigator at this breakpoint. */
@@ -6722,45 +6151,11 @@ body.row-dragging * { cursor: grabbing !important; }
     #navBar { padding: 0 8px; gap: 6px; }
   }
 
-  /* Today + Calendar view top padding on mobile: reserve the device's
-     safe-area inset (so the date header / "Month YYYY" label / prev-
-     month chevron clear the iOS status bar and Dynamic Island on
-     notched devices and standalone PWAs) with a 24px floor so regular
-     browser-tab contexts that report a 0 inset don't hug the viewport
-     top. The +24px content offset matches the existing visible gap
-     inside each view. Calendar additionally tightens the horizontal
-     gutter from the desktop 48px down to 12px and explicitly sets
-     padding-bottom to 0 so the later `padding-bottom: var(--mobile-tab-h)`
-     rule near the end of this @media stack is the sole source of bottom
-     padding — without that, the mobile shorthand re-asserted a 16px
-     bottom that left the day-detail panel sitting above the tab bar
-     instead of flush. */
-  #inboxView {
-    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
-  }
-  /* +64px content offset (vs Today's +24px) lifts the prev/next/month-label
-     row below the absolutely-positioned #sidebarToggle. The hamburger sits
-     at `max(env(...), 24px) + 8px` and is 44px tall, so its bottom edge is
-     `max(env(...), 24px) + 52px` from the viewport top — the +64px floor
-     keeps the calendar header on its own row beneath the hamburger with a
-     12px breathing gap, preventing the next-month `›` from colliding with
-     the hamburger on narrow viewports. The safe-area inset floor itself
-     stays unchanged at 24px so the hamburger keeps clearing the iOS status
-     bar / Dynamic Island. */
-  #calendarView {
-    padding: calc(max(env(safe-area-inset-top, 0px), 24px) + 64px) 12px 0;
-    gap: 14px;
-  }
-  #calendarDayPanel {
-    flex: 0 0 auto;
-  }
-
   /* ── Empty-state ghost spacer ──
-     Flex-anchored slab below the Today / Projects content list. Reuses the
+     Flex-anchored slab below the Projects content list. Reuses the
      purple ghost from the no-projects welcome screen, dimmed to 50%, so
      short item lists no longer leave a large unanchored void above the
-     bottom tab bar. flex:1 1 auto lets the spacer fill remaining column
-     space inside #inboxView; min-height carves out reserved space inside
+     bottom tab bar. min-height carves out reserved space inside
      #mainList's grid context where flex-grow doesn't apply. When the list
      grows enough to fill the viewport, the spacer scrolls naturally below
      the visible area — no extra logic is needed to hide it. */
@@ -6807,9 +6202,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* When the existing welcome / no-todos / all-caught-up empty state is
      active, the projects spacer would stack a second ghost on the same
      screen. Hide it so the existing empty state carries the visual weight
-     alone. The Today view keeps the spacer visible alongside #inboxEmpty
-     since that empty-state is just a single line of text and the slab
-     below it would otherwise be unanchored. */
+     alone. */
   #mainList.emptyStatePresent #projectsGhostSpacer {
     display: none;
   }
@@ -7418,8 +6811,8 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* No bare pill when there's no active project — matches the mobile
-     empty-state contract. The inbox / calendar data-view rules (outside
-     any media query) already hide the pill in those views. */
+     empty-state contract. The Conceive data-view rule (outside any media
+     query) already hides the pill in that view. */
   #mobileProjHeader[data-empty="true"] {
     display: none;
   }
@@ -7900,13 +7293,11 @@ body.row-dragging * { cursor: grabbing !important; }
     font-size: 11px;
     letter-spacing: 0.04em;
   }
-  /* In INBOX / CALENDAR the pill + counts describe a project context that the
-     active view doesn't show, so hide them — mirrors the #mainBar[data-view]
+  /* In the Conceive view the pill + counts describe a project context that
+     the active view doesn't show, so hide them — mirrors the #mainBar[data-view]
      rules that handled this when the pill still lived inside #mainBar. */
-  body[data-view="inbox"] #mobileProjHeader,
-  body[data-view="calendar"] #mobileProjHeader,
-  body[data-view="inbox"] #mobileProjStats,
-  body[data-view="calendar"] #mobileProjStats {
+  body[data-view="conceive"] #mobileProjHeader,
+  body[data-view="conceive"] #mobileProjStats {
     display: none;
   }
 
@@ -10901,7 +10292,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* ══════════════════════════════════════════
    Persistent bottom tab bar (mobile only)
    ──────────────────────────────────────────
-   Three destinations — Projects · Today · Calendar — pinned to the
+   Two destinations — Projects · Conceive — pinned to the
    bottom of the viewport at ≤1023px. Hidden on desktop. The bar shares
    --mobile-tab-h with the bottom sheet so the IDLE nub, PEEK strip, and
    swipe-zone all stack directly above the tabs without per-element
@@ -11094,13 +10485,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   /* The persistent tab bar floats above the bottom of the main panel.
      Reserve scroll padding equal to its full height — including the
      home-indicator safe-area inset the bar now absorbs — so the last
-     todo row / today section / calendar day cell is reachable instead
-     of being obscured behind the tabs. Applied to every scrollable view
-     inside #mainBar so the offset is uniform across Projects, Today,
-     and Calendar. */
-  #mainList,
-  #inboxView,
-  #calendarView {
+     todo row is reachable instead of being obscured behind the tabs. */
+  #mainList {
     padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
   }
 }
