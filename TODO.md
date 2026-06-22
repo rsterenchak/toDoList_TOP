@@ -130,7 +130,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 71769d7a-e3e9-44c1-92df-4ec6bf64931e -->
 
-- [ ] **[MEDIUM]** Default new projects to the Iterative stage shape; make Generate tasks, Suggest plan, and hints shape-aware
+- [x] **[MEDIUM]** Default new projects to the Iterative stage shape; make Generate tasks, Suggest plan, and hints shape-aware — Completed: 2026-06-22
   - Type: feature
   - Description: Introduce two Conceive stage shapes — Iterative (Why / Concept / Next up / Iterations) and Spec (the current Why / Concept / Requirements / Design / Build plan) — and make Iterative the default for new projects, since most personal apps are built iteratively. This is the foundation run for the per-project shape feature: it defines both seed sets, switches the default, and teaches the Conceive tools and stage hints which stage is the actionable "task source" in each shape ("Next up" for Iterative, "Build plan" for Spec) instead of assuming the SDLC label. It does NOT add the shape chooser UI (that's the follow-up run) — new projects simply seed Iterative, existing projects keep their current stages, nothing migrates. The `lifecycle` field records the shape ('iterative' or 'spec').
   - What changes:
