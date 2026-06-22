@@ -2884,6 +2884,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-primary);
 }
 
+/* Persistent, display-only guidance prompt under a stage label. Muted
+   secondary text, sized below the label, sitting between the header and the
+   body field. Always visible — not a placeholder. */
+.conceiveStageHint {
+  margin: 0;
+  padding: 0 14px 10px 30px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary, var(--text-muted));
+}
+
 /* Collapsed by default; the editor adds .expanded to reveal the body. */
 .conceiveStageBody {
   display: none;
