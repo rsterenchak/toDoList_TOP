@@ -200,7 +200,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e6b01746-5681-4ca0-a1d0-e44371aa8617 -->
 
-- [ ] **[MEDIUM]** In seed-todos, generate a TODO.md-format entry per task as its description, revealed via the row toggle
+- [x] **[MEDIUM]** In seed-todos, generate a TODO.md-format entry per task as its description, revealed via the row toggle — Completed: 2026-06-22
   - Type: feature
   - Description: Revise seed-todos' per-task output so that, instead of a 1-2 sentence note, each generated task carries a TODO.md backlog entry (the project's standard entry format) as its description — making each generated todo a pipeline-ready first draft. The decompose call returns a short title (for the row + dup-skip) plus a structured entry per task; the entry is revealed behind the per-row Details toggle (compact rows by default — the approved treatment); the todo is created with that entry as its `desc`. Entries use the core shape (`- [ ] **[PRIORITY]** title` with Type / Description / Behavior / File), not the full skeleton. These are first-draft scaffolds to refine before running, not finished entries. All changes are in `seedTasksModal.js`. Best sequenced after the repo-routing entry so entries can name real files from the project's manifest.
   - What changes:
