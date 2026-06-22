@@ -6,12 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-21',
+        added: [
+            "Your Conceive lifecycle stages now sync across your devices.",
+        ],
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
         ],
         changed: [
-            "The app now opens to the first project in the sidebar on launch instead of the last-selected one.",
             "The Calendar view has been removed; navigation now offers Projects, Inbox, and Conceive.",
             "The Conceive tab now plans the selected project's own lifecycle stages instead of a separate list of concepts.",
         ],

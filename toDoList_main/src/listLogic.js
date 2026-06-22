@@ -93,6 +93,8 @@ function toProjectRowPayload(entry, name, position) {
         color: entry.color || null,
         position: position,
         target_id: entry.target_id || null,
+        stages: entry.stages || null,
+        lifecycle: entry.lifecycle || DEFAULT_LIFECYCLE,
     };
 }
 
@@ -157,6 +159,23 @@ function normalizeStages(stages) {
             body: typeof s.body === 'string' ? s.body : '',
         };
     });
+}
+
+// Map a project row's (or local entry's) stored stages/lifecycle onto an
+// in-memory entry, backfilling the default SDLC set when the value is
+// missing or empty — a Supabase row predating the `stages` column returns
+// null, and a fresh-local project predates nothing. normalizeStages already
+// re-seeds on a missing/empty list, so the null→SDLC backfill lives in ONE
+// place (the seed array is never duplicated). Shared by the Supabase hydrate
+// adopt branch and the realtime apply so server-null and fresh-local seed
+// identically, the same way the load-time backfill seeds.
+function stagesFromRow(row) {
+    return normalizeStages(row && row.stages);
+}
+function lifecycleFromRow(row) {
+    return (row && typeof row.lifecycle === 'string' && row.lifecycle.length > 0)
+        ? row.lifecycle
+        : DEFAULT_LIFECYCLE;
 }
 
 
@@ -1078,8 +1097,8 @@ export const listLogic = (function () {
     // list (seeded with the SDLC set) and edits stage bodies. Reads return
     // the LIVE array so the view always sees current bodies; writes route
     // through the same saveToStorage funnel every other project mutation
-    // uses. The Supabase mirror for stages is a later run, so no
-    // persistMutation call here.
+    // uses, then mirror to the project's Supabase row so lifecycle thinking
+    // syncs across devices (stages live on the existing `projects` row).
     function getProjectStages(projectName) {
         const entry = allProjects[projectName];
         if (!entry || !Array.isArray(entry.stages)) return [];
@@ -1103,6 +1122,21 @@ export const listLogic = (function () {
         if (!stage) return null;
         stage.body = typeof text === 'string' ? text : '';
         saveToStorage();
+        // Mirror the stage edit to the project's Supabase row, exactly the
+        // way setProjectColor does. Routing through toProjectRowPayload
+        // bumps the whole row (and its updated_at) so a stage edit wins the
+        // coarse per-row last-write-wins on the next cross-device hydrate.
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
         return stage;
     }
 
@@ -2155,6 +2189,8 @@ export const listLogic = (function () {
                         color: payload.color || null,
                         position: payload.position == null ? 0 : payload.position,
                         target_id: payload.target_id || null,
+                        stages: payload.stages || null,
+                        lifecycle: payload.lifecycle || DEFAULT_LIFECYCLE,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
@@ -2217,6 +2253,8 @@ export const listLogic = (function () {
                         color: payload.color || null,
                         position: payload.position == null ? 0 : payload.position,
                         target_id: payload.target_id || null,
+                        stages: payload.stages || null,
+                        lifecycle: payload.lifecycle || DEFAULT_LIFECYCLE,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
@@ -2417,8 +2455,19 @@ export const listLogic = (function () {
                     ? Date.parse(localEntry.updated_at)
                     : 0;
                 let chosenColor = p.color;
+                // Stages/lifecycle ride the project row's whole-row LWW just
+                // like color: adopt the remote values (backfilling the SDLC
+                // default when the server row predates the columns and
+                // returns null), but keep the local copy when the local
+                // entry is the newer write.
+                let chosenStages = stagesFromRow(p);
+                let chosenLifecycle = lifecycleFromRow(p);
                 if (localEntry && localUpdatedAt > remoteUpdatedAt) {
                     chosenColor = localEntry.color;
+                    if (Array.isArray(localEntry.stages) && localEntry.stages.length > 0) {
+                        chosenStages = localEntry.stages;
+                    }
+                    if (localEntry.lifecycle) chosenLifecycle = localEntry.lifecycle;
                 }
                 merged[p.name] = {
                     id: p.id,
@@ -2426,6 +2475,8 @@ export const listLogic = (function () {
                     color: chosenColor || null,
                     sortByDue: !!(localEntry && localEntry.sortByDue),
                     target_id: p.target_id || null,
+                    stages: chosenStages,
+                    lifecycle: chosenLifecycle,
                 };
                 const rows = todosByProjectId[p.id] || [];
                 rows.forEach(function(t) {
@@ -2474,6 +2525,8 @@ export const listLogic = (function () {
                     color: local.color || null,
                     sortByDue: !!local.sortByDue,
                     target_id: local.target_id || null,
+                    stages: stagesFromRow(local),
+                    lifecycle: lifecycleFromRow(local),
                 };
                 persistMutation({
                     op: 'insert',
@@ -2612,6 +2665,10 @@ export const listLogic = (function () {
                 existing.color = evt.new.color || null;
                 existing.id = evt.new.id;
                 existing.target_id = evt.new.target_id || null;
+                // A stage edit made on another device arrives as a project
+                // UPDATE — apply it live (same null→SDLC backfill as hydrate).
+                existing.stages = stagesFromRow(evt.new);
+                existing.lifecycle = lifecycleFromRow(evt.new);
                 if (existingName !== name) {
                     // Rename in place: move the entry (with its items) to
                     // the new name key and drop the stale one.
@@ -2625,6 +2682,8 @@ export const listLogic = (function () {
                     color: evt.new.color || null,
                     sortByDue: false,
                     target_id: evt.new.target_id || null,
+                    stages: stagesFromRow(evt.new),
+                    lifecycle: lifecycleFromRow(evt.new),
                 };
                 sortCompletedInPlace(allProjects[name].items);
             }
