@@ -152,7 +152,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ec1df5f7-203f-415d-8fcf-d30982297179 -->
 
-- [ ] **[MEDIUM]** Add the one-time Iterative/Spec shape chooser to Conceive (pristine-only, reseed on switch)
+- [x] **[MEDIUM]** Add the one-time Iterative/Spec shape chooser to Conceive (pristine-only, reseed on switch) — Completed: 2026-06-22
   - Type: feature
   - Description: Add the shape chooser from the approved design to the Conceive view. While a project's stages are still empty ("pristine"), show an Iterative | Spec selector at the top that reseeds the project's stages to the chosen shape; once any stage has text, the chooser disappears and the shape is locked. New projects default to Iterative (from run 1), so the chooser is the escape hatch to Spec for spec-driven course projects. Switching is non-destructive by construction — it only reseeds while every stage body is empty, so there's never written text to lose, which is the whole reason this lives in Conceive rather than in the create flow. Depends on run 1 (the Iterative/Spec seed sets, the `lifecycle` values, and the seed helper).
   - What changes:

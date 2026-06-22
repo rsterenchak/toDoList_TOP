@@ -2609,6 +2609,63 @@ button.claudeAttachChipLabel { cursor: pointer; }
   padding: 2px 6px;
 }
 
+/* One-time Iterative | Spec shape chooser, shown above the stages only while
+   the project is pristine (no stage written yet). A segmented control reflects
+   the current shape; the muted hint below explains the one-time nature. */
+.conceiveShapeChooser {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.conceiveShapeSegment {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.conceiveShapeOption {
+  font-family: inherit;
+  /* 16px to avoid iOS Safari auto-zoom; this is a tappable control, not input,
+     but keeping it large stays consistent with the touch-target convention. */
+  font-size: 16px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, var(--text-muted));
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.conceiveShapeOption + .conceiveShapeOption {
+  border-left: 1px solid var(--border-subtle, var(--border-mid));
+}
+
+.conceiveShapeOption:hover { background: var(--bg-hover); }
+
+.conceiveShapeOption:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.conceiveShapeOption.active {
+  background: rgba(108, 93, 245, 0.18);
+  color: var(--accent-text, #9D93EE);
+  cursor: default;
+}
+
+.conceiveShapeHint {
+  margin: 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary, var(--text-muted));
+}
+
 /* Editor surface */
 .conceiveEditorHeader {
   display: flex;

@@ -1161,6 +1161,40 @@ export const listLogic = (function () {
         return stage;
     }
 
+    // Replace a project's stages with a fresh seed for the given shape and set
+    // its lifecycle. Used by the Conceive shape chooser, which is only offered
+    // while the project is still pristine (no stage has text), so swapping the
+    // stage set never destroys written content. Builds the shape's seed via the
+    // same seedStages() helper the create-time default uses (fresh ids, empty
+    // bodies), persists locally, then mirrors to the project's Supabase row
+    // through the same toProjectRowPayload + persistMutation update path
+    // setProjectStageBody uses — bumping the row's updated_at so the reseed wins
+    // last-write-wins on the next cross-device hydrate. The shape is canonicalized
+    // ('SDLC' → 'spec') so the stored lifecycle is always 'iterative' or 'spec'.
+    // @category: user-mutation-only
+    function setProjectShape(projectName, shape) {
+        const entry = allProjects[projectName];
+        if (!entry) return null;
+        const lifecycle = (shape === LIFECYCLE_SPEC || shape === 'SDLC')
+            ? LIFECYCLE_SPEC
+            : LIFECYCLE_ITERATIVE;
+        entry.lifecycle = lifecycle;
+        entry.stages = seedStages(lifecycle);
+        saveToStorage();
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
+        return entry.stages;
+    }
+
 
     // ── RECURRENCE ───────────────────────────────────────────────────
     // Write a recurrence config onto a todo item by reference. Pass null
@@ -2815,6 +2849,7 @@ export const listLogic = (function () {
         getProjectStages,
         getProjectLifecycle,
         setProjectStageBody,
+        setProjectShape,
         getProjectTargetId,
         setProjectTargetId,
         clearProjectTargetId,

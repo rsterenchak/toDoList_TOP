@@ -81,6 +81,64 @@ function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
 
+// A project is "pristine" while every one of its stage bodies is still empty
+// (after trimming). Pristine is COMPUTED from the live stages on each render —
+// never stored — so it naturally covers brand-new projects and any untouched
+// existing one, and naturally excludes anything with written content. The
+// shape chooser is offered only while pristine, which is what makes switching
+// shapes non-destructive: there is never written text to lose.
+function isProjectPristine(stages) {
+    return Array.isArray(stages) && stages.length > 0 && stages.every(function (s) {
+        return !(s.body && s.body.trim());
+    });
+}
+
+// The one-time Iterative | Spec shape chooser, rendered above the stages while
+// the project is pristine. A segmented control reflects the project's current
+// shape; tapping the inactive option reseeds the project's stages to that shape
+// (via listLogic.setProjectShape) and re-renders. Legacy 'SDLC' projects show
+// Spec active. The chooser disappears the moment any stage body has text.
+function buildShapeChooser(projectName, lifecycle) {
+    const wrap = document.createElement('div');
+    wrap.className = 'conceiveShapeChooser';
+
+    const seg = document.createElement('div');
+    seg.className = 'conceiveShapeSegment';
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', 'Conceive stage shape');
+
+    // 'spec' and the legacy 'SDLC' alias map to the Spec option; everything
+    // else (including 'iterative' and any unset value) maps to Iterative.
+    const isSpec = (lifecycle === 'spec' || lifecycle === 'SDLC');
+    const options = [
+        { shape: 'iterative', label: 'Iterative', active: !isSpec },
+        { shape: 'spec', label: 'Spec', active: isSpec },
+    ];
+    options.forEach(function (opt) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'conceiveShapeOption';
+        if (opt.active) btn.classList.add('active');
+        btn.textContent = opt.label;
+        btn.setAttribute('aria-pressed', opt.active ? 'true' : 'false');
+        if (!opt.active) {
+            btn.addEventListener('click', function () {
+                listLogic.setProjectShape(projectName, opt.shape);
+                renderConceiveView();
+            });
+        }
+        seg.appendChild(btn);
+    });
+    wrap.appendChild(seg);
+
+    const hint = document.createElement('p');
+    hint.className = 'conceiveShapeHint';
+    hint.textContent = 'Switches the stages — pick before you start; disappears once you write anything.';
+    wrap.appendChild(hint);
+
+    return wrap;
+}
+
 // Resolve the currently-selected project's name from the sidebar — the same
 // source of truth the Projects view uses. Returns '' when nothing is
 // selected (or the row has no input), which drives the empty state.
@@ -409,9 +467,20 @@ export function renderConceiveView() {
     // actions.
     const actionableLabel = actionableStageLabel(listLogic.getProjectLifecycle(projectName));
 
+    const stages = listLogic.getProjectStages(projectName);
+
+    // While the project is pristine (no stage written yet), offer the one-time
+    // shape chooser above the stages. Once any stage has text it disappears and
+    // the shape is locked — switching is non-destructive by construction.
+    if (isProjectPristine(stages)) {
+        view.appendChild(
+            buildShapeChooser(projectName, listLogic.getProjectLifecycle(projectName))
+        );
+    }
+
     const stagesEl = document.createElement('div');
     stagesEl.className = 'conceiveStages';
-    listLogic.getProjectStages(projectName).forEach(function (stage) {
+    stages.forEach(function (stage) {
         stagesEl.appendChild(buildStageSection(projectName, stage, actionableLabel));
     });
     view.appendChild(stagesEl);
