@@ -60,7 +60,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5434f655-40e7-44ee-ba7a-647f2e94e820 -->
 
-- [ ] **[MEDIUM]** Add persistent guidance prompts under each Conceive stage label
+- [x] **[MEDIUM]** Add persistent guidance prompts under each Conceive stage label — Completed: 2026-06-22
   - Type: feature
   - Description: The Conceive stages (Why / Concept / Requirements / Design / Build plan) are empty fields with no indication of what belongs in each, making them hard to fill well — which also weakens them as inputs to Suggest plan and Generate tasks. Add a short, always-visible guidance prompt under each stage's label: a muted one-line question describing what that stage is asking for. The prompts are static presentation copy keyed by stage label — not stored on the stage objects, not synced — so they cost nothing in the data model and never round-trip through Supabase. The line stays visible whether or not the field has content (it's a persistent reference, not a placeholder that vanishes when you type).
   - What changes:

@@ -6,6 +6,19 @@ import { chatWithWorker } from './inject.js';
 // action. Kept in sync with the label seeded by listLogic.seedStages.
 const BUILD_PLAN_LABEL = 'Build plan';
 
+// Static guidance copy shown under each default stage's label — a muted
+// one-line prompt describing what belongs in that stage. Keyed by the default
+// SDLC stage labels; this is pure presentation, never stored on the stage
+// objects, never persisted or synced, and never part of any text sent to
+// Claude. A stage whose label isn't a key here renders no hint.
+const STAGE_HINTS = {
+    'Why': 'Who is it for, and what problem does it solve?',
+    'Concept': 'In a sentence or two, what is it and how does it work?',
+    'Requirements': "What must it do? Key capabilities, constraints, and what's out of scope.",
+    'Design': 'How does it look and work — UI, data model, and tech choices?',
+    'Build plan': 'The ordered steps to build it; each line becomes a task.',
+};
+
 // Build the "Suggest plan" prompt from the project's non-empty upstream stages
 // (every stage except the Build plan). Each is labeled so the model can map
 // intent to phase; the instruction asks for a concrete, ordered build plan as
@@ -157,6 +170,19 @@ function buildStageSection(projectName, stage) {
         section.appendChild(headerRow);
     } else {
         section.appendChild(head);
+    }
+
+    // Persistent, display-only guidance prompt under the stage label — a muted
+    // one-liner describing what belongs in this stage. Rendered only for the
+    // default stages in STAGE_HINTS; unknown labels render nothing. It is not
+    // editable, not part of the stage body, and never persisted, synced, or
+    // sent to Claude.
+    const hintText = STAGE_HINTS[stage.label];
+    if (hintText) {
+        const hint = document.createElement('p');
+        hint.className = 'conceiveStageHint';
+        hint.textContent = hintText;
+        section.appendChild(hint);
     }
 
     const body = document.createElement('div');
