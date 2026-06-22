@@ -2797,45 +2797,44 @@ describe('listLogic — auto-reorder on due-date change when sortByDue is active
 
 
 // ── PER-PROJECT LIFECYCLE STAGES (Conceive) ──────────────────────────
-// Each project carries an ordered `stages` list (seeded with the SDLC set)
-// and a `lifecycle` label, replacing the standalone concept store. These
-// pin the seed, the id-targeted body mutator, and that the new fields ride
-// along through rename / snapshot / replace round-trips.
+// Each project carries an ordered `stages` list (seeded with the Iterative
+// set by default) and a `lifecycle` shape label, replacing the standalone
+// concept store. These pin the seed, the id-targeted body mutator, and that
+// the new fields ride along through rename / snapshot / replace round-trips.
 describe('listLogic — per-project lifecycle stages', () => {
     beforeEach(() => {
         listLogic._reset();
     });
 
-    it('a newly-created project seeds the five SDLC stages in order plus lifecycle SDLC', () => {
+    it('a newly-created project seeds the four Iterative stages in order plus lifecycle iterative', () => {
         listLogic.addProject('Launch');
         const stages = listLogic.getProjectStages('Launch');
         expect(stages.map(s => s.label)).toEqual([
             'Why',
             'Concept',
-            'Requirements',
-            'Design',
-            'Build plan',
+            'Next up',
+            'Iterations',
         ]);
         // Each seeded stage starts empty with a unique string id.
         stages.forEach(s => expect(s.body).toBe(''));
         const ids = stages.map(s => s.id);
         expect(new Set(ids).size).toBe(ids.length);
         ids.forEach(id => expect(typeof id).toBe('string'));
-        expect(listLogic.getProjectLifecycle('Launch')).toBe('SDLC');
+        expect(listLogic.getProjectLifecycle('Launch')).toBe('iterative');
     });
 
     it('getProjectStages returns [] for an unknown project', () => {
         expect(listLogic.getProjectStages('Nope')).toEqual([]);
     });
 
-    it('getProjectLifecycle defaults to SDLC for an unknown project', () => {
-        expect(listLogic.getProjectLifecycle('Nope')).toBe('SDLC');
+    it('getProjectLifecycle defaults to iterative for an unknown project', () => {
+        expect(listLogic.getProjectLifecycle('Nope')).toBe('iterative');
     });
 
     it('setProjectStageBody targets a stage by id and leaves siblings untouched', () => {
         listLogic.addProject('Launch');
         const stages = listLogic.getProjectStages('Launch');
-        const reqId = stages[2].id; // Requirements
+        const reqId = stages[2].id; // Next up (Iterative shape)
         listLogic.setProjectStageBody('Launch', reqId, 'must do X');
         const after = listLogic.getProjectStages('Launch');
         expect(after[2].body).toBe('must do X');
@@ -2867,23 +2866,23 @@ describe('listLogic — per-project lifecycle stages', () => {
 
         const stages = listLogic.getProjectStages('New');
         expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+            'Why', 'Concept', 'Next up', 'Iterations',
         ]);
         expect(stages.find(s => s.id === stageId).body).toBe('why it matters');
-        expect(listLogic.getProjectLifecycle('New')).toBe('SDLC');
+        expect(listLogic.getProjectLifecycle('New')).toBe('iterative');
         expect(listLogic.getProjectStages('Old')).toEqual([]);
     });
 
     it('snapshotProjects includes stages and lifecycle', () => {
         listLogic.addProject('Launch');
-        const stageId = listLogic.getProjectStages('Launch')[3].id; // Design
+        const stageId = listLogic.getProjectStages('Launch')[3].id; // Iterations
         listLogic.setProjectStageBody('Launch', stageId, 'design notes');
 
         const snap = listLogic.snapshotProjects();
         const entry = snap.find(p => p.name === 'Launch');
-        expect(entry.lifecycle).toBe('SDLC');
+        expect(entry.lifecycle).toBe('iterative');
         expect(entry.stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+            'Why', 'Concept', 'Next up', 'Iterations',
         ]);
         expect(entry.stages.find(s => s.id === stageId).body).toBe('design notes');
     });
@@ -2899,18 +2898,18 @@ describe('listLogic — per-project lifecycle stages', () => {
 
         const stages = listLogic.getProjectStages('Launch');
         expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+            'Why', 'Concept', 'Next up', 'Iterations',
         ]);
         expect(stages.find(s => s.id === stageId).body).toBe('round-trip body');
-        expect(listLogic.getProjectLifecycle('Launch')).toBe('SDLC');
+        expect(listLogic.getProjectLifecycle('Launch')).toBe('iterative');
     });
 
-    it('replaceAllProjects backfills the SDLC stages for an import missing them', () => {
+    it('replaceAllProjects backfills the Iterative stages for an import missing them', () => {
         listLogic.replaceAllProjects([{ name: 'Imported', items: [] }]);
         const stages = listLogic.getProjectStages('Imported');
         expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+            'Why', 'Concept', 'Next up', 'Iterations',
         ]);
-        expect(listLogic.getProjectLifecycle('Imported')).toBe('SDLC');
+        expect(listLogic.getProjectLifecycle('Imported')).toBe('iterative');
     });
 });

@@ -123,7 +123,7 @@ describe('listLogic.js — toProjectRowPayload carries the per-project stages/li
         expect(body).toMatch(/stages:\s*entry\.stages/);
     });
 
-    it('includes `lifecycle` defaulting to the SDLC label', () => {
+    it('includes `lifecycle` defaulting to the default shape', () => {
         // `entry.lifecycle || DEFAULT_LIFECYCLE` — never undefined on the wire.
         expect(body).toMatch(/lifecycle:\s*entry\.lifecycle\s*\|\|/);
     });
