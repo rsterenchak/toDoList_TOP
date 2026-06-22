@@ -77,6 +77,31 @@ describe('todo.md viewer — main.js card wiring', () => {
         expect(main).toMatch(/syncBtn\.addEventListener\s*\(\s*['"]click['"]\s*,\s*runSync\s*\)/);
     });
 
+    it('swaps the Sync button for a spinner + "Syncing" label while a sync is in flight', () => {
+        const start = main.indexOf('async function runSync');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1400);
+        // Loading state: spinner glyph element + "Syncing" label replace the
+        // idle "Sync" text, and the --loading class is applied.
+        expect(block).toMatch(/syncBtn\.classList\.add\(\s*['"]todoMdViewerSyncBtn--loading['"]\s*\)/);
+        expect(block).toMatch(/todoMdViewerSyncSpinner/);
+        expect(block).toMatch(/Syncing/);
+    });
+
+    it('restores the idle Sync button state in finally on both success and failure', () => {
+        const start = main.indexOf('async function runSync');
+        const block = main.slice(start, start + 1400);
+        expect(block).toMatch(/finally[\s\S]{0,200}syncBtn\.classList\.remove\(\s*['"]todoMdViewerSyncBtn--loading['"]\s*\)/);
+        expect(block).toMatch(/finally[\s\S]{0,240}syncBtn\.textContent\s*=\s*['"]Sync['"]/);
+    });
+
+    it('defines the sync spinner with a keyframe rotation and the Void accent color', () => {
+        const css = read('style.css');
+        expect(css).toMatch(/\.todoMdViewerSyncSpinner\s*\{[\s\S]*?animation:\s*todoMdViewerSyncSpin/);
+        expect(css).toMatch(/\.todoMdViewerSyncSpinner\s*\{[\s\S]*?border-top-color:\s*#9D93EE/i);
+        expect(css).toMatch(/@keyframes\s+todoMdViewerSyncSpin\s*\{[\s\S]*?rotate\(360deg\)/);
+    });
+
     it('reuses readTodoMdFromWorker — no parallel transport in main.js', () => {
         // The card MUST go through inject.js's helper, not a freestanding
         // fetch() call, so the Worker URL / Bearer secret / Authorization

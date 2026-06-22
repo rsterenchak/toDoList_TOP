@@ -518,6 +518,12 @@ function buildTodoMdViewerCard(projectName, target) {
         if (syncBtn.disabled) return;
         syncBtn.disabled = true;
         syncBtn.classList.add('todoMdViewerSyncBtn--loading');
+        // Swap the idle "Sync" label for an animated spinner + "Syncing"
+        // label for the duration of the fetch; restored in finally on both
+        // success and failure.
+        syncBtn.innerHTML =
+            '<span class="todoMdViewerSyncSpinner" aria-hidden="true"></span>' +
+            '<span class="todoMdViewerSyncLabel">Syncing</span>';
         try {
             const res = await readTodoMdFromWorker(target);
             if (res.ok) {
@@ -530,6 +536,7 @@ function buildTodoMdViewerCard(projectName, target) {
         } finally {
             syncBtn.disabled = false;
             syncBtn.classList.remove('todoMdViewerSyncBtn--loading');
+            syncBtn.textContent = 'Sync';
         }
     }
 

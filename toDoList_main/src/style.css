@@ -5126,6 +5126,26 @@ body.row-dragging * { cursor: grabbing !important; }
   opacity: 0.6;
   cursor: progress;
 }
+/* In-flight state: the label is swapped for a spinner glyph + "Syncing"
+   text, so lay the button out as a centered flex row and widen it to fit
+   the extra content. */
+.todoMdViewerSyncBtn--loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.todoMdViewerSyncSpinner {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #2a2440;
+  border-top-color: #9D93EE;
+  animation: todoMdViewerSyncSpin 0.7s linear infinite;
+}
+@keyframes todoMdViewerSyncSpin {
+  to { transform: rotate(360deg); }
+}
 
 /* "Show completed" toggle — a 32×32 square icon button (checked-checkbox glyph)
    that hides/reveals completed entries in the rendered body. Replaces the older
