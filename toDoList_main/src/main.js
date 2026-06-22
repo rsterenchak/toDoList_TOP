@@ -76,6 +76,7 @@ import {
     getCalendarSelectedKey,
 } from './calendarView.js';
 import { renderInbox } from './inboxView.js';
+import { renderConceiveView } from './conceiveView.js';
 import { attachDragDropImport } from './exportImport.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -970,17 +971,28 @@ function component() {
         '<line x1="8" y1="3" x2="8" y2="7"/>' +
         '<line x1="16" y1="3" x2="16" y2="7"/>' +
         '</svg>';
+    // Conceive — a lightbulb glyph signalling the "incubate an idea" intent,
+    // built from path primitives like the others (no icon library).
+    const ICON_CONCEIVE =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M9 18 L15 18"/>' +
+        '<path d="M10 21 L14 21"/>' +
+        '<path d="M12 3 C8.5 3 6 5.5 6 9 C6 11.4 7.4 13 8.6 14.2 C9.3 14.9 9.5 15.4 9.5 16 L14.5 16 C14.5 15.4 14.7 14.9 15.4 14.2 C16.6 13 18 11.4 18 9 C18 5.5 15.5 3 12 3 Z"/>' +
+        '</svg>';
 
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
     const mobileTabInbox    = buildMobileTab('inbox',    'Inbox',    ICON_INBOX);
     const mobileTabCalendar = buildMobileTab('calendar', 'Calendar', ICON_CALENDAR);
+    const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
     mobileTabProjects.id = 'mobileTabProjects';
     mobileTabInbox.id    = 'mobileTabInbox';
     mobileTabCalendar.id = 'mobileTabCalendar';
+    mobileTabConceive.id = 'mobileTabConceive';
 
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabInbox);
     mobileTabBar.appendChild(mobileTabCalendar);
+    mobileTabBar.appendChild(mobileTabConceive);
     base.appendChild(mobileTabBar);
 
     // Mirror refreshSheetVisibility for the tab bar — hide it whenever
@@ -1819,9 +1831,18 @@ function component() {
     viewPillCalendar.setAttribute('aria-pressed', 'false');
     viewPillCalendar.textContent = 'CALENDAR';
 
+    const viewPillConceive = document.createElement('button');
+    viewPillConceive.id = 'viewPillConceive';
+    viewPillConceive.type = 'button';
+    viewPillConceive.className = 'viewPill';
+    viewPillConceive.setAttribute('role', 'tab');
+    viewPillConceive.setAttribute('aria-pressed', 'false');
+    viewPillConceive.textContent = 'CONCEIVE';
+
     viewSwitcher.appendChild(viewPillProjects);
     viewSwitcher.appendChild(viewPillInbox);
     viewSwitcher.appendChild(viewPillCalendar);
+    viewSwitcher.appendChild(viewPillConceive);
 
     viewPillInbox.addEventListener('click', function() {
         applyActiveView('inbox');
@@ -1831,6 +1852,9 @@ function component() {
     });
     viewPillCalendar.addEventListener('click', function() {
         applyActiveView('calendar');
+    });
+    viewPillConceive.addEventListener('click', function() {
+        applyActiveView('conceive');
     });
 
     // ArrowDown drop-in from any of the three view pills into the visible
@@ -1891,6 +1915,7 @@ function component() {
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
     viewPillInbox.addEventListener('keydown', dropFocusIntoMainView);
     viewPillCalendar.addEventListener('keydown', dropFocusIntoMainView);
+    viewPillConceive.addEventListener('keydown', dropFocusIntoMainView);
 
     // ── Today dashboard shell ──
     // Date header, count summary, overdue/today/upcoming sections, and
@@ -2011,6 +2036,14 @@ function component() {
     calendarView.appendChild(calendarGridSide);
     calendarView.appendChild(calendarPanel);
 
+    // ── Conceive view shell ──
+    // Empty container the conceiveView module owns at runtime — renderConceiveView()
+    // fills it with either the concept index or the single-concept editor. Toggled
+    // via #mainBar's data-view attribute like the inbox / calendar surfaces, so
+    // none of the four views re-renders another on switch.
+    const conceiveView = document.createElement('div');
+    conceiveView.id = 'conceiveView';
+
     calendarPrevBtn.addEventListener('click', function() {
         shiftCalendarMonth(-1);
     });
@@ -2088,6 +2121,7 @@ function component() {
 
     main2.appendChild(inboxView);
     main2.appendChild(calendarView);
+    main2.appendChild(conceiveView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
     // mobile project header, above the compose row inside #mainList. Built once
@@ -5085,6 +5119,7 @@ function applyActiveView(view) {
     let safe = 'projects';
     if (view === 'inbox') safe = 'inbox';
     else if (view === 'calendar') safe = 'calendar';
+    else if (view === 'conceive') safe = 'conceive';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -5110,6 +5145,11 @@ function applyActiveView(view) {
         pillCalendar.classList.toggle('active', safe === 'calendar');
         pillCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
     }
+    const pillConceive = document.getElementById('viewPillConceive');
+    if (pillConceive) {
+        pillConceive.classList.toggle('active', safe === 'conceive');
+        pillConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
+    }
 
     // Mirror the active state on the mobile bottom tab bar so the same
     // applyActiveView call keeps both navigators in sync — desktop pills
@@ -5117,6 +5157,7 @@ function applyActiveView(view) {
     const tabProjects = document.getElementById('mobileTabProjects');
     const tabInbox    = document.getElementById('mobileTabInbox');
     const tabCalendar = document.getElementById('mobileTabCalendar');
+    const tabConceive = document.getElementById('mobileTabConceive');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
@@ -5128,6 +5169,10 @@ function applyActiveView(view) {
     if (tabCalendar) {
         tabCalendar.classList.toggle('active', safe === 'calendar');
         tabCalendar.setAttribute('aria-pressed', safe === 'calendar' ? 'true' : 'false');
+    }
+    if (tabConceive) {
+        tabConceive.classList.toggle('active', safe === 'conceive');
+        tabConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
     }
 
     if (safe === 'inbox') {
@@ -5145,6 +5190,11 @@ function applyActiveView(view) {
         // invisible until PROJECTS reactivates.
         resetCalendarStateToToday();
         renderCalendarView();
+    } else if (safe === 'conceive') {
+        // Same reasoning as INBOX / CALENDAR — the sidebar selection persists
+        // across the switch but is hidden while CONCEIVE owns the main panel,
+        // so the lingering .selectedProject has no visual effect.
+        renderConceiveView();
     }
 
 }
