@@ -226,6 +226,88 @@ describe('supabase re-hydrate triggers — src/index.js', () => {
         });
     });
 
+    describe('return-to-focus trigger (woken/unlocked desktop)', () => {
+        it('registers a window focus listener that re-hydrates and re-subscribes', () => {
+            // Waking a sleeping/locked desktop often fires no visibilitychange,
+            // no online, and suspends the interval — window focus is the
+            // reliable signal, so pin that it runs the same pair.
+            expect(index).toMatch(
+                /window\.addEventListener\(\s*['"]focus['"][\s\S]*?rehydrateUnlessEditing\(\s*\)[\s\S]*?wakeRecoverRealtime\(\s*\)/
+            );
+        });
+
+        it('the focus handler hydrates only when no editable element is focused', () => {
+            const guardBody = liftFunctionBody(index, 'function isEditableElementFocused(');
+            const rehydrateBody = liftFunctionBody(index, 'function rehydrateUnlessEditing(');
+            expect(guardBody).not.toBeNull();
+            expect(rehydrateBody).not.toBeNull();
+
+            // Lift the window-focus listener callback body.
+            const focusMatch = index.match(
+                /window\.addEventListener\(\s*['"]focus['"]\s*,\s*function\s*\(\s*\)\s*\{([\s\S]*?)\}\s*\)\s*;/
+            );
+            expect(focusMatch).not.toBeNull();
+            const focusBody = focusMatch[1];
+
+            let activeTag = 'DIV';
+            let activeContentEditable = false;
+            const fakeDocument = {
+                get activeElement() {
+                    return {
+                        tagName: activeTag,
+                        matches: (sel) => sel === '[contenteditable]' && activeContentEditable,
+                    };
+                },
+            };
+
+            let hydrateCalls = 0;
+            let resubscribeCalls = 0;
+            const fakeListLogic = {
+                hydrateFromSupabase: () => { hydrateCalls++; },
+                resubscribeToRealtime: () => { resubscribeCalls++; },
+            };
+
+            // Build the focus handler with rehydrateUnlessEditing,
+            // wakeRecoverRealtime, and the guard all in scope.
+            const factory = new Function(
+                'document', 'listLogic',
+                'function isEditableElementFocused(){' + guardBody + '}\n' +
+                'function rehydrateUnlessEditing(){' + rehydrateBody + '}\n' +
+                'function wakeRecoverRealtime(){ try { listLogic.resubscribeToRealtime(); } catch (_) {} }\n' +
+                'return function onFocus(){' + focusBody + '};'
+            );
+            const onFocus = factory(fakeDocument, fakeListLogic);
+
+            // Non-editable focus → hydrate runs and realtime re-subscribes.
+            onFocus();
+            expect(hydrateCalls).toBe(1);
+            expect(resubscribeCalls).toBe(1);
+
+            // INPUT focused → pull skipped (guard preserved); resubscribe is
+            // not gated on editing, so it still runs.
+            activeTag = 'INPUT';
+            onFocus();
+            expect(hydrateCalls).toBe(1);
+            expect(resubscribeCalls).toBe(2);
+
+            // TEXTAREA focused → skip.
+            activeTag = 'TEXTAREA';
+            onFocus();
+            expect(hydrateCalls).toBe(1);
+
+            // contenteditable focused → skip.
+            activeTag = 'DIV';
+            activeContentEditable = true;
+            onFocus();
+            expect(hydrateCalls).toBe(1);
+
+            // Back to plain focus → hydrate runs again.
+            activeContentEditable = false;
+            onFocus();
+            expect(hydrateCalls).toBe(2);
+        });
+    });
+
     describe('5-minute backstop interval', () => {
         it('schedules a setInterval(rehydrateUnlessEditing, 5 minutes)', () => {
             expect(index).toMatch(/setInterval\(\s*rehydrateUnlessEditing\s*,\s*5\s*\*\s*60\s*\*\s*1000\s*\)/);

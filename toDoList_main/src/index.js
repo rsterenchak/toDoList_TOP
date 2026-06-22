@@ -269,6 +269,22 @@ window.addEventListener('online', function () {
     wakeRecoverRealtime();
 });
 
+// Waking a sleeping or unlocking a locked desktop is the gap the other
+// triggers miss: sleep/lock frequently doesn't toggle document visibility
+// (so visibilitychange never fires), the backstop setInterval is suspended
+// while the machine sleeps and won't tick until its next boundary after wake
+// (up to 5 min), and `online` only fires if the browser registered a network
+// drop. The reliable signal for returning to a woken/unlocked desktop is the
+// window regaining focus, so run the same re-hydrate + realtime re-subscribe
+// pair the visibility handler does. The mid-edit guard inside
+// rehydrateUnlessEditing still skips the pull when an editable element is
+// focused, and hydrateFromSupabase single-flights overlapping calls, so a tab
+// switch that fires both visibility and focus is harmless.
+window.addEventListener('focus', function () {
+    rehydrateUnlessEditing();
+    wakeRecoverRealtime();
+});
+
 setInterval(rehydrateUnlessEditing, 5 * 60 * 1000);
 
 
