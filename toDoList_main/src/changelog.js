@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "Turn a project's Build plan into todos: \"Generate tasks\" in Conceive proposes a checklist you review, then adds the ones you keep.",
         ],
+        changed: [
+            "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
+        ],
     },
     {
         version: '1.1',
@@ -18,7 +21,6 @@ export const changelog = [
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
         ],
         changed: [
-            "The Calendar view has been removed; navigation now offers Projects, Inbox, and Conceive.",
             "The Conceive tab now plans the selected project's own lifecycle stages instead of a separate list of concepts.",
         ],
     },
