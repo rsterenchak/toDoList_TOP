@@ -20,7 +20,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3523bcc2-4d92-47fb-a92b-7e86b9560a38 -->
 
-- [ ] **[LOW]** Route seed-todos decomposition through deep-think (Opus) via a deep flag on chatWithWorker
+- [x] **[LOW]** Route seed-todos decomposition through deep-think (Opus) via a deep flag on chatWithWorker — Completed: 2026-06-22
   - Type: feature
   - Description: The seed-todos "Generate tasks" call currently goes through `chatWithWorker` with no deep flag, so the Worker runs it on the default fast model (`claude-sonnet-4-6`). Task decomposition benefits from the stronger model, and the Worker already supports it — its chat branch routes `body.deep_think === true` to `claude-opus-4-8` with adaptive thinking + high effort, falling back to Sonnet otherwise. `chatWithWorker` just doesn't forward that flag yet. Add an optional `deep` parameter to `chatWithWorker` that sets `deep_think: true` on the Worker payload when truthy, and pass it only from the seed-todos call — so seed-todos goes heavy while every other chat turn (the normal composer chat, iterate, layout-inspector turns) stays on the fast default untouched. No Worker change — `deep_think` already exists server-side and is backward-compatible (an absent flag is today's behavior).
   - What changes:
