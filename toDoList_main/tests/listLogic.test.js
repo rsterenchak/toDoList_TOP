@@ -2794,3 +2794,123 @@ describe('listLogic — auto-reorder on due-date change when sortByDue is active
         expect(item.due).toBe('');
     });
 });
+
+
+// ── PER-PROJECT LIFECYCLE STAGES (Conceive) ──────────────────────────
+// Each project carries an ordered `stages` list (seeded with the SDLC set)
+// and a `lifecycle` label, replacing the standalone concept store. These
+// pin the seed, the id-targeted body mutator, and that the new fields ride
+// along through rename / snapshot / replace round-trips.
+describe('listLogic — per-project lifecycle stages', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    it('a newly-created project seeds the five SDLC stages in order plus lifecycle SDLC', () => {
+        listLogic.addProject('Launch');
+        const stages = listLogic.getProjectStages('Launch');
+        expect(stages.map(s => s.label)).toEqual([
+            'Why',
+            'Concept',
+            'Requirements',
+            'Design',
+            'Build plan',
+        ]);
+        // Each seeded stage starts empty with a unique string id.
+        stages.forEach(s => expect(s.body).toBe(''));
+        const ids = stages.map(s => s.id);
+        expect(new Set(ids).size).toBe(ids.length);
+        ids.forEach(id => expect(typeof id).toBe('string'));
+        expect(listLogic.getProjectLifecycle('Launch')).toBe('SDLC');
+    });
+
+    it('getProjectStages returns [] for an unknown project', () => {
+        expect(listLogic.getProjectStages('Nope')).toEqual([]);
+    });
+
+    it('getProjectLifecycle defaults to SDLC for an unknown project', () => {
+        expect(listLogic.getProjectLifecycle('Nope')).toBe('SDLC');
+    });
+
+    it('setProjectStageBody targets a stage by id and leaves siblings untouched', () => {
+        listLogic.addProject('Launch');
+        const stages = listLogic.getProjectStages('Launch');
+        const reqId = stages[2].id; // Requirements
+        listLogic.setProjectStageBody('Launch', reqId, 'must do X');
+        const after = listLogic.getProjectStages('Launch');
+        expect(after[2].body).toBe('must do X');
+        expect(after[0].body).toBe('');
+    });
+
+    it('setProjectStageBody is a no-op for an unknown project or stage id', () => {
+        listLogic.addProject('Launch');
+        const stageId = listLogic.getProjectStages('Launch')[0].id;
+        expect(listLogic.setProjectStageBody('Nope', stageId, 'x')).toBeNull();
+        expect(listLogic.setProjectStageBody('Launch', 'nope', 'x')).toBeNull();
+    });
+
+    it('setProjectStageBody persists through the localStorage funnel', () => {
+        listLogic.addProject('Launch');
+        const stageId = listLogic.getProjectStages('Launch')[1].id; // Concept
+        listLogic.setProjectStageBody('Launch', stageId, 'the concept body');
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        const persisted = parsed.Launch.stages.find(s => s.id === stageId);
+        expect(persisted.body).toBe('the concept body');
+    });
+
+    it('editProject (rename) preserves the project stages and lifecycle', () => {
+        listLogic.addProject('Old');
+        const stageId = listLogic.getProjectStages('Old')[0].id;
+        listLogic.setProjectStageBody('Old', stageId, 'why it matters');
+
+        listLogic.editProject('Old', 'New');
+
+        const stages = listLogic.getProjectStages('New');
+        expect(stages.map(s => s.label)).toEqual([
+            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+        ]);
+        expect(stages.find(s => s.id === stageId).body).toBe('why it matters');
+        expect(listLogic.getProjectLifecycle('New')).toBe('SDLC');
+        expect(listLogic.getProjectStages('Old')).toEqual([]);
+    });
+
+    it('snapshotProjects includes stages and lifecycle', () => {
+        listLogic.addProject('Launch');
+        const stageId = listLogic.getProjectStages('Launch')[3].id; // Design
+        listLogic.setProjectStageBody('Launch', stageId, 'design notes');
+
+        const snap = listLogic.snapshotProjects();
+        const entry = snap.find(p => p.name === 'Launch');
+        expect(entry.lifecycle).toBe('SDLC');
+        expect(entry.stages.map(s => s.label)).toEqual([
+            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+        ]);
+        expect(entry.stages.find(s => s.id === stageId).body).toBe('design notes');
+    });
+
+    it('snapshotProjects -> replaceAllProjects round-trips stages and lifecycle', () => {
+        listLogic.addProject('Launch');
+        const stageId = listLogic.getProjectStages('Launch')[0].id;
+        listLogic.setProjectStageBody('Launch', stageId, 'round-trip body');
+
+        const snap = listLogic.snapshotProjects();
+        listLogic._reset();
+        listLogic.replaceAllProjects(snap);
+
+        const stages = listLogic.getProjectStages('Launch');
+        expect(stages.map(s => s.label)).toEqual([
+            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+        ]);
+        expect(stages.find(s => s.id === stageId).body).toBe('round-trip body');
+        expect(listLogic.getProjectLifecycle('Launch')).toBe('SDLC');
+    });
+
+    it('replaceAllProjects backfills the SDLC stages for an import missing them', () => {
+        listLogic.replaceAllProjects([{ name: 'Imported', items: [] }]);
+        const stages = listLogic.getProjectStages('Imported');
+        expect(stages.map(s => s.label)).toEqual([
+            'Why', 'Concept', 'Requirements', 'Design', 'Build plan',
+        ]);
+        expect(listLogic.getProjectLifecycle('Imported')).toBe('SDLC');
+    });
+});

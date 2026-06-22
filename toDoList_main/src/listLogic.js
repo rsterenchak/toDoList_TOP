@@ -122,6 +122,44 @@ const MISS_MONTH_SHORT = [
 ];
 
 
+// ── PER-PROJECT LIFECYCLE STAGES ─────────────────────────────────────
+// Each project carries an ordered `stages` list (the Conceive view's
+// lifecycle surface) plus a `lifecycle` label. Seeded with the SDLC set
+// on project creation and backfilled on load for legacy projects.
+// Declared above the `listLogic` IIFE for the same Babel-transpilation
+// reason as RECURRENCE_PATTERNS — the IIFE's load-time migrate pass
+// calls seedStages() on any project missing its stage list.
+const SDLC_STAGE_LABELS = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
+const DEFAULT_LIFECYCLE = 'SDLC';
+
+// Build the ordered SDLC stage list, each stage seeded with an empty body
+// and a fresh id. The ordered array serializes directly into the existing
+// allProjects localStorage blob (no separate key).
+function seedStages() {
+    return SDLC_STAGE_LABELS.map(function(label) {
+        return { id: genId(), label: label, body: '' };
+    });
+}
+
+// Coerce an arbitrary stages value into a clean ordered list. Used on the
+// untrusted import path (replaceAllProjects): a missing or empty list
+// re-seeds the SDLC set; otherwise existing ids are preserved (so stage
+// targeting round-trips) and label/body are forced to strings.
+function normalizeStages(stages) {
+    if (!Array.isArray(stages) || stages.length === 0) return seedStages();
+    return stages.map(function(s) {
+        if (!s || typeof s !== 'object') {
+            return { id: genId(), label: '', body: '' };
+        }
+        return {
+            id: (typeof s.id === 'string' && s.id.length > 0) ? s.id : genId(),
+            label: typeof s.label === 'string' ? s.label : '',
+            body: typeof s.body === 'string' ? s.body : '',
+        };
+    });
+}
+
+
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
     
@@ -213,11 +251,21 @@ export const listLogic = (function () {
     Object.keys(allProjects).forEach(function(key) {
         const entry = allProjects[key];
         if (Array.isArray(entry)) {
-            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false, target_id: null };
+            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
         } else if (!entry || typeof entry !== 'object') {
-            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, target_id: null };
+            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
         } else {
             if (!Array.isArray(entry.items)) entry.items = [];
+            // Backfill the lifecycle stages on projects saved before the
+            // Conceive-per-project feature existed; any project missing a
+            // valid stage list gets the default SDLC set, the same way
+            // color / sortByDue are backfilled below.
+            if (!Array.isArray(entry.stages) || entry.stages.length === 0) {
+                entry.stages = seedStages();
+            }
+            if (typeof entry.lifecycle !== 'string' || entry.lifecycle.length === 0) {
+                entry.lifecycle = DEFAULT_LIFECYCLE;
+            }
             if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
             if (typeof entry.color === 'string' && PROJECT_COLOR_KEYS.indexOf(entry.color) === -1) {
                 entry.color = null;
@@ -301,7 +349,7 @@ export const listLogic = (function () {
         }
 
         const projectId = genId();
-        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false, target_id: null };
+        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
 
         allProjectsTotal = Object.keys(allProjects).length;
 
@@ -1022,6 +1070,40 @@ export const listLogic = (function () {
         if (!entry) return;
         entry.sortByDue = !!on;
         saveToStorage();
+    }
+
+
+    // ── PER-PROJECT LIFECYCLE STAGES ──
+    // The Conceive view renders the selected project's ordered `stages`
+    // list (seeded with the SDLC set) and edits stage bodies. Reads return
+    // the LIVE array so the view always sees current bodies; writes route
+    // through the same saveToStorage funnel every other project mutation
+    // uses. The Supabase mirror for stages is a later run, so no
+    // persistMutation call here.
+    function getProjectStages(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.stages)) return [];
+        return entry.stages;
+    }
+
+    function getProjectLifecycle(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return DEFAULT_LIFECYCLE;
+        return entry.lifecycle || DEFAULT_LIFECYCLE;
+    }
+
+    // Set the body text of a single stage, targeted by project name + stage
+    // id (stages are an ordered list, not fixed keys). No-op when the
+    // project or the stage id is unknown.
+    // @category: user-mutation-only
+    function setProjectStageBody(projectName, stageId, text) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.stages)) return null;
+        const stage = entry.stages.find(function(s) { return s.id === stageId; });
+        if (!stage) return null;
+        stage.body = typeof text === 'string' ? text : '';
+        saveToStorage();
+        return stage;
     }
 
 
@@ -1903,7 +1985,11 @@ export const listLogic = (function () {
             });
 
             const sortByDue = typeof entry.sortByDue === 'boolean' ? entry.sortByDue : false;
-            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, target_id: null };
+            const stages = normalizeStages(entry.stages);
+            const lifecycle = (typeof entry.lifecycle === 'string' && entry.lifecycle.length > 0)
+                ? entry.lifecycle
+                : DEFAULT_LIFECYCLE;
+            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, target_id: null, stages: stages, lifecycle: lifecycle };
             sortCompletedInPlace(allProjects[name].items);
         });
 
@@ -1962,9 +2048,10 @@ export const listLogic = (function () {
 
 
     // Snapshot the current project tree as a plain array of
-    // `{ name, items, color }` entries — the shape consumed by
-    // replaceAllProjects and the export file. Iteration order matches
-    // Object.keys(allProjects), preserving the user's project order.
+    // `{ name, items, color, sortByDue, target_id, stages, lifecycle }`
+    // entries — the shape consumed by replaceAllProjects and the export
+    // file. Iteration order matches Object.keys(allProjects), preserving
+    // the user's project order.
     function snapshotProjects() {
         return Object.keys(allProjects).map(function(name) {
             const entry = allProjects[name];
@@ -1974,6 +2061,8 @@ export const listLogic = (function () {
                 color: entry.color || null,
                 sortByDue: !!entry.sortByDue,
                 target_id: entry.target_id || null,
+                stages: Array.isArray(entry.stages) ? entry.stages.slice() : [],
+                lifecycle: entry.lifecycle || DEFAULT_LIFECYCLE,
             };
         });
     }
@@ -2643,6 +2732,9 @@ export const listLogic = (function () {
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,
+        getProjectStages,
+        getProjectLifecycle,
+        setProjectStageBody,
         getProjectTargetId,
         setProjectTargetId,
         clearProjectTargetId,
