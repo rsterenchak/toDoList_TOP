@@ -7,13 +7,15 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-22',
         added: [
-            "Turn a project's Build plan into todos: \"Generate tasks\" in Conceive proposes a checklist you review, then adds the ones you keep.",
             "Draft a Build plan from a project's upstream stages with one tap — \"Suggest plan\" in Conceive writes an editable plan you can undo or regenerate.",
             "Each Conceive stage now shows a short guidance prompt under its label describing what belongs there.",
         ],
         changed: [
             "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
             "Removed the Inbox view and its navigation; idea-status todos remain available via each project's Ideas filter.",
+        ],
+        fixed: [
+            "Returning to a sleeping or locked desktop now pulls changes made on your other devices automatically, without a manual refresh.",
         ],
     },
 ];
