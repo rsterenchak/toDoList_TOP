@@ -258,7 +258,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 83057017-bc1b-422d-8857-6cbadec23b4a -->
 
-- [ ] **[MEDIUM]** Reduce swipe-down-to-close sensitivity on the mobile chat sheet
+- [x] **[MEDIUM]** Reduce swipe-down-to-close sensitivity on the mobile chat sheet — Completed: 2026-06-22
   - Type: bug
   - Description: On mobile, swiping down inside the chat window dismisses the sheet far too easily — it closes on almost any downward gesture, including small scroll-intent swipes. Raise the dismiss threshold so the sheet only closes on a deliberate downward swipe: require a larger minimum drag distance and/or downward velocity before triggering close, and ignore the gesture when it originates inside a scrollable content area that still has scroll room (so scrolling the chat log doesn't register as a dismiss). Likely in the touchstart/touchmove/touchend swipe-to-dismiss handler in `toDoList_main/src/mobileSheets.js`, as wired for the chat sheet in `toDoList_main/src/claudeSheet.js`.
   - File: `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/claudeSheet.js`

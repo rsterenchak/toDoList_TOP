@@ -38,7 +38,14 @@ import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 import DOMPurify from 'dompurify';
 
 const MOBILE_MAX_WIDTH = 1023;
-const SWIPE_CLOSE_PX = 60;
+// Swipe-down-to-dismiss commit thresholds. A deliberate dismiss is either a
+// long drag (>= SWIPE_CLOSE_PX) or a shorter drag thrown with real downward
+// velocity (>= SWIPE_CLOSE_FLICK_PX at >= SWIPE_CLOSE_VELOCITY_PX_PER_MS). The
+// distance bar is raised well above a casual scroll-intent swipe so the sheet
+// no longer closes on almost any downward gesture.
+const SWIPE_CLOSE_PX = 120;
+const SWIPE_CLOSE_FLICK_PX = 60;
+const SWIPE_CLOSE_VELOCITY_PX_PER_MS = 0.5;
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
@@ -2129,17 +2136,44 @@ function buildSheet() {
     return sheet;
 }
 
+// Walk up from `node` (exclusive of `stopAt`) looking for a scrollable
+// ancestor — an element whose overflow-y allows scrolling and whose content
+// actually overflows. Used to tell whether a touch began inside the chat log
+// rather than on inert sheet chrome.
+function findScrollableAncestor(node, stopAt) {
+    let el = node;
+    while (el && el !== stopAt && el.nodeType === 1) {
+        const style = window.getComputedStyle(el);
+        const oy = style ? style.overflowY : '';
+        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+            return el;
+        }
+        el = el.parentNode;
+    }
+    return null;
+}
+
 // Touch swipe-down to dismiss on mobile. HTML5 drag events don't fire on
 // touch, so this rides touchstart/touchmove/touchend directly. Gated to the
 // mobile viewport and to a downward gesture so taps on inner controls are
-// untouched.
+// untouched. To stop ordinary chat-log scrolling from reading as a dismiss,
+// the gesture is ignored when it starts inside a scrollable region that is
+// already scrolled down (scrollTop > 0) — there a downward drag is the user
+// scrolling back toward the top. It only commits on a deliberate swipe: a long
+// drag, or a shorter drag thrown with real downward velocity.
 function attachSwipeToClose(target) {
     let startY = 0;
+    let startT = 0;
     let tracking = false;
     target.addEventListener('touchstart', function(event) {
         if (window.innerWidth > MOBILE_MAX_WIDTH) return;
         if (!event.touches || event.touches.length !== 1) return;
+        // Yield to native scrolling: a touch that begins inside a scrollable
+        // region with room to scroll up is a scroll, not a dismiss.
+        const scrollable = findScrollableAncestor(event.target, target);
+        if (scrollable && scrollable.scrollTop > 0) return;
         startY = event.touches[0].clientY;
+        startT = Date.now();
         tracking = true;
     }, { passive: true });
     target.addEventListener('touchmove', function(event) {
@@ -2152,7 +2186,14 @@ function attachSwipeToClose(target) {
         tracking = false;
         const touch = (event.changedTouches && event.changedTouches[0]) || null;
         if (!touch) return;
-        if (touch.clientY - startY >= SWIPE_CLOSE_PX) closeClaudeSheet();
+        const dy = touch.clientY - startY;
+        const dt = Math.max(1, Date.now() - startT);
+        const velocity = dy / dt;
+        // Deliberate-swipe gate: a long drag, or a shorter but fast downward
+        // flick. Casual scroll-intent swipes clear neither bar.
+        const longDrag = dy >= SWIPE_CLOSE_PX;
+        const fastFlick = dy >= SWIPE_CLOSE_FLICK_PX && velocity >= SWIPE_CLOSE_VELOCITY_PX_PER_MS;
+        if (longDrag || fastFlick) closeClaudeSheet();
     }, { passive: true });
 }
 
