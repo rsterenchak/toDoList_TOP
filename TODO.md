@@ -244,3 +244,9 @@
   - File: `toDoList_main/src/seedTasksModal.js`, `toDoList_main/tests/seedTasksModal.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1088826e-0b64-4fae-be31-14b1362d3b54 -->
+
+- [ ] **[MEDIUM]** Add a spinning "Syncing" indicator to the todo.md viewer sync button
+  - Type: feature
+  - Description: When the sync button in the todo.md viewer is pressed, replace its idle content with an animated spinner glyph plus a "Syncing" label until the sync completes, then restore the original button state. The button widens to fit the spinner and label; use a CSS keyframe rotation on the spinner element and Void accent colors (#9D93EE) so it honors the current theme. Wire the loading state to the existing sync action so it shows on press and clears on success or failure. Likely changes: render the spinner/label markup and toggle a loading class in `toDoList_main/src/todoMdViewer.js`, and define the spinner styles and `@keyframes` rotation in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  <!-- id: 49d2bfac-0137-483d-a896-429b26bd7821 -->
