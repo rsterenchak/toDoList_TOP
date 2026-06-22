@@ -84,3 +84,47 @@ describe('listLogic.js — no todos.user_id schema reference', () => {
         expect(USER_ID_THEN_TODOS.test(benign)).toBe(false);
     });
 });
+
+
+// Pull out the body of a top-level function declaration so per-function
+// assertions can inspect only the relevant region. Walks braces to find
+// the matching close. Mirrors the helper in listLogicSupabase.test.js.
+function functionBody(src, name) {
+    const declRe = new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{');
+    const match = declRe.exec(src);
+    if (!match) return null;
+    const openBrace = match.index + match[0].length - 1;
+    let depth = 0;
+    for (let i = openBrace; i < src.length; i++) {
+        const ch = src[i];
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+            depth--;
+            if (depth === 0) return src.slice(openBrace + 1, i);
+        }
+    }
+    return null;
+}
+
+
+describe('listLogic.js — toProjectRowPayload carries the per-project stages/lifecycle columns', () => {
+    // The per-project Conceive stages sync added `stages` (jsonb) and
+    // `lifecycle` (text) columns to the projects row. toProjectRowPayload
+    // is the single funnel every project write mirrors through, so it must
+    // carry both fields or the sync silently no-ops — the green-but-does-
+    // nothing failure mode this codebase pins by test rather than by eye.
+    const body = functionBody(SRC, 'toProjectRowPayload');
+
+    it('exists as a declared function', () => {
+        expect(body).toBeTruthy();
+    });
+
+    it('includes `stages` sourced from the entry', () => {
+        expect(body).toMatch(/stages:\s*entry\.stages/);
+    });
+
+    it('includes `lifecycle` defaulting to the SDLC label', () => {
+        // `entry.lifecycle || DEFAULT_LIFECYCLE` — never undefined on the wire.
+        expect(body).toMatch(/lifecycle:\s*entry\.lifecycle\s*\|\|/);
+    });
+});
