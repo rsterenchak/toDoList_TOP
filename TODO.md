@@ -177,3 +177,25 @@
   - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/conceiveShapeChooser.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: afd09085-4f23-450b-aefa-a619462e53f3 -->
+
+- [ ] **[MEDIUM]** Ground Generate tasks and Suggest plan in the project's linked repo instead of the default
+  - Type: feature
+  - Description: Generate tasks and Suggest plan currently call the in-app Claude with `repo: null`, so the Worker falls back to its default target (the todo app) and grounds every Conceive project's generation in `toDoList_TOP`'s CLAUDE.md + source manifest — right when you're conceiving the todo app, wrong for any other app. Conceive projects already carry a repo link (`target_id` → an `inject_targets` row, the same routing the inject/run path uses), and the Worker already auto-fetches a named repo's CLAUDE.md + manifest and reframes its system prompt around it. So this resolves each project's linked repo and passes it into both calls instead of null — grounding the slice decomposition and the plan draft in the right app's actual code, with no Worker change. A project with no linked repo (e.g. a brand-new idea) still passes null and falls back to the default exactly as today; the genuine no-repo case is the separate optional Worker flag deferred earlier.
+  - What changes:
+    1. Shared resolver: add a small helper that resolves a project's repo — read the project's `target_id` via a new `listLogic.getProjectTargetId(projectName)` accessor (mirroring `getProjectStages` / `getProjectColor`, returning the entry's `target_id` or null), then resolve it via `findTargetById(targetId)` (already exported from `inject.js`) → `target.repo`. Returns the repo string, or null when the project has no target or the target isn't in the cache.
+    2. Generate tasks (`seedTasksModal.js`): pass the resolved repo as the `repo` arg to `chatWithWorker` instead of `null` — `chatWithWorker(messages, undefined, undefined, resolveProjectRepo(projectName), undefined, true)`.
+    3. Suggest plan (`conceiveView.js`): the same change to its `chatWithWorker` call — resolved repo in place of null, deep flag preserved.
+  - Behavior:
+    1. For a Conceive project linked to a repo, Generate tasks and Suggest plan run with that repo as the workspace — the Worker injects that repo's CLAUDE.md + source manifest and frames the system prompt around it, so the decomposition / plan draft is grounded in that app's real code.
+    2. For a project with no linked repo, both still send no repo and the Worker falls back to its default (the todo app), unchanged from today.
+    3. Nothing else about the calls changes — the stage text (task source + context) and the dup-skip are untouched.
+  - Implementation notes:
+    - inject_targets repos are validated against the Worker's `ALLOWED_TARGETS` at save time, so any repo resolved this way is guaranteed allowlisted — passing it can't trip the Worker's "target not in allowlist" 400. No defensive allowlist check needed.
+    - Define the resolver once (e.g. in `conceiveView.js` or a small shared spot) and use it for both calls; import `findTargetById` from `inject.js`. Resolution must degrade to null gracefully (no `target_id`, target deleted, cache not loaded) so generation never breaks — null just means "default repo," the current behavior.
+    - `chatWithWorker` already sets `payload.repo` only when the arg is truthy, so passing the resolved repo or null needs no change to `inject.js`, and `findTargetById` is already exported. The only `listLogic.js` change is adding the `getProjectTargetId` accessor.
+    - Depends on the seed-todos, Suggest plan, and deep-flag entries (their `chatWithWorker` calls and the 6th deep arg must exist). Independent of the shape runs, but touches the same files — run it on its own, one Conceive entry at a time.
+    - Tests: assert the resolver returns the linked repo for a project whose `target_id` resolves to a cached target, and null when there's no `target_id` or the target is missing; assert Generate tasks and Suggest plan pass the resolved repo (mock `chatWithWorker` / `findTargetById`) and pass null (omit repo) for an unlinked project. Keep the suite green.
+  - Out of scope: a true "no repo context" mode for an idea with no repo yet (the deferred Worker flag — the Worker always defaults to a repo today); letting the user override the repo per generation (it follows the project's link); any change to `inject.js` routing, the workspace pill, or the chat's `activeChatRepo`; changing which stage feeds the tools (run 1's concern); the concept overview/preview surface.
+  - File: `toDoList_main/src/conceiveView.js`, `toDoList_main/src/seedTasksModal.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/seedTasksModal.test.js`, `toDoList_main/tests/conceiveSuggestPlan.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e6b01746-5681-4ca0-a1d0-e44371aa8617 -->
