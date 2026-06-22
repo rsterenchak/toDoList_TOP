@@ -38,7 +38,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3ae418e7-08ca-45ff-8808-15c196420ce1 -->
 
-- [ ] **[MEDIUM]** Add "Suggest plan" to the Build-plan stage, drafting it from the upstream stages via Claude
+- [x] **[MEDIUM]** Add "Suggest plan" to the Build-plan stage, drafting it from the upstream stages via Claude — Completed: 2026-06-22
   - Type: feature
   - Description: Add a "Suggest plan" action to the Build-plan stage in the Conceive view that drafts a build plan from the project's upstream stages. Tapping it reads the selected project's Why / Concept / Requirements / Design and sends them to the in-app Claude (the existing `chatWithWorker` chat path) asking it to draft a concrete, ordered build plan, then writes the result straight into the Build-plan stage's body — where it's just editable text you can revise. After a draft, an "Undo / Regenerate" footer appears (Undo restores the pre-suggestion text; Regenerate calls again). If the Build-plan body already has content, it confirms before overwriting so nothing is lost. The drafted plan is then exactly what "Generate tasks" (seed-todos) consumes — so the loop is: write the upstream stages → Suggest plan → edit → Generate tasks. The suggestion runs on the deep/Opus path, since synthesis-from-context is what the stronger model does noticeably better.
   - What changes:
