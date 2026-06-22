@@ -250,3 +250,10 @@
   - Description: When the sync button in the todo.md viewer is pressed, replace its idle content with an animated spinner glyph plus a "Syncing" label until the sync completes, then restore the original button state. The button widens to fit the spinner and label; use a CSS keyframe rotation on the spinner element and Void accent colors (#9D93EE) so it honors the current theme. Wire the loading state to the existing sync action so it shows on press and clears on success or failure. Likely changes: render the spinner/label markup and toggle a loading class in `toDoList_main/src/todoMdViewer.js`, and define the spinner styles and `@keyframes` rotation in `toDoList_main/src/style.css`.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   <!-- id: 49d2bfac-0137-483d-a896-429b26bd7821 -->
+
+- [ ] **[HIGH]** Restrict chat sheet drag-to-close to grabber or top-of-scroll on mobile
+  - Type: bug
+  - Description: On mobile, dragging down inside the Claude chat sheet's scrollable body often closes the sheet, making it hard to scroll the chat without dismissing it. Gate the drag-to-dismiss gesture so it only fires when (a) the touch starts on the sheet header/grabber handle, OR (b) the touch starts in the chat body while the scroll container is already at `scrollTop === 0`. When the scroll container has content scrolled above (`scrollTop > 0`), a downward drag must be treated as a normal scroll and never start the dismiss gesture; the existing release threshold/snap-back behavior should still apply once a dismiss drag legitimately starts.
+  - File: `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/claudeSheet.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 83057017-bc1b-422d-8857-6cbadec23b4a -->
