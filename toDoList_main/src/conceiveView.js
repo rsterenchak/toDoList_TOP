@@ -1,5 +1,5 @@
 import { listLogic } from './listLogic.js';
-import { openSeedTasksModal } from './seedTasksModal.js';
+import { openSeedTasksModal, resolveProjectRepo } from './seedTasksModal.js';
 import { chatWithWorker } from './inject.js';
 import { actionableStageLabel } from './conceiveShapes.js';
 
@@ -356,9 +356,11 @@ function buildStageSection(projectName, stage, actionableLabel) {
             const stages = listLogic.getProjectStages(projectName) || [];
             const prompt = buildSuggestPlanPrompt(stages, actionableLabel);
             // One-off messages array so the live chat conversation is never
-            // touched; repo is null (Worker default). The trailing `true` is
-            // the deep flag — synthesis-from-context runs on the heavier model.
-            chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, null, undefined, true)
+            // touched; repo is the project's linked repo (or null → Worker
+            // default when unlinked), grounding the plan draft in that app's
+            // actual code. The trailing `true` is the deep flag — synthesis-
+            // from-context runs on the heavier model.
+            chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, resolveProjectRepo(projectName), undefined, true)
                 .then(function (res) {
                     suggestBtn.textContent = priorLabel;
                     suggestBtn.disabled = false;

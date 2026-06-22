@@ -15,6 +15,8 @@ const { state } = vi.hoisted(() => ({
         stages: [],
         items: [],
         added: [],
+        targetId: null,
+        targets: [],
     },
 }));
 
@@ -22,6 +24,11 @@ vi.mock('../src/inject.js', () => ({
     chatWithWorker: vi.fn(function (messages) {
         state.lastMessages = messages;
         return Promise.resolve({ reply: state.reply, suggestedFiles: [] });
+    }),
+    // Resolve a target id against the canned cache so resolveProjectRepo can
+    // map a project's target_id to a repo (or null when absent).
+    findTargetById: vi.fn(function (id) {
+        return state.targets.find(function (t) { return t.id === id; }) || null;
     }),
 }));
 
@@ -31,12 +38,13 @@ vi.mock('../src/listLogic.js', () => ({
         // Spec-shaped project: the actionable stage is 'Build plan', so the
         // modal targets the Build-plan stage in this fixture.
         getProjectLifecycle: function () { return 'spec'; },
+        getProjectTargetId: function () { return state.targetId; },
         listItems: function () { return state.items; },
         addToDo: vi.fn(function (project, title) { state.added.push(title); }),
     },
 }));
 
-import { openSeedTasksModal, parseTaskTitles } from '../src/seedTasksModal.js';
+import { openSeedTasksModal, parseTaskTitles, resolveProjectRepo } from '../src/seedTasksModal.js';
 import { chatWithWorker } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 
@@ -62,6 +70,8 @@ beforeEach(() => {
     ];
     state.items = [];
     state.added = [];
+    state.targetId = null;
+    state.targets = [];
     chatWithWorker.mockClear();
     listLogic.addToDo.mockClear();
 });
@@ -115,6 +125,48 @@ describe('openSeedTasksModal — outbound prompt', () => {
         // Seed-todos decomposition routes through the heavier model: the
         // trailing deep flag is true. Every other chat turn omits it.
         expect(chatWithWorker.mock.calls[0][5]).toBe(true);      // deep
+    });
+});
+
+describe('resolveProjectRepo', () => {
+    it('returns the linked repo when the project target_id resolves to a cached target', () => {
+        state.targetId = 't1';
+        state.targets = [{ id: 't1', repo: 'owner/some-app' }];
+        expect(resolveProjectRepo('Proj')).toBe('owner/some-app');
+    });
+
+    it('returns null when the project has no target_id', () => {
+        state.targetId = null;
+        state.targets = [{ id: 't1', repo: 'owner/some-app' }];
+        expect(resolveProjectRepo('Proj')).toBeNull();
+    });
+
+    it('returns null when the target_id is not in the cache (deleted/unwarmed)', () => {
+        state.targetId = 'missing';
+        state.targets = [{ id: 't1', repo: 'owner/some-app' }];
+        expect(resolveProjectRepo('Proj')).toBeNull();
+    });
+});
+
+describe('openSeedTasksModal — repo grounding', () => {
+    it('passes the project linked repo as the repo arg when the project is linked', async () => {
+        state.targetId = 't1';
+        state.targets = [{ id: 't1', repo: 'owner/some-app' }];
+        openSeedTasksModal('Proj');
+        await flush();
+
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(chatWithWorker.mock.calls[0][3]).toBe('owner/some-app'); // repo
+        expect(chatWithWorker.mock.calls[0][5]).toBe(true);             // deep
+    });
+
+    it('passes null (Worker default) when the project has no linked repo', async () => {
+        state.targetId = null;
+        openSeedTasksModal('Proj');
+        await flush();
+
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(chatWithWorker.mock.calls[0][3]).toBeNull(); // repo
     });
 });
 
