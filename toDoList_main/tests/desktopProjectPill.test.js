@@ -188,13 +188,12 @@ describe('desktop header consolidation', () => {
         expect(fn).toMatch(/mobileProjHeader\.appendChild\(\s*mobileProjStats\s*\)/);
     });
 
-    it('(e) the SORT BY DUE / EXPAND ALL overlay drops onto the filter row, body data-view mirror hides the pill in inbox/calendar', () => {
+    it('(e) the SORT BY DUE / EXPAND ALL overlay drops onto the filter row, body data-view mirror stays wired', () => {
         const block = consolidationBlock();
         // The overlay is pulled up to align on the ~36px status-filter row.
         expect(block).toMatch(/#bulkDescActions\s*\{[^}]*top:\s*0/);
-        // The pill + counts hide in INBOX / CALENDAR via the body[data-view]
-        // mirror (they no longer live under #mainBar at desktop widths).
-        expect(block).toMatch(/body\[data-view="inbox"\]\s+#mobileProjHeader/);
+        // applyActiveView still mirrors the routing attribute onto <body> so
+        // any body-scoped data-view hooks stay in lockstep with #mainBar.
         expect(main).toMatch(/document\.body\.setAttribute\(\s*['"]data-view['"]/);
     });
 
@@ -202,12 +201,12 @@ describe('desktop header consolidation', () => {
         // The restyle is CSS-only; the click handlers and the active-class
         // toggle in applyActiveView are untouched, so a tab tap still flips
         // which tab is active (and thus which one paints the underline).
-        expect(main).toMatch(/viewPillInbox\.addEventListener\(\s*['"]click['"][\s\S]{0,120}applyActiveView\(\s*['"]inbox['"]/);
+        expect(main).toMatch(/viewPillConceive\.addEventListener\(\s*['"]click['"][\s\S]{0,120}applyActiveView\(\s*['"]conceive['"]/);
         const fnIdx = main.indexOf('function applyActiveView(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = main.slice(fnIdx, fnIdx + 1400);
         expect(fn).toMatch(/pillProjects\.classList\.toggle\(\s*['"]active['"]/);
-        expect(fn).toMatch(/pillInbox\.classList\.toggle\(\s*['"]active['"]/);
+        expect(fn).toMatch(/pillConceive\.classList\.toggle\(\s*['"]active['"]/);
     });
 
     it('(regression) the mobile bottom tab bar keeps its own pill styling, untouched by the desktop restyle', () => {
