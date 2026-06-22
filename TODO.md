@@ -224,7 +224,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a4ca5bf-baca-4173-9f2f-3f0bcd4b165a -->
 
-- [ ] **[MEDIUM]** Re-render the active project's task list after seed-todos commits so new todos appear without a project switch
+- [x] **[MEDIUM]** Re-render the active project's task list after seed-todos commits so new todos appear without a project switch — Completed: 2026-06-22
   - Type: bug
   - Description: After Generate tasks (seed-todos) commits, the new todos are created and persisted but don't appear in the project's list until the user switches to another project and back. Root cause: the bulk-create adds the todos through the data/persist path but never re-renders the active project's `#mainList`; the commit's `applyActiveView('projects')` only flips the visible surface (the `data-view` attribute) and shows whatever `#mainList` was last rendered — the stale list from before the add. Selecting a project is what rebuilds `#mainList` from data (clear + `addToDos_restore`), which is why a project switch makes the todos show. Fix: after the bulk commit, re-render the seeded project's list the same way project selection does, so the new todos appear immediately. All changes are in `seedTasksModal.js`.
   - What changes:

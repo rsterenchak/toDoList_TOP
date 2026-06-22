@@ -33,6 +33,14 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
+// Spy the #mainList re-render path. Mocking the module keeps the heavy real
+// toDoRow.js (and its render machinery) out of these DOM-level tests while
+// letting us assert the post-commit re-render fires.
+vi.mock('../src/toDoRow.js', () => ({
+    addToDos_restore: vi.fn(),
+    addAllToDo_DOM: vi.fn(),
+}));
+
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         getProjectStages: function () { return state.stages; },
@@ -56,6 +64,7 @@ vi.mock('../src/listLogic.js', () => ({
 import { openSeedTasksModal, parseTasks, resolveProjectRepo } from '../src/seedTasksModal.js';
 import { chatWithWorker } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
+import { addToDos_restore, addAllToDo_DOM } from '../src/toDoRow.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 4) {
@@ -85,6 +94,8 @@ beforeEach(() => {
     chatWithWorker.mockClear();
     listLogic.addToDo.mockClear();
     listLogic.editToDoItem.mockClear();
+    addToDos_restore.mockClear();
+    addAllToDo_DOM.mockClear();
 });
 
 describe('parseTasks', () => {
@@ -363,6 +374,35 @@ describe('openSeedTasksModal — confirm sets the entry as the todo description'
         const editedItem = state.edited[0];
         expect(editedItem.tit).toBe('First');
         expect(editedItem.desc).toBe('- [ ] **[HIGH]** First\n  - Type: feature');
+    });
+});
+
+describe('openSeedTasksModal — re-renders the active list after commit', () => {
+    it('re-renders the seeded project list once after the batch, without a project switch', async () => {
+        document.body.innerHTML = '<div id="mainList"></div>';
+        state.reply = '["New one", "New two"]';
+        openSeedTasksModal('Proj');
+        await flush();
+
+        document.getElementById('seedTasksModalAdd').click();
+
+        // The seeded project's list is re-rendered from data — exactly once
+        // for the whole batch, not once per added task — so the new todos
+        // appear without the user switching projects.
+        expect(addToDos_restore).toHaveBeenCalledTimes(1);
+        expect(addToDos_restore).toHaveBeenCalledWith(state.items, 'Proj');
+        // #mainList was cleared before the render (no stale pre-seed rows).
+        expect(document.getElementById('mainList').children.length).toBe(0);
+    });
+
+    it('does not throw when #mainList is absent (re-render is guarded)', async () => {
+        document.body.innerHTML = '';
+        state.reply = '["Only one"]';
+        openSeedTasksModal('Proj');
+        await flush();
+
+        expect(() => document.getElementById('seedTasksModalAdd').click()).not.toThrow();
+        expect(addToDos_restore).not.toHaveBeenCalled();
     });
 });
 

@@ -32,6 +32,7 @@
 import { listLogic } from './listLogic.js';
 import { chatWithWorker, findTargetById } from './inject.js';
 import { actionableStageLabel } from './conceiveShapes.js';
+import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 
 // Hard ceiling on proposed tasks so a runaway reply can't flood the list. The
 // title-only paths (string array / line-split fallback) allow more rows; the
@@ -484,6 +485,26 @@ export function openSeedTasksModal(projectName) {
         // main.js (the modal keeps no back-edge into the view switcher).
         const projectsPill = document.getElementById('viewPillProjects');
         if (projectsPill) projectsPill.click();
+        // Re-render the seeded project's #mainList once, after the whole
+        // batch. The view switch above only flips the visible surface; the
+        // list still holds the stale pre-seed rows until a project switch
+        // rebuilds it from data, so the new todos wouldn't appear without
+        // this. Mirror the project-selection render: clear #mainList, then
+        // render the project's items. Post-add the project always has real
+        // items (the ones just created), so addToDos_restore renders; the
+        // addAllToDo_DOM branch mirrors selection's empty-project case for
+        // parity. Done once here — not per row — to avoid render churn.
+        const mainList = document.getElementById('mainList');
+        if (mainList) {
+            clear(mainList);
+            const items = listLogic.listItems(projectName);
+            const hasRealItems = items && items.some(function (i) { return i.tit !== ''; });
+            if (hasRealItems) {
+                addToDos_restore(items, projectName);
+            } else if (items) {
+                addAllToDo_DOM(items, projectName);
+            }
+        }
     });
 
     run();
