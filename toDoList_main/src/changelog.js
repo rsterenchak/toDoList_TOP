@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-22',
+        added: [
+            "The TODO.md viewer's Sync button now shows a spinning \"Syncing\" indicator while a sync is in progress.",
+        ],
         changed: [
-            "New projects now start with an Iterative plan shape (Why, Concept, Next up, Iterations), and Generate tasks and Suggest plan build from its \"Next up\" stage.",
             "Generate tasks and Suggest plan now ground their suggestions in your project's linked repository, so they reason over that app's actual code instead of a default.",
             "Generated tasks now arrive with a ready-to-edit TODO.md entry as their description, revealed by a per-row Details toggle.",
         ],
