@@ -2933,6 +2933,338 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: none;
 }
 
+/* ── CONCEIVE VIEW ──
+   The incubator surface: a concept index (list + "+ New concept" + empty
+   state) and a single-concept editor (lifecycle stages as collapsible
+   sections). renderConceiveView() fills #conceiveView at runtime. Hidden by
+   default; #mainBar's data-view attribute toggles visibility, the same hook
+   as #inboxView / #calendarView. */
+#conceiveView {
+  grid-row: 1 / -1;
+  grid-column: 1;
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 24px 96px;
+  background: var(--bg-base);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+#mainBar[data-view="conceive"] #conceiveView {
+  display: flex;
+}
+
+#mainBar[data-view="conceive"] #mainList,
+#mainBar[data-view="conceive"] #mobileProjHeader,
+#mainBar[data-view="conceive"] #taskFilterBar,
+#mainBar[data-view="conceive"] #bulkDescActions {
+  display: none;
+}
+
+.conceiveIndexHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.conceiveIndexTitle {
+  margin: 0;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.conceiveNewBtn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.18);
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.conceiveNewBtn:hover {
+  background: rgba(108, 93, 245, 0.28);
+  border-color: #6C5DF5;
+}
+
+.conceiveNewBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.conceiveEmptyState {
+  margin: auto;
+  max-width: 340px;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.conceiveList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conceiveRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 12px;
+  background: var(--bg-elevated, transparent);
+}
+
+.conceiveRowOpen {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.conceiveRowOpen:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.conceiveRowTitle {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conceiveLifecycleChip {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.18);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.conceiveRowActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.conceiveRowRename,
+.conceiveRowDelete {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.conceiveRowRename:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.conceiveRowDelete:hover {
+  color: #ff7a7a;
+  background: rgba(255, 122, 122, 0.12);
+}
+
+.conceiveRowRename:focus-visible,
+.conceiveRowDelete:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.conceiveRenameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
+  font-size: 16px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid #6C5DF5;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.conceiveRenameInput:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* Editor surface */
+.conceiveEditorHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conceiveBackBtn {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.conceiveBackBtn:hover {
+  color: var(--text-primary);
+}
+
+.conceiveBackBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.conceiveEditorTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.conceiveEditorTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle, var(--border-mid));
+  padding: 6px 2px;
+}
+
+.conceiveEditorTitle:focus-visible {
+  outline: none;
+  border-bottom-color: #6C5DF5;
+}
+
+.conceiveStages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conceiveStage {
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 12px;
+  background: var(--bg-elevated, transparent);
+  overflow: hidden;
+}
+
+.conceiveStageHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.conceiveStageHeader:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.conceiveStageDot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.conceiveStageDot.filled {
+  background: #6C5DF5;
+  border-color: #6C5DF5;
+}
+
+.conceiveStageLabel {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Collapsed by default; the editor adds .expanded to reveal the body. */
+.conceiveStageBody {
+  display: none;
+  padding: 0 14px 14px;
+}
+
+.conceiveStage.expanded .conceiveStageBody {
+  display: block;
+}
+
+.conceiveStageInput {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 96px;
+  font-family: inherit;
+  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.conceiveStageInput:focus-visible {
+  outline: none;
+  border-color: #6C5DF5;
+}
+
 #calendarGridSide {
   /* Fills 100% of the content area so day cells scale up on wide viewports
      rather than sitting in a narrow centered column. Cell size is governed
