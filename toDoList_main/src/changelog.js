@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-22',
         added: [
             "Turn a project's Build plan into todos: \"Generate tasks\" in Conceive proposes a checklist you review, then adds the ones you keep.",
+            "Draft a Build plan from a project's upstream stages with one tap — \"Suggest plan\" in Conceive writes an editable plan you can undo or regenerate.",
         ],
         changed: [
             "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
@@ -19,9 +20,6 @@ export const changelog = [
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
-        ],
-        changed: [
-            "The Conceive tab now plans the selected project's own lifecycle stages instead of a separate list of concepts.",
         ],
     },
 ];

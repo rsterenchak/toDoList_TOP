@@ -2954,6 +2954,79 @@ button.claudeAttachChipLabel { cursor: pointer; }
   cursor: not-allowed;
 }
 
+/* "Suggest plan" action: a quieter, outlined sibling to "Generate tasks" — it
+   drafts the Build-plan body from the upstream stages rather than committing
+   anything, so it reads as secondary. */
+.conceiveSuggestPlanBtn {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.conceiveSuggestPlanBtn:hover { background: var(--bg-hover); }
+.conceiveSuggestPlanBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+.conceiveSuggestPlanBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Inline status area under the Build-plan body: hosts the overwrite-confirm,
+   the draft error, and the post-draft Undo/Regenerate footer. */
+.conceiveSuggestStatus:empty { display: none; }
+.conceiveSuggestStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 2px;
+  font-size: 13px;
+}
+
+.conceiveSuggestConfirm,
+.conceiveSuggestFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.conceiveSuggestConfirmMsg,
+.conceiveSuggestNote {
+  color: var(--text-muted);
+}
+
+.conceiveSuggestError {
+  color: var(--text-danger);
+}
+
+.conceiveSuggestLink {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.conceiveSuggestLink:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
 /* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
 #seedTasksModalBackdrop {
   position: fixed;
