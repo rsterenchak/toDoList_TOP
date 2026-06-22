@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-21',
+        date: '2026-06-22',
         added: [
-            "Your Conceive lifecycle stages now sync across your devices.",
+            "Turn a project's Build plan into todos: \"Generate tasks\" in Conceive proposes a checklist you review, then adds the ones you keep.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-21',
         fixed: [
             "The Claude assistant's chat composer controls now render as uniform round icon buttons, with the Fast and Deep sends paired together under small labels.",
             "The connection status in the inject settings no longer overflows the modal when the Worker is connected.",
