@@ -18,6 +18,7 @@ const { state } = vi.hoisted(() => ({
         lastCall: null,
         stages: [],
         bodyWrites: [],
+        repo: null,
     },
 }));
 
@@ -31,6 +32,9 @@ vi.mock('../src/inject.js', () => ({
 
 vi.mock('../src/seedTasksModal.js', () => ({
     openSeedTasksModal: vi.fn(),
+    // Suggest plan grounds its call in the project's linked repo via this
+    // resolver; stub it to the canned repo for the active fixture.
+    resolveProjectRepo: vi.fn(function () { return state.repo; }),
 }));
 
 vi.mock('../src/listLogic.js', () => ({
@@ -75,6 +79,7 @@ beforeEach(() => {
     state.lastMessages = null;
     state.lastCall = null;
     state.bodyWrites = [];
+    state.repo = null;
     state.stages = [
         makeStage('Why', 'To ship faster.'),
         makeStage('Concept', 'A focused planner.'),
@@ -129,6 +134,17 @@ describe('Suggest plan — outbound prompt', () => {
         // runs on the heavier model — the trailing deep flag is true.
         expect(state.lastCall.entryId).toBeUndefined();
         expect(state.lastCall.repo).toBeNull();
+        expect(state.lastCall.deep).toBe(true);
+    });
+
+    it('passes the project linked repo as the repo arg when the project is linked', async () => {
+        state.repo = 'owner/some-app';
+        renderConceiveView();
+        suggestBtn().click();
+        await flush();
+
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(state.lastCall.repo).toBe('owner/some-app');
         expect(state.lastCall.deep).toBe(true);
     });
 });

@@ -178,7 +178,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: afd09085-4f23-450b-aefa-a619462e53f3 -->
 
-- [ ] **[MEDIUM]** Ground Generate tasks and Suggest plan in the project's linked repo instead of the default
+- [x] **[MEDIUM]** Ground Generate tasks and Suggest plan in the project's linked repo instead of the default — Completed: 2026-06-22
   - Type: feature
   - Description: Generate tasks and Suggest plan currently call the in-app Claude with `repo: null`, so the Worker falls back to its default target (the todo app) and grounds every Conceive project's generation in `toDoList_TOP`'s CLAUDE.md + source manifest — right when you're conceiving the todo app, wrong for any other app. Conceive projects already carry a repo link (`target_id` → an `inject_targets` row, the same routing the inject/run path uses), and the Worker already auto-fetches a named repo's CLAUDE.md + manifest and reframes its system prompt around it. So this resolves each project's linked repo and passes it into both calls instead of null — grounding the slice decomposition and the plan draft in the right app's actual code, with no Worker change. A project with no linked repo (e.g. a brand-new idea) still passes null and falls back to the default exactly as today; the genuine no-repo case is the separate optional Worker flag deferred earlier.
   - What changes:

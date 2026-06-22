@@ -25,11 +25,27 @@
 // CLAUDE.md. All persistence routes through listLogic.js.
 
 import { listLogic } from './listLogic.js';
-import { chatWithWorker } from './inject.js';
+import { chatWithWorker, findTargetById } from './inject.js';
 import { actionableStageLabel } from './conceiveShapes.js';
 
 // Hard ceiling on proposed tasks so a runaway reply can't flood the list.
 const MAX_TASKS = 20;
+
+// Resolve a Conceive project's linked repo so Generate tasks and Suggest plan
+// ground their generation in that app's real code instead of the Worker's
+// default target. Reads the project's target_id (the same inject_targets
+// routing the inject/run path uses) and resolves it to a repo string via the
+// targets cache. Degrades to null — no target_id, deleted target, or unwarmed
+// cache — in which case the caller passes null and the Worker falls back to
+// its default repo (the prior behavior). inject_targets repos are validated
+// against the Worker's allowlist at save time, so a resolved repo is always
+// allowlisted. Shared by both Conceive tools (imported into conceiveView.js).
+export function resolveProjectRepo(projectName) {
+    const targetId = listLogic.getProjectTargetId(projectName);
+    if (!targetId) return null;
+    const target = findTargetById(targetId);
+    return target && target.repo ? target.repo : null;
+}
 
 // Build the decompose prompt from the project's ordered stages: a labeled
 // context block listing each non-empty non-actionable stage first, then the
@@ -320,12 +336,12 @@ export function openSeedTasksModal(projectName) {
         const stages = listLogic.getProjectStages(projectName) || [];
         const prompt = buildPrompt(stages, actionableLabel);
         // One-off messages array so the live chat-pane conversation is never
-        // touched; repo is null so the Worker falls back to its default,
-        // matching the test-connection path. The trailing `true` is the deep
-        // flag: task decomposition routes through the Worker's heavier model
-        // (deep_think), unlike ordinary chat turns which stay on the fast
-        // default.
-        chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, null, undefined, true)
+        // touched; repo is the project's linked repo (or null → Worker default
+        // when the project has no link), so the decomposition is grounded in
+        // that app's actual code. The trailing `true` is the deep flag: task
+        // decomposition routes through the Worker's heavier model (deep_think),
+        // unlike ordinary chat turns which stay on the fast default.
+        chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, resolveProjectRepo(projectName), undefined, true)
             .then(function (res) {
                 if (closed) return;
                 const reply = res && typeof res.reply === 'string' ? res.reply : '';

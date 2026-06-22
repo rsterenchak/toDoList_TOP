@@ -6,13 +6,11 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-22',
-        added: [
-            "Pick an Iterative or Spec plan shape in Conceive while a project is still empty; switching reseeds its stages and the chooser disappears once you start writing.",
-        ],
         changed: [
             "\"Generate tasks\" now decomposes your Build plan with a stronger model for better-scoped tasks.",
             "Removed the Inbox view and its navigation; idea-status todos remain available via each project's Ideas filter.",
             "New projects now start with an Iterative plan shape (Why, Concept, Next up, Iterations), and Generate tasks and Suggest plan build from its \"Next up\" stage.",
+            "Generate tasks and Suggest plan now ground their suggestions in your project's linked repository, so they reason over that app's actual code instead of a default.",
         ],
         fixed: [
             "Returning to a sleeping or locked desktop now pulls changes made on your other devices automatically, without a manual refresh.",
