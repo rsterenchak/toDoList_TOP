@@ -126,29 +126,48 @@ const MISS_MONTH_SHORT = [
 
 // ── PER-PROJECT LIFECYCLE STAGES ─────────────────────────────────────
 // Each project carries an ordered `stages` list (the Conceive view's
-// lifecycle surface) plus a `lifecycle` label. Seeded with the SDLC set
-// on project creation and backfilled on load for legacy projects.
+// lifecycle surface) plus a `lifecycle` shape label. Two shapes exist:
+// Iterative (Why / Concept / Next up / Iterations) and Spec (the classic
+// SDLC set, Why / Concept / Requirements / Design / Build plan). New
+// projects seed the Iterative shape — most personal apps are built
+// iteratively — while Spec stays available for the shape chooser. Legacy
+// projects persisted under the old 'SDLC' label are treated as Spec-shaped.
 // Declared above the `listLogic` IIFE for the same Babel-transpilation
 // reason as RECURRENCE_PATTERNS — the IIFE's load-time migrate pass
 // calls seedStages() on any project missing its stage list.
-const SDLC_STAGE_LABELS = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
-const DEFAULT_LIFECYCLE = 'SDLC';
+const ITERATIVE_STAGE_LABELS = ['Why', 'Concept', 'Next up', 'Iterations'];
+const SPEC_STAGE_LABELS = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
+const LIFECYCLE_ITERATIVE = 'iterative';
+const LIFECYCLE_SPEC = 'spec';
+const DEFAULT_LIFECYCLE = LIFECYCLE_ITERATIVE;
 
-// Build the ordered SDLC stage list, each stage seeded with an empty body
-// and a fresh id. The ordered array serializes directly into the existing
-// allProjects localStorage blob (no separate key).
-function seedStages() {
-    return SDLC_STAGE_LABELS.map(function(label) {
+// Pick the ordered stage labels for a lifecycle shape. Spec — and its legacy
+// 'SDLC' alias persisted before shapes existed — seeds the five-stage SDLC
+// set; everything else, including 'iterative' and any unset/unknown value,
+// seeds the Iterative set, matching the default new-project shape.
+function stageLabelsForLifecycle(lifecycle) {
+    return (lifecycle === LIFECYCLE_SPEC || lifecycle === 'SDLC')
+        ? SPEC_STAGE_LABELS
+        : ITERATIVE_STAGE_LABELS;
+}
+
+// Build the ordered stage list for a shape, each stage seeded with an empty
+// body and a fresh id. The ordered array serializes directly into the existing
+// allProjects localStorage blob (no separate key). Defaults to the Iterative
+// shape when no lifecycle is supplied.
+function seedStages(lifecycle) {
+    return stageLabelsForLifecycle(lifecycle).map(function(label) {
         return { id: genId(), label: label, body: '' };
     });
 }
 
 // Coerce an arbitrary stages value into a clean ordered list. Used on the
-// untrusted import path (replaceAllProjects): a missing or empty list
-// re-seeds the SDLC set; otherwise existing ids are preserved (so stage
+// untrusted import path (replaceAllProjects) and the Supabase adopt path: a
+// missing or empty list re-seeds the shape's default set (Iterative unless the
+// project's lifecycle is Spec); otherwise existing ids are preserved (so stage
 // targeting round-trips) and label/body are forced to strings.
-function normalizeStages(stages) {
-    if (!Array.isArray(stages) || stages.length === 0) return seedStages();
+function normalizeStages(stages, lifecycle) {
+    if (!Array.isArray(stages) || stages.length === 0) return seedStages(lifecycle);
     return stages.map(function(s) {
         if (!s || typeof s !== 'object') {
             return { id: genId(), label: '', body: '' };
@@ -170,7 +189,7 @@ function normalizeStages(stages) {
 // adopt branch and the realtime apply so server-null and fresh-local seed
 // identically, the same way the load-time backfill seeds.
 function stagesFromRow(row) {
-    return normalizeStages(row && row.stages);
+    return normalizeStages(row && row.stages, lifecycleFromRow(row));
 }
 function lifecycleFromRow(row) {
     return (row && typeof row.lifecycle === 'string' && row.lifecycle.length > 0)
@@ -275,15 +294,17 @@ export const listLogic = (function () {
             allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
         } else {
             if (!Array.isArray(entry.items)) entry.items = [];
-            // Backfill the lifecycle stages on projects saved before the
-            // Conceive-per-project feature existed; any project missing a
-            // valid stage list gets the default SDLC set, the same way
-            // color / sortByDue are backfilled below.
-            if (!Array.isArray(entry.stages) || entry.stages.length === 0) {
-                entry.stages = seedStages();
-            }
+            // Backfill the lifecycle shape + stages on projects saved before
+            // the Conceive-per-project feature existed; any project missing a
+            // valid stage list gets the default set for its shape (Iterative
+            // unless it already records the Spec/SDLC shape), the same way
+            // color / sortByDue are backfilled below. The shape is set first so
+            // the seeded stages match it.
             if (typeof entry.lifecycle !== 'string' || entry.lifecycle.length === 0) {
                 entry.lifecycle = DEFAULT_LIFECYCLE;
+            }
+            if (!Array.isArray(entry.stages) || entry.stages.length === 0) {
+                entry.stages = seedStages(entry.lifecycle);
             }
             if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
             if (typeof entry.color === 'string' && PROJECT_COLOR_KEYS.indexOf(entry.color) === -1) {
@@ -2019,10 +2040,10 @@ export const listLogic = (function () {
             });
 
             const sortByDue = typeof entry.sortByDue === 'boolean' ? entry.sortByDue : false;
-            const stages = normalizeStages(entry.stages);
             const lifecycle = (typeof entry.lifecycle === 'string' && entry.lifecycle.length > 0)
                 ? entry.lifecycle
                 : DEFAULT_LIFECYCLE;
+            const stages = normalizeStages(entry.stages, lifecycle);
             allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, target_id: null, stages: stages, lifecycle: lifecycle };
             sortCompletedInPlace(allProjects[name].items);
         });

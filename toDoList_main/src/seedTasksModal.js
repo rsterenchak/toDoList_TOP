@@ -1,18 +1,21 @@
-// "Generate tasks" review modal for the Conceive view's Build-plan stage.
+// "Generate tasks" review modal for the Conceive view's actionable stage.
 //
 // The Conceive view lets a user draft a project's lifecycle thinking across
-// the SDLC stages (Why / Concept / Requirements / Design / Build plan). This
-// modal turns the Build plan into real todos: it sends the Build-plan text as
-// the task source — plus the other non-empty stages as background context —
-// to the in-app Claude (the existing `chatWithWorker` chat path), asking it to
-// decompose the plan into short, well-scoped task titles. The reply opens here
-// as a checklist (all checked by default); the user unchecks any they don't
-// want and confirms, which creates the checked tasks as committed todos in the
-// selected project through the normal add-todo path.
+// its shape's stages — Spec (Why / Concept / Requirements / Design / Build
+// plan) or Iterative (Why / Concept / Next up / Iterations). This modal turns
+// the project's actionable stage (the task source — 'Build plan' for Spec,
+// 'Next up' for Iterative; resolved via conceiveShapes) into real todos: it
+// sends that stage's text as the task source — plus the other non-empty stages
+// as background context — to the in-app Claude (the existing `chatWithWorker`
+// chat path), asking it to decompose the plan into short, well-scoped task
+// titles. The reply opens here as a checklist (all checked by default); the
+// user unchecks any they don't want and confirms, which creates the checked
+// tasks as committed todos in the selected project through the normal add-todo
+// path.
 //
 // Pure client: it reuses the exported chat call and needs no Worker change.
-// Tasks are derived ONLY from the Build plan — the other stages inform scope
-// and phrasing only, never invent tasks of their own. Titles that already
+// Tasks are derived ONLY from the actionable stage — the other stages inform
+// scope and phrasing only, never invent tasks of their own. Titles that already
 // exist in the project (trimmed, case-insensitive) are auto-skipped: rendered
 // greyed with an "in tasks" tag, unchecked, and excluded from the count, so
 // re-running can't spawn duplicates.
@@ -23,23 +26,23 @@
 
 import { listLogic } from './listLogic.js';
 import { chatWithWorker } from './inject.js';
-
-// The SDLC stage that seeds tasks. Other stages ride along as context only.
-const BUILD_PLAN_LABEL = 'Build plan';
+import { actionableStageLabel } from './conceiveShapes.js';
 
 // Hard ceiling on proposed tasks so a runaway reply can't flood the list.
 const MAX_TASKS = 20;
 
 // Build the decompose prompt from the project's ordered stages: a labeled
-// context block listing each non-empty non-Build-plan stage first, then the
-// Build plan, with an explicit instruction to derive tasks ONLY from the Build
-// plan and to return ONLY a JSON array of short, imperative task-title strings.
-function buildPrompt(stages) {
-    const buildStage = stages.find(function (s) { return s.label === BUILD_PLAN_LABEL; });
-    const buildBody = buildStage && buildStage.body ? buildStage.body.trim() : '';
+// context block listing each non-empty non-actionable stage first, then the
+// actionable stage (the task source — 'Build plan' for Spec projects, 'Next
+// up' for Iterative ones), with an explicit instruction to derive tasks ONLY
+// from that stage and to return ONLY a JSON array of short, imperative
+// task-title strings.
+function buildPrompt(stages, actionableLabel) {
+    const sourceStage = stages.find(function (s) { return s.label === actionableLabel; });
+    const sourceBody = sourceStage && sourceStage.body ? sourceStage.body.trim() : '';
 
     const contextStages = stages.filter(function (s) {
-        return s.label !== BUILD_PLAN_LABEL && s.body && s.body.trim();
+        return s.label !== actionableLabel && s.body && s.body.trim();
     });
 
     const lines = [];
@@ -51,15 +54,15 @@ function buildPrompt(stages) {
             lines.push('');
         });
     }
-    lines.push('## Build plan (the ONLY source of tasks)');
-    lines.push(buildBody);
+    lines.push('## ' + actionableLabel + ' (the ONLY source of tasks)');
+    lines.push(sourceBody);
     lines.push('');
     lines.push(
-        'Decompose the Build plan above into short, well-scoped, imperative task ' +
-        'titles for a todo list. Derive tasks ONLY from the Build plan; treat the ' +
-        'project context sections above as background for scope and phrasing, never ' +
-        'as a source of tasks. Return ONLY a JSON array of task-title strings — no ' +
-        'prose, no code fences, no numbering.'
+        'Decompose the ' + actionableLabel + ' above into short, well-scoped, ' +
+        'imperative task titles for a todo list. Derive tasks ONLY from the ' +
+        actionableLabel + '; treat the project context sections above as background ' +
+        'for scope and phrasing, never as a source of tasks. Return ONLY a JSON ' +
+        'array of task-title strings — no prose, no code fences, no numbering.'
     );
     return lines.join('\n');
 }
@@ -106,6 +109,10 @@ function clear(el) {
 // todos and switches the app to the Projects view.
 export function openSeedTasksModal(projectName) {
     if (!projectName) return;
+
+    // The actionable stage (task source) depends on the project's shape:
+    // 'Build plan' for Spec projects, 'Next up' for Iterative ones.
+    const actionableLabel = actionableStageLabel(listLogic.getProjectLifecycle(projectName));
 
     const prior = document.getElementById('seedTasksModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
@@ -212,7 +219,7 @@ export function openSeedTasksModal(projectName) {
         addBtn.disabled = true;
         const loading = document.createElement('div');
         loading.className = 'seedTasksModalLoading';
-        loading.textContent = 'Decomposing your Build plan into tasks…';
+        loading.textContent = 'Decomposing your ' + actionableLabel + ' into tasks…';
         body.appendChild(loading);
     }
 
@@ -253,7 +260,7 @@ export function openSeedTasksModal(projectName) {
         checkboxes = [];
 
         if (!titles.length) {
-            renderError('No tasks could be generated from the Build plan.');
+            renderError('No tasks could be generated from the ' + actionableLabel + '.');
             return;
         }
 
@@ -311,7 +318,7 @@ export function openSeedTasksModal(projectName) {
     function run() {
         renderLoading();
         const stages = listLogic.getProjectStages(projectName) || [];
-        const prompt = buildPrompt(stages);
+        const prompt = buildPrompt(stages, actionableLabel);
         // One-off messages array so the live chat-pane conversation is never
         // touched; repo is null so the Worker falls back to its default,
         // matching the test-connection path. The trailing `true` is the deep

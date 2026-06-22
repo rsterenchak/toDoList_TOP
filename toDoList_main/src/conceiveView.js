@@ -1,33 +1,35 @@
 import { listLogic } from './listLogic.js';
 import { openSeedTasksModal } from './seedTasksModal.js';
 import { chatWithWorker } from './inject.js';
-
-// The SDLC stage that seeds tasks — its header gets the "Generate tasks"
-// action. Kept in sync with the label seeded by listLogic.seedStages.
-const BUILD_PLAN_LABEL = 'Build plan';
+import { actionableStageLabel } from './conceiveShapes.js';
 
 // Static guidance copy shown under each default stage's label — a muted
 // one-line prompt describing what belongs in that stage. Keyed by the default
-// SDLC stage labels; this is pure presentation, never stored on the stage
-// objects, never persisted or synced, and never part of any text sent to
-// Claude. A stage whose label isn't a key here renders no hint.
+// stage labels across both shapes (Spec: Why / Concept / Requirements / Design
+// / Build plan; Iterative: Why / Concept / Next up / Iterations). This is pure
+// presentation, never stored on the stage objects, never persisted or synced,
+// and never part of any text sent to Claude. A stage whose label isn't a key
+// here renders no hint.
 const STAGE_HINTS = {
     'Why': 'Who is it for, and what problem does it solve?',
     'Concept': 'In a sentence or two, what is it and how does it work?',
     'Requirements': "What must it do? Key capabilities, constraints, and what's out of scope.",
     'Design': 'How does it look and work — UI, data model, and tech choices?',
     'Build plan': 'The ordered steps to build it; each line becomes a task.',
+    'Next up': "The slice you're building right now; each line becomes a task.",
+    'Iterations': 'A running log of what you’ve added, removed, and why.',
 };
 
 // Build the "Suggest plan" prompt from the project's non-empty upstream stages
-// (every stage except the Build plan). Each is labeled so the model can map
+// (every stage except the actionable one). Each is labeled so the model can map
 // intent to phase; the instruction asks for a concrete, ordered build plan as
 // plain text — a short numbered list of implementation steps, one per line,
 // with no surrounding prose — because the result is written straight into the
-// Build-plan textarea (it is NOT JSON, unlike the seed-tasks decompose call).
-function buildSuggestPlanPrompt(stages) {
+// actionable stage's textarea (it is NOT JSON, unlike the seed-tasks decompose
+// call).
+function buildSuggestPlanPrompt(stages, actionableLabel) {
     const upstream = stages.filter(function (s) {
-        return s.label !== BUILD_PLAN_LABEL && s.body && s.body.trim();
+        return s.label !== actionableLabel && s.body && s.body.trim();
     });
 
     const lines = [];
@@ -93,7 +95,7 @@ function getSelectedProjectName() {
 // the stage label, plus a multi-line body that autosaves on input (debounced)
 // and on blur. Both writes route through listLogic.setProjectStageBody; the
 // status dot is refreshed in place so focus and caret position are preserved.
-function buildStageSection(projectName, stage) {
+function buildStageSection(projectName, stage, actionableLabel) {
     const section = document.createElement('div');
     section.className = 'conceiveStage';
     section.setAttribute('data-stage-id', stage.id);
@@ -125,14 +127,15 @@ function buildStageSection(projectName, stage) {
         head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
     });
 
-    // The Build-plan stage gets a "Generate tasks" action in its header — it
+    // The actionable stage (Build plan for Spec projects, Next up for
+    // Iterative ones) gets a "Generate tasks" action in its header — it
     // decomposes the plan into todos via the in-app Claude. A nested <button>
     // inside the header <button> would be invalid markup, so the header lives
     // in a flex row alongside the action. Enabled only when the stage body is
     // non-empty; its disabled state tracks edits via persist() below.
     let genBtn = null;
     let suggestBtn = null;
-    if (stage.label === BUILD_PLAN_LABEL) {
+    if (stage.label === actionableLabel) {
         const headerRow = document.createElement('div');
         headerRow.className = 'conceiveStageHeaderRow';
         headerRow.appendChild(head);
@@ -146,13 +149,13 @@ function buildStageSection(projectName, stage) {
         suggestBtn.type = 'button';
         suggestBtn.className = 'conceiveSuggestPlanBtn';
         suggestBtn.textContent = 'Suggest plan';
-        suggestBtn.setAttribute('aria-label', 'Suggest a build plan from the upstream stages');
+        suggestBtn.setAttribute('aria-label', 'Suggest a plan from the other stages');
         const hasUpstream = listLogic.getProjectStages(projectName).some(function (s) {
-            return s.label !== BUILD_PLAN_LABEL && s.body && s.body.trim();
+            return s.label !== actionableLabel && s.body && s.body.trim();
         });
         suggestBtn.disabled = !hasUpstream;
         if (!hasUpstream) {
-            suggestBtn.title = 'Fill in a stage above (Why / Concept / Requirements / Design) first';
+            suggestBtn.title = 'Fill in a stage above first';
         }
         headerRow.appendChild(suggestBtn);
 
@@ -160,7 +163,7 @@ function buildStageSection(projectName, stage) {
         genBtn.type = 'button';
         genBtn.className = 'conceiveGenerateTasksBtn';
         genBtn.textContent = 'Generate tasks';
-        genBtn.setAttribute('aria-label', 'Generate tasks from the Build plan');
+        genBtn.setAttribute('aria-label', 'Generate tasks from this stage');
         genBtn.disabled = !(stage.body && stage.body.trim());
         genBtn.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -293,7 +296,7 @@ function buildStageSection(projectName, stage) {
             suggestBtn.textContent = 'Suggesting…';
 
             const stages = listLogic.getProjectStages(projectName) || [];
-            const prompt = buildSuggestPlanPrompt(stages);
+            const prompt = buildSuggestPlanPrompt(stages, actionableLabel);
             // One-off messages array so the live chat conversation is never
             // touched; repo is null (Worker default). The trailing `true` is
             // the deep flag — synthesis-from-context runs on the heavier model.
@@ -400,10 +403,16 @@ export function renderConceiveView() {
     header.appendChild(titleRow);
     view.appendChild(header);
 
+    // The actionable stage (the task source) depends on the project's shape —
+    // 'Next up' for Iterative, 'Build plan' for Spec. Resolve it once so every
+    // stage section knows whether it owns the Generate-tasks / Suggest-plan
+    // actions.
+    const actionableLabel = actionableStageLabel(listLogic.getProjectLifecycle(projectName));
+
     const stagesEl = document.createElement('div');
     stagesEl.className = 'conceiveStages';
     listLogic.getProjectStages(projectName).forEach(function (stage) {
-        stagesEl.appendChild(buildStageSection(projectName, stage));
+        stagesEl.appendChild(buildStageSection(projectName, stage, actionableLabel));
     });
     view.appendChild(stagesEl);
 }

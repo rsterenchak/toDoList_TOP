@@ -28,6 +28,9 @@ vi.mock('../src/inject.js', () => ({
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         getProjectStages: function () { return state.stages; },
+        // Spec-shaped project: the actionable stage is 'Build plan', so the
+        // modal targets the Build-plan stage in this fixture.
+        getProjectLifecycle: function () { return 'spec'; },
         listItems: function () { return state.items; },
         addToDo: vi.fn(function (project, title) { state.added.push(title); }),
     },

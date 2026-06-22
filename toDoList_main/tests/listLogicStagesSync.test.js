@@ -8,10 +8,10 @@
 //   1. Write — editing a stage mirrors to the project's Supabase row via
 //      toProjectRowPayload (whole-row UPDATE), the same way color does.
 //   2. Read  — hydrate maps a server row's stages/lifecycle back into the
-//      local cache, and backfills the SDLC default when the server row
-//      predates the column and returns null.
+//      local cache, and backfills the default shape (Iterative) when the
+//      server row predates the column and returns null.
 //   3. Realtime — a stage edit from another device arrives as a project
-//      UPDATE and applies live (with the same null→SDLC backfill).
+//      UPDATE and applies live (with the same null→Iterative backfill).
 
 import { vi } from 'vitest';
 
@@ -19,6 +19,8 @@ import { listLogic } from '../src/listLogic.js';
 import { supabase } from '../src/supabaseClient.js';
 
 const SDLC = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
+// The default shape new/legacy projects seed when no stages are stored.
+const ITERATIVE = ['Why', 'Concept', 'Next up', 'Iterations'];
 
 // Stub a signed-in Supabase session plus a from() builder that serves the
 // given remote rows from .order() and captures every write so a test can
@@ -114,7 +116,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
                     });
             });
         expect(stageUpdate, 'a projects UPDATE should carry the edited stage body').toBeTruthy();
-        expect(stageUpdate.row.lifecycle).toBe('SDLC');
+        expect(stageUpdate.row.lifecycle).toBe('iterative');
     });
 
     it('maps a server row\'s stored stages and lifecycle back into allProjects on hydrate', async () => {
@@ -138,7 +140,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         expect(listLogic.getProjectLifecycle('Synced')).toBe('SDLC');
     });
 
-    it('backfills the SDLC default when a server row predates the column (null stages)', async () => {
+    it('backfills the Iterative default when a server row predates the column (null stages)', async () => {
         mockBackend(
             [{
                 id: 'p2', name: 'Legacy', color: null, target_id: null, position: 0,
@@ -151,8 +153,8 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         await listLogic.hydrateFromSupabase();
 
         expect(listLogic.getProjectStages('Legacy').map(function(s) { return s.label; }))
-            .toEqual(SDLC);
-        expect(listLogic.getProjectLifecycle('Legacy')).toBe('SDLC');
+            .toEqual(ITERATIVE);
+        expect(listLogic.getProjectLifecycle('Legacy')).toBe('iterative');
     });
 
     it('applies a stage edit arriving live as a project UPDATE from another device', () => {
@@ -176,7 +178,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         expect(listLogic.getProjectLifecycle('Live')).toBe('SDLC');
     });
 
-    it('backfills the SDLC default on a realtime project row that omits stages', () => {
+    it('backfills the Iterative default on a realtime project row that omits stages', () => {
         const handlers = wireRealtimeHandlers();
         const projHandler = handlers['public:projects'];
 
@@ -186,7 +188,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         });
 
         expect(listLogic.getProjectStages('BareLive').map(function(s) { return s.label; }))
-            .toEqual(SDLC);
-        expect(listLogic.getProjectLifecycle('BareLive')).toBe('SDLC');
+            .toEqual(ITERATIVE);
+        expect(listLogic.getProjectLifecycle('BareLive')).toBe('iterative');
     });
 });
