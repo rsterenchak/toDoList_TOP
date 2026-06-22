@@ -1038,7 +1038,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6cdfb0b7-f648-4a28-996a-f128a1184308 -->
 
-- [ ] **[MEDIUM]** Remove the Inbox and Calendar views, leaving Projects and Conceive
+- [x] **[MEDIUM]** Remove the Inbox and Calendar views, leaving Projects and Conceive — Completed: 2026-06-21
   - Type: feature
   - Description: Retire the two top-level views that aren't used — the Inbox view (a cross-project roll-up of `idea`-status todos) and the Calendar view (a month grid of todos by due date) — collapsing the tab bar to Projects + Conceive. Both subsystems already live in standalone modules (`inboxView.js`, `calendarView.js`), so this is a clean deletion plus the removal of their nav wiring, keyboard-nav handlers, CSS, and tests. Critically, preserve everything these views merely *surfaced*: the `idea` status, the status-chip popover, the per-project ALL/Active/Ideas filter, due-date pills, and recurring-task behavior all live independently in the Projects view and must remain untouched. Only the cross-project aggregation and the month-grid visualization are dropped — they are intentionally removed, not relocated.
   - What to remove:
