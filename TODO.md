@@ -49,9 +49,9 @@
   - Completed: 2026-06-23
   <!-- id: ee284b9c-139f-4af0-b5a0-2d8499158802 -->
 
-- [ ] **[LOW]** Color the composer dropdown selector #6C5DF5 instead of the send caret
+- [x] **[LOW]** Color the composer dropdown selector #6C5DF5 instead of the send caret
   - Type: bug
   - Description: A prior change colored the send caret (`.claudeComposerSendCaret`) purple, but the intended target was the dropdown selector that sits next to it in the composer. Revert the caret back to its original `var(--text-secondary)` color and instead apply `#6C5DF5` to the dropdown selector (text and chevron) so the accent lands on the correct element. Change is styling-only — no behavior or markup changes.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-23
   <!-- id: 4d26ef55-2a7c-4f8c-ab3b-66884ede033c -->
