@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-23',
         fixed: [
-            "The TODO.md viewer's ⋯ overflow menu now appears when the card is collapsed, instead of staying hidden until you expand the card.",
             "After a new version deploys, tapping \"Update available\" now reloads straight into the new build, fixing the white page that used to require a manual hard refresh.",
             "A normal refresh after a new version deploys now loads the latest build instead of occasionally showing a blank page that needed a hard refresh.",
             "The chat composer's send caret now uses the accent purple, matching the rest of the composer's styling.",
             "The chat composer's accent purple now highlights the send-mode selector instead of the dropdown caret.",
+            "The chat composer's deep/fast send-mode caret now matches the submit button's accent purple, so the split send control reads as one matched pair.",
         ],
     },
 ];
