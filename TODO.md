@@ -20,3 +20,10 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/style.css`
   - Completed: 2026-06-23
   <!-- id: 2479dc6b-f7cd-418f-af28-b6f048f1af31 -->
+
+- [ ] **[HIGH]** Fix white page after deploy by handling service-worker updates cleanly
+  - Type: bug
+  - Description: After a new version deploys, the app keeps serving the old cached bundle, and on refresh the HTML references a new content-hashed bundle the stale cache can't supply — producing a white page that only a hard refresh clears. Fix the service-worker update lifecycle so a new worker activates and takes control without a manual hard refresh: call `skipWaiting`/`clients.claim` appropriately, detect the waiting worker on registration, and surface a small non-blocking "Update available — tap to refresh" prompt that reloads into the new version on tap (and never serve a cached HTML shell that points at bundle filenames absent from the cache). Likely code lives in the service worker (`sw.js`) and its registration/update handling in `index.js`.
+  - File: `toDoList_main/src/sw.js`, `toDoList_main/src/index.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: fbff27cb-5250-45e3-8583-5840bcf87e9c -->
