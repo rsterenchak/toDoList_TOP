@@ -13,3 +13,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
   - Completed: 2026-06-23
   <!-- id: 9909567b-d4a7-4be6-bc5e-817799cebad6 -->
+
+- [ ] **[HIGH]** Render the todo overflow menu outside the todo viewer div so it isn't clipped
+  - Type: bug
+  - Description: The per-todo overflow (⋮) menu is clipped because it renders inside the todo viewer container, which has an `overflow` that cuts off the popup. Relocate the menu so it mounts outside that container (portal it to `body` or a top-level overlay layer) and escapes the clipping ancestor entirely. The move must preserve every behavior currently wired to the menu: (a) it must still open anchored to its ⋮ trigger using the trigger's `getBoundingClientRect()`, and re-anchor on scroll/resize so it doesn't drift from the trigger; (b) outside-click dismissal must follow the menu to its new mount path — if the listener was scoped to the viewer subtree it must be re-bound at the new location so clicks anywhere outside still close it; (c) Escape-to-close and select-to-close must keep working; (d) the ~500ms long-press touch equivalent that opens it on mobile must keep working; (e) the menu's actions (edit/delete/etc.) must stay bound to the correct todo id after it's detached from the row's DOM subtree. Likely locations: the menu build/open logic in `toDoRow.js`/`toDo.js` and the clipping/positioning rules in `style.css`.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 522856a8-d131-4839-b004-d51bdfa5725a -->
