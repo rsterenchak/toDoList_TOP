@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-23',
         changed: [
-            "The chat composer's send control is now a split button with a persistent Fast or Deep default that you set once, that the Enter key respects, and that survives reloads.",
             "The TODO.md viewer's show-completed toggle moved into the ⋯ overflow menu, decluttering the viewer header.",
+            "On mobile, the TODO.md viewer's ⋯ overflow menu opens as a large-touch-target bottom sheet instead of a cramped dropdown.",
         ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",

@@ -14,9 +14,9 @@
   - Completed: 2026-06-23
   <!-- id: 9909567b-d4a7-4be6-bc5e-817799cebad6 -->
 
-- [ ] **[MEDIUM]** Use a modal menu instead of a dropdown for the todo viewer's overflow button on mobile
+- [x] **[MEDIUM]** Use a modal menu instead of a dropdown for the todo viewer's overflow button on mobile
   - Type: feature
   - Description: In the todo viewer section, tapping the overflow (⋯) menu button on mobile currently opens a dropdown that is cramped and easy to mis-tap on touch. On mobile, the overflow button should instead open a modal/bottom-sheet menu (use the existing `mobileSheets.js` pattern) with large touch targets; desktop keeps the existing anchored dropdown unchanged. Preserve all current overflow-menu behavior: every menu item's action/click handler must still fire; the menu must close on item selection, backdrop tap/outside-click, and Escape; and any state the menu reads (the entry/section currently in view) must remain in scope when the menu is rendered as a modal rather than as a sibling dropdown. The likely code lives in `toDoMdViewer.js` (overflow button + menu construction) with the mobile sheet wiring from `mobileSheets.js` and styling in `style.css`.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-23
   <!-- id: 2479dc6b-f7cd-418f-af28-b6f048f1af31 -->

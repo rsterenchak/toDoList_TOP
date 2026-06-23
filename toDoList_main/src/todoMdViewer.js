@@ -1,6 +1,7 @@
 import { listLogic } from './listLogic.js';
 import { isTodoMdShowCompleted, setTodoMdShowCompleted } from './prefs.js';
 import { showConfirmModal } from './modals.js';
+import { isMobileViewport } from './viewport.js';
 import {
     findTargetById,
     readTodoMdFromWorker,
@@ -17,6 +18,24 @@ import {
 let viewerCardTapHandler = null;
 export function setViewerCardTapHandler(fn) {
     viewerCardTapHandler = typeof fn === 'function' ? fn : null;
+}
+
+// On the mobile breakpoint the anchored "⋯" overflow dropdown is cramped and
+// easy to mis-tap, so the overflow button opens a slide-up bottom-sheet menu
+// instead (desktop keeps the anchored dropdown). The sheet machinery lives in
+// mobileSheets.js; main.js registers it here as a controller so the overflow
+// wiring below can reach it without a circular import back into mobileSheets.js
+// (which already imports from this module). The controller is
+// `{ open(menuEl, opts), close() }` — see openOverflowMobileSheet /
+// closeOverflowMobileSheet. When unset (e.g. tests that mount the card without
+// main.js), the overflow button falls back to the anchored dropdown.
+let overflowSheetController = null;
+export function setOverflowSheetController(controller) {
+    overflowSheetController =
+        controller && typeof controller.open === 'function' &&
+        typeof controller.close === 'function'
+            ? controller
+            : null;
 }
 
 // ── READ-ONLY TODO.md VIEWER CARD ──
@@ -629,6 +648,9 @@ function buildTodoMdViewerCard(projectName, target) {
     // or re-tapping the button.
     let overflowOutsideHandler = null;
     let overflowKeydownHandler = null;
+    // True while the overflow menu is hosted in the mobile bottom sheet rather
+    // than the anchored desktop dropdown — gates the sheet-specific teardown.
+    let overflowInSheet = false;
 
     function closeOverflowMenu() {
         if (overflowMenu.hidden) return;
@@ -644,10 +666,56 @@ function buildTodoMdViewerCard(projectName, target) {
             document.removeEventListener('keydown', overflowKeydownHandler, true);
             overflowKeydownHandler = null;
         }
+        // Mobile: the menu was moved into a bottom sheet — dismiss the sheet
+        // and return the menu element to its anchored wrapper. close() here is
+        // the programmatic teardown (it does NOT re-fire the sheet's onDismiss,
+        // so we restore the menu ourselves).
+        if (overflowInSheet) {
+            overflowInSheet = false;
+            if (overflowSheetController) overflowSheetController.close();
+            restoreOverflowMenuToWrap();
+        }
+    }
+
+    // Move the overflow menu element back under its anchored wrapper (it is
+    // DOM-moved into the bottom sheet on mobile). Idempotent — used by both the
+    // programmatic close above and the sheet's own dismiss path.
+    function restoreOverflowMenuToWrap() {
+        if (overflowMenu.parentNode !== overflowWrap) {
+            overflowWrap.appendChild(overflowMenu);
+        }
+        overflowMenu.hidden = true;
+    }
+
+    function openOverflowSheet() {
+        // The menu element is DOM-moved into the sheet, so every item's click
+        // handler and the state they read (card.dataset.content, the toggle,
+        // performRewrite) stay in scope. hidden=false so it shows inside the
+        // sheet; the sheet CSS strips the dropdown's floating chrome.
+        overflowInSheet = true;
+        overflowMenu.hidden = false;
+        overflowBtn.setAttribute('aria-expanded', 'true');
+        overflowSheetController.open(overflowMenu, {
+            title: 'More actions',
+            // Fired only when the user dismisses via the sheet's own
+            // affordances (close button / backdrop / Escape / swipe-down).
+            onDismiss: function() {
+                overflowInSheet = false;
+                overflowBtn.setAttribute('aria-expanded', 'false');
+                restoreOverflowMenuToWrap();
+            },
+        });
     }
 
     function openOverflowMenu() {
         if (!overflowMenu.hidden) return;
+        // Mobile: open the menu as a slide-up bottom sheet with large touch
+        // targets instead of the cramped anchored dropdown. Falls back to the
+        // dropdown when no sheet controller is registered.
+        if (isMobileViewport() && overflowSheetController) {
+            openOverflowSheet();
+            return;
+        }
         overflowMenu.hidden = false;
         overflowBtn.setAttribute('aria-expanded', 'true');
         // A collapsed card is only as tall as its header, and the card clips

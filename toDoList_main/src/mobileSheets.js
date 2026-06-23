@@ -194,6 +194,10 @@ export function openCompletedMobileSheet() {
 
     function onKeydown(event) {
         if (event.key !== 'Escape') return;
+        // The overflow sheet can open on top of this one — let its own Escape
+        // handler claim the keypress so a single Escape dismisses only the
+        // topmost sheet.
+        if (overflowMobileSheetState && overflowMobileSheetState.open) return;
         event.preventDefault();
         event.stopPropagation();
         closeCompletedMobileSheet();
@@ -363,6 +367,10 @@ export function openViewerMobileSheet(card) {
 
     function onKeydown(event) {
         if (event.key !== 'Escape') return;
+        // The overflow sheet can open on top of this one — let its own Escape
+        // handler claim the keypress so a single Escape dismisses only the
+        // topmost sheet.
+        if (overflowMobileSheetState && overflowMobileSheetState.open) return;
         event.preventDefault();
         event.stopPropagation();
         closeViewerMobileSheet();
@@ -427,6 +435,162 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
         if (viewerMobileSheetState && viewerMobileSheetState.open
                 && !isMobileViewport()) {
             closeViewerMobileSheet();
+        }
+    });
+}
+
+// ── Mobile TODO.md overflow-menu bottom sheet ──
+// On touch the viewer's anchored "⋯" dropdown is cramped and easy to
+// mis-tap, so on the ≤1023px breakpoint the overflow button opens this
+// slide-up sheet instead (desktop keeps the anchored dropdown). The viewer
+// owns the menu element and its item handlers; it DOM-moves that element
+// into this sheet (preserving every listener + the state the items read)
+// and registers { open, close } as a controller via setOverflowSheetController.
+// Because this sheet can open ON TOP of the viewer / completed sheets (the
+// overflow button lives inside the moved viewer card), it sits at a higher
+// z-index and the lower sheets' Escape handlers bail while it is open so a
+// single Escape dismisses only the topmost sheet. Three-affordance close per
+// CLAUDE.md — X button, backdrop tap, Escape — plus swipe-down on the handle.
+
+let overflowMobileSheetState = null;
+
+export function openOverflowMobileSheet(menuEl, opts) {
+    if (overflowMobileSheetState && overflowMobileSheetState.open) return;
+    if (!menuEl) return;
+    const options = opts || {};
+
+    const prior = document.getElementById('todoMdViewerOverflowMobileSheetBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'todoMdViewerOverflowMobileSheetBackdrop';
+
+    const sheet = document.createElement('div');
+    sheet.id = 'todoMdViewerOverflowMobileSheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-labelledby', 'todoMdViewerOverflowMobileSheetTitle');
+
+    const handle = document.createElement('span');
+    handle.className = 'completedMobileSheetHandle';
+    handle.setAttribute('aria-hidden', 'true');
+
+    const headerEl = document.createElement('div');
+    headerEl.className = 'completedMobileSheetHeader';
+
+    const title = document.createElement('div');
+    title.id = 'todoMdViewerOverflowMobileSheetTitle';
+    title.className = 'completedMobileSheetTitle';
+    title.textContent = options.title || 'More actions';
+
+    const closeX = document.createElement('button');
+    closeX.type = 'button';
+    closeX.className = 'completedMobileSheetClose';
+    closeX.setAttribute('aria-label', 'Close menu');
+    closeX.textContent = '×';
+
+    headerEl.appendChild(title);
+    headerEl.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.className = 'completedMobileSheetBody';
+
+    sheet.appendChild(handle);
+    sheet.appendChild(headerEl);
+    sheet.appendChild(body);
+    backdrop.appendChild(sheet);
+    document.body.appendChild(backdrop);
+
+    body.appendChild(menuEl);
+    const previouslyFocused = document.activeElement;
+
+    overflowMobileSheetState = {
+        open: true,
+        backdrop: backdrop,
+        sheet: sheet,
+        body: body,
+        menuEl: menuEl,
+        previouslyFocused: previouslyFocused,
+        onKeydown: null,
+        onDismiss: typeof options.onDismiss === 'function' ? options.onDismiss : null,
+    };
+
+    function onKeydown(event) {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        dismissOverflowMobileSheet();
+    }
+    overflowMobileSheetState.onKeydown = onKeydown;
+
+    closeX.addEventListener('click', dismissOverflowMobileSheet);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) dismissOverflowMobileSheet();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    attachCompletedSheetSwipeDown(handle, sheet, dismissOverflowMobileSheet);
+    attachCompletedSheetSwipeDown(headerEl, sheet, dismissOverflowMobileSheet);
+
+    requestAnimationFrame(function() {
+        backdrop.classList.add('is-open');
+    });
+
+    try { closeX.focus(); } catch (_) { /* defensive */ }
+}
+
+// Shared teardown. `notify` controls whether the caller's onDismiss fires:
+// true for the user-affordance dismissals (X / backdrop / Escape / swipe),
+// false for the programmatic close() the viewer calls after an item selection
+// already restored the menu itself.
+function teardownOverflowMobileSheet(notify) {
+    const state = overflowMobileSheetState;
+    if (!state || !state.open) return;
+    state.open = false;
+    if (state.onKeydown) {
+        document.removeEventListener('keydown', state.onKeydown, true);
+    }
+    // Removing the backdrop also detaches the borrowed menu element; the
+    // viewer re-homes it (onDismiss below, or its own close path).
+    if (state.backdrop && state.backdrop.parentNode) {
+        state.backdrop.parentNode.removeChild(state.backdrop);
+    }
+    overflowMobileSheetState = null;
+    if (notify && typeof state.onDismiss === 'function') {
+        try { state.onDismiss(); } catch (_) { /* defensive */ }
+    }
+    if (state.previouslyFocused &&
+        typeof state.previouslyFocused.focus === 'function' &&
+        document.contains(state.previouslyFocused)) {
+        try { state.previouslyFocused.focus(); } catch (_) { /* defensive */ }
+    }
+}
+
+function dismissOverflowMobileSheet() {
+    teardownOverflowMobileSheet(true);
+}
+
+// Programmatic close from the viewer (an item selection already handled the
+// action and will re-home the menu). Does not re-fire onDismiss.
+export function closeOverflowMobileSheet() {
+    teardownOverflowMobileSheet(false);
+}
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    // A render that rebuilds the viewer card (e.g. project switch) would
+    // orphan the borrowed menu — dismiss the sheet so it can't strand a stale
+    // menu over a freshly built card.
+    document.addEventListener('mainListRendered', function() {
+        if (overflowMobileSheetState && overflowMobileSheetState.open) {
+            dismissOverflowMobileSheet();
+        }
+    });
+    // Resize past the mobile breakpoint — the anchored dropdown is the right
+    // affordance on desktop, so dismiss the sheet (returning the menu inline).
+    window.addEventListener('resize', function() {
+        if (overflowMobileSheetState && overflowMobileSheetState.open
+                && !isMobileViewport()) {
+            dismissOverflowMobileSheet();
         }
     });
 }
@@ -565,6 +729,7 @@ export function isAnyMobileSheetOpen() {
     return !!(
         (viewerMobileSheetState && viewerMobileSheetState.open) ||
         (completedMobileSheetState && completedMobileSheetState.open) ||
-        (changelogMobileSheetState && changelogMobileSheetState.open)
+        (changelogMobileSheetState && changelogMobileSheetState.open) ||
+        (overflowMobileSheetState && overflowMobileSheetState.open)
     );
 }
