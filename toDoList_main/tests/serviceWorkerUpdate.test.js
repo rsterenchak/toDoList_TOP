@@ -114,6 +114,74 @@ describe('service worker update discovery — src/index.js', () => {
             );
             expect(index).toMatch(/window\.location\.reload\(\s*\)/);
         });
+
+        it('reloads on an UPDATE controllerchange but NOT on a first-ever install', () => {
+            // The new worker calls clients.claim() on activate, which fires
+            // controllerchange. On a first-ever install (no prior controller)
+            // a reload would be a pointless flash — the page is already on the
+            // current build — so the handler must only reload when a controller
+            // already existed at load (a genuine update took over).
+            const startIdx = index.indexOf("if ('serviceWorker' in navigator)");
+            const braceStart = index.indexOf('{', startIdx);
+            let depth = 0;
+            let end = -1;
+            for (let i = braceStart; i < index.length; i++) {
+                if (index[i] === '{') depth++;
+                else if (index[i] === '}') {
+                    depth--;
+                    if (depth === 0) { end = i; break; }
+                }
+            }
+            const block = index.slice(startIdx, end + 1);
+
+            function runScenario(hadController) {
+                let reloadCalls = 0;
+                let controllerChangeHandler = null;
+                const fakeRegistration = {
+                    waiting: null,
+                    installing: null,
+                    addEventListener: () => {},
+                    update: () => {},
+                };
+                const fakeNavigator = {
+                    serviceWorker: {
+                        register: () => Promise.resolve(fakeRegistration),
+                        addEventListener: (event, handler) => {
+                            if (event === 'controllerchange') controllerChangeHandler = handler;
+                        },
+                        controller: hadController ? {} : null,
+                    },
+                };
+                const fakeDocument = {
+                    visibilityState: 'visible',
+                    addEventListener: () => {},
+                    dispatchEvent: () => {},
+                };
+                const fakeWindow = {
+                    addEventListener: (event, handler) => { if (event === 'load') handler(); },
+                    location: { reload: () => { reloadCalls++; } },
+                };
+                const factory = new Function(
+                    'navigator', 'document', 'window', 'setInterval', 'notifyUpdateAvailable', 'CustomEvent',
+                    block
+                );
+                factory(fakeNavigator, fakeDocument, fakeWindow, () => 0, () => {}, function () {});
+                return { fire: () => controllerChangeHandler && controllerChangeHandler(), get reloadCalls() { return reloadCalls; } };
+            }
+
+            // First-ever install: controller was null at load → no reload.
+            const fresh = runScenario(false);
+            fresh.fire();
+            expect(fresh.reloadCalls).toBe(0);
+
+            // Update: a controller already existed at load → reload exactly once.
+            const update = runScenario(true);
+            update.fire();
+            expect(update.reloadCalls).toBe(1);
+            // Re-firing must not reload again (reload-once guard preserved).
+            update.fire();
+            expect(update.reloadCalls).toBe(1);
+        });
     });
 
     describe('runtime behavior — visibility-driven update call', () => {
@@ -192,6 +260,49 @@ describe('service worker update discovery — src/index.js', () => {
                 expect(updateCalls).toBe(2);
             });
         });
+    });
+});
+
+
+describe('service worker activation — src/sw.js', () => {
+    const sw = read('sw.js');
+
+    it('keeps the SKIP_WAITING message handler that calls skipWaiting()', () => {
+        // The "Update available — tap to refresh" cue posts SKIP_WAITING;
+        // the waiting worker must skipWaiting() in response so it activates.
+        expect(sw).toMatch(/SKIP_WAITING/);
+        expect(sw).toMatch(/self\.skipWaiting\(\s*\)/);
+    });
+
+    it('claims open clients on activate so the new worker takes control immediately', () => {
+        // Without clients.claim(), a worker that skipWaiting()s still does
+        // not control the already-open page until the next navigation, so
+        // controllerchange never fires and "tap to refresh" never reloads —
+        // leaving the user on the stale bundle (the white-page symptom).
+        expect(sw).toMatch(/self\.addEventListener\(\s*['"]activate['"]/);
+        expect(sw).toMatch(/self\.clients\.claim\(\s*\)/);
+    });
+
+    it('runs clients.claim() when the activate handler fires', () => {
+        // Lift and execute the activate listener against stub globals to
+        // confirm the claim actually runs (a source match alone can't tell
+        // a live call from a comment).
+        let claimCalls = 0;
+        let activateHandler = null;
+        const fakeSelf = {
+            addEventListener: (event, handler) => {
+                if (event === 'activate') activateHandler = handler;
+            },
+            skipWaiting: () => {},
+            clients: { claim: () => { claimCalls++; return Promise.resolve(); } },
+        };
+        const factory = new Function('self', 'precacheAndRoute', sw
+            .replace(/^\s*import[^\n]*\n/m, '')
+        );
+        factory(fakeSelf, () => {});
+        expect(typeof activateHandler).toBe('function');
+        activateHandler({ waitUntil: () => {} });
+        expect(claimCalls).toBe(1);
     });
 });
 

@@ -187,8 +187,17 @@ if ('serviceWorker' in navigator) {
             setInterval(checkForUpdate, 60 * 60 * 1000);
         }).catch(function () { /* registration can fail on file:// or insecure origins */ });
 
+        // Whether a worker already controlled this page when it loaded. The
+        // new worker now calls clients.claim() on activate (see sw.js), which
+        // fires controllerchange — but on a first-ever install (no prior
+        // controller) reloading would be a pointless flash since the page is
+        // already running the current build. Only a genuine UPDATE, where a
+        // controller existed at load and a new worker then took over, warrants
+        // the reload into the new version.
+        const hadControllerAtLoad = !!navigator.serviceWorker.controller;
         let reloading = false;
         navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (!hadControllerAtLoad) return;
             if (reloading) return;
             reloading = true;
             // The new build is now controlling the page, so any "update ready"
