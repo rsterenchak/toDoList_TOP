@@ -102,21 +102,38 @@ describe('syncClaudeSheetForProject — auto-swap chat workspace to the project 
         expect(pillText()).toContain('RepoB');
     });
 
-    it('preserves the conversation across an auto-swap (no chat wipe)', async () => {
-        await seedTargets([{ id: 't1', repo: 'me/RepoA' }]);
+    it('loads the repo\'s saved thread on auto-swap (empty for none, restored on switch-back)', async () => {
+        await seedTargets([
+            { id: 't1', repo: 'me/RepoA' },
+            { id: 't2', repo: 'me/RepoB' },
+        ]);
         seedProject('Alpha', 't1');
+        seedProject('Beta', 't2');
 
-        // Plant an on-screen message; a destructive switch would clear it.
+        // RepoB owns a previously-saved thread; RepoA has none.
+        localStorage.setItem('todoapp_claudeChat', JSON.stringify({
+            'me/RepoB': [{ role: 'user', content: 'saved B message' }],
+        }));
+
+        // Plant an on-screen message on the current workspace.
         const surface = document.querySelector('#claudeChatSurface');
         const bubble = document.createElement('div');
         bubble.className = 'claudeMsg';
-        bubble.textContent = 'hello';
+        bubble.textContent = 'on default workspace';
         surface.appendChild(bubble);
 
+        // Switching to a repo with no saved thread loads an empty thread, so the
+        // surface is replayed empty — the prior message is gone.
         syncClaudeSheetForProject('Alpha');
-
         expect(pillText()).toContain('RepoA');
-        expect(document.querySelector('#claudeChatSurface').textContent).toContain('hello');
+        const afterA = document.querySelector('#claudeChatSurface');
+        expect(afterA.textContent).not.toContain('on default workspace');
+        expect(afterA.textContent.trim()).toBe('');
+
+        // Switching to RepoB replays its saved thread onto the surface.
+        syncClaudeSheetForProject('Beta');
+        expect(pillText()).toContain('RepoB');
+        expect(document.querySelector('#claudeChatSurface').textContent).toContain('saved B message');
     });
 
     it('leaves the workspace untouched when the project has no target', async () => {
