@@ -297,3 +297,24 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 042f6874-f55d-42d1-b9a3-d130c56c8cfd -->
+
+- [ ] **[MEDIUM]** Add clear-all, clear-completed, and per-entry delete to the TODO.md viewer
+  - Type: feature
+  - Description: Give the read-only TODO.md viewer card (`todoMdViewer.js`) the ability to actually mutate the backlog file via the Worker's new `rewrite` op. Per the approved "C" layout: each rendered entry row gets a trash icon beside the existing "Run this entry" icon (delete one), and the card's header meta row gets a "⋯" overflow menu holding "Clear completed" and "Clear all" (whole-file actions kept out of the way). All three are destructive and confirm first; after a successful write the viewer re-fetches and re-renders so the rendered list matches disk. This is the client half — it depends on the Worker `{ rewrite: true, op, id }` branch already being deployed.
+  - Behavior:
+    1. Per-entry delete: a trash button renders only on top-level entries that carry an id marker (same gate the Run button uses, since the parser already tags `entryId`). Tapping it shows an inline confirm naming the entry; confirming calls the Worker with `op: 'delete_entry'` + the entry id.
+    2. Card overflow: a "⋯" button in the meta row opens a small menu with "Clear completed" and "Clear all". "Clear completed" confirms that it removes every completed (`[x]`) entry — your shipped history. "Clear all" gets the stronger confirm, spelling out that it wipes the entire backlog including completed/shipped entries. The menu dismisses the app's usual way (select / outside-click / Escape).
+    3. After any successful rewrite, re-run the viewer's existing fetch-and-render (the Sync path) so the rendered + raw tabs reflect the new file. A `skipped` result (nothing matched) just refreshes without surfacing an error.
+    4. Every action routes the project's resolved inject target (`target.repo` / `target.file_path`) so it writes the correct repo's TODO.md — same per-project routing the viewer already uses for read.
+  - Implementation notes:
+    - `inject.js`: add an exported `rewriteTodoMd(target, op, id)` mirroring `readTodoMdFromWorker` — `postToWorker({ rewrite: true, op, id, repo: target.repo, filePath: target.file_path })`, returning `{ ok, ... }` on success or `{ ok: false, reason }` via `describeError` on failure (so callers handle the not-configured / network / HTTP shapes uniformly).
+    - `todoMdViewer.js`: in the rendered-tab row builder, add the trash button next to the `todoMdViewerRunEntryBtn` block, gated on `tok.entryId`; add the "⋯" overflow + menu to the `todoMdViewerMeta` cluster. Reuse the inline-confirm pattern (and for clear-all, a stronger two-step) — confirms close 3 ways (button / backdrop / Escape) per CLAUDE.md.
+    - `style.css`: styles for the trash button, the overflow menu, and the confirms — reuse existing menu/confirm classes where possible; no inline style writes from JS; any inputs stay at `font-size: 16px+`.
+  - Acceptance criteria:
+    - The existing "Run this entry" control and the row's current behavior keep working; the trash's tap/confirm never triggers or swallows the Run action.
+    - Per-entry delete renders only for id-bearing entries; the "Show completed (N)" cosmetic toggle and its count still work and reflect the post-clear state.
+    - All three ops hit the active project's target repo/file; the suite stays green.
+  - Out of scope: the Worker `rewrite` branch itself (separate manual `wrangler deploy`; this entry assumes it exists). Deleting id-less entries individually (use Clear all, or edit on GitHub) — block-text deletion isn't worth the fragility. Undo/restore (clears are destructive; the confirm is the gate). Any change to the inject/append, dispatch, status, or chat paths.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/todoMdViewer.test.js`, `toDoList_main/tests/inject.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: eded3e81-ef3d-4f2a-aea3-e693aaad3f81 -->
