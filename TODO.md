@@ -42,9 +42,9 @@
   - Completed: 2026-06-23
   <!-- id: 039c9f6d-079c-49c5-b317-b89cf73718b1 -->
 
-- [ ] **[LOW]** Recolor the chat composer send caret to match the accent purple #6C5DF5
+- [x] **[LOW]** Recolor the chat composer send caret to match the accent purple #6C5DF5
   - Type: bug
   - Description: The `claudeComposerSendCaret` element currently uses a color that doesn't match the rest of the composer's accent styling, making it look inconsistent. Update its color to `#6C5DF5` so it's uniform with the other accent elements in the composer. This is a styling-only change — adjust the relevant `.claudeComposerSendCaret` rule (fill/color as appropriate for the element type) in the stylesheet; no behavior changes.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-23
   <!-- id: ee284b9c-139f-4af0-b5a0-2d8499158802 -->
