@@ -429,26 +429,6 @@ function buildTodoMdViewerCard(projectName, target) {
         '<polyline points="6 9 12 15 18 9"/>' +
         '</svg>';
 
-    // "Show completed" toggle — a compact 32×32 icon button (a checked-checkbox
-    // glyph) with a floating count badge, defaults OFF (completed entries hidden
-    // in the rendered body). The icon form replaces the old "Show completed (N)"
-    // text pill, which overflowed the header on narrow mobile widths. The N
-    // badge is recomputed from live content on every render; since the glyph
-    // carries no visible text, the count and the Show/Hide verb live in
-    // aria-label + title for screen readers and hover tooltips.
-    const showCompletedBtn = document.createElement('button');
-    showCompletedBtn.type = 'button';
-    showCompletedBtn.className = 'todoMdViewerShowCompletedBtn';
-    showCompletedBtn.innerHTML =
-        '<svg class="todoMdViewerShowCompletedIcon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<polyline points="20 6 9 17 4 12"/>' +
-        '</svg>';
-    const showCompletedCount = document.createElement('span');
-    showCompletedCount.className = 'todoMdViewerShowCompletedBadge';
-    showCompletedCount.setAttribute('aria-hidden', 'true');
-    showCompletedCount.textContent = '0';
-    showCompletedBtn.appendChild(showCompletedCount);
-
     // "⋯" overflow menu — holds the whole-file destructive actions (Clear
     // completed / Clear all) out of the way of the always-visible controls.
     // The button and its anchored menu share a position:relative wrapper so
@@ -470,6 +450,35 @@ function buildTodoMdViewerCard(projectName, target) {
     overflowMenu.setAttribute('role', 'menu');
     overflowMenu.hidden = true;
 
+    // "Show completed (N)" toggle — a checkable menu item at the top of the
+    // overflow menu (above the destructive clear actions, separated by a
+    // divider). Replaces the old standalone header icon button, which crowded
+    // the meta row. Defaults OFF (completed entries hidden in the rendered
+    // body). The visible label flips between "Show completed (N)" and "Hide
+    // completed (N)"; aria-checked reflects the persisted state for screen
+    // readers. N recomputes from live content on every render.
+    const showCompletedItem = document.createElement('button');
+    showCompletedItem.type = 'button';
+    showCompletedItem.className = 'todoMdViewerOverflowItem todoMdViewerShowCompletedItem';
+    showCompletedItem.setAttribute('role', 'menuitemcheckbox');
+    showCompletedItem.setAttribute('aria-checked', 'false');
+    const showCompletedCheck = document.createElement('span');
+    showCompletedCheck.className = 'todoMdViewerShowCompletedCheck';
+    showCompletedCheck.setAttribute('aria-hidden', 'true');
+    showCompletedCheck.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<polyline points="20 6 9 17 4 12"/>' +
+        '</svg>';
+    const showCompletedLabel = document.createElement('span');
+    showCompletedLabel.className = 'todoMdViewerShowCompletedLabel';
+    showCompletedLabel.textContent = 'Show completed (0)';
+    showCompletedItem.appendChild(showCompletedCheck);
+    showCompletedItem.appendChild(showCompletedLabel);
+
+    const overflowDivider = document.createElement('div');
+    overflowDivider.className = 'todoMdViewerOverflowDivider';
+    overflowDivider.setAttribute('role', 'separator');
+
     const clearCompletedItem = document.createElement('button');
     clearCompletedItem.type = 'button';
     clearCompletedItem.className = 'todoMdViewerOverflowItem';
@@ -482,6 +491,8 @@ function buildTodoMdViewerCard(projectName, target) {
     clearAllItem.setAttribute('role', 'menuitem');
     clearAllItem.textContent = 'Clear all';
 
+    overflowMenu.appendChild(showCompletedItem);
+    overflowMenu.appendChild(overflowDivider);
     overflowMenu.appendChild(clearCompletedItem);
     overflowMenu.appendChild(clearAllItem);
     overflowWrap.appendChild(overflowBtn);
@@ -490,7 +501,6 @@ function buildTodoMdViewerCard(projectName, target) {
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
-    meta.appendChild(showCompletedBtn);
     meta.appendChild(overflowWrap);
     meta.appendChild(collapseBodyBtn);
 
@@ -525,32 +535,33 @@ function buildTodoMdViewerCard(projectName, target) {
         syncRunEntryButtonsDisabled();
     }
 
-    // Reflect the persisted toggle state onto the button (aria-pressed + label
-    // count from live content). N is recomputed each call so it tracks content
-    // changes between renders.
+    // Reflect the persisted toggle state onto the overflow menu item
+    // (aria-checked + the "Show/Hide completed (N)" label). N is recomputed
+    // each call so it tracks content changes between renders. At N=0 the item
+    // (and its divider) is hidden + disabled — "show completed (0)" is a no-op.
     function applyShowCompletedState() {
         const on = isTodoMdShowCompleted();
         const n = countCompletedTodoMdEntries(card.dataset.content || '');
-        showCompletedBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        showCompletedBtn.classList.toggle('is-on', on);
-        // The glyph has no visible text, so the count + verb ride on
-        // aria-label (screen readers) and title (desktop hover tooltip).
-        const label = (on ? 'Hide' : 'Show') + ' completed (' + n + ')';
-        showCompletedBtn.setAttribute('aria-label', label);
-        showCompletedBtn.title = label;
-        showCompletedCount.textContent = String(n);
-        // Hide the badge entirely at N=0 — "show completed (0)" is a no-op and a
-        // visible 0 invites confusion.
-        showCompletedBtn.classList.toggle('todoMdViewerShowCompletedBtn--empty', n === 0);
+        showCompletedItem.setAttribute('aria-checked', on ? 'true' : 'false');
+        showCompletedLabel.textContent =
+            (on ? 'Hide' : 'Show') + ' completed (' + n + ')';
+        const empty = n === 0;
+        showCompletedItem.hidden = empty;
+        showCompletedItem.disabled = empty;
+        overflowDivider.hidden = empty;
     }
 
-    showCompletedBtn.addEventListener('click', function() {
+    showCompletedItem.addEventListener('click', function(event) {
+        event.stopPropagation();
         setTodoMdShowCompleted(!isTodoMdShowCompleted());
         // Preserve scroll position so toggling doesn't jump the body to top.
         const prevScroll = body.scrollTop;
         applyShowCompletedState();
         applyTab(viewerActiveTab);
         body.scrollTop = prevScroll;
+        // Close the menu (matching the clear items) so the re-rendered list
+        // is visible behind the dismissed menu.
+        closeOverflowMenu();
     });
 
     renderedTab.addEventListener('click', function() { applyTab('rendered'); });
