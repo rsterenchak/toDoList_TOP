@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-23',
+        added: [
+            "The chat workspace now follows the project you switch to, automatically re-pointing at that project's linked repo without clearing your conversation.",
+        ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
         ],
@@ -13,9 +16,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-22',
-        changed: [
-            "Generated tasks now arrive with a ready-to-edit TODO.md entry as their description, revealed by a per-row Details toggle.",
-        ],
         fixed: [
             "Returning to a sleeping or locked desktop now pulls changes made on your other devices automatically, without a manual refresh.",
             "Tasks created by Generate tasks now appear in the project's list right away, without switching projects.",
