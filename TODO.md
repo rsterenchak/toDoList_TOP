@@ -55,3 +55,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-23
   <!-- id: 4d26ef55-2a7c-4f8c-ab3b-66884ede033c -->
+
+- [ ] **[LOW]** Match the deep/fast selector color to the submit button
+  - Type: bug
+  - Description: The deep-vs-fast mode selector in the Claude sheet composer uses a different color than the adjacent submit/send button, making them look mismatched. Restyle the selector to use the same accent color as the submit button so the two controls read as a matched pair. Pull the existing submit-button color from the shared CSS variable/token rather than hardcoding a new value, and verify the match holds in both dark and light themes. Likely locations: the composer control styles in `style.css` and, if the selector is built/styled inline, its markup in `claudeSheet.js`.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8ab65856-a60e-4f68-95f2-696f3af2a27c -->
