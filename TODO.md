@@ -13,10 +13,3 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
   - Completed: 2026-06-23
   <!-- id: 9909567b-d4a7-4be6-bc5e-817799cebad6 -->
-
-- [ ] **[HIGH]** Fix todo overflow menu being clipped by the todo list container
-  - Type: bug
-  - Description: The per-todo overflow (⋮) menu is cut off when it extends past the edges of the todo list/section, because an ancestor container has `overflow: hidden` (or `overflow: auto`) that clips the popup. Make the menu fully visible regardless of where it opens — either render/portal it above the clipping container or anchor it with fixed positioning relative to the trigger so it escapes the ancestor's overflow box. The menu must still open at the correct position next to its ⋮ trigger, close on outside-click/Escape/selection, and keep its long-press equivalent working on touch.
-  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: ef9ad089-18ca-4b28-8c97-03752acc898b -->
