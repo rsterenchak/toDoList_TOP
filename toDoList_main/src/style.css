@@ -5098,6 +5098,17 @@ body.row-dragging * { cursor: grabbing !important; }
   min-height: max-content;
 }
 
+/* While the overflow menu is open, let the inline card's overflow show so the
+   menu (position: absolute; top: calc(100% + 6px)) isn't cropped by the card's
+   `overflow: hidden` — which crops it badly when the card is collapsed and only
+   as tall as its header. Sizing-safe: `min-height: max-content` above pins the
+   card height independent of overflow (the auto-min override overflow:hidden
+   triggers only fires when min-height is `auto`), and the body keeps its own
+   `overflow: auto` / `max-height`. */
+#mainList .todoMdViewerCard.todoMdViewerCard--menuOpen {
+  overflow: visible;
+}
+
 .todoMdViewerHeader {
   display: flex;
   flex-wrap: wrap;
