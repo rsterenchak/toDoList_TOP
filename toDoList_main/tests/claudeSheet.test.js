@@ -358,11 +358,11 @@ describe('Claude sheet — module surface and styling', () => {
         const caret = extractTopLevelRule('.claudeComposerSendCaret');
         expect(caret).toMatch(/border-radius:\s*0 18px 18px 0/);
         expect(caret).toMatch(/background:\s*var\(--bg-elevated\)/);
-        // The accent purple lands on the dropdown selector (the labeled mode
-        // control), not the bare caret: the main button's text is #6C5DF5 while
-        // the caret keeps the neutral secondary color.
+        // The deep/fast selector caret now shares the submit button's accent
+        // purple so the two halves of the split send read as a matched pair:
+        // both the main button's text and the caret are #6C5DF5.
         expect(main).toMatch(/color:\s*#6C5DF5/i);
-        expect(caret).toMatch(/color:\s*var\(--text-secondary\)/);
+        expect(caret).toMatch(/color:\s*#6C5DF5/i);
         // Deep default: the main button fills with the solid purple accent.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
         expect(deep).toMatch(/background:\s*#6C5DF5/i);
