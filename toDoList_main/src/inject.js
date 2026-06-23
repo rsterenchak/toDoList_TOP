@@ -304,6 +304,34 @@ export async function readTodoMdFromWorker(target) {
 }
 
 
+// Mutate the target repo's TODO.md through the Worker's `rewrite` branch.
+// Mirrors readTodoMdFromWorker's wiring (same URL + Bearer secret) but POSTs
+// `{ rewrite: true, op, id, repo, filePath }`. `op` is one of `delete_entry`
+// (removes the single entry whose `<!-- id: … -->` marker matches `id`),
+// `clear_completed` (drops every completed `[x]` entry), or `clear_all` (wipes
+// the whole backlog); `id` is only meaningful for `delete_entry`. The whole
+// Worker payload is spread onto the result so callers can read a `skipped`
+// flag (nothing matched). Returns `{ ok: false, reason }` via describeError on
+// any failure, matching the inject button's error vocabulary.
+export async function rewriteTodoMd(target, op, id) {
+    if (!target || !target.repo || !target.file_path) {
+        return { ok: false, reason: 'No target' };
+    }
+    try {
+        const res = await postToWorker({
+            rewrite: true,
+            op: op,
+            id: id,
+            repo: target.repo,
+            filePath: target.file_path,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Dispatch a Claude Code automation run through the same Worker the inject
 // and read flows already use (same URL, same Bearer secret). Sends
 // `{ dispatch: true, mode, entry_id, correlation_id, repo, filePath }` so the

@@ -9,19 +9,13 @@ export const changelog = [
         added: [
             "The chat workspace now follows the project you switch to, automatically re-pointing at that project's linked repo without clearing your conversation.",
             "The in-app Claude chat now keeps a separate conversation per repo and restores it on reload, so each workspace resumes its own history.",
+            "The TODO.md viewer can now delete a single entry, clear completed entries, or clear the entire backlog, each behind a confirmation.",
         ],
         changed: [
             "The chat composer's send control is now a split button with a persistent Fast or Deep default that you set once, that the Enter key respects, and that survives reloads.",
         ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-22',
-        fixed: [
-            "Swiping down inside the mobile chat sheet now only dismisses it on a deliberate swipe, so scrolling the chat log no longer closes the sheet.",
         ],
     },
 ];
