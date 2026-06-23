@@ -115,6 +115,15 @@ let attachedRepo = null;
 // prompt, and it's the single source of truth the picker reads from. Switching
 // it clears the current chat. Reset to the default on a fresh mount.
 let activeChatRepo = DEFAULT_ATTACH_REPO;
+// Persistent chat send mode for the split send button: 'fast' (default) or
+// 'deep'. The main send action — click OR Enter — sends in this mode; the caret
+// menu picks it and the ★ marks it. Persisted under todoapp_chatMode so the
+// choice survives reloads. The fast/deep distinction still reaches the Worker
+// via chatWithWorker's deep_think flag (deep → true, fast → omitted), exactly as
+// the former side-by-side Fast/Deep buttons did.
+const CHAT_MODE_KEY = 'todoapp_chatMode';
+let chatMode = 'fast';
+let modeMenuClickHandler = null;
 // Which repo the picker is currently browsing. Kept in sync with
 // `activeChatRepo` (the workspace governs repo selection now), so it always
 // equals the active workspace. Drives whether the picker shows the
@@ -543,6 +552,77 @@ function buildAttach() {
     return wrap;
 }
 
+// ── SEND MODE (split button: persistent Fast/Deep default) ──
+// Hydrate chatMode from localStorage, tolerating a missing/garbage value by
+// falling back to 'fast'. Called on mount so a reload resumes the saved default.
+function loadChatMode() {
+    let stored = null;
+    try { stored = localStorage.getItem(CHAT_MODE_KEY); } catch (e) { /* private mode */ }
+    chatMode = stored === 'deep' ? 'deep' : 'fast';
+    return chatMode;
+}
+
+// Set the persistent default and re-render the split button + menu so the label,
+// accent, and ★ all reflect the new choice.
+function setChatMode(mode) {
+    chatMode = mode === 'deep' ? 'deep' : 'fast';
+    try { localStorage.setItem(CHAT_MODE_KEY, chatMode); } catch (e) { /* private mode */ }
+    renderSendMode();
+}
+
+// Paint the main send button (label + accent + aria-label) and the menu's ★ from
+// the current chatMode. Defaults to the live contentEl scope, but accepts an
+// explicit `root` so it can paint a freshly-built view before it is mounted (at
+// which point contentEl is still null).
+function renderSendMode(root) {
+    const scope = root || contentEl;
+    if (!scope) return;
+    const isDeep = chatMode === 'deep';
+    const send = scope.querySelector('#claudeComposerSend');
+    if (send) {
+        const label = send.querySelector('.claudeSendModeLabel');
+        if (label) label.textContent = isDeep ? 'Deep' : 'Fast';
+        send.setAttribute('aria-label', isDeep ? 'Send deep' : 'Send');
+        send.classList.toggle('claudeComposerSendDeep', isDeep);
+    }
+    const menu = scope.querySelector('#claudeComposerModeMenu');
+    if (menu) {
+        const options = menu.querySelectorAll('.claudeModeOption');
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            const on = opt.getAttribute('data-mode') === chatMode;
+            opt.setAttribute('aria-checked', on ? 'true' : 'false');
+            const star = opt.querySelector('.claudeModeStar');
+            if (star) star.textContent = on ? '★' : '';
+        }
+    }
+}
+
+function isModeMenuOpen() {
+    const menu = sheetQuery('#claudeComposerModeMenu');
+    return !!(menu && !menu.hidden);
+}
+
+function openModeMenu() {
+    const menu = sheetQuery('#claudeComposerModeMenu');
+    const caret = sheetQuery('#claudeComposerSendCaret');
+    if (!menu) return;
+    menu.hidden = false;
+    if (caret) caret.setAttribute('aria-expanded', 'true');
+}
+
+function closeModeMenu() {
+    const menu = sheetQuery('#claudeComposerModeMenu');
+    const caret = sheetQuery('#claudeComposerSendCaret');
+    if (menu) menu.hidden = true;
+    if (caret) caret.setAttribute('aria-expanded', 'false');
+}
+
+function toggleModeMenu() {
+    if (isModeMenuOpen()) closeModeMenu();
+    else openModeMenu();
+}
+
 function buildChatView() {
     const view = document.createElement('div');
     view.id = 'claudeChatView';
@@ -566,79 +646,105 @@ function buildChatView() {
     input.className = 'claudeComposerInput';
     input.setAttribute('placeholder', 'Ask Claude…');
     input.setAttribute('rows', '1');
+    // Split send button: one main action that sends in the persistent default
+    // mode (chatMode — 'fast' or 'deep', its label reflecting that mode) plus a
+    // caret that opens a small menu to pick and persist the default. This replaces
+    // the former side-by-side Fast/Deep send pair, so a deep send is a deliberate,
+    // remembered choice rather than a separate per-tap button — and Enter now
+    // sends in the chosen default rather than always Fast.
     const send = document.createElement('button');
     send.id = 'claudeComposerSend';
     send.type = 'button';
     send.className = 'claudeComposerSend';
-    send.textContent = '↑';
     send.setAttribute('aria-label', 'Send');
-    // Deep send: a second send button that routes the same turn through the
-    // heavier "deep think" path (the Worker reads the deep_think flag). The mode
-    // is strictly per-message — Deep never sticks to follow-up turns — so it's a
-    // sibling button rather than a toggle on the ↑ send.
-    const sendDeep = document.createElement('button');
-    sendDeep.id = 'claudeComposerSendDeep';
-    sendDeep.type = 'button';
-    sendDeep.className = 'claudeComposerSend claudeComposerSendDeep';
-    // Double-chevron pointing up: reads as "boost the send" — the heavier deep
-    // path stacking on top of the ordinary send. Hand-rolled inline SVG (no icon
-    // font), sized to match the other composer glyphs.
-    sendDeep.innerHTML =
-        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
-        'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
-        'stroke-linejoin="round" aria-hidden="true">' +
-        '<polyline points="6 17 12 11 18 17"></polyline>' +
-        '<polyline points="6 13 12 7 18 13"></polyline></svg>';
-    sendDeep.setAttribute('aria-label', 'Send deep');
-    // The Fast (↑) and Deep (🧠) sends pair at the right edge of the composer,
-    // each stacked over a small lowercase label so the two modes read at a
-    // glance. The labels are decorative (aria-hidden) — the buttons' aria-labels
-    // already announce "Send" / "Send deep" to assistive tech.
+    // The main button's caption names the active default ("Fast" / "Deep"); a
+    // span so renderSendMode() can repaint just the text. Initial text is filled
+    // by renderSendMode() below once the button is in the DOM.
+    const sendModeLabel = document.createElement('span');
+    sendModeLabel.className = 'claudeSendModeLabel';
+    send.appendChild(sendModeLabel);
+
+    // Caret: toggles the mode menu that opens above the split button.
+    const sendCaret = document.createElement('button');
+    sendCaret.id = 'claudeComposerSendCaret';
+    sendCaret.type = 'button';
+    sendCaret.className = 'claudeComposerSendCaret';
+    sendCaret.textContent = '▾';
+    sendCaret.setAttribute('aria-label', 'Choose send mode');
+    sendCaret.setAttribute('aria-haspopup', 'menu');
+    sendCaret.setAttribute('aria-expanded', 'false');
+
+    // Mode menu: two options (Fast / Deep), the active default carrying a ★. Opens
+    // above the button (the composer sits at the bottom of the sheet). Selecting a
+    // mode persists it and closes the menu; the ★ tracks the choice.
+    const modeMenu = document.createElement('div');
+    modeMenu.id = 'claudeComposerModeMenu';
+    modeMenu.className = 'claudeModeMenu';
+    modeMenu.setAttribute('role', 'menu');
+    modeMenu.hidden = true;
+    // Keep clicks inside the menu from reaching the document-level outside-click
+    // handler (mirrors the attach panel + workspace menu guards).
+    modeMenu.addEventListener('click', function(event) { event.stopPropagation(); });
+    [['fast', 'Fast'], ['deep', 'Deep']].forEach(function(pair) {
+        const opt = document.createElement('button');
+        opt.type = 'button';
+        opt.className = 'claudeModeOption';
+        opt.setAttribute('role', 'menuitemradio');
+        opt.setAttribute('data-mode', pair[0]);
+        const star = document.createElement('span');
+        star.className = 'claudeModeStar';
+        star.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.className = 'claudeModeName';
+        name.textContent = pair[1];
+        opt.appendChild(star);
+        opt.appendChild(name);
+        opt.addEventListener('click', function() {
+            setChatMode(pair[0]);
+            closeModeMenu();
+            const inp = sheetQuery('#claudeComposerInput');
+            if (inp) { try { inp.focus(); } catch (err) { /* defensive */ } }
+        });
+        modeMenu.appendChild(opt);
+    });
+
+    // The main button and caret sit in one split control, with the menu anchored
+    // to it; .claudeSendSplit is the relative-positioned wrapper the menu drops
+    // out of.
     const sendGroup = document.createElement('div');
-    sendGroup.className = 'claudeSendGroup';
+    sendGroup.id = 'claudeComposerSendSplit';
+    sendGroup.className = 'claudeSendSplit';
+    sendGroup.appendChild(send);
+    sendGroup.appendChild(sendCaret);
+    sendGroup.appendChild(modeMenu);
 
-    const fastCol = document.createElement('div');
-    fastCol.className = 'claudeSendCol';
-    const fastLabel = document.createElement('span');
-    fastLabel.className = 'claudeSendLabel';
-    fastLabel.setAttribute('aria-hidden', 'true');
-    fastLabel.textContent = 'fast';
-    fastCol.appendChild(send);
-    fastCol.appendChild(fastLabel);
-
-    const deepCol = document.createElement('div');
-    deepCol.className = 'claudeSendCol';
-    const deepLabel = document.createElement('span');
-    deepLabel.className = 'claudeSendLabel claudeSendLabelDeep';
-    deepLabel.setAttribute('aria-hidden', 'true');
-    deepLabel.textContent = 'deep';
-    deepCol.appendChild(sendDeep);
-    deepCol.appendChild(deepLabel);
-
-    sendGroup.appendChild(fastCol);
-    sendGroup.appendChild(deepCol);
-
-    // Composer row reads [📎] [🎤] [input] [Send] [Deep]: the attach button + its
-    // dropdown panel lead the row, the mic button follows, then the textarea,
-    // with the paired Fast (↑) / Deep (🧠) send cluster last. buildAttach()
-    // carries the attach button's click listener and the panel; buildMicButton()
-    // carries the mic's listener (and returns null on browsers without speech
-    // recognition, so the affordance is hidden entirely rather than shown broken).
+    // Composer row reads [📎] [🎤] [input] [Send ▾]: the attach button + its
+    // dropdown panel lead the row, the mic button follows, then the textarea, with
+    // the split send control last. buildAttach() carries the attach button's click
+    // listener and the panel; buildMicButton() carries the mic's listener (and
+    // returns null on browsers without speech recognition, so the affordance is
+    // hidden entirely rather than shown broken).
     composer.appendChild(buildAttach());
     const mic = buildMicButton();
     if (mic) composer.appendChild(mic);
     composer.appendChild(input);
     composer.appendChild(sendGroup);
 
-    send.addEventListener('click', function() { sendChatTurn(); });
-    sendDeep.addEventListener('click', function() { sendChatTurn(true); });
+    // Main send + Enter both use the persisted default mode (deep → deep_think).
+    send.addEventListener('click', function() { sendChatTurn(chatMode === 'deep'); });
+    sendCaret.addEventListener('click', function() { toggleModeMenu(); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            sendChatTurn();
+            sendChatTurn(chatMode === 'deep');
         }
     });
+
+    // Paint the initial label / accent / ★ from the hydrated default. Scoped to
+    // the split control itself because contentEl isn't assigned until the sheet
+    // body is built, and the composer isn't appended to `view` yet here.
+    renderSendMode(sendGroup);
 
     view.appendChild(surface);
     view.appendChild(chips);
@@ -1512,9 +1618,9 @@ async function sendChatTurn(deep) {
 async function requestAssistantReply(entryId, deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
-    const sendDeep = sheetQuery('#claudeComposerSendDeep');
+    const sendCaret = sheetQuery('#claudeComposerSendCaret');
     if (send) send.disabled = true;
-    if (sendDeep) sendDeep.disabled = true;
+    if (sendCaret) sendCaret.disabled = true;
     if (input) input.disabled = true;
 
     // A Deep turn routes to a heavier model, so its placeholder reads
@@ -1551,7 +1657,7 @@ async function requestAssistantReply(entryId, deep) {
         }
     } finally {
         if (send) send.disabled = false;
-        if (sendDeep) sendDeep.disabled = false;
+        if (sendCaret) sendCaret.disabled = false;
         if (input) {
             input.disabled = false;
             try { input.focus(); } catch (err) { /* defensive */ }
@@ -2320,6 +2426,9 @@ export function mountClaudeSheet(parent) {
     // A fresh mount starts with no active dictation — stop any recognition the
     // previous sheet left running before the old DOM is replaced.
     stopMicRecording();
+    // Hydrate the persistent send-mode default before building the composer so the
+    // split button paints the saved Fast/Deep choice on first render.
+    loadChatMode();
     launcherEl = buildLauncher();
     backdropEl = document.createElement('div');
     backdropEl.id = 'claudeSheetBackdrop';
@@ -2351,8 +2460,13 @@ export function mountClaudeSheet(parent) {
 
     keydownHandler = function(event) {
         if (event.key !== 'Escape') return;
-        // Escape peels back one layer: an open workspace menu first, then the
-        // whole sheet — so dismissing the menu never also closes the panel.
+        // Escape peels back one layer: an open send-mode menu first, then an open
+        // workspace menu, then the whole sheet — so dismissing a popover never
+        // also closes the sheet beneath it.
+        if (isModeMenuOpen()) {
+            closeModeMenu();
+            return;
+        }
         if (isWorkspaceMenuOpen()) {
             closeWorkspaceMenu();
             return;
@@ -2382,6 +2496,17 @@ export function mountClaudeSheet(parent) {
         if (wrap && !wrap.contains(event.target)) setAttachPanelHidden(true);
     };
     document.addEventListener('click', attachClickHandler);
+
+    // Close the send-mode menu on any click outside the split send control. The
+    // menu stops its own clicks from bubbling here, and the caret shares the
+    // .claudeSendSplit wrap, so tapping the caret toggles rather than closes.
+    if (modeMenuClickHandler) document.removeEventListener('click', modeMenuClickHandler);
+    modeMenuClickHandler = function(event) {
+        if (!isModeMenuOpen()) return;
+        const wrap = sheetQuery('.claudeSendSplit');
+        if (wrap && !wrap.contains(event.target)) closeModeMenu();
+    };
+    document.addEventListener('click', modeMenuClickHandler);
 
     // Track the SW update-pending state so the Runs nudge and the inspector
     // gate stay in sync. Seed from hasPendingUpdate() to cover a worker that

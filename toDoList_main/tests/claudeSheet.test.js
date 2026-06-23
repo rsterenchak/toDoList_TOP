@@ -348,15 +348,23 @@ describe('Claude sheet — module surface and styling', () => {
         expect(mic).not.toMatch(/box-shadow:/);
     });
 
-    it('styles the composer sends as round icon buttons (neutral filled, Deep accent-filled)', () => {
-        const fast = extractTopLevelRule('.claudeComposerSend');
-        // Fast: round, with a faint resting surface and hairline border.
-        expect(fast).toMatch(/border-radius:\s*50%/);
-        expect(fast).toMatch(/background:\s*var\(--bg-elevated\)/);
-        expect(fast).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
-        // Deep: accent-filled circle.
+    it('styles the split send as a labeled pill + caret (neutral filled, Deep accent-filled)', () => {
+        // Main button: a pill (left-rounded) with a faint resting surface and
+        // hairline border; the caret mirrors it as the right half.
+        const main = extractTopLevelRule('.claudeComposerSend');
+        expect(main).toMatch(/border-radius:\s*18px 0 0 18px/);
+        expect(main).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(main).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
+        const caret = extractTopLevelRule('.claudeComposerSendCaret');
+        expect(caret).toMatch(/border-radius:\s*0 18px 18px 0/);
+        expect(caret).toMatch(/background:\s*var\(--bg-elevated\)/);
+        // Deep default: the main button fills with the solid purple accent.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
         expect(deep).toMatch(/background:\s*#6C5DF5/i);
+        // The mode menu anchors above the split control and hides when [hidden].
+        const menu = extractTopLevelRule('.claudeModeMenu');
+        expect(menu).toMatch(/position:\s*absolute/);
+        expect(css).toMatch(/\.claudeModeMenu\[hidden\]\s*\{\s*display:\s*none/);
         // Attach: round icon button with the same resting surface and border.
         const attach = extractTopLevelRule('.claudeComposerAttach');
         expect(attach).toMatch(/border-radius:\s*50%/);
@@ -489,67 +497,134 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('Sure');
     });
 
+    // Pick a send-mode default via the caret menu, then send with the main button.
+    function selectMode(mode) {
+        document.getElementById('claudeComposerSendCaret').click();
+        const opt = document.querySelector('.claudeModeOption[data-mode="' + mode + '"]');
+        opt.click();
+    }
     async function sendDeepMessage(text) {
+        selectMode('deep');
         const input = document.getElementById('claudeComposerInput');
         input.value = text;
-        document.getElementById('claudeComposerSendDeep').click();
+        document.getElementById('claudeComposerSend').click();
         await flush();
     }
 
-    it('renders a Deep (double-chevron) send button beside the Fast (↑) send', () => {
+    it('renders a split send button: a mode-labeled main button + a caret', () => {
         const send = document.getElementById('claudeComposerSend');
-        const deep = document.getElementById('claudeComposerSendDeep');
+        const caret = document.getElementById('claudeComposerSendCaret');
         const composer = document.getElementById('claudeComposer');
-        expect(deep).toBeTruthy();
-        // The Deep glyph is a hand-rolled double-chevron-up SVG (two stacked
-        // chevron strokes), not a text glyph.
-        const svg = deep.querySelector('svg');
-        expect(svg).toBeTruthy();
-        expect(svg.querySelectorAll('polyline').length).toBe(2);
-        expect(deep.getAttribute('aria-label')).toBe('Send deep');
-        expect(composer.contains(deep)).toBe(true);
-        // Deep sits last in the send cluster, after the Fast send.
-        expect(send.compareDocumentPosition(deep) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(send).toBeTruthy();
+        expect(caret).toBeTruthy();
+        // The main button carries a label span naming the active default; the
+        // default starts Fast (no persisted choice in a fresh mount).
+        const label = send.querySelector('.claudeSendModeLabel');
+        expect(label).toBeTruthy();
+        expect(label.textContent).toBe('Fast');
+        expect(send.getAttribute('aria-label')).toBe('Send');
+        // The caret opens a popup menu and sits in the same split control as the
+        // main button, last in the composer row.
+        expect(caret.getAttribute('aria-haspopup')).toBe('menu');
+        expect(caret.getAttribute('aria-expanded')).toBe('false');
+        expect(send.closest('.claudeSendSplit')).toBe(caret.closest('.claudeSendSplit'));
+        expect(composer.contains(caret)).toBe(true);
+        expect(send.compareDocumentPosition(caret) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
     });
 
-    it('labels the Fast and Deep sends with small lowercase captions', () => {
-        const send = document.getElementById('claudeComposerSend');
-        const deep = document.getElementById('claudeComposerSendDeep');
-        // Each send button is stacked over its caption inside a send column.
-        const fastCol = send.closest('.claudeSendCol');
-        const deepCol = deep.closest('.claudeSendCol');
-        expect(fastCol).toBeTruthy();
-        expect(deepCol).toBeTruthy();
-        const fastLabel = fastCol.querySelector('.claudeSendLabel');
-        const deepLabel = deepCol.querySelector('.claudeSendLabel');
-        expect(fastLabel.textContent).toBe('fast');
-        expect(deepLabel.textContent).toBe('deep');
-        // The captions are decorative — the buttons' aria-labels carry the
-        // accessible name — so they're hidden from assistive tech.
-        expect(fastLabel.getAttribute('aria-hidden')).toBe('true');
-        expect(deepLabel.getAttribute('aria-hidden')).toBe('true');
-        // The deep caption gets the accent class that paints it purple.
-        expect(deepLabel.classList.contains('claudeSendLabelDeep')).toBe(true);
-        // The pair sits inside a single send group.
-        expect(send.closest('.claudeSendGroup')).toBe(deep.closest('.claudeSendGroup'));
+    it('the caret opens a Fast/Deep menu with a ★ on the active default', () => {
+        const caret = document.getElementById('claudeComposerSendCaret');
+        const menu = document.getElementById('claudeComposerModeMenu');
+        expect(menu.hidden).toBe(true);
+        caret.click();
+        expect(menu.hidden).toBe(false);
+        expect(caret.getAttribute('aria-expanded')).toBe('true');
+        const fast = menu.querySelector('.claudeModeOption[data-mode="fast"]');
+        const deep = menu.querySelector('.claudeModeOption[data-mode="deep"]');
+        expect(fast.querySelector('.claudeModeName').textContent).toBe('Fast');
+        expect(deep.querySelector('.claudeModeName').textContent).toBe('Deep');
+        // Fast is the default, so its star is filled and Deep's is empty.
+        expect(fast.querySelector('.claudeModeStar').textContent).toBe('★');
+        expect(deep.querySelector('.claudeModeStar').textContent).toBe('');
+        expect(fast.getAttribute('aria-checked')).toBe('true');
+        expect(deep.getAttribute('aria-checked')).toBe('false');
     });
 
-    it('Deep send POSTs deep_think: true; Fast send omits the field', async () => {
+    it('selecting a mode persists it (todoapp_chatMode), repaints the label + ★, and closes the menu', () => {
+        const send = document.getElementById('claudeComposerSend');
+        const menu = document.getElementById('claudeComposerModeMenu');
+        selectMode('deep');
+        // Persisted under the documented key, survives reloads.
+        expect(localStorage.getItem('todoapp_chatMode')).toBe('deep');
+        // Main button now reads Deep, carries the accent class + deep aria-label.
+        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Deep');
+        expect(send.classList.contains('claudeComposerSendDeep')).toBe(true);
+        expect(send.getAttribute('aria-label')).toBe('Send deep');
+        // The ★ moved to Deep; the menu closed on selection.
+        expect(menu.hidden).toBe(true);
+        document.getElementById('claudeComposerSendCaret').click();
+        expect(menu.querySelector('.claudeModeOption[data-mode="deep"] .claudeModeStar').textContent).toBe('★');
+        expect(menu.querySelector('.claudeModeOption[data-mode="fast"] .claudeModeStar').textContent).toBe('');
+        // Switching back to Fast persists + repaints too.
+        selectMode('fast');
+        expect(localStorage.getItem('todoapp_chatMode')).toBe('fast');
+        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Fast');
+        expect(send.classList.contains('claudeComposerSendDeep')).toBe(false);
+    });
+
+    it('closes the mode menu on outside-click and on Escape', () => {
+        const caret = document.getElementById('claudeComposerSendCaret');
+        const menu = document.getElementById('claudeComposerModeMenu');
+        // Outside-click closes.
+        caret.click();
+        expect(menu.hidden).toBe(false);
+        document.body.click();
+        expect(menu.hidden).toBe(true);
+        // Escape closes.
+        caret.click();
+        expect(menu.hidden).toBe(false);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(menu.hidden).toBe(true);
+    });
+
+    it('the persisted default hydrates on mount (Deep restored after reload)', () => {
+        // Simulate a reload: a stored Deep default, then a fresh mount.
+        localStorage.setItem('todoapp_chatMode', 'deep');
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const send = document.getElementById('claudeComposerSend');
+        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Deep');
+        expect(send.classList.contains('claudeComposerSendDeep')).toBe(true);
+    });
+
+    it('the main send POSTs deep_think per the default: true when Deep, omitted when Fast', async () => {
         await sendDeepMessage('think hard about this');
         const deepCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
         expect(JSON.parse(deepCall[1].body).deep_think).toBe(true);
 
         fetchSpy.mockClear();
+        selectMode('fast');
         await sendMessage('quick one');
         const fastCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
         expect('deep_think' in JSON.parse(fastCall[1].body)).toBe(false);
     });
 
-    it('Deep send shows a "Thinking deeply…" pending placeholder', () => {
+    it('Enter sends using the starred default (Deep → deep_think: true)', async () => {
+        selectMode('deep');
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'via enter key';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await flush();
+        const chatCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect(JSON.parse(chatCall[1].body).deep_think).toBe(true);
+    });
+
+    it('a Deep default send shows a "Thinking deeply…" pending placeholder', () => {
+        selectMode('deep');
         const input = document.getElementById('claudeComposerInput');
         input.value = 'deep dive';
-        document.getElementById('claudeComposerSendDeep').click();
+        document.getElementById('claudeComposerSend').click();
         // Synchronously after the click, the pending bubble is on the surface
         // (the awaited Worker call hasn't resolved yet).
         const pending = document.querySelector('.claudeMsg--pending');
@@ -557,19 +632,19 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(pending.textContent).toBe('Thinking deeply…');
     });
 
-    it('disables and re-enables both send buttons together while in flight', async () => {
+    it('disables and re-enables the main send + caret together while in flight', async () => {
         const send = document.getElementById('claudeComposerSend');
-        const deep = document.getElementById('claudeComposerSendDeep');
+        const caret = document.getElementById('claudeComposerSendCaret');
         const input = document.getElementById('claudeComposerInput');
         input.value = 'in flight';
-        document.getElementById('claudeComposerSendDeep').click();
-        // Mid-flight: both send buttons are disabled.
+        document.getElementById('claudeComposerSend').click();
+        // Mid-flight: the main send and its caret are disabled.
         expect(send.disabled).toBe(true);
-        expect(deep.disabled).toBe(true);
+        expect(caret.disabled).toBe(true);
         await flush();
         // Resolved: both re-enable together.
         expect(send.disabled).toBe(false);
-        expect(deep.disabled).toBe(false);
+        expect(caret.disabled).toBe(false);
     });
 
     it('surfaces a drafted-entry card when the reply contains a fenced md block', async () => {
