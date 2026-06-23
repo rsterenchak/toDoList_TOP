@@ -79,9 +79,9 @@ import {
     initInjectTargets,
     showInjectSettingsModal,
 } from './inject.js';
-import { placeViewerCard, setViewerCardTapHandler } from './todoMdViewer.js';
+import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
-import { openCompletedMobileSheet, openViewerMobileSheet, openChangelogMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
+import { openCompletedMobileSheet, openViewerMobileSheet, openChangelogMobileSheet, openOverflowMobileSheet, closeOverflowMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
 import button from './addProj_button.svg';
 
 // Hydrate the inject config cache from localStorage before any inject
@@ -4149,6 +4149,16 @@ setViewerCardTapHandler(function(card, event) {
     // top would be redundant and strand the card in the wrong overlay.
     if (isAnyMobileSheetOpen()) return;
     openViewerMobileSheet(card);
+});
+
+// Wire the viewer's "⋯" overflow button to open a mobile bottom-sheet menu
+// instead of the anchored dropdown on touch. The viewer (todoMdViewer.js)
+// owns the menu element + its item handlers and decides mobile-vs-desktop;
+// it DOM-moves the menu into / out of the sheet, so the controller is just
+// the sheet open/close pair — registered here to avoid a circular import.
+setOverflowSheetController({
+    open: openOverflowMobileSheet,
+    close: closeOverflowMobileSheet,
 });
 
 
