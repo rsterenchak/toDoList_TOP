@@ -5357,6 +5357,129 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: none;
 }
 
+/* Per-entry delete (trash) control — sits inline at the right of a rendered
+   row, just after the "Run this entry" button. Quiet by default; reveals a
+   danger-red wash on hover so the destructive intent is unmistakable only when
+   the user reaches for it. */
+.todoMdViewerDeleteEntryBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  background: #161622;
+  color: #8a8699;
+  border: 1px solid #2a2a38;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.todoMdViewerDeleteEntryBtn:hover:not(:disabled) {
+  background: rgba(224, 85, 85, 0.14);
+  color: #e05555;
+  border-color: #a32d2d;
+}
+.todoMdViewerDeleteEntryBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.todoMdViewerDeleteEntryBtn:disabled,
+.todoMdViewerDeleteEntryBtn--loading {
+  opacity: 0.5;
+  cursor: progress;
+}
+.todoMdViewerDeleteEntryIcon {
+  flex: none;
+}
+:root[data-theme="light"] .todoMdViewerDeleteEntryBtn {
+  background: transparent;
+  color: #8a8699;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* "⋯" overflow menu in the header meta row — anchors a small dropdown of the
+   whole-file actions (Clear completed / Clear all). Mirrors #projContextMenu's
+   surface, shadow, and radius so the menus read identically. */
+.todoMdViewerOverflowWrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.todoMdViewerOverflowBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  color: #9D93EE;
+  border: 1px solid rgba(157, 147, 238, 0.4);
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.todoMdViewerOverflowBtn:hover,
+.todoMdViewerOverflowBtn[aria-expanded="true"] {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+  border-color: #6C5DF5;
+}
+.todoMdViewerOverflowBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.todoMdViewerOverflowMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 150px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  user-select: none;
+}
+.todoMdViewerOverflowMenu[hidden] {
+  display: none;
+}
+.todoMdViewerOverflowItem {
+  appearance: none;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.todoMdViewerOverflowItem:hover {
+  background: var(--bg-hover);
+}
+.todoMdViewerOverflowItem.danger {
+  color: var(--text-danger);
+}
+.todoMdViewerOverflowItem.danger:hover {
+  background: rgba(224, 85, 85, 0.12);
+  color: var(--text-danger);
+}
+:root[data-theme="light"] .todoMdViewerOverflowBtn {
+  color: #6C5DF5;
+  border-color: rgba(108, 93, 245, 0.45);
+}
+
 /* Run-status pill — swaps in for the Run backlog button after dispatch.
    In-flight states (starting / queued / running) all share the quiet muted
    base; color is introduced only on the terminal states. */

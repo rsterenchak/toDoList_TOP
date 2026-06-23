@@ -1,8 +1,10 @@
 import { listLogic } from './listLogic.js';
 import { isTodoMdShowCompleted, setTodoMdShowCompleted } from './prefs.js';
+import { showConfirmModal } from './modals.js';
 import {
     findTargetById,
     readTodoMdFromWorker,
+    rewriteTodoMd,
     dispatchRun,
     pollRunStatus,
     showInjectToast,
@@ -244,9 +246,19 @@ const RUN_ENTRY_PLAY_GLYPH =
     '<polygon points="6 4 20 12 6 20"/>' +
     '</svg>';
 
+const DELETE_ENTRY_TRASH_GLYPH =
+    '<svg class="todoMdViewerDeleteEntryIcon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<polyline points="4 6 20 6"/>' +
+    '<path d="M7 6V4h10v2"/>' +
+    '<path d="M6 6l1 14h10l1-14"/>' +
+    '<line x1="10" y1="10" x2="10" y2="17"/>' +
+    '<line x1="14" y1="10" x2="14" y2="17"/>' +
+    '</svg>';
+
 export function buildViewerRenderedBody(text, options) {
     const opts = options || {};
     const onRunEntry = typeof opts.onRunEntry === 'function' ? opts.onRunEntry : null;
+    const onDeleteEntry = typeof opts.onDeleteEntry === 'function' ? opts.onDeleteEntry : null;
     const wrap = document.createElement('div');
     wrap.className = 'todoMdViewerRendered';
     const tokens = filterCompletedTokens(
@@ -295,6 +307,24 @@ export function buildViewerRenderedBody(text, options) {
                     onRunEntry(tok.entryId, runBtn);
                 });
                 row.appendChild(runBtn);
+            }
+            // Per-entry delete control — same gate as the Run button (top-level
+            // entries carrying a resolved id marker). Deleting an id-less entry
+            // isn't offered: with no marker the Worker can't target it safely.
+            if (onDeleteEntry && tok.indent === 0 && tok.entryId) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'todoMdViewerDeleteEntryBtn';
+                delBtn.dataset.entryId = tok.entryId;
+                delBtn.setAttribute('aria-label', 'Delete this entry');
+                delBtn.title = 'Delete this entry from TODO.md';
+                delBtn.innerHTML = DELETE_ENTRY_TRASH_GLYPH;
+                const entryLabel = label.textContent;
+                delBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    onDeleteEntry(tok.entryId, entryLabel, delBtn);
+                });
+                row.appendChild(delBtn);
             }
             wrap.appendChild(row);
             return;
@@ -419,10 +449,49 @@ function buildTodoMdViewerCard(projectName, target) {
     showCompletedCount.textContent = '0';
     showCompletedBtn.appendChild(showCompletedCount);
 
+    // "⋯" overflow menu — holds the whole-file destructive actions (Clear
+    // completed / Clear all) out of the way of the always-visible controls.
+    // The button and its anchored menu share a position:relative wrapper so
+    // the menu floats below the button without disturbing the flex row.
+    const overflowWrap = document.createElement('div');
+    overflowWrap.className = 'todoMdViewerOverflowWrap';
+
+    const overflowBtn = document.createElement('button');
+    overflowBtn.type = 'button';
+    overflowBtn.className = 'todoMdViewerOverflowBtn';
+    overflowBtn.setAttribute('aria-label', 'More TODO.md actions');
+    overflowBtn.setAttribute('aria-haspopup', 'true');
+    overflowBtn.setAttribute('aria-expanded', 'false');
+    overflowBtn.title = 'More actions';
+    overflowBtn.textContent = '⋯';
+
+    const overflowMenu = document.createElement('div');
+    overflowMenu.className = 'todoMdViewerOverflowMenu';
+    overflowMenu.setAttribute('role', 'menu');
+    overflowMenu.hidden = true;
+
+    const clearCompletedItem = document.createElement('button');
+    clearCompletedItem.type = 'button';
+    clearCompletedItem.className = 'todoMdViewerOverflowItem';
+    clearCompletedItem.setAttribute('role', 'menuitem');
+    clearCompletedItem.textContent = 'Clear completed';
+
+    const clearAllItem = document.createElement('button');
+    clearAllItem.type = 'button';
+    clearAllItem.className = 'todoMdViewerOverflowItem danger';
+    clearAllItem.setAttribute('role', 'menuitem');
+    clearAllItem.textContent = 'Clear all';
+
+    overflowMenu.appendChild(clearCompletedItem);
+    overflowMenu.appendChild(clearAllItem);
+    overflowWrap.appendChild(overflowBtn);
+    overflowWrap.appendChild(overflowMenu);
+
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
     meta.appendChild(syncBtn);
     meta.appendChild(showCompletedBtn);
+    meta.appendChild(overflowWrap);
     meta.appendChild(collapseBodyBtn);
 
     header.appendChild(tabs);
@@ -451,7 +520,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(text)
-                : buildViewerRenderedBody(text, { onRunEntry: runEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(text, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
     }
@@ -507,7 +576,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(content)
-                : buildViewerRenderedBody(content, { onRunEntry: runEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
         // Refresh the toggle's (N) now that live content is available.
@@ -541,6 +610,115 @@ function buildTodoMdViewerCard(projectName, target) {
     }
 
     syncBtn.addEventListener('click', runSync);
+
+    // ── Overflow menu (Clear completed / Clear all) ──
+    // Whole-file destructive ops live behind the "⋯" button so they stay out
+    // of the way of the always-visible controls. The menu closes the app's
+    // usual four ways: selecting an item, clicking outside, pressing Escape,
+    // or re-tapping the button.
+    let overflowOutsideHandler = null;
+    let overflowKeydownHandler = null;
+
+    function closeOverflowMenu() {
+        if (overflowMenu.hidden) return;
+        overflowMenu.hidden = true;
+        overflowBtn.setAttribute('aria-expanded', 'false');
+        if (overflowOutsideHandler) {
+            document.removeEventListener('click', overflowOutsideHandler, true);
+            overflowOutsideHandler = null;
+        }
+        if (overflowKeydownHandler) {
+            document.removeEventListener('keydown', overflowKeydownHandler, true);
+            overflowKeydownHandler = null;
+        }
+    }
+
+    function openOverflowMenu() {
+        if (!overflowMenu.hidden) return;
+        overflowMenu.hidden = false;
+        overflowBtn.setAttribute('aria-expanded', 'true');
+        overflowOutsideHandler = function(event) {
+            if (!overflowWrap.contains(event.target)) closeOverflowMenu();
+        };
+        overflowKeydownHandler = function(event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                closeOverflowMenu();
+            }
+        };
+        document.addEventListener('click', overflowOutsideHandler, true);
+        document.addEventListener('keydown', overflowKeydownHandler, true);
+    }
+
+    overflowBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (overflowMenu.hidden) openOverflowMenu();
+        else closeOverflowMenu();
+    });
+
+    // Route a destructive TODO.md rewrite through the Worker, then re-run the
+    // viewer's own fetch-and-render so the rendered + raw tabs reflect disk. A
+    // `skipped` result (nothing matched) refreshes without surfacing an error;
+    // a genuine failure surfaces a toast and leaves the view untouched.
+    async function performRewrite(op, id, btn) {
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('todoMdViewerDeleteEntryBtn--loading');
+        }
+        try {
+            const res = await rewriteTodoMd(target, op, id);
+            if (res.ok) {
+                await runSync();
+            } else {
+                showInjectToast('Update failed — ' + (res.reason || 'unknown error'), 'error');
+            }
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('todoMdViewerDeleteEntryBtn--loading');
+            }
+        }
+    }
+
+    // Per-entry delete — confirm naming the entry, then delete by id. Only ever
+    // reached from an id-bearing row's trash button (the render gate).
+    function deleteEntry(entryId, entryLabel, btn) {
+        if (!entryId) return;
+        const named = entryLabel ? ' “' + entryLabel + '”' : '';
+        showConfirmModal({
+            message: 'Delete this entry' + named + ' from TODO.md? This can’t be undone.',
+            confirmLabel: 'Delete',
+            onConfirm: function() { performRewrite('delete_entry', entryId, btn); },
+        });
+    }
+
+    clearCompletedItem.addEventListener('click', function(event) {
+        event.stopPropagation();
+        closeOverflowMenu();
+        showConfirmModal({
+            message: 'Clear completed entries? This removes every completed (done) entry from TODO.md — your shipped history. This can’t be undone.',
+            confirmLabel: 'Clear completed',
+            onConfirm: function() { performRewrite('clear_completed', undefined, null); },
+        });
+    });
+
+    clearAllItem.addEventListener('click', function(event) {
+        event.stopPropagation();
+        closeOverflowMenu();
+        // Clear all gets the stronger two-step: a first confirm spelling out the
+        // full wipe, then a final guard before the irreversible write.
+        showConfirmModal({
+            message: 'Clear the ENTIRE backlog? This wipes every entry in TODO.md, including completed and shipped entries.',
+            confirmLabel: 'Clear all',
+            onConfirm: function() {
+                showConfirmModal({
+                    message: 'This permanently empties TODO.md and can’t be undone. Really clear everything?',
+                    confirmLabel: 'Yes, clear everything',
+                    onConfirm: function() { performRewrite('clear_all', undefined, null); },
+                });
+            },
+        });
+    });
 
     // ── Run-status pill ──
     // After a successful dispatch the Run backlog button is swapped out for

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { parseTodoMdChecklist } from '../src/todoMdViewer.js';
+import { parseTodoMdChecklist, buildViewerRenderedBody } from '../src/todoMdViewer.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -840,5 +840,134 @@ describe('todo.md viewer — style.css', () => {
         // (flex-direction: column inside @media (max-width: 1023px)) is
         // gone, so there's one style to maintain across viewports.
         expect(css).not.toMatch(/\.todoMdViewerHeader\s*\{[^}]*flex-direction:\s*column/);
+    });
+});
+
+describe('todo.md viewer — per-entry delete + clear ops (rewrite)', () => {
+
+    const inject = read('inject.js');
+    const main = read('todoMdViewer.js');
+    const css = read('style.css');
+
+    it('inject.js exports rewriteTodoMd', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+rewriteTodoMd\s*\(/);
+    });
+
+    it('rewriteTodoMd POSTs `{ rewrite: true, op, id, repo, filePath }` through postToWorker', () => {
+        expect(inject).toMatch(
+            /postToWorker\s*\(\s*\{[\s\S]{0,200}rewrite:\s*true[\s\S]{0,200}op:\s*op[\s\S]{0,200}id:\s*id[\s\S]{0,200}repo:\s*target\.repo[\s\S]{0,200}filePath:\s*target\.file_path/
+        );
+    });
+
+    it('rewriteTodoMd guards a missing target and funnels failures through describeError', () => {
+        expect(inject).toMatch(/rewriteTodoMd[\s\S]{0,200}reason:\s*['"]No target['"]/);
+        expect(inject).toMatch(/rewriteTodoMd[\s\S]{0,600}catch[\s\S]{0,80}describeError/);
+    });
+
+    it('viewer imports rewriteTodoMd and showConfirmModal', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\brewriteTodoMd\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+        expect(main).toMatch(/import\s*\{\s*showConfirmModal\s*\}\s*from\s*['"]\.\/modals\.js['"]/);
+    });
+
+    it('renders the trash button only for top-level id-bearing entries, same gate as Run', () => {
+        // The render gate is `onDeleteEntry && tok.indent === 0 && tok.entryId`,
+        // mirroring the Run button so an id-less entry never gets a trash.
+        expect(main).toMatch(/onDeleteEntry\s*&&\s*tok\.indent\s*===\s*0\s*&&\s*tok\.entryId/);
+        expect(main).toMatch(/delBtn\.className\s*=\s*['"]todoMdViewerDeleteEntryBtn['"]/);
+    });
+
+    it('the trash click stops propagation so it never triggers the row/card tap or the Run action', () => {
+        const start = main.indexOf("delBtn.addEventListener('click'");
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 200);
+        expect(block).toMatch(/event\.stopPropagation\(\)/);
+        expect(block).toMatch(/onDeleteEntry\(\s*tok\.entryId/);
+    });
+
+    it('per-entry delete confirms (naming the entry) then deletes by id via op delete_entry', () => {
+        const start = main.indexOf('function deleteEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/showConfirmModal/);
+        expect(block).toMatch(/performRewrite\(\s*['"]delete_entry['"]\s*,\s*entryId/);
+    });
+
+    it('renders a "⋯" overflow menu in the meta row with Clear completed and Clear all items', () => {
+        expect(main).toMatch(/overflowBtn\.className\s*=\s*['"]todoMdViewerOverflowBtn['"]/);
+        expect(main).toMatch(/meta\.appendChild\(overflowWrap\);/);
+        expect(main).toMatch(/clearCompletedItem\.textContent\s*=\s*['"]Clear completed['"]/);
+        expect(main).toMatch(/clearAllItem\.textContent\s*=\s*['"]Clear all['"]/);
+    });
+
+    it('the overflow menu closes four ways (select, outside-click, Escape, re-tap)', () => {
+        // Re-tap: the button toggles open/closed. Outside-click + Escape are
+        // wired via document listeners installed on open and removed on close.
+        expect(main).toMatch(/overflowBtn\.addEventListener\(\s*['"]click['"]/);
+        expect(main).toMatch(/if\s*\(\s*overflowMenu\.hidden\s*\)\s*openOverflowMenu\(\)[\s\S]{0,40}else\s+closeOverflowMenu\(\)/);
+        expect(main).toMatch(/!overflowWrap\.contains\(\s*event\.target\s*\)\s*\)\s*closeOverflowMenu/);
+        expect(main).toMatch(/event\.key\s*===\s*['"]Escape['"][\s\S]{0,80}closeOverflowMenu/);
+        // Selecting an item closes the menu before opening the confirm.
+        const cc = main.indexOf("clearCompletedItem.addEventListener('click'");
+        expect(main.slice(cc, cc + 200)).toMatch(/closeOverflowMenu\(\)/);
+    });
+
+    it('Clear completed and Clear all route the right ops, with Clear all gated by a two-step confirm', () => {
+        const ccStart = main.indexOf("clearCompletedItem.addEventListener('click'");
+        const ccBlock = main.slice(ccStart, ccStart + 700);
+        expect(ccBlock).toMatch(/performRewrite\(\s*['"]clear_completed['"]/);
+
+        const caStart = main.indexOf("clearAllItem.addEventListener('click'");
+        const caBlock = main.slice(caStart, caStart + 1000);
+        // Two showConfirmModal calls nested — the second only reached after the
+        // first confirms — before the irreversible clear_all write.
+        expect((caBlock.match(/showConfirmModal/g) || []).length).toBeGreaterThanOrEqual(2);
+        expect(caBlock).toMatch(/performRewrite\(\s*['"]clear_all['"]/);
+    });
+
+    it('performRewrite re-runs the viewer fetch-and-render after a successful rewrite', () => {
+        const start = main.indexOf('async function performRewrite');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 500);
+        expect(block).toMatch(/rewriteTodoMd\(\s*target\s*,\s*op\s*,\s*id\s*\)/);
+        expect(block).toMatch(/if\s*\(\s*res\.ok\s*\)\s*\{[\s\S]{0,80}runSync\(\)/);
+        // A failure surfaces a toast rather than refreshing.
+        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+    });
+
+    it('styles the trash button and the overflow menu (menu mirrors the project context menu surface)', () => {
+        expect(css).toMatch(/\.todoMdViewerDeleteEntryBtn\s*\{/);
+        expect(css).toMatch(/\.todoMdViewerOverflowMenu\s*\{[\s\S]{0,400}box-shadow/);
+        expect(css).toMatch(/\.todoMdViewerOverflowItem\.danger\s*\{/);
+    });
+
+    // Behavior tests on the exported pure renderer — the trash button presence
+    // and its callback are exercised directly without the full card mount.
+    it('buildViewerRenderedBody renders a trash button for an id-bearing entry and fires onDeleteEntry on click', () => {
+        const text = '- [ ] Add a thing <!-- id: entry-xyz -->';
+        const calls = [];
+        const wrap = buildViewerRenderedBody(text, {
+            onDeleteEntry: (id, label, btn) => calls.push({ id, label, btn }),
+        });
+        const trash = wrap.querySelector('.todoMdViewerDeleteEntryBtn');
+        expect(trash).not.toBeNull();
+        expect(trash.dataset.entryId).toBe('entry-xyz');
+        trash.click();
+        expect(calls).toHaveLength(1);
+        expect(calls[0].id).toBe('entry-xyz');
+        expect(calls[0].label).toBe('Add a thing');
+    });
+
+    it('buildViewerRenderedBody omits the trash button for an entry without an id marker', () => {
+        const wrap = buildViewerRenderedBody('- [ ] No marker here', {
+            onDeleteEntry: () => {},
+        });
+        expect(wrap.querySelector('.todoMdViewerDeleteEntryBtn')).toBeNull();
+    });
+
+    it('buildViewerRenderedBody omits the trash button when no onDeleteEntry callback is supplied', () => {
+        const wrap = buildViewerRenderedBody('- [ ] Add a thing <!-- id: entry-xyz -->', {});
+        expect(wrap.querySelector('.todoMdViewerDeleteEntryBtn')).toBeNull();
     });
 });
