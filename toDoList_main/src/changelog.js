@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-23',
         added: [
-            "The in-app Claude chat now keeps a separate conversation per repo and restores it on reload, so each workspace resumes its own history.",
             "The TODO.md viewer can now delete a single entry, clear completed entries, or clear the entire backlog, each behind a confirmation.",
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
+            "The TODO.md viewer's overflow-menu \"Show completed\" item no longer wraps its count onto a second line.",
         ],
     },
 ];
