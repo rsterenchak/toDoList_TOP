@@ -6,3 +6,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-23
   <!-- id: 20112c26-f035-4895-9d12-79bb4055448f -->
+
+- [ ] **[MEDIUM]** Fix the TODO.md viewer overflow menu being clipped when the card is collapsed
+  - Type: bug
+  - Description: When the TODO.md viewer card is collapsed (its default state), tapping the "⋯" overflow button opens the menu but nothing is visible — you have to expand the card so the entries/body exist before the menu shows. Cause: `.todoMdViewerCard` has `overflow: hidden`, and `#mainList .todoMdViewerCard.collapsed .todoMdViewerBody` is `display: none`, so a collapsed card is only as tall as its header; the menu (`.todoMdViewerOverflowMenu`, `position: absolute; top: calc(100% + 6px)`) drops below the header into a region that now falls outside the card's box and is cropped by the card's `overflow: hidden`. Fix: while the menu is open, let the inline card's overflow show — add a class to the card in `openOverflowMenu()` and remove it in `closeOverflowMenu()` (same spot the outside-click/Escape handlers are wired), backed by CSS `#mainList .todoMdViewerCard.todoMdViewerCard--menuOpen { overflow: visible; }`. This is sizing-safe: `#mainList .todoMdViewerCard` already pins `min-height: max-content`, so the card's height doesn't depend on `overflow` (the auto-min override that `overflow: hidden` triggers only fires when `min-height` is `auto`), and the body keeps its own `overflow: auto` / `max-height`. Verify the menu now renders over the area beneath the collapsed card, and check the `#todoMdViewerMobileSheet` placement — if a collapsed card clips it there too, extend the same `--menuOpen` toggle with a sheet-scoped `overflow: visible`.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9909567b-d4a7-4be6-bc5e-817799cebad6 -->
