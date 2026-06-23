@@ -123,6 +123,7 @@ The in-app assistant and its supporting pipeline are concentrated in a handful o
 
 - `toDoList_main/src/claudeSheet.js` — the in-app Claude assistant sheet: chat tab, author flow, Runs tab, iterate, layout-inspector wiring, file-attach picker, and the workspace pill.
 - `toDoList_main/src/inject.js` — all Worker calls: inject, dispatch, chat, status poll, and entry-id minting.
+- `toDoList_main/src/runState.js` — per-project active-run state shared by the TODO.md viewer's header pill and the chat ship path, so a run shipped from either surface drives the same pill and a project only runs one at a time.
 - `toDoList_main/src/layoutInspect.js` — serializes an element's live computed layout for the inspector.
 - `toDoList_main/src/main.js` — DOM, UI, and event wiring; very large, so grep with `offset`/`limit` rather than reading it in full.
 - `toDoList_main/src/listLogic.js` — the data model; ALL mutations to projects and todo items route through here.

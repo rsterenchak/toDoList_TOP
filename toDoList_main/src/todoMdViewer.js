@@ -3,6 +3,13 @@ import { isTodoMdShowCompleted, setTodoMdShowCompleted } from './prefs.js';
 import { showConfirmModal } from './modals.js';
 import { isMobileViewport } from './viewport.js';
 import {
+    readActiveRun,
+    writeActiveRun,
+    clearActiveRun,
+    activeProjectNameForViewer,
+    ACTIVE_RUN_CHANGE_EVENT,
+} from './runState.js';
+import {
     findTargetById,
     readTodoMdFromWorker,
     rewriteTodoMd,
@@ -55,13 +62,15 @@ export function setOverflowSheetController(controller) {
 // change the active project).
 const VIEWER_LASTFETCH_PREFIX = 'todoapp_todomd_lastfetch_';
 const VIEWER_EXPANDED_PREFIX = 'todoapp_todomd_expanded_';
-// Single-slot record for the one in-flight automation run the pill tracks.
+// The one in-flight automation run the pill tracks is held in per-project
+// active-run state (see runState.js) so a run dispatched from the chat ship
+// path drives this same pill and runs on different projects stay independent.
 // It survives project navigation and full reloads so the pill can re-attach
 // and resume polling on the project the run was launched from.
-const ACTIVE_RUN_KEY = 'todoapp_activeRun';
 let viewerActiveTab = 'rendered';
 let viewerActiveProject = null;
 let viewerResizeHandler = null;
+let viewerActiveRunChangeHandler = null;
 let viewerRunPollInterval = null;
 
 function viewerLastFetchKey(projectName) {
@@ -98,28 +107,6 @@ function writeViewerExpanded(projectName, expanded) {
     } catch (e) { /* private mode */ }
 }
 
-function readActiveRun() {
-    try {
-        const raw = localStorage.getItem(ACTIVE_RUN_KEY);
-        if (!raw) return null;
-        const rec = JSON.parse(raw);
-        if (!rec || typeof rec.correlationId !== 'string' || !rec.correlationId) return null;
-        return rec;
-    } catch (e) { return null; }
-}
-
-function writeActiveRun(rec) {
-    try {
-        localStorage.setItem(ACTIVE_RUN_KEY, JSON.stringify(rec));
-    } catch (e) { /* private mode */ }
-}
-
-function clearActiveRun() {
-    try {
-        localStorage.removeItem(ACTIVE_RUN_KEY);
-    } catch (e) { /* private mode */ }
-}
-
 function detachViewerResizeHandler() {
     if (viewerResizeHandler) {
         window.removeEventListener('resize', viewerResizeHandler);
@@ -128,6 +115,12 @@ function detachViewerResizeHandler() {
     // Clear any in-flight run-status poll so a leaked interval can't keep
     // firing against a pill whose card was torn down or re-rendered.
     stopViewerRunPoll();
+    // Drop the per-project active-run subscription with the card it belonged to
+    // so a torn-down card can't keep reacting to run changes.
+    if (viewerActiveRunChangeHandler) {
+        document.removeEventListener(ACTIVE_RUN_CHANGE_EVENT, viewerActiveRunChangeHandler);
+        viewerActiveRunChangeHandler = null;
+    }
 }
 
 function stopViewerRunPoll() {
@@ -894,8 +887,10 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function showRunSuccess() {
         stopViewerRunPoll();
-        clearActiveRun();
+        // Render terminal state before clearing: the clear emits a change event
+        // this card hears, and the subscriber keeps a pill only when terminal.
         renderRunPill({ state: 'success', label: 'Done', glyph: runPillCheckGlyph });
+        clearActiveRun(projectName);
         const successPill = runPill;
         // Auto-dismiss ~5s after success, restoring the Run backlog button —
         // but only if this same pill is still mounted in the success state
@@ -910,7 +905,6 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function showRunFailure(url) {
         stopViewerRunPoll();
-        clearActiveRun();
         renderRunPill({
             state: 'failure',
             label: 'Failed',
@@ -918,11 +912,11 @@ function buildTodoMdViewerCard(projectName, target) {
             url: url || runPillLastUrl || actionsFallbackUrl(),
             dismissible: true,
         });
+        clearActiveRun(projectName);
     }
 
     function showRunTimeout() {
         stopViewerRunPoll();
-        clearActiveRun();
         renderRunPill({
             state: 'timeout',
             label: 'Still running? — check Actions',
@@ -930,6 +924,7 @@ function buildTodoMdViewerCard(projectName, target) {
             url: runPillLastUrl || actionsFallbackUrl(),
             dismissible: true,
         });
+        clearActiveRun(projectName);
     }
 
     async function pollRunOnce(correlationId, startedAt) {
@@ -940,7 +935,11 @@ function buildTodoMdViewerCard(projectName, target) {
             showRunTimeout();
             return;
         }
-        const res = await pollRunStatus({ correlationId: correlationId, target: target });
+        // Poll the run's own stored target when present (a chat-shipped run can
+        // target a different repo than the viewer's closure `target`).
+        const rec = readActiveRun(projectName);
+        const pollTarget = (rec && rec.target && rec.target.repo) ? rec.target : target;
+        const res = await pollRunStatus({ correlationId: correlationId, target: pollTarget });
         if (!runPill) return; // torn down mid-flight
         if (!res || res.ok === false) {
             // Transient error (network blip / not-yet-surfaced) — keep the
@@ -967,6 +966,12 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function startRunPill(correlationId) {
         stopViewerRunPoll();
+        // Idempotent restart: drop any pill already mounted (the change-event
+        // subscriber and the dispatch finally can both ask to start one) so a
+        // single pill ends up in the meta slot, not two stacked nodes.
+        if (runPill && runPill.parentNode) {
+            runPill.parentNode.replaceChild(runBacklogBtn, runPill);
+        }
         runPillLastUrl = null;
         runPill = document.createElement('div');
         runPill.className = 'todoMdViewerRunPill';
@@ -988,7 +993,7 @@ function buildTodoMdViewerCard(projectName, target) {
         // Give-up is measured against the PERSISTED dispatch timestamp, so a
         // reload or project switch mid-run does not reset the 10-minute clock.
         // Falls back to now for the rare case the record is missing.
-        const rec = readActiveRun();
+        const rec = readActiveRun(projectName);
         const startedAt = (rec && typeof rec.dispatchedAt === 'number') ? rec.dispatchedAt : Date.now();
         viewerRunPollInterval = setInterval(function() {
             pollRunOnce(correlationId, startedAt);
@@ -1003,6 +1008,12 @@ function buildTodoMdViewerCard(projectName, target) {
 
     async function runBacklog() {
         if (runBacklogBtn.disabled) return;
+        // Per-project single-run guard: refuse a dispatch when this project
+        // already has a fresh active run (started here or shipped from chat).
+        if (readActiveRun(projectName)) {
+            showInjectToast('A run is already in progress for this project');
+            return;
+        }
         runBacklogBtn.disabled = true;
         runBacklogBtn.classList.add('todoMdViewerRunBtn--loading');
         let dispatchedId = null;
@@ -1018,9 +1029,9 @@ function buildTodoMdViewerCard(projectName, target) {
             });
             if (res.ok) {
                 dispatchedId = correlationId;
-                // Persist the run so the pill can re-attach after a project
-                // switch or full reload (single slot, overwritten each dispatch).
-                writeActiveRun({
+                // Persist the run under this project's key so the pill can
+                // re-attach after a project switch or full reload.
+                writeActiveRun(projectName, {
                     correlationId: correlationId,
                     project: projectName,
                     target: target ? { repo: target.repo, file_path: target.file_path } : null,
@@ -1049,8 +1060,12 @@ function buildTodoMdViewerCard(projectName, target) {
     async function runEntry(entryId, btn) {
         if (!entryId) return;
         if (btn && btn.disabled) return;
-        // Single-run model: never dispatch a second run while one is tracked.
-        if (runPill || viewerRunPollInterval) return;
+        // Per-project single-run guard: never dispatch a second run while this
+        // project already has a fresh active run (here or shipped from chat).
+        if (readActiveRun(projectName)) {
+            showInjectToast('A run is already in progress for this project');
+            return;
+        }
         if (btn) {
             btn.disabled = true;
             btn.classList.add('todoMdViewerRunEntryBtn--loading');
@@ -1069,7 +1084,7 @@ function buildTodoMdViewerCard(projectName, target) {
             });
             if (res.ok) {
                 dispatchedId = correlationId;
-                writeActiveRun({
+                writeActiveRun(projectName, {
                     correlationId: correlationId,
                     project: projectName,
                     target: target ? { repo: target.repo, file_path: target.file_path } : null,
@@ -1154,16 +1169,44 @@ function buildTodoMdViewerCard(projectName, target) {
     };
     window.addEventListener('resize', viewerResizeHandler);
 
-    // Re-attach an in-flight run's pill if one was launched from THIS
-    // project and hasn't resolved yet. This fires on every card mount —
-    // both project switches and a full page reload — so the run's tracking
-    // survives navigation. Runs launched from other projects stay hidden
-    // (the pill only re-appears on its launching project). startRunPill
-    // reads the persisted dispatch timestamp for the give-up clock and polls
-    // once immediately, so an already-finished run lands on its terminal
-    // state without flashing "running".
-    const activeRun = readActiveRun();
-    if (activeRun && activeRun.project === projectName) {
+    // True while the mounted pill is in a terminal state (success / failure /
+    // timeout). Those states clear the project's run entry themselves and then
+    // linger (auto-dismiss on success, tap-to-dismiss otherwise), so an
+    // external clear event must not tear them down early.
+    function isTerminalRunPill() {
+        if (!runPill) return false;
+        return runPill.classList.contains('todoMdViewerRunPill--success') ||
+            runPill.classList.contains('todoMdViewerRunPill--failure') ||
+            runPill.classList.contains('todoMdViewerRunPill--timeout');
+    }
+
+    // React to run state written/cleared elsewhere (notably a chat-shipped run
+    // for the project this card is showing). A write attaches the pill if one
+    // isn't already up; a clear restores the button when a still-live pill is
+    // mounted. Changes for other projects are ignored.
+    viewerActiveRunChangeHandler = function(event) {
+        const changed = event && event.detail ? event.detail.project : '';
+        if (changed !== projectName) return;
+        const rec = readActiveRun(projectName);
+        if (rec) {
+            if (!runPill) startRunPill(rec.correlationId);
+        } else if (runPill && !isTerminalRunPill()) {
+            restoreRunButton();
+        }
+    };
+    document.addEventListener(ACTIVE_RUN_CHANGE_EVENT, viewerActiveRunChangeHandler);
+
+    // Re-attach an in-flight run's pill if one is tracked for THIS project and
+    // hasn't resolved yet. This fires on every card mount — both project
+    // switches and a full page reload — so the run's tracking survives
+    // navigation. readActiveRun is keyed by project, so runs launched from
+    // other projects never surface here, and a stale (aged-out) record is
+    // cleared rather than re-attached. startRunPill reads the persisted
+    // dispatch timestamp for the give-up clock and polls once immediately, so
+    // an already-finished run lands on its terminal state without flashing
+    // "running".
+    const activeRun = readActiveRun(projectName);
+    if (activeRun) {
         startRunPill(activeRun.correlationId);
     }
 
@@ -1173,13 +1216,6 @@ function buildTodoMdViewerCard(projectName, target) {
     runSync();
 
     return card;
-}
-
-function activeProjectNameForViewer() {
-    const selected = document.querySelector('.selectedProject');
-    if (!selected) return '';
-    const projInput = selected.querySelector('#projInput');
-    return projInput ? (projInput.value || '').trim() : '';
 }
 
 function updateTodoMdViewerCard() {
