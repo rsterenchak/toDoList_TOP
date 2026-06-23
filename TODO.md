@@ -298,7 +298,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 042f6874-f55d-42d1-b9a3-d130c56c8cfd -->
 
-- [ ] **[MEDIUM]** Add clear-all, clear-completed, and per-entry delete to the TODO.md viewer
+- [x] **[MEDIUM]** Add clear-all, clear-completed, and per-entry delete to the TODO.md viewer — Completed: 2026-06-23
   - Type: feature
   - Description: Give the read-only TODO.md viewer card (`todoMdViewer.js`) the ability to actually mutate the backlog file via the Worker's new `rewrite` op. Per the approved "C" layout: each rendered entry row gets a trash icon beside the existing "Run this entry" icon (delete one), and the card's header meta row gets a "⋯" overflow menu holding "Clear completed" and "Clear all" (whole-file actions kept out of the way). All three are destructive and confirm first; after a successful write the viewer re-fetches and re-renders so the rendered list matches disk. This is the client half — it depends on the Worker `{ rewrite: true, op, id }` branch already being deployed.
   - Behavior:
