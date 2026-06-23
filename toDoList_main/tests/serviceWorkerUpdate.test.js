@@ -267,6 +267,26 @@ describe('service worker update discovery — src/index.js', () => {
 describe('service worker activation — src/sw.js', () => {
     const sw = read('sw.js');
 
+    // sw.js imports from several workbox entry points and runs top-level
+    // route registration at module load. To execute the module body in a
+    // plain Function we strip every `import` line and inject a stub for each
+    // workbox symbol the body touches, plus `self`.
+    function liftModule(extraStubs = {}) {
+        const body = sw.replace(/^\s*import[^\n]*\n/gm, '');
+        const stubs = {
+            precacheAndRoute: () => {},
+            cleanupOutdatedCaches: () => {},
+            matchPrecache: () => Promise.resolve(undefined),
+            registerRoute: () => {},
+            NavigationRoute: function NavigationRoute(handler) { this.handler = handler; },
+            NetworkFirst: function NetworkFirst(opts) { this.options = opts; this.handle = () => Promise.resolve(); },
+            ...extraStubs,
+        };
+        const names = Object.keys(stubs);
+        const factory = new Function('self', ...names, body);
+        return (fakeSelf) => factory(fakeSelf, ...names.map((n) => stubs[n]));
+    }
+
     it('keeps the SKIP_WAITING message handler that calls skipWaiting()', () => {
         // The "Update available — tap to refresh" cue posts SKIP_WAITING;
         // the waiting worker must skipWaiting() in response so it activates.
@@ -296,13 +316,93 @@ describe('service worker activation — src/sw.js', () => {
             skipWaiting: () => {},
             clients: { claim: () => { claimCalls++; return Promise.resolve(); } },
         };
-        const factory = new Function('self', 'precacheAndRoute', sw
-            .replace(/^\s*import[^\n]*\n/m, '')
-        );
-        factory(fakeSelf, () => {});
+        liftModule()(fakeSelf);
         expect(typeof activateHandler).toBe('function');
         activateHandler({ waitUntil: () => {} });
         expect(claimCalls).toBe(1);
+    });
+
+    it('registers a network-first navigation route before the precache route', () => {
+        // The post-deploy white page came from cache-first navigations: a
+        // stale index.html (own precache during the claim seam, or GitHub
+        // Pages' HTTP cache) points at a content-hashed bundle that
+        // output.clean already purged from the network, so the <script>
+        // 404s. Serving the document network-first keeps the shell and its
+        // bundle on the same generation when online. The navigation route
+        // must register BEFORE precacheAndRoute so it wins for navigations.
+        const order = [];
+        let networkFirstOpts = null;
+        let navRouteHandler = null;
+        const fakeSelf = {
+            addEventListener: () => {},
+            skipWaiting: () => {},
+            clients: { claim: () => Promise.resolve() },
+            __WB_MANIFEST: [],
+        };
+        const lift = liftModule({
+            precacheAndRoute: () => { order.push('precache'); },
+            registerRoute: (route) => { order.push('registerRoute'); navRouteHandler = route && route.handler; },
+            NavigationRoute: function NavigationRoute(handler) { this.handler = handler; },
+            NetworkFirst: function NetworkFirst(opts) { networkFirstOpts = opts; this.handle = () => Promise.resolve('net'); },
+        });
+        lift(fakeSelf);
+
+        // A navigation route was registered, and it wraps a NetworkFirst
+        // strategy keyed to the html-shell cache with a network timeout.
+        expect(typeof navRouteHandler).toBe('function');
+        expect(networkFirstOpts).not.toBeNull();
+        expect(networkFirstOpts.cacheName).toBe('html-shell');
+        expect(typeof networkFirstOpts.networkTimeoutSeconds).toBe('number');
+        expect(networkFirstOpts.networkTimeoutSeconds).toBeGreaterThan(0);
+
+        // Ordering: registerRoute must run before precacheAndRoute so the
+        // network-first navigation route out-prioritises the cache-first
+        // precache route.
+        expect(order.indexOf('registerRoute')).toBeGreaterThan(-1);
+        expect(order.indexOf('precache')).toBeGreaterThan(-1);
+        expect(order.indexOf('registerRoute')).toBeLessThan(order.indexOf('precache'));
+    });
+
+    it('falls back to the precached index.html when the network handler rejects', () => {
+        // Offline with an empty html-shell runtime cache (first launch was
+        // offline, or a cold-cache network timeout): the navigation handler
+        // must serve the precached shell rather than failing the navigation.
+        let matchPrecacheArg = null;
+        const fakeSelf = {
+            addEventListener: () => {},
+            skipWaiting: () => {},
+            clients: { claim: () => Promise.resolve() },
+            __WB_MANIFEST: [],
+        };
+        let navRouteHandler = null;
+        const lift = liftModule({
+            registerRoute: (route) => { navRouteHandler = route && route.handler; },
+            NavigationRoute: function NavigationRoute(handler) { this.handler = handler; },
+            NetworkFirst: function NetworkFirst() { this.handle = () => Promise.reject(new Error('offline')); },
+            matchPrecache: (url) => { matchPrecacheArg = url; return Promise.resolve('precached-shell'); },
+        });
+        lift(fakeSelf);
+
+        expect(typeof navRouteHandler).toBe('function');
+        return navRouteHandler({ request: {}, event: {} }).then((res) => {
+            expect(matchPrecacheArg).toBe('index.html');
+            expect(res).toBe('precached-shell');
+        });
+    });
+
+    it('runs cleanupOutdatedCaches() at module load', () => {
+        // Removes precache entries from superseded worker generations so an
+        // old generation's index.html can't be handed back during the
+        // activate/claim seam.
+        let cleanupCalls = 0;
+        const fakeSelf = {
+            addEventListener: () => {},
+            skipWaiting: () => {},
+            clients: { claim: () => Promise.resolve() },
+            __WB_MANIFEST: [],
+        };
+        liftModule({ cleanupOutdatedCaches: () => { cleanupCalls++; } })(fakeSelf);
+        expect(cleanupCalls).toBe(1);
     });
 });
 

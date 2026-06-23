@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-23',
-        changed: [
-            "On mobile, the TODO.md viewer's ⋯ overflow menu opens as a large-touch-target bottom sheet instead of a cramped dropdown.",
-        ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
             "The TODO.md viewer's overflow-menu \"Show completed\" item no longer wraps its count onto a second line.",
             "The TODO.md viewer's ⋯ overflow menu now appears when the card is collapsed, instead of staying hidden until you expand the card.",
             "After a new version deploys, tapping \"Update available\" now reloads straight into the new build, fixing the white page that used to require a manual hard refresh.",
+            "A normal refresh after a new version deploys now loads the latest build instead of occasionally showing a blank page that needed a hard refresh.",
         ],
     },
 ];
