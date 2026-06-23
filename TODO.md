@@ -290,3 +290,10 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheetWorkspaceAutoSwap.test.js`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5f41594b-8b50-4640-9e42-9cc88b6fe89b -->
+
+- [ ] **[MEDIUM]** Add a split send button with a persistent fast/deep mode default in the chat composer
+  - Type: feature
+  - Description: Pressing Enter in the chat composer currently sends in whatever mode is implicitly active, causing accidental fast sends when the user intends deep. Replace the send control with a split button: the main button sends in the current default mode (label shows "Fast" or "Deep"), and a caret opens a small dropdown listing both modes with a ★ marking the persistent default; selecting a mode updates and persists the default. Enter must send using the starred default, the dropdown must close on selection, outside-click, and Escape, and the chosen default must persist to `localStorage` under a `todoapp_` key (e.g. `todoapp_chatMode`) so it survives reloads. Preserve the existing chat send flow — the fast/deep distinction must still reach the Worker correctly on every turn via `chatWithWorker`.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 042f6874-f55d-42d1-b9a3-d130c56c8cfd -->
