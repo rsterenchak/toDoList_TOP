@@ -251,7 +251,7 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   <!-- id: 49d2bfac-0137-483d-a896-429b26bd7821 -->
 
-- [ ] **[HIGH]** Restrict chat sheet drag-to-close to grabber or top-of-scroll on mobile
+- [x] **[HIGH]** Restrict chat sheet drag-to-close to grabber or top-of-scroll on mobile — Completed: 2026-06-23
   - Type: bug
   - Description: On mobile, dragging down inside the Claude chat sheet's scrollable body often closes the sheet, making it hard to scroll the chat without dismissing it. Gate the drag-to-dismiss gesture so it only fires when (a) the touch starts on the sheet header/grabber handle, OR (b) the touch starts in the chat body while the scroll container is already at `scrollTop === 0`. When the scroll container has content scrolled above (`scrollTop > 0`), a downward drag must be treated as a normal scroll and never start the dismiss gesture; the existing release threshold/snap-back behavior should still apply once a dismiss drag legitimately starts.
   - File: `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/claudeSheet.js`
