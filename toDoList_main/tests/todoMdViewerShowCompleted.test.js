@@ -149,7 +149,7 @@ describe('todo.md viewer — buildViewerRenderedBody hideCompleted option', () =
     });
 });
 
-describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
+describe('todo.md viewer — show-completed menu item wiring (todoMdViewer.js)', () => {
     const main = read('todoMdViewer.js');
 
     it('imports the show-completed pref helpers from prefs.js', () => {
@@ -158,52 +158,77 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
         );
     });
 
-    it('builds an icon button (no text-pill label) in the header meta row', () => {
-        expect(main).toMatch(/showCompletedBtn\.className\s*=\s*['"]todoMdViewerShowCompletedBtn['"]/);
-        // The text-pill label span is gone — the trigger is now an icon glyph.
-        expect(main).not.toMatch(/showCompletedLabel\.textContent\s*=\s*['"]Show completed['"]/);
-        expect(main).toMatch(/meta\.appendChild\(showCompletedBtn\);/);
+    it('builds the toggle as a checkable overflow-menu item (menuitemcheckbox), not a header button', () => {
+        expect(main).toMatch(/showCompletedItem\.className\s*=\s*['"]todoMdViewerOverflowItem todoMdViewerShowCompletedItem['"]/);
+        expect(main).toMatch(/showCompletedItem\.setAttribute\(\s*['"]role['"]\s*,\s*['"]menuitemcheckbox['"]/);
+        expect(main).toMatch(/showCompletedItem\.setAttribute\(\s*['"]aria-checked['"]\s*,\s*['"]false['"]/);
+        // The old standalone header icon button (and its badge) is gone entirely.
+        expect(main).not.toMatch(/showCompletedBtn/);
+        expect(main).not.toMatch(/todoMdViewerShowCompletedBadge/);
     });
 
-    it('renders a standalone checkmark polyline glyph (not the checked-box) inside the button', () => {
-        expect(main).toMatch(/showCompletedBtn\.innerHTML\s*=[\s\S]*?<svg[\s\S]*?<polyline[\s\S]*?<\/svg>/);
-        // The new glyph is option A: a single checkmark polyline, no box outline.
+    it('places the toggle at the top of the overflow menu, above a divider, above the clear items', () => {
+        const order = [
+            'overflowMenu.appendChild(showCompletedItem);',
+            'overflowMenu.appendChild(overflowDivider);',
+            'overflowMenu.appendChild(clearCompletedItem);',
+            'overflowMenu.appendChild(clearAllItem);',
+        ];
+        let cursor = -1;
+        for (const line of order) {
+            const idx = main.indexOf(line, cursor + 1);
+            expect(idx).toBeGreaterThan(cursor);
+            cursor = idx;
+        }
+    });
+
+    it('no longer appends the toggle to the header meta row (row: synced/run/sync/overflow/collapse)', () => {
+        expect(main).not.toMatch(/meta\.appendChild\(showCompletedBtn\);/);
+        expect(main).not.toMatch(/meta\.appendChild\(showCompletedItem\);/);
+        const order = [
+            'meta.appendChild(syncedLabel);',
+            'meta.appendChild(runBacklogBtn);',
+            'meta.appendChild(syncBtn);',
+            'meta.appendChild(overflowWrap);',
+            'meta.appendChild(collapseBodyBtn);',
+        ];
+        let cursor = -1;
+        for (const line of order) {
+            const idx = main.indexOf(line, cursor + 1);
+            expect(idx).toBeGreaterThan(cursor);
+            cursor = idx;
+        }
+    });
+
+    it('renders a standalone checkmark polyline glyph inside the item (no box outline)', () => {
+        expect(main).toMatch(/showCompletedCheck\.innerHTML\s*=[\s\S]*?<svg[\s\S]*?<polyline[\s\S]*?<\/svg>/);
         expect(main).toMatch(/<polyline points="20 6 9 17 4 12"\/>/);
-        // The prior checked-checkbox path markup is gone.
-        expect(main).not.toMatch(/<path d="M21 11v6/);
     });
 
-    it('renders a floating count badge as the button child', () => {
-        expect(main).toMatch(/showCompletedCount\.className\s*=\s*['"]todoMdViewerShowCompletedBadge['"]/);
-        expect(main).toMatch(/showCompletedBtn\.appendChild\(showCompletedCount\)/);
-    });
-
-    it('sets a descriptive aria-label + title carrying the count and verb', () => {
+    it('applyShowCompletedState reflects state via aria-checked and a Show/Hide completed (N) label', () => {
         const start = main.indexOf('function applyShowCompletedState');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 1100);
-        expect(block).toMatch(/aria-label/);
-        expect(block).toMatch(/\.title\s*=/);
+        const block = main.slice(start, start + 800);
+        expect(block).toMatch(/showCompletedItem\.setAttribute\(\s*['"]aria-checked['"]/);
+        expect(block).toMatch(/showCompletedLabel\.textContent\s*=/);
         expect(block).toMatch(/Hide/);
         expect(block).toMatch(/Show/);
+        expect(block).toMatch(/ completed \(/);
     });
 
-    it('hides the badge (via the --empty modifier) when the count is zero', () => {
+    it('hides + disables the item (and its divider) when the count is zero', () => {
         const start = main.indexOf('function applyShowCompletedState');
-        const block = main.slice(start, start + 1100);
-        expect(block).toMatch(/todoMdViewerShowCompletedBtn--empty/);
+        const block = main.slice(start, start + 800);
         expect(block).toMatch(/===?\s*0/);
-    });
-
-    it('reflects state via aria-pressed (keyboard-accessible <button>)', () => {
-        expect(main).toMatch(/showCompletedBtn\.type\s*=\s*['"]button['"]/);
-        expect(main).toMatch(/showCompletedBtn\.setAttribute\(\s*['"]aria-pressed['"]/);
+        expect(block).toMatch(/showCompletedItem\.hidden\s*=/);
+        expect(block).toMatch(/showCompletedItem\.disabled\s*=/);
+        expect(block).toMatch(/overflowDivider\.hidden\s*=/);
     });
 
     it('persists the choice and re-renders on click without re-fetching', () => {
-        const start = main.indexOf("showCompletedBtn.addEventListener('click'");
+        const start = main.indexOf("showCompletedItem.addEventListener('click'");
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 500);
+        const block = main.slice(start, start + 700);
         expect(block).toMatch(/setTodoMdShowCompleted\(\s*!isTodoMdShowCompleted\(\)\s*\)/);
         expect(block).toMatch(/applyTab\(viewerActiveTab\)/);
         // No worker re-fetch on a toggle click.
@@ -211,10 +236,16 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
     });
 
     it('preserves body scroll position across a toggle', () => {
-        const start = main.indexOf("showCompletedBtn.addEventListener('click'");
-        const block = main.slice(start, start + 500);
+        const start = main.indexOf("showCompletedItem.addEventListener('click'");
+        const block = main.slice(start, start + 700);
         expect(block).toMatch(/prevScroll\s*=\s*body\.scrollTop/);
         expect(block).toMatch(/body\.scrollTop\s*=\s*prevScroll/);
+    });
+
+    it('closes the overflow menu on select (matching the clear items)', () => {
+        const start = main.indexOf("showCompletedItem.addEventListener('click'");
+        const block = main.slice(start, start + 700);
+        expect(block).toMatch(/closeOverflowMenu\(\)/);
     });
 
     it('passes hideCompleted into both rendered-body builds, gated on the pref', () => {
@@ -225,13 +256,13 @@ describe('todo.md viewer — show-completed toggle wiring (main.js)', () => {
     it('does NOT write TODO.md on a toggle — the toggle is render-side only', () => {
         // The pipeline reads the full file server-side; the toggle must never
         // mutate the file or dispatch an inject/dispatch call.
-        const start = main.indexOf("showCompletedBtn.addEventListener('click'");
-        const block = main.slice(start, start + 500);
+        const start = main.indexOf("showCompletedItem.addEventListener('click'");
+        const block = main.slice(start, start + 700);
         expect(block).not.toMatch(/injectEntry|dispatchRun|postToWorker|fetch\s*\(/);
     });
 });
 
-describe('todo.md viewer — expand-button removal & show-completed relocation (main.js)', () => {
+describe('todo.md viewer — expand-button removal & meta row (todoMdViewer.js)', () => {
     const main = read('todoMdViewer.js');
     const css = read('style.css');
 
@@ -251,63 +282,45 @@ describe('todo.md viewer — expand-button removal & show-completed relocation (
         expect(css).toMatch(/\.todoMdViewerCollapseBtn\s*\{/);
     });
 
-    it('relocates show-completed into the slot the expand button vacated (before collapse, last-but-one)', () => {
-        // The meta append order: synced, run, sync, show-completed, collapse.
-        // show-completed now sits immediately before the collapse button, and
-        // is no longer appended in the leading slot.
-        const order = [
-            'meta.appendChild(syncedLabel);',
-            'meta.appendChild(runBacklogBtn);',
-            'meta.appendChild(syncBtn);',
-            'meta.appendChild(showCompletedBtn);',
-            'meta.appendChild(collapseBodyBtn);',
-        ];
-        let cursor = -1;
-        for (const line of order) {
-            const idx = main.indexOf(line, cursor + 1);
-            expect(idx).toBeGreaterThan(cursor);
-            cursor = idx;
-        }
-        // The collapse button is the final child appended to meta.
-        expect(main.indexOf('meta.appendChild(showCompletedBtn);'))
+    it('the collapse button is the final child appended to the meta row', () => {
+        // After the relocation the meta row ends synced/run/sync/overflow/collapse.
+        expect(main.indexOf('meta.appendChild(overflowWrap);'))
             .toBeLessThan(main.indexOf('meta.appendChild(collapseBodyBtn);'));
-        // Exactly one append of the show-completed button (no leftover leading append).
-        const appends = main.match(/meta\.appendChild\(showCompletedBtn\);/g) || [];
-        expect(appends).toHaveLength(1);
-    });
-
-    it('keeps the 32×32 button dimensions (tap target preserved)', () => {
-        const start = css.indexOf('.todoMdViewerShowCompletedBtn {');
-        const block = css.slice(start, start + 700);
-        expect(block).toMatch(/width:\s*32px/);
-        expect(block).toMatch(/height:\s*32px/);
     });
 });
 
-describe('todo.md viewer — show-completed icon button CSS (style.css)', () => {
+describe('todo.md viewer — show-completed menu item CSS (style.css)', () => {
     const css = read('style.css');
 
-    it('sizes the button as a 32×32 square, not text-width', () => {
-        const start = css.indexOf('.todoMdViewerShowCompletedBtn {');
+    it('removes the old standalone icon-button rules (button, icon, badge)', () => {
+        expect(css).not.toMatch(/\.todoMdViewerShowCompletedBtn\b/);
+        expect(css).not.toMatch(/\.todoMdViewerShowCompletedIcon\b/);
+        expect(css).not.toMatch(/\.todoMdViewerShowCompletedBadge\b/);
+    });
+
+    it('lays the item out as a checkmark slot + label (flex)', () => {
+        const start = css.indexOf('.todoMdViewerShowCompletedItem {');
         expect(start).toBeGreaterThan(-1);
-        const block = css.slice(start, start + 700);
-        expect(block).toMatch(/width:\s*32px/);
-        expect(block).toMatch(/height:\s*32px/);
-        expect(block).toMatch(/border-radius:\s*8px/);
+        const block = css.slice(start, start + 300);
+        expect(block).toMatch(/display:\s*flex/);
+        expect(block).toMatch(/align-items:\s*center/);
     });
 
-    it('inverts the background on the pressed/active state', () => {
-        expect(css).toMatch(/\.todoMdViewerShowCompletedBtn\[aria-pressed="true"\]/);
-        expect(css).toMatch(/rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+    it('shows the checkmark only when the item is checked (aria-checked="true")', () => {
+        expect(css).toMatch(/\.todoMdViewerShowCompletedCheck\s*\{[\s\S]*?visibility:\s*hidden/);
+        expect(css).toMatch(/\.todoMdViewerShowCompletedItem\[aria-checked="true"\]\s+\.todoMdViewerShowCompletedCheck\s*\{\s*visibility:\s*visible/);
     });
 
-    it('positions a floating badge and hides it when empty', () => {
-        expect(css).toMatch(/\.todoMdViewerShowCompletedBadge\s*\{/);
-        const badgeStart = css.indexOf('.todoMdViewerShowCompletedBadge {');
-        const block = css.slice(badgeStart, badgeStart + 500);
-        expect(block).toMatch(/position:\s*absolute/);
-        expect(block).toMatch(/top:\s*-5px/);
-        expect(block).toMatch(/right:\s*-5px/);
-        expect(css).toMatch(/--empty\s+\.todoMdViewerShowCompletedBadge\s*\{\s*display:\s*none/);
+    it('hides the item and its divider when the N=0 hidden attribute is set', () => {
+        expect(css).toMatch(/\.todoMdViewerShowCompletedItem\[hidden\]\s*\{\s*display:\s*none/);
+        expect(css).toMatch(/\.todoMdViewerOverflowDivider\[hidden\]\s*\{\s*display:\s*none/);
+    });
+
+    it('styles the divider as a quiet 1px separator', () => {
+        const start = css.indexOf('.todoMdViewerOverflowDivider {');
+        expect(start).toBeGreaterThan(-1);
+        const block = css.slice(start, start + 200);
+        expect(block).toMatch(/height:\s*1px/);
+        expect(block).toMatch(/background:/);
     });
 });
