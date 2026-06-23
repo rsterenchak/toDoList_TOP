@@ -30,7 +30,14 @@ import {
     getCachedTargets,
     loadInjectTargets,
     isInjectConfigured,
+    showInjectToast,
 } from './inject.js';
+import {
+    readActiveRun,
+    writeActiveRun,
+    clearActiveRun,
+    activeProjectNameForViewer,
+} from './runState.js';
 import { listLogic } from './listLogic.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
@@ -1837,6 +1844,18 @@ function renderDraftedEntryCard(entryText) {
 async function shipDraftedEntry(entryText, card) {
     const shipBtn = card && card.querySelector('.claudeDraftShip');
     const cancelBtn = card && card.querySelector('.claudeDraftCancel');
+
+    // Per-project single-run guard: the chat workspace tracks the open project,
+    // so a chat ship lands under that project's active-run key — the same key
+    // the viewer reads and writes. Refuse only when THIS project already has a
+    // fresh active run (here or from the viewer); a run on another project must
+    // not block. The viewer mirrors this guard for its own dispatches.
+    const project = activeProjectNameForViewer();
+    if (readActiveRun(project)) {
+        showInjectToast('A run is already in progress for this project');
+        return;
+    }
+
     if (shipBtn) shipBtn.disabled = true;
     if (cancelBtn) cancelBtn.disabled = true;
 
@@ -1864,19 +1883,32 @@ async function shipDraftedEntry(entryText, card) {
         return;
     }
 
+    const dispatchedAt = Date.now();
     const record = {
         entryId: entryId,
         correlationId: correlationId,
         title: deriveRunTitle(entryText),
         status: 'QUEUED',
-        dispatchedAt: Date.now(),
+        dispatchedAt: dispatchedAt,
         // Persist the repo this run was dispatched against so status polling
         // queries the same repo, not the Worker's default. Without this, a run
         // shipped to a non-default workspace can never be confirmed.
         repo: activeChatRepo,
+        // The project this run belongs to, so the poller can free that
+        // project's run guard at terminal even when its viewer isn't mounted.
+        project: project,
     };
     runRecords.unshift(record);
     saveRunRecords();
+    // Drive the viewer's per-project "Running" pill for this same run: write
+    // the active-run entry under the project's key so a mounted viewer attaches
+    // its pill immediately (via the change event) and a re-mount re-attaches.
+    writeActiveRun(project, {
+        correlationId: correlationId,
+        project: project,
+        target: { repo: activeChatRepo, file_path: 'TODO.md' },
+        dispatchedAt: dispatchedAt,
+    });
     renderRunsList();
     startRunPoller(record);
 
@@ -2165,6 +2197,16 @@ function markRunRecordUnconfirmed(correlationId) {
 // header pill drives — to flip a run record QUEUED → RUNNING → SHIPPED
 // (or FAILED). One interval per correlation id; cleared on a terminal status
 // or after the give-up window.
+// Free a project's per-project run guard at a terminal outcome. The viewer's
+// own terminal handlers clear it too, but only when that project's viewer is
+// mounted — this covers a chat-shipped run whose project is not on screen, so
+// combined with runState's stale-entry check a project can't get stuck blocked.
+// A no-op for records dispatched before `project` was persisted (undefined).
+function freeProjectRunGuard(project) {
+    if (project == null) return;
+    clearActiveRun(project);
+}
+
 function startRunPoller(rec) {
     if (!rec || !rec.correlationId) return;
     const correlationId = rec.correlationId;
@@ -2175,10 +2217,14 @@ function startRunPoller(rec) {
     // was persisted (no rec.repo) fall back to null → the Worker's default repo,
     // exactly as polling behaved before.
     const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
+    // The project this run belongs to (undefined on records from before this
+    // was persisted) — passed through so the poller frees its run guard at
+    // terminal even when that project's viewer is closed.
+    const project = rec.project;
     runPollers[correlationId] = setInterval(function() {
-        pollRunRecordOnce(correlationId, startedAt, target);
+        pollRunRecordOnce(correlationId, startedAt, target, project);
     }, RUN_POLL_INTERVAL_MS);
-    pollRunRecordOnce(correlationId, startedAt, target);
+    pollRunRecordOnce(correlationId, startedAt, target, project);
 }
 
 function stopRunPoller(correlationId) {
@@ -2188,7 +2234,7 @@ function stopRunPoller(correlationId) {
     }
 }
 
-async function pollRunRecordOnce(correlationId, startedAt, target) {
+async function pollRunRecordOnce(correlationId, startedAt, target, project) {
     if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
         // Past the give-up window the run can no longer be reconciled. We can't
         // see a positive outcome either way, so "couldn't confirm" is NOT
@@ -2197,6 +2243,7 @@ async function pollRunRecordOnce(correlationId, startedAt, target) {
         // "Running" forever.
         markRunRecordUnconfirmed(correlationId);
         stopRunPoller(correlationId);
+        freeProjectRunGuard(project);
         return;
     }
     const res = await pollRunStatus({ correlationId: correlationId, target: target || null });
@@ -2215,6 +2262,7 @@ async function pollRunRecordOnce(correlationId, startedAt, target) {
             markRunRecordUnconfirmed(correlationId);
         }
         stopRunPoller(correlationId);
+        freeProjectRunGuard(project);
         return;
     }
     if (res.status === 'queued') {

@@ -772,6 +772,68 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].status).toBe('SHIPPED');
     });
 
+    // The chat ship path drives the SAME per-project active-run state the
+    // viewer's header pill reads, so a run shipped from chat shows the pill on
+    // the viewer for that project (and a second run on it is refused).
+    function selectProject(name) {
+        const proj = document.createElement('div');
+        proj.className = 'selectedProject';
+        proj.innerHTML = '<input id="projInput" value="' + name + '">';
+        document.body.appendChild(proj);
+    }
+
+    it('writes the per-project active-run entry on ship (under the open project key)', async () => {
+        selectProject('Alpha');
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        const key = 'todoapp_activeRun:' + encodeURIComponent('Alpha');
+        const active = JSON.parse(localStorage.getItem(key));
+        expect(active).toBeTruthy();
+        expect(active.project).toBe('Alpha');
+        expect(active.correlationId).toBeTruthy();
+        expect(active.target.repo).toBeTruthy();
+        // The run record also carries its project so the poller can free the guard.
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].project).toBe('Alpha');
+    });
+
+    it('clears the project active-run entry when the run reaches a terminal outcome', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        selectProject('Beta');
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        const key = 'todoapp_activeRun:' + encodeURIComponent('Beta');
+        expect(localStorage.getItem(key)).toBeNull();
+    });
+
+    it('refuses a second ship while the same project already has a fresh active run', async () => {
+        selectProject('Gamma');
+        localStorage.setItem(
+            'todoapp_activeRun:' + encodeURIComponent('Gamma'),
+            JSON.stringify({ correlationId: 'pre', project: 'Gamma', dispatchedAt: Date.now() })
+        );
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        // The guard refused before injecting — no inject call fired.
+        const injectCall = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && b.entry;
+        });
+        expect(injectCall).toBeFalsy();
+    });
+
     it('flips the run record to FAILED when the status poll reports a non-success conclusion', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'failure' };
         await sendMessage('draft me an entry');

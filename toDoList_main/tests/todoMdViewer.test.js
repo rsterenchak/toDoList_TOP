@@ -535,14 +535,14 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
 
     it('starts in a label-only "Starting…" state for the post-dispatch race window', () => {
         const start = main.indexOf('function startRunPill');
-        const block = main.slice(start, start + 1200);
+        const block = main.slice(start, start + 1700);
         expect(block).toMatch(/state:\s*['"]starting['"][\s\S]{0,80}label:\s*['"]Starting…['"][\s\S]{0,40}spinner:\s*true/);
     });
 
     it('maps Worker status responses to the documented pill states', () => {
         const start = main.indexOf('async function pollRunOnce');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 1400);
+        const block = main.slice(start, start + 1700);
         // found:false keeps the race-window "Starting…" state.
         expect(block).toMatch(/res\.found\s*===\s*false[\s\S]{0,160}Starting…/);
         // completed + success → success pill; any other conclusion → failure.
@@ -555,7 +555,7 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
 
     it('auto-dismisses the success pill after ~5s, restoring the button', () => {
         const start = main.indexOf('function showRunSuccess');
-        const block = main.slice(start, start + 700);
+        const block = main.slice(start, start + 900);
         expect(block).toMatch(/state:\s*['"]success['"]/);
         expect(block).toMatch(/setTimeout\([\s\S]{0,260}restoreRunButton\(\)[\s\S]{0,120}5000\s*\)/);
     });
@@ -628,53 +628,63 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
 
     const main = read('todoMdViewer.js');
 
-    it('stores the active run in a single localStorage slot under the todoapp_ prefix', () => {
-        expect(main).toMatch(/ACTIVE_RUN_KEY\s*=\s*['"]todoapp_activeRun['"]/);
+    it('sources the per-project active-run helpers from the shared runState module', () => {
+        // The single-slot helpers were replaced by the per-project runState
+        // module so a chat-shipped run drives this same pill; the viewer no
+        // longer defines or keys its own active-run storage.
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?readActiveRun[\s\S]*?writeActiveRun[\s\S]*?clearActiveRun[\s\S]*?activeProjectNameForViewer[\s\S]*?ACTIVE_RUN_CHANGE_EVENT[\s\S]*?\}\s*from\s*['"]\.\/runState\.js['"]/
+        );
+        expect(main).not.toMatch(/ACTIVE_RUN_KEY\s*=/);
+        expect(main).not.toMatch(/function\s+readActiveRun\s*\(/);
+        expect(main).not.toMatch(/function\s+writeActiveRun\s*\(/);
+        expect(main).not.toMatch(/function\s+clearActiveRun\s*\(/);
     });
 
-    it('defines read/write/clear helpers for the active-run record', () => {
-        expect(main).toMatch(/function\s+readActiveRun\s*\(/);
-        expect(main).toMatch(/function\s+writeActiveRun\s*\(/);
-        expect(main).toMatch(/function\s+clearActiveRun\s*\(/);
-        // The record persists via localStorage keyed by ACTIVE_RUN_KEY.
-        expect(main).toMatch(/localStorage\.getItem\(\s*ACTIVE_RUN_KEY\s*\)/);
-        expect(main).toMatch(/localStorage\.setItem\(\s*ACTIVE_RUN_KEY\s*,/);
-        expect(main).toMatch(/localStorage\.removeItem\(\s*ACTIVE_RUN_KEY\s*\)/);
-    });
-
-    it('readActiveRun rejects records without a usable correlation id', () => {
-        const start = main.indexOf('function readActiveRun');
-        const block = main.slice(start, start + 400);
-        expect(block).toMatch(/typeof\s+rec\.correlationId\s*!==\s*['"]string['"]/);
-    });
-
-    it('writes the record on a successful dispatch with project, target and dispatch timestamp', () => {
+    it('writes the record on a successful dispatch under this project key with target and timestamp', () => {
         const start = main.indexOf('async function runBacklog');
         const block = main.slice(start, start + 2000);
-        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
-        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}project:\s*projectName/);
-        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}dispatchedAt:\s*Date\.now\(\)/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}project:\s*projectName/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}dispatchedAt:\s*Date\.now\(\)/);
     });
 
-    it('re-attaches the pill on mount only when the active run belongs to this project', () => {
-        // Fires on every card mount (project switch AND full page reload).
+    it('re-attaches the pill on mount from this project key (runState scopes it per project)', () => {
+        // Fires on every card mount (project switch AND full page reload). The
+        // key is project-scoped, so runs on other projects never surface here.
         expect(main).toMatch(
-            /const\s+activeRun\s*=\s*readActiveRun\(\)[\s\S]{0,200}activeRun\.project\s*===\s*projectName[\s\S]{0,80}startRunPill\(\s*activeRun\.correlationId\s*\)/
+            /const\s+activeRun\s*=\s*readActiveRun\(\s*projectName\s*\)[\s\S]{0,120}startRunPill\(\s*activeRun\.correlationId\s*\)/
         );
+    });
+
+    it('subscribes to the runState change event so a mounted viewer attaches/detaches with the project key', () => {
+        // A chat-shipped run writes the project key; a viewer already showing
+        // that project attaches its pill on the change event and restores the
+        // button when the key is cleared (ignoring other projects' events).
+        expect(main).toMatch(/document\.addEventListener\(\s*ACTIVE_RUN_CHANGE_EVENT\s*,\s*viewerActiveRunChangeHandler\s*\)/);
+        const start = main.indexOf('viewerActiveRunChangeHandler = function');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 600);
+        expect(block).toMatch(/!==\s*projectName\s*\)\s*return/);
+        expect(block).toMatch(/readActiveRun\(\s*projectName\s*\)/);
+        expect(block).toMatch(/if\s*\(\s*!runPill\s*\)\s*startRunPill\(\s*rec\.correlationId\s*\)/);
+        expect(block).toMatch(/restoreRunButton\(\)/);
+        // The subscription is torn down with the card.
+        expect(main).toMatch(/removeEventListener\(\s*ACTIVE_RUN_CHANGE_EVENT\s*,\s*viewerActiveRunChangeHandler\s*\)/);
     });
 
     it('computes the 20-minute give-up against the persisted dispatch timestamp, not the re-attach time', () => {
         const start = main.indexOf('function startRunPill');
-        const block = main.slice(start, start + 1400);
-        // startedAt comes from the persisted record's dispatchedAt.
-        expect(block).toMatch(/readActiveRun\(\)/);
+        const block = main.slice(start, start + 1700);
+        // startedAt comes from the persisted (project-keyed) record's dispatchedAt.
+        expect(block).toMatch(/readActiveRun\(\s*projectName\s*\)/);
         expect(block).toMatch(/rec\.dispatchedAt[\s\S]{0,60}rec\.dispatchedAt/);
         expect(block).toMatch(/startedAt\s*=\s*\(rec[\s\S]{0,80}rec\.dispatchedAt/);
     });
 
     it('polls once immediately on (re)start so an already-finished run skips the running flash', () => {
         const start = main.indexOf('function startRunPill');
-        const block = main.slice(start, start + 2200);
+        const block = main.slice(start, start + 2400);
         // An immediate poll exists in addition to the setInterval poll.
         const polls = block.match(/pollRunOnce\(\s*correlationId\s*,\s*startedAt\s*\)/g) || [];
         expect(polls.length).toBeGreaterThanOrEqual(2);
@@ -684,8 +694,8 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
         for (const fn of ['showRunSuccess', 'showRunFailure', 'showRunTimeout']) {
             const start = main.indexOf('function ' + fn);
             expect(start).toBeGreaterThan(-1);
-            const block = main.slice(start, start + 500);
-            expect(block).toMatch(/clearActiveRun\(\)/);
+            const block = main.slice(start, start + 600);
+            expect(block).toMatch(/clearActiveRun\(\s*projectName\s*\)/);
         }
     });
 });
@@ -730,14 +740,17 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     it('persists the active-run record on an entry dispatch so the pill survives navigation', () => {
         const start = main.indexOf('async function runEntry');
         const block = main.slice(start, start + 2000);
-        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
-        expect(block).toMatch(/writeActiveRun\(\s*\{[\s\S]{0,260}project:\s*projectName/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}project:\s*projectName/);
     });
 
-    it('refuses to dispatch a second run while one is already tracked (single-run model)', () => {
+    it('refuses to dispatch a second run while this project already has a fresh active run', () => {
+        // The single-run model is now scoped per project via runState: a run on
+        // a different project no longer blocks; only this project's fresh run does.
         const start = main.indexOf('async function runEntry');
         const block = main.slice(start, start + 600);
-        expect(block).toMatch(/if\s*\(\s*runPill\s*\|\|\s*viewerRunPollInterval\s*\)\s*return/);
+        expect(block).toMatch(/if\s*\(\s*readActiveRun\(\s*projectName\s*\)\s*\)\s*\{/);
+        expect(block).toMatch(/A run is already in progress for this project/);
     });
 
     it('disables every per-entry control while the pill is active', () => {
