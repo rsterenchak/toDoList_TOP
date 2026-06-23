@@ -78,28 +78,41 @@ describe('Mobile chat sheet swipe-down dismiss sensitivity', () => {
     function sheet() {
         return document.getElementById('claudeSheet');
     }
+    function handle() {
+        return document.getElementById('claudeSheetHandle');
+    }
 
-    it('does NOT close on a small slow scroll-intent drag (raised distance threshold)', () => {
+    it('does NOT close on a small slow scroll-intent drag started on the handle', () => {
         expect(isClaudeSheetOpen()).toBe(true);
         // 70px over 700ms → 0.1 px/ms: below the long-drag distance (120px) and
-        // below the flick velocity (0.5 px/ms). The old 60px-only rule would
-        // have dismissed here.
-        swipe(sheet(), 100, 170, 700);
+        // below the flick velocity (0.5 px/ms).
+        swipe(handle(), 100, 170, 700);
         expect(isClaudeSheetOpen()).toBe(true);
     });
 
-    it('closes on a long deliberate drag regardless of speed', () => {
+    it('closes on a long deliberate drag from the grabber handle', () => {
         expect(isClaudeSheetOpen()).toBe(true);
-        // 140px (>= 120) even at a slow 0.1 px/ms.
-        swipe(sheet(), 100, 240, 1400);
+        // 140px (>= 120) even at a slow 0.1 px/ms, started on the grabber.
+        swipe(handle(), 100, 240, 1400);
         expect(isClaudeSheetOpen()).toBe(false);
     });
 
-    it('closes on a short but fast downward flick', () => {
+    it('closes on a short but fast downward flick from the grabber handle', () => {
         expect(isClaudeSheetOpen()).toBe(true);
         // 70px over 50ms → 1.4 px/ms: clears the flick bar (>= 60px, >= 0.5).
-        swipe(sheet(), 100, 170, 50);
+        swipe(handle(), 100, 170, 50);
         expect(isClaudeSheetOpen()).toBe(false);
+    });
+
+    it('ignores a long, fast drag that starts on non-handle, non-scrollable sheet chrome', () => {
+        expect(isClaudeSheetOpen()).toBe(true);
+        // Dispatch on the bare sheet element — no scrollable ancestor under
+        // event.target, and the target isn't the grabber handle. Even a long,
+        // fast drag that would otherwise commit must be ignored: ordinary
+        // chrome (tab row, composer, etc.) shouldn't double as a dismiss
+        // surface.
+        swipe(sheet(), 100, 300, 60);
+        expect(isClaudeSheetOpen()).toBe(true);
     });
 
     it('ignores the gesture when it starts inside an already-scrolled chat log', () => {

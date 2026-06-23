@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-23',
+        fixed: [
+            "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-22',
         changed: [
-            "Generate tasks and Suggest plan now ground their suggestions in your project's linked repository, so they reason over that app's actual code instead of a default.",
             "Generated tasks now arrive with a ready-to-edit TODO.md entry as their description, revealed by a per-row Details toggle.",
         ],
         fixed: [

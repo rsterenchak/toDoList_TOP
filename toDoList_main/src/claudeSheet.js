@@ -2156,11 +2156,14 @@ function findScrollableAncestor(node, stopAt) {
 // Touch swipe-down to dismiss on mobile. HTML5 drag events don't fire on
 // touch, so this rides touchstart/touchmove/touchend directly. Gated to the
 // mobile viewport and to a downward gesture so taps on inner controls are
-// untouched. To stop ordinary chat-log scrolling from reading as a dismiss,
-// the gesture is ignored when it starts inside a scrollable region that is
-// already scrolled down (scrollTop > 0) — there a downward drag is the user
-// scrolling back toward the top. It only commits on a deliberate swipe: a long
-// drag, or a shorter drag thrown with real downward velocity.
+// untouched. The dismiss gesture only starts when the touch begins on the
+// grabber handle (the explicit close affordance) OR inside the chat body
+// while the scroll container is already at scrollTop === 0 (a pull-to-close
+// from the top). Touches on other sheet chrome — tabs, composer, file
+// picker — or inside a scrolled-down chat log never start a dismiss, so
+// scrolling the log and tapping inner controls can't close the sheet. It
+// only commits on a deliberate swipe: a long drag, or a shorter drag thrown
+// with real downward velocity.
 function attachSwipeToClose(target) {
     let startY = 0;
     let startT = 0;
@@ -2168,10 +2171,17 @@ function attachSwipeToClose(target) {
     target.addEventListener('touchstart', function(event) {
         if (window.innerWidth > MOBILE_MAX_WIDTH) return;
         if (!event.touches || event.touches.length !== 1) return;
-        // Yield to native scrolling: a touch that begins inside a scrollable
-        // region with room to scroll up is a scroll, not a dismiss.
-        const scrollable = findScrollableAncestor(event.target, target);
-        if (scrollable && scrollable.scrollTop > 0) return;
+        const handle = target.querySelector('#claudeSheetHandle');
+        const onHandle = !!(handle && (event.target === handle || handle.contains(event.target)));
+        if (!onHandle) {
+            // Outside the grabber, dismiss is only allowed when the touch
+            // starts in a scrollable region that's pinned at the top — there
+            // a downward drag is pull-to-close intent, not scroll intent.
+            // Touches on non-scrollable chrome or inside a scrolled-down
+            // region must be left to native handling.
+            const scrollable = findScrollableAncestor(event.target, target);
+            if (!scrollable || scrollable.scrollTop > 0) return;
+        }
         startY = event.touches[0].clientY;
         startT = Date.now();
         tracking = true;
