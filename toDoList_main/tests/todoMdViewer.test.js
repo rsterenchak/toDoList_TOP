@@ -913,6 +913,26 @@ describe('todo.md viewer — per-entry delete + clear ops (rewrite)', () => {
         expect(main.slice(cc, cc + 200)).toMatch(/closeOverflowMenu\(\)/);
     });
 
+    it('toggles a --menuOpen class on the card so a collapsed card un-clips its overflow while the menu is open', () => {
+        // A collapsed card is only as tall as its header and clips with
+        // `overflow: hidden`; the menu drops below the header into that clipped
+        // region. openOverflowMenu adds the class, closeOverflowMenu removes it.
+        const openStart = main.indexOf('function openOverflowMenu');
+        expect(openStart).toBeGreaterThan(-1);
+        expect(main.slice(openStart, openStart + 900))
+            .toMatch(/card\.classList\.add\(\s*['"]todoMdViewerCard--menuOpen['"]\s*\)/);
+
+        const closeStart = main.indexOf('function closeOverflowMenu');
+        expect(closeStart).toBeGreaterThan(-1);
+        expect(main.slice(closeStart, closeStart + 900))
+            .toMatch(/card\.classList\.remove\(\s*['"]todoMdViewerCard--menuOpen['"]\s*\)/);
+
+        // CSS un-clips the inline card while the menu is open.
+        expect(css).toMatch(
+            /#mainList\s+\.todoMdViewerCard\.todoMdViewerCard--menuOpen\s*\{[\s\S]{0,80}overflow:\s*visible/
+        );
+    });
+
     it('Clear completed and Clear all route the right ops, with Clear all gated by a two-step confirm', () => {
         const ccStart = main.indexOf("clearCompletedItem.addEventListener('click'");
         const ccBlock = main.slice(ccStart, ccStart + 700);

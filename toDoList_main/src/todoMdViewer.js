@@ -634,6 +634,8 @@ function buildTodoMdViewerCard(projectName, target) {
         if (overflowMenu.hidden) return;
         overflowMenu.hidden = true;
         overflowBtn.setAttribute('aria-expanded', 'false');
+        // Re-clip the card now that the menu is gone (see openOverflowMenu).
+        card.classList.remove('todoMdViewerCard--menuOpen');
         if (overflowOutsideHandler) {
             document.removeEventListener('click', overflowOutsideHandler, true);
             overflowOutsideHandler = null;
@@ -648,6 +650,11 @@ function buildTodoMdViewerCard(projectName, target) {
         if (!overflowMenu.hidden) return;
         overflowMenu.hidden = false;
         overflowBtn.setAttribute('aria-expanded', 'true');
+        // A collapsed card is only as tall as its header, and the card clips
+        // with `overflow: hidden`; the menu drops below the header into that
+        // clipped region. Let the card overflow show while the menu is open so
+        // the menu is visible without first expanding the card.
+        card.classList.add('todoMdViewerCard--menuOpen');
         overflowOutsideHandler = function(event) {
             if (!overflowWrap.contains(event.target)) closeOverflowMenu();
         };
