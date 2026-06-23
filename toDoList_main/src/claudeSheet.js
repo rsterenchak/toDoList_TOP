@@ -243,6 +243,37 @@ export function syncClaudeSheetForProject(projectName) {
     const collapsed = !hasRepo;
     document.body.classList.toggle('chatPaneCollapsed', collapsed);
     setChatPaneCollapsed(collapsed);
+    autoSwapWorkspaceForProject(projectName);
+}
+
+// On a project switch, re-point the chat workspace at the project's configured
+// inject repo so the next chat turn is framed around the right app. Unlike the
+// manual pill switch (confirmWorkspaceSwitch), this is non-destructive: it
+// preserves chatHistory, attachments, and the on-screen messages — the Worker's
+// per-turn `repo` reframing scopes the next message, so no chat wipe or confirm
+// is needed. Resolves projectName → target_id → the cached inject target's repo;
+// leaves the workspace untouched when the project has no target, the target is
+// no longer cached, or the repo already matches the active workspace.
+function autoSwapWorkspaceForProject(projectName) {
+    const targetId = listLogic.getProjectTargetId(projectName);
+    if (!targetId) return;
+    const targets = getCachedTargets();
+    let repo = null;
+    for (let i = 0; i < targets.length; i++) {
+        if (targets[i] && targets[i].id === targetId) { repo = targets[i].repo; break; }
+    }
+    if (!repo || repo === activeChatRepo) return;
+
+    setActiveChatRepo(repo);
+    renderWorkspacePill();
+
+    // Mirror the tail of confirmWorkspaceSwitch (minus the chat wipe): if the
+    // attach picker is open, refresh it to the new repo's source list.
+    const panel = sheetQuery('#claudeAttachPanel');
+    if (panel && !panel.hidden) {
+        setAttachPanelHidden(false);
+        refreshAttachPickerMode();
+    }
 }
 
 // ── RUN RECORDS (localStorage-backed) ──
