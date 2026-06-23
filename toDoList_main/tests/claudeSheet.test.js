@@ -3079,3 +3079,95 @@ describe('Inline html/svg rendering in the chat surface', () => {
         expect(segs.map(s => s.value).join('')).toContain('<svg viewBox="0 0 1 1"></svg>');
     });
 });
+
+// Per-repo chat persistence: the in-app chat thread is mirrored to localStorage
+// under `todoapp_claudeChat` as a { [repo]: [{role, content}] } map, written
+// after each turn and hydrated (and replayed onto the surface) on mount, so the
+// conversation survives a reload / PWA relaunch.
+describe('Claude sheet — chat history persisted per repo', () => {
+    const CHAT_KEY = 'todoapp_claudeChat';
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    let realFetch;
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.repos) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+                    ok: true, default: DEFAULT_REPO, repos: [{ repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' }],
+                }) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'assistant reply' }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO]);
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    function readMap() {
+        return JSON.parse(localStorage.getItem(CHAT_KEY) || '{}');
+    }
+
+    it('persists the user and assistant turns to the active repo\'s thread after a send', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'remember me';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        const thread = readMap()[DEFAULT_REPO];
+        expect(Array.isArray(thread)).toBe(true);
+        expect(thread).toEqual([
+            { role: 'user', content: 'remember me' },
+            { role: 'assistant', content: 'assistant reply' },
+        ]);
+    });
+
+    it('hydrates and replays the active repo\'s saved thread on mount', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { role: 'user', content: 'earlier question' },
+                { role: 'assistant', content: 'earlier answer' },
+            ],
+        }));
+
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.textContent).toContain('earlier question');
+        expect(surface.textContent).toContain('earlier answer');
+        expect(surface.querySelectorAll('.claudeMsg--user').length).toBe(1);
+        expect(surface.querySelectorAll('.claudeMsg--assistant').length).toBe(1);
+    });
+
+    it('starts empty when the active repo has no saved thread', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({ 'someone/Else': [{ role: 'user', content: 'not mine' }] }));
+
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.textContent).not.toContain('not mine');
+        expect(surface.querySelectorAll('.claudeMsg').length).toBe(0);
+    });
+});

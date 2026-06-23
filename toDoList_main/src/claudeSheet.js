@@ -247,13 +247,13 @@ export function syncClaudeSheetForProject(projectName) {
 }
 
 // On a project switch, re-point the chat workspace at the project's configured
-// inject repo so the next chat turn is framed around the right app. Unlike the
-// manual pill switch (confirmWorkspaceSwitch), this is non-destructive: it
-// preserves chatHistory, attachments, and the on-screen messages — the Worker's
-// per-turn `repo` reframing scopes the next message, so no chat wipe or confirm
-// is needed. Resolves projectName → target_id → the cached inject target's repo;
-// leaves the workspace untouched when the project has no target, the target is
-// no longer cached, or the repo already matches the active workspace.
+// inject repo so the next chat turn is framed around the right app. Chat threads
+// are persisted per repo (todoapp_claudeChat), so the swap saves the outgoing
+// repo's thread and resumes the incoming repo's saved thread — unlike the manual
+// pill switch (confirmWorkspaceSwitch), which deliberately wipes. Resolves
+// projectName → target_id → the cached inject target's repo; leaves the
+// workspace untouched when the project has no target, the target is no longer
+// cached, or the repo already matches the active workspace.
 function autoSwapWorkspaceForProject(projectName) {
     const targetId = listLogic.getProjectTargetId(projectName);
     if (!targetId) return;
@@ -264,11 +264,17 @@ function autoSwapWorkspaceForProject(projectName) {
     }
     if (!repo || repo === activeChatRepo) return;
 
+    // Persist the outgoing repo's thread, switch, then resume the incoming
+    // repo's saved thread (empty when none) and replay it onto the surface.
+    saveChatHistory();
     setActiveChatRepo(repo);
+    chatHistory = loadChatHistory(repo);
+    clearAttachments();
+    replayChatHistory();
     renderWorkspacePill();
 
-    // Mirror the tail of confirmWorkspaceSwitch (minus the chat wipe): if the
-    // attach picker is open, refresh it to the new repo's source list.
+    // Mirror the tail of confirmWorkspaceSwitch: if the attach picker is open,
+    // refresh it to the new repo's source list.
     const panel = sheetQuery('#claudeAttachPanel');
     if (panel && !panel.hidden) {
         setAttachPanelHidden(false);
@@ -292,6 +298,70 @@ function saveRunRecords() {
     try {
         localStorage.setItem(RUNS_KEY, JSON.stringify(runRecords));
     } catch (e) { /* private mode */ }
+}
+
+// ── CHAT HISTORY (localStorage-backed, per-repo) ──
+// Each workspace repo owns a durable conversation so the chat survives reloads
+// and a project auto-swap resumes that repo's thread. Stored under one key as a
+// per-repo map { [repo]: [{ role, content }] }; reads are read-modify-write so
+// saving one repo's thread never clobbers another's. Only user/assistant turns
+// are persisted — transient `note` bubbles never enter chatHistory.
+const CHAT_KEY = 'todoapp_claudeChat';
+const CHAT_HISTORY_CAP = 60;
+
+function readChatMap() {
+    try {
+        const raw = localStorage.getItem(CHAT_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function writeChatMap(map) {
+    try {
+        localStorage.setItem(CHAT_KEY, JSON.stringify(map));
+    } catch (e) { /* private mode */ }
+}
+
+// Persist the active workspace's thread, capped to the last CHAT_HISTORY_CAP
+// turns so a long conversation can't grow the key without bound.
+function saveChatHistory() {
+    const map = readChatMap();
+    map[activeChatRepo] = chatHistory.slice(-CHAT_HISTORY_CAP);
+    writeChatMap(map);
+}
+
+// The stored thread for `repo`, or [] when none is saved. Returns a copy so the
+// live chatHistory is never aliased into the persisted map.
+function loadChatHistory(repo) {
+    const thread = readChatMap()[repo];
+    return Array.isArray(thread) ? thread.slice() : [];
+}
+
+// Drop a repo's stored thread (the explicit pill "clear & focus" wipe), so a
+// reload or later auto-swap-back can't resurrect a cleared conversation.
+function deleteChatHistory(repo) {
+    const map = readChatMap();
+    if (Object.prototype.hasOwnProperty.call(map, repo)) {
+        delete map[repo];
+        writeChatMap(map);
+    }
+}
+
+// Clear the chat surface and replay the in-memory chatHistory into it, rendering
+// assistant turns through renderAssistantContent so fenced ```html/```svg replay
+// as rendered markup rather than raw text. Used on mount-hydrate and auto-swap.
+function replayChatHistory() {
+    const surface = sheetQuery('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
+    for (let i = 0; i < chatHistory.length; i++) {
+        const turn = chatHistory[i];
+        if (!turn || (turn.role !== 'user' && turn.role !== 'assistant')) continue;
+        const bubble = appendMessageBubble(turn.role, turn.content);
+        if (turn.role === 'assistant' && bubble) renderAssistantContent(bubble, turn.content);
+    }
 }
 
 function isTerminalStatus(status) {
@@ -1240,7 +1310,11 @@ function showWorkspaceConfirm(repo) {
 function confirmWorkspaceSwitch(repo) {
     setActiveChatRepo(repo);
 
+    // The pill is the deliberate "start fresh on this repo" control: wipe the
+    // in-memory thread AND its persisted copy so a reload or later auto-swap-back
+    // can't resurrect the cleared conversation.
     chatHistory = [];
+    deleteChatHistory(repo);
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
 
@@ -1413,6 +1487,7 @@ async function sendChatTurn(deep) {
     if (send && send.disabled) return;
 
     chatHistory.push({ role: 'user', content: text });
+    saveChatHistory();
     appendMessageBubble('user', text);
     input.value = '';
 
@@ -1453,6 +1528,7 @@ async function requestAssistantReply(entryId, deep) {
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
         chatHistory.push({ role: 'assistant', content: reply });
+        saveChatHistory();
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
@@ -1554,6 +1630,7 @@ function renderAttachLayoutButton(selector) {
 // the composer.
 async function sendInspectTurn(content) {
     chatHistory.push({ role: 'user', content: content });
+    saveChatHistory();
     appendMessageBubble('user', content);
     await requestAssistantReply();
 }
@@ -2331,9 +2408,9 @@ export function mountClaudeSheet(parent) {
     // Repaint the workspace pill/menu when the Inject targets change mid-session
     // (an add/edit/delete in Inject settings dispatches this). Reload the cache
     // and re-project so the menu reflects the new set without a page reload;
-    // chatHistory, attachments, and the active workspace survive (only an
-    // explicit pill switch wipes the chat). Drop any prior mount's listener
-    // first so remounts don't stack handlers.
+    // chatHistory, attachments, and the active workspace survive (the pill wipes
+    // the chat; auto-swap loads the target repo's saved thread). Drop any prior
+    // mount's listener first so remounts don't stack handlers.
     if (injectTargetsChangedHandler) {
         document.removeEventListener('injectTargetsChanged', injectTargetsChangedHandler);
     }
@@ -2343,9 +2420,10 @@ export function mountClaudeSheet(parent) {
     updatePending = hasPendingUpdate();
     renderUpdateNudge();
 
-    // Fresh mount starts a fresh conversation and drops any pollers a prior
-    // mount left running.
-    chatHistory = [];
+    // Fresh mount drops any pollers a prior mount left running. The chat thread
+    // is NOT reset here — it's hydrated from the active repo's saved thread below
+    // (after loadWorkspaceRepos resolves the workspace), so a reload resumes the
+    // conversation rather than starting empty.
     attachedFiles = [];
     suggestedAttachedFiles = [];
     pendingSuggestedFiles = [];
@@ -2363,6 +2441,12 @@ export function mountClaudeSheet(parent) {
     loadWorkspaceRepos();
     refreshWorkspaceRepos();
     Object.keys(runPollers).forEach(stopRunPoller);
+
+    // Hydrate the active workspace's chat thread from localStorage and replay it
+    // onto the surface, so a reload / PWA relaunch resumes the conversation. Runs
+    // after loadWorkspaceRepos so it keys on the resolved active repo.
+    chatHistory = loadChatHistory(activeChatRepo);
+    replayChatHistory();
 
     // Hydrate run records from localStorage, render them into the Runs tab,
     // and resume polling any run that was still in flight before a reload.

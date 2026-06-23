@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-23',
         added: [
             "The chat workspace now follows the project you switch to, automatically re-pointing at that project's linked repo without clearing your conversation.",
+            "The in-app Claude chat now keeps a separate conversation per repo and restores it on reload, so each workspace resumes its own history.",
         ],
         fixed: [
             "Mobile chat sheet now only closes on a downward swipe from the grabber handle or the top of the chat log, so tapping or scrolling elsewhere can't dismiss it by accident.",
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-22',
         fixed: [
-            "Returning to a sleeping or locked desktop now pulls changes made on your other devices automatically, without a manual refresh.",
             "Tasks created by Generate tasks now appear in the project's list right away, without switching projects.",
             "Swiping down inside the mobile chat sheet now only dismisses it on a deliberate swipe, so scrolling the chat log no longer closes the sheet.",
         ],

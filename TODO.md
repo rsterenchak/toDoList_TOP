@@ -272,7 +272,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6b495a12-9d85-4f94-9a69-c212efbf3071 -->
 
-- [ ] **[MEDIUM]** Persist Claude chat history per repo in localStorage
+- [x] **[MEDIUM]** Persist Claude chat history per repo in localStorage — Completed: 2026-06-23
   - Type: feature
   - Description: Make the in-app Claude chat survive reloads by persisting `chatHistory` to localStorage, keyed per repo, so each workspace owns a durable conversation. Today `chatHistory` is an in-memory array in `claudeSheet.js` that resets to `[]` on every reload / PWA relaunch. Store it under a single `todoapp_claudeChat` key holding a per-repo map (`{ [repo]: [{role, content}] }`), written after each turn and hydrated on mount — mirroring the existing `loadRunRecords`/`saveRunRecords` pattern on `todoapp_claudeRuns`. With threads now per-repo, an auto-swap (project switch) resumes that repo's saved thread instead of preserving a single in-memory one; the manual workspace pill keeps its existing wipe + confirm and becomes the deliberate "clear & focus" action.
   - Behavior:
