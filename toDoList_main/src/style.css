@@ -1774,21 +1774,46 @@ body:has(#settingsMenu) #claudeLauncher {
 :root[data-theme="light"] #claudeComposerInput::placeholder {
   color: #8a8a99;
 }
-/* Fast (↑) send — a neutral round icon button: transparent fill, muted glyph,
-   and a thin ring so the circle reads against the composer. The accent-filled
-   Deep variant overrides the fill below. */
+/* Split send — main button: a labeled pill ("Fast" / "Deep") forming the left
+   half of the split control. Neutral resting fill with a hairline ring; the
+   accent-filled Deep variant overrides the fill below when Deep is the default. */
 .claudeComposerSend {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
   height: 36px;
-  border-radius: 50%;
+  padding: 0 12px;
+  border-radius: 18px 0 0 18px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-mid);
+  border-right: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.claudeSendModeLabel {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+/* Split send — caret: the right half that opens the mode menu. Mirrors the main
+   button's surface and joins it into one pill (shared border, rounded only on
+   the right). */
+.claudeComposerSendCaret {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 36px;
+  border-radius: 0 18px 18px 0;
   background: var(--bg-elevated);
   color: var(--text-secondary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
+  font-size: 12px;
   transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 /* Attach (📎) — a round icon button. It carries the same faint resting fill and
@@ -1810,15 +1835,15 @@ body:has(#settingsMenu) #claudeLauncher {
   transition: color 0.15s ease, box-shadow 0.15s ease;
 }
 .claudeComposerAttach[hidden] { display: none; }
-/* Hover feedback. The Fast send carries a neutral ring, so its hover deepens the
-   ring to purple and lightens the glyph; the attach/mic controls lighten the
-   glyph. The send skips the cue while disabled so the not-allowed state still
-   reads as inert. */
+/* Hover feedback. The split send's main button and caret carry a neutral ring,
+   so their hover lightens the label/glyph and lays a purple halo over the
+   control; the attach/mic controls lighten the glyph. The send skips the cue
+   while disabled so the not-allowed state still reads as inert. */
 /* Purple halo — a tight accent ring plus a soft outer glow — layers onto each
-   composer button's hover alongside its existing glyph/ring cue. The Deep button
-   keeps its accent fill underneath; the halo layers on top. */
-.claudeComposerSend:hover:not(:disabled) {
-  border: 1.5px solid #6C5DF5;
+   composer button's hover alongside its existing glyph/ring cue. The Deep
+   variant keeps its accent fill underneath; the halo layers on top. */
+.claudeComposerSend:hover:not(:disabled),
+.claudeComposerSendCaret:hover:not(:disabled) {
   color: #9D93EE;
   box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
@@ -1827,22 +1852,23 @@ body:has(#settingsMenu) #claudeLauncher {
   box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 /* Press feedback for touch devices (no hover): the same purple halo fires on
-   :active for all four composer buttons. .claudeComposerSend covers both the
-   Fast and Deep sends (Deep carries that class too). */
+   :active for the composer buttons. */
 .claudeComposerAttach:active:not(:disabled),
 .micButton:active:not(:disabled),
-.claudeComposerSend:active:not(:disabled) {
+.claudeComposerSend:active:not(:disabled),
+.claudeComposerSendCaret:active:not(:disabled) {
   box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 .claudeComposerInput:disabled,
-.claudeComposerSend:disabled {
+.claudeComposerSend:disabled,
+.claudeComposerSendCaret:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-/* Deep send — the 🧠 sibling of the ↑ send. It reuses .claudeComposerSend's
-   round sizing/structure (so the two stay aligned in the send pair) and
-   overrides the fill with the solid purple accent, marking the heavier
-   "deep think" send as distinct from the ordinary send. */
+/* Deep default — when the persisted default is Deep, the main send button fills
+   with the solid purple accent so the heavier "deep think" mode reads as active
+   at a glance. Toggled on/off by renderSendMode via the .claudeComposerSendDeep
+   class on the same #claudeComposerSend button. */
 .claudeComposerSendDeep {
   background: #6C5DF5;
   color: #fff;
@@ -1853,30 +1879,57 @@ body:has(#settingsMenu) #claudeLauncher {
   border-color: #9D93EE;
   color: #fff;
 }
-/* The Fast / Deep send pair sits at the right edge of the composer as two
-   stacked columns — a round button over a small lowercase label. */
-.claudeSendGroup {
+/* The split send control: the labeled main button + caret as one pill, with the
+   mode menu anchored above it. */
+.claudeSendSplit {
+  position: relative;
   flex-shrink: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  display: inline-flex;
+  align-items: center;
 }
-.claudeSendCol {
+/* Mode menu — drops above the split control (the composer sits at the bottom of
+   the sheet). Lists Fast / Deep, the active default carrying a ★. */
+.claudeModeMenu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  min-width: 150px;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.claudeModeMenu[hidden] { display: none; }
+.claudeModeOption {
+  display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
 }
-.claudeSendLabel {
-  font-size: 9px;
-  line-height: 1;
-  letter-spacing: 0.5px;
-  text-transform: lowercase;
-  color: var(--text-secondary);
+.claudeModeOption:hover {
+  background: rgba(108, 93, 245, 0.18);
 }
-.claudeSendLabelDeep {
+.claudeModeStar {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
   color: #9D93EE;
 }
+.claudeModeName { flex: 1; }
 
 /* Voice dictation button — a plain borderless round icon button in the composer
    row, matching the attach button's weight. Idle is a muted glyph; recording
