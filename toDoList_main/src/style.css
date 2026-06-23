@@ -5229,6 +5229,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 .todoMdViewerShowCompletedLabel {
   flex: 1 1 auto;
+  white-space: nowrap;
 }
 /* Divider between the toggle and the clear actions — mirrors the project
    context menu's quiet separator so the menus read as kin. */
@@ -5417,6 +5418,7 @@ body.row-dragging * { cursor: grabbing !important; }
   right: 0;
   z-index: 30;
   min-width: 150px;
+  width: max-content;
   background: var(--bg-surface);
   border: 0.5px solid var(--border-bright);
   border-radius: var(--radius-md);
