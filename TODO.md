@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[LOW]** Move the show-completed toggle into the TODO.md viewer overflow menu
+- [x] **[LOW]** Move the show-completed toggle into the TODO.md viewer overflow menu — Completed: 2026-06-23
   - Type: feature
   - Description: Relocate the "Show completed (N)" toggle out of the TODO.md viewer's header meta row and into the existing "More actions" (`todoMdViewerOverflowBtn`) menu in `todoMdViewer.js`, decluttering the header. It becomes a checkable item at the top of the overflow menu — above a divider, with the destructive Clear completed / Clear all below it — that flips the persisted show/hide preference and re-renders the body. The `showCompletedBtn` comes out of the meta append order so the row carries only Synced / Run backlog / Sync / ⋯ / Collapse.
   - Behavior:
