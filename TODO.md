@@ -98,13 +98,6 @@
   - Completed: 2026-06-24
   <!-- id: 45a3c33f-482a-4c9c-bc21-aceebcf57778 -->
 
-- [ ] **[LOW]** Test no-op: verify the app's CSS defines a dark theme as default
-  - Type: feature
-  - Description: This is an intentional pipeline test entry, not a real change. Verify that `toDoList_main/src/style.css` already defines dark mode as the default theme (per the project's UI conventions) and that the theme CSS variables exist. The expected outcome is that this condition is ALREADY TRUE, so the run should make no edits, create no commit, and resolve to a "No Change" status rather than "Shipped". Do NOT modify any file, add comments, or reformat anything to force a diff — if the condition holds, exit cleanly with no changes. The purpose is to confirm the run-status reporting shows "No Change" for a clean no-op that passes preflight and the test suite.
-  - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: f4c39e35-c484-41d9-b121-b66565fe95b5 -->
-
 - [ ] **[LOW]** Update the Fast-mode submit button color in the chat window to match the dropdown's lighter purple
   - Type: feature
   - Description: The Fast-mode submit button in the Claude sheet chat composer currently uses the deep/dark button color. Change its background color to match the lighter purple used by the dropdowns in the same sheet (approximately the `#6C5DF5` / `#9D93EE` accent range from the design tokens). Locate the Fast submit button's CSS rule in `style.css` (or the inline style set in `claudeSheet.js`) and update the color to match the dropdown's lighter purple exactly — sample the dropdown's rendered background rather than guessing a hex value. Do not change the button's shape, size, or any other property.
