@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-24',
+        fixed: [
+            "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-23',
         fixed: [
-            "The chat composer's accent purple now highlights the send-mode selector instead of the dropdown caret.",
             "The chat composer's deep/fast send-mode caret now matches the submit button's accent purple, so the split send control reads as one matched pair.",
             "The chat composer's fast/deep mode picker now fills with accent purple and its send caret shows in white.",
             "The chat composer's accent purple now fills the caret button that opens the send-mode menu instead of the dropdown window itself.",
