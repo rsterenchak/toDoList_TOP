@@ -1810,7 +1810,7 @@ body:has(#settingsMenu) #claudeLauncher {
   height: 36px;
   border-radius: 0 18px 18px 0;
   background: var(--bg-elevated);
-  color: #6C5DF5;
+  color: #fff;
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
   font-size: 12px;
@@ -1899,7 +1899,7 @@ body:has(#settingsMenu) #claudeLauncher {
   flex-direction: column;
   gap: 2px;
   padding: 4px;
-  background: var(--bg-elevated);
+  background: #6C5DF5;
   border: 0.5px solid var(--border-mid);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);

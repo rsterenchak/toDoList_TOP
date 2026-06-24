@@ -63,9 +63,9 @@
   - Completed: 2026-06-23
   <!-- id: 8ab65856-a60e-4f68-95f2-696f3af2a27c -->
 
-- [ ] **[LOW]** Set fast/deep dropdown picker background to #6C5DF5 and caret to white
+- [x] **[LOW]** Set fast/deep dropdown picker background to #6C5DF5 and caret to white
   - Type: bug
   - Description: The composer's fast-vs-deep mode dropdown picker should have its background color set to `#6C5DF5` (accent purple), and the send caret next to it should be white (`#fff`) rather than its current color. Apply both in the composer styling — background on the dropdown picker element, white on `.claudeComposerSendCaret`. Styling-only change, no behavior or markup changes.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-23
   <!-- id: 84c1b96e-f83a-4734-b47b-f2b0449700a0 -->
