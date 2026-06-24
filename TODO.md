@@ -127,3 +127,30 @@
     - Do not restructure the existing whole-row iterate interaction; Revert sits alongside it.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: 34b83cbf-0377-431e-8b58-b320d7d6f5f9 -->
+
+- [ ] **[MEDIUM]** Add a per-entry Revert to completed rows in the TODO.md viewer, and hide Run on completed rows
+  - Type: feature
+  - Description: Add a Revert control to completed (`- [x]`) entry rows in the TODO.md viewer that rolls back that entry's shipped change through the already-deployed Worker `revert` route and the `revertEntry` helper added with the Runs Revert control. On completed rows, replace the "Run this entry" button with Revert — re-running a shipped entry isn't wanted — while keeping Delete; open rows stay exactly as they are. The control resolves the row's `<!-- id -->` marker (`tok.entryId`) to the merged PR, the same gate the existing Run/Delete controls already use. Also rewrite the now-stale "no in-app revert by design" section of CLAUDE.md.
+  - Behavior:
+    - In `buildViewerRenderedBody` (`todoMdViewer.js`), per top-level (`indent === 0`) entry carrying a resolved `tok.entryId`:
+      - Revert: show ONLY when `tok.checked` (completed) AND the entry has not been reverted this session (see guard). Render as a labeled "Revert" pill in the right-hand control cluster.
+      - Run this entry: change its render gate to also require `!tok.checked`, so it shows on open rows only (today it also shows on completed rows). Open rows keep Run unchanged.
+      - Delete: unchanged — open and completed both keep it.
+    - Activating Revert (click) must `event.stopPropagation()`, matching the existing Run/Delete controls. Revert is NOT gated by the per-project active-run guard (`readActiveRun`) — it's a PR operation, not a dispatch, so it's allowed even while a run is in flight.
+    - Tapping Revert opens `showConfirmModal` naming the entry (its label) and stating this ships a rollback; Cancel does nothing.
+    - On confirm: disable the button with a loading state (reuse the per-entry `--loading` convention) and call `revertEntry(entryId, target)` with the viewer's existing `target` (the project's resolved inject target `{ repo, file_path }`, the same object `performRewrite`/`runEntry` already pass).
+    - Handle the three Worker outcomes (identical contract to the Runs Revert):
+      - `merged === true`: success toast (`showInjectToast`, e.g. "Reverted — new build shipping"); add the entryId to a module-level reverted-this-session set and re-render so the row's Revert disappears. This is the double-revert guard — a second merged revert of the same PR would re-apply the original change. Session-scoped: it resets on a full reload, which is acceptable given the confirm step and the merged:false link below.
+      - `merged === false`: surface `res.reason` (conflict or unconfirmed) and open/link `res.revert_pr_url` to finish in GitHub; track the entryId as pending so the control links to the existing revert PR rather than POSTing again — never create a duplicate revert PR.
+      - `ok === false`: error toast using the helper's `reason` (404 nothing-to-revert, 409 already-a-revert, 502 failures).
+  - Implementation notes:
+    - Add `revertEntry` to the existing `./inject.js` import in `todoMdViewer.js`; `showConfirmModal` and `showInjectToast` are already imported there.
+    - Pass a new optional `onRevertEntry(entryId, entryLabel, btn)` callback into `buildViewerRenderedBody` alongside `onRunEntry`/`onDeleteEntry`, and wire it in the viewer to the handler above (mirroring how `deleteEntry`/`runEntry` are wired). This is additive to the opts — existing callers/tests are unaffected. Keep the reverted/pending session sets at module scope so they survive re-renders and re-fetches.
+    - Revert pill: a labeled "Revert" button with a leading undo / counter-clockwise-arrow inline SVG, styled on the `todoMdViewerRunEntryBtn` vocabulary but with the app's warning-amber accent (distinct from Run-purple and Delete-red); comfortable tap target on mobile; works in both the desktop card and the `#todoMdViewerMobileSheet`. Add the rule in `style.css`.
+    - CLAUDE.md: rewrite the "Hard rollback" / "no in-app revert button by design" section to reflect that in-app full-auto Revert now exists — in the Runs tab on Shipped rows and in the viewer on completed entries — via the Worker `revert` route (GraphQL `revertPullRequest` + auto-merge; on conflict it leaves the revert PR open and returns its link). Document the safety properties: reverts never become runs or TODO.md entries (so the UI can't revert a revert), the Worker additionally refuses reverting any PR whose title starts with `Revert `, and a successful revert is guarded against re-triggering. Keep the manual GitHub Revert documented as the fallback for the conflict / not-auto-merged case.
+  - Out of scope:
+    - Any Worker change — the `revert` route and `revertEntry` already shipped with the Runs entry.
+    - Touching the existing Run/Delete controls beyond the completed-row gate change for Run.
+    - Persisting the reverted-state guard across reloads, or adding a Worker-side dedup of repeat reverts of the same PR (possible future hardening; the session guard plus the confirm step suffice here).
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`, `CLAUDE.md`
+  <!-- id: a5f6f825-f35a-4d3c-9da1-9e1545ceb4d3 -->
