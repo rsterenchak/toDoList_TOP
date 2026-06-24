@@ -128,7 +128,7 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: 34b83cbf-0377-431e-8b58-b320d7d6f5f9 -->
 
-- [ ] **[MEDIUM]** Add a per-entry Revert to completed rows in the TODO.md viewer, and hide Run on completed rows
+- [x] **[MEDIUM]** Add a per-entry Revert to completed rows in the TODO.md viewer, and hide Run on completed rows — Completed: 2026-06-24
   - Type: feature
   - Description: Add a Revert control to completed (`- [x]`) entry rows in the TODO.md viewer that rolls back that entry's shipped change through the already-deployed Worker `revert` route and the `revertEntry` helper added with the Runs Revert control. On completed rows, replace the "Run this entry" button with Revert — re-running a shipped entry isn't wanted — while keeping Delete; open rows stay exactly as they are. The control resolves the row's `<!-- id -->` marker (`tok.entryId`) to the merged PR, the same gate the existing Run/Delete controls already use. Also rewrite the now-stale "no in-app revert by design" section of CLAUDE.md.
   - Behavior:
