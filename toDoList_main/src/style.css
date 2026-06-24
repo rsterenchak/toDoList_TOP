@@ -1775,8 +1775,9 @@ body:has(#settingsMenu) #claudeLauncher {
   color: #8a8a99;
 }
 /* Split send — main button: a labeled pill ("Fast" / "Deep") forming the left
-   half of the split control. Neutral resting fill with a hairline ring; the
-   accent-filled Deep variant overrides the fill below when Deep is the default. */
+   half of the split control. Filled with the same lighter accent purple the
+   mode-dropdown picker (the caret) uses, with a white label for contrast; the
+   Deep variant below keeps the matching accent fill when Deep is the default. */
 .claudeComposerSend {
   flex-shrink: 0;
   display: inline-flex;
@@ -1785,8 +1786,8 @@ body:has(#settingsMenu) #claudeLauncher {
   height: 36px;
   padding: 0 12px;
   border-radius: 18px 0 0 18px;
-  background: var(--bg-elevated);
-  color: #6C5DF5;
+  background: #6C5DF5;
+  color: #fff;
   border: 0.5px solid var(--border-mid);
   border-right: none;
   cursor: pointer;

@@ -98,9 +98,9 @@
   - Completed: 2026-06-24
   <!-- id: 45a3c33f-482a-4c9c-bc21-aceebcf57778 -->
 
-- [ ] **[LOW]** Update the Fast-mode submit button color in the chat window to match the dropdown's lighter purple
+- [x] **[LOW]** Update the Fast-mode submit button color in the chat window to match the dropdown's lighter purple
   - Type: feature
   - Description: The Fast-mode submit button in the Claude sheet chat composer currently uses the deep/dark button color. Change its background color to match the lighter purple used by the dropdowns in the same sheet (approximately the `#6C5DF5` / `#9D93EE` accent range from the design tokens). Locate the Fast submit button's CSS rule in `style.css` (or the inline style set in `claudeSheet.js`) and update the color to match the dropdown's lighter purple exactly — sample the dropdown's rendered background rather than guessing a hex value. Do not change the button's shape, size, or any other property.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: 0e45835a-e884-4ced-9b84-636cbfd78429 -->

@@ -9,12 +9,14 @@ export const changelog = [
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
         ],
+        changed: [
+            "The chat composer's Fast-mode send button now fills with the same lighter accent purple as the mode dropdown picker.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-23',
         fixed: [
-            "The chat composer's deep/fast send-mode caret now matches the submit button's accent purple, so the split send control reads as one matched pair.",
             "The chat composer's fast/deep mode picker now fills with accent purple and its send caret shows in white.",
             "The chat composer's accent purple now fills the caret button that opens the send-mode menu instead of the dropdown window itself.",
             "Runs that finish without merging any change are now marked \"No change\" in the Runs tab instead of Shipped, with the row linking out to its run log.",
