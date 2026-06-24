@@ -206,3 +206,10 @@
     - A persistent/always-on all-repos poll — the wide poll is open-gated only.
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`
   <!-- id: a49b50e1-90bf-467d-8007-1f2c721cb99d -->
+
+- [ ] **[LOW]** Add a no-op test entry to verify the inject-and-run pipeline end-to-end
+  - Type: feature
+  - Description: This is a test entry to confirm the full pipeline — inject, dispatch, build, merge, deploy — completes successfully and checks off the entry. The build agent should open a trivial PR (e.g., add and remove a single comment in `main.js`) that passes all existing tests, auto-merges, and marks this entry complete. No functional change should survive in the final codebase.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1ab046ed-e3ec-4ed6-9fca-7a65750468e9 -->
