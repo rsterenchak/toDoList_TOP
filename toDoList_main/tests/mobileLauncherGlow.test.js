@@ -89,6 +89,32 @@ describe('mobile Claude launcher glow', () => {
         expect(/108\s*,\s*93\s*,\s*245|#6C5DF5/i.test(body)).toBe(true);
     });
 
+    it('paints the launcher as a purple FAB with a white sparkle glyph', () => {
+        const id = renderedLauncherId();
+        const body = ruleBody(mobileMediaText(), id);
+        expect(body, `expected a #${id} rule inside @media (max-width: 1023px)`).toBeTruthy();
+        // Purple FAB face: the Void accent #6C5DF5 set as the background, so the
+        // button reads as a primary launcher rather than a neutral dark dot.
+        expect(/background\s*:\s*#6C5DF5/i.test(body)).toBe(true);
+        // White glyph centered on the purple face.
+        expect(/color\s*:\s*#(?:fff|ffffff)/i.test(body)).toBe(true);
+        // The launcher factory renders the sparkle (✦) icon, not the old "⋯".
+        const fn = claudeSheet.match(/function\s+buildLauncher\s*\([^)]*\)\s*\{([\s\S]*?)\n\}/);
+        expect(fn, 'expected a buildLauncher factory in claudeSheet.js').toBeTruthy();
+        expect(/textContent\s*=\s*['"]✦['"]/.test(fn[1])).toBe(true);
+    });
+
+    it('builds the glow as a three-layer Void-accent halo', () => {
+        const id = renderedLauncherId();
+        const body = ruleBody(mobileMediaText(), id) || '';
+        const shadow = body.match(/box-shadow\s*:([^;]*)/i);
+        expect(shadow, `expected a box-shadow on #${id}`).toBeTruthy();
+        // Three radial glow layers carry the Void accent in rgba form; a final
+        // dark drop shadow may follow. Count the accent-colored layers.
+        const accentLayers = (shadow[1].match(/rgba\(\s*108\s*,\s*93\s*,\s*245/gi) || []).length;
+        expect(accentLayers).toBeGreaterThanOrEqual(3);
+    });
+
     it('keeps the launcher in its fixed position (no layout-shifting glow)', () => {
         const id = renderedLauncherId();
         const body = ruleBody(mobileMediaText(), id) || '';

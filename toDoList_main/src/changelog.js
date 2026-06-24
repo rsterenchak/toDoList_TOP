@@ -6,13 +6,11 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-24',
-        added: [
-            "The mobile chat button now has a soft purple glow so it stands out as the primary way to open the assistant.",
-        ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
             "The delete confirmation now appears on top of the TODO.md viewer sheet on mobile instead of behind it.",
             "The mobile chat button's soft purple glow now actually appears instead of staying invisible.",
+            "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
         ],
         changed: [
             "The chat composer's Fast-mode send button now fills with the same lighter accent purple as the mode dropdown picker.",
