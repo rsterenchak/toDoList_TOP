@@ -69,3 +69,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-23
   <!-- id: 84c1b96e-f83a-4734-b47b-f2b0449700a0 -->
+
+- [ ] **[MEDIUM]** Move purple background from dropdown menu to the caret button that opens it
+  - Type: bug
+  - Description: A prior change set `.claudeModeMenu` (the fast/deep dropdown window) background to `#6C5DF5`, but the intended target was the caret button that opens the menu, not the menu itself. Restore `.claudeModeMenu` background to `var(--bg-elevated)`, and instead set `.claudeComposerSendCaret` (the caret half of the split send control that opens the menu) background to `#6C5DF5`. Keep the caret glyph at `#fff` for white-on-purple contrast. Update the corresponding assertions in the test suite to match the new targets.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 28de2bc0-d0b8-4348-9890-d006468c7622 -->
