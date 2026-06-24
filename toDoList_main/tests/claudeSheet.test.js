@@ -433,8 +433,13 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     let fetchSpy;
     let statusJson;
     let resolveJson;
+    let readJson;
 
     function makeFetch() {
+        // Track ids of entries injected this test so the `read` route can reflect
+        // them as checked-off on main — the success path now confirms a ship by
+        // reading the entry's checkbox off main, not by PR-search.
+        const injectedIds = [];
         return vi.fn((url, opts) => {
             const body = JSON.parse(opts.body);
             let json = { ok: true };
@@ -446,6 +451,19 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
                 json = statusJson;
             } else if (body.resolve) {
                 json = resolveJson;
+            } else if (body.read) {
+                if (readJson !== null) {
+                    json = readJson;
+                } else {
+                    // Default: every entry injected this test is marked complete
+                    // on main, so a green run for it confirms as SHIPPED.
+                    const content = injectedIds
+                        .map((id) => '- [x] **[LOW]** Shipped\n  - Type: feature\n  <!-- id: ' + id + ' -->')
+                        .join('\n\n');
+                    json = { content: content, sha: 'sha1' };
+                }
+            } else if (body.entry) {
+                injectedIds.push(body.id);
             }
             return Promise.resolve({
                 ok: true,
@@ -463,6 +481,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         initInjectConfig();
         statusJson = { found: false };
         resolveJson = { found: false };
+        readJson = null;
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
         globalThis.fetch = fetchSpy;
@@ -768,8 +787,8 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     it('flips the run record to SHIPPED when the status poll reports success', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
-        // A green run only ships once its marker resolves to a merged PR.
-        resolveJson = { found: true, pr_number: 7, merge_commit_sha: 'abc' };
+        // A green run ships once its entry reads back checked-off on main (the
+        // default `read` mock marks every injected entry complete).
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');
         card.querySelector('.claudeDraftInject').click();
@@ -812,7 +831,6 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     it('clears the project active-run entry when the run reaches a terminal outcome', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
-        resolveJson = { found: true, pr_number: 7, merge_commit_sha: 'abc' };
         selectProject('Beta');
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');
@@ -1002,35 +1020,19 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     // ── "No change" verdict on a green-but-no-op run ──
     // A graceful no-op run (entry reported ineligible, exits clean) returns
-    // success but merges nothing, so it must NOT be stamped SHIPPED. After the
-    // marker fails to resolve to a merged PR across a short retry, the row reads
+    // success but merges nothing, so it must NOT be stamped SHIPPED. The success
+    // path confirms the ship by reading the entry's checkbox directly off main
+    // via the index-free `read` route (no PR-search lag): an entry left present
+    // and unchecked is the positive signature of a no-op, so the row reads
     // "No change" and links out to the Actions log instead of becoming iterable.
 
-    it('does not commit "No change" on a single transient resolve miss — keeps polling', async () => {
-        // First definitive found:false: one miss is never trusted (a real ship's
-        // merged PR can lag in search), so the row stays RUNNING and keeps watch.
-        resolveJson = { found: false };
-        statusJson = { found: true, status: 'completed', conclusion: 'success' };
-        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'Maybe no-op', status: 'RUNNING', dispatchedAt: Date.now() },
-        ]));
-        document.body.innerHTML = '';
-        mountClaudeSheet(document.body);
-        await flush();
-
-        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
-        expect(stored[0].status).not.toBe('NOCHANGE');
-        expect(stored[0].status).not.toBe('SHIPPED');
-        expect(stored[0].noChangeMisses).toBe(1);
-    });
-
-    it('commits "No change" once the resolve miss persists across the retry threshold', async () => {
-        // Pre-seed one prior miss so this poll reaches the threshold and the
-        // verdict commits within a single mount: a green run that never merged.
-        resolveJson = { found: false };
+    it('commits "No change" when the entry reads back present and unchecked on main', async () => {
+        // The routine left the entry unchecked (skipped it), so a single read off
+        // main settles the verdict immediately — no grace window, no Shipped flash.
         statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9' };
+        readJson = { content: '# TODO\n\n- [ ] **[HIGH]** No-op run\n  - Type: bug\n  <!-- id: e1 -->', sha: 's' };
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'No-op run', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op run', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
@@ -1043,13 +1045,12 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].runUrl).toBe('https://github.com/x/y/actions/runs/9');
     });
 
-    it('still ships a green run whose marker resolves — even after an earlier miss', async () => {
-        // A merged PR turning up after a prior transient miss is positive proof
-        // of a ship: the row must be SHIPPED, never misread as "No change".
-        resolveJson = { found: true, pr_number: 3, merge_commit_sha: 'def' };
+    it('ships a green run when the entry reads back checked-off on main', async () => {
+        // A checked `- [x]` entry is positive proof the change merged → SHIPPED.
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = { content: '# TODO\n\n- [x] **[HIGH]** Shipped run\n  - Type: bug\n  <!-- id: e1 -->', sha: 's' };
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'Lagged ship', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+            { entryId: 'e1', correlationId: 'c1', title: 'Shipped run', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
@@ -1060,13 +1061,31 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].status).toBe('SHIPPED');
     });
 
-    it('does not commit "No change" on a resolve error — keeps polling', async () => {
-        // A resolve failure (ok:false) is not a definitive miss; the miss counter
-        // must not advance and the row must stay non-terminal.
-        resolveJson = { ok: false, reason: 'network' };
+    it('fails safe to SHIPPED when the entry marker is absent from main', async () => {
+        // Marker gone (completed-then-cleared, or squashed away) is an ambiguity,
+        // and every ambiguity fails safe to SHIPPED so a real ship is never
+        // misread as "No change".
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = { content: '# TODO\n\n- [x] **[LOW]** Some other entry\n  - Type: feature\n  <!-- id: other -->', sha: 's' };
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'Blip', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+            { entryId: 'e1', correlationId: 'c1', title: 'Cleared entry', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('does not commit a verdict on a transient read failure — keeps polling', async () => {
+        // A read failure (ok:false) is not a definitive answer; the row must stay
+        // non-terminal and re-read on the next poll rather than guess a verdict.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = {}; // no content string → readTodoMdFromWorker returns ok:false
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Blip', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
@@ -1074,13 +1093,30 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).not.toBe('NOCHANGE');
-        expect(stored[0].noChangeMisses).toBe(1);
+        expect(stored[0].status).not.toBe('SHIPPED');
+        expect(stored[0].readMisses).toBe(1);
+    });
+
+    it('fails safe to SHIPPED once read failures pass the retry threshold', async () => {
+        // Read keeps failing; rather than hang the row on Running forever, fail
+        // safe toward SHIPPED once the misses pass the retry threshold.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = {}; // persistent read failure
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Unreadable', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now(), readMisses: 2 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
     });
 
     it('keeps the legacy success → SHIPPED path for records with no entryId', async () => {
-        // A record that predates entry-id verification can't be resolved, so the
+        // A record that predates entry-id verification can't be read back, so the
         // historical behavior (success → SHIPPED) is preserved — no regression.
-        resolveJson = { found: false };
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { correlationId: 'c1', title: 'Legacy run', status: 'RUNNING', dispatchedAt: Date.now() },
@@ -2906,6 +2942,7 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
 
     function makeFetch() {
         chatBodies = [];
+        const injectedIds = [];
         return vi.fn((url, opts) => {
             const body = JSON.parse(opts.body);
             let json = { ok: true };
@@ -2918,6 +2955,15 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
                 json = statusJson;
             } else if (body.resolve) {
                 json = resolveJson;
+            } else if (body.read) {
+                // Reflect every entry injected this test as checked-off on main so
+                // a green run for it confirms as SHIPPED via the read route.
+                const content = injectedIds
+                    .map((id) => '- [x] **[LOW]** Shipped\n  - Type: feature\n  <!-- id: ' + id + ' -->')
+                    .join('\n\n');
+                json = { content: content, sha: 'sha1' };
+            } else if (body.entry) {
+                injectedIds.push(body.id);
             }
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
         });

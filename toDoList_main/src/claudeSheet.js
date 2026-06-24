@@ -27,6 +27,7 @@ import {
     dispatchRun,
     pollRunStatus,
     resolveEntryByMarker,
+    readTodoMdFromWorker,
     getCachedTargets,
     loadInjectTargets,
     isInjectConfigured,
@@ -2284,8 +2285,8 @@ async function pollRunRecordOnce(correlationId, startedAt, target, project) {
         if (res.conclusion === 'success') {
             // reconcileSuccessConclusion owns stopping the poller and freeing
             // the guard once it reaches a verdict (SHIPPED / NOCHANGE), and
-            // deliberately keeps polling on an unresolved miss or resolve error.
-            await reconcileSuccessConclusion(correlationId, project, res.runUrl);
+            // deliberately keeps polling on a transient read failure.
+            await reconcileSuccessConclusion(correlationId, project, res.runUrl, target);
             return;
         }
         if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
@@ -2311,60 +2312,89 @@ function findRunRecord(correlationId) {
     return null;
 }
 
-// Consecutive definitive `found:false` resolves required before a green run is
-// committed as "No change". A genuine ship's merged PR can lag in PR search
-// right at completion, so a single miss is never trusted — only a miss that
-// persists across a short retry (one poll interval apart) commits the verdict.
-const NOCHANGE_CONFIRM_MISSES = 2;
+// Transient read failures tolerated before a green run fails safe to SHIPPED.
+// The decision keys on one quick contents read off main; if that read keeps
+// failing we must not hang the row on Running forever, but we also can't read a
+// transient blip as a no-op — so after a couple of misses we fail safe toward
+// SHIPPED (every ambiguity lands on SHIPPED, never on "No change").
+const READ_CONFIRM_RETRIES = 2;
+
+// Determine an entry's checkbox state in a TODO.md body by its `<!-- id: … -->`
+// marker. The marker comment is an indented sub-bullet of its entry, so the
+// entry's checkbox is the nearest preceding `- [ ]` / `- [x]` task line. Returns
+// 'checked', 'unchecked', or null when the marker is absent (or malformed with
+// no preceding checkbox — treated as absent, which the caller fails safe to
+// SHIPPED).
+function entryCheckboxState(content, entryId) {
+    if (typeof content !== 'string' || !entryId) return null;
+    const lines = content.split('\n');
+    const checkboxRe = /^\s*- \[([ xX])\]/;
+    let checked = null;
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(checkboxRe);
+        if (m) checked = m[1].toLowerCase() === 'x';
+        if (lines[i].indexOf('<!-- id: ' + entryId) !== -1) {
+            if (checked === null) return null;
+            return checked ? 'checked' : 'unchecked';
+        }
+    }
+    return null;
+}
 
 // Reconcile a completed-with-success run. A green workflow conclusion alone is
 // NOT proof a change merged: a graceful no-op run (the routine reports the entry
-// ineligible and exits clean with tests green) also returns success. Verify the
-// entry actually shipped via its marker before asserting SHIPPED:
-//   • found:true with a merge_commit_sha → SHIPPED (proof of a merged PR).
-//   • a definitive found:false that persists across NOCHANGE_CONFIRM_MISSES
-//     polls → NOCHANGE ("No change"): the run was a clean no-op, nothing merged.
-//   • a resolve error / network blip, or a single transient found:false → keep
-//     polling. Never commit "No change" on one miss or a resolve failure, so a
-//     genuine ship whose merged PR lags in search is never misread.
-// A record with no entryId can't be verified, so keep the historical
-// success → SHIPPED behavior for those (don't regress legacy records).
-async function reconcileSuccessConclusion(correlationId, project, runUrl) {
+// ineligible and exits clean with tests green) also returns success. Decide
+// ship-vs-no-op by reading the run's target TODO.md directly off main via the
+// index-free `read` route (a GitHub contents fetch that reflects the merge
+// immediately, PR-merge or direct push — no PR-search lag), and key on the
+// entry's checkbox:
+//   • entry checked `- [x]`           → SHIPPED.
+//   • entry present and unchecked     → NOCHANGE ("No change"): the routine
+//     leaves a skipped entry unchecked, so unchecked-with-marker is the positive
+//     signature of a no-op.
+//   • marker absent (completed-then-cleared or squashed away) → SHIPPED.
+//   • read fails transiently → keep polling, retry a couple of ticks, then
+//     fail safe to SHIPPED.
+// Fail safe toward SHIPPED on every ambiguity so a genuine ship is never
+// mislabeled. A record with no entryId or no resolvable target can't be
+// verified, so keep the historical success → SHIPPED behavior for those.
+async function reconcileSuccessConclusion(correlationId, project, runUrl, target) {
     const rec = findRunRecord(correlationId);
     const settle = function() {
         stopRunPoller(correlationId);
         freeProjectRunGuard(project);
     };
     if (!rec) { settle(); return; }
-    if (!rec.entryId) {
+    if (!rec.entryId || !target || !target.repo || !target.file_path) {
         setRunRecordStatus(correlationId, 'SHIPPED');
         settle();
         return;
     }
-    const res = await resolveEntryByMarker(rec.entryId);
-    // Resolve errors / network blips are not a definitive miss — keep polling.
-    if (!res || res.ok === false) return;
-    if (res.found === true && res.merge_commit_sha) {
-        setRunRecordStatus(correlationId, 'SHIPPED');
-        settle();
-        return;
-    }
-    if (res.found === false) {
-        rec.noChangeMisses = (rec.noChangeMisses || 0) + 1;
-        if (rec.noChangeMisses >= NOCHANGE_CONFIRM_MISSES) {
-            // Persist the Actions log URL so the (non-iterable) "No change" row
-            // can open it on tap.
-            if (runUrl) rec.runUrl = runUrl;
-            setRunRecordStatus(correlationId, 'NOCHANGE');
+    const read = await readTodoMdFromWorker(target);
+    if (!read || read.ok === false) {
+        // Transient read failure — keep polling, but don't hang forever: once the
+        // misses pass the retry threshold, fail safe to SHIPPED.
+        rec.readMisses = (rec.readMisses || 0) + 1;
+        if (rec.readMisses > READ_CONFIRM_RETRIES) {
+            setRunRecordStatus(correlationId, 'SHIPPED');
             settle();
         } else {
-            // First miss — persist the counter and re-check on the next poll.
             saveRunRecords();
         }
         return;
     }
-    // Any other shape (e.g. found:true without a merge_commit_sha) can't be
-    // asserted either way yet — keep polling.
+    const state = entryCheckboxState(read.content, rec.entryId);
+    if (state === 'unchecked') {
+        // Entry still present and unchecked → the routine skipped it (no-op).
+        // Persist the Actions log URL so the (non-iterable) "No change" row can
+        // open it on tap.
+        if (runUrl) rec.runUrl = runUrl;
+        setRunRecordStatus(correlationId, 'NOCHANGE');
+    } else {
+        // 'checked' → shipped; null (marker absent) → fail safe to SHIPPED.
+        setRunRecordStatus(correlationId, 'SHIPPED');
+    }
+    settle();
 }
 
 // Resume polling for any run record that hasn't reached a terminal status —
