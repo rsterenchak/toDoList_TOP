@@ -155,9 +155,9 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`, `CLAUDE.md`
   <!-- id: a5f6f825-f35a-4d3c-9da1-9e1545ceb4d3 -->
 
-- [ ] **[LOW]** Test revert target: add a single CSS comment to style.css
+- [x] **[LOW]** Test revert target: add a single CSS comment to style.css
   - Type: feature
   - Description: This entry exists solely as a revert test target. Add one innocuous comment line to the top of `toDoList_main/src/style.css`, such as `/* revert-test-marker */`. The change must produce a real commit and merged PR so the in-app Revert control has a concrete PR to roll back. Once shipped, the user will immediately trigger a revert via the Runs tab to verify the revert pipeline (Worker → revert PR → auto-merge → deploy) resolves correctly in the PWA interface. Do not change any actual styles.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: ddffefb5-989d-44df-99c2-89d937d142f8 -->
