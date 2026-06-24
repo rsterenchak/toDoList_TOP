@@ -15,8 +15,20 @@ import {
     rewriteTodoMd,
     dispatchRun,
     pollRunStatus,
+    revertEntry,
     showInjectToast,
 } from './inject.js';
+
+// Entries reverted (merged) this session — once a completed row's change has
+// been rolled back, its Revert control disappears so it can never be triggered
+// again. This is the double-revert guard: a second merged revert of the same PR
+// would re-apply the original change. Session-scoped — it resets on a full
+// reload, which is acceptable given the confirm step and the pending-PR link
+// below. `pendingRevertPrUrls` tracks entries whose revert PR opened but didn't
+// auto-merge: the control then opens that existing PR rather than POSTing a
+// duplicate revert. Both live at module scope so they survive re-renders.
+const revertedThisSession = new Set();
+const pendingRevertPrUrls = new Map();
 
 // The viewer card's mobile tap-to-open-sheet behavior lives in main.js
 // (the completed + viewer mobile-sheet machinery stays there). main.js
@@ -267,10 +279,19 @@ const DELETE_ENTRY_TRASH_GLYPH =
     '<line x1="14" y1="10" x2="14" y2="17"/>' +
     '</svg>';
 
+// Quiet counter-clockwise / undo arrow for the per-entry Revert pill — same
+// glyph the Runs-tab Revert control uses so the two surfaces read identically.
+const REVERT_ENTRY_UNDO_GLYPH =
+    '<svg class="todoMdViewerRevertEntryIcon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<polyline points="1 4 1 10 7 10"/>' +
+    '<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>' +
+    '</svg>';
+
 export function buildViewerRenderedBody(text, options) {
     const opts = options || {};
     const onRunEntry = typeof opts.onRunEntry === 'function' ? opts.onRunEntry : null;
     const onDeleteEntry = typeof opts.onDeleteEntry === 'function' ? opts.onDeleteEntry : null;
+    const onRevertEntry = typeof opts.onRevertEntry === 'function' ? opts.onRevertEntry : null;
     const wrap = document.createElement('div');
     wrap.className = 'todoMdViewerRendered';
     const tokens = filterCompletedTokens(
@@ -301,11 +322,12 @@ export function buildViewerRenderedBody(text, options) {
             label.textContent = tok.text.replace(TODO_MD_ID_MARKER_RE, '').replace(/\s+$/, '');
             row.appendChild(box);
             row.appendChild(label);
-            // Per-entry "Run this entry" control — only for top-level entries
-            // whose `<!-- id: … -->` marker resolved to a concrete id. Entries
-            // without an id never get the control (running the wrong thing is
-            // worse than not offering it).
-            if (onRunEntry && tok.indent === 0 && tok.entryId) {
+            // Per-entry "Run this entry" control — only for top-level OPEN
+            // (unchecked) entries whose `<!-- id: … -->` marker resolved to a
+            // concrete id. Entries without an id never get the control (running
+            // the wrong thing is worse than not offering it); a completed entry
+            // gets Revert instead (re-running a shipped entry isn't wanted).
+            if (onRunEntry && tok.indent === 0 && tok.entryId && !tok.checked) {
                 const runBtn = document.createElement('button');
                 runBtn.type = 'button';
                 runBtn.className = 'todoMdViewerRunEntryBtn';
@@ -319,6 +341,33 @@ export function buildViewerRenderedBody(text, options) {
                     onRunEntry(tok.entryId, runBtn);
                 });
                 row.appendChild(runBtn);
+            }
+            // Per-entry Revert control — only for top-level COMPLETED (checked)
+            // entries carrying a resolved id, and only while the entry hasn't
+            // already been reverted this session (the double-revert guard — a
+            // second merged revert of the same PR re-applies the original
+            // change). Rolls the shipped change back through the Worker `revert`
+            // route. A still-pending revert PR (auto-merge failed) keeps the
+            // pill so it can link out to that existing PR.
+            if (onRevertEntry && tok.indent === 0 && tok.entryId && tok.checked &&
+                !revertedThisSession.has(tok.entryId)) {
+                const revertBtn = document.createElement('button');
+                revertBtn.type = 'button';
+                revertBtn.className = 'todoMdViewerRevertEntryBtn';
+                revertBtn.dataset.entryId = tok.entryId;
+                const pendingPr = pendingRevertPrUrls.has(tok.entryId);
+                revertBtn.setAttribute('aria-label',
+                    pendingPr ? 'Open the revert pull request' : 'Revert this change');
+                revertBtn.title =
+                    pendingPr ? 'Open the revert pull request' : 'Revert this shipped change';
+                revertBtn.innerHTML = REVERT_ENTRY_UNDO_GLYPH +
+                    '<span class="todoMdViewerRevertEntryLabel">Revert</span>';
+                const revertLabel = label.textContent;
+                revertBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    onRevertEntry(tok.entryId, revertLabel, revertBtn);
+                });
+                row.appendChild(revertBtn);
             }
             // Per-entry delete control — same gate as the Run button (top-level
             // entries carrying a resolved id marker). Deleting an id-less entry
@@ -542,7 +591,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(text)
-                : buildViewerRenderedBody(text, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(text, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
     }
@@ -599,7 +648,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(content)
-                : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
         // Refresh the toggle's (N) now that live content is available.
@@ -755,6 +804,77 @@ function buildTodoMdViewerCard(projectName, target) {
             if (btn) {
                 btn.disabled = false;
                 btn.classList.remove('todoMdViewerDeleteEntryBtn--loading');
+            }
+        }
+    }
+
+    // Re-render the rendered body from the already-loaded content (no re-fetch:
+    // a revert is a PR operation that leaves TODO.md unchanged) so the session
+    // reverted/pending sets are re-read and the Revert pill reflects the new
+    // state. Scroll position is preserved so the list doesn't jump.
+    function rerenderViewerBody() {
+        if (card.dataset.state !== 'ready') return;
+        const prevScroll = body.scrollTop;
+        applyTab(viewerActiveTab);
+        body.scrollTop = prevScroll;
+    }
+
+    // Roll back a completed entry's shipped change through the Worker `revert`
+    // route. Only ever reached from a completed, id-bearing row's Revert pill
+    // (the render gate). A revert is a PR op — NOT a dispatch — so it's allowed
+    // even while this project has an active run (no readActiveRun guard). When a
+    // prior attempt opened a revert PR that didn't auto-merge, the pill links to
+    // that existing PR instead of POSTing a duplicate revert.
+    function revertCompletedEntry(entryId, entryLabel, btn) {
+        if (!entryId) return;
+        const pendingUrl = pendingRevertPrUrls.get(entryId);
+        if (pendingUrl) {
+            try { window.open(pendingUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
+            return;
+        }
+        const named = entryLabel ? ' “' + entryLabel + '”' : '';
+        showConfirmModal({
+            message: 'Revert this entry' + named + '? This ships a rollback — a new build will deploy.',
+            confirmLabel: 'Revert',
+            onConfirm: function() { performRevert(entryId, btn); },
+        });
+    }
+
+    async function performRevert(entryId, btn) {
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('todoMdViewerRevertEntryBtn--loading');
+        }
+        try {
+            const res = await revertEntry(entryId, target);
+            if (res && res.ok && res.merged === true) {
+                // Rollback merged — a new build is deploying. Mark the entry
+                // reverted so the pill disappears and can't be triggered again.
+                showInjectToast('Reverted — new build shipping');
+                revertedThisSession.add(entryId);
+                rerenderViewerBody();
+                return;
+            }
+            if (res && res.ok && res.merged === false) {
+                // The revert PR opened but didn't auto-merge (conflict, or
+                // mergeability unconfirmed). Track the PR URL so the pill
+                // switches to opening it rather than POSTing again, and surface
+                // the reason so the user can finish it in GitHub.
+                if (res.revert_pr_url) pendingRevertPrUrls.set(entryId, res.revert_pr_url);
+                showInjectToast(res.reason
+                    ? ('Revert needs attention: ' + res.reason)
+                    : 'Revert PR opened — finish it in GitHub', 'error');
+                rerenderViewerBody();
+                return;
+            }
+            // ok === false → surface the error and leave the pill so it can retry.
+            showInjectToast((res && res.reason)
+                ? ('Revert failed — ' + res.reason)
+                : 'Revert failed', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('todoMdViewerRevertEntryBtn--loading');
             }
         }
     }

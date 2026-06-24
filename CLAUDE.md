@@ -132,11 +132,16 @@ The in-app assistant and its supporting pipeline are concentrated in a handful o
 
 ## Hard rollback
 
-The pipeline is built to fix forward — iterating on a shipped change through chat cures the large majority of regressions. For the rare case where a shipped change is bad in a way that fix-forward via iterate cannot quickly cure, there is a manual rollback path: open the offending PR in the GitHub mobile app or web UI, tap **Revert**, merge the revert PR, and `deploy.yml` runs automatically — the rollback ships in roughly 2 minutes.
+The pipeline is built to fix forward — iterating on a shipped change through chat cures the large majority of regressions. For the rare case where a shipped change is bad in a way that fix-forward via iterate cannot quickly cure, there is a **full-auto in-app Revert**. It rolls back a shipped change through the Worker's `revert` route: the Worker resolves the entry's `<!-- id -->` marker to its merged PR, opens a revert PR via the GitHub GraphQL `revertPullRequest` mutation, and auto-merges it — `deploy.yml` then runs automatically and the rollback ships in roughly 2 minutes. The control surfaces in two places, both via the shared `revertEntry` helper in `inject.js`:
 
-There is **no in-app revert button by design.** With a ~95% fix-forward rate, an in-app safety button would sit unused and decay; for the ~5% case that genuinely needs a rollback, the manual GitHub path above is the supported route.
+- **Runs tab** — a Revert control on each SHIPPED row (`buildRevertControl` in `claudeSheet.js`).
+- **TODO.md viewer** — a Revert pill on each completed (`- [x]`) entry row, where it replaces the "Run this entry" button (`revertCompletedEntry` in `todoMdViewer.js`).
 
-**Important warning:** when reverting via GitHub mobile, revert ONLY the original feature PR, never a revert PR. Revert PRs share titles with their originals (e.g. `Revert "[Claude] feature: X"`), and reverting a revert re-applies the original change — easy to do by mistake at a glance. Read the PR carefully before tapping Revert.
+Both confirm before acting, then handle the three Worker outcomes: `merged: true` ships the rollback; `merged: false` means the revert PR opened but didn't auto-merge (conflict, or mergeability unconfirmed), and the control switches to opening that existing revert PR rather than POSTing again; `ok: false` surfaces the error (404 nothing-to-revert, 409 already-a-revert, 5xx).
+
+**Safety properties.** A revert can never re-revert itself: reverts never become runs or TODO.md entries, so the UI has no path to revert a revert, and the Worker additionally refuses to revert any PR whose title starts with `Revert ` (reverting a revert re-applies the original change). A successful revert is guarded against re-triggering — once merged, the control disappears (Runs tab persists `rec.reverted`; the viewer tracks the entry id in a session-scoped reverted set, so it resets on a full reload).
+
+**Manual fallback.** For the `merged: false` case — the revert PR opened but auto-merge couldn't complete — finish it in GitHub: open the linked revert PR and merge it, or open the offending PR in the GitHub mobile app or web UI and tap **Revert**. When reverting manually via GitHub, revert ONLY the original feature PR, never a revert PR: revert PRs share titles with their originals (e.g. `Revert "[Claude] feature: X"`), and reverting a revert re-applies the original change — easy to do by mistake at a glance. Read the PR carefully before tapping Revert.
 
 ## Worker location and routes
 
