@@ -182,3 +182,27 @@
     - The Runs tab list — it's deliberately device-local and not synced.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   <!-- id: 9f45e8e0-a110-4363-b989-79e5bc9e85c7 -->
+
+- [ ] **[MEDIUM]** Add per-project "running" spinners to the project switcher (desktop dropdown + mobile drawer), polled only while open
+  - Type: feature
+  - Description: Show a purple "running" spinner on each project row whose repo has an in-flight run, in both project-switcher surfaces — the desktop `.projectPickerRow` dropdown and the mobile `#projChild` drawer rows. Reuse the `fetchActiveRuns` helper and the shared spin keyframes added with the active-project work. The wider poll (all routed repos) runs ONLY while the switcher is open, so the extra chatter is bounded to when you're actually looking. The dropdown is the desktop switcher (≥1024px) and the drawer the mobile one (<1024px), so the two row spinners are platform-exclusive.
+  - Behavior:
+    - Spinner: purple (`#9D93EE`), spinning sync glyph, placement A — left of the count badge (after the project name) on each row. Decorative (`aria-hidden`), `pointer-events: none`; must not disturb the ⚡ bolt, the name (or its rename input), or the count.
+    - Shows on a row iff that project has a routed repo AND that repo currently has an active run (`fetchActiveRuns(repo).active === true`). Same routed-repo gate as the ⚡ bolt (inject configured AND a `target_id`); unrouted projects never show it.
+    - Poll lifecycle — only while the switcher is open:
+      - Desktop dropdown (`projectPicker.js`): on `openProjectPicker` (after `buildProjectPickerRows`) start the poll and update each row's spinner as results arrive; stop on `closeProjectPicker`. Rows are rebuilt on each open, so re-mount the spinner elements on each build and let the poll fill them.
+      - Mobile drawer (`#projChild` in `#sideMa`): while the drawer is open (`main1.sidebar-open`), run the poll and update each row's spinner; stop when the drawer closes.
+    - Dedupe by repo: collect the distinct set of repos across all routed projects, call `fetchActiveRuns` once per repo, then map each result back to every row whose project routes to that repo (multiple projects can share one repo). Fire-and-forget; `ok:false` → not active (no spinner, no toast).
+    - Cadence while open: refresh immediately on open, then a light interval (~10s). No polling at all when the switcher is closed.
+  - Implementation notes:
+    - Reuse `fetchActiveRuns(target)` and the shared `@keyframes` spin from the active-project entry. Resolve a project's repo via `listLogic.getProjectTargetId(name)` → `findTargetById(id)` → `target.repo`.
+    - Desktop: in `projectPicker.js`, add the spinner element to each `.projectPickerRow` (inserted before `.projectPickerCount`) during `buildProjectPickerRows`, and own the open-gated poll inside the picker factory (it already tracks `projectPickerIsOpen`). Import `findTargetById` from `inject.js` (no circular — `inject.js` doesn't import the picker).
+    - Mobile: the `#projChild` rows + drawer live in `main.js` (grep with `offset`/`limit`; do not read it whole). Model the run spinner on the existing ⚡ bolt indicator (`attachProjectInjectIndicator` in `projectRow.js`) — a small element toggled by the poll, placed left of the `.projBadge` count, with the `#projChild` grid gaining a column for it the way `.hasInjectBolt` adds the leading bolt column. Hide it during rename like the bolt does.
+    - Optional: the small shared in-memory cache (repo → { active, at }, few-second TTL) floated in the prior entry lets the dropdown, drawer, and active-project polls dedupe calls to the same repo. Skip if it complicates.
+  - Out of scope:
+    - The active-project trigger spinner and the cross-device viewer pill — shipped in the prior entry.
+    - Any Worker change — `active_runs` is deployed.
+    - The Runs tab list — deliberately device-local, not synced.
+    - A persistent/always-on all-repos poll — the wide poll is open-gated only.
+  - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`, `toDoList_main/src/projectRow.js`, `toDoList_main/src/style.css`
+  <!-- id: a49b50e1-90bf-467d-8007-1f2c721cb99d -->
