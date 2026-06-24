@@ -51,6 +51,8 @@ import {
     attachProjectContextMenu,
     attachProjectDrag,
     attachProjectInjectIndicator,
+    attachProjectRunSpinner,
+    setProjectRunSpinnerActive,
     deleteProjectFlow,
 } from './projectRow.js';
 import { createProjectPicker } from './projectPicker.js';
@@ -2668,6 +2670,8 @@ function component() {
         refreshDrawerSections();
         main1.classList.add('sidebar-open');
         sidebarOverlay.classList.add('visible');
+        // Drive the per-project run spinners only while the drawer is open.
+        startDrawerSpinnerPoll();
         if (typeof window.bottomSheetRefreshVisibility === 'function') {
             window.bottomSheetRefreshVisibility();
         }
@@ -2676,6 +2680,8 @@ function component() {
     function closeSidebar() {
         main1.classList.remove('sidebar-open');
         sidebarOverlay.classList.remove('visible');
+        // Stop the open-gated run-spinner poll when the drawer closes.
+        stopDrawerSpinnerPoll();
         if (typeof window.bottomSheetRefreshVisibility === 'function') {
             window.bottomSheetRefreshVisibility();
         }
@@ -3560,6 +3566,7 @@ function component() {
         attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
         attachProjectInjectIndicator(projChild, titleInput);
+        attachProjectRunSpinner(projChild, titleInput);
 
         // Focus the new input synchronously inside this same user-gesture
         // tick. iOS Safari only summons the soft keyboard when .focus() is
@@ -3898,6 +3905,71 @@ function component() {
         if (document.visibilityState === 'visible') refreshProjRunSpinner();
     });
     setTimeout(refreshProjRunSpinner, 0);
+
+    // ── Per-project run spinners in the sidebar drawer (#projChild rows) ──
+    // While the drawer is open, probe every routed project's repo and spin the
+    // row whose repo has an in-flight run. Same routed-repo gate as the ⚡ bolt
+    // (resolveActiveProjectTarget). The probe set is deduped by repo — several
+    // projects can share one repo — so it calls fetchActiveRuns once per
+    // distinct repo, then maps each result back to every row that routes there.
+    // Open-gated: the poll runs only while `main1.sidebar-open` is set, so the
+    // extra chatter is bounded to when the switcher is actually on screen.
+    let drawerSpinnerInterval = null;
+    let drawerSpinnerReqToken = 0;
+    const DRAWER_SPINNER_INTERVAL_MS = 10000;
+
+    async function refreshDrawerRunSpinners() {
+        const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
+        if (rows.length === 0) return;
+        // Group rows by their resolved repo; rows with no routed repo are
+        // cleared immediately and never contribute a probe.
+        const rowsByRepo = new Map();
+        rows.forEach(function(row) {
+            const input = row.querySelector('#projInput');
+            const name = input ? (input.value || '').trim() : '';
+            const target = resolveActiveProjectTarget(name);
+            if (!target || !target.repo) {
+                setProjectRunSpinnerActive(row, input, false);
+                return;
+            }
+            let bucket = rowsByRepo.get(target.repo);
+            if (!bucket) {
+                bucket = { target: target, rows: [] };
+                rowsByRepo.set(target.repo, bucket);
+            }
+            bucket.rows.push({ row: row, input: input });
+        });
+        if (rowsByRepo.size === 0) return;
+
+        const token = ++drawerSpinnerReqToken;
+        rowsByRepo.forEach(function(bucket) {
+            fetchActiveRuns({ repo: bucket.target.repo, file_path: bucket.target.file_path })
+                .then(function(res) {
+                    if (token !== drawerSpinnerReqToken) return; // superseded
+                    const active = !!(res && res.ok && res.active === true);
+                    bucket.rows.forEach(function(entry) {
+                        setProjectRunSpinnerActive(entry.row, entry.input, active);
+                    });
+                });
+        });
+    }
+
+    function startDrawerSpinnerPoll() {
+        refreshDrawerRunSpinners();
+        if (drawerSpinnerInterval === null) {
+            drawerSpinnerInterval = setInterval(refreshDrawerRunSpinners, DRAWER_SPINNER_INTERVAL_MS);
+        }
+    }
+
+    function stopDrawerSpinnerPoll() {
+        if (drawerSpinnerInterval !== null) {
+            clearInterval(drawerSpinnerInterval);
+            drawerSpinnerInterval = null;
+        }
+        // Drop the request token so a late in-flight probe never paints a row
+        // after the drawer has closed.
+        drawerSpinnerReqToken++;
+    }
 
     const footObserver = new MutationObserver(updateFooterCounts);
     footObserver.observe(mainList, {
@@ -4510,6 +4582,7 @@ function restoreFromStorage(opts) {
         attachProjectContextMenu(projChild, titleInput);
         attachProjectDrag(projChild, titleInput);
         attachProjectInjectIndicator(projChild, titleInput);
+        attachProjectRunSpinner(projChild, titleInput);
 
     });
 

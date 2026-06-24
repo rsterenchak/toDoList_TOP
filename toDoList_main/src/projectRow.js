@@ -109,6 +109,47 @@ export function syncProjectRowInjectBolt(row, projectName) {
 }
 
 
+// Per-project "running" spinner for a sidebar drawer row (#projChild). A small
+// purple sync glyph mounted once (just left of the trailing .projBadge count)
+// and toggled by the project-switcher's open-gated poll: the row gains
+// `hasRunSpinner` while that project's routed repo has an in-flight run, which
+// both reserves the spinner's grid column and spins it (see style.css). It is
+// hidden while the title is mid-rename — mirroring the ⚡ inject bolt — so the
+// rename input keeps the row's geometry; the next poll restores it on blur. The
+// element is decorative (aria-hidden) with pointer-events: none so taps fall
+// through to the row's own handlers.
+export function attachProjectRunSpinner(projChild, titleInput) {
+    let sp = projChild.querySelector('.projRunSpinner');
+    if (!sp) {
+        sp = document.createElement('span');
+        sp.className = 'projRunSpinner';
+        sp.setAttribute('aria-hidden', 'true');
+        // Sit just before the trailing count badge so it reads as following
+        // the project name (placement A). Falls back to the row's end if the
+        // badge isn't present yet.
+        const badge = projChild.querySelector('.projBadge');
+        if (badge) projChild.insertBefore(sp, badge);
+        else projChild.appendChild(sp);
+    }
+
+    // While renaming, drop the spinner column so it never crowds the rename
+    // input. The poll re-evaluates on its next tick (after blur) and restores
+    // it if the run is still in flight — same hide-on-focus contract the bolt
+    // uses.
+    titleInput.addEventListener('focus', function() {
+        projChild.classList.remove('hasRunSpinner');
+    });
+}
+
+// Toggle the running state of a drawer row's spinner. `hasRunSpinner` both
+// reserves the spinner's grid column and reveals/animates the glyph; a row that
+// is mid-rename never spins so the rename input keeps the row geometry.
+export function setProjectRunSpinnerActive(projChild, titleInput, active) {
+    const editing = document.activeElement === titleInput;
+    projChild.classList.toggle('hasRunSpinner', !!active && !editing);
+}
+
+
 function countRealToDos(projectName) {
     const items = listLogic.listItems(projectName);
     if (!items) return 0;

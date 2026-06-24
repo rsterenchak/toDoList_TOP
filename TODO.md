@@ -183,7 +183,7 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   <!-- id: 9f45e8e0-a110-4363-b989-79e5bc9e85c7 -->
 
-- [ ] **[MEDIUM]** Add per-project "running" spinners to the project switcher (desktop dropdown + mobile drawer), polled only while open
+- [x] **[MEDIUM]** Add per-project "running" spinners to the project switcher (desktop dropdown + mobile drawer), polled only while open — Completed: 2026-06-24
   - Type: feature
   - Description: Show a purple "running" spinner on each project row whose repo has an in-flight run, in both project-switcher surfaces — the desktop `.projectPickerRow` dropdown and the mobile `#projChild` drawer rows. Reuse the `fetchActiveRuns` helper and the shared spin keyframes added with the active-project work. The wider poll (all routed repos) runs ONLY while the switcher is open, so the extra chatter is bounded to when you're actually looking. The dropdown is the desktop switcher (≥1024px) and the drawer the mobile one (<1024px), so the two row spinners are platform-exclusive.
   - Behavior:
