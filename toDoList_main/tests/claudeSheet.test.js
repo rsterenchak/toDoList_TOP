@@ -348,20 +348,22 @@ describe('Claude sheet — module surface and styling', () => {
         expect(mic).not.toMatch(/box-shadow:/);
     });
 
-    it('styles the split send as a labeled pill + caret (neutral filled, Deep accent-filled)', () => {
-        // Main button: a pill (left-rounded) with a faint resting surface and
-        // hairline border; the caret mirrors it as the right half.
+    it('styles the split send as a labeled pill + caret (accent-filled, Deep accent-filled)', () => {
+        // Main button: a pill (left-rounded) filled with the same lighter accent
+        // purple the dropdown picker (caret) uses, with a hairline border; the
+        // caret mirrors it as the right half.
         const main = extractTopLevelRule('.claudeComposerSend');
         expect(main).toMatch(/border-radius:\s*18px 0 0 18px/);
-        expect(main).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(main).toMatch(/background:\s*#6C5DF5/i);
         expect(main).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
         const caret = extractTopLevelRule('.claudeComposerSendCaret');
         expect(caret).toMatch(/border-radius:\s*0 18px 18px 0/);
         // The caret button (which opens the mode menu) fills with the accent
         // purple; its glyph stays white (#fff) for white-on-purple contrast.
         expect(caret).toMatch(/background:\s*#6C5DF5/i);
-        // The main button's text carries the submit accent purple.
-        expect(main).toMatch(/color:\s*#6C5DF5/i);
+        // The main button's label is white for contrast against the purple fill,
+        // matching the dropdown picker it now shares a background with.
+        expect(main).toMatch(/color:\s*#fff/i);
         expect(caret).toMatch(/color:\s*#fff/i);
         // Deep default: the main button fills with the solid purple accent.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
