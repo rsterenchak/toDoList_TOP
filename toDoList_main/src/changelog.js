@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         added: [
-            "Completed entries in the TODO.md viewer now have a Revert control that rolls back the change and ships a fresh build.",
             "A run started on another device now shows as Running in the TODO.md viewer, with a spinner on the active project's menu while it's in flight.",
+            "Each project in the project switcher now shows a spinner while that project has a run in progress.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",

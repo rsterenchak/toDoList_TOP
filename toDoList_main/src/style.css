@@ -703,6 +703,36 @@ body {
 #projChild.hasInjectBolt .projInjectBolt {
   display: inline;
 }
+
+/* Per-project "running" spinner in the sidebar drawer rows. A small purple
+   sync ring in its own grid column just left of the .projBadge count, surfaced
+   only while `.hasRunSpinner` is set on the row (toggled by the switcher's
+   open-gated poll while that project's routed repo has an in-flight run). Like
+   the ⚡ bolt it reserves its own column so the title keeps its full truncation
+   budget when no spinner shows; pointer-events: none keeps taps falling
+   through to the row. Reuses the shared `spin` keyframes. */
+.projRunSpinner {
+  display: none;
+  align-self: center;
+  justify-self: start;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(157, 147, 238, 0.3);
+  border-top-color: #9D93EE;
+  pointer-events: none;
+}
+#projChild.hasRunSpinner {
+  grid-template-columns: minmax(0, 1fr) auto auto 12px;
+}
+#projChild.hasInjectBolt.hasRunSpinner {
+  grid-template-columns: auto minmax(0, 1fr) auto auto 12px;
+}
+#projChild.hasRunSpinner .projRunSpinner {
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+
 /* Same bolt, mounted inside the desktop project-picker dropdown rows. The
    sidebar's display rule is `#projChild`-scoped, so the dropdown needs its
    own show rule; the row is flex, so the bolt simply leads the name. The
@@ -7593,6 +7623,11 @@ body.row-dragging * { cursor: grabbing !important; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Absorb the row's free space so the run spinner + count cluster at the
+     trailing edge (placement A) and the count stays pinned right. min-width:0
+     keeps the ellipsis working while the name flexes. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .projectPickerCount {
@@ -7603,6 +7638,29 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .projectPickerCount.zero {
   color: #5a5a6a;
+}
+
+/* Per-project "running" spinner in the desktop dropdown rows. A small purple
+   sync ring sitting left of the count badge, revealed only when the open-gated
+   poll marks the row's routed repo active. Decorative + non-interactive.
+   Reuses the shared `spin` keyframes. Hidden while the row is mid-rename so the
+   rename input keeps the row geometry. */
+.projectPickerRunSpinner {
+  display: none;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(157, 147, 238, 0.3);
+  border-top-color: #9D93EE;
+  pointer-events: none;
+}
+.projectPickerRunSpinner--active {
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+.projectPickerRow.editing .projectPickerRunSpinner {
+  display: none;
 }
 
 .projectPickerRow.active {

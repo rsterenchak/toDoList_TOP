@@ -14,6 +14,7 @@
 // pill's bounding rect each time it opens.
 import { listLogic } from './listLogic.js';
 import { syncProjectRowInjectBolt, deleteProjectFlow } from './projectRow.js';
+import { isInjectConfigured, findTargetById, fetchActiveRuns } from './inject.js';
 
 export function createProjectPicker(deps) {
     const {
@@ -119,7 +120,18 @@ export function createProjectPicker(deps) {
             if (count === 0) countEl.classList.add('zero');
             countEl.textContent = (isActive ? '✓ ' : '') + count;
 
+            // Per-project "running" spinner, mounted left of the count badge
+            // (placement A). Hidden until the open-gated poll marks the row's
+            // routed repo active. Decorative + non-interactive so it never
+            // disturbs the row's click-to-select. The project name is stamped on
+            // the row so the poll can resolve its repo without re-deriving it.
+            row.dataset.project = name;
+            const spinner = document.createElement('span');
+            spinner.className = 'projectPickerRunSpinner';
+            spinner.setAttribute('aria-hidden', 'true');
+
             row.appendChild(label);
+            row.appendChild(spinner);
             row.appendChild(countEl);
 
             // Leading ⚡ when this project has a routed inject target — same
@@ -399,6 +411,80 @@ export function createProjectPicker(deps) {
         });
     }
 
+    // ── Per-project run spinners (open-gated poll) ──
+    // While the dropdown is open, probe every routed project's repo and spin the
+    // row whose repo has an in-flight run. Same routed-repo gate as the ⚡ bolt:
+    // inject configured AND a resolvable target id → repo. The probe set is
+    // deduped by repo (several projects can share one repo), so fetchActiveRuns
+    // runs once per distinct repo and maps each result back to every matching
+    // row. The poll runs ONLY between openProjectPicker and closeProjectPicker.
+    let pickerSpinnerInterval = null;
+    let pickerSpinnerReqToken = 0;
+    const PICKER_SPINNER_INTERVAL_MS = 10000;
+
+    function resolveRowTarget(name) {
+        if (!name || !isInjectConfigured()) return null;
+        const targetId = listLogic.getProjectTargetId(name);
+        if (!targetId) return null;
+        const target = findTargetById(targetId);
+        return (target && target.repo) ? target : null;
+    }
+
+    function refreshPickerRunSpinners() {
+        const rows = Array.prototype.slice.call(
+            projectPickerDropdown.querySelectorAll('.projectPickerRow')
+        );
+        if (rows.length === 0) return;
+        // Group rows by their resolved repo; unrouted rows clear immediately and
+        // never contribute a probe.
+        const rowsByRepo = new Map();
+        rows.forEach(function(row) {
+            const spinner = row.querySelector('.projectPickerRunSpinner');
+            if (!spinner) return;
+            const name = row.dataset.project || '';
+            const target = resolveRowTarget(name);
+            if (!target) {
+                spinner.classList.remove('projectPickerRunSpinner--active');
+                return;
+            }
+            let bucket = rowsByRepo.get(target.repo);
+            if (!bucket) {
+                bucket = { target: target, spinners: [] };
+                rowsByRepo.set(target.repo, bucket);
+            }
+            bucket.spinners.push(spinner);
+        });
+        if (rowsByRepo.size === 0) return;
+
+        const token = ++pickerSpinnerReqToken;
+        rowsByRepo.forEach(function(bucket) {
+            fetchActiveRuns({ repo: bucket.target.repo, file_path: bucket.target.file_path })
+                .then(function(res) {
+                    if (token !== pickerSpinnerReqToken) return; // superseded
+                    const active = !!(res && res.ok && res.active === true);
+                    bucket.spinners.forEach(function(spinner) {
+                        spinner.classList.toggle('projectPickerRunSpinner--active', active);
+                    });
+                });
+        });
+    }
+
+    function startPickerSpinnerPoll() {
+        refreshPickerRunSpinners();
+        if (pickerSpinnerInterval === null) {
+            pickerSpinnerInterval = setInterval(refreshPickerRunSpinners, PICKER_SPINNER_INTERVAL_MS);
+        }
+    }
+
+    function stopPickerSpinnerPoll() {
+        if (pickerSpinnerInterval !== null) {
+            clearInterval(pickerSpinnerInterval);
+            pickerSpinnerInterval = null;
+        }
+        // Bump the token so a late probe never paints a row after close.
+        pickerSpinnerReqToken++;
+    }
+
     function positionProjectPicker() {
         const rect = mobileProjHeader.getBoundingClientRect();
         const top = rect.bottom + window.scrollY + 4;
@@ -414,6 +500,9 @@ export function createProjectPicker(deps) {
         projectPickerDropdown.setAttribute('aria-hidden', 'false');
         mobileProjHeader.classList.add('picker-open');
         mobileProjChevron.textContent = '▴';
+        // Start the open-gated per-project run-spinner poll (rows were just
+        // rebuilt, so their spinner elements are fresh).
+        startPickerSpinnerPoll();
     }
 
     function closeProjectPicker() {
@@ -422,6 +511,7 @@ export function createProjectPicker(deps) {
         // or commits a stale value.
         cancelActiveRowEditor();
         cancelInlineCreate();
+        stopPickerSpinnerPoll();
         projectPickerDropdown.classList.remove('open');
         projectPickerDropdown.setAttribute('aria-hidden', 'true');
         mobileProjHeader.classList.remove('picker-open');
