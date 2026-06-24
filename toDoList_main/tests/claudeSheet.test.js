@@ -358,17 +358,18 @@ describe('Claude sheet — module surface and styling', () => {
         const caret = extractTopLevelRule('.claudeComposerSendCaret');
         expect(caret).toMatch(/border-radius:\s*0 18px 18px 0/);
         expect(caret).toMatch(/background:\s*var\(--bg-elevated\)/);
-        // The deep/fast selector caret now shares the submit button's accent
-        // purple so the two halves of the split send read as a matched pair:
-        // both the main button's text and the caret are #6C5DF5.
+        // The main button's text carries the submit accent purple; the caret
+        // glyph is white (#fff) so it reads clearly against the menu it opens.
         expect(main).toMatch(/color:\s*#6C5DF5/i);
-        expect(caret).toMatch(/color:\s*#6C5DF5/i);
+        expect(caret).toMatch(/color:\s*#fff/i);
         // Deep default: the main button fills with the solid purple accent.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
         expect(deep).toMatch(/background:\s*#6C5DF5/i);
-        // The mode menu anchors above the split control and hides when [hidden].
+        // The mode menu anchors above the split control, fills with the accent
+        // purple, and hides when [hidden].
         const menu = extractTopLevelRule('.claudeModeMenu');
         expect(menu).toMatch(/position:\s*absolute/);
+        expect(menu).toMatch(/background:\s*#6C5DF5/i);
         expect(css).toMatch(/\.claudeModeMenu\[hidden\]\s*\{\s*display:\s*none/);
         // Attach: round icon button with the same resting surface and border.
         const attach = extractTopLevelRule('.claudeComposerAttach');
