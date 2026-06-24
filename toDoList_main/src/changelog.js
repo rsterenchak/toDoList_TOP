@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         added: [
-            "Each project in the project switcher now shows a spinner while that project has a run in progress.",
             "A Clear chat button beside the Chat and Runs tabs clears the current conversation, and the workspace repo selector is no longer shown.",
+            "The mobile chat button now has a soft purple glow so it stands out as the primary way to open the assistant.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
