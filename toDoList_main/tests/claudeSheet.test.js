@@ -768,6 +768,8 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     it('flips the run record to SHIPPED when the status poll reports success', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        // A green run only ships once its marker resolves to a merged PR.
+        resolveJson = { found: true, pr_number: 7, merge_commit_sha: 'abc' };
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');
         card.querySelector('.claudeDraftInject').click();
@@ -810,6 +812,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
 
     it('clears the project active-run entry when the run reaches a terminal outcome', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        resolveJson = { found: true, pr_number: 7, merge_commit_sha: 'abc' };
         selectProject('Beta');
         await sendMessage('draft me an entry');
         const card = document.querySelector('.claudeDraftCard');
@@ -995,6 +998,136 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).toBe('FAILED');
         expect(stored[0].resolveAttempted).toBe(true);
+    });
+
+    // ── "No change" verdict on a green-but-no-op run ──
+    // A graceful no-op run (entry reported ineligible, exits clean) returns
+    // success but merges nothing, so it must NOT be stamped SHIPPED. After the
+    // marker fails to resolve to a merged PR across a short retry, the row reads
+    // "No change" and links out to the Actions log instead of becoming iterable.
+
+    it('does not commit "No change" on a single transient resolve miss — keeps polling', async () => {
+        // First definitive found:false: one miss is never trusted (a real ship's
+        // merged PR can lag in search), so the row stays RUNNING and keeps watch.
+        resolveJson = { found: false };
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Maybe no-op', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).not.toBe('NOCHANGE');
+        expect(stored[0].status).not.toBe('SHIPPED');
+        expect(stored[0].noChangeMisses).toBe(1);
+    });
+
+    it('commits "No change" once the resolve miss persists across the retry threshold', async () => {
+        // Pre-seed one prior miss so this poll reaches the threshold and the
+        // verdict commits within a single mount: a green run that never merged.
+        resolveJson = { found: false };
+        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op run', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('No change');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('NOCHANGE');
+        // The Actions log URL is persisted so the row can open it on tap.
+        expect(stored[0].runUrl).toBe('https://github.com/x/y/actions/runs/9');
+    });
+
+    it('still ships a green run whose marker resolves — even after an earlier miss', async () => {
+        // A merged PR turning up after a prior transient miss is positive proof
+        // of a ship: the row must be SHIPPED, never misread as "No change".
+        resolveJson = { found: true, pr_number: 3, merge_commit_sha: 'def' };
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Lagged ship', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('does not commit "No change" on a resolve error — keeps polling', async () => {
+        // A resolve failure (ok:false) is not a definitive miss; the miss counter
+        // must not advance and the row must stay non-terminal.
+        resolveJson = { ok: false, reason: 'network' };
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Blip', status: 'RUNNING', dispatchedAt: Date.now(), noChangeMisses: 1 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).not.toBe('NOCHANGE');
+        expect(stored[0].noChangeMisses).toBe(1);
+    });
+
+    it('keeps the legacy success → SHIPPED path for records with no entryId', async () => {
+        // A record that predates entry-id verification can't be resolved, so the
+        // historical behavior (success → SHIPPED) is preserved — no regression.
+        resolveJson = { found: false };
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Legacy run', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('renders a "No change" row as a non-iterable outbound link to the Actions log', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://github.com/x/y/actions/runs/9', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        expect(row.querySelector('.claudeRunBadge').textContent).toBe('No change');
+        // Not iterable; instead an outbound link with the ↗ affordance glyph.
+        expect(row.classList.contains('claudeRunRow--iterable')).toBe(false);
+        expect(row.classList.contains('claudeRunRow--nochange')).toBe(true);
+        expect(row.getAttribute('role')).toBe('button');
+        expect(row.querySelector('.claudeRunOpenGlyph')).toBeTruthy();
+
+        const opened = [];
+        const realOpen = window.open;
+        window.open = (url) => { opened.push(url); return null; };
+        row.click();
+        window.open = realOpen;
+        expect(opened).toEqual(['https://github.com/x/y/actions/runs/9']);
+    });
+
+    it('treats "No change" as a terminal, clearable status', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://x', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        // Clear-completed surfaces for the terminal No-change row, and clearing
+        // removes it.
+        expect(document.getElementById('claudeRunsClear')).toBeTruthy();
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearYes').click();
+        expect(document.querySelector('.claudeRunRow')).toBeFalsy();
     });
 });
 
@@ -2767,6 +2900,7 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
     let realFetch;
     let fetchSpy;
     let statusJson;
+    let resolveJson;
     let chatBodies;
     let replyText;
 
@@ -2782,6 +2916,8 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
                 json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
             } else if (body.status) {
                 json = statusJson;
+            } else if (body.resolve) {
+                json = resolveJson;
             }
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
         });
@@ -2794,6 +2930,8 @@ describe('Claude sheet — freshness gate (SW update after ship)', () => {
         localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
         initInjectConfig();
         statusJson = { found: false };
+        // A green run ships only once its marker resolves to a merged PR.
+        resolveJson = { found: true, pr_number: 7, merge_commit_sha: 'abc' };
         replyText = 'Where is it?\nINSPECT: #target';
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
