@@ -667,7 +667,9 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
         const block = main.slice(start, start + 600);
         expect(block).toMatch(/!==\s*projectName\s*\)\s*return/);
         expect(block).toMatch(/readActiveRun\(\s*projectName\s*\)/);
-        expect(block).toMatch(/if\s*\(\s*!runPill\s*\)\s*startRunPill\(\s*rec\.correlationId\s*\)/);
+        // A local run takes over even from a server-driven (cross-device) pill,
+        // so the start condition also fires when serverDrivenPill is set.
+        expect(block).toMatch(/if\s*\(\s*!runPill\s*\|\|\s*serverDrivenPill\s*\)\s*startRunPill\(\s*rec\.correlationId\s*\)/);
         expect(block).toMatch(/restoreRunButton\(\)/);
         // The subscription is torn down with the card.
         expect(main).toMatch(/removeEventListener\(\s*ACTIVE_RUN_CHANGE_EVENT\s*,\s*viewerActiveRunChangeHandler\s*\)/);
@@ -675,7 +677,7 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
 
     it('computes the 20-minute give-up against the persisted dispatch timestamp, not the re-attach time', () => {
         const start = main.indexOf('function startRunPill');
-        const block = main.slice(start, start + 1700);
+        const block = main.slice(start, start + 1900);
         // startedAt comes from the persisted (project-keyed) record's dispatchedAt.
         expect(block).toMatch(/readActiveRun\(\s*projectName\s*\)/);
         expect(block).toMatch(/rec\.dispatchedAt[\s\S]{0,60}rec\.dispatchedAt/);

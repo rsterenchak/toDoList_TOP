@@ -388,6 +388,31 @@ export async function pollRunStatus(options) {
 }
 
 
+// Ambient, fire-and-forget probe of whether the target repo has ANY run in
+// flight right now, through the same Worker the dispatch and status flows
+// already use (same URL, same Bearer secret). POSTs
+// `{ active_runs: true, repo, filePath }` so the Worker reports repo-level
+// in-flight state. The parsed response — `{ active, count, newest }` — is
+// spread onto an `{ ok: true }` envelope, mirroring pollRunStatus. Returns
+// `{ ok: false, reason }` via describeError on any failure; callers treat
+// `ok:false` as "not active" and never raise an error toast, since this is a
+// background liveness probe (cross-device "is something running?") rather than
+// a user-initiated action.
+export async function fetchActiveRuns(target) {
+    const t = target || null;
+    try {
+        const res = await postToWorker({
+            active_runs: true,
+            repo: t ? t.repo : undefined,
+            filePath: t ? t.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Cross-check whether an entry's marker is present in a merged PR through the
 // same Worker the dispatch and status flows already use (same URL, same Bearer
 // secret). Sends `{ resolve: true, entry_id }` so the Worker searches merged PR
