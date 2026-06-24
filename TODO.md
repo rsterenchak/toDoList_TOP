@@ -77,13 +77,6 @@
   - Completed: 2026-06-23
   <!-- id: 28de2bc0-d0b8-4348-9890-d006468c7622 -->
 
-- [ ] **[LOW]** Rename user-facing "Projects" label to "Tasks"
-  - Type: feature
-  - Description: Replace the visible "Projects" wording with "Tasks" throughout the UI to better match how the feature is used — this includes the sidebar heading, the add-project button's tooltip/aria-label, and any "Project"/"Projects" copy in modals and empty states. This is a label-only change: do NOT rename internal variables, function names, the data model in `listLogic.js`, or any `todoapp_`-prefixed localStorage keys, so existing saved data is unaffected. Check that singular references ("Add Project", "Delete Project", confirmation text) are updated consistently to "Task".
-  - File: `toDoList_main/src/index.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: e2f54a8e-cba7-4f64-8d45-1b77468789f2 -->
-
 - [x] **[LOW]** Rename the viewPillProjects tab label to "Task View"
   - Type: feature
   - Description: Change the visible text of the `viewPillProjects` tab/pill from "Projects" (currently rendered as "PROJECTS") to "Task View". This is a single-label text change only — scope is strictly the `viewPillProjects` element's label string. Do NOT touch any other "Project"/"Projects" copy (sidebar heading elsewhere, aria-labels, the N-projects footer, modal/help text), the data model, or any `todoapp_`-prefixed localStorage keys. If the pill's text is uppercased via CSS, the source string can stay normal-case ("Task View") and render as "TASK VIEW".
