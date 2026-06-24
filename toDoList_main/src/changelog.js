@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         added: [
-            "A run started on another device now shows as Running in the TODO.md viewer, with a spinner on the active project's menu while it's in flight.",
             "Each project in the project switcher now shows a spinner while that project has a run in progress.",
+            "A Clear chat button beside the Chat and Runs tabs clears the current conversation, and the workspace repo selector is no longer shown.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",

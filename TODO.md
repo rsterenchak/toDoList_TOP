@@ -214,7 +214,7 @@
   - Completed: 2026-06-24
   <!-- id: 1ab046ed-e3ec-4ed6-9fca-7a65750468e9 -->
 
-- [ ] **[MEDIUM]** Add a text-only Clear chat button right of the Chat/Runs tab selector and hide the workspace pill
+- [x] **[MEDIUM]** Add a text-only Clear chat button right of the Chat/Runs tab selector and hide the workspace pill
   - Type: feature
   - Description: Hide the workspace/repo selector pill (`#claudeWorkspacePill`) and add a text-only "Clear chat" button (no trash icon) positioned to the right of the Chat/Runs tab selector in the Claude sheet. Clearing wipes the in-memory chat message array and the persisted chat history (localStorage), removing all rendered chat bubbles — it must NOT reset the attached file chips or the iterate seed, only the messages. Because the pill is being removed, preserve the repo frame it used to set: `activeChatRepo` must keep a valid value (default to `rsterenchak/toDoList_TOP` or the last-selected/persisted repo) so `body.repo` still rides correctly on every chat turn and the chat → inject/dispatch flow continues to send the right repo. The pill's open-menu listener and repo-select handler must be cleanly detached rather than left firing on a hidden/removed node. The button should match existing header-control styling (using the danger/accent token consistent with a clear action) and honor both dark and light themes. Likely locations: the tab-selector and pill markup/wiring plus the new button in `claudeSheet.js`, message-state/persistence handling in `claudeSheet.js`, and header/tab styling in `style.css`.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`

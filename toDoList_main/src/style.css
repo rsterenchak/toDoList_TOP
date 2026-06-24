@@ -1665,97 +1665,33 @@ body:has(#settingsMenu) #claudeLauncher {
   border-color: var(--accent-text);
 }
 
-/* CLAUDE WORKSPACE — chat-level repo pill + dropdown menu. */
-.claudeWorkspace {
-  position: relative;
-  display: flex;
-  align-items: center;
+/* CLAUDE WORKSPACE — retired as a control. The pill node persists, hidden, as
+   the live read-out of the active workspace repo (renderWorkspacePill); the
+   repo frame is now governed by the per-project auto-swap, not a user tap. */
+.claudeWorkspace,
+.claudeWorkspacePill { display: none; }
+
+/* CLEAR CHAT — text-only control in the tab row, right of CHAT / RUNS. Uses the
+   danger token to read as a destructive (conversation-wiping) action, and honors
+   both themes through the variable. */
+.claudeClearChat {
   margin-left: auto;
-}
-.claudeWorkspacePill {
   background: transparent;
-  color: var(--text-secondary);
-  border: 0.5px solid var(--border-dim);
+  color: var(--text-danger);
+  border: none;
   border-radius: 6px;
   padding: 4px 8px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   cursor: pointer;
 }
-.claudeWorkspacePill:hover {
-  color: var(--text-primary);
-  border-color: var(--border-mid);
+.claudeClearChat:hover {
+  text-decoration: underline;
 }
-.claudeWorkspaceMenu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  min-width: 180px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-mid);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 2;
-}
-.claudeWorkspaceMenu[hidden] { display: none; }
-.claudeWorkspaceItem {
-  text-align: left;
-  background: transparent;
-  color: var(--text-secondary);
-  border: none;
-  border-radius: 4px;
-  padding: 8px 10px;
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.claudeWorkspaceItem:hover {
-  background: var(--bg-base);
-  color: var(--text-primary);
-}
-.claudeWorkspaceItem--active {
-  color: var(--accent-text);
-}
-.claudeWorkspaceConfirm {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 6px;
-}
-.claudeWorkspaceConfirmWarn {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 13px;
-}
-.claudeWorkspaceConfirmRow {
-  display: flex;
-  gap: 6px;
-}
-.claudeWorkspaceConfirmYes,
-.claudeWorkspaceConfirmCancel {
-  flex: 1;
-  padding: 6px 0;
-  border-radius: 6px;
-  border: 0.5px solid var(--border-mid);
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.claudeWorkspaceConfirmYes {
-  background: var(--accent-dim);
-  color: var(--accent-text);
-  border-color: var(--accent-text);
-}
-.claudeWorkspaceConfirmCancel {
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-}
+.claudeClearChat[hidden] { display: none; }
 .claudeView {
   flex: 1;
   display: flex;
@@ -8094,7 +8030,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for
      the absolutely-placed collapse button so CHAT/RUNS don't sit beneath it.
-     The repo pill keeps its margin-left:auto right alignment. Scoped to
+     The Clear chat control keeps its margin-left:auto right alignment. Scoped to
      #desktopChatPane so the mobile slide-up sheet's tab row is untouched. */
   #desktopChatPane #claudeSheetTabs {
     min-height: 36px;
@@ -8171,8 +8107,8 @@ body.row-dragging * { cursor: grabbing !important; }
      pane's sub-header row (not on its own row above it). Absolutely positioned
      against the pane (position:relative) so it sits over the left edge of the
      #claudeSheetTabs row, which reserves a 44px left pad for it; this keeps the
-     collapse button, the CHAT/RUNS tabs, and the repo pill all on one row at the
-     same y as the task pane's view-tab sub-band. */
+     collapse button, the CHAT/RUNS tabs, and the Clear chat control all on one
+     row at the same y as the task pane's view-tab sub-band. */
   #chatCollapseButton {
     display: inline-flex;
     align-items: center;
