@@ -11710,33 +11710,27 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* ══════════════════════════════════════════
    MOBILE CLAUDE LAUNCHER GLOW
    ──────────────────────────────────────────
-   A soft purple halo behind the launcher circle so the chat button reads as a
-   primary action instead of a subtle dot. Two concentric radial layers in the
-   Void accent (#6C5DF5) at ~15–18% opacity live on a ::before pseudo-element,
-   leaving the launcher's own box-shadow states (rest / hover / focus) and its
-   fixed position untouched — this adds a visual layer only, no layout change.
-   The pseudo-element sits behind the button (negative z-index) and never
-   intercepts taps. Mobile-only: the launcher is replaced by the persistent
-   desktop chat pane at ≥1024px, so the desktop layout is unaffected. Defined
-   here, after the main mobile-overrides block, so the launcher's base rules
-   stay grouped near the top while the glow stays gated to the breakpoint. */
+   A soft purple halo so the chat launcher reads as a primary FAB instead of a
+   subtle dot. The halo is drawn with box-shadow rings rather than a ::before
+   pseudo-element: #claudeLauncher is `position: fixed` (+ z-index), so it forms
+   its own stacking context — a negative-z pseudo-element painted just above the
+   button's opaque fill at ~15–18% opacity, washed out and effectively invisible
+   on real devices. A box-shadow draws OUTSIDE the button's fill, so the halo
+   always shows, never gets covered by the button, and never intercepts taps.
+   Two concentric Void accent (#6C5DF5 → rgb 108, 93, 245) layers — a tight inner
+   ring and a soft outer bloom — sit ahead of the launcher's existing dark drop
+   shadow, which stays as the final layer. Position is untouched; box-shadow adds
+   no layout. Mobile-only: the launcher is replaced by the persistent desktop
+   chat pane at ≥1024px, so the desktop layout is unaffected. Defined here, after
+   the main mobile-overrides block, so the launcher's base rules stay grouped
+   near the top while the glow stays gated to the breakpoint and wins the cascade
+   over the base #claudeLauncher box-shadow by source order. */
 @media (max-width: 1023px) {
   #claudeLauncher {
-    overflow: visible;
-  }
-  #claudeLauncher::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 240%;
-    height: 240%;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background:
-      radial-gradient(circle, rgba(108, 93, 245, 0.18) 0%, rgba(108, 93, 245, 0) 50%),
-      radial-gradient(circle, rgba(108, 93, 245, 0.15) 0%, rgba(108, 93, 245, 0) 72%);
-    z-index: -1;
-    pointer-events: none;
+    box-shadow:
+      0 0 0 1px rgba(108, 93, 245, 0.35),
+      0 0 12px 2px rgba(108, 93, 245, 0.45),
+      0 0 28px 9px rgba(108, 93, 245, 0.22),
+      0 4px 12px rgba(0, 0, 0, 0.35);
   }
 }
