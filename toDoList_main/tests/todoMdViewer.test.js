@@ -1004,3 +1004,134 @@ describe('todo.md viewer — per-entry delete + clear ops (rewrite)', () => {
         expect(wrap.querySelector('.todoMdViewerDeleteEntryBtn')).toBeNull();
     });
 });
+
+describe('todo.md viewer — per-entry Revert control on completed rows', () => {
+
+    const inject = read('inject.js');
+    const main = read('todoMdViewer.js');
+    const css = read('style.css');
+
+    it('inject.js exports revertEntry, the helper shared with the Runs-tab control', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+revertEntry\s*\(\s*entryId\s*,\s*target\s*\)/);
+        expect(inject).toMatch(/revertEntry[\s\S]{0,400}revert:\s*true[\s\S]{0,80}entry_id:\s*entryId/);
+    });
+
+    it('viewer imports revertEntry from inject.js', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?\brevertEntry\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
+        );
+    });
+
+    it('passes an onRevertEntry callback into the rendered-body builder on both render paths', () => {
+        const matches = main.match(/buildViewerRenderedBody\([^)]*onRevertEntry:\s*revertCompletedEntry/g) || [];
+        expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('renders the Revert pill only for top-level, completed, id-bearing entries not yet reverted', () => {
+        const start = main.indexOf('function buildViewerRenderedBody');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 5200);
+        expect(block).toMatch(
+            /onRevertEntry\s*&&\s*tok\.indent\s*===\s*0\s*&&\s*tok\.entryId\s*&&\s*tok\.checked\s*&&\s*[\s\S]{0,60}!revertedThisSession\.has\(\s*tok\.entryId\s*\)/
+        );
+        expect(block).toMatch(/todoMdViewerRevertEntryBtn/);
+        expect(block).toMatch(/>Revert</);
+    });
+
+    it('hides "Run this entry" on completed rows (Run gate now also requires !tok.checked)', () => {
+        const start = main.indexOf('function buildViewerRenderedBody');
+        const block = main.slice(start, start + 5200);
+        expect(block).toMatch(/onRunEntry\s*&&\s*tok\.indent\s*===\s*0\s*&&\s*tok\.entryId\s*&&\s*!tok\.checked/);
+    });
+
+    it('the Revert click stops propagation so it never triggers the row/card tap or iterate', () => {
+        const start = main.indexOf("revertBtn.addEventListener('click'");
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 200);
+        expect(block).toMatch(/event\.stopPropagation\(\)/);
+        expect(block).toMatch(/onRevertEntry\(\s*tok\.entryId/);
+    });
+
+    it('revertCompletedEntry confirms (naming the entry) then reverts by id, with no active-run guard', () => {
+        const start = main.indexOf('function revertCompletedEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 800);
+        // Not gated by readActiveRun — a revert is a PR op, not a dispatch.
+        expect(block).not.toMatch(/readActiveRun/);
+        expect(block).toMatch(/showConfirmModal/);
+        expect(block).toMatch(/ships a rollback/);
+        expect(block).toMatch(/performRevert\(\s*entryId\s*,\s*btn\s*\)/);
+    });
+
+    it('a pending revert PR opens that PR rather than POSTing a duplicate revert', () => {
+        const start = main.indexOf('function revertCompletedEntry');
+        const block = main.slice(start, start + 800);
+        expect(block).toMatch(/pendingRevertPrUrls\.get\(\s*entryId\s*\)/);
+        expect(block).toMatch(/window\.open\(/);
+    });
+
+    it('performRevert handles the three Worker outcomes (merged / pending PR / error)', () => {
+        const start = main.indexOf('async function performRevert');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1600);
+        expect(block).toMatch(/revertEntry\(\s*entryId\s*,\s*target\s*\)/);
+        // merged:true → success toast + record reverted this session (double-revert guard).
+        expect(block).toMatch(/res\.merged\s*===\s*true/);
+        expect(block).toMatch(/revertedThisSession\.add\(\s*entryId\s*\)/);
+        expect(block).toMatch(/Reverted — new build shipping/);
+        // merged:false → persist the PR url so the control links to it next render.
+        expect(block).toMatch(/res\.merged\s*===\s*false/);
+        expect(block).toMatch(/pendingRevertPrUrls\.set\(\s*entryId\s*,\s*res\.revert_pr_url\s*\)/);
+        // ok:false → error toast.
+        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+    });
+
+    it('styles the Revert pill on the Run-pill geometry with the warning-amber accent', () => {
+        const ruleMatch = css.match(/\.todoMdViewerRevertEntryBtn\s*\{[^}]*\}/);
+        expect(ruleMatch).not.toBeNull();
+        const rule = ruleMatch[0];
+        expect(rule).toMatch(/color:\s*var\(--text-warning\)/);
+        expect(rule).toMatch(/margin-left:\s*auto/);
+    });
+
+    // Behavior tests on the exported pure renderer — Revert presence is keyed
+    // on the entry being completed, and it replaces Run there.
+    it('buildViewerRenderedBody renders a Revert pill (not Run) for a completed id-bearing entry and fires onRevertEntry', () => {
+        const text = '- [x] Ship a thing <!-- id: done-1 -->';
+        const calls = [];
+        const wrap = buildViewerRenderedBody(text, {
+            onRunEntry: () => {},
+            onRevertEntry: (id, label, btn) => calls.push({ id, label, btn }),
+        });
+        const revert = wrap.querySelector('.todoMdViewerRevertEntryBtn');
+        expect(revert).not.toBeNull();
+        expect(wrap.querySelector('.todoMdViewerRunEntryBtn')).toBeNull();
+        expect(revert.dataset.entryId).toBe('done-1');
+        revert.click();
+        expect(calls).toHaveLength(1);
+        expect(calls[0].id).toBe('done-1');
+        expect(calls[0].label).toBe('Ship a thing');
+    });
+
+    it('buildViewerRenderedBody renders Run (not Revert) for an open id-bearing entry', () => {
+        const text = '- [ ] Build a thing <!-- id: open-1 -->';
+        const wrap = buildViewerRenderedBody(text, {
+            onRunEntry: () => {},
+            onRevertEntry: () => {},
+        });
+        expect(wrap.querySelector('.todoMdViewerRunEntryBtn')).not.toBeNull();
+        expect(wrap.querySelector('.todoMdViewerRevertEntryBtn')).toBeNull();
+    });
+
+    it('buildViewerRenderedBody omits the Revert pill for a completed entry without an id marker', () => {
+        const wrap = buildViewerRenderedBody('- [x] No marker here', {
+            onRevertEntry: () => {},
+        });
+        expect(wrap.querySelector('.todoMdViewerRevertEntryBtn')).toBeNull();
+    });
+
+    it('buildViewerRenderedBody omits the Revert pill when no onRevertEntry callback is supplied', () => {
+        const wrap = buildViewerRenderedBody('- [x] Ship a thing <!-- id: done-2 -->', {});
+        expect(wrap.querySelector('.todoMdViewerRevertEntryBtn')).toBeNull();
+    });
+});

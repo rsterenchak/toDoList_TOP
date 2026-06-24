@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-06-24',
         added: [
             "Shipped runs in the Runs tab now have a Revert control that rolls back the change and ships a fresh build.",
+            "Completed entries in the TODO.md viewer now have a Revert control that rolls back the change and ships a fresh build.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
@@ -20,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-23',
         fixed: [
-            "The chat composer's accent purple now fills the caret button that opens the send-mode menu instead of the dropdown window itself.",
             "Runs that finish without merging any change are now marked \"No change\" in the Runs tab instead of Shipped, with the row linking out to its run log.",
         ],
     },
