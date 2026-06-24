@@ -104,3 +104,26 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-06-24
   <!-- id: 0e45835a-e884-4ced-9b84-636cbfd78429 -->
+
+- [ ] **[MEDIUM]** Add a Revert control to Shipped rows in the Claude sheet Runs tab
+  - Type: feature
+  - Description: Add a per-run Revert affordance to SHIPPED rows in the Claude sheet's Runs tab that rolls back that run's shipped change through the Worker's already-deployed full-auto `revert` route. Each SHIPPED record carries `rec.entryId`; the Worker resolves it to the merged PR, opens a revert PR via GraphQL, and auto-merges it so `deploy.yml` ships the rollback. The control lives on the row built by `buildRunRow` in `claudeSheet.js`, coexisting with the existing whole-row "iterate" behavior (`startIterateFromRun`).
+  - Behavior:
+    - Render the Revert control ONLY on rows whose status is `SHIPPED` and that have `rec.entryId`, and only when the record has not already been reverted (see the reverted-state gate below). Non-shipped, id-less, or already-reverted rows never show a fresh Revert trigger.
+    - The control is its own button inside the row. Activating it by click OR keyboard must `event.stopPropagation()` (and not bubble to the row's keydown) so it never also fires the row's iterate action.
+    - Tapping it opens a confirmation via `showConfirmModal` naming the run (`rec.title`) and stating this ships a rollback — a new build will deploy. Cancel does nothing.
+    - On confirm: disable the control and show a loading state (reuse the existing per-row `--loading` convention), then call the new `revertEntry(rec.entryId, target)` where `target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null` — mirroring `pollRunStatus` so a run shipped to a non-default workspace reverts against the correct repo.
+    - Handle the three Worker outcomes:
+      - `merged === true`: show a success toast (`showInjectToast`, e.g. "Reverted — new build shipping"). Mark the record reverted (`rec.reverted = true`) and persist via `saveRunRecords`, then re-render so the control reflects the reverted state and can no longer be triggered. This is the double-revert guard: a second merged revert of the same PR would re-apply the original change, so a reverted row must never re-submit.
+      - `merged === false`: the revert PR opened but didn't auto-merge (`res.reason` — conflict, or mergeability unconfirmed). Surface `res.reason` and give the user `res.revert_pr_url` to finish in GitHub. Persist that URL on the record so the control switches to opening the existing revert PR rather than POSTing again — never create a duplicate revert PR.
+      - `ok === false`: error toast using the helper's `reason` (covers 404 nothing-to-revert, 409 already-a-revert, 502 failures).
+  - Implementation notes:
+    - Add and export `revertEntry(entryId, target)` in `inject.js`, mirroring `pollRunStatus`/`resolveEntryByMarker`: POST `{ revert: true, entry_id }` through `postToWorker` (adding `repo` + `filePath` from `target` when provided); return `Object.assign({ ok: true }, res || {})` on success and `{ ok: false, reason: describeError(e) }` on failure. This helper is shared with the viewer Revert entry that follows.
+    - In `claudeSheet.js`, import `showConfirmModal` from `./modals.js` (`showInjectToast`, `runRecords`, `saveRunRecords`, and `renderRunsList` are already in this module).
+    - Icon is a quiet undo / counter-clockwise-arrow inline SVG in the existing icon-button style, with an amber/caution accent (the app's warning amber, distinct from delete-red and run-purple); `aria-label="Revert this change"` plus a title tooltip; comfortable tap target on mobile. Add the matching rule in `style.css` on the existing per-row control vocabulary.
+  - Out of scope:
+    - The viewer per-entry Revert and the CLAUDE.md "no in-app revert by design" rewrite — both land with the next (viewer) entry.
+    - Any Worker change — the `revert` route is already deployed.
+    - Do not restructure the existing whole-row iterate interaction; Revert sits alongside it.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  <!-- id: 34b83cbf-0377-431e-8b58-b320d7d6f5f9 -->
