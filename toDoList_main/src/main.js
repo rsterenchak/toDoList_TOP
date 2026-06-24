@@ -78,6 +78,9 @@ import {
     initInjectConfig,
     initInjectTargets,
     showInjectSettingsModal,
+    isInjectConfigured,
+    findTargetById,
+    fetchActiveRuns,
 } from './inject.js';
 import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
@@ -1604,7 +1607,20 @@ function component() {
     mobileProjChevron.setAttribute('aria-hidden', 'true');
     mobileProjChevron.textContent = '▾';
 
+    // Cross-device run indicator: a small purple spinner that trails the
+    // project name + ▾ caret on both breakpoints (the pill is the project
+    // trigger on desktop dropdown and mobile drawer alike). It spins only while
+    // the active project's routed repo has an in-flight run, surfaced via the
+    // Worker's `active_runs` probe — so a run started on another device shows
+    // here. Decorative (the pill already names the project), so aria-hidden,
+    // and pointer-events:none so it never blocks the pill's click-to-open.
+    const mobileProjRunSpinner = document.createElement('span');
+    mobileProjRunSpinner.id = 'mobileProjRunSpinner';
+    mobileProjRunSpinner.className = 'mobileProjRunSpinner';
+    mobileProjRunSpinner.setAttribute('aria-hidden', 'true');
+
     mobileProjTitleRow.appendChild(mobileProjChevron);
+    mobileProjTitleRow.appendChild(mobileProjRunSpinner);
     mobileProjTitleRow.appendChild(mobileProjNext);
     mobileProjHeader.appendChild(mobileProjLabel);
     mobileProjHeader.appendChild(mobileProjTitleRow);
@@ -3821,7 +3837,67 @@ function component() {
         mobileProjNext.disabled = atEnd;
         mobileProjPrev.setAttribute('aria-disabled', atStart ? 'true' : 'false');
         mobileProjNext.setAttribute('aria-disabled', atEnd ? 'true' : 'false');
+
+        // On a genuine active-project change, re-resolve the repo and re-probe
+        // the cross-device run signal. updateMobileProjHeader is the single
+        // header writer driven by the footer MutationObserver, so this rides
+        // that existing path rather than adding a second observer; the
+        // last-project guard keeps it from re-polling on every unrelated
+        // mutation (todo add/complete) that also bumps the counts.
+        if (activeName !== projRunSpinnerLastProject) {
+            projRunSpinnerLastProject = activeName;
+            // Clear any stale spin immediately — the new project may have no
+            // routed repo or no in-flight run — then re-poll for the truth.
+            mobileProjRunSpinner.classList.remove('mobileProjRunSpinner--active');
+            refreshProjRunSpinner();
+        }
     }
+
+    // ── Cross-device run spinner on the project trigger ──
+    // Resolve the active project's routed inject target (repo). Same gate as
+    // the ⚡ inject bolt: inject must be configured AND the project must route
+    // to a target id. A project with no routed target has no repo, so it is
+    // never polled and never spins.
+    let projRunSpinnerLastProject = null;
+    let projRunSpinnerReqToken = 0;
+    const PROJ_RUN_SPINNER_INTERVAL_MS = 10000;
+
+    function resolveActiveProjectTarget(name) {
+        if (!name || !isInjectConfigured()) return null;
+        const targetId = listLogic.getProjectTargetId(name);
+        if (!targetId) return null;
+        const target = findTargetById(targetId);
+        return (target && target.repo) ? target : null;
+    }
+
+    // Probe the active project's repo and spin the trigger glyph while a run is
+    // in flight. Fire-and-forget: an `ok:false` probe (or no routed repo) reads
+    // as "not active" and clears the spinner — never an error toast. A request
+    // token drops a stale response if the active project changed mid-flight.
+    async function refreshProjRunSpinner() {
+        const name = (mobileProjName.textContent || '').trim();
+        const target = resolveActiveProjectTarget(name);
+        if (!target) {
+            mobileProjRunSpinner.classList.remove('mobileProjRunSpinner--active');
+            return;
+        }
+        const token = ++projRunSpinnerReqToken;
+        const res = await fetchActiveRuns({ repo: target.repo, file_path: target.file_path });
+        if (token !== projRunSpinnerReqToken) return; // superseded by a newer poll
+        const active = !!(res && res.ok && res.active === true);
+        mobileProjRunSpinner.classList.toggle('mobileProjRunSpinner--active', active);
+    }
+
+    // Light background cadence (~10s), and only while the tab is visible so it
+    // never polls in the background; a fresh poll also fires the moment the tab
+    // becomes visible again. Plus one poll on load.
+    setInterval(function () {
+        if (document.visibilityState === 'visible') refreshProjRunSpinner();
+    }, PROJ_RUN_SPINNER_INTERVAL_MS);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') refreshProjRunSpinner();
+    });
+    setTimeout(refreshProjRunSpinner, 0);
 
     const footObserver = new MutationObserver(updateFooterCounts);
     footObserver.observe(mainList, {

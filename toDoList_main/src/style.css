@@ -5705,6 +5705,32 @@ body.row-dragging * { cursor: grabbing !important; }
   to { transform: rotate(360deg); }
 }
 
+/* Cross-device run spinner on the project trigger (#mobileProjHeader). A small
+   purple ring that trails the project name + ▾ caret on every breakpoint, shown
+   only while the active project's routed repo has an in-flight run — surfaced
+   from the Worker's `active_runs` probe, so a run started on another device
+   spins here too. Decorative (aria-hidden; the pill already names the project)
+   and pointer-events:none so it never blocks the pill's click-to-open. Hidden
+   until the `--active` class is toggled on. The picker-row spinners in the
+   follow-up entry reuse the shared `spin` keyframes below. */
+.mobileProjRunSpinner {
+  display: none;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(157, 147, 238, 0.3);
+  border-top-color: #9D93EE;
+  pointer-events: none;
+}
+.mobileProjRunSpinner--active {
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .todoMdViewerCollapseBtn {
   appearance: none;
   display: inline-flex;

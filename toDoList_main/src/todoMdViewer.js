@@ -15,6 +15,7 @@ import {
     rewriteTodoMd,
     dispatchRun,
     pollRunStatus,
+    fetchActiveRuns,
     revertEntry,
     showInjectToast,
 } from './inject.js';
@@ -84,6 +85,11 @@ let viewerActiveProject = null;
 let viewerResizeHandler = null;
 let viewerActiveRunChangeHandler = null;
 let viewerRunPollInterval = null;
+// Separate interval from the local run poll: this one polls the Worker's
+// repo-level `active_runs` probe so a run started on ANOTHER device lights up
+// the viewer's Running pill (and self-clears when that run finishes), even when
+// no local active-run record exists. Cleared with the card on teardown.
+let viewerServerRunPollInterval = null;
 
 function viewerLastFetchKey(projectName) {
     return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
@@ -127,6 +133,7 @@ function detachViewerResizeHandler() {
     // Clear any in-flight run-status poll so a leaked interval can't keep
     // firing against a pill whose card was torn down or re-rendered.
     stopViewerRunPoll();
+    stopViewerServerRunPoll();
     // Drop the per-project active-run subscription with the card it belonged to
     // so a torn-down card can't keep reacting to run changes.
     if (viewerActiveRunChangeHandler) {
@@ -139,6 +146,13 @@ function stopViewerRunPoll() {
     if (viewerRunPollInterval) {
         clearInterval(viewerRunPollInterval);
         viewerRunPollInterval = null;
+    }
+}
+
+function stopViewerServerRunPoll() {
+    if (viewerServerRunPollInterval) {
+        clearInterval(viewerServerRunPollInterval);
+        viewerServerRunPollInterval = null;
     }
 }
 
@@ -940,6 +954,13 @@ function buildTodoMdViewerCard(projectName, target) {
 
     let runPill = null;
     let runPillLastUrl = null;
+    // True only while the mounted pill is driven by the ambient server probe
+    // (a cross-device run with no local active-run record) rather than by a
+    // local dispatch. The local lifecycle (startRunPill / restoreRunButton)
+    // always clears it, so a local run cleanly takes over a server pill, and
+    // the server probe only ever tears down a pill it owns — never a local
+    // terminal pill (success/failure/timeout) that lingers after clearActiveRun.
+    let serverDrivenPill = false;
 
     function actionsFallbackUrl() {
         return target && target.repo
@@ -983,6 +1004,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function restoreRunButton() {
         stopViewerRunPoll();
+        serverDrivenPill = false;
         if (runPill && runPill.parentNode) {
             runPill.parentNode.replaceChild(runBacklogBtn, runPill);
         }
@@ -1086,6 +1108,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     function startRunPill(correlationId) {
         stopViewerRunPoll();
+        serverDrivenPill = false; // a local dispatch always owns the pill
         // Idempotent restart: drop any pill already mounted (the change-event
         // subscriber and the dispatch finally can both ask to start one) so a
         // single pill ends up in the meta slot, not two stacked nodes.
@@ -1124,6 +1147,59 @@ function buildTodoMdViewerCard(projectName, target) {
         pollRunOnce(correlationId, startedAt);
         // A run is now tracked — disable the per-entry controls for its duration.
         syncRunEntryButtonsDisabled();
+    }
+
+    // Mount a Running pill driven purely by the server signal — no local
+    // active-run record, no correlation id, no give-up clock. Used for the
+    // cross-device case: a run started elsewhere for this project's repo. It
+    // reuses the same pill geometry/state as the local "running" stage; the
+    // ambient poll tears it down the moment the server reports the repo idle.
+    function mountServerRunPill() {
+        runPillLastUrl = null;
+        serverDrivenPill = true;
+        runPill = document.createElement('div');
+        runPill.className = 'todoMdViewerRunPill';
+        runPill.setAttribute('role', 'status');
+        runPill.setAttribute('aria-live', 'polite');
+        if (runBacklogBtn.parentNode) {
+            runBacklogBtn.parentNode.replaceChild(runPill, runBacklogBtn);
+        } else {
+            meta.insertBefore(runPill, syncBtn);
+        }
+        renderRunPill({ state: 'running', label: 'Running…', spinner: true });
+        syncRunEntryButtonsDisabled();
+    }
+
+    // Ambient probe of the Worker's repo-level `active_runs` signal so a run
+    // started on another device surfaces here (and self-clears when it ends).
+    // The local active-run record always wins: when one exists, the rich local
+    // lifecycle owns the pill and this probe stands down. A lingering local
+    // terminal pill (success/failure/timeout, runPill set but not server-driven)
+    // is likewise left untouched. Fire-and-forget — `ok:false` means "not
+    // active", never an error toast.
+    async function pollServerRunSignal() {
+        if (readActiveRun(projectName)) return;
+        if (runPill && !serverDrivenPill) return;
+        if (!target || !target.repo) return;
+        const res = await fetchActiveRuns(target);
+        // The card may have been torn down or a local run may have started
+        // while the probe was in flight — bail rather than fight the local path.
+        if (readActiveRun(projectName)) return;
+        if (runPill && !serverDrivenPill) return;
+        const active = !!(res && res.ok && res.active === true);
+        if (active) {
+            if (!runPill) mountServerRunPill();
+        } else if (serverDrivenPill) {
+            restoreRunButton();
+        }
+    }
+
+    function startServerRunPoll() {
+        stopViewerServerRunPoll();
+        viewerServerRunPollInterval = setInterval(pollServerRunSignal, RUN_POLL_INTERVAL_MS);
+        // Poll once immediately so a cross-device run surfaces on mount without
+        // waiting a full interval.
+        pollServerRunSignal();
     }
 
     async function runBacklog() {
@@ -1309,9 +1385,15 @@ function buildTodoMdViewerCard(projectName, target) {
         if (changed !== projectName) return;
         const rec = readActiveRun(projectName);
         if (rec) {
-            if (!runPill) startRunPill(rec.correlationId);
+            // A local run takes over even from a server-driven pill, so the
+            // cross-device "Running…" upgrades into the rich local lifecycle.
+            if (!runPill || serverDrivenPill) startRunPill(rec.correlationId);
         } else if (runPill && !isTerminalRunPill()) {
             restoreRunButton();
+            // The local record cleared — re-probe the server signal so a run
+            // still in flight elsewhere keeps the pill up instead of flashing
+            // back to the button for one interval.
+            pollServerRunSignal();
         }
     };
     document.addEventListener(ACTIVE_RUN_CHANGE_EVENT, viewerActiveRunChangeHandler);
@@ -1329,6 +1411,13 @@ function buildTodoMdViewerCard(projectName, target) {
     if (activeRun) {
         startRunPill(activeRun.correlationId);
     }
+
+    // Begin the ambient cross-device run probe for this project's repo. It runs
+    // for the card's whole lifetime (not just while a local run is tracked), so
+    // a run started on another device lights up the Running pill within one
+    // interval and self-clears when the run completes. When a local run is
+    // active the probe stands down and the local lifecycle owns the pill.
+    startServerRunPoll();
 
     // Kick off the initial fetch — the card mounts with the cached
     // timestamp in the header and a "Loading…" body, then the body fills
