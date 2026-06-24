@@ -807,7 +807,11 @@ body {
 #confirmModalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* Above every interactive sheet (the TODO.md viewer sheet + its overflow
+     sheet at 4000/4100, the completed sheet at 4000) so a confirmation
+     opened from inside a mobile sheet — e.g. deleting a todo entry in the
+     TODO.md viewer — always renders on top instead of behind the sheet. */
+  z-index: 4200;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
