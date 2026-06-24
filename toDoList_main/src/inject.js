@@ -408,6 +408,34 @@ export async function resolveEntryByMarker(entryId) {
 }
 
 
+// Roll back an entry's shipped change through the Worker's already-deployed
+// full-auto `revert` route (same URL + Bearer secret as every other call here).
+// POSTs `{ revert: true, entry_id }` — plus `repo` + `filePath` from `target`
+// when supplied, so a run shipped to a non-default workspace reverts against the
+// correct repo, mirroring pollRunStatus. The Worker resolves the marker to its
+// merged PR, opens a revert PR via GraphQL, and auto-merges it so deploy.yml
+// ships the rollback. The parsed response — `{ merged, reason, revert_pr_url }`
+// — is spread onto an `{ ok: true }` envelope: `merged:true` is a completed
+// rollback, `merged:false` carries a `reason` and `revert_pr_url` for the user
+// to finish in GitHub. Returns `{ ok: false, reason }` via describeError on any
+// failure (404 nothing-to-revert, 409 already-a-revert, 5xx), matching the
+// vocabulary the other Worker calls already use.
+export async function revertEntry(entryId, target) {
+    if (!entryId) return { ok: false, reason: 'No entry id' };
+    try {
+        const payload = { revert: true, entry_id: entryId };
+        if (target) {
+            payload.repo = target.repo;
+            payload.filePath = target.file_path;
+        }
+        const res = await postToWorker(payload);
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Fetch the Worker's allowlist of repos the chat workspace can target. Mirrors
 // postToWorker's wiring (same URL + Bearer secret) but POSTs `{ repos: true }`,
 // to which the Worker replies `{ ok: true, default, repos: [{ repo, srcPrefix }] }`.

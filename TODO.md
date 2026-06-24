@@ -105,7 +105,7 @@
   - Completed: 2026-06-24
   <!-- id: 0e45835a-e884-4ced-9b84-636cbfd78429 -->
 
-- [ ] **[MEDIUM]** Add a Revert control to Shipped rows in the Claude sheet Runs tab
+- [x] **[MEDIUM]** Add a Revert control to Shipped rows in the Claude sheet Runs tab — Completed: 2026-06-24
   - Type: feature
   - Description: Add a per-run Revert affordance to SHIPPED rows in the Claude sheet's Runs tab that rolls back that run's shipped change through the Worker's already-deployed full-auto `revert` route. Each SHIPPED record carries `rec.entryId`; the Worker resolves it to the merged PR, opens a revert PR via GraphQL, and auto-merges it so `deploy.yml` ships the rollback. The control lives on the row built by `buildRunRow` in `claudeSheet.js`, coexisting with the existing whole-row "iterate" behavior (`startIterateFromRun`).
   - Behavior:

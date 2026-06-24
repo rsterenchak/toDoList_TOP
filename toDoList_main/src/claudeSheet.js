@@ -27,6 +27,7 @@ import {
     dispatchRun,
     pollRunStatus,
     resolveEntryByMarker,
+    revertEntry,
     readTodoMdFromWorker,
     getCachedTargets,
     loadInjectTargets,
@@ -42,7 +43,7 @@ import {
 import { listLogic } from './listLogic.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
-import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
+import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
 import DOMPurify from 'dompurify';
 
 const MOBILE_MAX_WIDTH = 1023;
@@ -2101,6 +2102,87 @@ function clearCompletedRuns() {
     renderRunsList();
 }
 
+// Build the per-row Revert control shown on SHIPPED rows. It's its own button
+// inside the row; click and keyboard both stopPropagation so the row's iterate
+// action never also fires. When the record already carries a revert PR that
+// didn't auto-merge (rec.revertPrUrl), the control opens that existing PR rather
+// than POSTing a fresh revert — a second merged revert of the same PR would
+// re-apply the original change, so we never create a duplicate revert PR.
+function buildRevertControl(rec) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeRunRevertBtn';
+    const pendingPr = !!rec.revertPrUrl;
+    btn.setAttribute('aria-label', pendingPr ? 'Open the revert pull request' : 'Revert this change');
+    btn.title = pendingPr ? 'Open the revert pull request' : 'Revert this change';
+    // Quiet counter-clockwise / undo arrow in the existing icon-button style.
+    btn.innerHTML =
+        '<svg class="claudeRunRevertIcon" width="14" height="14" viewBox="0 0 24 24" ' +
+        'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+        '<polyline points="1 4 1 10 7 10"></polyline>' +
+        '<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
+    btn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        if (rec.revertPrUrl) {
+            try { window.open(rec.revertPrUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
+            return;
+        }
+        confirmAndRevertRun(rec, btn);
+    });
+    // Enter/Space natively fire the button's click, but the keydown also bubbles
+    // to the row's keydown handler (iterate) — stop it here so the keyboard path
+    // matches the click path and never double-fires.
+    btn.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+    });
+    return btn;
+}
+
+// Confirm the rollback, then ship it. The confirm names the run and states a new
+// build will deploy; Cancel does nothing.
+function confirmAndRevertRun(rec, btn) {
+    showConfirmModal({
+        message: 'Revert “' + (rec.title || 'this run') + '”? This ships a rollback — a new build will deploy.',
+        confirmLabel: 'Revert',
+        onConfirm: function() { performRevertRun(rec, btn); },
+    });
+}
+
+async function performRevertRun(rec, btn) {
+    btn.disabled = true;
+    btn.classList.add('claudeRunRevertBtn--loading');
+    // Revert against the repo the run shipped to, mirroring pollRunStatus: a run
+    // without a persisted repo falls back to the Worker's default repo.
+    const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
+    const res = await revertEntry(rec.entryId, target);
+    if (res && res.ok && res.merged === true) {
+        // Rollback merged — a new build is deploying. Mark the record reverted so
+        // the control can no longer be triggered (double-revert guard).
+        showInjectToast('Reverted — new build shipping');
+        rec.reverted = true;
+        saveRunRecords();
+        renderRunsList();
+        return;
+    }
+    if (res && res.ok && res.merged === false) {
+        // The revert PR opened but didn't auto-merge (conflict, or mergeability
+        // unconfirmed). Persist the PR URL so the control switches to opening it
+        // rather than POSTing again, and surface the reason.
+        if (res.revert_pr_url) rec.revertPrUrl = res.revert_pr_url;
+        saveRunRecords();
+        showInjectToast(res.reason
+            ? ('Revert needs attention: ' + res.reason)
+            : 'Revert PR opened — finish it in GitHub');
+        renderRunsList();
+        return;
+    }
+    // ok === false → surface the error and restore the control so it can retry.
+    showInjectToast((res && res.reason) ? ('Revert failed: ' + res.reason) : 'Revert failed');
+    btn.disabled = false;
+    btn.classList.remove('claudeRunRevertBtn--loading');
+}
+
 function buildRunRow(rec) {
     const row = document.createElement('div');
     row.className = 'claudeRunRow';
@@ -2143,6 +2225,12 @@ function buildRunRow(rec) {
                 startIterateFromRun(rec);
             }
         });
+        // A shipped change can be rolled back. The Revert control sits inside the
+        // iterable row but stops propagation on both click and keyboard so it
+        // never also fires the row's iterate action. A record already reverted
+        // (rec.reverted) shows no fresh trigger — re-reverting a revert PR would
+        // re-apply the original change.
+        if (!rec.reverted) row.appendChild(buildRevertControl(rec));
     } else if (status === 'NOCHANGE' && rec.runUrl) {
         // A "No change" run had nothing to merge, so it's not iterable. Instead
         // its row opens the GitHub Actions log so the user can read the agent's

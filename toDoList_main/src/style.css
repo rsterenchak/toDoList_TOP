@@ -2463,6 +2463,49 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: #6e5a2a;
 }
 
+/* Per-row Revert control on a SHIPPED run — quiet by default, warning-amber
+   accent (deliberately distinct from delete-red and run-purple) so the caution
+   intent reads only when the user reaches for it. Sits inside the iterable row
+   but never inherits its iterate action. */
+.claudeRunRevertBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  margin-left: 6px;
+  background: #161622;
+  color: var(--text-warning);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.claudeRunRevertBtn:hover:not(:disabled) {
+  background: rgba(217, 184, 106, 0.14);
+  color: var(--text-warning);
+  border-color: #6e5a2a;
+}
+.claudeRunRevertBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.claudeRunRevertBtn:disabled,
+.claudeRunRevertBtn--loading {
+  opacity: 0.5;
+  cursor: progress;
+}
+.claudeRunRevertIcon {
+  flex: none;
+}
+:root[data-theme="light"] .claudeRunRevertBtn {
+  background: transparent;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
 /* MAIN BAR */
 #mainBar {
   display: grid;
