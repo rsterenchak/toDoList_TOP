@@ -162,7 +162,7 @@
   - Completed: 2026-06-24
   <!-- id: 68bf1821-8904-4cec-a320-5f265294ab41 -->
 
-- [ ] **[MEDIUM]** Surface cross-device "running" status for the active project — server-driven viewer pill + dropdown-trigger spinner
+- [x] **[MEDIUM]** Surface cross-device "running" status for the active project — server-driven viewer pill + dropdown-trigger spinner — Completed: 2026-06-24
   - Type: feature
   - Description: Make a run started on another device visible here for the active project, using the Worker's deployed `active_runs` route (a repo-level "is anything running right now" probe). Add a shared `fetchActiveRuns` helper, drive the TODO.md viewer's existing "Running" pill off the server signal (not just the local run record) so a run started elsewhere lights it up and it self-clears when the run completes, and add a purple spinner to the project-dropdown trigger that shows while the active project's repo has an in-flight run. Per-project spinners in the picker rows are a separate follow-up entry.
   - Behavior:
