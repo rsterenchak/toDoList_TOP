@@ -1771,7 +1771,7 @@ function component() {
     viewPillProjects.className = 'viewPill';
     viewPillProjects.setAttribute('role', 'tab');
     viewPillProjects.setAttribute('aria-pressed', 'false');
-    viewPillProjects.textContent = 'PROJECTS';
+    viewPillProjects.textContent = 'Task View';
 
     const viewPillConceive = document.createElement('button');
     viewPillConceive.id = 'viewPillConceive';

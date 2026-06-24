@@ -76,7 +76,7 @@ describe('Projects / Conceive view switcher', () => {
             expect(main).toMatch(/viewSwitcher\.id\s*=\s*['"]viewSwitcher['"]/);
             expect(main).toMatch(/viewPillProjects\.id\s*=\s*['"]viewPillProjects['"]/);
             expect(main).toMatch(/viewPillConceive\.id\s*=\s*['"]viewPillConceive['"]/);
-            expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]PROJECTS['"]/);
+            expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]Task View['"]/);
             expect(main).toMatch(/viewPillConceive\.textContent\s*=\s*['"]CONCEIVE['"]/);
         });
 
