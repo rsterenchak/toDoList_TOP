@@ -234,3 +234,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/main.js`
   - Completed: 2026-06-24
   <!-- id: b0ead23e-57ff-44fa-9489-5b5ab1287ec3 -->
+
+- [ ] **[MEDIUM]** Fix mobile chat button glow and style it as a purple FAB with white sparkle icon
+  - Type: bug
+  - Description: The prior glow PR shipped but produced no visible change on the real button. Grep for the mobile chat button's actual DOM element and class name across `mobileSheets.js`, `main.js`, and `claudeSheet.js` to find the correct selector. Apply the following styles to that element at mobile breakpoints: circular shape (`border-radius: 50%`), purple background (`#6C5DF5`), white sparkle icon (✦) centered, and a three-layer radial glow halo using `box-shadow` (e.g. `0 0 8px 4px rgba(108,93,245,0.35), 0 0 18px 8px rgba(108,93,245,0.18), 0 0 30px 14px rgba(108,93,245,0.10)`). Button must stay in its current fixed position — no layout or positioning changes. Verify the glow and purple face are visible on a real mobile viewport after deploy.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 28817a1a-f757-4bff-b821-d49435dc1ea1 -->
