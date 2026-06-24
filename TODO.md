@@ -155,9 +155,9 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`, `CLAUDE.md`
   <!-- id: a5f6f825-f35a-4d3c-9da1-9e1545ceb4d3 -->
 
-- [ ] **[HIGH]** Fix delete confirmation modal rendering behind the TODO.md viewer sheet on mobile
+- [x] **[HIGH]** Fix delete confirmation modal rendering behind the TODO.md viewer sheet on mobile
   - Type: bug
   - Description: On mobile, tapping the delete button on a todo entry inside the TODO.md viewer causes the confirmation modal (Cancel / Delete buttons) to appear behind the viewer sheet, making it inaccessible without closing the sheet first. The modal's z-index or stacking context is lower than the sheet's, so it renders underneath. Fix by ensuring the delete confirmation modal has a z-index high enough to appear above the TODO.md viewer sheet — audit the z-index layering in `style.css` for both the sheet and the modal and establish a clear stacking order so the modal always renders on top. The fix should not affect the modal's behavior on desktop.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/modals.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: 68bf1821-8904-4cec-a320-5f265294ab41 -->
