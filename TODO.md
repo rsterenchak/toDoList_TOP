@@ -83,3 +83,10 @@
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/emptyState.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e2f54a8e-cba7-4f64-8d45-1b77468789f2 -->
+
+- [ ] **[LOW]** Rename the viewPillProjects tab label to "Task View"
+  - Type: feature
+  - Description: Change the visible text of the `viewPillProjects` tab/pill from "Projects" (currently rendered as "PROJECTS") to "Task View". This is a single-label text change only — scope is strictly the `viewPillProjects` element's label string. Do NOT touch any other "Project"/"Projects" copy (sidebar heading elsewhere, aria-labels, the N-projects footer, modal/help text), the data model, or any `todoapp_`-prefixed localStorage keys. If the pill's text is uppercased via CSS, the source string can stay normal-case ("Task View") and render as "TASK VIEW".
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0b235b16-c0a6-4d52-b129-a81eb3763e5c -->
