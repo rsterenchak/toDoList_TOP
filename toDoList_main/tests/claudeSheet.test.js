@@ -7,12 +7,14 @@ import {
     openClaudeSheet,
     closeClaudeSheet,
     isClaudeSheetOpen,
+    syncClaudeSheetForProject,
     extractDraftedEntry,
     extractInspectDirective,
     splitRenderableBlocks,
     renderAssistantContent,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
+import { listLogic } from '../src/listLogic.js';
 import { notifyUpdateAvailable } from '../src/modals.js';
 
 // The chat workspace menu projects its repo list from the user's Inject targets
@@ -412,6 +414,22 @@ describe('Claude sheet — module surface and styling', () => {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 4) {
     for (let i = 0; i < n; i++) await tick();
+}
+
+// The chat workspace pill was retired as a control: the repo a conversation is
+// framed around is now driven solely by the per-project auto-swap. These tests
+// switch the active workspace the way the app now does — by pointing a throwaway
+// project at the inject target whose repo matches and syncing to it.
+// `seededRepos` mirrors the order passed to setInjectTargets in the block (the
+// mock assigns target ids 'tgt-<index>' in that order).
+let __wsProjCounter = 0;
+async function switchWorkspaceTo(repo, seededRepos) {
+    const id = 'tgt-' + seededRepos.indexOf(repo);
+    const name = '__wsproj-' + (__wsProjCounter++);
+    listLogic.addProject(name);
+    listLogic.setProjectTargetId(name, id);
+    syncClaudeSheetForProject(name);
+    await flush();
 }
 
 describe('Claude sheet — drafted entry detection', () => {
@@ -1348,10 +1366,7 @@ describe('Claude sheet — ship targets the active workspace repo', () => {
     });
 
     async function switchWorkspace(repo) {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(repo, [DEFAULT_REPO, OTHER_REPO]);
     }
 
     async function authorAndShip() {
@@ -2333,12 +2348,9 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
         await flush();
     }
 
-    // Switch the chat-level workspace through the pill → menu → confirm flow.
+    // Switch the chat-level workspace via the per-project auto-swap.
     async function switchWorkspace(repo) {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(repo, [DEFAULT_REPO, OTHER_REPO]);
     }
 
     function addPath(path) {
@@ -2369,8 +2381,10 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
     });
 
     it('shows the free-text path input for a workspace with no manifest', async () => {
-        await openPicker();
+        // The auto-swap collapses the picker, so open it after the switch to read
+        // the mode it settles into for the new workspace.
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
         expect(document.getElementById('claudeAttachList').hidden).toBe(true);
@@ -2434,11 +2448,12 @@ describe('Claude sheet — attach picker mode follows the workspace', () => {
     });
 });
 
-// The chat-level workspace pill: a low-emphasis selector in the tab row that
-// names the repo the conversation is anchored to. Tapping it lists all allowed
-// repos; choosing a different one (behind a confirm) clears the chat and
-// switches the active workspace.
-describe('Claude sheet — chat-level workspace pill', () => {
+// The chat-level workspace pill is retired as an interactive control: repo
+// framing is now governed entirely by the per-project auto-swap, so the pill
+// carries no click listener and opens no menu. The node persists, hidden, as the
+// live read-out of the active workspace repo (renderWorkspacePill keeps it
+// current), and the active repo still rides every chat turn as `body.repo`.
+describe('Claude sheet — chat-level workspace pill (retired control)', () => {
     const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
     const OTHER_REPO = 'rsterenchak/matchingGame-test';
     let realFetch;
@@ -2495,93 +2510,159 @@ describe('Claude sheet — chat-level workspace pill', () => {
         await flush();
     }
 
-    it('renders the pill naming the current (default) workspace', () => {
+    it('keeps the hidden pill node as the read-out of the current (default) workspace', () => {
         const pill = document.getElementById('claudeWorkspacePill');
         expect(pill).toBeTruthy();
         expect(pill.textContent).toContain('toDoList_TOP');
+        // The pill is retired as a control: hidden and out of the tab order.
+        expect(pill.hidden).toBe(true);
+        expect(pill.tabIndex).toBe(-1);
     });
 
-    it('opens a menu listing every allowed repo when tapped', () => {
+    it('opens no menu and carries no click handler — the pill is inert', () => {
         document.getElementById('claudeWorkspacePill').click();
-        const menu = document.getElementById('claudeWorkspaceMenu');
-        expect(menu.hidden).toBe(false);
-        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
-        expect(repos).toContain(DEFAULT_REPO);
-        expect(repos).toContain(OTHER_REPO);
-        // The active repo is checkmarked.
-        const active = document.querySelector('.claudeWorkspaceItem[data-repo="' + DEFAULT_REPO + '"]');
-        expect(active.getAttribute('aria-checked')).toBe('true');
+        // No dropdown is ever built or attached to a hidden node.
+        expect(document.getElementById('claudeWorkspaceMenu')).toBe(null);
+        expect(document.querySelector('.claudeWorkspaceItem')).toBe(null);
+        // The active workspace is unchanged by tapping the inert pill.
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
     });
 
-    it('lists BookHavenBookstore_Sophia and reframes the next send when selected', async () => {
+    it('frames the chat turn around the active (default) workspace repo', async () => {
+        await sendMessage('hello in the default workspace');
+        const lastBody = chatBodies[chatBodies.length - 1];
+        expect(lastBody.repo).toBe(DEFAULT_REPO);
+    });
+
+    it('reframes the next send when the workspace auto-swaps to another repo', async () => {
         const BOOKHAVEN_REPO = 'rsterenchak/BookHavenBookstore_Sophia';
-        document.getElementById('claudeWorkspacePill').click();
-        const repos = Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
-        expect(repos).toContain(BOOKHAVEN_REPO);
-
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + BOOKHAVEN_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(BOOKHAVEN_REPO, [DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
 
         await sendMessage('hello in the BookHaven workspace');
         const lastBody = chatBodies[chatBodies.length - 1];
         expect(lastBody.repo).toBe(BOOKHAVEN_REPO);
     });
+});
 
-    it('selecting a different repo asks to confirm before switching', () => {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        const warn = document.querySelector('.claudeWorkspaceConfirmWarn');
-        expect(warn).toBeTruthy();
-        expect(warn.textContent).toMatch(/matchingGame-test/);
-        expect(warn.textContent).toMatch(/clears the current chat/i);
-        // Nothing switched yet — the pill still names the old workspace.
-        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
+// The "Clear chat" control in the tab row: a text-only button, right of the
+// CHAT / RUNS selector, that wipes the current conversation — the in-memory
+// messages, their persisted copy, and the rendered bubbles — while leaving the
+// attached file chips and the active workspace untouched.
+describe('Claude sheet — Clear chat control', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const CHAT_KEY = 'todoapp_claudeChat';
+    let realFetch;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            // Manifest 404s so the picker uses the free-text path input these
+            // tests attach through.
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+        });
+    }
+
+    beforeEach(async () => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO]);
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+        mountClaudeSheet(document.body);
+        await flush();
     });
 
-    it('confirming clears the chat, updates the pill, and reframes the next send', async () => {
-        await sendMessage('hello in the default workspace');
-        expect(document.querySelectorAll('.claudeMsg--user').length).toBe(1);
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
 
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('renders a text-only Clear chat button in the tab row, right of the tabs', () => {
+        const btn = document.getElementById('claudeClearChat');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toBe('Clear chat');
+        // Lives in the tab row alongside the CHAT / RUNS selector.
+        expect(document.getElementById('claudeSheetTabs').contains(btn)).toBe(true);
+        // It trails the tab group in DOM order (right of the selector).
+        const group = document.querySelector('.claudeTabGroup');
+        expect(group.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('wipes the rendered bubbles, the in-memory thread, and its persisted copy', async () => {
+        await sendMessage('first message');
+        expect(document.querySelectorAll('.claudeMsg').length).toBeGreaterThan(0);
+        // The thread was persisted under the active repo.
+        expect(JSON.parse(localStorage.getItem(CHAT_KEY))[DEFAULT_REPO].length).toBeGreaterThan(0);
+
+        document.getElementById('claudeClearChat').click();
         await flush();
 
-        // Chat is wiped and the pill names the new workspace.
-        expect(document.querySelectorAll('.claudeMsg--user').length).toBe(0);
-        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
-        // The menu closed after confirming.
-        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
+        expect(document.querySelectorAll('.claudeMsg').length).toBe(0);
+        const stored = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}');
+        expect(stored[DEFAULT_REPO]).toBeUndefined();
+    });
 
-        await sendMessage('hello in the new workspace');
+    it('leaves the attached file chips intact', async () => {
+        // Attach a file via the free-text picker.
+        document.getElementById('claudeComposerAttach').click();
+        await flush();
+        const pathInput = document.getElementById('claudeAttachPathInput');
+        pathInput.value = 'toDoList_main/src/inject.js';
+        document.getElementById('claudeAttachPathAdd').click();
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
+
+        await sendMessage('a message with an attachment');
+        document.getElementById('claudeClearChat').click();
+        await flush();
+
+        // Messages gone, but the chip survives.
+        expect(document.querySelectorAll('.claudeMsg').length).toBe(0);
+        expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
+    });
+
+    it('keeps the active workspace so the next send still carries its repo', async () => {
+        await sendMessage('first');
+        document.getElementById('claudeClearChat').click();
+        await flush();
+        await sendMessage('after clearing');
         const lastBody = chatBodies[chatBodies.length - 1];
-        expect(lastBody.repo).toBe(OTHER_REPO);
+        expect(lastBody.repo).toBe(DEFAULT_REPO);
     });
 
-    it('cancelling the confirm leaves the workspace untouched', () => {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmCancel').click();
-        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
-        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
-    });
-
-    it('choosing the already-active repo just closes the menu', () => {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + DEFAULT_REPO + '"]').click();
-        expect(document.getElementById('claudeWorkspaceMenu').hidden).toBe(true);
-        expect(document.querySelector('.claudeWorkspaceConfirmWarn')).toBe(null);
+    it('hides the Clear chat button on the Runs tab', () => {
+        const btn = document.getElementById('claudeClearChat');
+        expect(btn.hidden).toBe(false);
+        document.getElementById('claudeTabRuns').click();
+        expect(btn.hidden).toBe(true);
+        document.getElementById('claudeTabChat').click();
+        expect(btn.hidden).toBe(false);
     });
 });
 
 // The workspace repo list is projected from the user's Inject targets (the
 // `inject_targets` Supabase table, cached in inject.js) rather than the Worker
-// allowlist, so the chat menu never drifts from the targets managed in Inject
-// settings. The list starts on a safe fallback (the default repo only) and is
-// replaced once the cache loads; an empty cache leaves the fallback in place so
-// the chat is always usable. These tests drive the cache via setInjectTargets
+// allowlist, so the active workspace never drifts onto a repo the targets no
+// longer carry. The list starts on a safe fallback (the default repo only) and
+// is replaced once the cache loads; an empty cache leaves the fallback in place
+// so the chat is always usable. These tests drive the cache via setInjectTargets
 // and the `injectTargetsChanged` event.
 describe('Claude sheet — workspace repos sourced from inject targets', () => {
     const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
@@ -2614,98 +2695,27 @@ describe('Claude sheet — workspace repos sourced from inject targets', () => {
         globalThis.fetch = realFetch;
     });
 
-    function menuRepos() {
-        return Array.from(document.querySelectorAll('.claudeWorkspaceItem')).map((el) => el.dataset.repo);
-    }
-
-    it('projects the menu from the inject targets once the cache loads', async () => {
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-        mountClaudeSheet(document.body);
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-    });
-
-    it('collapses duplicate repos (two targets on one repo) to a single menu item', async () => {
-        // Two targets can share a repo (different file paths); the menu anchors
-        // on the repo string, so it shows that repo once.
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO, OTHER_REPO]);
-        mountClaudeSheet(document.body);
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
-    });
-
     it('falls back to the default repo and stays usable when the targets list is empty', async () => {
         setInjectTargets([]);
         mountClaudeSheet(document.body);
         await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO]);
-        // The chat is still usable on the fallback repo.
+        // The active workspace falls back to the default repo, and the chat is
+        // still usable on it.
+        expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
         expect(document.getElementById('claudeComposerInput').disabled).toBe(false);
         expect(document.getElementById('claudeComposerSend').disabled).toBe(false);
     });
 
-    it('selecting a target repo sets it as the active workspace', async () => {
+    it('auto-swaps the active workspace to a target repo', async () => {
         setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         mountClaudeSheet(document.body);
         await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + BOOKHAVEN_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(BOOKHAVEN_REPO, [DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('BookHavenBookstore_Sophia');
     });
 
-    // The list is re-projected from the targets on every sheet open — not just on
-    // mount — so a target added or removed in Inject settings shows up the next
-    // time the user opens the sheet, with no page reload. Opening/closing the
-    // sheet is just a class toggle (no remount), so without this refresh the pill
-    // menu would freeze on whatever the cache held at first mount.
-    it('re-projects the workspace list on each sheet open', async () => {
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
-        mountClaudeSheet(document.body);
-        await flush();
-        openClaudeSheet();
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
-
-        // A third target is added in Inject settings between sheet opens.
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-        // Close the open menu so the next pill click opens a fresh one.
-        document.getElementById('claudeWorkspacePill').click();
-        closeClaudeSheet();
-        openClaudeSheet();
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-    });
-
-    // A target add/edit/delete made while the sheet is OPEN dispatches an
-    // `injectTargetsChanged` event; the sheet listens and re-projects the menu
-    // mid-session without a sheet re-open.
-    it('re-projects the workspace list on the injectTargetsChanged event', async () => {
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
-        mountClaudeSheet(document.body);
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO]);
-        // Close the menu so the next pill click rebuilds it.
-        document.getElementById('claudeWorkspacePill').click();
-
-        // A new target is added; inject.js dispatches injectTargetsChanged.
-        setInjectTargets([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
-        await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO, OTHER_REPO, BOOKHAVEN_REPO]);
-    });
-
-    // The on-open refresh repaints the pill/menu only — it must not wipe
-    // chatHistory, attachments, or the active workspace. Only an explicit pill
-    // switch (with the confirm) clears the chat.
+    // The on-open refresh re-projects the targets and repaints the read-out only —
+    // it must not wipe chatHistory, attachments, or the active workspace.
     it('preserves the active workspace and chat history when the on-open refresh resolves', async () => {
         setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
@@ -2713,12 +2723,7 @@ describe('Claude sheet — workspace repos sourced from inject targets', () => {
         openClaudeSheet();
         await flush();
 
-        // Switch the workspace to OTHER_REPO explicitly (this would normally wipe
-        // any prior chat — we then build new history on top).
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(OTHER_REPO, [DEFAULT_REPO, OTHER_REPO]);
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
 
         const input = document.getElementById('claudeComposerInput');
@@ -2739,18 +2744,15 @@ describe('Claude sheet — workspace repos sourced from inject targets', () => {
 
     // If the user's active workspace target is deleted before the next sheet
     // open, the refresh falls back to the first remaining target so the user
-    // isn't stranded on a repo the menu no longer lists. Chat history is
-    // preserved — the fallback only repaints the pill.
+    // isn't stranded on a repo the targets list no longer carries. Chat history
+    // is preserved — the fallback only repaints the read-out.
     it('falls back to the first target when the active workspace target was deleted', async () => {
         setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
         openClaudeSheet();
         await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(OTHER_REPO, [DEFAULT_REPO, OTHER_REPO]);
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
 
         const input = document.getElementById('claudeComposerInput');
@@ -2775,10 +2777,7 @@ describe('Claude sheet — workspace repos sourced from inject targets', () => {
         setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
         mountClaudeSheet(document.body);
         await flush();
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + OTHER_REPO + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(OTHER_REPO, [DEFAULT_REPO, OTHER_REPO]);
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('matchingGame-test');
 
         // All targets are deleted; the change event fires.
@@ -2786,8 +2785,6 @@ describe('Claude sheet — workspace repos sourced from inject targets', () => {
         document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
         await flush();
         expect(document.getElementById('claudeWorkspacePill').textContent).toContain('toDoList_TOP');
-        document.getElementById('claudeWorkspacePill').click();
-        expect(menuRepos()).toEqual([DEFAULT_REPO]);
     });
 });
 
@@ -2871,13 +2868,10 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
         await flush();
     }
 
-    // Switch the chat-level workspace through the pill → menu → confirm flow.
-    // When the picker is open it re-syncs to the new workspace's manifest.
+    // Switch the chat-level workspace via the per-project auto-swap. When the
+    // picker is open it re-syncs to the new workspace's manifest.
     async function switchWorkspace(repo) {
-        document.getElementById('claudeWorkspacePill').click();
-        document.querySelector('.claudeWorkspaceItem[data-repo="' + repo + '"]').click();
-        document.querySelector('.claudeWorkspaceConfirmYes').click();
-        await flush();
+        await switchWorkspaceTo(repo, [DEFAULT_REPO, OTHER_REPO]);
     }
 
     function listPaths() {
@@ -2892,8 +2886,9 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
     });
 
     it('renders the manifest-driven list for another repo with a fetchable manifest', async () => {
-        await openPicker();
+        // The auto-swap collapses the picker, so open it after the switch.
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(false);
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(true);
         expect(listPaths()).toEqual(GAME_MANIFEST);
@@ -2903,28 +2898,35 @@ describe('Claude sheet — attach picker multi-repo manifest', () => {
 
     it('falls back to the free-text input when the manifest fetch 404s', async () => {
         manifestByRepo['matchingGame-test'] = null;
-        await openPicker();
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         expect(document.getElementById('claudeAttachPathRow').hidden).toBe(false);
         expect(document.getElementById('claudeAttachSearch').hidden).toBe(true);
         expect(document.getElementById('claudeAttachList').hidden).toBe(true);
     });
 
     it('swaps the list when switching repos without leaking the previous repo files', async () => {
+        // Each workspace switch collapses the picker; re-open it to read the list
+        // the picker settles into for the now-active workspace.
         await openPicker();
         expect(listPaths()).toEqual(TODO_MANIFEST);
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         expect(listPaths()).toEqual(GAME_MANIFEST);
         // Switching back shows the default repo's list again, not a mix.
         await switchWorkspace(DEFAULT_REPO);
+        await openPicker();
         expect(listPaths()).toEqual(TODO_MANIFEST);
     });
 
     it('caches each repo manifest so re-selecting it does not re-fetch', async () => {
         await openPicker();
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         await switchWorkspace(DEFAULT_REPO);
+        await openPicker();
         await switchWorkspace(OTHER_REPO);
+        await openPicker();
         const gameFetches = manifestFetches.filter((u) => u.indexOf('matchingGame-test') !== -1);
         const todoFetches = manifestFetches.filter((u) => u.indexOf('toDoList_TOP') !== -1);
         expect(gameFetches.length).toBe(1);

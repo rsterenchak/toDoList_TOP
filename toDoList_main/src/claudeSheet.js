@@ -84,7 +84,6 @@ let contentEl = null;
 let chatPaneEl = null;
 let resizeHandler = null;
 let keydownHandler = null;
-let workspaceClickHandler = null;
 let attachClickHandler = null;
 let appUpdateHandler = null;
 let appAppliedHandler = null;
@@ -203,6 +202,9 @@ function setActiveTab(tab) {
     const attachBtn = sheetQuery('#claudeComposerAttach');
     if (attachBtn) attachBtn.hidden = tab !== 'chat';
     if (tab !== 'chat') setAttachPanelHidden(true);
+    // Clear chat acts on the conversation, so it's chat-only — hide it on Runs.
+    const clearChatBtn = sheetQuery('#claudeClearChat');
+    if (clearChatBtn) clearChatBtn.hidden = tab !== 'chat';
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
@@ -267,8 +269,8 @@ export function syncClaudeSheetForProject(projectName) {
 // On a project switch, re-point the chat workspace at the project's configured
 // inject repo so the next chat turn is framed around the right app. Chat threads
 // are persisted per repo (todoapp_claudeChat), so the swap saves the outgoing
-// repo's thread and resumes the incoming repo's saved thread — unlike the manual
-// pill switch (confirmWorkspaceSwitch), which deliberately wipes. Resolves
+// repo's thread and resumes the incoming repo's saved thread — unlike the
+// "Clear chat" control, which deliberately wipes the current thread. Resolves
 // projectName → target_id → the cached inject target's repo; leaves the
 // workspace untouched when the project has no target, the target is no longer
 // cached, or the repo already matches the active workspace.
@@ -291,8 +293,7 @@ function autoSwapWorkspaceForProject(projectName) {
     replayChatHistory();
     renderWorkspacePill();
 
-    // Mirror the tail of confirmWorkspaceSwitch: if the attach picker is open,
-    // refresh it to the new repo's source list.
+    // If the attach picker is open, refresh it to the new repo's source list.
     const panel = sheetQuery('#claudeAttachPanel');
     if (panel && !panel.hidden) {
         setAttachPanelHidden(false);
@@ -438,36 +439,55 @@ function buildTab(id, label, selected) {
     return tab;
 }
 
-// The chat-level workspace pill + its dropdown menu. Sits in the tab row,
-// low-emphasis, naming the repo the conversation is anchored to.
+// The chat-level workspace pill is retired as an interactive control: the repo
+// the conversation is framed around is now governed entirely by the per-project
+// auto-swap (syncClaudeSheetForProject → autoSwapWorkspaceForProject). The pill
+// node persists, hidden, purely as the live read-out of the active workspace
+// repo that renderWorkspacePill keeps current — it carries NO click listener and
+// opens NO menu, so there is nothing for the user to tap and no dropdown handler
+// left dangling on a hidden node.
 function buildWorkspace() {
     const wrap = document.createElement('div');
     wrap.className = 'claudeWorkspace';
+    wrap.hidden = true;
 
     const pill = document.createElement('button');
     pill.id = 'claudeWorkspacePill';
     pill.type = 'button';
     pill.className = 'claudeWorkspacePill';
-    pill.setAttribute('aria-haspopup', 'menu');
-    pill.setAttribute('aria-expanded', 'false');
-    pill.addEventListener('click', function(event) {
-        event.stopPropagation();
-        toggleWorkspaceMenu();
-    });
-
-    const menu = document.createElement('div');
-    menu.id = 'claudeWorkspaceMenu';
-    menu.className = 'claudeWorkspaceMenu';
-    menu.setAttribute('role', 'menu');
-    menu.hidden = true;
-    // Keep clicks inside the menu from reaching the document-level outside-click
-    // handler — a menu item that rebuilds the menu detaches its own node, which
-    // would otherwise read as a click "outside" and close the menu prematurely.
-    menu.addEventListener('click', function(event) { event.stopPropagation(); });
+    pill.hidden = true;
+    pill.tabIndex = -1;
+    pill.setAttribute('aria-hidden', 'true');
 
     wrap.appendChild(pill);
-    wrap.appendChild(menu);
     return wrap;
+}
+
+// The "Clear chat" control in the tab row, to the right of the CHAT / RUNS
+// selector. Text-only (no icon), tinted with the danger token. Wipes the
+// current conversation but never the attachments or the iterate seed.
+function buildClearChat() {
+    const btn = document.createElement('button');
+    btn.id = 'claudeClearChat';
+    btn.type = 'button';
+    btn.className = 'claudeClearChat';
+    btn.textContent = 'Clear chat';
+    btn.setAttribute('aria-label', 'Clear chat');
+    btn.addEventListener('click', clearChatConversation);
+    return btn;
+}
+
+// Wipe the current conversation — the in-memory message array, its persisted
+// per-repo copy, and every rendered bubble — without touching the attached file
+// chips or the active workspace. The iterate seed rides only an iterate
+// session's first turn (a transient arg to requestAssistantReply, never stored
+// state), so clearing the messages can't disturb it; a later iterate from a
+// shipped run still seeds fresh.
+function clearChatConversation() {
+    chatHistory = [];
+    deleteChatHistory(activeChatRepo);
+    const surface = sheetQuery('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
 }
 
 // The composer file-picker button + its dropdown panel. The button leads the
@@ -1316,7 +1336,6 @@ function loadWorkspaceRepos() {
         setActiveChatRepo(attachRepos[0]);
     }
     renderWorkspacePill();
-    if (isWorkspaceMenuOpen()) buildWorkspaceMenu();
 }
 
 // Reload the inject-targets cache from Supabase, then re-project the workspace
@@ -1330,121 +1349,14 @@ async function refreshWorkspaceRepos() {
     loadWorkspaceRepos();
 }
 
-// Paint the pill with the active workspace's short name, e.g. "📂 toDoList_TOP ▾".
+// Paint the hidden pill node with the active workspace's short name. The pill is
+// no longer a control (see buildWorkspace) — this keeps its text current as the
+// single live read-out of which repo the conversation is framed around.
 function renderWorkspacePill() {
     const pill = sheetQuery('#claudeWorkspacePill');
     if (!pill) return;
     pill.textContent = '📂 ' + repoShortName(activeChatRepo) + ' ▾';
     pill.title = 'Workspace: ' + activeChatRepo;
-}
-
-function isWorkspaceMenuOpen() {
-    const menu = sheetQuery('#claudeWorkspaceMenu');
-    return !!(menu && !menu.hidden);
-}
-
-function openWorkspaceMenu() {
-    const menu = sheetQuery('#claudeWorkspaceMenu');
-    const pill = sheetQuery('#claudeWorkspacePill');
-    if (!menu) return;
-    buildWorkspaceMenu();
-    menu.hidden = false;
-    if (pill) pill.setAttribute('aria-expanded', 'true');
-}
-
-function closeWorkspaceMenu() {
-    const menu = sheetQuery('#claudeWorkspaceMenu');
-    const pill = sheetQuery('#claudeWorkspacePill');
-    if (menu) { menu.hidden = true; menu.innerHTML = ''; }
-    if (pill) pill.setAttribute('aria-expanded', 'false');
-}
-
-function toggleWorkspaceMenu() {
-    if (isWorkspaceMenuOpen()) closeWorkspaceMenu();
-    else openWorkspaceMenu();
-}
-
-// Render one radio menu item per allowed repo, the active one checkmarked.
-function buildWorkspaceMenu() {
-    const menu = sheetQuery('#claudeWorkspaceMenu');
-    if (!menu) return;
-    menu.innerHTML = '';
-    attachRepos.forEach(function(repo) {
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'claudeWorkspaceItem';
-        item.setAttribute('role', 'menuitemradio');
-        item.dataset.repo = repo;
-        const active = repo === activeChatRepo;
-        item.setAttribute('aria-checked', String(active));
-        if (active) item.classList.add('claudeWorkspaceItem--active');
-        item.textContent = (active ? '✓ ' : '') + repoShortName(repo);
-        item.addEventListener('click', function() { onWorkspaceItemClick(repo); });
-        menu.appendChild(item);
-    });
-}
-
-// Choosing the active repo is a no-op (just close); a different one asks to
-// confirm first, because switching wipes the current chat.
-function onWorkspaceItemClick(repo) {
-    if (repo === activeChatRepo) { closeWorkspaceMenu(); return; }
-    showWorkspaceConfirm(repo);
-}
-
-function showWorkspaceConfirm(repo) {
-    const menu = sheetQuery('#claudeWorkspaceMenu');
-    if (!menu) return;
-    menu.innerHTML = '';
-    const confirm = document.createElement('div');
-    confirm.className = 'claudeWorkspaceConfirm';
-    const warn = document.createElement('p');
-    warn.className = 'claudeWorkspaceConfirmWarn';
-    warn.textContent = 'Switch to ' + repoShortName(repo) + '? This clears the current chat.';
-    const row = document.createElement('div');
-    row.className = 'claudeWorkspaceConfirmRow';
-    const yes = document.createElement('button');
-    yes.type = 'button';
-    yes.className = 'claudeWorkspaceConfirmYes';
-    yes.textContent = 'Switch';
-    yes.addEventListener('click', function() { confirmWorkspaceSwitch(repo); });
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'claudeWorkspaceConfirmCancel';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', function() { closeWorkspaceMenu(); });
-    row.appendChild(yes);
-    row.appendChild(cancel);
-    confirm.appendChild(warn);
-    confirm.appendChild(row);
-    menu.appendChild(confirm);
-}
-
-// Commit the workspace switch: adopt the new repo, wipe the conversation (same
-// effect as + New), repaint the pill, and re-sync the picker to the new repo if
-// it's open.
-function confirmWorkspaceSwitch(repo) {
-    setActiveChatRepo(repo);
-
-    // The pill is the deliberate "start fresh on this repo" control: wipe the
-    // in-memory thread AND its persisted copy so a reload or later auto-swap-back
-    // can't resurrect the cleared conversation.
-    chatHistory = [];
-    deleteChatHistory(repo);
-    const surface = sheetQuery('#claudeChatSurface');
-    if (surface) surface.innerHTML = '';
-
-    const panel = sheetQuery('#claudeAttachPanel');
-    const pickerWasOpen = !!(panel && !panel.hidden);
-
-    clearAttachments();
-
-    renderWorkspacePill();
-    closeWorkspaceMenu();
-
-    if (pickerWasOpen && panel) {
-        setAttachPanelHidden(false);
-        refreshAttachPickerMode();
-    }
 }
 
 // ── CHAT ──
@@ -2589,6 +2501,7 @@ function buildSheet() {
     tabGroup.appendChild(chatTab);
     tabGroup.appendChild(runsTab);
     tabs.appendChild(tabGroup);
+    tabs.appendChild(buildClearChat());
     tabs.appendChild(buildWorkspace());
 
     // The interactive surface (tabs + chat/runs views) lives in its own wrapper
@@ -2721,30 +2634,16 @@ export function mountClaudeSheet(parent) {
 
     keydownHandler = function(event) {
         if (event.key !== 'Escape') return;
-        // Escape peels back one layer: an open send-mode menu first, then an open
-        // workspace menu, then the whole sheet — so dismissing a popover never
-        // also closes the sheet beneath it.
+        // Escape peels back one layer: an open send-mode menu first, then the
+        // whole sheet — so dismissing a popover never also closes the sheet
+        // beneath it.
         if (isModeMenuOpen()) {
             closeModeMenu();
-            return;
-        }
-        if (isWorkspaceMenuOpen()) {
-            closeWorkspaceMenu();
             return;
         }
         if (isClaudeSheetOpen()) closeClaudeSheet();
     };
     document.addEventListener('keydown', keydownHandler);
-
-    // Close the workspace menu on any click outside it (the pill stops its own
-    // click from bubbling here, so tapping the pill toggles rather than closes).
-    if (workspaceClickHandler) document.removeEventListener('click', workspaceClickHandler);
-    workspaceClickHandler = function(event) {
-        if (!isWorkspaceMenuOpen()) return;
-        const wrap = sheetQuery('.claudeWorkspace');
-        if (wrap && !wrap.contains(event.target)) closeWorkspaceMenu();
-    };
-    document.addEventListener('click', workspaceClickHandler);
 
     // Close the file-picker panel on any click outside it. The panel stops its
     // own clicks from bubbling here, and the picker button shares the
