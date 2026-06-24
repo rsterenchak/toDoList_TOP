@@ -1581,6 +1581,124 @@ describe('Claude sheet — iterate from a shipped run', () => {
     });
 });
 
+// Revert control on SHIPPED rows: a per-run rollback affordance that ships a
+// revert through the Worker's full-auto `revert` route, coexisting with the
+// whole-row iterate behavior without ever firing it.
+describe('Claude sheet — revert a shipped run', () => {
+    let realFetch;
+    let fetchSpy;
+    let revertResponse;
+    let chatCalls;
+
+    function makeFetch() {
+        chatCalls = 0;
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) { chatCalls++; json = { reply: 'iterate seed' }; }
+            else if (body.revert) { json = revertResponse; }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
+        });
+    }
+
+    function seedShipped(extra) {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            Object.assign({ entryId: 'entry-9', correlationId: 'corr-9', title: 'Add a sparkle', status: 'SHIPPED', dispatchedAt: Date.now() }, extra || {}),
+        ]));
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        revertResponse = { merged: true };
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    it('renders a Revert control only on shipped rows with an entry id', () => {
+        seedShipped();
+        mountClaudeSheet(document.body);
+        expect(document.querySelector('.claudeRunRevertBtn')).toBeTruthy();
+    });
+
+    it('does not render Revert on a queued, no-change, id-less, or already-reverted row', () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'q1', correlationId: 'c1', title: 'Pending', status: 'QUEUED', dispatchedAt: Date.now() },
+            { entryId: 'n1', correlationId: 'c2', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://x', dispatchedAt: Date.now() },
+            { correlationId: 'c3', title: 'Legacy shipped', status: 'SHIPPED', dispatchedAt: Date.now() },
+            { entryId: 'r1', correlationId: 'c4', title: 'Already reverted', status: 'SHIPPED', reverted: true, dispatchedAt: Date.now() },
+        ]));
+        mountClaudeSheet(document.body);
+        expect(document.querySelector('.claudeRunRevertBtn')).toBeFalsy();
+    });
+
+    it('clicking Revert opens a confirm and does not trigger the row iterate action', () => {
+        seedShipped();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRevertBtn').click();
+        // The confirmation modal opened (revert path) …
+        expect(document.getElementById('confirmModalBackdrop')).toBeTruthy();
+        // … and the click never bubbled to the row's iterate handler (no chat turn).
+        expect(chatCalls).toBe(0);
+    });
+
+    it('confirming a revert POSTs the revert contract and marks the record reverted', async () => {
+        seedShipped({ repo: 'rsterenchak/toDoList_TOP' });
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRevertBtn').click();
+        document.getElementById('confirmModalConfirm').click();
+        await flush();
+
+        const revertCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).revert);
+        expect(revertCall).toBeTruthy();
+        const revertBody = JSON.parse(revertCall[1].body);
+        expect(revertBody.revert).toBe(true);
+        expect(revertBody.entry_id).toBe('entry-9');
+        expect(revertBody.repo).toBe('rsterenchak/toDoList_TOP');
+
+        // merged:true → record marked reverted and persisted; the control no
+        // longer shows so it can't be re-submitted (double-revert guard).
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].reverted).toBe(true);
+        expect(document.querySelector('.claudeRunRevertBtn')).toBeFalsy();
+    });
+
+    it('on merged:false persists the revert PR url and switches to opening it', async () => {
+        revertResponse = { merged: false, reason: 'merge conflict', revert_pr_url: 'https://github.com/x/y/pull/7' };
+        seedShipped();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRevertBtn').click();
+        document.getElementById('confirmModalConfirm').click();
+        await flush();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].revertPrUrl).toBe('https://github.com/x/y/pull/7');
+        expect(stored[0].reverted).toBeUndefined();
+
+        // The control is still present and now opens the existing PR rather than
+        // POSTing a second revert (never create a duplicate revert PR).
+        const revertCallsBefore = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).revert).length;
+        const opened = [];
+        const realOpen = window.open;
+        window.open = (u) => { opened.push(u); return null; };
+        document.querySelector('.claudeRunRevertBtn').click();
+        window.open = realOpen;
+        expect(opened).toEqual(['https://github.com/x/y/pull/7']);
+        const revertCallsAfter = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).revert).length;
+        expect(revertCallsAfter).toBe(revertCallsBefore);
+    });
+});
+
 // Clear-completed: a low-emphasis affordance at the foot of the Runs list that
 // removes terminal records (SHIPPED / FAILED / unconfirmed) after an inline
 // confirm, while leaving in-flight (RUNNING / QUEUED) records untouched.
@@ -3237,6 +3355,13 @@ describe('Claude sheet — author-flow module surface and styling', () => {
         expect(inject).toMatch(/chat:\s*true,\s*messages/);
         // …and carries attach_files when the conversation has attachments.
         expect(inject).toMatch(/attach_files/);
+        // revertEntry POSTs the { revert: true, entry_id } rollback contract.
+        expect(inject).toMatch(/export\s+async\s+function\s+revertEntry\s*\(/);
+        expect(inject).toMatch(/revert:\s*true/);
+    });
+
+    it('styles the per-row Revert control on shipped runs', () => {
+        expect(css).toMatch(/\.claudeRunRevertBtn\s*\{/);
     });
 
     it('styles the attachment picker, chips, and thread intro row', () => {
