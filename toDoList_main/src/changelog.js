@@ -11,9 +11,7 @@ export const changelog = [
             "The chat composer's deep/fast send-mode caret now matches the submit button's accent purple, so the split send control reads as one matched pair.",
             "The chat composer's fast/deep mode picker now fills with accent purple and its send caret shows in white.",
             "The chat composer's accent purple now fills the caret button that opens the send-mode menu instead of the dropdown window itself.",
-        ],
-        changed: [
-            "The top-bar view tab previously labelled \"Projects\" now reads \"Task View\".",
+            "Runs that finish without merging any change are now marked \"No change\" in the Runs tab instead of Shipped, with the row linking out to its run log.",
         ],
     },
 ];

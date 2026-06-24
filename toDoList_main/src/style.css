@@ -2447,6 +2447,20 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: #9a988e;
   border-style: dashed;
 }
+.claudeRunBadge--nochange {
+  background: #241d12;
+  border: 0.5px solid #6e5a2a;
+  color: #cbb079;
+}
+/* Outbound-link affordance on a "No change" run row — its tap opens the
+   GitHub Actions log rather than an iterate chat. */
+.claudeRunOpenGlyph {
+  flex: none;
+  margin-left: 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #6e5a2a;
+}
 
 /* MAIN BAR */
 #mainBar {

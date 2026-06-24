@@ -381,7 +381,7 @@ function replayChatHistory() {
 }
 
 function isTerminalStatus(status) {
-    return status === 'SHIPPED' || status === 'FAILED';
+    return status === 'SHIPPED' || status === 'FAILED' || status === 'NOCHANGE';
 }
 
 // A run is "completed" for the Clear-completed action when it can no longer be
@@ -2011,6 +2011,7 @@ const RUN_STATUS_LABEL = {
     RUNNING: 'Running',
     SHIPPED: 'Shipped',
     FAILED: 'Failed',
+    NOCHANGE: 'No change',
 };
 
 // The only GitHub workflow conclusions that are positive proof of failure.
@@ -2141,6 +2142,31 @@ function buildRunRow(rec) {
                 startIterateFromRun(rec);
             }
         });
+    } else if (status === 'NOCHANGE' && rec.runUrl) {
+        // A "No change" run had nothing to merge, so it's not iterable. Instead
+        // its row opens the GitHub Actions log so the user can read the agent's
+        // verdict — same role="button" + Enter/Space affordance the iterable
+        // rows use, with a trailing ↗ glyph marking it as an outbound link.
+        row.classList.add('claudeRunRow--nochange');
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-label', 'Open the run log for ' + (rec.title || 'this run'));
+        row.title = 'Open the run log';
+        const openLog = function() {
+            try { window.open(rec.runUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
+        };
+        row.addEventListener('click', openLog);
+        row.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openLog();
+            }
+        });
+        const glyph = document.createElement('span');
+        glyph.className = 'claudeRunOpenGlyph';
+        glyph.textContent = '↗';
+        glyph.setAttribute('aria-hidden', 'true');
+        row.appendChild(glyph);
     }
     return row;
 }
@@ -2251,12 +2277,18 @@ async function pollRunRecordOnce(correlationId, startedAt, target, project) {
     if (res.found === false) return; // run not surfaced yet — stay QUEUED
     if (res.status === 'completed') {
         // Only assert FAILED on a positive failure signal. A success conclusion
-        // ships; a recognized failure conclusion fails; anything else completed
-        // (neutral, skipped, action_required, or no conclusion) is unconfirmed
-        // rather than asserted-failed.
+        // is reconciled against the merged-PR proof (it might be a clean no-op,
+        // not a ship); a recognized failure conclusion fails; anything else
+        // completed (neutral, skipped, action_required, or no conclusion) is
+        // unconfirmed rather than asserted-failed.
         if (res.conclusion === 'success') {
-            setRunRecordStatus(correlationId, 'SHIPPED');
-        } else if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
+            // reconcileSuccessConclusion owns stopping the poller and freeing
+            // the guard once it reaches a verdict (SHIPPED / NOCHANGE), and
+            // deliberately keeps polling on an unresolved miss or resolve error.
+            await reconcileSuccessConclusion(correlationId, project, res.runUrl);
+            return;
+        }
+        if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
             setRunRecordStatus(correlationId, 'FAILED');
         } else {
             markRunRecordUnconfirmed(correlationId);
@@ -2270,6 +2302,69 @@ async function pollRunRecordOnce(correlationId, startedAt, target, project) {
     } else {
         setRunRecordStatus(correlationId, 'RUNNING');
     }
+}
+
+function findRunRecord(correlationId) {
+    for (let i = 0; i < runRecords.length; i++) {
+        if (runRecords[i].correlationId === correlationId) return runRecords[i];
+    }
+    return null;
+}
+
+// Consecutive definitive `found:false` resolves required before a green run is
+// committed as "No change". A genuine ship's merged PR can lag in PR search
+// right at completion, so a single miss is never trusted — only a miss that
+// persists across a short retry (one poll interval apart) commits the verdict.
+const NOCHANGE_CONFIRM_MISSES = 2;
+
+// Reconcile a completed-with-success run. A green workflow conclusion alone is
+// NOT proof a change merged: a graceful no-op run (the routine reports the entry
+// ineligible and exits clean with tests green) also returns success. Verify the
+// entry actually shipped via its marker before asserting SHIPPED:
+//   • found:true with a merge_commit_sha → SHIPPED (proof of a merged PR).
+//   • a definitive found:false that persists across NOCHANGE_CONFIRM_MISSES
+//     polls → NOCHANGE ("No change"): the run was a clean no-op, nothing merged.
+//   • a resolve error / network blip, or a single transient found:false → keep
+//     polling. Never commit "No change" on one miss or a resolve failure, so a
+//     genuine ship whose merged PR lags in search is never misread.
+// A record with no entryId can't be verified, so keep the historical
+// success → SHIPPED behavior for those (don't regress legacy records).
+async function reconcileSuccessConclusion(correlationId, project, runUrl) {
+    const rec = findRunRecord(correlationId);
+    const settle = function() {
+        stopRunPoller(correlationId);
+        freeProjectRunGuard(project);
+    };
+    if (!rec) { settle(); return; }
+    if (!rec.entryId) {
+        setRunRecordStatus(correlationId, 'SHIPPED');
+        settle();
+        return;
+    }
+    const res = await resolveEntryByMarker(rec.entryId);
+    // Resolve errors / network blips are not a definitive miss — keep polling.
+    if (!res || res.ok === false) return;
+    if (res.found === true && res.merge_commit_sha) {
+        setRunRecordStatus(correlationId, 'SHIPPED');
+        settle();
+        return;
+    }
+    if (res.found === false) {
+        rec.noChangeMisses = (rec.noChangeMisses || 0) + 1;
+        if (rec.noChangeMisses >= NOCHANGE_CONFIRM_MISSES) {
+            // Persist the Actions log URL so the (non-iterable) "No change" row
+            // can open it on tap.
+            if (runUrl) rec.runUrl = runUrl;
+            setRunRecordStatus(correlationId, 'NOCHANGE');
+            settle();
+        } else {
+            // First miss — persist the counter and re-check on the next poll.
+            saveRunRecords();
+        }
+        return;
+    }
+    // Any other shape (e.g. found:true without a merge_commit_sha) can't be
+    // asserted either way yet — keep polling.
 }
 
 // Resume polling for any run record that hasn't reached a terminal status —
