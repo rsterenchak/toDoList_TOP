@@ -227,3 +227,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/mobileSheets.js`
   - Completed: 2026-06-24
   <!-- id: a6be4397-6b4a-425e-93c5-8e27c225ed93 -->
+
+- [ ] **[MEDIUM]** Fix mobile chat button glow not appearing on the live button
+  - Type: bug
+  - Description: A prior PR added a glowing FAB style for the mobile chat button, but the button is visually unchanged on a real device — a green Shipped status was not proof the fix worked. First confirm which file actually renders the mobile chat button and what its real selector/class is (grep for the button creation, likely in `mobileSheets.js`, `main.js`, or `claudeSheet.js`), then verify the glow rule targets that exact element and is not scoped out by the mobile media query on real viewports or overridden by a more specific existing rule. Expected result: the mobile chat button shows the circular FAB with the soft purple glow halo (`#6C5DF5` radial layers) in its current fixed position, verified on a real mobile viewport — not just present-in-CSS. Add a check that the glow selector matches the rendered button so this can't silently no-op again.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b0ead23e-57ff-44fa-9489-5b5ab1287ec3 -->
