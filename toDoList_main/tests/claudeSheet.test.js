@@ -105,9 +105,9 @@ describe('Claude sheet shell + launcher', () => {
         expect(handles.launcher).toBe(launcher);
     });
 
-    it('gives the launcher a `⋯` glyph and dialog aria metadata', () => {
+    it('gives the launcher a `✦` glyph and dialog aria metadata', () => {
         const launcher = document.getElementById('claudeLauncher');
-        expect(launcher.textContent).toBe('⋯');
+        expect(launcher.textContent).toBe('✦');
         expect(launcher.getAttribute('aria-haspopup')).toBe('dialog');
         expect(launcher.getAttribute('aria-label')).toBe('Open Claude assistant');
         expect(launcher.getAttribute('aria-expanded')).toBe('false');

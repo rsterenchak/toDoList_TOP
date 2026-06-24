@@ -420,7 +420,7 @@ function buildLauncher() {
     btn.setAttribute('aria-haspopup', 'dialog');
     btn.setAttribute('aria-expanded', 'false');
     btn.title = 'Claude';
-    btn.textContent = '⋯';
+    btn.textContent = '✦';
     btn.addEventListener('click', function(event) {
         event.stopPropagation();
         toggleClaudeSheet();

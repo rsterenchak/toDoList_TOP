@@ -11717,9 +11717,11 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    button's opaque fill at ~15–18% opacity, washed out and effectively invisible
    on real devices. A box-shadow draws OUTSIDE the button's fill, so the halo
    always shows, never gets covered by the button, and never intercepts taps.
-   Two concentric Void accent (#6C5DF5 → rgb 108, 93, 245) layers — a tight inner
-   ring and a soft outer bloom — sit ahead of the launcher's existing dark drop
-   shadow, which stays as the final layer. Position is untouched; box-shadow adds
+   The launcher reads as a purple FAB: a #6C5DF5 face with a white sparkle (✦)
+   glyph, wrapped in three concentric Void accent (#6C5DF5 → rgb 108, 93, 245)
+   glow layers — a tight inner ring, a mid bloom, and a soft outer wash — that
+   sit ahead of the launcher's existing dark drop shadow, which stays as the
+   final layer. Position is untouched; box-shadow adds
    no layout. Mobile-only: the launcher is replaced by the persistent desktop
    chat pane at ≥1024px, so the desktop layout is unaffected. Defined here, after
    the main mobile-overrides block, so the launcher's base rules stay grouped
@@ -11727,10 +11729,13 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    over the base #claudeLauncher box-shadow by source order. */
 @media (max-width: 1023px) {
   #claudeLauncher {
+    background: #6C5DF5;
+    color: #ffffff;
+    border-color: #6C5DF5;
     box-shadow:
-      0 0 0 1px rgba(108, 93, 245, 0.35),
-      0 0 12px 2px rgba(108, 93, 245, 0.45),
-      0 0 28px 9px rgba(108, 93, 245, 0.22),
+      0 0 8px 4px rgba(108, 93, 245, 0.35),
+      0 0 18px 8px rgba(108, 93, 245, 0.18),
+      0 0 30px 14px rgba(108, 93, 245, 0.10),
       0 4px 12px rgba(0, 0, 0, 0.35);
   }
 }
