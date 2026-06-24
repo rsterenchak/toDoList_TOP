@@ -221,9 +221,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8b840e5e-019a-4188-acdc-002b3bdacb1b -->
 
-- [ ] **[LOW]** Add glowing FAB style to the mobile chat button
+- [x] **[LOW]** Add glowing FAB style to the mobile chat button
   - Type: feature
   - Description: The mobile chat button is visually subtle and easy to miss. Give it a circular FAB appearance with a soft purple glow halo (two concentric radial layers at ~15–18% opacity using `#6C5DF5`) behind the button circle, matching the Void accent color. The button must stay in its current fixed position — no layout or positioning changes, only visual layer additions via `box-shadow` and/or a pseudo-element glow. Apply only at mobile breakpoints so the desktop layout is unaffected.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/mobileSheets.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: a6be4397-6b4a-425e-93c5-8e27c225ed93 -->
