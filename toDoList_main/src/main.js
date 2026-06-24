@@ -1,4 +1,5 @@
 import './style.css';
+// Pipeline verification no-op (entry 1ab046ed) — non-functional marker comment.
 import { listLogic } from './listLogic.js';
 import {
     isCompanionEnabled,
