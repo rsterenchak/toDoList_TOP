@@ -28,6 +28,7 @@ import {
     pollRunStatus,
     resolveEntryByMarker,
     revertEntry,
+    fetchRunResult,
     readTodoMdFromWorker,
     getCachedTargets,
     loadInjectTargets,
@@ -2170,33 +2171,199 @@ function buildRunRow(rec) {
         // (rec.reverted) shows no fresh trigger — re-reverting a revert PR would
         // re-apply the original change.
         if (!rec.reverted) row.appendChild(buildRevertControl(rec));
-    } else if (status === 'NOCHANGE' && rec.runUrl) {
-        // A "No change" run had nothing to merge, so it's not iterable. Instead
-        // its row opens the GitHub Actions log so the user can read the agent's
-        // verdict — same role="button" + Enter/Space affordance the iterable
-        // rows use, with a trailing ↗ glyph marking it as an outbound link.
+    } else if (status === 'NOCHANGE') {
+        // A "No change" run merged nothing, so it's not iterable. Its row is an
+        // inline accordion: tapping the header toggles a panel showing the
+        // agent's closing summary (why nothing merged), lazily fetched and cached
+        // on the record, with a purple "Follow up" button (seeds a corrected-entry
+        // chat) and an "Open full log ↗" link. The trailing affordance is an
+        // expand chevron rather than the old ↗ outbound glyph.
         row.classList.add('claudeRunRow--nochange');
+        // The panel wraps to its own line beneath the header (title + badge +
+        // chevron all sit on the first flex line).
+        row.classList.add('claudeRunRow--collapsible');
+
+        const chevron = document.createElement('span');
+        chevron.className = 'claudeRunChevron';
+        chevron.textContent = '▸';
+        chevron.setAttribute('aria-hidden', 'true');
+        row.appendChild(chevron);
+
+        const panel = document.createElement('div');
+        panel.className = 'claudeRunResultPanel';
+        panel.hidden = true;
+        row.appendChild(panel);
+
+        let expanded = false;
+        const toggle = function() {
+            expanded = !expanded;
+            panel.hidden = !expanded;
+            row.classList.toggle('claudeRunRow--expanded', expanded);
+            chevron.textContent = expanded ? '▾' : '▸';
+            row.setAttribute('aria-expanded', String(expanded));
+            // Lazily load (and render) the summary on first expand. Expand state
+            // is per-row — toggling this row never touches another's panel.
+            if (expanded) ensureRunResultLoaded(rec, panel);
+        };
+
         row.setAttribute('role', 'button');
         row.setAttribute('tabindex', '0');
-        row.setAttribute('aria-label', 'Open the run log for ' + (rec.title || 'this run'));
-        row.title = 'Open the run log';
-        const openLog = function() {
-            try { window.open(rec.runUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
-        };
-        row.addEventListener('click', openLog);
+        row.setAttribute('aria-expanded', 'false');
+        row.setAttribute('aria-label', 'Show why ' + (rec.title || 'this run') + ' made no change');
+        row.title = 'Show the run summary';
+        row.addEventListener('click', function(event) {
+            // Controls inside the panel (Follow up / Open full log) own their
+            // clicks — never let them toggle the accordion.
+            if (panel.contains(event.target)) return;
+            toggle();
+        });
         row.addEventListener('keydown', function(event) {
+            if (event.target !== row) return; // panel controls handle their own keys
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                openLog();
+                toggle();
             }
         });
-        const glyph = document.createElement('span');
-        glyph.className = 'claudeRunOpenGlyph';
-        glyph.textContent = '↗';
-        glyph.setAttribute('aria-hidden', 'true');
-        row.appendChild(glyph);
     }
     return row;
+}
+
+// Populate a "No change" row's summary panel. The agent's closing summary is
+// fetched once (via the Worker's `run_result` route, keyed on the persisted run
+// id and falling back to the correlation id for older records) and cached on
+// `rec.result` so re-expands and reloads render instantly without re-fetching.
+// An empty result or a fetch failure renders a one-line fallback but always
+// keeps the "Open full log ↗" link available.
+async function ensureRunResultLoaded(rec, panel) {
+    if (rec.result != null) {
+        renderRunResultPanel(rec, panel);
+        return;
+    }
+    panel.innerHTML = '';
+    const loading = document.createElement('p');
+    loading.className = 'claudeRunResultLoading';
+    loading.textContent = 'Reading the run summary…';
+    panel.appendChild(loading);
+
+    const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
+    const res = await fetchRunResult(rec.runId || rec.correlationId, target);
+    // Cache the summary (string, possibly empty) so a re-expand never re-fetches.
+    // A failed fetch caches an empty string — the fallback copy covers it and the
+    // log link stays available; the user can still reload to retry.
+    rec.result = (res && res.ok && typeof res.result === 'string') ? res.result : '';
+    saveRunRecords();
+    renderRunResultPanel(rec, panel);
+}
+
+// Render the cached summary (or its fallback) plus the action row into a "No
+// change" row's panel.
+function renderRunResultPanel(rec, panel) {
+    panel.innerHTML = '';
+    const summary = (rec.result || '').trim();
+
+    const body = document.createElement('p');
+    body.className = 'claudeRunResultText';
+    if (summary) {
+        body.textContent = summary;
+    } else {
+        body.classList.add('claudeRunResultText--empty');
+        body.textContent = 'Couldn’t read the run summary.';
+    }
+    panel.appendChild(body);
+
+    const actions = document.createElement('div');
+    actions.className = 'claudeRunResultActions';
+
+    const followBtn = document.createElement('button');
+    followBtn.type = 'button';
+    followBtn.className = 'claudeRunFollowUpBtn';
+    followBtn.textContent = 'Follow up';
+    followBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        startFollowUpFromRun(rec);
+    });
+    actions.appendChild(followBtn);
+
+    if (rec.runUrl) {
+        const logLink = document.createElement('a');
+        logLink.className = 'claudeRunResultLogLink';
+        logLink.href = rec.runUrl;
+        logLink.target = '_blank';
+        logLink.rel = 'noopener';
+        logLink.textContent = 'Open full log ↗';
+        logLink.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+        actions.appendChild(logLink);
+    }
+
+    panel.appendChild(actions);
+}
+
+// Seed an author chat from a "No change" run so the user can draft a corrected
+// follow-up entry. Switches to the Chat tab, resets the conversation, and fires
+// a plain first author turn carrying a short framing line, the original entry
+// block (read off main — a no-op run leaves the entry present and unchecked),
+// and the agent's summary. It deliberately omits the iterate entry_id: a
+// NOCHANGE run has no merged PR, so an iterate seed would 404 with "nothing to
+// iterate on yet". The summary and entry ride in the user message instead, and
+// the Worker auto-loads CLAUDE.md + manifest as on any author turn.
+async function startFollowUpFromRun(rec) {
+    if (!rec || rec.status !== 'NOCHANGE' || !rec.entryId) return;
+    setActiveTab('chat');
+    if (!isClaudeSheetOpen()) openClaudeSheet();
+
+    chatHistory = [];
+    const surface = sheetQuery('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
+    clearAttachments();
+
+    appendMessageBubble('note', 'Following up on “' + (rec.title || 'this run') + '” — pulling the original entry…');
+
+    // Read the original entry block off main. A no-op run leaves its entry
+    // present and unchecked, so it's still in TODO.md; if the read fails, the
+    // turn still composes from the summary alone.
+    const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
+    let entryBlock = '';
+    const read = await readTodoMdFromWorker(target);
+    if (read && read.ok !== false && typeof read.content === 'string') {
+        entryBlock = extractEntryBlock(read.content, rec.entryId) || '';
+    }
+
+    const summary = (rec.result || '').trim();
+    const parts = ['This entry ran but made no change; here’s the agent’s summary explaining why — help me draft a corrected follow-up entry.'];
+    if (entryBlock) parts.push('Original entry:\n\n' + entryBlock);
+    if (summary) parts.push('Agent summary:\n\n' + summary);
+    const content = parts.join('\n\n');
+
+    chatHistory.push({ role: 'user', content: content });
+    saveChatHistory();
+    appendMessageBubble('user', content);
+    // No entry_id — this is a plain author turn (NOCHANGE has no merged PR).
+    await requestAssistantReply();
+}
+
+// Slice an entry's full block (its `- [ ]`/`- [x]` line through every sub-bullet,
+// up to but excluding the next top-level checkbox) out of a TODO.md body by its
+// `<!-- id: <uuid> -->` marker. Returns null when the marker is absent. Reuses
+// the same marker walk entryCheckboxState keys off.
+function extractEntryBlock(content, entryId) {
+    if (typeof content !== 'string' || !entryId) return null;
+    const lines = content.split('\n');
+    const checkboxRe = /^\s*- \[[ xX]\]/;
+    let markerIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf('<!-- id: ' + entryId) !== -1) { markerIdx = i; break; }
+    }
+    if (markerIdx === -1) return null;
+    // The entry's checkbox is the nearest preceding task line.
+    let start = markerIdx;
+    while (start >= 0 && !checkboxRe.test(lines[start])) start--;
+    if (start < 0) return null;
+    // The block ends just before the next checkbox line (or at EOF).
+    let end = start + 1;
+    while (end < lines.length && !checkboxRe.test(lines[end])) end++;
+    return lines.slice(start, end).join('\n').replace(/\s+$/, '');
 }
 
 function setRunRecordStatus(correlationId, status) {
@@ -2313,7 +2480,7 @@ async function pollRunRecordOnce(correlationId, startedAt, target, project) {
             // reconcileSuccessConclusion owns stopping the poller and freeing
             // the guard once it reaches a verdict (SHIPPED / NOCHANGE), and
             // deliberately keeps polling on a transient read failure.
-            await reconcileSuccessConclusion(correlationId, project, res.runUrl, target);
+            await reconcileSuccessConclusion(correlationId, project, res.runUrl, target, res.runId);
             return;
         }
         if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
@@ -2385,7 +2552,7 @@ function entryCheckboxState(content, entryId) {
 // Fail safe toward SHIPPED on every ambiguity so a genuine ship is never
 // mislabeled. A record with no entryId or no resolvable target can't be
 // verified, so keep the historical success → SHIPPED behavior for those.
-async function reconcileSuccessConclusion(correlationId, project, runUrl, target) {
+async function reconcileSuccessConclusion(correlationId, project, runUrl, target, runId) {
     const rec = findRunRecord(correlationId);
     const settle = function() {
         stopRunPoller(correlationId);
@@ -2413,9 +2580,11 @@ async function reconcileSuccessConclusion(correlationId, project, runUrl, target
     const state = entryCheckboxState(read.content, rec.entryId);
     if (state === 'unchecked') {
         // Entry still present and unchecked → the routine skipped it (no-op).
-        // Persist the Actions log URL so the (non-iterable) "No change" row can
-        // open it on tap.
+        // Persist the Actions log URL (the "Open full log ↗" link) and the run id
+        // (so the verdict panel can fetch the run's summary by run id; older
+        // records without it fall back to the correlation id).
         if (runUrl) rec.runUrl = runUrl;
+        if (runId != null) rec.runId = runId;
         setRunRecordStatus(correlationId, 'NOCHANGE');
     } else {
         // 'checked' → shipped; null (marker absent) → fail safe to SHIPPED.

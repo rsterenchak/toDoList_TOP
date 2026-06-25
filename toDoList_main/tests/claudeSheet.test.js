@@ -541,6 +541,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     let statusJson;
     let resolveJson;
     let readJson;
+    let resultJson;
 
     function makeFetch() {
         // Track ids of entries injected this test so the `read` route can reflect
@@ -556,6 +557,8 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
                 json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
             } else if (body.status) {
                 json = statusJson;
+            } else if (body.run_result) {
+                json = resultJson;
             } else if (body.resolve) {
                 json = resolveJson;
             } else if (body.read) {
@@ -589,6 +592,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         statusJson = { found: false };
         resolveJson = { found: false };
         readJson = null;
+        resultJson = { result: 'The entry’s premise was already handled by later code, so nothing changed.' };
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
         globalThis.fetch = fetchSpy;
@@ -1136,7 +1140,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     it('commits "No change" when the entry reads back present and unchecked on main', async () => {
         // The routine left the entry unchecked (skipped it), so a single read off
         // main settles the verdict immediately — no grace window, no Shipped flash.
-        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9' };
+        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 9 };
         readJson = { content: '# TODO\n\n- [ ] **[HIGH]** No-op run\n  - Type: bug\n  <!-- id: e1 -->', sha: 's' };
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { entryId: 'e1', correlationId: 'c1', title: 'No-op run', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
@@ -1148,8 +1152,10 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeRunBadge').textContent).toBe('No change');
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).toBe('NOCHANGE');
-        // The Actions log URL is persisted so the row can open it on tap.
+        // The Actions log URL is persisted so the verdict panel can link to it.
         expect(stored[0].runUrl).toBe('https://github.com/x/y/actions/runs/9');
+        // The run id is persisted so the verdict panel can fetch the summary.
+        expect(stored[0].runId).toBe(9);
     });
 
     it('ships a green run when the entry reads back checked-off on main', async () => {
@@ -1237,26 +1243,121 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].status).toBe('SHIPPED');
     });
 
-    it('renders a "No change" row as a non-iterable outbound link to the Actions log', () => {
+    it('renders a "No change" row as a non-iterable expand/collapse accordion', () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
-            { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://github.com/x/y/actions/runs/9', dispatchedAt: Date.now() },
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 9, dispatchedAt: Date.now() },
         ]));
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
         const row = document.querySelector('.claudeRunRow');
         expect(row.querySelector('.claudeRunBadge').textContent).toBe('No change');
-        // Not iterable; instead an outbound link with the ↗ affordance glyph.
+        // Not iterable; instead a collapsible accordion with an expand chevron.
         expect(row.classList.contains('claudeRunRow--iterable')).toBe(false);
         expect(row.classList.contains('claudeRunRow--nochange')).toBe(true);
         expect(row.getAttribute('role')).toBe('button');
-        expect(row.querySelector('.claudeRunOpenGlyph')).toBeTruthy();
+        expect(row.getAttribute('aria-expanded')).toBe('false');
+        expect(row.querySelector('.claudeRunChevron')).toBeTruthy();
+        // Collapsed by default — the panel exists but is hidden, and tapping the
+        // header no longer opens the log directly.
+        const panel = row.querySelector('.claudeRunResultPanel');
+        expect(panel).toBeTruthy();
+        expect(panel.hidden).toBe(true);
 
         const opened = [];
         const realOpen = window.open;
         window.open = (url) => { opened.push(url); return null; };
         row.click();
         window.open = realOpen;
-        expect(opened).toEqual(['https://github.com/x/y/actions/runs/9']);
+        expect(opened).toEqual([]); // tap toggles, never opens a window
+        expect(panel.hidden).toBe(false);
+        expect(row.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('lazily fetches and caches the run summary on first expand', async () => {
+        resultJson = { result: 'Premise superseded; nothing to do.' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 42, repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        // No fetch happens until the row is expanded.
+        expect(fetchSpy.mock.calls.some((c) => JSON.parse(c[1].body).run_result)).toBe(false);
+
+        row.click();
+        await flush();
+
+        const resultCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).run_result);
+        expect(resultCall).toBeTruthy();
+        // Keyed on the persisted run id, scoped to the run's repo.
+        const resultBody = JSON.parse(resultCall[1].body);
+        expect(resultBody.run_id).toBe(42);
+        expect(resultBody.repo).toBe('rsterenchak/toDoList_TOP');
+        // The summary renders and is cached on the record.
+        expect(row.querySelector('.claudeRunResultText').textContent).toBe('Premise superseded; nothing to do.');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].result).toBe('Premise superseded; nothing to do.');
+
+        // Collapse then re-expand: the cached summary renders with no second fetch.
+        const callsAfterFirst = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).run_result).length;
+        row.click(); // collapse
+        row.click(); // re-expand
+        await flush();
+        const callsAfterReexpand = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).run_result).length;
+        expect(callsAfterReexpand).toBe(callsAfterFirst);
+        expect(row.querySelector('.claudeRunResultText').textContent).toBe('Premise superseded; nothing to do.');
+    });
+
+    it('falls back to the default repo target when older records carry no run id', async () => {
+        resultJson = { result: '' }; // empty summary → fallback copy
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c-old', title: 'Legacy no-op', status: 'NOCHANGE', runUrl: 'https://x', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        row.click();
+        await flush();
+
+        // No run id on the record → the correlation id rides in its place.
+        const resultBody = JSON.parse(fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).run_result)[1].body);
+        expect(resultBody.run_id).toBe('c-old');
+        // Empty result → the one-line fallback, with the log link still present.
+        const text = row.querySelector('.claudeRunResultText');
+        expect(text.classList.contains('claudeRunResultText--empty')).toBe(true);
+        expect(row.querySelector('.claudeRunResultLogLink')).toBeTruthy();
+    });
+
+    it('"Follow up" seeds a plain author turn carrying the entry block and summary, with no entry_id', async () => {
+        resultJson = { result: 'It was already fixed upstream.' };
+        readJson = { content: '# TODO\n\n- [ ] **[MEDIUM]** Fix the thing\n  - Type: bug\n  - Description: do the fix\n  <!-- id: e1 -->', sha: 's' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Fix the thing', status: 'NOCHANGE', runUrl: 'https://x', runId: 7, repo: 'rsterenchak/toDoList_TOP', result: 'It was already fixed upstream.', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        const row = document.querySelector('.claudeRunRow');
+        row.click(); // expand (result already cached → no fetch)
+        await flush();
+
+        const followBtn = row.querySelector('.claudeRunFollowUpBtn');
+        expect(followBtn).toBeTruthy();
+        followBtn.click();
+        await flush();
+
+        // The Follow-up chat turn is a plain author turn: a chat call fired, it
+        // carries the entry block + summary, and it must NOT send entry_id (a
+        // NOCHANGE run has no merged PR to iterate on).
+        const chatCall = fetchSpy.mock.calls.find((c) => JSON.parse(c[1].body).chat);
+        expect(chatCall).toBeTruthy();
+        const chatBody = JSON.parse(chatCall[1].body);
+        expect(chatBody.entry_id).toBeUndefined();
+        const lastUserTurn = chatBody.messages[chatBody.messages.length - 1].content;
+        expect(lastUserTurn).toContain('made no change');
+        expect(lastUserTurn).toContain('Fix the thing'); // entry block
+        expect(lastUserTurn).toContain('It was already fixed upstream.'); // summary
+        // The chat tab is now active.
+        expect(document.getElementById('claudeChatSurface')).toBeTruthy();
     });
 
     it('treats "No change" as a terminal, clearable status', () => {
