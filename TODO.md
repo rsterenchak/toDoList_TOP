@@ -362,3 +362,11 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileLauncherSparkleCentering.test.js`
   - Completed:
   <!-- id: 692d695f-82d8-49bd-83a9-089cea424ea2 -->
+
+- [ ] **[LOW]** Adjust mobile Claude launcher sparkle vertical offset to -15px
+
+  - Type: bug
+  - Description: The current `translateY(-10%)` on `#claudeLauncher` at `@media (max-width: 1023px)` is insufficient to optically center the sparkle glyph. Change the transform to `translateY(-15px)` for a fixed, density-independent upward shift. Update the corresponding test in `mobileLauncherSparkleCentering.test.js` to expect value `-15` with unit `px`.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileLauncherSparkleCentering.test.js`
+  - Completed:
+  <!-- id: 650f005c-9237-4366-9623-55234e32b68c -->
