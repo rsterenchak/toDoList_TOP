@@ -364,7 +364,7 @@
   - Completed:
   <!-- id: 650f005c-9237-4366-9623-55234e32b68c -->
 
-- [ ] **[MEDIUM]** Add a desktop-only focus mode with an ambient space-drift scene
+- [x] **[MEDIUM]** Add a desktop-only focus mode with an ambient space-drift scene — Completed: 2026-06-25
   - Type: feature
   - Description: Add a desktop-only focus mode for studying that hides the entire dashboard behind a calm, endlessly-drifting space scene, entered from a new icon in the nav's right-hand control cluster. Activating it dissolves the dashboard with a gentle cross-fade into a full-bleed near-black starfield with soft drifting nebulae; there is deliberately no timer or countdown shown anywhere, since the goal is to study without watching the clock. Music and the Pomodoro session stay reachable through a minimal corner cluster (a now-playing chip plus a single icon-only session control) that drives the existing `music.js` and `pomodoro.js` singletons, so the session keeps running silently. Exit with Esc or a dim "exit · esc" affordance, which reverses the transition back to the dashboard.
   - Behavior:
