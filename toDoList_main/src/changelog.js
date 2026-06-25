@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         added: [
-            "A centered \"↓\" button now appears above the chat composer when you scroll up, jumping back to the latest message when tapped.",
+            "The scroll-to-bottom \"↓\" button now casts an upward light beam glow when you hover over it.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
