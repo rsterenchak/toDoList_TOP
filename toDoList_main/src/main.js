@@ -20,6 +20,9 @@ import {
     createMusicUI,
 } from './music.js';
 import {
+    ensureFocusMode,
+} from './focusMode.js';
+import {
     isCompletedSectionOpen,
     setCompletedSectionOpen,
     getActiveView,
@@ -311,6 +314,38 @@ function component() {
         }
     }, 0);
 
+    // ── focus-mode button (sits between music and the settings gear) ──
+    // Desktop-only — hidden on mobile the same way the pomodoro/music/settings
+    // toggles are. Clicking it enters focus mode: a calm, endlessly-drifting
+    // space scene that hides the dashboard for distraction-free studying. The
+    // scene + transition live in style.css; the controller (overlay DOM, the
+    // music/pomodoro corner cluster, Esc/affordance exit) lives in
+    // focusMode.js and is created lazily via the ensureFocusMode singleton.
+    const focusModeToggle = document.createElement('button');
+    focusModeToggle.id = 'focusModeToggle';
+    focusModeToggle.type = 'button';
+    focusModeToggle.setAttribute('aria-label', 'Enter focus mode');
+    focusModeToggle.title = 'Focus mode';
+    // Stroke-based "focus" glyph: a star/sparkle inside a soft frame, evoking
+    // the calm starfield the mode opens into. currentColor ties it to the
+    // button's themed color so it adapts across dark and light.
+    focusModeToggle.innerHTML =
+        '<svg class="focusModeIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/>' +
+        '<circle cx="18" cy="17" r="1"/>' +
+        '<circle cx="6.5" cy="16.5" r="0.8"/>' +
+        '</svg>';
+
+    function getFocusModeController() {
+        return ensureFocusMode();
+    }
+
+    focusModeToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const ctl = getFocusModeController();
+        if (ctl) ctl.activate();
+    });
+
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
     settingsToggle.type = 'button';
@@ -351,11 +386,12 @@ function component() {
     nav.appendChild(sidebarToggle);
     nav.appendChild(pomodoroToggle);
     nav.appendChild(musicToggle);
+    nav.appendChild(focusModeToggle);
     nav.appendChild(settingsToggle);
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
-    // → pomodoroToggle → musicToggle → settingsToggle)
+    // → pomodoroToggle → musicToggle → focusModeToggle → settingsToggle)
     // so keyboard users can flow across the chrome without tabbing. The
     // pill references resolve at handler execution time, by which point
     // component() has finished initialising them. Bails when any
@@ -367,7 +403,7 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, pomodoroToggle, musicToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, pomodoroToggle, musicToggle, focusModeToggle, settingsToggle];
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;

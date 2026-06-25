@@ -267,8 +267,9 @@ describe('music — main.js wiring', () => {
         expect(main).toMatch(/musicToggle\.id\s*=\s*['"]musicToggle['"]/);
         expect(main).toMatch(/nav\.appendChild\(\s*musicToggle\s*\)/);
         // pomodoroToggle must be appended before musicToggle, and musicToggle
-        // before settingsToggle. A regex catches this ordering.
-        expect(main).toMatch(/pomodoroToggle\s*\)\s*;\s*nav\.appendChild\(\s*musicToggle\s*\)\s*;\s*nav\.appendChild\(\s*settingsToggle/);
+        // before settingsToggle. The focus-mode toggle sits between music and
+        // settings in the right cluster. A regex catches this ordering.
+        expect(main).toMatch(/pomodoroToggle\s*\)\s*;\s*nav\.appendChild\(\s*musicToggle\s*\)\s*;\s*nav\.appendChild\(\s*focusModeToggle\s*\)\s*;\s*nav\.appendChild\(\s*settingsToggle/);
     });
 
     it('opens / dismisses the popover via showMusicPopover / hideMusicPopover', () => {

@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-25',
         added: [
-            "A reload pill now appears in the lower center on mobile when an app update is ready, so you can apply it with one tap.",
+            "A desktop-only focus mode hides the dashboard behind a calm, drifting space scene for distraction-free studying, keeping music and the Pomodoro session reachable from a corner without showing any timer.",
         ],
         fixed: [
             "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
