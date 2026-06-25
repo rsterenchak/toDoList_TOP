@@ -340,3 +340,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-06-25
   <!-- id: ddbe5425-49f5-431e-bc65-b16d3fb87a4a -->
+
+- [ ] **[LOW]** Fix white sparkle icon vertical centering inside the mobile chat FAB button
+  - Type: bug
+  - Description: The white sparkle icon (✦) inside the mobile chat button appears visually off-center. This is typically caused by text baseline offset when using a character as an icon — fix by replacing any `line-height`/padding approach with `display: flex; align-items: center; justify-content: center` on the button element, or by using `position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)` on the icon element. The goal is pixel-accurate centering regardless of font metrics. No other changes to button size, position, color, or glow.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 301e26f6-e23d-4364-8fcf-164da2d58cbb -->
