@@ -242,9 +242,9 @@
   - Completed: 2026-06-24
   <!-- id: 28817a1a-f757-4bff-b821-d49435dc1ea1 -->
 
-- [ ] **[LOW]** Increase mobile chat button sparkle icon size by 20%
+- [x] **[LOW]** Increase mobile chat button sparkle icon size by 20%
   - Type: feature
   - Description: The white sparkle icon (✦) on the mobile chat FAB button should be 20% larger than the size set in the prior PR. Find the existing font-size applied to the sparkle icon on the mobile chat button and multiply it by 1.2 (e.g. if it was set to 13px, update to ~15.6px). No other changes — button size, position, glow, or background color must remain untouched.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: 36dca112-d267-4238-a898-45f2f61052a8 -->
