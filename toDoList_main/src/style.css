@@ -11930,11 +11930,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     font-size: 21.6px;
     /* The button already flex-centers its content (see the base rule), which
        centers the glyph's line box. But the ✦ ink sits high within its em box,
-       so on the FAB it reads visually below center. Nudge the glyph up by 10% of
-       the button's height to land it on the optical center. Transform only — no
-       layout shift, so the button's size, fixed position, and glow are
-       untouched. */
-    transform: translateY(-10%);
+       so on the FAB it reads visually below center. Nudge the glyph up by a
+       fixed 15px to land it on the optical center. Transform only — no layout
+       shift, so the button's size, fixed position, and glow are untouched. */
+    transform: translateY(-15px);
     box-shadow:
       0 0 8px 4px rgba(108, 93, 245, 0.35),
       0 0 18px 8px rgba(108, 93, 245, 0.18),
