@@ -308,3 +308,28 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 11ba9e84-b2eb-43f9-9c04-7848bbd2d74c -->
+
+- [ ] **[MEDIUM]** Add a lower-center update-reload pill on mobile
+  - Type: feature
+  - Description: On mobile, when a service-worker update is waiting, the only way to apply it is to spot the gear-button dot, open Settings, and tap the About → Version "Update available" pill — buried behind several taps. Add a compact reload pill anchored in the lower-center of the viewport (the thumb zone, floating just above the bottom nav) that appears whenever an update is pending and applies it on tap. It shows a refresh icon, "Update available", a "Reload" tap target, and a × to dismiss. Mobile-only — desktop keeps its existing footer version cue unchanged. The pill element and its event wiring live in `main.js` alongside the existing mobile update cue, styled in `style.css`.
+  - Behavior:
+    1. The pill is mobile-only (≤1023px, matching where the desktop footer is hidden) and never renders on desktop, which keeps its `#footVersion` cue.
+    2. It appears whenever an update is pending: it listens for the `appUpdateAvailable` event AND checks `hasPendingUpdate()` on mount, so an update detected during boot (before the pill is wired) still surfaces.
+    3. Tapping "Reload" calls `applyPendingUpdate()` — the same skipWaiting + reload path the desktop footer and Settings pill use.
+    4. Tapping × dismisses the pill for the session without clearing the pending update; the gear-button dot and the Settings → About "Update available" pill stay as the persistent fallback.
+    5. The pill auto-removes when the update is applied from any surface — it listens for `appUpdateApplied` (fired just before the `controllerchange` reload) and tears itself down on that event.
+  - Acceptance criteria:
+    - No new reload logic: the Reload tap routes through `applyPendingUpdate()` in `modals.js`; the pill must not postMessage the worker or reload directly.
+    - Dismissing must not clear `pendingUpdateRegistration` — the update stays pending and the gear-dot/Settings cues stay live.
+    - Desktop is untouched: no change to `#footVersion`, and the pill must not mount above 1023px.
+    - Single instance: if `appUpdateAvailable` fires more than once, reuse the existing pill rather than stacking duplicates.
+    - It must clear the bottom nav and the iOS home indicator (respect `env(safe-area-inset-bottom)`) and never permanently obstruct the nav's tap targets.
+  - Implementation notes:
+    - Build the pill in `main.js` where `paintAboutVersionUpdateCue` and the gear-dot wiring already live, reusing the `hasPendingUpdate` / `applyPendingUpdate` imports from `modals.js`; add listeners for `appUpdateAvailable` (show) and `appUpdateApplied` (remove) plus a mount-time `hasPendingUpdate()` check.
+    - Gate visibility with the app's `isMobile()` (`< 1024`) and/or a ≤1023px media query so it tracks the same boundary as the hidden footer.
+    - Position with `position: fixed; left: 50%; transform: translateX(-50%);` anchored near the bottom (above the nav), with `bottom` accounting for the nav height + `env(safe-area-inset-bottom)`, and a z-index above the chrome.
+    - Style with the Void tokens (surface `#191a22`, faint border, purple `#6C5DF5`/`#9D93EE` for the refresh icon and Reload, light `#e8e8f0` / muted `#8a8a99` text), SpaceMono/Trebuchet, with comfortable (~44px) tap targets for Reload and ×; no new dependencies (inline SVG or a simple glyph for the refresh icon).
+  - Out of scope: the desktop footer cue and the Settings/gear-dot cues (unchanged — this is an added third surface), and any change to the service-worker registration, `applyPendingUpdate`, or the `controllerchange` reload in `index.js` / `modals.js`.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 360b8fcd-bf61-4cc9-a8bc-071844c505fe -->
