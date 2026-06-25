@@ -11732,6 +11732,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     background: #6C5DF5;
     color: #ffffff;
     border-color: #6C5DF5;
+    /* Sparkle glyph bumped 20% over the base 18px (→ 21.6px) so the ✦ reads
+       bolder on the mobile FAB. Button size/position/glow are unchanged. */
+    font-size: 21.6px;
     box-shadow:
       0 0 8px 4px rgba(108, 93, 245, 0.35),
       0 0 18px 8px rgba(108, 93, 245, 0.18),
