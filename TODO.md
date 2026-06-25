@@ -309,7 +309,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 11ba9e84-b2eb-43f9-9c04-7848bbd2d74c -->
 
-- [ ] **[MEDIUM]** Add a lower-center update-reload pill on mobile
+- [x] **[MEDIUM]** Add a lower-center update-reload pill on mobile — Completed: 2026-06-25
   - Type: feature
   - Description: On mobile, when a service-worker update is waiting, the only way to apply it is to spot the gear-button dot, open Settings, and tap the About → Version "Update available" pill — buried behind several taps. Add a compact reload pill anchored in the lower-center of the viewport (the thumb zone, floating just above the bottom nav) that appears whenever an update is pending and applies it on tap. It shows a refresh icon, "Update available", a "Reload" tap target, and a × to dismiss. Mobile-only — desktop keeps its existing footer version cue unchanged. The pill element and its event wiring live in `main.js` alongside the existing mobile update cue, styled in `style.css`.
   - Behavior:
