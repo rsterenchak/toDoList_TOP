@@ -283,3 +283,28 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-06-25
   <!-- id: 9ea44835-a730-49d4-9f2e-2aa914151832 -->
+
+- [ ] **[MEDIUM]** Add verdict panel and Follow-up chat to No-change run rows
+  - Type: feature
+  - Description: The Runs-tab "No change" row currently taps straight out to the GitHub Actions log. Make it an inline accordion (Option A): tapping the row expands a panel showing the agent's closing summary — why the run merged nothing — lazily fetched via the Worker's new `run_result` route and cached on the run record, with a purple "Follow up" button and a relocated "Open full log ↗" link. "Follow up" opens a seeded author chat whose first turn carries the original entry block plus that summary, framed so Sonnet helps draft a corrected entry. The expand/collapse, panel, and buttons live in `buildRunRow`'s NOCHANGE branch in `claudeSheet.js`; the fetch wrapper goes in `inject.js`; the panel styling in `style.css`.
+  - Behavior:
+    1. The NOCHANGE row's trailing affordance becomes an expand chevron (collapsed vs expanded) replacing the current `↗` open-log glyph (`.claudeRunOpenGlyph`); tapping the row header toggles the panel and no longer calls `window.open(rec.runUrl)` directly.
+    2. On first expand, if `rec.result` isn't cached, call the new `fetchRunResult` with `rec.runId` (falling back to `rec.correlationId`), showing a brief loading state; cache the returned summary on `rec.result` and persist the record so re-expands and reloads render instantly without re-fetching.
+    3. The expanded panel renders the summary amber-tinted to match the `.claudeRunBadge--nochange` tokens in SpaceMono, with an action row holding a purple "Follow up" button and an "Open full log ↗" link (the relocated `window.open(rec.runUrl)`).
+    4. "Follow up" fetches the original entry block (read TODO.md via the existing `read` path, extract the block carrying `<!-- id: rec.entryId -->`), switches to the Chat tab, and auto-sends a first author turn: a short framing line ("This entry ran but made no change; here's the agent's summary explaining why — help me draft a corrected follow-up entry") followed by the entry block and the summary.
+    5. If `run_result` returns an empty result or fails, the panel shows a one-line fallback ("Couldn't read the run summary") and keeps "Open full log ↗" available.
+  - Acceptance criteria:
+    - SHIPPED rows are untouched: tap-to-iterate, the `entry_id`-on-turn-1 iterate seed, and the Revert control behave exactly as before — only the NOCHANGE branch of `buildRunRow` changes.
+    - The Follow-up seed is a plain author turn and must NOT send `body.entry_id` (a NOCHANGE run has no merged PR, so the iterate seed would 404 with "nothing to iterate on yet"); the summary and entry ride in the user message, and the Worker auto-loads CLAUDE.md + manifest as on any author turn.
+    - "Open full log ↗" still opens `rec.runUrl` in a new tab, and `rec.runUrl` continues to be populated at reconcile.
+    - Expand state is per-row: with multiple NOCHANGE rows, expanding one neither collapses nor triggers a fetch on the others.
+    - Existing `claudeSheet` Runs-tab / NOCHANGE tests still pass; any test asserting the old "tap opens the log" behavior is updated to the toggle, and a test covers first-expand fetch+cache and Follow-up composing a seed with no `entry_id`.
+  - Implementation notes:
+    - New `inject.js` wrapper `fetchRunResult(runId, target)` posts `{ run_result: true, run_id: runId, repo, filePath }` to the Worker (mirrors the existing run-call wrappers; send `correlation_id` instead when `runId` is absent).
+    - Persist `rec.runId` at reconcile: in `reconcileSuccessConclusion`'s NOCHANGE branch, where `rec.runUrl` is set from the poll response, also set `rec.runId = res.runId` (already present in the status response); older records without it fall back to the Worker's `correlation_id` lookup.
+    - Reuse the existing marker walk (`entryCheckboxState` keys off `<!-- id: <uuid> -->`) to locate and slice the entry block from the `read` content for the seed.
+    - No new dependencies; keep panel CSS in `style.css` using existing Void tokens (amber bg `#241d12` / border `#6e5a2a` / text `#cbb079`, purple `#6C5DF5` for the button, SpaceMono for the summary), with mobile-sized touch targets.
+  - Out of scope: the Worker `run_result` route and the routine's summary-sentinel change (shipped separately), and any change to SHIPPED-row iterate or Revert.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 11ba9e84-b2eb-43f9-9c04-7848bbd2d74c -->
