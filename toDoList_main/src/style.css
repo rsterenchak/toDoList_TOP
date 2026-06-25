@@ -1709,12 +1709,40 @@ body:has(#settingsMenu) #claudeLauncher {
   overflow-y: auto;
 }
 .claudeComposer {
+  position: relative;
   display: flex;
   gap: 8px;
   align-items: center;
   border-top: 0.5px solid var(--border-dim);
   padding-top: 12px;
 }
+/* Scroll-to-bottom pill — floats centered just above the composer, anchored to
+   the composer's top edge so it clears the input row without shifting it. The
+   purple accent palette matches the other sheet controls. */
+.claudeScrollDown {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: #2a2560;
+  border: 1px solid #6C5DF5;
+  color: #9D93EE;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+/* The base rule sets display: inline-flex, which would otherwise win over the
+   UA [hidden] { display: none }, so re-assert the hidden state explicitly. */
+.claudeScrollDown[hidden] { display: none; }
 .claudeComposerInput {
   flex: 1;
   resize: none;

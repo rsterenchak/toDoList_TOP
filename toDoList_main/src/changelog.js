@@ -6,14 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-24',
+        added: [
+            "A centered \"↓\" button now appears above the chat composer when you scroll up, jumping back to the latest message when tapped.",
+        ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
             "The delete confirmation now appears on top of the TODO.md viewer sheet on mobile instead of behind it.",
             "The mobile chat button's soft purple glow now actually appears instead of staying invisible.",
             "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
-        ],
-        changed: [
-            "The chat header's clear-conversation button is now a purple \"+ New Chat\" button instead of a red one.",
         ],
     },
 ];

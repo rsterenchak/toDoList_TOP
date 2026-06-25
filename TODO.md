@@ -256,9 +256,9 @@
   - Completed: 2026-06-24
   <!-- id: d667cf1f-2771-48e6-9be2-d8d08667bb24 -->
 
-- [ ] **[LOW]** Add a scroll-to-bottom arrow button centered above the composer when chat is not scrolled to the latest message
+- [x] **[LOW]** Add a scroll-to-bottom arrow button centered above the composer when chat is not scrolled to the latest message
   - Type: feature
   - Description: When the user scrolls up in the Claude sheet chat window and is not at the bottom, display a centered "↓" pill button floating just above the composer input. The button should be styled with the purple accent palette (`#2a2560` fill, `#6C5DF5` border, `#9D93EE` text/arrow) to match other sheet UI elements. Tapping it scrolls the chat to the latest message and hides the button. The button should be hidden when the chat is already scrolled to the bottom (within a small threshold, e.g. 40px). Implement the scroll detection via a `scroll` event listener on the chat messages container in `claudeSheet.js`, and position the button absolutely centered above the composer using CSS. The button must not overlap or shift the composer input.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: a88a664b-f0f3-4727-bce6-4fedf39af390 -->

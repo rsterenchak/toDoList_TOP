@@ -775,6 +775,33 @@ function buildChatView() {
     // body is built, and the composer isn't appended to `view` yet here.
     renderSendMode(sendGroup);
 
+    // Scroll-to-bottom pill — a centered "↓" that floats just above the composer
+    // whenever the chat log isn't pinned to the latest message. It lives inside
+    // the composer (which is position: relative) and is absolutely positioned so
+    // showing/hiding it never shifts the input row. Tapping it jumps to the
+    // newest bubble; a scroll listener on the surface toggles its visibility.
+    const scrollDown = document.createElement('button');
+    scrollDown.id = 'claudeScrollDown';
+    scrollDown.type = 'button';
+    scrollDown.className = 'claudeScrollDown';
+    scrollDown.textContent = '↓';
+    scrollDown.setAttribute('aria-label', 'Scroll to latest message');
+    scrollDown.hidden = true;
+    scrollDown.addEventListener('click', function() {
+        surface.scrollTop = surface.scrollHeight;
+    });
+    composer.appendChild(scrollDown);
+
+    // Hidden once the log is within `threshold` of the bottom (so a tiny
+    // overshoot doesn't keep the pill visible), shown otherwise. Programmatic
+    // scroll-to-bottom (used by every bubble-append path) fires this same
+    // listener, so a new message auto-hides the pill.
+    const SCROLL_BOTTOM_THRESHOLD = 40;
+    surface.addEventListener('scroll', function() {
+        const distance = surface.scrollHeight - surface.scrollTop - surface.clientHeight;
+        scrollDown.hidden = distance <= SCROLL_BOTTOM_THRESHOLD;
+    });
+
     view.appendChild(surface);
     view.appendChild(chips);
     view.appendChild(composer);
