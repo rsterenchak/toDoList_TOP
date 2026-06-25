@@ -249,9 +249,9 @@
   - Completed: 2026-06-24
   <!-- id: 36dca112-d267-4238-a898-45f2f61052a8 -->
 
-- [ ] **[LOW]** Replace red clear-chat button with a purple "New Chat" button in the Claude sheet header
+- [x] **[LOW]** Replace red clear-chat button with a purple "New Chat" button in the Claude sheet header
   - Type: feature
   - Description: The current clear-chat button in the Claude sheet header is styled red (destructive color). Replace it with a "+ New Chat" button using the purple accent palette (`#2a2560` fill, `#6C5DF5` border, `#9D93EE` text) to match other purple UI elements in the sheet. The button's behavior (clearing the chat and starting fresh) stays the same — only the label ("+ New Chat") and color change. Update both the element's label/aria-label and its CSS styling; do not change any other header elements.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: d667cf1f-2771-48e6-9be2-d8d08667bb24 -->
