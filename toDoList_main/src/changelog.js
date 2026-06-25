@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         added: [
-            "The scroll-to-bottom \"↓\" button now casts an upward light beam glow when you hover over it.",
+            "The scroll-to-bottom \"↓\" button now blooms with a soft radial purple glow when you hover over it.",
         ],
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
