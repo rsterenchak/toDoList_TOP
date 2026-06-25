@@ -315,10 +315,3 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b063d293-dd9c-4dc2-9a2e-47c2307e9584 -->
-
-- [ ] **[LOW]** Test no-op: verify webpack config does not use eval source maps in production
-  - Type: feature
-  - Description: This is an intentional pipeline no-op test. Read `toDoList_main/webpack.config.js` and verify that the production build does not use `devtool: 'eval'` or any `eval`-based source map. This condition is already true — do NOT modify any file, add comments, reformat, or force any diff. If the condition holds, exit cleanly with no changes. The expected run outcome is "No Change" — this entry exists solely to confirm that status surfaces correctly in the PWA Runs tab.
-  - File: `toDoList_main/webpack.config.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: 01d64bbc-e8d2-487a-bf2b-a28ae1bb969c -->
