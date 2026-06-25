@@ -284,7 +284,7 @@
   - Completed: 2026-06-25
   <!-- id: 9ea44835-a730-49d4-9f2e-2aa914151832 -->
 
-- [ ] **[MEDIUM]** Add verdict panel and Follow-up chat to No-change run rows
+- [x] **[MEDIUM]** Add verdict panel and Follow-up chat to No-change run rows — Completed: 2026-06-25
   - Type: feature
   - Description: The Runs-tab "No change" row currently taps straight out to the GitHub Actions log. Make it an inline accordion (Option A): tapping the row expands a panel showing the agent's closing summary — why the run merged nothing — lazily fetched via the Worker's new `run_result` route and cached on the run record, with a purple "Follow up" button and a relocated "Open full log ↗" link. "Follow up" opens a seeded author chat whose first turn carries the original entry block plus that summary, framed so Sonnet helps draft a corrected entry. The expand/collapse, panel, and buttons live in `buildRunRow`'s NOCHANGE branch in `claudeSheet.js`; the fetch wrapper goes in `inject.js`; the panel styling in `style.css`.
   - Behavior:
