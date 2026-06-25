@@ -277,9 +277,9 @@
   - Completed: 2026-06-24
   <!-- id: 85cb887e-4a15-425c-a7fb-dfa13460f833 -->
 
-- [ ] **[LOW]** Remove the upward light beam hover effect from the scroll-to-bottom arrow button
+- [x] **[LOW]** Remove the upward light beam hover effect from the scroll-to-bottom arrow button
   - Type: bug
   - Description: The scroll-to-bottom "↓" pill button in the Claude sheet chat window has an upward light beam glow on hover (a vertical linear-gradient pseudo-element or sibling element). Remove this effect entirely — delete the associated CSS rule(s) targeting the beam on `:hover`. The button's base styles, the soft radial glow (if already shipped), and the scroll behavior must remain unchanged.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-25
   <!-- id: 9ea44835-a730-49d4-9f2e-2aa914151832 -->

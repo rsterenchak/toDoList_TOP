@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-24',
-        added: [
-            "The scroll-to-bottom \"↓\" button now blooms with a soft radial purple glow when you hover over it.",
+        date: '2026-06-25',
+        fixed: [
+            "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-24',
         fixed: [
             "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
             "The delete confirmation now appears on top of the TODO.md viewer sheet on mobile instead of behind it.",
