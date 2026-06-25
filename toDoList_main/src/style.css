@@ -1752,26 +1752,6 @@ body:has(#settingsMenu) #claudeLauncher {
               0 0 16px 6px rgba(108, 93, 245, 0.12),
               0 0 28px 10px rgba(108, 93, 245, 0.08);
 }
-/* Upward light beam glow — a vertical gradient rectangle rising from the pill's
-   top edge, fading from the purple accent into transparent. Hidden by default
-   (opacity 0) and revealed on hover with a smooth fade. pointer-events: none so
-   the beam never intercepts clicks meant for the pill, and it sits behind the
-   pill (negative z-index relative to the button content) so the arrow stays
-   crisp. The base button styles and scroll behavior are untouched. */
-.claudeScrollDown::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%);
-  width: 18px;
-  height: 44px;
-  background: linear-gradient(to top, rgba(108, 93, 245, 0.25), rgba(108, 93, 245, 0));
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms ease;
-}
-.claudeScrollDown:hover::before { opacity: 1; }
 /* The base rule sets display: inline-flex, which would otherwise win over the
    UA [hidden] { display: none }, so re-assert the hidden state explicitly. */
 .claudeScrollDown[hidden] { display: none; }
