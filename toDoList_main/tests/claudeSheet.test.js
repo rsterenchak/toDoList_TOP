@@ -2595,10 +2595,10 @@ describe('Claude sheet — Clear chat control', () => {
         await flush();
     }
 
-    it('renders a text-only Clear chat button in the tab row, right of the tabs', () => {
+    it('renders a text-only New Chat button in the tab row, right of the tabs', () => {
         const btn = document.getElementById('claudeClearChat');
         expect(btn).toBeTruthy();
-        expect(btn.textContent).toBe('Clear chat');
+        expect(btn.textContent).toBe('+ New Chat');
         // Lives in the tab row alongside the CHAT / RUNS selector.
         expect(document.getElementById('claudeSheetTabs').contains(btn)).toBe(true);
         // It trails the tab group in DOM order (right of the selector).

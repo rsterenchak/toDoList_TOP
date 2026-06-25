@@ -463,16 +463,16 @@ function buildWorkspace() {
     return wrap;
 }
 
-// The "Clear chat" control in the tab row, to the right of the CHAT / RUNS
-// selector. Text-only (no icon), tinted with the danger token. Wipes the
-// current conversation but never the attachments or the iterate seed.
+// The "New Chat" control in the tab row, to the right of the CHAT / RUNS
+// selector. Text-only (no icon), tinted with the purple accent palette. Wipes
+// the current conversation but never the attachments or the iterate seed.
 function buildClearChat() {
     const btn = document.createElement('button');
     btn.id = 'claudeClearChat';
     btn.type = 'button';
     btn.className = 'claudeClearChat';
-    btn.textContent = 'Clear chat';
-    btn.setAttribute('aria-label', 'Clear chat');
+    btn.textContent = '+ New Chat';
+    btn.setAttribute('aria-label', 'New Chat');
     btn.addEventListener('click', clearChatConversation);
     return btn;
 }

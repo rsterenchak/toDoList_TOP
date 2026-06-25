@@ -13,7 +13,7 @@ export const changelog = [
             "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
         ],
         changed: [
-            "The sparkle icon on the mobile chat button is now slightly larger.",
+            "The chat header's clear-conversation button is now a purple \"+ New Chat\" button instead of a red one.",
         ],
     },
 ];
