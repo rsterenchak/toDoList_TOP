@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-25',
         added: [
-            "No-change runs now expand to show the agent's summary of why nothing shipped, with a Follow up button to draft a corrected entry.",
             "A reload pill now appears in the lower center on mobile when an app update is ready, so you can apply it with one tap.",
         ],
         fixed: [
             "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
             "The white sparkle icon on the mobile chat button is now vertically centered.",
             "The white sparkle icon on the mobile chat button now sits slightly higher for tighter optical centering.",
+            "The white sparkle icon on the mobile chat button now uses a fixed upward offset for more consistent optical centering across screen densities.",
         ],
     },
 ];
