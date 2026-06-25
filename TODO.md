@@ -263,9 +263,9 @@
   - Completed: 2026-06-24
   <!-- id: a88a664b-f0f3-4727-bce6-4fedf39af390 -->
 
-- [ ] **[LOW]** Add upward light beam glow effect to the scroll-to-bottom arrow button on hover
+- [x] **[LOW]** Add upward light beam glow effect to the scroll-to-bottom arrow button on hover
   - Type: feature
   - Description: When the user hovers over the scroll-to-bottom "↓" pill button in the Claude sheet chat window, display an upward-fading light beam glow emanating from the button — a vertical gradient rectangle above the pill that fades from `#6C5DF5` at the button edge to transparent at the top. Implement via a CSS `::before` pseudo-element or a sibling element on the button, using a `linear-gradient` from `rgba(108,93,245,0.25)` at the bottom to `rgba(108,93,245,0)` at the top. The glow should appear on `:hover` and transition in smoothly (e.g. `opacity` transition ~200ms). The button's base styles and scroll behavior must remain unchanged.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: a139bd35-27e5-46b6-a070-903534d0ebe2 -->
