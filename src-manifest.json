@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-25T11:36:44.479Z",
-  "sha": "d865bd63944578ab215ee0e4b2a488afd493bc16",
+  "generatedAt": "2026-06-25T15:02:55.545Z",
+  "sha": "4f127cae9c8ec01d385ba15fd7485d2303666fd7",
   "files": [
     "auth.js",
     "changelog.js",
@@ -13,6 +13,7 @@
     "dueDate.js",
     "emptyState.js",
     "exportImport.js",
+    "focusMode.js",
     "index.js",
     "inject.js",
     "jsonImportExport.js",
