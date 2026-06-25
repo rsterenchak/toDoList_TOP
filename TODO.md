@@ -270,9 +270,9 @@
   - Completed: 2026-06-24
   <!-- id: a139bd35-27e5-46b6-a070-903534d0ebe2 -->
 
-- [ ] **[LOW]** Add soft radial purple glow to the scroll-to-bottom arrow button on hover
+- [x] **[LOW]** Add soft radial purple glow to the scroll-to-bottom arrow button on hover
   - Type: feature
   - Description: When the user hovers over the scroll-to-bottom "↓" pill button in the Claude sheet chat window, display a soft radial purple glow blooming outward from the button center. Implement via a CSS `box-shadow` with multiple layered spread values on `:hover` to simulate the radial bloom effect — e.g. `box-shadow: 0 0 8px 2px rgba(108,93,245,0.18), 0 0 16px 6px rgba(108,93,245,0.12), 0 0 28px 10px rgba(108,93,245,0.08)`. The glow should transition in smoothly (~200ms). The button's base styles and scroll behavior must remain unchanged.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-24
   <!-- id: 85cb887e-4a15-425c-a7fb-dfa13460f833 -->
