@@ -11024,6 +11024,80 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 ══════════════════════════════════════════ */
 #mobileTabBar { display: none; }
 
+/* Lower-center mobile update-reload pill. Hidden by default (desktop keeps
+   its #footVersion footer cue); only mounted/shown at ≤1023px. */
+#mobileUpdatePill { display: none; }
+
+@media (max-width: 1023px) {
+  /* Thumb-zone update pill floating just above the bottom nav. Anchored to
+     the viewport center, clearing the #mobileTabBar height and the iOS home
+     indicator so it never permanently sits on the nav's tap targets. */
+  #mobileUpdatePill {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px) + 12px);
+    z-index: 60; /* above the nav (49) / sheet peek, below modals (4000+) */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100vw - 24px);
+    padding: 8px 8px 8px 14px;
+    border-radius: 999px;
+    background: #191a22;
+    border: 0.5px solid var(--border-mid);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileUpdatePillIcon {
+    display: inline-flex;
+    align-items: center;
+    color: #9D93EE;
+    flex: 0 0 auto;
+  }
+
+  .mobileUpdatePillLabel {
+    color: #e8e8f0;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .mobileUpdatePillReload {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 0.5px solid #6C5DF5;
+    background: #6C5DF5;
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileUpdatePillDismiss {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #8a8a99;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 @media (max-width: 1023px) {
   #mobileTabBar {
     position: absolute;
