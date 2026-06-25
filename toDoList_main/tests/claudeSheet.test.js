@@ -244,6 +244,74 @@ describe('Claude sheet shell + launcher', () => {
     });
 });
 
+describe('Claude sheet — scroll-to-bottom button', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+    });
+
+    // Drive the jsdom surface's scroll geometry: scrollHeight/clientHeight aren't
+    // laid out in jsdom, so define them, and back scrollTop with a real variable
+    // so both the listener (reads) and the button (writes) see consistent values.
+    function mockSurfaceGeometry(surface, { scrollHeight, clientHeight }) {
+        let top = 0;
+        Object.defineProperty(surface, 'scrollHeight', { value: scrollHeight, configurable: true });
+        Object.defineProperty(surface, 'clientHeight', { value: clientHeight, configurable: true });
+        Object.defineProperty(surface, 'scrollTop', {
+            get() { return top; },
+            set(v) { top = v; },
+            configurable: true,
+        });
+    }
+
+    it('mounts a hidden "↓" pill inside the composer with aria metadata', () => {
+        const btn = document.getElementById('claudeScrollDown');
+        const composer = document.getElementById('claudeComposer');
+        expect(btn).toBeTruthy();
+        expect(composer.contains(btn)).toBe(true);
+        expect(btn.type).toBe('button');
+        expect(btn.textContent).toBe('↓');
+        expect(btn.getAttribute('aria-label')).toBe('Scroll to latest message');
+        // Starts hidden — a fresh chat is pinned to the bottom.
+        expect(btn.hidden).toBe(true);
+    });
+
+    it('shows the pill when scrolled up beyond the threshold and hides it near the bottom', () => {
+        const surface = document.getElementById('claudeChatSurface');
+        const btn = document.getElementById('claudeScrollDown');
+        mockSurfaceGeometry(surface, { scrollHeight: 1000, clientHeight: 300 });
+
+        // Scrolled to the top: distance 700 > 40 → visible.
+        surface.scrollTop = 0;
+        surface.dispatchEvent(new Event('scroll'));
+        expect(btn.hidden).toBe(false);
+
+        // Pinned to the bottom: distance 0 ≤ 40 → hidden.
+        surface.scrollTop = 700;
+        surface.dispatchEvent(new Event('scroll'));
+        expect(btn.hidden).toBe(true);
+
+        // Within the 40px threshold still counts as bottom → hidden.
+        surface.scrollTop = 670;
+        surface.dispatchEvent(new Event('scroll'));
+        expect(btn.hidden).toBe(true);
+
+        // Just past the threshold → visible again.
+        surface.scrollTop = 650;
+        surface.dispatchEvent(new Event('scroll'));
+        expect(btn.hidden).toBe(false);
+    });
+
+    it('jumps the chat to the latest message when tapped', () => {
+        const surface = document.getElementById('claudeChatSurface');
+        const btn = document.getElementById('claudeScrollDown');
+        mockSurfaceGeometry(surface, { scrollHeight: 1234, clientHeight: 300 });
+        surface.scrollTop = 0;
+        btn.click();
+        expect(surface.scrollTop).toBe(1234);
+    });
+});
+
 describe('Claude sheet — module surface and styling', () => {
     const claude = read('claudeSheet.js');
     const css = read('style.css');
@@ -336,6 +404,25 @@ describe('Claude sheet — module surface and styling', () => {
         expect(extractTopLevelRule('.claudeComposerAttach')).not.toMatch(/align-self/);
         expect(extractTopLevelRule('.claudeComposerSend')).not.toMatch(/align-self/);
         expect(extractTopLevelRule('.micButton')).not.toMatch(/align-self/);
+    });
+
+    it('floats the scroll-to-bottom pill above the composer in the purple accent palette', () => {
+        // The composer must be the positioning context so the absolutely-placed
+        // pill anchors to it without shifting the input row.
+        expect(extractTopLevelRule('.claudeComposer')).toMatch(/position:\s*relative/);
+        const pill = extractTopLevelRule('.claudeScrollDown');
+        expect(pill).toMatch(/position:\s*absolute/);
+        // Centered horizontally and anchored just above the composer's top edge.
+        expect(pill).toMatch(/left:\s*50%/);
+        expect(pill).toMatch(/bottom:\s*100%/);
+        expect(pill).toMatch(/translateX\(-50%\)/);
+        // Purple accent palette: #2a2560 fill, #6C5DF5 border, #9D93EE arrow.
+        expect(pill).toMatch(/background:\s*#2a2560/i);
+        expect(pill).toMatch(/border:[^;]*#6C5DF5/i);
+        expect(pill).toMatch(/color:\s*#9D93EE/i);
+        // The base rule sets a flex display, so the [hidden] state needs an
+        // explicit display: none override to actually hide the pill.
+        expect(extractTopLevelRule('.claudeScrollDown[hidden]')).toMatch(/display:\s*none/);
     });
 
     it('renders the mic as a round icon button with a resting surface and hairline border', () => {
