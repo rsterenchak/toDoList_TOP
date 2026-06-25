@@ -413,6 +413,34 @@ export async function fetchActiveRuns(target) {
 }
 
 
+// Fetch the closing summary a completed run left behind — the agent's verdict on
+// why it merged nothing — through the same Worker the dispatch and status flows
+// use (same URL + Bearer secret). POSTs `{ run_result: true, run_id, repo,
+// filePath }`; the Worker resolves the run's result and echoes `{ result }` (the
+// summary text). The run is keyed by `run_id` (the numeric GitHub Actions run id
+// persisted at reconcile); older records that predate that field fall back to
+// their correlation id, which the caller passes in `runId`'s place — the Worker
+// resolves either. The parsed response is spread onto an `{ ok: true }` envelope,
+// mirroring pollRunStatus. Returns `{ ok: false, reason }` via describeError on
+// any failure; callers treat a missing/empty `result` as "couldn't read the
+// summary" and degrade to the full-log link rather than raising an error toast.
+export async function fetchRunResult(runId, target) {
+    const t = target || null;
+    try {
+        const payload = { run_result: true };
+        if (runId) payload.run_id = runId;
+        if (t) {
+            payload.repo = t.repo;
+            payload.filePath = t.file_path;
+        }
+        const res = await postToWorker(payload);
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Cross-check whether an entry's marker is present in a merged PR through the
 // same Worker the dispatch and status flows already use (same URL, same Bearer
 // secret). Sends `{ resolve: true, entry_id }` so the Worker searches merged PR

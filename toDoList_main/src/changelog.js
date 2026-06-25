@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-25',
+        added: [
+            "No-change runs now expand to show the agent's summary of why nothing shipped, with a Follow up button to draft a corrected entry.",
+        ],
         fixed: [
             "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
         ],
@@ -14,7 +17,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-24',
         fixed: [
-            "Runs whose change actually landed now show Shipped right away instead of briefly reading \"No change\" until a refresh corrected them.",
             "The delete confirmation now appears on top of the TODO.md viewer sheet on mobile instead of behind it.",
             "The mobile chat button's soft purple glow now actually appears instead of staying invisible.",
             "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
