@@ -13,7 +13,7 @@ export const changelog = [
             "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
         ],
         changed: [
-            "The chat composer's Fast-mode send button now fills with the same lighter accent purple as the mode dropdown picker.",
+            "The sparkle icon on the mobile chat button is now slightly larger.",
         ],
     },
 ];
