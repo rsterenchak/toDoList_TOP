@@ -334,9 +334,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 360b8fcd-bf61-4cc9-a8bc-071844c505fe -->
 
-- [ ] **[LOW]** Add a no-op comment to trigger a deploy and test the reload-on-update flow
+- [x] **[LOW]** Add a no-op comment to trigger a deploy and test the reload-on-update flow
   - Type: feature
   - Description: Add a single innocuous code comment (e.g. `// reload-on-update test — safe to remove`) to `main.js` so webpack produces a new content-hashed bundle on the next deploy. This is a deliberate no-op change whose sole purpose is to trigger the service worker update cycle so the reload-on-update UI can be observed in the wild. No behavior, styling, or logic should change.
   - File: `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-25
   <!-- id: ddbe5425-49f5-431e-bc65-b16d3fb87a4a -->
