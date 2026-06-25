@@ -1676,9 +1676,9 @@ body:has(#settingsMenu) #claudeLauncher {
    both themes through the variable. */
 .claudeClearChat {
   margin-left: auto;
-  background: transparent;
-  color: var(--text-danger);
-  border: none;
+  background: #2a2560;
+  color: #9D93EE;
+  border: 1px solid #6C5DF5;
   border-radius: 6px;
   padding: 4px 8px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -1689,7 +1689,7 @@ body:has(#settingsMenu) #claudeLauncher {
   cursor: pointer;
 }
 .claudeClearChat:hover {
-  text-decoration: underline;
+  background: #34307a;
 }
 .claudeClearChat[hidden] { display: none; }
 .claudeView {
