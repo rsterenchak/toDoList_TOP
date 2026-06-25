@@ -356,13 +356,6 @@
   - Completed: 2026-06-25
   <!-- id: 99333a94-9d75-4d38-af8d-99fbca429860 -->
 
-- [ ] **[LOW]** Adjust mobile Claude launcher sparkle vertical offset to -20% relative to the FAB button
-  - Type: bug
-  - Description: The ✦ glyph on the mobile `#claudeLauncher` FAB still appears visually off-center. Change the `transform` on `#claudeLauncher` inside `@media (max-width: 1023px)` from `translateY(1px)` to `translateY(-20%)` so the glyph shifts up by 20% of the button's height. Update the existing regression test in `mobileLauncherSparkleCentering.test.js` to expect the new value. No other properties (size, color, glow, position) should be changed.
-  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileLauncherSparkleCentering.test.js`
-  - Completed:
-  <!-- id: 692d695f-82d8-49bd-83a9-089cea424ea2 -->
-
 - [x] **[LOW]** Adjust mobile Claude launcher sparkle vertical offset to -15px — Completed: 2026-06-25
 
   - Type: bug
