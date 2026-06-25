@@ -1739,6 +1739,18 @@ body:has(#settingsMenu) #claudeLauncher {
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 200ms ease;
+}
+/* Soft radial purple glow — on hover the pill blooms outward with layered,
+   progressively softer purple shadows that simulate a radial bloom. The base
+   drop shadow is preserved as the first layer so the pill keeps its lift; the
+   transition on the base rule fades the glow in smoothly. The button's base
+   styles and scroll behavior are untouched. */
+.claudeScrollDown:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3),
+              0 0 8px 2px rgba(108, 93, 245, 0.18),
+              0 0 16px 6px rgba(108, 93, 245, 0.12),
+              0 0 28px 10px rgba(108, 93, 245, 0.08);
 }
 /* Upward light beam glow — a vertical gradient rectangle rising from the pill's
    top edge, fading from the purple accent into transparent. Hidden by default
