@@ -80,10 +80,12 @@ describe('mobile Claude launcher sparkle centering', () => {
         expect(body, 'expected a #claudeLauncher rule inside @media (max-width: 1023px)').toBeTruthy();
         const transform = body.match(/transform\s*:([^;]*)/i);
         expect(transform, 'expected a transform on the mobile #claudeLauncher rule').toBeTruthy();
-        // The correction must move the glyph vertically by a non-zero amount.
+        // The correction must shift the glyph up by 10% of the button's height to
+        // land the ✦ ink on the FAB's optical center.
         const ty = transform[1].match(/translateY\(\s*(-?[\d.]+)([a-z%]*)\s*\)/i);
         expect(ty, 'expected a translateY(...) optical correction').toBeTruthy();
-        expect(parseFloat(ty[1])).not.toBe(0);
+        expect(parseFloat(ty[1])).toBe(-10);
+        expect(ty[2]).toBe('%');
     });
 
     it('does not reposition or resize the FAB while correcting the glyph', () => {

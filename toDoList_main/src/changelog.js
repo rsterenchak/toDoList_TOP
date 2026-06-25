@@ -13,13 +13,7 @@ export const changelog = [
         fixed: [
             "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
             "The white sparkle icon on the mobile chat button is now vertically centered.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-24',
-        fixed: [
-            "The mobile chat button is now a purple circular button with a white sparkle icon and a visible glow halo.",
+            "The white sparkle icon on the mobile chat button now sits slightly higher for tighter optical centering.",
         ],
     },
 ];
