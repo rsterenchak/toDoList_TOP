@@ -1214,7 +1214,15 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
         if (!mainList) return;
 
         if (switcher === 0) {
-            mainList.insertBefore(descSibling, toDoChild.nextSibling);
+            // On the blank placeholder the chip row sits immediately after
+            // the row as its own sibling (and the CSS reveal keys off that
+            // adjacency), so slot the description panel AFTER the chips when
+            // they're present; otherwise directly after the row.
+            let descAnchor = toDoChild.nextSibling;
+            if (descAnchor && descAnchor.id === 'mobileCreateChips') {
+                descAnchor = descAnchor.nextSibling;
+            }
+            mainList.insertBefore(descSibling, descAnchor);
             descSibling.appendChild(descSpacer1);
             descSibling.appendChild(descInput);
             descSibling.appendChild(descSpacer2);
@@ -1229,8 +1237,14 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descToggle.classList.add("open");
             switcher = 1;
         } else {
-            if (toDoChild.nextSibling && toDoChild.nextSibling.id === 'descSibling') {
-                mainList.removeChild(toDoChild.nextSibling);
+            // Mirror the insert: the panel may sit one slot down past the
+            // chip sibling on the blank placeholder.
+            let descNode = toDoChild.nextSibling;
+            if (descNode && descNode.id === 'mobileCreateChips') {
+                descNode = descNode.nextSibling;
+            }
+            if (descNode && descNode.id === 'descSibling') {
+                mainList.removeChild(descNode);
             }
             descToggle.classList.remove("open");
             switcher = 0;
@@ -1629,7 +1643,11 @@ export function buildToDoRow(item, toDoName) {
             // real todo; the chip row CSS rules key off the attribute.
             toDoChild.removeAttribute('data-blank-placeholder');
             toDoChild.classList.remove('mobile-create-row');
-            const chipRow = toDoChild.querySelector('#mobileCreateChips');
+            // The chip row now lives as the row's next sibling (its own grid
+            // row), not a child, so reach it there to strip it on commit.
+            const chipRow = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
+                ? toDoChild.nextSibling
+                : null;
             if (chipRow) chipRow.remove();
 
             if (!prefersReducedMotion()) {
@@ -1931,11 +1949,12 @@ export function reorderToDoDOM(projectName) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
         // Collect any auxiliary panels that belong to this row (the
-        // description panel and the recurring-task stats drawer can both
-        // be open). They sit as consecutive siblings beneath the row.
+        // description panel, the recurring-task stats drawer, and the blank
+        // placeholder's mobile chip row can be present). They sit as
+        // consecutive siblings beneath the row.
         const auxiliary = [];
         let next = row.nextSibling;
-        while (next && (next.id === 'descSibling' || next.id === 'statsSibling')) {
+        while (next && (next.id === 'descSibling' || next.id === 'statsSibling' || next.id === 'mobileCreateChips')) {
             auxiliary.push(next);
             next = next.nextSibling;
         }

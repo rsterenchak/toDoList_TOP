@@ -55,7 +55,7 @@ describe('STACK mobile inline-expand task creation — session state', () => {
         const row = makeBlankRow();
         const item = row.__item;
         attachMobileCreateChips(row, item);
-        row.querySelector('[data-chip="tomorrow"]').click();
+        chipsFor(row).querySelector('[data-chip="tomorrow"]').click();
         expect(getChosenDueChip()).toBe('tomorrow');
         resetMobileCreateSession();
         expect(getChosenDueChip()).toBe('today');
@@ -70,14 +70,16 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         document.body.innerHTML = '';
     });
 
-    it('appends the chip row only to a blank placeholder', () => {
+    it('mounts the chip row as a sibling only for a blank placeholder', () => {
         const blankRow = makeBlankRow();
         attachMobileCreateChips(blankRow, blankRow.__item);
-        expect(blankRow.querySelector('#mobileCreateChips')).not.toBeNull();
+        expect(chipsFor(blankRow)).not.toBeNull();
+        // The chip row is a sibling, never a descendant of the row.
+        expect(blankRow.querySelector('#mobileCreateChips')).toBeNull();
 
         const committedRow = makeRowForItem({ tit: 'walk dog', due: '' });
         attachMobileCreateChips(committedRow, committedRow.__item);
-        expect(committedRow.querySelector('#mobileCreateChips')).toBeNull();
+        expect(chipsFor(committedRow)).toBeNull();
     });
 
     it('marks the placeholder row with data-blank-placeholder for CSS targeting', () => {
@@ -89,7 +91,7 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
     it('renders four chips — Today, Tomorrow, 📅 calendar, and + ¶ description toggle', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
-        const chips = row.querySelector('#mobileCreateChips');
+        const chips = chipsFor(row);
         expect(chips).not.toBeNull();
         expect(chips.querySelector('[data-chip="today"]').textContent).toBe('Today');
         expect(chips.querySelector('[data-chip="tomorrow"]').textContent).toBe('Tomorrow');
@@ -100,11 +102,12 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
     it('highlights the currently-chosen chip via mobileCreateChipSelected', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
-        const today = row.querySelector('[data-chip="today"]');
+        const chips = chipsFor(row);
+        const today = chips.querySelector('[data-chip="today"]');
         expect(today.classList.contains('mobileCreateChipSelected')).toBe(true);
 
-        row.querySelector('[data-chip="tomorrow"]').click();
-        const tomorrow = row.querySelector('[data-chip="tomorrow"]');
+        chips.querySelector('[data-chip="tomorrow"]').click();
+        const tomorrow = chips.querySelector('[data-chip="tomorrow"]');
         expect(tomorrow.classList.contains('mobileCreateChipSelected')).toBe(true);
         expect(today.classList.contains('mobileCreateChipSelected')).toBe(false);
     });
@@ -115,7 +118,7 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         item.due = '6-15-2026';
         attachMobileCreateChips(row, item);
 
-        row.querySelector('[data-chip="today"]').click();
+        chipsFor(row).querySelector('[data-chip="today"]').click();
         expect(getChosenDueChip()).toBe('today');
         // Stale custom-picked due must be cleared so the on-commit stamp
         // applies the chip's date instead of falling back through.
@@ -126,7 +129,7 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
 
-        row.querySelector('[data-chip="tomorrow"]').click();
+        chipsFor(row).querySelector('[data-chip="tomorrow"]').click();
         expect(getChosenDueChip()).toBe('tomorrow');
     });
 });
@@ -152,7 +155,7 @@ describe('STACK mobile inline-expand task creation — applyChosenDueToItem', ()
         const row = makeBlankRow();
         const item = row.__item;
         attachMobileCreateChips(row, item);
-        row.querySelector('[data-chip="tomorrow"]').click();
+        chipsFor(row).querySelector('[data-chip="tomorrow"]').click();
 
         applyChosenDueToItem(item, row);
         const tomorrow = new Date();
@@ -245,9 +248,11 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
 
     const css = read('style.css');
 
-    it('hides the chip row by default and reveals it only when the placeholder row is focus-within', () => {
+    it('hides the chip row by default and reveals it via the adjacent-sibling combinator when the placeholder row is focus-within', () => {
         expect(css).toMatch(/#mobileCreateChips\s*\{[^}]*display:\s*none/);
-        expect(css).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s+#mobileCreateChips\s*\{[\s\S]*?display:\s*flex/);
+        // The chip row is the placeholder's sibling now, so the reveal uses
+        // the adjacent-sibling (`+`) combinator rather than a descendant match.
+        expect(css).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#mobileCreateChips\s*\{[\s\S]*?display:\s*flex/);
     });
 
     it('gives the chips a ≥44px touch target', () => {
@@ -295,6 +300,14 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
 
 
 // ── Helpers ──────────────────────────────────────────────────────────
+
+// The chip row now mounts as the placeholder's NEXT SIBLING (its own grid
+// row), not a child, so reach it via the row's sibling rather than a
+// descendant query.
+function chipsFor(row) {
+    const sib = row.nextElementSibling;
+    return sib && sib.id === 'mobileCreateChips' ? sib : null;
+}
 
 function makeBlankRow() {
     return makeRowForItem({ tit: '', due: '' });

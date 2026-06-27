@@ -11,6 +11,7 @@ export const changelog = [
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",
+            "The quick-option chips under the mobile add-task field now appear in full instead of being clipped or overlapping the first task below.",
         ],
     },
     {
@@ -24,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-25',
         fixed: [
-            "The white sparkle icon on the mobile chat button now sits slightly higher for tighter optical centering.",
             "The white sparkle icon on the mobile chat button now uses a fixed upward offset for more consistent optical centering across screen densities.",
         ],
     },
