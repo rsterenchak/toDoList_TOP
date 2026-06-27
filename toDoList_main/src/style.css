@@ -1266,10 +1266,34 @@ body {
 
 #descEditorModalActions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
   padding: 10px 14px 14px;
   border-top: 0.5px solid var(--border-dim);
+}
+
+/* Primary + secondary actions layout: Inject is the actual pipeline action,
+   so it takes a full-width filled-primary row of its own (see the inject
+   rules in the inject-button section), with Clear and Copy entry as an
+   equal-width (50/50) outline pair on the row beneath. */
+#descEditorModalActions #descEditorModalClear,
+#descEditorModalActions #descEditorModalCopy {
+  flex: 1 1 0;
+}
+/* Copy entry steps back from the solid purple fill to a border-bright outline
+   — the accent fill now belongs to Inject as the primary action. */
+#descEditorModalActions #descEditorModalCopy {
+  background: var(--bg-elevated);
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+#descEditorModalActions #descEditorModalCopy:hover { background: var(--bg-hover); }
+/* Preserve the brief "Copied ✓" feedback flash on the now-outline button. */
+#descEditorModalActions #descEditorModalCopy[data-copied="true"] {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-text);
 }
 
 .descEditorModalBtn {
@@ -11660,12 +11684,28 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
 /* When the inject button lives inside the mobile description-editor modal's
    actions row, drop the row-style outer margin (the modal owns its own
-   padding) and match the height of the other modal buttons. */
+   padding) and match the height of the other modal buttons. It is the
+   primary action, so it takes its own full-width row above the Clear / Copy
+   pair (order:-1 + 100% basis against the wrapping actions flex container). */
 #descEditorModalActions .injectBtn {
+  order: -1;
+  flex: 0 0 100%;
+  justify-content: center;
   margin: 0;
   font-size: 13px;
   padding: 8px 10px;
   min-height: 36px;
+}
+/* Ready-state inject gets the solid accent fill as the primary pipeline
+   action. The state variants (unconfigured / no-target / injected) keep
+   their own outline/tint signals via the :not() guards. */
+#descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+#descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected):hover:not(:disabled) {
+  background: var(--accent-strong, var(--accent));
 }
 
 
