@@ -392,3 +392,16 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`, `CLAUDE.md`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9ce7e5f4-cd84-41e4-9068-c442183921fd -->
+
+- [ ] **[MEDIUM]** Restructure mobile task rows: status as left-edge color, full-width single-line title
+  - Type: feature
+  - Description: On the mobile Projects list, each todo row crams the title, an inline status pill (IN PROGRESS / ACTIVE), a copy icon, and the due control onto one ~44px line, squeezing the title to ~18 characters so most entries truncate. Remove the inline status pill from mobile rows and instead encode status as a ~3px rounded color tab on the row's left edge (amber for in-progress, accent purple for active), keyed off the same status class/attribute that currently drives the pill color so every status carries over. With the pill gone, give the title the full remaining width as a single ellipsis-truncated line, and order the right-side controls as due control then copy icon. Keep the existing due element (amber calendar control) and the copy button exactly as they behave today — this only changes their placement. Prefer a CSS-only approach: hide `.todoStatusLabel` inside the mobile media query (the element stays in the DOM for desktop), draw the edge tab via a `::before` on the row keyed to its status, and reorder due/copy with flex `order` — so `toDoRow.js` ideally needs no change. Scope strictly to the mobile breakpoint; the desktop two-pane row layout is untouched.
+  - Behavior:
+    1. Row left edge shows a ~3px rounded status tab; color maps from the row's existing status hook (in-progress → amber, active → accent purple).
+    2. Title spans the full width between the checkbox and the right cluster, single line, truncating with an ellipsis.
+    3. Right cluster order: due control, then copy icon.
+    4. The existing tap-to-read accent edge (`data-mobile-read`) takes visual precedence over the resting status tab when a row is expanded for reading.
+  - Out of scope: desktop row layout; the ACTIVE filter pill + SORT toolbar row (separate pass); any change to status values or due-date behavior.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9e641258-f4a6-4b5f-a256-411b4548f1af -->
