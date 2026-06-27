@@ -465,3 +465,11 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b4e755c9-3d3c-472c-a287-108ad1110410 -->
+
+- [ ] **[LOW]** Rename the "Projects" tab label to "Tasks View" on mobile
+
+  - Type: feature
+  - Description: The bottom navigation tab currently labeled "Projects" on mobile should read "Tasks View" instead. Only the visible label text should change — the tab's functionality, event listeners, ARIA attributes, and any JS selectors that reference the tab by class or data attribute must remain untouched. Locate the tab label text in `toDoList_main/src/index.js` (where DOM markup is rendered) or `toDoList_main/src/mobileSheets.js` (mobile sheet/tab wiring) and update the string.
+  - File: `toDoList_main/src/index.js`, `toDoList_main/src/mobileSheets.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 949653a0-39fb-46b5-b598-6bd7d8bc97f2 -->
