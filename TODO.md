@@ -420,7 +420,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 71d127fa-16ad-4bf6-9ea2-f9553a2dda87 -->
 
-- [ ] **[MEDIUM]** Add a task status selector to the mobile description editor modal
+- [x] **[MEDIUM]** Add a task status selector to the mobile description editor modal — Completed: 2026-06-27
   - Type: feature
   - Description: On mobile there is now no way to set a task's workflow status — the status badge that doubles as the change control on desktop (`.todoStatusLabel` → `showStatusPopover`) is hidden on the mobile breakpoint in favor of the left-edge color tab, so status is shown but no longer settable. Add a status selector to the mobile description editor modal (`descEditorModal` in `modals.js`), which is already the per-task sheet (it edits the title plus Clear / Inject / Copy entry). Render it as a segmented control — three connected segments `○ ACTIVE | ⏵ IN PROGRESS | ○ IDEA` — in a labeled `Status` row in the modal body, sitting between the textarea (`#descEditorModalBody`) and the actions row (`#descEditorModalActions`). The selected segment fills with its status color, matched to the row edge tab (active → accent purple, in_progress → amber, idea → muted). Pull the labels and order from `STATUS_META` / `STATUS_ORDER` in `todoStatus.js` so the vocabulary stays single-sourced rather than re-hardcoded.
   - Behavior:
