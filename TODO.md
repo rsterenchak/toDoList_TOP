@@ -445,9 +445,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 97e9d77d-4ea2-49a0-b1f5-771c8c1780d8 -->
 
-- [ ] **[LOW]** Resize the mobile segmented filter to content-width with a tinted active segment
+- [x] **[LOW]** Resize the mobile segmented filter to content-width with a tinted active segment
   - Type: feature
   - Description: The mobile segmented status filter (the `All · Active · Ideas` control in `#taskFilterBar`) shipped stretched edge-to-edge with each segment flexed to fill the row, and its active segment painted as a solid `#6C5DF5` block — heavier and wider than intended. Size the segmented control to its content instead: drop the `flex: 1` / full-width on the segment container and its segments so the group hugs its labels and sits left-aligned, letting the icon-only Sort trigger (`#taskSortBtnMobile`) hold the right edge via its existing `margin-left: auto`. Soften the active segment from the solid fill to the accent tint used by the status selector's segmented control (tinted background + accent-purple text) so the two segmented controls read as one family. CSS-only, scoped to the mobile breakpoint; the desktop cycle pill and all filter behavior are untouched.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-27
   <!-- id: 307cde38-22c1-428e-919b-2d89d227c706 -->
