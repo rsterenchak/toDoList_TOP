@@ -11700,12 +11700,12 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    action. The state variants (unconfigured / no-target / injected) keep
    their own outline/tint signals via the :not() guards. */
 #descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected) {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #6C5DF5;
+  border-color: #6C5DF5;
   color: #fff;
 }
 #descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected):hover:not(:disabled) {
-  background: var(--accent-strong, var(--accent));
+  background: #5b4ce0;
 }
 
 
