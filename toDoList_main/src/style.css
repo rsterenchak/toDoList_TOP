@@ -6624,6 +6624,48 @@ body.row-dragging * { cursor: grabbing !important; }
     line-height: 1.4;
   }
 
+  /* ── MOBILE ROW RESTRUCTURE ──
+     Drop the inline workflow-status pill from the row and instead encode the
+     status as a ~3px rounded color tab on the row's left edge — amber for
+     in-progress, accent purple for active — keyed off the same modifier class
+     (`todo-row--in_progress` / `todo-row--active`) that drives the pill's
+     color. The pill element stays in the DOM (desktop still shows it); only
+     its display is suppressed here. Removing it from the line hands the title
+     the full remaining width, where it already truncates to a single
+     ellipsis line via the rules above. */
+  .todoStatusLabel { display: none; }
+
+  /* Left-edge status tab. Drawn as a ::before so it can be a rounded sliver
+     (a box-shadow inset stripe can't round) painted inside the row's
+     border-radius. The desktop in-progress purple inset stripe is neutralized
+     on resting mobile rows so only the amber tab reads (but left intact when
+     the row enters tap-to-read, which paints its own accent edge below). */
+  #toDoChild.todo-row--in_progress::before,
+  #toDoChild.todo-row--active::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 56%;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1;
+  }
+  #toDoChild.todo-row--in_progress::before { background: var(--text-warning); }
+  #toDoChild.todo-row--active::before      { background: var(--accent); }
+  #toDoChild.todo-row--in_progress:not([data-mobile-read="true"]) {
+    box-shadow: none;
+  }
+
+  /* The tap-to-read accent edge (data-mobile-read, an inset box-shadow above)
+     takes visual precedence over the resting status tab while a row is
+     expanded for reading, so hide the tab in that state. The right-cluster
+     reorder (due before copy) lives with the slim #duePill styling further
+     down this breakpoint. */
+  #toDoChild[data-mobile-read="true"]::before { display: none; }
+
   /* 700ms fading purple left-edge accent on the just-committed row —
      the STACK spec's "fading purple-left-edge accent" cue. Uses inset
      box-shadow so the indicator paints inside the row's existing border
@@ -10917,6 +10959,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   #duePill .duePillLabel { display: none; }
   #duePill .duePillChevron { display: none; }
   #duePill .duePillIcon { width: 16px; height: 16px; }
+
+  /* Right cluster order: due control, then copy icon. DOM order is the
+     reverse (copy then due) — flipped here with flex `order` so toDoRow.js
+     keeps its assembly. Both sit after the order-0 title; statsToggle keeps
+     its trailing position on the rare recurrence rows that surface it. */
+  #toDoChild #duePill      { order: 1; }
+  #toDoChild .copyTitleBtn { order: 2; }
+  #toDoChild #statsToggle  { order: 3; }
 
   /* Days-until-due badge — single-digit number drawn inside the calendar
      icon's own SVG viewBox (built by buildCalendarSvg in dueDate.js) so
