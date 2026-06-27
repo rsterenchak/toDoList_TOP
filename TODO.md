@@ -459,7 +459,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 92a37b33-6982-431e-bc2b-5e698321df70 -->
 
-- [ ] **[LOW]** Tone the modal Inject button fill to match the approved render
+- [x] **[LOW]** Tone the modal Inject button fill to match the approved render — Completed: 2026-06-27
   - Type: bug
   - Description: The full-width Inject primary button in the description-editor modal (`#descEditorModalActions .injectBtn` in `style.css`) shipped with a brighter purple fill than the approved mockup, so it reads as the brightest element on the screen. Align it to the render: use the deeper accent `#6C5DF5` (the same purple as the selected filter pill, `.taskFilterPill.selected`) for the button's background and border instead of the lighter `--accent` (#8b7bff). If an accent glow/box-shadow was applied to the button, drop it so the fill reads flat like the mockup. Confirm the Clear and Copy entry outline buttons still match the render's border-bright outline. CSS-only, modal actions only; the desktop `#descSibling` inject button is unaffected.
   - File: `toDoList_main/src/style.css`
