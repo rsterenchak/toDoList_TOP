@@ -1968,20 +1968,26 @@ function component() {
     // is ever visible. It opens the SAME #taskSortMenu and drives the same
     // getTaskSort/setTaskSort/applyTaskSortChoice/syncTaskSortButton machinery,
     // so desktop and mobile share one sort state.
+    // Icon-only on mobile: a sort glyph (no "Sort: …" text label) carrying a
+    // small accent dot when the active sort is anything other than None. The
+    // glyph + dot replace the former text label; the desktop #taskSortBtn keeps
+    // its label. An aria-label (kept current by syncTaskSortButton) names the
+    // control + active sort for screen readers since the text is gone.
     const mobileSortBtn = document.createElement('button');
     mobileSortBtn.type = 'button';
     mobileSortBtn.id = 'taskSortBtnMobile';
     mobileSortBtn.className = 'bulkDescBtn taskSortBtn taskSortBtnMobile';
     mobileSortBtn.setAttribute('aria-haspopup', 'menu');
     mobileSortBtn.setAttribute('aria-expanded', 'false');
-    const mobileSortBtnLabel = document.createElement('span');
-    mobileSortBtnLabel.className = 'bulkDescLabel';
-    const mobileSortBtnCaret = document.createElement('span');
-    mobileSortBtnCaret.className = 'bulkDescCaret';
-    mobileSortBtnCaret.textContent = '▾';
-    mobileSortBtnCaret.setAttribute('aria-hidden', 'true');
-    mobileSortBtn.appendChild(mobileSortBtnLabel);
-    mobileSortBtn.appendChild(mobileSortBtnCaret);
+    const mobileSortBtnGlyph = document.createElement('span');
+    mobileSortBtnGlyph.className = 'taskSortBtnMobileGlyph';
+    mobileSortBtnGlyph.textContent = '⇅';
+    mobileSortBtnGlyph.setAttribute('aria-hidden', 'true');
+    const mobileSortBtnDot = document.createElement('span');
+    mobileSortBtnDot.className = 'taskSortBtnMobileDot';
+    mobileSortBtnDot.setAttribute('aria-hidden', 'true');
+    mobileSortBtn.appendChild(mobileSortBtnGlyph);
+    mobileSortBtn.appendChild(mobileSortBtnDot);
     taskFilterBar.appendChild(mobileSortBtn);
 
     function taskSortButtonText(key) {
@@ -1995,8 +2001,10 @@ function component() {
         const text = taskSortButtonText(key);
         taskSortBtnLabel.textContent = text;
         taskSortBtn.setAttribute('data-sort', key);
-        mobileSortBtnLabel.textContent = text;
+        // Mobile trigger is icon-only: drive its data-sort (CSS shows the dot +
+        // tints it when active) and keep its aria-label current in lieu of text.
         mobileSortBtn.setAttribute('data-sort', key);
+        mobileSortBtn.setAttribute('aria-label', text);
     }
     syncTaskSortButton();
 

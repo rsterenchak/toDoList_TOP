@@ -55,20 +55,35 @@ afterEach(() => {
 });
 
 
-// (1) DOM shape — the destructive half: exactly one cycle pill, none of the
-// old three-pill control set.
-describe('buildTaskFilterBar — single cycle pill', () => {
-    it('renders exactly one cycle pill and none of the old three filter pills', () => {
+// (1) DOM shape — the desktop cycle pill plus the mobile segmented control.
+// The bar now carries BOTH filter controls (CSS gates which is visible per
+// breakpoint), sharing one persisted filter state.
+describe('buildTaskFilterBar — cycle pill + segmented control', () => {
+    it('renders exactly one cycle pill (the desktop control)', () => {
         const bar = buildTaskFilterBar();
-        // The new control class appears exactly once …
+        // The cycle pill class appears exactly once …
         expect(bar.querySelectorAll('.taskCyclePill').length).toBe(1);
-        // … and there are no extra pill buttons hanging around (the old build
-        // rendered three .taskFilterPill buttons; now there is one).
+        // … and it is the only .taskFilterPill (the segments use their own
+        // class, not the old three-pill .taskFilterPill set).
         expect(bar.querySelectorAll('.taskFilterPill').length).toBe(1);
-        // The old per-filter buttons are gone: no separate all/active/ideas set.
-        const filters = bar.querySelectorAll('[data-filter]');
-        expect(filters.length).toBe(1);
-        expect(bar.querySelectorAll('button').length).toBe(1);
+        // Only the cycle pill carries data-filter; segments key off data-seg.
+        expect(bar.querySelectorAll('[data-filter]').length).toBe(1);
+    });
+
+    it('renders the mobile segmented control with one segment per filter', () => {
+        const bar = buildTaskFilterBar();
+        expect(bar.querySelectorAll('.taskFilterSegmented').length).toBe(1);
+        const segs = bar.querySelectorAll('.taskFilterSeg');
+        expect(segs.length).toBe(3);
+        expect(Array.from(segs).map(s => s.getAttribute('data-seg')))
+            .toEqual(['all', 'active', 'ideas']);
+        // Each segment carries a label and a count slot.
+        segs.forEach(s => {
+            expect(s.querySelector('.taskFilterSegLabel')).not.toBeNull();
+            expect(s.querySelector('.taskFilterSegCount')).not.toBeNull();
+        });
+        // Cycle pill (1) + three segments (3) = four buttons total.
+        expect(bar.querySelectorAll('button').length).toBe(4);
     });
 
     // (2) Default state proves the prefs round-trip still drives the pill.
@@ -128,6 +143,93 @@ describe('cycle order', () => {
         expect(getTaskFilter()).toBe('all');
         cyclePill(bar).click(); // all → active
         expect(getTaskFilter()).toBe('active');
+    });
+});
+
+
+// (2b) Mobile segmented control: sets the filter DIRECTLY on tap (no cycling),
+// shows every segment's live count at once, tints the active segment, and stays
+// in lockstep with the desktop cycle pill (both share one persisted state).
+describe('segmented control — direct set + sync', () => {
+    function segment(bar, key) {
+        return Array.from(bar.querySelectorAll('.taskFilterSeg'))
+            .filter(s => s.getAttribute('data-seg') === key)[0];
+    }
+    function segCount(bar, key) {
+        return segment(bar, key).querySelector('.taskFilterSegCount').textContent;
+    }
+    function isSegSelected(bar, key) {
+        return segment(bar, key).classList.contains('selected');
+    }
+
+    it('sets the tapped filter directly rather than cycling', () => {
+        makeMainList();
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        // From ALL, tapping Ideas jumps straight to ideas (not the next cycle step).
+        expect(getTaskFilter()).toBe('all');
+        segment(bar, 'ideas').click();
+        expect(getTaskFilter()).toBe('ideas');
+
+        // From ideas, tapping Active jumps straight to active.
+        segment(bar, 'active').click();
+        expect(getTaskFilter()).toBe('active');
+
+        // Re-tapping the active segment is a no-op (stays put).
+        segment(bar, 'active').click();
+        expect(getTaskFilter()).toBe('active');
+    });
+
+    it('paints the active segment and keeps the cycle pill in sync', () => {
+        makeMainList();
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        segment(bar, 'ideas').click();
+        expect(isSegSelected(bar, 'ideas')).toBe(true);
+        expect(isSegSelected(bar, 'all')).toBe(false);
+        expect(isSegSelected(bar, 'active')).toBe(false);
+        // The hidden cycle pill tracks the same state.
+        expect(pillLabel(bar)).toBe('Ideas');
+
+        // Cycling the (hidden-on-mobile) pill repaints the segments too.
+        cyclePill(bar).click(); // ideas → all
+        expect(getTaskFilter()).toBe('all');
+        expect(isSegSelected(bar, 'all')).toBe(true);
+        expect(isSegSelected(bar, 'ideas')).toBe(false);
+    });
+
+    it('shows every segment\'s live count at once', () => {
+        const ml = makeMainList();
+        ml.append(
+            makeRow('A', 'active'),
+            makeRow('B', 'in_progress'),
+            makeRow('C', 'idea'),
+            makeRow('D', 'idea'),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        applyTaskFilter();
+        // all = 4, active (active+in_progress) = 2, ideas = 2 — all visible together.
+        expect(segCount(bar, 'all')).toBe('4');
+        expect(segCount(bar, 'active')).toBe('2');
+        expect(segCount(bar, 'ideas')).toBe('2');
+    });
+
+    it('persists a segment selection so a fresh bar restores it', () => {
+        makeMainList();
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        segment(bar, 'active').click();
+
+        document.body.innerHTML = '';
+        makeMainList();
+        const reloaded = buildTaskFilterBar();
+        document.body.appendChild(reloaded);
+        expect(getTaskFilter()).toBe('active');
+        expect(isSegSelected(reloaded, 'active')).toBe(true);
     });
 });
 
