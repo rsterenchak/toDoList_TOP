@@ -405,3 +405,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9e641258-f4a6-4b5f-a256-411b4548f1af -->
+
+- [ ] **[LOW]** Add spacing between row status edge tab and title first letter on mobile
+  - Type: bug
+  - Description: On the mobile Projects list, the ~3px left-edge status tab sits flush against the first character of the title — the colored bar and the text visually collide with no gap. Add horizontal breathing room so the title's first letter clears the tab: increase the title's left padding (or the row's left content padding) by ~8–10px beyond the tab width so the gap reads consistently with the row's other internal spacing. Keep it uniform across all statuses, and ensure the inset doesn't shift the title horizontally when the tap-to-read accent edge (`data-mobile-read`) becomes active. CSS-only, scoped to the mobile breakpoint.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cb244d75-1c01-4e5c-b7cc-2ad526df95a6 -->
