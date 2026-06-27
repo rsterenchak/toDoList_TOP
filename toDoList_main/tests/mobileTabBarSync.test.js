@@ -247,4 +247,78 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(mainBar.getAttribute('data-view')).toBe('projects');
         });
     });
+
+    describe('mobile Projects tab visible label vs accessible name', () => {
+        // The Projects tab's on-screen text reads "Tasks View" while its
+        // accessible name (aria-label) — and the 'projects' viewKey that
+        // every selector and applyActiveView call keys off — stay put.
+        // Decoupling the visible string from the aria-label is what keeps
+        // the rename purely cosmetic.
+        it('builds the projects tab with a "Tasks View" visible label', () => {
+            expect(main).toMatch(
+                /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]Projects['"]\s*,\s*ICON_LIST\s*,\s*['"]Tasks View['"]\s*\)/
+            );
+        });
+
+        it('keeps the projects tab aria-label as "Projects" (viewKey + accessible name unchanged)', () => {
+            // The third call argument supplies the accessible name; the
+            // fourth (displayLabel) supplies only the visible text. The
+            // 'projects' first argument is the viewKey used everywhere.
+            const m = main.match(
+                /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]([^'"]+)['"]/
+            );
+            expect(m).not.toBeNull();
+            expect(m[1]).toBe('Projects');
+        });
+
+        it('buildMobileTab sets aria-label from `label`, visible text from `displayLabel`', () => {
+            const builderIdx = main.indexOf('function buildMobileTab');
+            expect(builderIdx).toBeGreaterThan(-1);
+            const builderBody = main.slice(builderIdx, builderIdx + 1500);
+            // aria-label is wired to `label`, the accessible name.
+            expect(builderBody).toMatch(
+                /setAttribute\(\s*['"]aria-label['"]\s*,\s*label\s*\)/
+            );
+            // Visible text falls back to `label` but prefers `displayLabel`.
+            expect(builderBody).toMatch(
+                /textContent\s*=\s*displayLabel\s*\|\|\s*label/
+            );
+        });
+
+        it('renders "Tasks View" text and "Projects" aria-label at runtime', () => {
+            // Lift the buildMobileTab body and run it against a real DOM to
+            // pin the BEHAVIOR, not just the source shape.
+            const builderIdx = main.indexOf('function buildMobileTab');
+            const braceStart = main.indexOf('{', builderIdx);
+            let depth = 0;
+            let body = '';
+            for (let i = braceStart; i < main.length; i++) {
+                if (main[i] === '{') depth++;
+                else if (main[i] === '}') {
+                    depth--;
+                    if (depth === 0) { body = main.slice(braceStart, i + 1); break; }
+                }
+            }
+            expect(body).not.toBe('');
+            // Strip the click handler — applyActiveView isn't in scope here.
+            const safeBody = body.replace(
+                /btn\.addEventListener\([\s\S]*?\}\);/,
+                ''
+            );
+            const buildMobileTab = new Function(
+                'document', 'viewKey', 'label', 'iconSvg', 'displayLabel',
+                safeBody
+            ).bind(null, document);
+
+            const btn = buildMobileTab('projects', 'Projects', '<svg></svg>', 'Tasks View');
+            expect(btn.getAttribute('aria-label')).toBe('Projects');
+            expect(btn.dataset.view).toBe('projects');
+            expect(btn.querySelector('.mobileTabLabel').textContent).toBe('Tasks View');
+
+            // Without a displayLabel the visible text falls back to label.
+            const fallback = buildMobileTab('conceive', 'Conceive', '<svg></svg>');
+            expect(fallback.querySelector('.mobileTabLabel').textContent).toBe('Conceive');
+            expect(fallback.getAttribute('aria-label')).toBe('Conceive');
+        });
+    });
 });
