@@ -6546,18 +6546,26 @@ body.row-dragging * { cursor: grabbing !important; }
     border-color: var(--accent);
     box-shadow: 0 0 0 0.5px var(--accent), 0 0 14px var(--accent-glow);
   }
+  /* The chip row is the placeholder's own sibling panel (its own grid row),
+     not a child — so it can never be cropped by the row's `overflow: clip`
+     or its undersized grid track. Styled to read as attached to the row
+     above, mirroring #descSibling: matched side gutters, a dashed top
+     divider, and a shared bottom radius. The negative top margin tucks it
+     against the focused row's bottom edge. */
   #mobileCreateChips {
     display: none;
-    flex-basis: 100%;
-    width: 100%;
+    width: auto;
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    padding-top: 8px;
-    margin-top: 6px;
+    padding: 8px 12px;
+    margin: -3px 8px 5px;
+    background: var(--bg-surface);
+    border: 0.5px solid var(--border-mid);
     border-top: 0.5px dashed var(--border-mid);
+    border-radius: 0 0 6px 6px;
   }
-  #toDoChild[data-blank-placeholder]:focus-within #mobileCreateChips {
+  #toDoChild[data-blank-placeholder]:focus-within + #mobileCreateChips {
     display: flex;
   }
   .mobileCreateChip {
@@ -6587,12 +6595,12 @@ body.row-dragging * { cursor: grabbing !important; }
     margin-left: auto;
   }
 
-  /* Description toggled open: visually merge the descSibling panel that
-     CSS already renders below the row by tightening the gap and sharing
-     a dashed divider — the spec calls for "an internal divider" so the
-     two read as one extended creation surface rather than two separate
-     boxes. */
-  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #descSibling {
+  /* Description toggled open: visually merge the descSibling panel beneath
+     the creation surface by tightening the gap and sharing a dashed divider,
+     so it reads as one extended surface rather than separate boxes. The chip
+     row sits between the placeholder and #descSibling (its own sibling
+     panel), so the panel tucks under the chip row rather than the row. */
+  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #mobileCreateChips + #descSibling {
     margin-top: -5px;
     border-top: 0.5px dashed var(--border-mid);
     border-radius: 0 0 6px 6px;

@@ -70,9 +70,14 @@ function isMobileViewport() {
 }
 
 
-// Build and wire the chip row for a blank placeholder. Appends the chip
-// row as the last child of the placeholder row so CSS at ≤1023px can flex-
-// wrap it onto a second line under the input when the row is focus-within.
+// Build and wire the chip row for a blank placeholder. Mounts the chip
+// row as the placeholder's NEXT SIBLING in #mainList — its own grid row
+// directly beneath the row, mirroring how #descSibling attaches — so CSS
+// at ≤1023px can reveal it via the adjacent-sibling combinator when the
+// row is focus-within. As a child it was cropped by the row's
+// `overflow: clip` and undersized grid track when it wrapped to a second
+// line; as a sibling panel it gets a real measured height and is never
+// clipped or overlapping the task below.
 // No-op on committed rows — the chip row only makes sense for the
 // always-pinned blank placeholder at the top of each project list.
 export function attachMobileCreateChips(toDoChild, item) {
@@ -177,7 +182,23 @@ export function attachMobileCreateChips(toDoChild, item) {
     chips.appendChild(calChip);
     chips.appendChild(descChip);
 
-    toDoChild.appendChild(chips);
+    // Mount the chips as the placeholder's next sibling rather than a child.
+    // buildToDoRow calls this before the row is appended to #mainList, so the
+    // row usually has no parent yet: insert immediately when it does (the
+    // reorder-rebuild path and tests mount the row first), otherwise defer to
+    // the row's first focus, by which point it's mounted and the chips are
+    // about to be revealed anyway. `once` keeps a committed row — whose chip
+    // sibling is stripped on commit — from re-inserting it on a later focus.
+    function mountChips() {
+        if (chips.parentNode) return;
+        const parent = toDoChild.parentNode;
+        if (parent) parent.insertBefore(chips, toDoChild.nextSibling);
+    }
+    if (toDoChild.parentNode) {
+        mountChips();
+    } else {
+        toDoChild.addEventListener('focusin', mountChips, { once: true });
+    }
 
     // Only show the chip row inside the actual mobile viewport. CSS hides
     // it on desktop regardless, but adding a class here keeps the DOM
