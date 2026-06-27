@@ -1739,7 +1739,7 @@ describe('Claude sheet — iterate from a shipped run', () => {
         expect(document.querySelector('.claudeMsg--user')).toBeTruthy();
     });
 
-    it('omits the entry id on the next (manual) turn', async () => {
+    it('keeps the entry id on follow-up turns of an active iterate session', async () => {
         seedShippedRun();
         mountClaudeSheet(document.body);
         document.querySelector('.claudeRunRow').click();
@@ -1750,8 +1750,10 @@ describe('Claude sheet — iterate from a shipped run', () => {
         document.getElementById('claudeComposerSend').click();
         await flush();
 
+        // The seed turn established the iterate session, so the follow-up
+        // re-sends the entry id — the Worker re-serves the cached diff seed.
         expect(chatBodies.length).toBe(2);
-        expect(chatBodies[1].entry_id).toBeUndefined();
+        expect(chatBodies[1].entry_id).toBe('entry-42');
     });
 
     it('surfaces the follow-up drafted-entry card from the seeded reply', async () => {
@@ -1781,6 +1783,129 @@ describe('Claude sheet — iterate from a shipped run', () => {
         expect(assistant.classList.contains('claudeMsg--note')).toBe(true);
         expect(assistant.textContent).toContain('Nothing to iterate on yet');
         expect(document.querySelector('.claudeMsg--error')).toBe(null);
+    });
+
+    it('does not establish an iterate session when the seed 404s, so follow-ups omit the entry id', async () => {
+        // The seed (first chat call) 404s; later chat calls succeed. A 404
+        // seed must clear the iterate id so the follow-up never re-sends it.
+        const bodies = [];
+        let chatCalls = 0;
+        globalThis.fetch = vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            if (body.chat) {
+                bodies.push(body);
+                chatCalls += 1;
+                if (chatCalls === 1) {
+                    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+                }
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
+        });
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'follow up';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        expect(bodies.length).toBe(2);
+        expect(bodies[0].entry_id).toBe('entry-42'); // seed carried it…
+        expect(bodies[1].entry_id).toBeUndefined();   // …but the 404 cleared the session.
+    });
+
+    it('"+ New Chat" clears the active iterate session so the next turn omits the entry id', async () => {
+        seedShippedRun();
+        mountClaudeSheet(document.body);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+        expect(chatBodies[0].entry_id).toBe('entry-42');
+
+        document.getElementById('claudeClearChat').click();
+
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'fresh question';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        expect(chatBodies.length).toBe(2);
+        expect(chatBodies[1].entry_id).toBeUndefined();
+    });
+});
+
+// The iterate entry id is per-repo state: switching the chat workspace resumes
+// the new repo's iterate session (or none), and switching back restores the
+// original repo's session — an id is never dragged across repos.
+describe('Claude sheet — iterate entry is per-repo across workspace swaps', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+    let realFetch;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.chat) {
+                chatBodies.push(body);
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendTurn(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('a workspace swap drops the prior repo\'s iterate id, and swapping back restores it', async () => {
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'entry-42', correlationId: 'corr-1', title: 'Add a sparkle', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]));
+        mountClaudeSheet(document.body);
+        await flush();
+
+        // Establish an iterate session on the default repo.
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+        await sendTurn('first follow-up');
+        expect(chatBodies[chatBodies.length - 1].entry_id).toBe('entry-42');
+
+        // Swap to the other repo: no iterate session there → no entry_id.
+        await switchWorkspaceTo(OTHER_REPO, [DEFAULT_REPO, OTHER_REPO]);
+        await sendTurn('on the other repo');
+        expect(chatBodies[chatBodies.length - 1].entry_id).toBeUndefined();
+
+        // Swap back: the default repo's iterate session resumes.
+        await switchWorkspaceTo(DEFAULT_REPO, [DEFAULT_REPO, OTHER_REPO]);
+        await sendTurn('back on the default repo');
+        expect(chatBodies[chatBodies.length - 1].entry_id).toBe('entry-42');
     });
 });
 

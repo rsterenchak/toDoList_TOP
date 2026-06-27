@@ -99,6 +99,13 @@ let updatePending = false;
 
 // Conversation history sent to the Worker on each turn: [{ role, content }].
 let chatHistory = [];
+// The active workspace repo's iterate entry id, or null when no iterate session
+// is in progress for it. While set, every chat turn re-sends it as `entry_id`
+// so the Worker re-serves the cached seed (the merged-PR diff plus sliced
+// post-merge source) on follow-ups, not just the seed turn. Persisted per repo
+// (todoapp_claudeIterateEntry) in lockstep with chatHistory, so a reload or a
+// workspace swap resumes that repo's iterate session, mirroring chatHistory.
+let activeIterateEntry = null;
 // Repo-relative source paths attached to the CURRENT conversation. Sent as
 // `attach_files` on every turn (per-conversation accumulation), so the model
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
@@ -285,11 +292,15 @@ function autoSwapWorkspaceForProject(projectName) {
     }
     if (!repo || repo === activeChatRepo) return;
 
-    // Persist the outgoing repo's thread, switch, then resume the incoming
-    // repo's saved thread (empty when none) and replay it onto the surface.
+    // Persist the outgoing repo's thread and iterate entry, switch, then resume
+    // the incoming repo's saved thread (empty when none) and its iterate entry
+    // (null when none) so each repo carries its own iterate session — an id is
+    // never dragged across repos.
     saveChatHistory();
+    saveIterateEntry();
     setActiveChatRepo(repo);
     chatHistory = loadChatHistory(repo);
+    activeIterateEntry = loadIterateEntry(repo);
     clearAttachments();
     replayChatHistory();
     renderWorkspacePill();
@@ -367,6 +378,54 @@ function deleteChatHistory(repo) {
     if (Object.prototype.hasOwnProperty.call(map, repo)) {
         delete map[repo];
         writeChatMap(map);
+    }
+}
+
+// ── ITERATE ENTRY (localStorage-backed, per-repo) ──
+// A parallel per-repo map { [repo]: entryId } stored under one key, mirroring
+// the chat-history map so each workspace's iterate session survives reloads and
+// resumes on a workspace swap. The active repo's id is also held in
+// `activeIterateEntry` so chat turns can send it without a read.
+const ITERATE_KEY = 'todoapp_claudeIterateEntry';
+
+function readIterateMap() {
+    try {
+        const raw = localStorage.getItem(ITERATE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function writeIterateMap(map) {
+    try {
+        localStorage.setItem(ITERATE_KEY, JSON.stringify(map));
+    } catch (e) { /* private mode */ }
+}
+
+// Persist the active workspace's iterate entry id, or drop its map slot when
+// the session is cleared (activeIterateEntry === null). Read-modify-write so one
+// repo's entry never clobbers another's.
+function saveIterateEntry() {
+    const map = readIterateMap();
+    if (activeIterateEntry) map[activeChatRepo] = activeIterateEntry;
+    else delete map[activeChatRepo];
+    writeIterateMap(map);
+}
+
+// The stored iterate entry id for `repo`, or null when none is saved.
+function loadIterateEntry(repo) {
+    const id = readIterateMap()[repo];
+    return typeof id === 'string' && id ? id : null;
+}
+
+// Drop a repo's stored iterate entry, in lockstep with deleteChatHistory.
+function deleteIterateEntry(repo) {
+    const map = readIterateMap();
+    if (Object.prototype.hasOwnProperty.call(map, repo)) {
+        delete map[repo];
+        writeIterateMap(map);
     }
 }
 
@@ -480,13 +539,15 @@ function buildClearChat() {
 
 // Wipe the current conversation — the in-memory message array, its persisted
 // per-repo copy, and every rendered bubble — without touching the attached file
-// chips or the active workspace. The iterate seed rides only an iterate
-// session's first turn (a transient arg to requestAssistantReply, never stored
-// state), so clearing the messages can't disturb it; a later iterate from a
-// shipped run still seeds fresh.
+// chips or the active workspace. The iterate entry id is now stored state that
+// rides every turn of an active iterate session, so a fresh chat must clear it
+// too (in memory and persisted) or follow-ups would keep pulling the prior
+// session's diff; a later iterate from a shipped run still seeds fresh.
 function clearChatConversation() {
     chatHistory = [];
     deleteChatHistory(activeChatRepo);
+    activeIterateEntry = null;
+    deleteIterateEntry(activeChatRepo);
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
 }
@@ -1552,18 +1613,22 @@ async function sendChatTurn(deep) {
     const pastedDraft = extractDraftedEntry(text);
     if (pastedDraft) renderDraftedEntryCard(pastedDraft);
 
-    // Manual turns never carry an entry id — the iterate seed (turn 1) is the
-    // only place it's sent; the Worker assembles the diff context from there.
-    // `deep` is per-message: Fast passes undefined, Deep passes true.
-    await requestAssistantReply(undefined, deep);
+    // During an active iterate session every turn re-sends its entry id so the
+    // Worker keeps re-serving the cached diff/code seed on follow-ups; outside a
+    // session activeIterateEntry is null and no id rides. `deep` is per-message:
+    // Fast passes undefined, Deep passes true.
+    await requestAssistantReply(activeIterateEntry, deep);
 }
 
 // Send the running history to the Worker, render the assistant reply in place
 // of a pending bubble, and surface a drafted-entry card when the reply carries
 // a fenced ```md block. Shared by the manual chat turn and the iterate seed.
-// `entryId` is only supplied on an iterate session's first turn; a Worker 404
-// for that seed means no merged PR carries the entry's marker yet, so it's
-// shown as a gentle "nothing to iterate on" note rather than an error.
+// `entryId` is the iterate session's entry id — supplied on the seed turn and
+// re-sent on every follow-up while the session is active. A Worker 404 for the
+// seed means no merged PR carries the entry's marker yet, so it's shown as a
+// gentle "nothing to iterate on" note rather than an error. The session id is
+// established here on success and cleared here on a 404 (keyed on `entryId`
+// being truthy), because this is where the swallowed outcome is actually known.
 async function requestAssistantReply(entryId, deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
@@ -1584,6 +1649,12 @@ async function requestAssistantReply(entryId, deep) {
         const suggestedFiles = result.suggestedFiles || [];
         chatHistory.push({ role: 'assistant', content: reply });
         saveChatHistory();
+        // The seed (or any follow-up carrying an id) landed: establish/refresh
+        // the active repo's iterate session so later turns keep the diff.
+        if (entryId) {
+            activeIterateEntry = entryId;
+            saveIterateEntry();
+        }
         const inspectSelector = extractInspectDirective(reply);
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
@@ -1597,6 +1668,10 @@ async function requestAssistantReply(entryId, deep) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
             if (entryId && e && e.status === 404) {
+                // Dead seed — no merged PR carries this marker. Clear the stored
+                // iterate id so follow-up turns don't loop retrying it.
+                activeIterateEntry = null;
+                saveIterateEntry();
                 pending.classList.add('claudeMsg--note');
                 pending.textContent = 'Nothing to iterate on yet — this run shipped before iterate tracking, so there’s no merged change to build on.';
             } else {
@@ -1681,20 +1756,23 @@ function renderAttachLayoutButton(selector) {
 }
 
 // Send a serialized layout snapshot as the next user turn — mirrors a manual
-// chat turn (no entry id) but with content the inspector composed rather than
-// the composer.
+// chat turn but with content the inspector composed rather than the composer.
+// The INSPECT measurement turn is the one meant to diagnose against the diff, so
+// it must carry the active iterate entry id when a session is in progress.
 async function sendInspectTurn(content) {
     chatHistory.push({ role: 'user', content: content });
     saveChatHistory();
     appendMessageBubble('user', content);
-    await requestAssistantReply();
+    await requestAssistantReply(activeIterateEntry);
 }
 
 // Seed an iterate chat from a SHIPPED run: switch to the Chat tab, reset the
 // conversation, and fire turn 1 carrying the run's entry id so the Worker
-// resolves that entry's merged diff and replies with iterate context. Later
-// turns omit the id (handled by sendChatTurn). Tapping a non-shipped or
-// id-less run is a no-op — iterate needs a merged change to build on.
+// resolves that entry's merged diff and replies with iterate context. The seed
+// turn establishes the active repo's iterate session on success (in
+// requestAssistantReply), so later turns keep re-sending the id and the diff;
+// a 404 there clears it. Tapping a non-shipped or id-less run is a no-op —
+// iterate needs a merged change to build on.
 async function startIterateFromRun(rec) {
     if (!rec || rec.status !== 'SHIPPED' || !rec.entryId) return;
     setActiveTab('chat');
@@ -2314,6 +2392,11 @@ async function startFollowUpFromRun(rec) {
     if (!isClaudeSheetOpen()) openClaudeSheet();
 
     chatHistory = [];
+    // A NOCHANGE follow-up is a plain author turn with no merged PR, so clear any
+    // active iterate session for this repo — it must never inherit a stale id and
+    // accidentally send entry_id (which would 404 with "nothing to iterate on").
+    activeIterateEntry = null;
+    saveIterateEntry();
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
     clearAttachments();
@@ -2925,8 +3008,11 @@ export function mountClaudeSheet(parent) {
 
     // Hydrate the active workspace's chat thread from localStorage and replay it
     // onto the surface, so a reload / PWA relaunch resumes the conversation. Runs
-    // after loadWorkspaceRepos so it keys on the resolved active repo.
+    // after loadWorkspaceRepos so it keys on the resolved active repo. The repo's
+    // iterate entry is hydrated alongside the thread, so a reload mid-iterate
+    // resumes with the diff intact rather than silently dropping to no-diff turns.
     chatHistory = loadChatHistory(activeChatRepo);
+    activeIterateEntry = loadIterateEntry(activeChatRepo);
     replayChatHistory();
 
     // Hydrate run records from localStorage, render them into the Runs tab,
