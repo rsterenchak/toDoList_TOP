@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-27',
         changed: [
-            "The mobile segmented status filter now hugs its labels at content width with a softer tinted active segment.",
             "The task editor's action buttons now lead with a full-width Inject to TODO.md primary button above an even Clear and Copy entry pair.",
+            "The mobile bottom navigation tab labeled \"Projects\" now reads \"Tasks View.\"",
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",

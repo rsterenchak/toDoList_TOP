@@ -942,7 +942,7 @@ function component() {
     mobileTabBar.setAttribute('role', 'tablist');
     mobileTabBar.setAttribute('aria-label', 'Mobile bottom navigation');
 
-    function buildMobileTab(viewKey, label, iconSvg) {
+    function buildMobileTab(viewKey, label, iconSvg, displayLabel) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'mobileTab';
@@ -956,7 +956,10 @@ function component() {
         icon.innerHTML = iconSvg;
         const text = document.createElement('span');
         text.className = 'mobileTabLabel';
-        text.textContent = label;
+        // Visible label can differ from the accessible name: callers may pass
+        // a separate `displayLabel` so the on-screen text changes while the
+        // aria-label (and any selectors keyed off it) stay put.
+        text.textContent = displayLabel || label;
         btn.appendChild(icon);
         btn.appendChild(text);
         btn.addEventListener('click', function() {
@@ -987,7 +990,7 @@ function component() {
         '<path d="M12 3 C8.5 3 6 5.5 6 9 C6 11.4 7.4 13 8.6 14.2 C9.3 14.9 9.5 15.4 9.5 16 L14.5 16 C14.5 15.4 14.7 14.9 15.4 14.2 C16.6 13 18 11.4 18 9 C18 5.5 15.5 3 12 3 Z"/>' +
         '</svg>';
 
-    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST);
+    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Tasks View');
     const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
     mobileTabProjects.id = 'mobileTabProjects';
     mobileTabConceive.id = 'mobileTabConceive';
