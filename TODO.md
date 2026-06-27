@@ -419,3 +419,15 @@
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 71d127fa-16ad-4bf6-9ea2-f9553a2dda87 -->
+
+- [ ] **[MEDIUM]** Add a task status selector to the mobile description editor modal
+  - Type: feature
+  - Description: On mobile there is now no way to set a task's workflow status — the status badge that doubles as the change control on desktop (`.todoStatusLabel` → `showStatusPopover`) is hidden on the mobile breakpoint in favor of the left-edge color tab, so status is shown but no longer settable. Add a status selector to the mobile description editor modal (`descEditorModal` in `modals.js`), which is already the per-task sheet (it edits the title plus Clear / Inject / Copy entry). Render it as a segmented control — three connected segments `○ ACTIVE | ⏵ IN PROGRESS | ○ IDEA` — in a labeled `Status` row in the modal body, sitting between the textarea (`#descEditorModalBody`) and the actions row (`#descEditorModalActions`). The selected segment fills with its status color, matched to the row edge tab (active → accent purple, in_progress → amber, idea → muted). Pull the labels and order from `STATUS_META` / `STATUS_ORDER` in `todoStatus.js` so the vocabulary stays single-sourced rather than re-hardcoded.
+  - Behavior:
+    1. On open, the control reflects the row's current `item.status` (default Active for legacy/undefined, via `normalizeStatus`).
+    2. Tapping a segment writes through `listLogic.setToDoStatus(projectName, item, status)` — the same mutation channel the desktop badge uses — so the localStorage write and Supabase mirror come for free; new tasks still default to Active, unchanged.
+    3. After the write, reflect the change on the underlying row live (the modal is an overlay, the row is still mounted): resolve the row from `item` within `#mainList` (match on `__item`), call `refreshTodoStatusUI` to repaint its left-edge color, then `reorderToDoDOM(projectName)` so it re-sorts/re-filters when sort = Status.
+  - Out of scope: the desktop on-row status badge (unchanged); any new status values; changing the default for new tasks.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 98ebba47-a8cb-45eb-b992-9c29e481409b -->
