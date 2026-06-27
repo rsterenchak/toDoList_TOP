@@ -432,7 +432,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 98ebba47-a8cb-45eb-b992-9c29e481409b -->
 
-- [ ] **[MEDIUM]** Rework the filter + sort row on mobile: segmented status filter, icon-only sort
+- [x] **[MEDIUM]** Rework the filter + sort row on mobile: segmented status filter, icon-only sort — Completed: 2026-06-27
   - Type: feature
   - Description: On mobile only, rework the task filter + sort row (`#taskFilterBar`). Keep the existing cycle pill (`.taskCyclePill`) as the desktop control untouched, and add a separate three-segment filter — `All · Active · Ideas`, each segment showing its live count, the active filter's segment tinted accent — that renders only at the mobile breakpoint and sets the filter directly on tap (no cycling). Gate the two with CSS so exactly one is ever visible: the cycle pill hides at the mobile breakpoint, the segmented control hides on desktop — mirroring the existing dual Sort-trigger pattern (`#taskSortBtn` overlay on desktop, `#taskSortBtnMobile` in the filter row on mobile), so both filter controls share one state via `getTaskFilter`/`setTaskFilter`. Also collapse the mobile Sort trigger (`#taskSortBtnMobile`) from its `Sort: Status` text label to an icon-only button (a sort glyph) carrying a small accent dot when the active sort is anything other than None; it opens the same `#taskSortMenu`. Match the segmented control's active-segment tint to the status selector's segmented control so filtering and status-setting share one visual language on mobile. Desktop is untouched — the cycle pill and the labeled `#taskSortBtn` both stay as-is.
   - Behavior:

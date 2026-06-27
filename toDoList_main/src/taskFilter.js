@@ -33,11 +33,13 @@ function normalizeStatus(status) {
 
 
 // Order + display label for each pill. `match` decides whether a given status
-// is visible under that filter; ALL matches everything.
+// is visible under that filter; ALL matches everything. `seg` is the
+// normal-case label used by the mobile segmented control (the desktop cycle
+// pill keeps the uppercase `label`).
 const FILTERS = [
-    { key: 'all',    label: 'ALL',    match: function () { return true; } },
-    { key: 'active', label: 'Active', match: function (s) { return s === 'active' || s === 'in_progress'; } },
-    { key: 'ideas',  label: 'Ideas',  match: function (s) { return s === 'idea'; } },
+    { key: 'all',    label: 'ALL',    seg: 'All',    match: function () { return true; } },
+    { key: 'active', label: 'Active', seg: 'Active', match: function (s) { return s === 'active' || s === 'in_progress'; } },
+    { key: 'ideas',  label: 'Ideas',  seg: 'Ideas',  match: function (s) { return s === 'idea'; } },
 ];
 
 // Empty-state copy shown when the active filter hides every task (but the
@@ -70,12 +72,18 @@ function filterFor(key) {
 }
 
 
-// Build the pill row element. The bar holds a SINGLE cycle pill that rotates
-// through all → active → ideas → all … on each click; it paints the currently
-// active filter's label + count plus a muted trailing `›` as the cycle hint.
-// One delegated click handler advances the persisted filter and repaints in
-// place. The bar lives in #mainBar (outside #mainList) so the list's
-// clear-and-rebuild cycles never destroy it.
+// Build the pill row element. The bar holds TWO filter controls that share one
+// persisted state (`getTaskFilter`/`setTaskFilter`), gated by CSS so exactly
+// one is ever visible — mirroring the dual Sort-trigger pattern:
+//   • Desktop: a SINGLE cycle pill that rotates through all → active → ideas →
+//     all … on each click, painting the active filter's label + count plus a
+//     muted trailing `›` cycle hint.
+//   • Mobile: a three-segment control (All · Active · Ideas, each with its live
+//     count) that sets the filter directly on tap — no cycling.
+// One delegated click handler routes both: a segment sets its filter directly,
+// the cycle pill advances one step. Both repaint together so the hidden control
+// stays in sync with the visible one. The bar lives in #mainBar (outside
+// #mainList) so the list's clear-and-rebuild cycles never destroy it.
 export function buildTaskFilterBar() {
     const bar = document.createElement('div');
     bar.id = 'taskFilterBar';
@@ -106,10 +114,33 @@ export function buildTaskFilterBar() {
     pill.appendChild(cueSpan);
 
     bar.appendChild(pill);
+    bar.appendChild(buildSegmentedControl());
     paintCyclePill(bar);
+    paintSegmented(bar);
 
     bar.addEventListener('click', function (event) {
-        const clicked = event.target.closest && event.target.closest('.taskFilterPill');
+        if (!event.target.closest) return;
+
+        // Mobile segment — set its filter directly, no cycling.
+        const seg = event.target.closest('.taskFilterSeg');
+        if (seg && bar.contains(seg)) {
+            const key = seg.getAttribute('data-seg');
+            if (!key || key === getTaskFilter()) {
+                // Still repaint to settle any stale visual state, then re-apply.
+                paintCyclePill(bar);
+                paintSegmented(bar);
+                applyTaskFilter();
+                return;
+            }
+            setTaskFilter(key);
+            paintCyclePill(bar);
+            paintSegmented(bar);
+            applyTaskFilter();
+            return;
+        }
+
+        // Desktop cycle pill — advance one step.
+        const clicked = event.target.closest('.taskCyclePill');
         if (!clicked || !bar.contains(clicked)) return;
         const current = getTaskFilter();
         let idx = FILTERS.findIndex(function (f) { return f.key === current; });
@@ -117,10 +148,45 @@ export function buildTaskFilterBar() {
         const next = FILTERS[(idx + 1) % FILTERS.length];
         setTaskFilter(next.key);
         paintCyclePill(bar);
+        paintSegmented(bar);
         applyTaskFilter();
     });
 
     return bar;
+}
+
+
+// Build the mobile three-segment filter control: one segment per FILTERS entry,
+// each carrying its normal-case label and a live count. CSS hides it on desktop
+// (the cycle pill owns that breakpoint) and reveals it on mobile. Tapping a
+// segment sets that filter directly through the bar's delegated handler.
+function buildSegmentedControl() {
+    const seg = document.createElement('div');
+    seg.className = 'taskFilterSegmented';
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', 'Filter tasks by status');
+
+    FILTERS.forEach(function (f) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'taskFilterSeg';
+        btn.setAttribute('data-seg', f.key);
+        btn.setAttribute('aria-pressed', 'false');
+
+        const label = document.createElement('span');
+        label.className = 'taskFilterSegLabel';
+        label.textContent = f.seg;
+        btn.appendChild(label);
+
+        const count = document.createElement('span');
+        count.className = 'taskFilterSegCount';
+        count.textContent = '0';
+        btn.appendChild(count);
+
+        seg.appendChild(btn);
+    });
+
+    return seg;
 }
 
 
@@ -134,6 +200,20 @@ function paintCyclePill(bar) {
     pill.setAttribute('aria-label', 'Filter: ' + filter.label + '. Tap to cycle filters.');
     const labelSpan = pill.querySelector('.taskFilterPillLabel');
     if (labelSpan) labelSpan.textContent = filter.label;
+}
+
+
+// Reflect the persisted filter onto the mobile segmented control: tint the
+// active segment and update aria-pressed. Runs in lockstep with paintCyclePill
+// so the hidden control matches the visible one regardless of breakpoint.
+function paintSegmented(bar) {
+    const active = filterFor(getTaskFilter()).key;
+    const segs = bar.querySelectorAll('.taskFilterSeg');
+    segs.forEach(function (seg) {
+        const isActive = seg.getAttribute('data-seg') === active;
+        seg.classList.toggle('selected', isActive);
+        seg.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
 }
 
 
@@ -196,11 +276,22 @@ function setRowHidden(row, hidden) {
 function updateCounts(counts) {
     const bar = document.getElementById('taskFilterBar');
     if (!bar) return;
+
+    // Desktop cycle pill — shows only the active filter's count.
     const pill = bar.querySelector('.taskCyclePill');
-    if (!pill) return;
-    const key = pill.getAttribute('data-filter');
-    const countSpan = pill.querySelector('.taskFilterCount');
-    if (countSpan) countSpan.textContent = String(counts[key] != null ? counts[key] : 0);
+    if (pill) {
+        const key = pill.getAttribute('data-filter');
+        const countSpan = pill.querySelector('.taskFilterCount');
+        if (countSpan) countSpan.textContent = String(counts[key] != null ? counts[key] : 0);
+    }
+
+    // Mobile segmented control — every segment shows its own live count.
+    const segs = bar.querySelectorAll('.taskFilterSeg');
+    segs.forEach(function (seg) {
+        const segKey = seg.getAttribute('data-seg');
+        const segCount = seg.querySelector('.taskFilterSegCount');
+        if (segCount) segCount.textContent = String(counts[segKey] != null ? counts[segKey] : 0);
+    });
 }
 
 

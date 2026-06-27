@@ -2742,6 +2742,65 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.7;
 }
 
+/* ── MOBILE SEGMENTED STATUS FILTER (All · Active · Ideas) ──
+   The mobile counterpart to the desktop cycle pill: three segments, each with
+   its live count, that set the filter directly on tap (no cycling). Mirrors the
+   status selector's segmented control (#descEditorModalStatusControl) so
+   filtering and status-setting share one visual language, and the active
+   segment uses the same accent tint as the cycle pill's selected state. Hidden
+   on desktop (the cycle pill owns that breakpoint); revealed at the mobile
+   breakpoint by the media query below, where the cycle pill hides — exactly one
+   filter control is ever visible, mirroring the dual Sort-trigger pattern. */
+.taskFilterSegmented {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.taskFilterSeg {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 6px;
+  background: var(--bg-elevated);
+  border: none;
+  border-left: 0.5px solid var(--border-bright);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.taskFilterSeg:first-child { border-left: none; }
+.taskFilterSeg:hover { background: var(--bg-hover); }
+.taskFilterSeg:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+.taskFilterSeg.selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.taskFilterSegCount {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
 /* Rows (and their trailing description / stats drawers) hidden by the active
    status filter. `!important` lets this single utility class beat the row's
    own ID-level `display: flex` without naming each ID — a plain class selector
@@ -3458,6 +3517,34 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: none;
   margin-left: auto;
   flex-shrink: 0;
+  position: relative;
+  gap: 0;
+}
+
+/* Icon-only mobile Sort trigger: a sort glyph with a small accent dot shown
+   only when a sort other than None is active (data-sort drives the dot, the
+   same hook that tints the trigger). The glyph carries its own font-size so it
+   survives the ≤420px .bulkDescBtn font-size:0 label collapse. */
+.taskSortBtnMobileGlyph {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.taskSortBtnMobileDot {
+  display: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-text);
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+#taskSortBtnMobile[data-sort="due"] .taskSortBtnMobileDot,
+#taskSortBtnMobile[data-sort="status"] .taskSortBtnMobileDot {
+  display: block;
 }
 
 /* TODO LIST */
@@ -6952,6 +7039,12 @@ body.row-dragging * { cursor: grabbing !important; }
      the task sort stays reachable on phones. Shown only here, so exactly one
      Sort trigger is ever visible. */
   #taskSortBtnMobile { display: inline-flex; }
+
+  /* Swap the filter control to the segmented variant: hide the desktop cycle
+     pill and reveal the three-segment control, so exactly one filter control is
+     visible per breakpoint (mirroring the dual Sort-trigger swap above). */
+  .taskCyclePill        { display: none; }
+  .taskFilterSegmented  { display: flex; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and
      nav gaps so the four 36px nav buttons still fit alongside three

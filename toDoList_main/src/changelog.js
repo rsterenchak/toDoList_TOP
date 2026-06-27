@@ -11,17 +11,11 @@ export const changelog = [
         ],
         changed: [
             "Mobile task rows now show status as a colored left-edge tab and give the title the full row width on a single line.",
+            "On mobile, filtering tasks now uses a three-segment All / Active / Ideas control with live counts, and the task sort control collapses to a compact icon button.",
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",
             "The quick-option chips under the mobile add-task field now appear in full instead of being clipped or overlapping the first task below.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-06-26',
-        changed: [
-            "Following up while iterating on a shipped change now keeps the original change in context across every turn, not just the first.",
         ],
     },
 ];

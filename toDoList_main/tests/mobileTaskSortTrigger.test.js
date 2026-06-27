@@ -54,13 +54,24 @@ describe('mobile Sort trigger — main.js wiring', () => {
     });
 
     it('drives the shared sort machinery rather than a parallel implementation', () => {
-        // syncTaskSortButton updates both triggers' label + data-sort.
-        expect(main).toMatch(/mobileSortBtnLabel\.textContent\s*=/);
+        // syncTaskSortButton updates the desktop text label and BOTH triggers'
+        // data-sort; the icon-only mobile trigger carries an aria-label (kept
+        // current here) in lieu of a visible text label.
+        expect(main).toMatch(/taskSortBtnLabel\.textContent\s*=/);
         expect(main).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]data-sort['"]/);
+        expect(main).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]aria-label['"]/);
         // Both triggers open the same menu via one handler.
         expect(main).toMatch(/mobileSortBtn\.addEventListener\(\s*['"]click['"]\s*,\s*toggleTaskSortMenu\)/);
         // The menu still persists the choice through the global pref setter.
         expect(main).toMatch(/setTaskSort\(/);
+    });
+
+    it('renders the mobile trigger icon-only with a sort glyph and an active-sort dot', () => {
+        // No text label element on the mobile trigger any more — it carries a
+        // glyph span plus a dot span instead.
+        expect(main).toMatch(/taskSortBtnMobileGlyph/);
+        expect(main).toMatch(/taskSortBtnMobileDot/);
+        expect(main).not.toMatch(/mobileSortBtnLabel/);
     });
 
     it('exempts the mobile trigger from the outside-click dismissal', () => {
@@ -95,7 +106,7 @@ describe('mobile Sort trigger — CSS visibility', () => {
     });
 });
 
-describe('mobile Sort trigger — label stays readable at ≤420px', () => {
+describe('mobile Sort trigger — icon glyph survives the ≤420px collapse', () => {
     const css = read('style.css');
 
     function extractNarrowRule(selector) {
@@ -122,22 +133,24 @@ describe('mobile Sort trigger — label stays readable at ≤420px', () => {
     }
 
     it('still collapses generic .bulkDescBtn labels to chevron-only here', () => {
-        // The narrow-phone chevron-only collapse this fix must override for the
-        // mobile Sort trigger. Pinned so the override below stays meaningful —
-        // if the collapse rule ever goes away, the override is moot.
+        // The narrow-phone chevron-only collapse the glyph must survive. Pinned
+        // so the override below stays meaningful — if the collapse rule ever
+        // goes away, the glyph's own font-size is moot.
         const rule = extractNarrowRule('.bulkDescBtn');
         expect(rule).not.toBeNull();
         expect(rule).toMatch(/font-size:\s*0/);
     });
 
-    it('keeps the mobile Sort trigger label visible despite the collapse', () => {
-        // #taskSortBtnMobile carries the .bulkDescBtn class but must NOT lose its
-        // "Sort" label to the chevron-only collapse — an ID-specificity override
-        // restores a non-zero font-size so the label reads on narrow phones.
-        const rule = extractNarrowRule('#taskSortBtnMobile');
-        expect(rule).not.toBeNull();
-        const fontMatch = rule.match(/font-size:\s*([^;]+);/);
+    it('keeps the sort glyph visible despite the .bulkDescBtn font-size:0 collapse', () => {
+        // The icon-only mobile trigger has no text label; its glyph
+        // (.taskSortBtnMobileGlyph) carries its own non-zero font-size at base
+        // scope, so the parent button's font-size:0 collapse never hides it.
+        const ruleRe = /\.taskSortBtnMobileGlyph\s*\{([^}]*)\}/;
+        const match = css.match(ruleRe);
+        expect(match).not.toBeNull();
+        const fontMatch = match[1].match(/font-size:\s*([^;]+);/);
         expect(fontMatch).not.toBeNull();
         expect(fontMatch[1].trim()).not.toBe('0');
+        expect(parseFloat(fontMatch[1])).toBeGreaterThan(0);
     });
 });
