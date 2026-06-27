@@ -6659,6 +6659,21 @@ body.row-dragging * { cursor: grabbing !important; }
     box-shadow: none;
   }
 
+  /* Clear the title's first letter past the left-edge status tab. The tab
+     (::before above) spans left: 3px → 6px, while the title sits at the row's
+     4px content padding, so an in-progress/active row's first character butts
+     against the colored sliver. Add left padding to the title elements (not the
+     row — row padding would inset the absolutely-positioned swipe panes, see the
+     note above) so the text starts ~16px in, a ~10px gap beyond the tab. Applied
+     uniformly to every status — including rows with no tab — so the title never
+     shifts horizontally as status changes or when the data-mobile-read accent
+     edge (a layout-neutral inset box-shadow) activates. Skips the blank
+     placeholder row, matching the other title rules. */
+  #toDoChild:not([data-original-blank="true"]) #toDoInput,
+  #toDoChild:not([data-original-blank="true"]) .toDoTitleDisplay {
+    padding-left: 12px;
+  }
+
   /* The tap-to-read accent edge (data-mobile-read, an inset box-shadow above)
      takes visual precedence over the resting status tab while a row is
      expanded for reading, so hide the tab in that state. The right-cluster

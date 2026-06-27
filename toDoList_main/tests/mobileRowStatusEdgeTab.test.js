@@ -62,6 +62,20 @@ describe('mobile row restructure — left-edge status tab + reordered controls',
             /#toDoChild\[data-mobile-read="true"\]::before\s*\{\s*display:\s*none/);
     });
 
+    it('pads the title past the left-edge status tab so the first letter clears it', () => {
+        // The tab spans left: 3px → 6px; without left padding the title (which
+        // sits at the row's 4px content padding) butts against the colored
+        // sliver. The fix pads both title elements — #toDoInput (visible title
+        // 421–1023px) and .toDoTitleDisplay (the ≤420px read span) — so the
+        // first character clears the tab. Must NOT pad the row itself (that
+        // would inset the absolutely-positioned swipe panes).
+        const paddingRule = mobileSlice.match(
+            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+#toDoInput\s*,\s*#toDoChild:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{\s*padding-left:\s*(\d+)px/);
+        expect(paddingRule).not.toBeNull();
+        // Enough to clear the tab's 6px right edge with breathing room.
+        expect(Number(paddingRule[1])).toBeGreaterThanOrEqual(8);
+    });
+
     it('orders the due control before the copy icon via flex order', () => {
         const dueOrder = mobileSlice.match(/#toDoChild\s+#duePill\s*\{\s*order:\s*(\d+)/);
         const copyOrder = mobileSlice.match(/#toDoChild\s+\.copyTitleBtn\s*\{\s*order:\s*(\d+)/);
