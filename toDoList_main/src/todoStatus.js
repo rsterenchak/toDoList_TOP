@@ -32,8 +32,10 @@ export const STATUS_META = {
     idea:        { label: '○ IDEA',        rowClass: 'todo-row--idea' },
 };
 
-// Render order for the popover options and the class-clearing sweep.
-const STATUS_ORDER = ['active', 'in_progress', 'idea'];
+// Render order for the popover options and the class-clearing sweep. Exported
+// so other surfaces (e.g. the mobile description editor's status selector)
+// render the same vocabulary in the same order rather than re-hardcoding it.
+export const STATUS_ORDER = ['active', 'in_progress', 'idea'];
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
 

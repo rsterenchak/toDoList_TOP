@@ -16,6 +16,8 @@ import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton } from './inject.js';
+import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from './todoStatus.js';
+import { reorderToDoDOM } from './toDoRow.js';
 
 
 // ── CONFIRM MODAL ──
@@ -308,8 +310,78 @@ export function showDescEditorModal(item, options) {
     actions.appendChild(injectBtn);
     actions.appendChild(copyBtn);
 
+    // ── STATUS SEGMENTED CONTROL ──
+    // On mobile the on-row status badge (`.todoStatusLabel` → showStatusPopover)
+    // is hidden in favor of the left-edge color tab, so status is visible but
+    // not settable from the row. Surface a three-segment selector here — the
+    // same vocabulary the desktop popover uses, pulled from STATUS_META /
+    // STATUS_ORDER so the labels and order stay single-sourced. The selected
+    // segment fills with its status color, matched to the row edge tab.
+    const statusRow = document.createElement('div');
+    statusRow.id = 'descEditorModalStatusRow';
+
+    const statusLabel = document.createElement('span');
+    statusLabel.id = 'descEditorModalStatusLabel';
+    statusLabel.textContent = 'Status';
+
+    const statusControl = document.createElement('div');
+    statusControl.id = 'descEditorModalStatusControl';
+    statusControl.setAttribute('role', 'radiogroup');
+    statusControl.setAttribute('aria-label', 'Task status');
+
+    const currentStatus = normalizeStatus(item && item.status);
+
+    function updateStatusSegments(status) {
+        const segs = statusControl.querySelectorAll('.descEditorModalStatusSeg');
+        for (let i = 0; i < segs.length; i++) {
+            const on = segs[i].getAttribute('data-status') === status;
+            segs[i].classList.toggle('selected', on);
+            segs[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        }
+    }
+
+    function selectStatus(status) {
+        const projectName = opts.projectName || '';
+        // Route through the same mutation channel the desktop badge uses, so the
+        // localStorage write and the Supabase mirror both fire. A no-op (already
+        // this status) is harmless — setToDoStatus early-returns.
+        listLogic.setToDoStatus(projectName, item, status);
+        updateStatusSegments(status);
+        // Reflect the change on the underlying (still-mounted) row live: find it
+        // by its item identity in #mainList, repaint its status UI, then re-sort
+        // / re-filter the list so it moves to its new place when sort = Status.
+        if (!projectName) return;
+        const mainList = document.getElementById('mainList');
+        if (mainList) {
+            const rows = mainList.querySelectorAll('#toDoChild');
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].__item === item) {
+                    refreshTodoStatusUI(rows[i], item);
+                    break;
+                }
+            }
+        }
+        reorderToDoDOM(projectName);
+    }
+
+    STATUS_ORDER.forEach(function(status) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'descEditorModalStatusSeg' + (status === currentStatus ? ' selected' : '');
+        seg.setAttribute('role', 'radio');
+        seg.setAttribute('data-status', status);
+        seg.setAttribute('aria-checked', status === currentStatus ? 'true' : 'false');
+        seg.textContent = STATUS_META[status].label;
+        seg.addEventListener('click', function() { selectStatus(status); });
+        statusControl.appendChild(seg);
+    });
+
+    statusRow.appendChild(statusLabel);
+    statusRow.appendChild(statusControl);
+
     dialog.appendChild(header);
     dialog.appendChild(body);
+    dialog.appendChild(statusRow);
     dialog.appendChild(actions);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
