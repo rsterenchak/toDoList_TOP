@@ -2753,7 +2753,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    filter control is ever visible, mirroring the dual Sort-trigger pattern. */
 .taskFilterSegmented {
   display: none;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   border: 0.5px solid var(--border-bright);
   border-radius: 8px;
@@ -2763,7 +2763,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .taskFilterSeg {
   appearance: none;
   -webkit-appearance: none;
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -2791,8 +2791,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
   outline-offset: -2px;
 }
 .taskFilterSeg.selected {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-dim);
+  color: var(--accent-text);
 }
 
 .taskFilterSegCount {

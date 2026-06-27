@@ -59,12 +59,13 @@ describe('mobile segmented filter — breakpoint gating', () => {
         expect(pill).toMatch(/display:\s*none/);
     });
 
-    it('tints the active segment with the shared accent, matching the cycle pill selected state', () => {
+    it('tints the active segment with the accent tint + accent-purple text, matching the status selector family', () => {
         const sel = baseRule('.taskFilterSeg.selected');
         expect(sel).not.toBeNull();
-        // Same accent token as the status selector's active segment, so
-        // filtering and status-setting read as one visual language.
-        expect(sel).toMatch(/background:\s*var\(--accent\)/);
+        // Softened from the solid accent fill to a tinted background + accent
+        // text, so the two segmented controls read as one visual language.
+        expect(sel).toMatch(/background:\s*var\(--accent-dim\)/);
+        expect(sel).toMatch(/color:\s*var\(--accent-text\)/);
     });
 });
 

@@ -6,12 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-27',
-        added: [
-            "Task status can now be set from the mobile description editor via a segmented Active / In Progress / Idea control.",
-        ],
         changed: [
             "Mobile task rows now show status as a colored left-edge tab and give the title the full row width on a single line.",
             "On mobile, filtering tasks now uses a three-segment All / Active / Ideas control with live counts, and the task sort control collapses to a compact icon button.",
+            "The mobile segmented status filter now hugs its labels at content width with a softer tinted active segment.",
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",
