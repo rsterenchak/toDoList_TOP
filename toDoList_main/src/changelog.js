@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-27',
+        changed: [
+            "Mobile task rows now show status as a colored left-edge tab and give the title the full row width on a single line.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-26',
         changed: [
             "Following up while iterating on a shipped change now keeps the original change in context across every turn, not just the first.",
@@ -14,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-25',
         fixed: [
-            "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
             "The white sparkle icon on the mobile chat button is now vertically centered.",
             "The white sparkle icon on the mobile chat button now sits slightly higher for tighter optical centering.",
             "The white sparkle icon on the mobile chat button now uses a fixed upward offset for more consistent optical centering across screen densities.",
