@@ -452,7 +452,7 @@
   - Completed: 2026-06-27
   <!-- id: 307cde38-22c1-428e-919b-2d89d227c706 -->
 
-- [ ] **[LOW]** Restructure the description-editor modal actions into a primary + secondary layout
+- [x] **[LOW]** Restructure the description-editor modal actions into a primary + secondary layout — Completed: 2026-06-27
   - Type: feature
   - Description: The action buttons in the mobile description-editor modal (`#descEditorModalActions` in `modals.js`) sit in a single row at three different content-widths — Clear small, Inject to TODO.md wide, Copy entry between — so the row reads as unstructured. Restructure into a primary + secondary layout: Inject becomes a full-width filled primary button on its own top row (keeping the upload icon and the full `Inject to TODO.md` label), with Clear and Copy entry as an equal-width (50/50) outline pair on a second row beneath. This also flips the fill emphasis — Inject takes the solid accent fill (it is currently an accent outline) and Copy entry drops to a border-bright outline (it is currently the solid purple), since Inject is the actual pipeline action. Prefer CSS-only: make `#descEditorModalActions` wrap, give `.injectBtn` `order` first + `flex-basis: 100%` plus the filled-primary treatment, and set the Clear / Copy buttons to `flex: 1` outline secondary — so `modals.js` only needs touching if those two buttons lack distinct class hooks to target. Match radius and height across all three. Targets the modal's actions only; the desktop inline `#descSibling` inject button is unaffected.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/modals.js`
