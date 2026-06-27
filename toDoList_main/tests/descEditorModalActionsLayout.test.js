@@ -51,12 +51,13 @@ describe('desc editor modal — primary + secondary actions layout', () => {
         expect(body).toMatch(/flex:\s*0\s+0\s+100%/);
     });
 
-    it('Inject carries the solid accent fill in its ready state', () => {
+    it('Inject carries the deeper #6C5DF5 fill in its ready state', () => {
         const body = ruleBody(
             '#descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected)'
         );
         expect(body).not.toBeNull();
-        expect(body).toMatch(/background:\s*var\(--accent\)/);
+        expect(body).toMatch(/background:\s*#6C5DF5/i);
+        expect(body).toMatch(/border-color:\s*#6C5DF5/i);
     });
 
     it('Clear and Copy share the second row at equal width', () => {
