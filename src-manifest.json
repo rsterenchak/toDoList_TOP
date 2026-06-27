@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-27T10:39:03.795Z",
-  "sha": "f875a8cdfc3833b862a3bc68b20140fa9bdad871",
+  "generatedAt": "2026-06-27T11:12:06.000Z",
+  "sha": "8dece4be8ec9ca463926264f48fcffee118f8908",
   "files": [
     "auth.js",
     "changelog.js",
