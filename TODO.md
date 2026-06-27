@@ -393,7 +393,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9ce7e5f4-cd84-41e4-9068-c442183921fd -->
 
-- [ ] **[MEDIUM]** Restructure mobile task rows: status as left-edge color, full-width single-line title
+- [x] **[MEDIUM]** Restructure mobile task rows: status as left-edge color, full-width single-line title — Completed: 2026-06-27
   - Type: feature
   - Description: On the mobile Projects list, each todo row crams the title, an inline status pill (IN PROGRESS / ACTIVE), a copy icon, and the due control onto one ~44px line, squeezing the title to ~18 characters so most entries truncate. Remove the inline status pill from mobile rows and instead encode status as a ~3px rounded color tab on the row's left edge (amber for in-progress, accent purple for active), keyed off the same status class/attribute that currently drives the pill color so every status carries over. With the pill gone, give the title the full remaining width as a single ellipsis-truncated line, and order the right-side controls as due control then copy icon. Keep the existing due element (amber calendar control) and the copy button exactly as they behave today — this only changes their placement. Prefer a CSS-only approach: hide `.todoStatusLabel` inside the mobile media query (the element stays in the DOM for desktop), draw the edge tab via a `::before` on the row keyed to its status, and reorder due/copy with flex `order` — so `toDoRow.js` ideally needs no change. Scope strictly to the mobile breakpoint; the desktop two-pane row layout is untouched.
   - Behavior:
