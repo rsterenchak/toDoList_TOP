@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-25',
-        added: [
-            "A desktop-only focus mode hides the dashboard behind a calm, drifting space scene for distraction-free studying, keeping music and the Pomodoro session reachable from a corner without showing any timer.",
+        date: '2026-06-26',
+        changed: [
+            "Following up while iterating on a shipped change now keeps the original change in context across every turn, not just the first.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-25',
         fixed: [
             "The scroll-to-bottom \"↓\" button no longer shows an upward light beam when you hover over it.",
             "The white sparkle icon on the mobile chat button is now vertically centered.",
