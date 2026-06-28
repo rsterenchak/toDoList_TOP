@@ -619,7 +619,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 612a533a-208d-46de-b2ee-48f5c3bf2e3d -->
 
-- [ ] **[MEDIUM]** Persist the Structure tree's open/closed state across reloads
+- [x] **[MEDIUM]** Persist the Structure tree's open/closed state across reloads — Completed: 2026-06-28
   - Type: feature
   - Description: The Structure tab's tree resets to its default expansion on every reload — folders re-collapse, file groups re-open, and any manual expand/collapse in the live map is lost. Persist the open/closed state per repo + lens so the tree comes back the way it was left. State is small (a set of open-node keys), stored client-side.
   - Behavior:
