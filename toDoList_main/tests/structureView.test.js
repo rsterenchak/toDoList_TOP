@@ -237,6 +237,41 @@ describe('renderStructureView — source tree (Code lens)', () => {
         expect(notice).toBeTruthy();
         expect(notice.textContent).toMatch(/no manifest/i);
     });
+
+    it('renders a View-on-GitHub link for an empty-srcRoot (C#) manifest without a double slash', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            srcRoot: '',
+            files: ['LinearSearch/BST.cs'],
+        };
+        renderStructureView();
+        await flush();
+
+        // Expand the LinearSearch folder so its file row is reachable.
+        const folder = document.querySelector('.structureFolderRow');
+        folder.click();
+
+        const gh = document.querySelector('.structureGithubLink');
+        expect(gh).toBeTruthy();
+        const href = gh.getAttribute('href');
+        expect(href).toBe('https://github.com/rsterenchak/toDoList_TOP/blob/main/LinearSearch/BST.cs');
+        // No root segment means no double slash after the branch.
+        expect(href).not.toContain('blob/main//');
+    });
+
+    it('still prefixes srcRoot for web repos (non-empty srcRoot)', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            srcRoot: 'src',
+            files: ['main.js'],
+        };
+        renderStructureView();
+        await flush();
+
+        const gh = document.querySelector('.structureGithubLink');
+        expect(gh).toBeTruthy();
+        expect(gh.getAttribute('href')).toBe('https://github.com/rsterenchak/toDoList_TOP/blob/main/src/main.js');
+    });
 });
 
 describe('renderStructureView — Explain with Sonnet (Code lens)', () => {

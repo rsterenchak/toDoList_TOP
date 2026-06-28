@@ -163,13 +163,15 @@ function ensureRegionsLoaded(repo) {
 }
 
 // A GitHub blob deep link for an owner file, at its line when known. Files are
-// named relative to the manifest's `srcRoot`, so the path is prefixed with it.
-// Returns '' when the repo or source root is unknown (no link rendered).
+// named relative to the manifest's `srcRoot`, so the path is prefixed with it
+// when present. C# manifests emit an empty `srcRoot` with repo-root-relative
+// file paths, so the root segment is omitted in that case (never a double
+// slash). Returns '' when the repo or file is unknown (no link rendered).
 function githubBlobUrl(repo, file, line) {
-    if (!repo || !file || !currentSrcRoot) return '';
-    const root = String(currentSrcRoot).replace(/\/+$/, '');
+    if (!repo || !file) return '';
+    const root = String(currentSrcRoot || '').replace(/\/+$/, '');
     const frag = (typeof line === 'number' && line > 0) ? '#L' + line : '';
-    return 'https://github.com/' + repo + '/blob/main/' + root + '/' + file + frag;
+    return 'https://github.com/' + repo + '/blob/main/' + (root ? root + '/' : '') + file + frag;
 }
 
 // A quiet "View on GitHub ↗" secondary link, or null when no URL is resolvable.

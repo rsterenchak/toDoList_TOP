@@ -11,12 +11,14 @@ export const changelog = [
             "Structure tab file explanations are now cached per commit, so re-opening an unchanged file shows its summary instantly without another Sonnet call.",
             "The Structure tab's tree now remembers which folders and regions you left open, restoring them after a reload.",
         ],
+        fixed: [
+            "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-27',
         fixed: [
-            "The task editor's Inject button now uses a deeper, flatter purple fill matching the rest of the accent palette.",
             "A linked repo's published UI map now offers \"Reference in chat\" and \"Copy selector\" on each region, matching the live map.",
         ],
     },
