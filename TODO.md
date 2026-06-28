@@ -582,3 +582,21 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: 2026-06-27
   <!-- id: 8a261855-3303-4931-9029-9084c9f2306a -->
+
+- [ ] **[MEDIUM]** Add a filter box to the Structure tab tree (both lenses)
+  - Type: feature
+  - Description: The Structure tab's tree has no search — fine for matchingGame's 9 files, but toDoList's Code lens is 30+ and the UI lens can be long too, so finding a file or handle means scrolling. Add a filter input at the top of the tree (above the tree container, under the repo header / lens toggle) that narrows the visible items live as you type, styled like the chat attach-file picker's search. It filters whatever the active lens shows: in the Code lens, by file name/path; in the UI lens, by a region's label, selector, or defining file (so "card" matches the handle "Card" / `.card` in Card.jsx). Substring, case-insensitive — a navigation aid, not fuzzy search.
+  - Behavior:
+    1. A full-width search field with a magnifying-glass icon, a clear (×) button that appears once there's text, and a live match count ("3 of 30"). Placeholder reflects the lens ("Filter files…" / "Filter handles…").
+    2. Matching rows stay visible with the matched substring highlighted; non-matching rows hide. A folder (Code lens) or file-group header (UI published map) shows only when it has at least one visible descendant, and auto-expands while a query is active.
+    3. In the nested live UI map, a node that matches also reveals its ancestor chain (parents stay visible and expanded) so the match remains reachable in the tree.
+    4. Clearing the field (× or empty) restores the full tree and the prior open/closed state. Switching lenses re-applies the current query to the newly shown lens.
+    5. When nothing matches, show a quiet "No matches for '<query>'." in place of the tree.
+  - Implementation notes:
+    - Mount the input in the view's persistent header region, not inside the tree container that `clear()` empties on each render — otherwise it's wiped when the lens re-renders.
+    - Filter the already-rendered DOM via show/hide (a hidden class) plus the ancestor-reveal walk, rather than re-rendering — this preserves inline "Explain with Sonnet" results and the user's expand/collapse state across keystrokes. Drive it from one `applyStructureFilter(query)` that walks `currentTreeEl`, with a shared `matchesQuery(text)` helper used for files and regions alike.
+    - Reuse the attach picker's search-field styling and the Void tokens; purple focus ring on the input, muted placeholder. No new dependencies; vanilla JS, plain CSS.
+  - Out of scope: fuzzy/ranked matching (substring only), searching file contents (names and handle metadata only), and persisting the query across reloads or repo switches.
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR
+  <!-- id: 37836a31-9340-47e8-8926-5d4dbd872582 -->
