@@ -323,6 +323,54 @@ function findInCode(repo, selector, resultEl, btn) {
     });
 }
 
+// The Types-lens counterpart to findInCode. A C# manifest carries no `regions`,
+// so type/member rows resolve their "Find in code" against the in-memory
+// `currentTypes` index instead: list every place `name` is *defined* — a type
+// whose name matches (its `file`/`line`) and every member whose name matches
+// (its owning type's `file`, the member's own `line`). The same name defined in
+// several classes lists all of them, which the single-line GitHub link can't.
+// Synchronous — `currentTypes` is already loaded for the rendering lens.
+function findTypeInCode(repo, name, resultEl, btn) {
+    clear(resultEl);
+    resultEl.hidden = false;
+
+    const owners = [];
+    const seen = new Set();
+    const addOwner = function (file, line) {
+        const key = (file || '') + '#' + (typeof line === 'number' ? line : '');
+        if (seen.has(key)) return;
+        seen.add(key);
+        owners.push({ file: file, line: line });
+    };
+    currentTypes.forEach(function (type) {
+        if (!type) return;
+        if (type.name === name) addOwner(type.file, type.line);
+        const members = Array.isArray(type.members) ? type.members : [];
+        members.forEach(function (member) {
+            if (member && member.name === name) addOwner(type.file, member.line);
+        });
+    });
+    owners.sort(function (a, b) {
+        const fa = a.file || '';
+        const fb = b.file || '';
+        if (fa !== fb) return fa < fb ? -1 : 1;
+        const la = typeof a.line === 'number' ? a.line : 0;
+        const lb = typeof b.line === 'number' ? b.line : 0;
+        return la - lb;
+    });
+
+    if (!owners.length) {
+        const none = document.createElement('div');
+        none.className = 'structureFindNone';
+        none.textContent = 'Not found in the type index.';
+        resultEl.appendChild(none);
+        return;
+    }
+    owners.forEach(function (owner) {
+        resultEl.appendChild(buildOwnerFileRow(repo, owner));
+    });
+}
+
 // ── CODE LENS ───────────────────────────────────────────────────────────────
 
 // Group a flat list of repo-relative paths into a nested folder tree. Each node
@@ -787,7 +835,7 @@ function copySelector(selector, btn) {
 // (a no-op when it already matches) so the inserted selector lands in a
 // conversation framed on the right repo, then hands the selector to the chat
 // composer; Copy writes the selector to the clipboard.
-function appendReferenceCopyActions(actionRow, label, selector, repo) {
+function appendReferenceCopyActions(actionRow, label, selector, repo, copyLabel) {
     const refBtn = document.createElement('button');
     refBtn.type = 'button';
     refBtn.className = 'structureReferenceBtn';
@@ -802,7 +850,7 @@ function appendReferenceCopyActions(actionRow, label, selector, repo) {
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
     copyBtn.className = 'structureCopyBtn';
-    copyBtn.textContent = 'Copy selector';
+    copyBtn.textContent = copyLabel || 'Copy selector';
     copyBtn.addEventListener('click', function (event) {
         event.stopPropagation();
         copySelector(selector, copyBtn);
@@ -1218,7 +1266,7 @@ function buildTypeOutlineRow(repo, spec, depth) {
 
     const actionRow = document.createElement('div');
     actionRow.className = 'structureRegionActionRow';
-    appendReferenceCopyActions(actionRow, spec.label, spec.name, repo);
+    appendReferenceCopyActions(actionRow, spec.label, spec.name, repo, 'Copy name');
 
     const findBtn = document.createElement('button');
     findBtn.type = 'button';
@@ -1229,7 +1277,7 @@ function buildTypeOutlineRow(repo, spec, depth) {
     findResult.hidden = true;
     findBtn.addEventListener('click', function (event) {
         event.stopPropagation();
-        findInCode(repo, spec.name, findResult, findBtn);
+        findTypeInCode(repo, spec.name, findResult, findBtn);
     });
     actionRow.appendChild(findBtn);
 

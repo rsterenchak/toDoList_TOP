@@ -1307,6 +1307,61 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         expect(header.nextSibling.hidden).toBe(true);
     });
 
+    it('labels the copy action "Copy name" on a type row', async () => {
+        await renderTypesRepo();
+
+        const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
+        const labelOf = (r) => {
+            const l = r.querySelector('.structureTypeLabel');
+            return l ? l.textContent : '';
+        };
+        const typeRow = rows.find((r) => labelOf(r) === 'class BinarySearchTree');
+        typeRow.click();
+        const actions = typeRow.parentNode.querySelector(':scope > .structureRegionActions');
+        expect(actions.querySelector('.structureCopyBtn').textContent).toBe('Copy name');
+    });
+
+    it('Find in code lists every definition of a name from the type index, sorted by file then line', async () => {
+        // Two classes in different files each define a member named `Reset`; Find in
+        // code must surface both definitions, which a single-line GitHub link can't.
+        state.manifests[OTHER] = {
+            ok: true, files: ['A.cs', 'B.cs'], hasDom: false, lens: 'types', srcRoot: '',
+            types: [
+                {
+                    kind: 'class', name: 'Node', file: 'B.cs', line: 40,
+                    members: [{ signature: 'Reset()', name: 'Reset', line: 44 }],
+                },
+                {
+                    kind: 'class', name: 'Tree', file: 'A.cs', line: 5,
+                    members: [{ signature: 'Reset()', name: 'Reset', line: 9 }],
+                },
+            ],
+        };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+
+        const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
+        const labelOf = (r) => {
+            const l = r.querySelector('.structureTypeLabel');
+            return l ? l.textContent : '';
+        };
+        const resetRow = rows.find((r) => labelOf(r) === 'Reset()');
+        expect(resetRow).toBeTruthy();
+        resetRow.click();
+        const actions = resetRow.parentNode.querySelector(':scope > .structureRegionActions');
+        actions.querySelector('.structureFindBtn').click();
+        await flush();
+
+        const owners = Array.from(actions.querySelectorAll('.structureOwnerFileBtn')).map((b) => b.textContent);
+        expect(owners).toEqual(['A.cs:9', 'B.cs:44']);
+
+        // The owner file row taps through to the Code lens, like the UI-lens Find.
+        actions.querySelector('.structureOwnerFileBtn').click();
+        await flush();
+        expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('code');
+    });
+
     it('a manifest without a lens field keeps the UI lens (back-compat)', async () => {
         state.manifests[OTHER] = {
             ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
