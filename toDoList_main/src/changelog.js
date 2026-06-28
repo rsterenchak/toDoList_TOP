@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-27',
         added: [
-            "A new Structure view maps a repo's source as a browsable file tree, with an Explain with Sonnet action that summarizes any file.",
+            "The Structure view's new UI lens maps the running app's on-screen regions, so you can hand any region's selector to the Claude chat with one tap.",
         ],
         changed: [
             "The mobile bottom navigation tab labeled \"Projects\" now reads \"Tasks View.\"",

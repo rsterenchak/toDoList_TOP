@@ -21,6 +21,7 @@ export const TASK_FILTER_KEY = 'todoapp_taskFilter';
 export const TASK_SORT_KEY = 'todoapp_taskSort';
 export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
 export const TODO_MD_SHOW_COMPLETED_KEY = 'todoapp_todoMdShowCompleted';
+export const STRUCTURE_LENS_KEY = 'todoapp_structureLens';
 
 // ── completed section open/closed ──
 export function isCompletedSectionOpen() {
@@ -243,6 +244,30 @@ export function isTodoMdShowCompleted() {
 export function setTodoMdShowCompleted(show) {
     try {
         localStorage.setItem(TODO_MD_SHOW_COMPLETED_KEY, show ? 'true' : 'false');
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── Structure tab lens (Code vs. UI) ──
+// The Structure tab swaps between two renderings of a repo: the Code lens (its
+// published source map) and the UI lens (a live map of the running app's
+// on-screen regions). The choice persists so the tab reopens on the lens you
+// last used. Default is 'ui' — reference-in-chat is the reason to open the tab,
+// so the UI lens leads. Any stored value other than the two known tokens falls
+// back to 'ui' so a stale or hand-edited pref can't desync the view.
+export function getStructureLens() {
+    try {
+        const v = localStorage.getItem(STRUCTURE_LENS_KEY);
+        if (v === 'code') return 'code';
+        return 'ui';
+    } catch (e) {
+        return 'ui';
+    }
+}
+
+export function setStructureLens(lens) {
+    try {
+        const stored = lens === 'code' ? 'code' : 'ui';
+        localStorage.setItem(STRUCTURE_LENS_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

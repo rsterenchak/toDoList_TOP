@@ -12,6 +12,11 @@ import {
     extractInspectDirective,
     splitRenderableBlocks,
     renderAssistantContent,
+    insertReference,
+    setChatWorkspaceRepo,
+    getActiveChatRepo,
+    getAttachRepos,
+    getRunningAppRepo,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
@@ -3939,5 +3944,84 @@ describe('Claude sheet — chat history persisted per repo', () => {
         const surface = document.getElementById('claudeChatSurface');
         expect(surface.textContent).not.toContain('not mine');
         expect(surface.querySelectorAll('.claudeMsg').length).toBe(0);
+    });
+});
+
+// The Structure view's UI lens hands regions to the chat via two exports:
+// insertReference (drop a backticked selector + label into the composer) and
+// setChatWorkspaceRepo (reframe the conversation on a repo, the workspace-pill
+// switch). getRunningAppRepo names the repo the lens can walk live.
+describe('Claude sheet — Structure view seams (insertReference / setChatWorkspaceRepo)', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const OTHER_REPO = 'rsterenchak/matchingGame-test';
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO, OTHER_REPO]);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+    });
+
+    it('getRunningAppRepo names the app\'s own repo', () => {
+        expect(getRunningAppRepo()).toBe(DEFAULT_REPO);
+    });
+
+    it('insertReference appends a backticked selector + label and lands on the Chat tab', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        // Move to the Runs tab so we can prove insertReference switches back.
+        document.getElementById('claudeTabRuns').click();
+        expect(document.getElementById('claudeSheet').getAttribute('data-tab')).toBe('runs');
+
+        insertReference('Task List', '#taskList');
+        expect(document.getElementById('claudeSheet').getAttribute('data-tab')).toBe('chat');
+        const input = document.getElementById('claudeComposerInput');
+        expect(input.value).toBe('`#taskList` (Task List)');
+    });
+
+    it('insertReference preserves existing composer text with a separating space', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'Move';
+        insertReference('Sidebar', '.sidebar');
+        expect(input.value).toBe('Move `.sidebar` (Sidebar)');
+    });
+
+    it('insertReference ignores a blank selector', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'untouched';
+        insertReference('Nothing', '   ');
+        expect(input.value).toBe('untouched');
+    });
+
+    it('setChatWorkspaceRepo reframes the conversation on the selected repo', async () => {
+        mountClaudeSheet(document.body);
+        openClaudeSheet();
+        await flush();
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+        expect(getAttachRepos()).toContain(OTHER_REPO);
+
+        setChatWorkspaceRepo(OTHER_REPO);
+        expect(getActiveChatRepo()).toBe(OTHER_REPO);
+    });
+
+    it('setChatWorkspaceRepo ignores an unknown repo or the active one', async () => {
+        mountClaudeSheet(document.body);
+        openClaudeSheet();
+        await flush();
+        setChatWorkspaceRepo('not/allowed');
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+        setChatWorkspaceRepo(DEFAULT_REPO);
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
     });
 });

@@ -2956,8 +2956,58 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 .structureHeader {
   display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.structurePickerGroup {
+  display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+
+/* Code/UI lens toggle — a small segmented control beside the repo picker. */
+.structureLensToggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.structureLensBtn {
+  font-family: inherit;
+  /* ≥16px keeps iOS Safari from auto-zooming on focus of an adjacent control. */
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.structureLensBtn:hover:not(.active) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.structureLensBtn.active {
+  color: #fff;
+  background: #6C5DF5;
+}
+
+.structureLensBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 .structurePickerLabel {
@@ -2995,6 +3045,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 .structureTreeLoading,
 .structureNoManifest,
+.structureNoUiMap,
 .structureEmptyState {
   color: var(--text-muted);
   font-size: 13px;
@@ -3116,6 +3167,157 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--danger, #e2748a);
+}
+
+/* ── STRUCTURE VIEW — UI LENS ──
+   A live, tappable map of the running app's on-screen regions. Region rows nest
+   by DOM containment (a caret toggles children); tapping a row reveals its
+   selector plus "Reference in chat" / "Copy selector" actions. Off-screen
+   regions render dimmed. Reuses the entry-1 --structure-depth indent. */
+.structureRegionWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.structureRegionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-right: 8px;
+  padding-left: calc(4px + var(--structure-depth, 0) * 14px);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.structureRegionRow:hover {
+  background: var(--bg-hover);
+}
+
+.structureRegionRow--dim {
+  opacity: 0.5;
+}
+
+.structureRegionCaret {
+  display: inline-flex;
+  justify-content: center;
+  width: 12px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #9D93EE;
+  transition: transform 0.15s ease;
+}
+
+.structureRegionCaret--leaf {
+  visibility: hidden;
+}
+
+.structureRegionRow.expanded .structureRegionCaret {
+  transform: rotate(90deg);
+}
+
+.structureRegionLabel {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+}
+
+.structureRegionSelector {
+  margin-left: auto;
+  flex: 0 1 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureRegionActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px 12px;
+  padding-left: calc(20px + var(--structure-depth, 0) * 14px);
+}
+
+.structureRegionSelectorFull {
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.structureRegionNote {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.structureRegionActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.structureReferenceBtn,
+.structureCopyBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.structureReferenceBtn {
+  color: #fff;
+  background: #6C5DF5;
+  border: 0.5px solid #6C5DF5;
+}
+
+.structureReferenceBtn:hover {
+  background: #5a4bd8;
+  border-color: #5a4bd8;
+}
+
+.structureCopyBtn {
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.12);
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+}
+
+.structureCopyBtn:hover {
+  background: rgba(108, 93, 245, 0.22);
+  border-color: #6C5DF5;
+}
+
+.structureReferenceBtn:focus-visible,
+.structureCopyBtn:focus-visible,
+.structureRegionRow:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.structureCollapsedRow {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-right: 8px;
+  padding-left: calc(20px + var(--structure-depth, 0) * 14px);
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .conceiveEmptyState {
