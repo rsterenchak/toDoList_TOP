@@ -532,7 +532,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 55994ede-e7da-42a9-a3b9-a3079af5b7fa -->
 
-- [ ] **[MEDIUM]** Tie the Structure tab to the selected project instead of a repo picker
+- [x] **[MEDIUM]** Tie the Structure tab to the selected project instead of a repo picker — Completed: 2026-06-27
   - Type: feature
   - Description: Replace the Structure tab's repo picker with repo resolution from the currently selected project, matching how Conceive grounds its tools. Resolve the selected project's linked repo via `resolveProjectRepo` (the same inject-target path Conceive's Generate tasks / Suggest plan use) and render that repo's Code and UI lenses, removing the dropdown entirely. Because the picker previously guaranteed a repo, add the states that selection can now produce — no project selected, and a selected project with no linked repo — and keep a small read-only repo label where the dropdown was so it stays clear which repo resolved (the UI lens behaves differently for the running app vs other repos).
   - Behavior:

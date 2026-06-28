@@ -1911,7 +1911,8 @@ function component() {
     conceiveView.id = 'conceiveView';
 
     // Empty container the structureView module owns at runtime —
-    // renderStructureView() fills it with the repo picker and source tree.
+    // renderStructureView() fills it with the selected project's repo label and
+    // source tree.
     // Toggled via #mainBar's data-view attribute like the other surfaces, so
     // switching views never re-renders the others.
     const structureView = document.createElement('div');
@@ -3579,7 +3580,12 @@ function component() {
                     // active and just re-renders it for the newly selected
                     // project (handled below once the selection resolves).
                     const stayOnConceive = getActiveView() === 'conceive';
-                    if (!stayOnConceive) {
+                    // STRUCTURE, like CONCEIVE, is a second lens on the SAME
+                    // selected project — a click here keeps it active and just
+                    // re-renders the tab against the newly selected project's
+                    // repo (handled below once the selection resolves).
+                    const stayOnStructure = getActiveView() === 'structure';
+                    if (!stayOnConceive && !stayOnStructure) {
                         applyActiveView('projects');
                     }
 
@@ -3617,11 +3623,14 @@ function component() {
                         // auto-close it for projects with no repo configured.
                         syncClaudeSheetForProject(innerValue);
 
-                        // When Conceive is the active view, the click didn't
-                        // switch away from it — re-render it so its stage
-                        // editor reflects the newly selected project.
+                        // When Conceive or Structure is the active view, the
+                        // click didn't switch away from it — re-render it so it
+                        // reflects the newly selected project (Conceive's stage
+                        // editor; Structure's resolved repo + map).
                         if (stayOnConceive) {
                             renderConceiveView();
+                        } else if (stayOnStructure) {
+                            renderStructureView();
                         }
 
                         return;
@@ -4902,8 +4911,8 @@ function applyActiveView(view) {
         // .selectedProject has no visual effect.
         renderConceiveView();
     } else if (safe === 'structure') {
-        // The Structure view is project-independent — it maps a repo's source,
-        // not the selected project — so it renders fresh on each switch.
+        // The Structure view maps the selected project's linked repo, so it
+        // renders fresh on each switch (resolving the repo from the selection).
         renderStructureView();
     }
 
