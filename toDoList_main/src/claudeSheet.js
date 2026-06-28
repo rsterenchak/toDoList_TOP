@@ -1098,6 +1098,11 @@ export async function loadManifest(repo) {
                     : undefined,
                 hasDom: isObj && typeof data.hasDom === 'boolean' ? data.hasDom : undefined,
                 srcRoot: isObj && typeof data.srcRoot === 'string' ? data.srcRoot : undefined,
+                // The commit SHA the manifest was generated at (deploy-time
+                // GITHUB_SHA). Surfaced so the Structure view can cache per-file
+                // explanations keyed by it; absent on deterministic /
+                // served-from-source manifests, where it stays undefined.
+                sha: isObj && typeof data.sha === 'string' && data.sha ? data.sha : undefined,
             };
         }
     } catch (e) {

@@ -601,7 +601,7 @@
   - Completed: YYYY-MM-DD (PR
   <!-- id: 37836a31-9340-47e8-8926-5d4dbd872582 -->
 
-- [ ] **[MEDIUM]** Cache "Explain with Sonnet" results per file + commit SHA
+- [x] **[MEDIUM]** Cache "Explain with Sonnet" results per file + commit SHA — Completed: 2026-06-28
   - Type: feature
   - Description: Each tap of "Explain with Sonnet" in the Structure Code lens spends a fresh Sonnet call, even when re-opening a file whose source hasn't changed. Cache the explanation per repo + file + manifest SHA so revisits render instantly and cost nothing, invalidating automatically when a new commit changes the SHA. The manifest already carries `sha`, so the key is free and correctness is automatic.
   - Behavior:

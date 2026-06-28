@@ -65,8 +65,14 @@ let collapsedPublishedFiles = new Set();
 //   • currentTreeEl / lensToggleGroup — live references to the rendered tree
 //     container and lens segmented control, so "Find in code" can switch to the
 //     Code lens and reveal a file without re-entering renderStructureView.
+//   • currentSha — the commit SHA the loaded manifest was generated at, used to
+//     key the per-file "Explain with Sonnet" cache so a new commit (new SHA)
+//     invalidates stale explanations automatically. Null when the manifest
+//     omits a sha (deterministic / served-from-source manifests), in which case
+//     explanations are never cached.
 let regionsIndex = new Map();
 let currentSrcRoot = null;
+let currentSha = null;
 let currentTreeEl = null;
 let lensToggleGroup = null;
 
@@ -93,6 +99,7 @@ function clear(el) {
 function ensureRegionsLoaded(repo) {
     return loadManifest(repo).then(function (result) {
         currentSrcRoot = (result && result.srcRoot) || null;
+        currentSha = (result && typeof result.sha === 'string' && result.sha) ? result.sha : null;
         const idx = new Map();
         if (result && Array.isArray(result.regions)) {
             result.regions.forEach(function (r) {
@@ -268,7 +275,91 @@ function buildTree(paths) {
 // fallback) inline beneath the file row. Runs through the same stateless
 // chatWithWorker path Conceive's "Suggest plan" uses, so it never writes into
 // the chat transcript. Fast-mode (deep flag omitted) per the task spec.
+// "Explain with Sonnet" results are cached per repo + file + manifest SHA so
+// re-opening an unchanged file renders instantly and spends no Sonnet call; a
+// new commit changes the SHA, so the key naturally misses and the file
+// re-explains against current source. Persisted in localStorage under one
+// `todoapp_`-prefixed key holding an LRU-ordered map (oldest first, newest
+// last), bounded by EXPLAIN_CACHE_CAP so it can't grow unbounded. When the
+// manifest carries no sha, caching is skipped entirely — never risk surfacing a
+// stale explanation.
+const EXPLAIN_CACHE_KEY = 'todoapp_structureExplain';
+const EXPLAIN_CACHE_CAP = 50;
+
+function explainCacheKey(repo, filePath, sha) {
+    return repo + ':' + filePath + ':' + sha;
+}
+
+function readExplainStore() {
+    try {
+        const raw = localStorage.getItem(EXPLAIN_CACHE_KEY);
+        if (!raw) return { order: [], map: {} };
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== 'object') return { order: [], map: {} };
+        const order = Array.isArray(data.order)
+            ? data.order.filter(function (k) { return typeof k === 'string'; })
+            : [];
+        const map = (data.map && typeof data.map === 'object') ? data.map : {};
+        return { order: order, map: map };
+    } catch (e) {
+        return { order: [], map: {} };
+    }
+}
+
+function writeExplainStore(store) {
+    try {
+        localStorage.setItem(EXPLAIN_CACHE_KEY, JSON.stringify(store));
+    } catch (e) { /* quota / unavailable — caching is best-effort */ }
+}
+
+// A cached explanation for this repo+file+sha, or null on a miss (or when sha is
+// absent, which disables caching). A hit is promoted to most-recently-used so
+// the cap evicts genuinely cold entries first.
+function readCachedExplanation(repo, filePath, sha) {
+    if (!sha) return null;
+    const key = explainCacheKey(repo, filePath, sha);
+    const store = readExplainStore();
+    if (!Object.prototype.hasOwnProperty.call(store.map, key)) return null;
+    const text = store.map[key];
+    if (typeof text !== 'string' || !text) return null;
+    store.order = store.order.filter(function (k) { return k !== key; });
+    store.order.push(key);
+    writeExplainStore(store);
+    return text;
+}
+
+// Store a successful explanation, evicting oldest entries past the cap. No-op
+// when sha is absent (caching disabled) or the text is empty (only successful
+// explanations are cached).
+function writeCachedExplanation(repo, filePath, sha, text) {
+    if (!sha || typeof text !== 'string' || !text) return;
+    const key = explainCacheKey(repo, filePath, sha);
+    const store = readExplainStore();
+    store.order = store.order.filter(function (k) { return k !== key; });
+    store.map[key] = text;
+    store.order.push(key);
+    while (store.order.length > EXPLAIN_CACHE_CAP) {
+        const evict = store.order.shift();
+        delete store.map[evict];
+    }
+    writeExplainStore(store);
+}
+
 function explainFile(repo, filePath, btn, resultEl) {
+    // Cache hit (repo + file + current manifest SHA): render the stored
+    // explanation instantly with no Worker call and no spinner.
+    const sha = currentSha;
+    const cached = readCachedExplanation(repo, filePath, sha);
+    if (cached) {
+        clear(resultEl);
+        resultEl.hidden = false;
+        const out = document.createElement('div');
+        out.className = 'structureExplainText';
+        out.textContent = cached;
+        resultEl.appendChild(out);
+        return;
+    }
+
     btn.disabled = true;
     const priorLabel = btn.textContent;
     btn.textContent = 'Explaining…';
@@ -288,6 +379,9 @@ function explainFile(repo, filePath, btn, resultEl) {
             btn.textContent = priorLabel;
             btn.disabled = false;
             const reply = res && typeof res.reply === 'string' ? res.reply.trim() : '';
+            // Cache only a successful (non-empty) explanation; empty/error
+            // results are never stored, so a retry re-asks Sonnet.
+            if (reply) writeCachedExplanation(repo, filePath, sha, reply);
             clear(resultEl);
             const out = document.createElement('div');
             out.className = reply ? 'structureExplainText' : 'structureExplainError';

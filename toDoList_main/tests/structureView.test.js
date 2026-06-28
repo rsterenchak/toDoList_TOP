@@ -285,6 +285,100 @@ describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
     });
 });
 
+describe('renderStructureView — Explain cache (per repo + file + SHA)', () => {
+    const CACHE_KEY = 'todoapp_structureExplain';
+
+    beforeEach(() => {
+        state.repos = ['rsterenchak/toDoList_TOP'];
+        setStructureLens('code');
+        try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
+    });
+
+    // Render the Code lens, click the first file's Explain button, settle.
+    async function clickExplain() {
+        renderStructureView();
+        await flush();
+        const btn = document.querySelector('.structureExplainBtn');
+        btn.click();
+        await flush();
+        return btn;
+    }
+
+    it('serves a second explain of the same file+SHA from cache with no Worker call', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'], sha: 'abc123',
+        };
+        await clickExplain();
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(document.querySelector('.structureExplainText').textContent)
+            .toBe('This file does a thing.');
+
+        // Re-render (fresh DOM) and explain the same file again — cache hit.
+        chatWithWorker.mockClear();
+        await clickExplain();
+        expect(chatWithWorker).not.toHaveBeenCalled();
+        expect(document.querySelector('.structureExplainText').textContent)
+            .toBe('This file does a thing.');
+    });
+
+    it('re-explains when the manifest SHA changes (new commit invalidates)', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'], sha: 'abc123',
+        };
+        await clickExplain();
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+
+        // A new commit → new SHA → cache miss → fresh Worker call.
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'], sha: 'def456',
+        };
+        state.explainReply = 'Updated summary.';
+        chatWithWorker.mockClear();
+        await clickExplain();
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(document.querySelector('.structureExplainText').textContent)
+            .toBe('Updated summary.');
+    });
+
+    it('never caches when the manifest omits a SHA — always calls the Worker', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'],
+        };
+        await clickExplain();
+        chatWithWorker.mockClear();
+        await clickExplain();
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(localStorage.getItem(CACHE_KEY)).toBeNull();
+    });
+
+    it('does not cache a failed explanation', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'], sha: 'abc123',
+        };
+        state.explainError = Object.assign(new Error('boom'), { reason: 'boom' });
+        await clickExplain();
+        expect(localStorage.getItem(CACHE_KEY)).toBeNull();
+
+        // The retry after a failure re-asks Sonnet (nothing was cached).
+        state.explainError = null;
+        chatWithWorker.mockClear();
+        await clickExplain();
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+    });
+
+    it('persists the cache under the todoapp_-prefixed key', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true, files: ['README.md'], sha: 'abc123',
+        };
+        await clickExplain();
+        const raw = localStorage.getItem(CACHE_KEY);
+        expect(raw).toBeTruthy();
+        const store = JSON.parse(raw);
+        expect(store.map['rsterenchak/toDoList_TOP:README.md:abc123'])
+            .toBe('This file does a thing.');
+    });
+});
+
 describe('renderStructureView — UI lens', () => {
     beforeEach(() => {
         setStructureLens('ui');
