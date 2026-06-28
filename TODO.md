@@ -512,7 +512,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e23b88ae-60e7-4f9f-9d02-7c579bb02dd7 -->
 
-- [ ] **[MEDIUM]** Add find-in-code and published UI maps via a build-time id index
+- [x] **[MEDIUM]** Add find-in-code and published UI maps via a build-time id index — Completed: 2026-06-27
   - Type: feature
   - Description: Close out the Structure tab by emitting a build-time index that maps every UI handle to the source file (and line) that defines it, then consume it for two things: find-in-code on a region, and published UI maps for repos that aren't the running app. Extend `gen-src-manifest.js` to scan the source for id / `data-region` / landmark definitions and add a `regions` array (selector, label, owner file, line) plus a `hasDom` flag to the existing `src-manifest.json`, additively — so the Code lens and the chat attach picker keep working unchanged. In the UI lens, a "Find in code" action on a region lists its owner file(s) from the index and jumps to the Code lens with that file surfaced (Explain available there), and a quiet "View on GitHub" deep-links to the file at its line. For a non-running repo, the UI lens now renders the published region map instead of entry 2's placeholder; a repo whose manifest reports no DOM shows a "no UI surface" state, distinct from an older manifest that predates this change ("map not built yet").
   - Behavior:
