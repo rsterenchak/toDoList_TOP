@@ -3019,22 +3019,28 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-muted);
 }
 
-.structureRepoPicker {
-  font-family: inherit;
-  /* ≥16px keeps iOS Safari from auto-zooming the select on focus. */
-  font-size: 16px;
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-  border: 0.5px solid rgba(108, 93, 245, 0.35);
-  border-radius: 8px;
-  padding: 8px 12px;
+/* Read-only repo label — the resolved repo string with the selected project's
+   name as a quiet hint. A label, not a control, so it carries no focus/hover. */
+.structureRepoLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
   max-width: 100%;
-  cursor: pointer;
 }
 
-.structureRepoPicker:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
+.structureRepoName {
+  font-family: 'SpaceMono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.structureRepoProjectHint {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 .structureTree {

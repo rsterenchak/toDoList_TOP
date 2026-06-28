@@ -6,11 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-27',
-        added: [
-            "The Structure view can now jump from any UI region to the source file that defines it, and shows a published region map for repos other than the running app.",
-        ],
         changed: [
             "The mobile bottom navigation tab labeled \"Projects\" now reads \"Tasks View.\"",
+            "The Structure view now maps the selected project's linked repo automatically instead of offering a repository picker.",
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",

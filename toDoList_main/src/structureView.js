@@ -1,16 +1,15 @@
 import { chatWithWorker } from './inject.js';
 import {
     loadManifest,
-    getAttachRepos,
-    getActiveChatRepo,
     getRunningAppRepo,
     setChatWorkspaceRepo,
     insertReference,
 } from './claudeSheet.js';
+import { resolveProjectRepo } from './seedTasksModal.js';
 import { getStructureLens, setStructureLens } from './prefs.js';
 
-// The STRUCTURE view: a cross-repo map of a project's source and UI. A Code/UI
-// toggle swaps between two lenses of the selected repo:
+// The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
+// toggle swaps between two lenses of that project's linked repo:
 //   • Code lens — the repo's published `src-manifest.json` (the same artifact
 //     the chat's attach-file picker fetches) rendered as a collapsible
 //     folder/file tree, with a per-file "Explain with Sonnet" action.
@@ -20,16 +19,20 @@ import { getStructureLens, setStructureLens } from './prefs.js';
 //     composer, and a "Copy selector" action. Non-running repos show a "no
 //     published UI map yet" notice until build-time maps land in the fast-follow.
 //
-// The repo picker is bound to the chat workspace: it reflects `activeChatRepo`
-// on render and, on select, reframes the conversation on that repo (the same
-// switch the chat's workspace pill performed) so a referenced selector always
-// lands in a chat framed on the repo you mapped it from.
+// The repo is derived from the currently-selected project (the same inject
+// target Conceive's tools resolve via `resolveProjectRepo`), not from a picker:
+// the header shows a read-only repo label, and switching the selected project
+// re-renders the tab against the new project's repo. "Reference in chat" is the
+// one place that reframes the chat workspace — it sets the conversation to the
+// mapped repo at the moment of reference so the referenced selector lands in a
+// chat framed on the right repo; project switches never reframe passively.
 //
 // Like the other view modules this module reaches the DOM via getElementById /
 // createElement at call time and only exports renderStructureView — there is no
 // back-edge into main.js. It never touches localStorage directly except via the
-// prefs accessors; the repo allowlist, manifest loader, workspace setter, and
-// running-app repo are all reused from claudeSheet.js so the two never drift.
+// prefs accessors; the manifest loader, workspace setter, and running-app repo
+// are reused from claudeSheet.js, and the project→repo resolution from
+// seedTasksModal.js, so the surfaces never drift.
 
 // The repo currently shown. Held at module scope so a re-render (view switch,
 // manifest refresh) preserves the user's selection. Null until first resolved
@@ -614,6 +617,11 @@ function buildRegionActions(node) {
     refBtn.textContent = 'Reference in chat';
     refBtn.addEventListener('click', function (event) {
         event.stopPropagation();
+        // Reference is the one explicit point that reframes the chat workspace
+        // onto the mapped repo (no-op when it already matches), so the referenced
+        // selector lands in a conversation framed on the right repo. Project
+        // switches never reframe passively.
+        setChatWorkspaceRepo(selectedRepo);
         insertReference(node.label, node.selector);
     });
     actionRow.appendChild(refBtn);
@@ -893,14 +901,22 @@ function renderLens(repo, treeEl) {
 
 // ── SHELL ───────────────────────────────────────────────────────────────────
 
-// Resolve which repo the picker shows. The picker is bound to the chat
-// workspace, so it reflects `activeChatRepo` whenever that's an allowed repo;
-// it falls back to the last selection, then the first allowed repo.
-function resolveSelectedRepo(repos) {
-    const active = getActiveChatRepo();
-    if (active && repos.indexOf(active) !== -1) return active;
-    if (selectedRepo && repos.indexOf(selectedRepo) !== -1) return selectedRepo;
-    return repos[0] || null;
+// Resolve the currently-selected project's name from the sidebar — the same
+// source of truth the Projects and Conceive views use. Returns '' when nothing
+// is selected (or the row has no input), which drives the empty state.
+function getSelectedProjectName() {
+    const selected = document.querySelector('.selectedProject');
+    if (!selected) return '';
+    const input = selected.querySelector('#projInput');
+    return input ? (input.value || '').trim() : '';
+}
+
+// A gentle full-view notice (no project selected / project not linked to a repo).
+function appendEmptyState(view, text) {
+    const empty = document.createElement('div');
+    empty.className = 'structureEmptyState';
+    empty.textContent = text;
+    view.appendChild(empty);
 }
 
 // Build the Code/UI segmented control. Switching persists the choice and
@@ -935,50 +951,72 @@ function buildLensToggle(onChange) {
 }
 
 // Render the STRUCTURE view. Safe to call before component() has built the shell
-// (a missing #structureView short-circuits). Builds the repo picker, the Code/UI
-// toggle, and the tree container synchronously; the active lens fills the tree.
+// (a missing #structureView short-circuits). Resolves the repo from the selected
+// project (no picker); with no project selected or a project not linked to a
+// repo it paints a guiding empty state. Otherwise it builds the read-only repo
+// label, the Code/UI toggle, and the tree container; the active lens fills it.
 export function renderStructureView() {
     const view = document.getElementById('structureView');
     if (!view) return;
     clear(view);
 
-    const repos = getAttachRepos();
-    if (!repos.length) {
-        const empty = document.createElement('div');
-        empty.className = 'structureEmptyState';
-        empty.textContent = 'No repositories available.';
-        view.appendChild(empty);
+    const projectName = getSelectedProjectName();
+    if (!projectName) {
+        // No project selected — nothing to map. Drop any stale repo state so a
+        // late "Find in code" can't act against a tree that's no longer shown.
+        selectedRepo = null;
+        currentTreeEl = null;
+        appendEmptyState(view, 'Select a project to see its structure.');
         return;
     }
-    lens = getStructureLens();
-    selectedRepo = resolveSelectedRepo(repos);
 
-    // Header: a labeled repo picker plus the Code/UI lens toggle beside it.
+    const repo = resolveProjectRepo(projectName);
+    if (!repo) {
+        // Selected project carries no linked inject target — point the user at
+        // where to link one, the same place the ⚡ inject routing is configured.
+        selectedRepo = null;
+        currentTreeEl = null;
+        appendEmptyState(
+            view,
+            projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.'
+        );
+        return;
+    }
+
+    lens = getStructureLens();
+    // Reset the open-folder set when the resolved repo changes (project switch),
+    // since folder paths are repo-scoped and shouldn't carry across repos.
+    if (repo !== selectedRepo) openFolders = new Set();
+    selectedRepo = repo;
+
+    // Header: a read-only repo label (the repo string with the project name as a
+    // quiet hint) plus the Code/UI lens toggle beside it — a label, not a control.
     const header = document.createElement('div');
     header.className = 'structureHeader';
 
-    const pickerGroup = document.createElement('div');
-    pickerGroup.className = 'structurePickerGroup';
+    const labelGroup = document.createElement('div');
+    labelGroup.className = 'structurePickerGroup';
 
-    const pickerLabel = document.createElement('label');
-    pickerLabel.className = 'structurePickerLabel';
-    pickerLabel.textContent = 'Repository';
-    pickerLabel.setAttribute('for', 'structureRepoPicker');
-    pickerGroup.appendChild(pickerLabel);
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'structurePickerLabel';
+    eyebrow.textContent = 'Repository';
+    labelGroup.appendChild(eyebrow);
 
-    // The <select> font-size stays ≥16px in CSS to avoid iOS Safari auto-zoom.
-    const picker = document.createElement('select');
-    picker.id = 'structureRepoPicker';
-    picker.className = 'structureRepoPicker';
-    repos.forEach(function (repo) {
-        const opt = document.createElement('option');
-        opt.value = repo;
-        opt.textContent = repo;
-        if (repo === selectedRepo) opt.selected = true;
-        picker.appendChild(opt);
-    });
-    pickerGroup.appendChild(picker);
-    header.appendChild(pickerGroup);
+    const repoLabel = document.createElement('div');
+    repoLabel.className = 'structureRepoLabel';
+
+    const repoName = document.createElement('span');
+    repoName.className = 'structureRepoName';
+    repoName.textContent = repo;
+    repoLabel.appendChild(repoName);
+
+    const projectHint = document.createElement('span');
+    projectHint.className = 'structureRepoProjectHint';
+    projectHint.textContent = projectName;
+    repoLabel.appendChild(projectHint);
+
+    labelGroup.appendChild(repoLabel);
+    header.appendChild(labelGroup);
 
     const tree = document.createElement('div');
     tree.className = 'structureTree';
@@ -995,19 +1033,6 @@ export function renderStructureView() {
     header.appendChild(toggle);
     view.appendChild(header);
     view.appendChild(tree);
-
-    picker.addEventListener('change', function () {
-        if (picker.value === selectedRepo) return;
-        selectedRepo = picker.value;
-        // Open-folder state is path-scoped per repo, so switching repos starts
-        // the new tree collapsed rather than inheriting another repo's open set.
-        openFolders = new Set();
-        // Bind the picker to the chat workspace: selecting a repo here reframes
-        // the conversation on it (same as the chat's workspace switch), so a
-        // referenced selector always lands in a chat framed on that repo.
-        setChatWorkspaceRepo(selectedRepo);
-        renderLens(selectedRepo, tree);
-    });
 
     renderLens(selectedRepo, tree);
 }

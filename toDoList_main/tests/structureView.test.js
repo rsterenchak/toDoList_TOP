@@ -6,20 +6,24 @@ import { vi } from 'vitest';
 //   • UI lens — a live, tappable map of the running app's on-screen regions,
 //     walked from the DOM, with per-region "Reference in chat" / "Copy selector".
 // A Code/UI toggle (persisted via prefs, default UI) swaps between them, and the
-// repo picker is bound to the chat workspace.
+// repo is resolved from the currently-selected project (no picker).
 //
 // These tests drive renderStructureView against a jsdom DOM with its
 // collaborators mocked:
-//   • claudeSheet.js — loadManifest (canned manifest), getAttachRepos (the repo
-//     allowlist), getActiveChatRepo (the default selection), getRunningAppRepo
-//     (which repo maps live), setChatWorkspaceRepo (workspace binding spy), and
+//   • claudeSheet.js — loadManifest (canned manifest), getRunningAppRepo
+//     (which repo maps live), setChatWorkspaceRepo (workspace reframe spy), and
 //     insertReference (reference-in-chat spy).
+//   • seedTasksModal.js — resolveProjectRepo, the project→repo resolver, canned
+//     per project name so a selected project resolves to a repo (or null).
 //   • inject.js — chatWithWorker, captured so we can assert the Explain turn's
 //     attached file + repo + Fast-mode flag and feed back a canned reply.
 const { state } = vi.hoisted(() => ({
     state: {
-        repos: ['rsterenchak/toDoList_TOP', 'rsterenchak/matchingGame-test'],
-        activeRepo: 'rsterenchak/toDoList_TOP',
+        // project name → resolved repo (null = not linked to a repo).
+        projectRepos: {
+            'My Project': 'rsterenchak/toDoList_TOP',
+            'Game': 'rsterenchak/matchingGame-test',
+        },
         runningRepo: 'rsterenchak/toDoList_TOP',
         manifests: {},
         explainReply: 'This file does a thing.',
@@ -32,11 +36,17 @@ vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(function (repo) {
         return Promise.resolve(state.manifests[repo] || { ok: false, files: [] });
     }),
-    getAttachRepos: vi.fn(function () { return state.repos.slice(); }),
-    getActiveChatRepo: vi.fn(function () { return state.activeRepo; }),
     getRunningAppRepo: vi.fn(function () { return state.runningRepo; }),
     setChatWorkspaceRepo: vi.fn(),
     insertReference: vi.fn(),
+}));
+
+vi.mock('../src/seedTasksModal.js', () => ({
+    resolveProjectRepo: vi.fn(function (name) {
+        return Object.prototype.hasOwnProperty.call(state.projectRepos, name)
+            ? state.projectRepos[name]
+            : null;
+    }),
 }));
 
 vi.mock('../src/inject.js', () => ({
@@ -57,14 +67,22 @@ async function flush(n = 4) {
     for (let i = 0; i < n; i++) await tick();
 }
 
-function mountDom() {
-    document.body.innerHTML = '<div id="structureView"></div>';
+// Mount the structure container plus a selected-project sidebar row whose
+// #projInput names the project — the same source the view reads. `name` may be
+// '' to model "nothing selected" (no .selectedProject row at all).
+function mountDom(name = 'My Project', extraHtml = '') {
+    const projectRow = name
+        ? '<div class="selectedProject"><input id="projInput" value="' + name + '"></div>'
+        : '';
+    document.body.innerHTML = '<div id="structureView"></div>' + projectRow + (extraHtml || '');
 }
 
 beforeEach(() => {
     mountDom();
-    state.repos = ['rsterenchak/toDoList_TOP', 'rsterenchak/matchingGame-test'];
-    state.activeRepo = 'rsterenchak/toDoList_TOP';
+    state.projectRepos = {
+        'My Project': 'rsterenchak/toDoList_TOP',
+        'Game': 'rsterenchak/matchingGame-test',
+    };
     state.runningRepo = 'rsterenchak/toDoList_TOP';
     state.manifests = {};
     state.explainReply = 'This file does a thing.';
@@ -76,16 +94,19 @@ beforeEach(() => {
     try { localStorage.removeItem(STRUCTURE_LENS_KEY); } catch (e) { /* ignore */ }
 });
 
-describe('renderStructureView — repo picker', () => {
-    it('populates the picker from getAttachRepos and defaults to the active chat repo', async () => {
-        state.activeRepo = 'rsterenchak/matchingGame-test';
+describe('renderStructureView — project-derived repo', () => {
+    it('resolves the repo from the selected project and shows it as a read-only label', async () => {
+        mountDom('Game');
         renderStructureView();
         await flush();
-        const picker = document.getElementById('structureRepoPicker');
-        expect(picker).toBeTruthy();
-        const values = Array.from(picker.options).map((o) => o.value);
-        expect(values).toEqual(state.repos);
-        expect(picker.value).toBe('rsterenchak/matchingGame-test');
+        // No picker control any more.
+        expect(document.getElementById('structureRepoPicker')).toBeFalsy();
+        const repoName = document.querySelector('.structureRepoName');
+        expect(repoName).toBeTruthy();
+        expect(repoName.textContent).toBe('rsterenchak/matchingGame-test');
+        // The project name rides along as a quiet hint.
+        const hint = document.querySelector('.structureRepoProjectHint');
+        expect(hint.textContent).toBe('Game');
     });
 
     it('short-circuits cleanly when the container is absent', () => {
@@ -93,17 +114,38 @@ describe('renderStructureView — repo picker', () => {
         expect(() => renderStructureView()).not.toThrow();
     });
 
-    it('binds the picker to the chat workspace: selecting a repo reframes the conversation', async () => {
-        // Run under the Code lens so the change handler isn't competing with a
-        // live DOM walk; the workspace binding is lens-independent.
-        setStructureLens('code');
+    it('prompts to select a project when none is selected', async () => {
+        mountDom('');
         renderStructureView();
         await flush();
-        const picker = document.getElementById('structureRepoPicker');
-        picker.value = 'rsterenchak/matchingGame-test';
-        picker.dispatchEvent(new Event('change'));
+        const empty = document.querySelector('.structureEmptyState');
+        expect(empty).toBeTruthy();
+        expect(empty.textContent).toMatch(/select a project/i);
+        // No header / repo label is rendered in the empty state.
+        expect(document.querySelector('.structureRepoName')).toBeFalsy();
+        expect(document.querySelector('.structureLensToggle')).toBeFalsy();
+    });
+
+    it('guides the user to link a repo when the selected project has none', async () => {
+        state.projectRepos['Unlinked'] = null;
+        mountDom('Unlinked');
+        renderStructureView();
         await flush();
-        expect(setChatWorkspaceRepo).toHaveBeenCalledWith('rsterenchak/matchingGame-test');
+        const empty = document.querySelector('.structureEmptyState');
+        expect(empty).toBeTruthy();
+        expect(empty.textContent).toContain('Unlinked');
+        expect(empty.textContent).toMatch(/link one in its inject target/i);
+        expect(document.querySelector('.structureLensToggle')).toBeFalsy();
+    });
+
+    it('does NOT reframe the chat workspace on render or project switch', async () => {
+        mountDom('My Project');
+        renderStructureView();
+        await flush();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        expect(setChatWorkspaceRepo).not.toHaveBeenCalled();
     });
 });
 
@@ -245,16 +287,22 @@ describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
 
 describe('renderStructureView — UI lens', () => {
     beforeEach(() => {
-        state.repos = ['rsterenchak/toDoList_TOP'];
         setStructureLens('ui');
     });
 
     // The UI lens walks `document` — so the view container plus some sample
     // regions must live on the page. mountUiDom appends regions alongside the
-    // structureView container, then we render into the latter.
-    function mountUiDom(extraHtml) {
+    // structureView container plus the selected-project row that resolves the
+    // repo (default 'My Project' → the running app repo), then we render into
+    // the latter.
+    function mountUiDom(extraHtml, projectName) {
+        const name = projectName === undefined ? 'My Project' : projectName;
+        const projectRow = name
+            ? '<div class="selectedProject"><input id="projInput" value="' + name + '"></div>'
+            : '';
         document.body.innerHTML =
             '<div id="structureView"></div>' +
+            projectRow +
             '<header id="appHeader" aria-label="App header"></header>' +
             '<main id="mainPanel" data-region="Tasks">' +
             '  <ul id="taskList">' +
@@ -330,10 +378,9 @@ describe('renderStructureView — UI lens', () => {
     });
 
     it('shows a "no manifest" notice for a non-running repo with no published manifest', async () => {
-        state.repos = ['rsterenchak/matchingGame-test'];
-        state.activeRepo = 'rsterenchak/matchingGame-test';
+        // 'Game' resolves to matchingGame-test, which isn't the running repo.
         state.runningRepo = 'rsterenchak/toDoList_TOP';
-        mountUiDom();
+        mountUiDom(undefined, 'Game');
         renderStructureView();
         await flush();
         const notice = document.querySelector('.structureNoUiMap');
@@ -345,8 +392,9 @@ describe('renderStructureView — UI lens', () => {
 describe('renderStructureView — published UI map + states (UI lens, non-running repo)', () => {
     const OTHER = 'rsterenchak/matchingGame-test';
     beforeEach(() => {
-        state.repos = [OTHER, 'rsterenchak/toDoList_TOP'];
-        state.activeRepo = OTHER;
+        // 'Game' resolves to OTHER (matchingGame-test), the non-running repo, so
+        // the view renders that repo's published map rather than a live walk.
+        mountDom('Game');
         state.runningRepo = 'rsterenchak/toDoList_TOP';
         setStructureLens('ui');
     });
@@ -447,6 +495,7 @@ describe('renderStructureView — Find in code (live UI lens → Code lens)', ()
     function mountUiDom() {
         document.body.innerHTML =
             '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
             '<main id="mainPanel"><ul id="taskList"><li>x</li></ul></main>';
     }
 
