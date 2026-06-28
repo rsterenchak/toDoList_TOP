@@ -76,6 +76,7 @@ export function getActiveView() {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';
         if (v === 'conceive') return 'conceive';
+        if (v === 'structure') return 'structure';
         return 'projects';
     } catch (e) {
         return 'projects';
@@ -86,6 +87,7 @@ export function setActiveView(view) {
     try {
         let stored = 'projects';
         if (view === 'conceive') stored = 'conceive';
+        else if (view === 'structure') stored = 'structure';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
