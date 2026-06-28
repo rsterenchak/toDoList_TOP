@@ -618,3 +618,20 @@
   - File: `toDoList_main/src/structureView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 612a533a-208d-46de-b2ee-48f5c3bf2e3d -->
+
+- [ ] **[MEDIUM]** Persist the Structure tree's open/closed state across reloads
+  - Type: feature
+  - Description: The Structure tab's tree resets to its default expansion on every reload — folders re-collapse, file groups re-open, and any manual expand/collapse in the live map is lost. Persist the open/closed state per repo + lens so the tree comes back the way it was left. State is small (a set of open-node keys), stored client-side.
+  - Behavior:
+    1. When a folder (Code lens), file-group header (UI published map), or nested node (live map) is expanded or collapsed, record the new state keyed by repo + lens.
+    2. On render, restore the persisted open/closed state for that repo + lens; the first time a repo/lens is opened (no stored state), fall back to the current default expansion.
+    3. Only manual user toggles persist. The filter box's temporary auto-expand (from the filter entry) must not be written to the stored state — clearing the filter restores the persisted manual state, unchanged.
+    4. Switching repos or lenses loads that target's own stored state independently.
+  - Implementation notes:
+    - Client-side only in `structureView.js`. Persist in localStorage under a `todoapp_`-prefixed key (the app's convention), e.g. `todoapp_structureTree:<repo>:<lens>`, value = the list of open-node keys. Use a stable key per collapsible node: folder path (Code lens), defining file name (published map), selector (live map — selectors are already the stable identifier the tree uses).
+    - This sits on top of the filter and Explain-cache work in the same file, so it must run after both — don't run it concurrently with them.
+    - Bound the stored state lightly (e.g. cap the number of repos retained) so it can't grow unbounded; the per-tree key list is tiny.
+  - Out of scope: persisting scroll position, the active lens, or the filter query; syncing state across devices.
+  - File: `toDoList_main/src/structureView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: fbfe9490-7bbd-4bfd-8437-af230b5e091e -->
