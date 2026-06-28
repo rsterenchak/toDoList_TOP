@@ -2923,6 +2923,201 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: none;
 }
 
+/* ── STRUCTURE VIEW ──
+   A cross-repo source map. A repo picker selects an allowlisted repo and its
+   published src-manifest.json renders as a collapsible folder/file tree; each
+   file row carries an "Explain with Sonnet" action. renderStructureView() fills
+   #structureView at runtime. Hidden by default; #mainBar's data-view attribute
+   toggles visibility, the same hook the project and Conceive views use. */
+#structureView {
+  grid-row: 1 / -1;
+  grid-column: 1;
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 24px 96px;
+  background: var(--bg-base);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+#mainBar[data-view="structure"] #structureView {
+  display: flex;
+}
+
+#mainBar[data-view="structure"] #mainList,
+#mainBar[data-view="structure"] #mobileProjHeader,
+#mainBar[data-view="structure"] #taskFilterBar,
+#mainBar[data-view="structure"] #bulkDescActions {
+  display: none;
+}
+
+.structureHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.structurePickerLabel {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.structureRepoPicker {
+  font-family: inherit;
+  /* ≥16px keeps iOS Safari from auto-zooming the select on focus. */
+  font-size: 16px;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.structureRepoPicker:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.structureTree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.structureTreeLoading,
+.structureNoManifest,
+.structureEmptyState {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 12px 4px;
+}
+
+.structureFolderRow,
+.structureFileRow {
+  /* --structure-depth drives the left indent: 14px per nesting level. */
+  padding-left: calc(4px + var(--structure-depth, 0) * 14px);
+}
+
+.structureFolderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-right: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.structureFolderRow:hover {
+  background: var(--bg-hover);
+}
+
+.structureFolderCaret {
+  display: inline-block;
+  font-size: 11px;
+  color: #9D93EE;
+  transition: transform 0.15s ease;
+}
+
+.structureFolderRow.expanded .structureFolderCaret {
+  transform: rotate(90deg);
+}
+
+.structureFolderName {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureFileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-right: 8px;
+}
+
+.structureFileIcon {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.structureFileName {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureExplainBtn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(108, 93, 245, 0.12);
+  color: #9D93EE;
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.structureExplainBtn:hover:not(:disabled) {
+  background: rgba(108, 93, 245, 0.22);
+  border-color: #6C5DF5;
+}
+
+.structureExplainBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.structureExplainResult {
+  padding: 8px 8px 10px;
+  padding-left: calc(20px + var(--structure-depth, 0) * 14px);
+}
+
+.structureExplainLoading {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.structureExplainText {
+  font-family: 'SpaceMono', monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.structureExplainError {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--danger, #e2748a);
+}
+
 .conceiveEmptyState {
   margin: auto;
   max-width: 340px;

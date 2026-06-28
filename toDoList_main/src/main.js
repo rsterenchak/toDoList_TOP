@@ -75,6 +75,7 @@ import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { renderConceiveView } from './conceiveView.js';
+import { renderStructureView } from './structureView.js';
 import { attachDragDropImport } from './exportImport.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -990,13 +991,26 @@ function component() {
         '<path d="M12 3 C8.5 3 6 5.5 6 9 C6 11.4 7.4 13 8.6 14.2 C9.3 14.9 9.5 15.4 9.5 16 L14.5 16 C14.5 15.4 14.7 14.9 15.4 14.2 C16.6 13 18 11.4 18 9 C18 5.5 15.5 3 12 3 Z"/>' +
         '</svg>';
 
+    // Structure — a layered-stack / sitemap glyph signalling the "map of the
+    // source" intent, built from path primitives like the others (no icon
+    // library).
+    const ICON_STRUCTURE =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 3 L20 7 L12 11 L4 7 Z"/>' +
+        '<path d="M4 12 L12 16 L20 12"/>' +
+        '<path d="M4 16.5 L12 20.5 L20 16.5"/>' +
+        '</svg>';
+
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Tasks View');
     const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
+    const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
     mobileTabProjects.id = 'mobileTabProjects';
     mobileTabConceive.id = 'mobileTabConceive';
+    mobileTabStructure.id = 'mobileTabStructure';
 
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabConceive);
+    mobileTabBar.appendChild(mobileTabStructure);
     base.appendChild(mobileTabBar);
 
     // Mirror refreshSheetVisibility for the tab bar — hide it whenever
@@ -1840,14 +1854,26 @@ function component() {
     viewPillConceive.setAttribute('aria-pressed', 'false');
     viewPillConceive.textContent = 'CONCEIVE';
 
+    const viewPillStructure = document.createElement('button');
+    viewPillStructure.id = 'viewPillStructure';
+    viewPillStructure.type = 'button';
+    viewPillStructure.className = 'viewPill';
+    viewPillStructure.setAttribute('role', 'tab');
+    viewPillStructure.setAttribute('aria-pressed', 'false');
+    viewPillStructure.textContent = 'STRUCTURE';
+
     viewSwitcher.appendChild(viewPillProjects);
     viewSwitcher.appendChild(viewPillConceive);
+    viewSwitcher.appendChild(viewPillStructure);
 
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
     });
     viewPillConceive.addEventListener('click', function() {
         applyActiveView('conceive');
+    });
+    viewPillStructure.addEventListener('click', function() {
+        applyActiveView('structure');
     });
 
     // ArrowDown drop-in from the view pills into the visible main pane.
@@ -1884,6 +1910,13 @@ function component() {
     const conceiveView = document.createElement('div');
     conceiveView.id = 'conceiveView';
 
+    // Empty container the structureView module owns at runtime —
+    // renderStructureView() fills it with the repo picker and source tree.
+    // Toggled via #mainBar's data-view attribute like the other surfaces, so
+    // switching views never re-renders the others.
+    const structureView = document.createElement('div');
+    structureView.id = 'structureView';
+
     // The view tabs ride in the desktop sub-band beneath the top header, not
     // in #navBar. They are desktop-only (display:none on mobile, where
     // #mobileTabBar owns navigation), so a single permanent home in the
@@ -1892,6 +1925,7 @@ function component() {
     const taskFilterBar = buildTaskFilterBar();
 
     main2.appendChild(conceiveView);
+    main2.appendChild(structureView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
     // mobile project header, above the compose row inside #mainList. Built once
@@ -4816,6 +4850,7 @@ function firstFocusableInActiveMainView() {
 function applyActiveView(view) {
     let safe = 'projects';
     if (view === 'conceive') safe = 'conceive';
+    else if (view === 'structure') safe = 'structure';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -4836,12 +4871,18 @@ function applyActiveView(view) {
         pillConceive.classList.toggle('active', safe === 'conceive');
         pillConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
     }
+    const pillStructure = document.getElementById('viewPillStructure');
+    if (pillStructure) {
+        pillStructure.classList.toggle('active', safe === 'structure');
+        pillStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
+    }
 
     // Mirror the active state on the mobile bottom tab bar so the same
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
     const tabConceive = document.getElementById('mobileTabConceive');
+    const tabStructure = document.getElementById('mobileTabStructure');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
@@ -4850,12 +4891,20 @@ function applyActiveView(view) {
         tabConceive.classList.toggle('active', safe === 'conceive');
         tabConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
     }
+    if (tabStructure) {
+        tabStructure.classList.toggle('active', safe === 'structure');
+        tabStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
+    }
 
     if (safe === 'conceive') {
         // The sidebar selection persists across the switch but is hidden
         // while CONCEIVE owns the main panel, so the lingering
         // .selectedProject has no visual effect.
         renderConceiveView();
+    } else if (safe === 'structure') {
+        // The Structure view is project-independent — it maps a repo's source,
+        // not the selected project — so it renders fresh on each switch.
+        renderStructureView();
     }
 
 }

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-27',
+        added: [
+            "A new Structure view maps a repo's source as a browsable file tree, with an Explain with Sonnet action that summarizes any file.",
+        ],
         changed: [
-            "The task editor's action buttons now lead with a full-width Inject to TODO.md primary button above an even Clear and Copy entry pair.",
             "The mobile bottom navigation tab labeled \"Projects\" now reads \"Tasks View.\"",
         ],
         fixed: [

@@ -1030,7 +1030,7 @@ function fileBasename(path) {
 
 // The GitHub Pages manifest URL for a repo, by convention:
 // 'owner/name' -> 'https://owner.github.io/name/src-manifest.json'.
-function manifestUrlForRepo(repo) {
+export function manifestUrlForRepo(repo) {
     const parts = String(repo || '').split('/');
     const owner = parts[0] || '';
     const name = parts[1] || '';
@@ -1043,7 +1043,7 @@ function manifestUrlForRepo(repo) {
 // fetched and parsed (so the picker shows the browse list); any failure (404,
 // network, parse) yields { ok: false, files: [] } so the picker degrades to the
 // free-text path input rather than throwing.
-async function loadManifest(repo) {
+export async function loadManifest(repo) {
     if (srcManifestCache[repo]) return srcManifestCache[repo];
     let result;
     try {
@@ -1425,6 +1425,19 @@ function loadWorkspaceRepos() {
         setActiveChatRepo(attachRepos[0]);
     }
     renderWorkspacePill();
+}
+
+// Read-only projections of the workspace repo list and the active workspace
+// repo, exported for the Structure view's repo picker so it stays a clean
+// mirror of the chat's allowlist (`attachRepos`) and defaults to the repo the
+// chat is currently framed around. Returns copies/primitives so callers can't
+// mutate the module's internal state.
+export function getAttachRepos() {
+    return attachRepos.slice();
+}
+
+export function getActiveChatRepo() {
+    return activeChatRepo;
 }
 
 // Reload the inject-targets cache from Supabase, then re-project the workspace
