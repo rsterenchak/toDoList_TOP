@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         added: [
-            "A filter box on the Structure tab narrows the tree live as you type — by file in the Code lens, by handle in the UI lens — with matches highlighted.",
             "Structure tab file explanations are now cached per commit, so re-opening an unchanged file shows its summary instantly without another Sonnet call.",
             "The Structure tab's tree now remembers which folders and regions you left open, restoring them after a reload.",
             "The Structure tab now shows a navigable Types outline — classes and their members — for C# and .NET repositories, in place of the UI lens.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
+            "The Structure tab's Types outline now activates for C# and .NET repositories that previously stayed stuck on an empty UI view.",
         ],
     },
 ];
