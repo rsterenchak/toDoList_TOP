@@ -583,7 +583,7 @@
   - Completed: 2026-06-27
   <!-- id: 8a261855-3303-4931-9029-9084c9f2306a -->
 
-- [ ] **[MEDIUM]** Add a filter box to the Structure tab tree (both lenses)
+- [x] **[MEDIUM]** Add a filter box to the Structure tab tree (both lenses) — Completed: 2026-06-28
   - Type: feature
   - Description: The Structure tab's tree has no search — fine for matchingGame's 9 files, but toDoList's Code lens is 30+ and the UI lens can be long too, so finding a file or handle means scrolling. Add a filter input at the top of the tree (above the tree container, under the repo header / lens toggle) that narrows the visible items live as you type, styled like the chat attach-file picker's search. It filters whatever the active lens shows: in the Code lens, by file name/path; in the UI lens, by a region's label, selector, or defining file (so "card" matches the handle "Card" / `.card` in Card.jsx). Substring, case-insensitive — a navigation aid, not fuzzy search.
   - Behavior:
