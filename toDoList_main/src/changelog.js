@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-27',
         added: [
-            "The Structure view's new UI lens maps the running app's on-screen regions, so you can hand any region's selector to the Claude chat with one tap.",
+            "The Structure view can now jump from any UI region to the source file that defines it, and shows a published region map for repos other than the running app.",
         ],
         changed: [
             "The mobile bottom navigation tab labeled \"Projects\" now reads \"Tasks View.\"",

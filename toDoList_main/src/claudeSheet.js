@@ -1066,10 +1066,14 @@ export function manifestUrlForRepo(repo) {
 
 // Fetch a repo's `src-manifest.json` once and cache the result per repo.
 // Tolerates either a bare JSON array of paths or an object with a `files`
-// array. Returns { ok, files }: `ok` is true only when a manifest was actually
-// fetched and parsed (so the picker shows the browse list); any failure (404,
-// network, parse) yields { ok: false, files: [] } so the picker degrades to the
-// free-text path input rather than throwing.
+// array. Returns { ok, files, regions, hasDom, srcRoot }: `ok` is true only when
+// a manifest was actually fetched and parsed (so the picker shows the browse
+// list); any failure (404, network, parse) yields { ok: false, files: [] } so
+// the picker degrades to the free-text path input rather than throwing. The
+// `regions` / `hasDom` / `srcRoot` keys are additive and only present when the
+// published manifest carries the build-time UI index (Structure tab UI lens);
+// `regions` is left `undefined` for an older manifest that predates it, which
+// the consumer reads as "UI map not built yet".
 export async function loadManifest(repo) {
     if (srcManifestCache[repo]) return srcManifestCache[repo];
     let result;
@@ -1079,12 +1083,21 @@ export async function loadManifest(repo) {
             result = { ok: false, files: [] };
         } else {
             const data = await res.json();
+            const isObj = data && !Array.isArray(data);
             const files = Array.isArray(data)
                 ? data
-                : (data && Array.isArray(data.files) ? data.files : []);
+                : (isObj && Array.isArray(data.files) ? data.files : []);
+            const hasRegionsKey = !!(isObj && Object.prototype.hasOwnProperty.call(data, 'regions'));
             result = {
                 ok: true,
                 files: files.filter(function(p) { return typeof p === 'string' && p; }),
+                regions: hasRegionsKey
+                    ? (Array.isArray(data.regions)
+                        ? data.regions.filter(function (r) { return r && typeof r.selector === 'string'; })
+                        : [])
+                    : undefined,
+                hasDom: isObj && typeof data.hasDom === 'boolean' ? data.hasDom : undefined,
+                srcRoot: isObj && typeof data.srcRoot === 'string' ? data.srcRoot : undefined,
             };
         }
     } catch (e) {

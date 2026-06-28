@@ -3320,6 +3320,103 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-muted);
 }
 
+/* Find-in-code + UI-index affordances (entry 3): the "Find in code" button, its
+   inline owner-file results, the quiet GitHub deep link, and the published-map
+   banner. They reuse the entry-1/2 structure vocabulary and Void tokens. */
+.structureFindBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #cbb079;
+  background: rgba(203, 176, 121, 0.10);
+  border: 0.5px solid rgba(203, 176, 121, 0.40);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.structureFindBtn:hover:not(:disabled) {
+  background: rgba(203, 176, 121, 0.20);
+  border-color: #cbb079;
+}
+
+.structureFindBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.structureFindResult {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.structureFindLoading,
+.structureFindNone {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.structureOwnerFileRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.structureOwnerFileBtn {
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  color: #9D93EE;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.structureOwnerFileBtn:hover {
+  text-decoration: underline;
+}
+
+.structureGithubLink {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.structureGithubLink:hover {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+
+.structurePublishedBanner {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 6px 8px 10px;
+}
+
+.structureFindBtn:focus-visible,
+.structureOwnerFileBtn:focus-visible,
+.structureGithubLink:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+/* Brief highlight when "Find in code" reveals a file row in the Code lens. */
+.structureFileWrap--flash {
+  background: rgba(108, 93, 245, 0.16);
+  border-radius: 6px;
+  transition: background 0.4s ease;
+}
+
 .conceiveEmptyState {
   margin: auto;
   max-width: 340px;
