@@ -492,7 +492,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cb75fb99-1ace-46a7-9e08-a79c60985fc0 -->
 
-- [ ] **[MEDIUM]** Add the UI lens and Reference-in-chat to the Structure tab
+- [x] **[MEDIUM]** Add the UI lens and Reference-in-chat to the Structure tab — Completed: 2026-06-27
   - Type: feature
   - Description: Build on the Structure tab's Code lens by adding a Code/UI toggle and the UI lens — a live, tappable map of the running app's on-screen regions, so you can name a piece of UI and hand its selector straight to chat without opening the code. The UI lens walks the live DOM of the running app (the dashboard's own repo), keeps elements that carry an id, a `data-region`, or a landmark role, nests them by containment, and dims regions that aren't currently on screen; any other selected repo shows a "no published map yet" state under the UI lens until the build-time maps land in the fast-follow. Tapping a region exposes its selector plus a "Reference in chat" action that drops a backticked selector and a plain-English label into the Claude composer (opening the sheet on mobile) without clobbering what's typed, and the Structure repo picker is bound to the chat workspace so the project you're mapping is the one the conversation is framed on. Default the toggle to UI, since reference-in-chat is the reason to open the tab.
   - Behavior:
