@@ -3322,6 +3322,13 @@ button.claudeAttachChipLabel { cursor: pointer; }
   flex: 0 1 auto;
 }
 
+/* Types lens: a type's `kind name` (e.g. `class BinarySearchTree`) or a member's
+   signature (e.g. `Insert(int value)`) reads as code, so render the label mono. */
+.structureTypeLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+
 .structureRegionSelector {
   margin-left: auto;
   flex: 0 1 auto;
