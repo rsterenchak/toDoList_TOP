@@ -549,3 +549,19 @@
   - Out of scope: no change to the `gen-src-manifest.js` build step or the published-map logic from entry 3; the later nice-to-haves (in-app raw source reader, cross-reload open-state persistence, arrow-key tree traversal) remain later.
   - File: `toDoList_main/src/structureView.js`,
   <!-- id: 56fc12b6-628f-476a-9b29-6a320ba32060 -->
+
+- [ ] **[MEDIUM]** Add Reference in chat and Copy selector to published UI-map rows
+  - Type: bug
+  - Description: On the Structure tab's UI lens, the published-map rows (shown for any repo that isn't the running app) render only "Find in code" and a "View on GitHub" link — they're missing "Reference in chat" and "Copy selector" that the live map's rows have. Confirmed in `structureView.js`: the live row renderer `buildRegionRow` wires all three (Reference via the imported `insertReference`, Copy via the standalone clipboard helper, plus Find in code), while the later published row renderer `buildPublishedRegionRow` only got Find-in-code and the GitHub link. That's why the live map in the PWA shows all three but a linked repo's published map doesn't. Reference-in-chat is the tab's primary action and is just as valid for a published handle (e.g. matchingGame's `.card`) as a live one, so published rows should offer the same three.
+  - Behavior:
+    1. `buildPublishedRegionRow` renders the same action set as `buildRegionRow`: Reference in chat (primary), Copy selector, and Find in code (Find-in-code and the View-on-GitHub link stay).
+    2. Reference in chat calls `insertReference(region.label, region.selector)`, identical to the live row. Under the project-tied repo model the selected project's repo is already the published repo being viewed, so the inserted selector lands in a chat framed on the right repo — no special-casing.
+    3. Copy selector copies `region.selector` via the same standalone clipboard helper the live row uses, reusing the selector already shown on the row.
+  - Implementation notes:
+    - Reuse, don't reimplement: `insertReference` is already imported and the clipboard helper already exists, so `buildPublishedRegionRow` just needs the two buttons with the same labels, styling, and action-row layout as `buildRegionRow`.
+    - Better still, extract the shared Reference + Copy action row into one helper both renderers call, so the two paths can't drift again. Keep Find-in-code per-renderer (the live row resolves a selector to its owner; the published row already knows the owner file).
+    - Constraint: vanilla JS, plain CSS, no new dependencies. Work in `structureView.js`; touch `style.css` only if the published row needs the same action-row flex treatment as the live row.
+  - Out of scope: the live map (`buildRegionRow`) is unchanged; no change to the manifest/build step or the region data the consumer reads.
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 714cee5d-41e2-4ae8-8297-8babc0983074 -->
