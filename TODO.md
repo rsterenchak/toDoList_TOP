@@ -566,7 +566,7 @@
   - Completed: 2026-06-27
   <!-- id: 714cee5d-41e2-4ae8-8297-8babc0983074 -->
 
-- [ ] **[MEDIUM]** Group the published UI map by defining file with collapsible headers
+- [x] **[MEDIUM]** Group the published UI map by defining file with collapsible headers
   - Type: feature
   - Description: On the Structure tab's UI lens, the published map (any repo that isn't the running app) is a flat alphabetical list, while the live map nests by DOM containment — so a connected app like matchingGame doesn't "folder up" the way the PWA does. The published map can't reconstruct real DOM hierarchy (it's a static build-time scan of handle definitions with no runtime containment), but every region already carries its defining file. Group the published rows under collapsible file headers (by `region.file`) so the map has the same foldable structure as the live map — organized by where each handle is defined rather than by DOM nesting — and reads like the Code lens's file tree. The live map is unchanged.
   - Behavior:
@@ -580,5 +580,5 @@
     - Constraint: vanilla JS, plain CSS, no new dependencies; reuse the Void tokens and the Code-lens folder-row styling for the file headers.
   - Out of scope: true DOM-hierarchy nesting for the published map (would need static render analysis or a heavy, page-incomplete build-time headless render); no change to the build step, the manifest, or the live map.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-27
   <!-- id: 8a261855-3303-4931-9029-9084c9f2306a -->
