@@ -531,3 +531,21 @@
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 55994ede-e7da-42a9-a3b9-a3079af5b7fa -->
+
+- [ ] **[MEDIUM]** Tie the Structure tab to the selected project instead of a repo picker
+  - Type: feature
+  - Description: Replace the Structure tab's repo picker with repo resolution from the currently selected project, matching how Conceive grounds its tools. Resolve the selected project's linked repo via `resolveProjectRepo` (the same inject-target path Conceive's Generate tasks / Suggest plan use) and render that repo's Code and UI lenses, removing the dropdown entirely. Because the picker previously guaranteed a repo, add the states that selection can now produce — no project selected, and a selected project with no linked repo — and keep a small read-only repo label where the dropdown was so it stays clear which repo resolved (the UI lens behaves differently for the running app vs other repos).
+  - Behavior:
+    1. Remove the repo picker/dropdown from the Structure header. In its place, show the resolved repo as a read-only label (the repo string, with the selected project's name as a quiet hint) next to the existing Code/UI toggle — a label, not a control.
+    2. Resolve the repo from the selected project via `resolveProjectRepo(selectedProject)`, reading the selected project the same way Conceive does (the `.selectedProject` sidebar row / `#projInput`). The resolved repo drives both lenses exactly as the picker's selection did.
+    3. Re-render on selection change: switching the selected project while the Structure view is active re-renders the tab against the new project's repo, mirroring Conceive's re-render-on-selection hook.
+    4. New states: with no project selected, show "Select a project to see its structure"; with a selected project whose `resolveProjectRepo` returns null (no linked target), show "<project> isn't linked to a repo — link one in its inject target to map its structure", pointing to the existing inject-target UI. The Code lens's "no manifest published yet" state and entry 3's "no UI surface" / "map not built yet" states are unchanged and still apply once a repo resolves.
+    5. Reference-in-chat alignment: Reference in chat keeps aligning the chat workspace to the mapped repo, now sourced from the selected project's repo rather than a picker selection — set the workspace to that repo (reusing the workspace setter and chat-clear behavior wired in entry 2) at the moment of reference, so a referenced selector lands in a conversation framed on the right repo. Do not reframe the workspace passively on project switches — only on the explicit Reference action.
+  - Implementation notes:
+    - Import `resolveProjectRepo` from `seedTasksModal.js` (the Conceive tools' shared helper) rather than re-implementing target resolution. Resolved repos are already allowlist-validated at save time, so no extra validation is needed.
+    - This is a removal plus a derived value: delete the picker UI and any repo-selection state it held; the Code/UI toggle and its persisted pref are untouched. If a per-tab repo selection was persisted, drop it — the repo is now derived, not chosen.
+    - The re-render hook: if a central project-selection handler already re-renders whatever view is active, no change is needed; if it re-renders per view (as it likely does for Conceive), add a Structure branch there. That's the only reason `main.js` is in scope — the tab, container, and nav already exist from entry 1.
+    - Constraints: vanilla JS, plain CSS, no new dependencies; reuse the Void tokens and the existing empty-state styling. `claudeSheet.js` needs no change — the workspace setter is already reachable from entry 2.
+  - Out of scope: no change to the `gen-src-manifest.js` build step or the published-map logic from entry 3; the later nice-to-haves (in-app raw source reader, cross-reload open-state persistence, arrow-key tree traversal) remain later.
+  - File: `toDoList_main/src/structureView.js`,
+  <!-- id: 56fc12b6-628f-476a-9b29-6a320ba32060 -->
