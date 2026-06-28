@@ -673,7 +673,7 @@
   - Completed:
   <!-- id: 97acf6b5-5f8d-4caa-a7ec-3f9822db69eb -->
 
-- [ ] **[MEDIUM]** Make "Find in code" search the type index in the Structure Types lens
+- [x] **[MEDIUM]** Make "Find in code" search the type index in the Structure Types lens — Completed: 2026-06-28
   - Type: feature
   - Description: In the Structure tab's Types lens, every row's "Find in code" reports "Not found in the source index" because `findInCode` (toDoList_main/src/structureView.js ~L292) searches the manifest's `regions` by CSS selector — and a C# manifest has `regions: []`. Repoint Find-in-code on type/member rows at the `types` data instead, so it lists where the queried name is defined (file + line), across the whole repo (a name defined in several classes lists all of them — which the single-line View-on-GitHub link can't). Separately, the reused row labels its copy button "Copy selector" even on a type row where it copies a type/member name — relabel it "Copy name" in the Types lens.
   - Behavior:
