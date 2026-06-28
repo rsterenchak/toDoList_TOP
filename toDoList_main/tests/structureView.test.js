@@ -514,6 +514,83 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
             Object.defineProperty(navigator, 'clipboard', { value: priorClipboard, configurable: true });
         }
     });
+
+    it('groups published rows under a collapsible file header per defining file, files alphabetical', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js', 'hud.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+                { selector: '[data-region="HUD"]', label: 'HUD', file: 'hud.js', line: 40, files: [{ file: 'hud.js', line: 40 }] },
+                { selector: '.card', label: 'Card', file: 'app.js', line: 5, files: [{ file: 'app.js', line: 5 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        // One header per distinct file, ordered alphabetically.
+        const headers = Array.from(document.querySelectorAll('.structureFolderRow'))
+            .map((n) => n.querySelector('.structureFolderName').textContent);
+        expect(headers).toEqual(['app.js', 'hud.js']);
+
+        // Headers default to expanded so all handles are visible on open.
+        document.querySelectorAll('.structureFolderRow').forEach((h) => {
+            expect(h.getAttribute('aria-expanded')).toBe('true');
+        });
+        expect(Array.from(document.querySelectorAll('.structureRegionLabel')).map((n) => n.textContent))
+            .toEqual(expect.arrayContaining(['Board', 'Card', 'HUD']));
+    });
+
+    it('orders rows within a file group by line, and shortens the per-row note to just the line', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+                { selector: '.card', label: 'Card', file: 'app.js', line: 5, files: [{ file: 'app.js', line: 5 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const group = document.querySelector('.structureFolderRow').parentNode;
+        const labels = Array.from(group.querySelectorAll('.structureRegionLabel')).map((n) => n.textContent);
+        expect(labels).toEqual(['Card', 'Board']); // line 5 before line 12
+
+        const row = group.querySelector('.structureRegionRow');
+        row.click();
+        const note = row.parentNode.querySelector('.structureRegionNote');
+        expect(note.textContent).toBe('Line 5.');
+        expect(note.textContent).not.toMatch(/app\.js/);
+    });
+
+    it('collapses a file group when its header is clicked, hiding the nested rows', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const header = document.querySelector('.structureFolderRow');
+        const childWrap = header.nextSibling;
+        expect(childWrap.hidden).toBe(false);
+        header.click();
+        expect(childWrap.hidden).toBe(true);
+        expect(header.getAttribute('aria-expanded')).toBe('false');
+        header.click();
+        expect(childWrap.hidden).toBe(false);
+        expect(header.getAttribute('aria-expanded')).toBe('true');
+    });
 });
 
 describe('renderStructureView — Find in code (live UI lens → Code lens)', () => {
