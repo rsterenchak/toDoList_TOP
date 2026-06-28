@@ -590,6 +590,35 @@ function copySelector(selector, btn) {
     flash();
 }
 
+// Append the shared "Reference in chat" (primary) + "Copy selector" (secondary)
+// actions to an action row. Both the live and published region rows use this so
+// the two paths can't drift. Reference reframes the chat workspace onto `repo`
+// (a no-op when it already matches) so the inserted selector lands in a
+// conversation framed on the right repo, then hands the selector to the chat
+// composer; Copy writes the selector to the clipboard.
+function appendReferenceCopyActions(actionRow, label, selector, repo) {
+    const refBtn = document.createElement('button');
+    refBtn.type = 'button';
+    refBtn.className = 'structureReferenceBtn';
+    refBtn.textContent = 'Reference in chat';
+    refBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        setChatWorkspaceRepo(repo);
+        insertReference(label, selector);
+    });
+    actionRow.appendChild(refBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'structureCopyBtn';
+    copyBtn.textContent = 'Copy selector';
+    copyBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        copySelector(selector, copyBtn);
+    });
+    actionRow.appendChild(copyBtn);
+}
+
 // The action panel revealed under a region row: the full selector, a one-line
 // note about its on-screen state, a primary "Reference in chat", and a
 // secondary "Copy selector".
@@ -611,30 +640,8 @@ function buildRegionActions(node) {
     const actionRow = document.createElement('div');
     actionRow.className = 'structureRegionActionRow';
 
-    const refBtn = document.createElement('button');
-    refBtn.type = 'button';
-    refBtn.className = 'structureReferenceBtn';
-    refBtn.textContent = 'Reference in chat';
-    refBtn.addEventListener('click', function (event) {
-        event.stopPropagation();
-        // Reference is the one explicit point that reframes the chat workspace
-        // onto the mapped repo (no-op when it already matches), so the referenced
-        // selector lands in a conversation framed on the right repo. Project
-        // switches never reframe passively.
-        setChatWorkspaceRepo(selectedRepo);
-        insertReference(node.label, node.selector);
-    });
-    actionRow.appendChild(refBtn);
-
-    const copyBtn = document.createElement('button');
-    copyBtn.type = 'button';
-    copyBtn.className = 'structureCopyBtn';
-    copyBtn.textContent = 'Copy selector';
-    copyBtn.addEventListener('click', function (event) {
-        event.stopPropagation();
-        copySelector(node.selector, copyBtn);
-    });
-    actionRow.appendChild(copyBtn);
+    // Reference (which reframes onto the live `selectedRepo`) + Copy selector.
+    appendReferenceCopyActions(actionRow, node.label, node.selector, selectedRepo);
 
     // Find in code: resolve this live selector to its owner file(s) via the
     // build-time index and reveal them inline.
@@ -787,6 +794,11 @@ function buildPublishedRegionRow(repo, region) {
 
     const actionRow = document.createElement('div');
     actionRow.className = 'structureRegionActionRow';
+
+    // Reference in chat + Copy selector — the same primary/secondary pair the
+    // live map's rows offer; valid for a published handle and just as much the
+    // tab's primary action. Reference reframes onto the published `repo`.
+    appendReferenceCopyActions(actionRow, region.label || region.selector, region.selector, repo);
 
     const findBtn = document.createElement('button');
     findBtn.type = 'button';

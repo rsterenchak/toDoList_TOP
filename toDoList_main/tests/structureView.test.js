@@ -473,6 +473,47 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         expect(owner).toBeTruthy();
         expect(owner.textContent).toBe('app.js:12');
     });
+
+    it('a published region row also exposes Reference in chat and Copy selector', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '.card', label: 'Card', file: 'app.js', line: 5, files: [{ file: 'app.js', line: 5 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const row = document.querySelector('.structureRegionRow');
+        const actions = row.parentNode.querySelector('.structureRegionActions');
+        row.click();
+        expect(actions.hidden).toBe(false);
+
+        // Reference in chat reframes onto the published repo and hands off the
+        // region's label + selector — identical contract to the live row.
+        const refBtn = actions.querySelector('.structureReferenceBtn');
+        expect(refBtn).toBeTruthy();
+        refBtn.click();
+        expect(setChatWorkspaceRepo).toHaveBeenCalledWith(OTHER);
+        expect(insertReference).toHaveBeenCalledWith('Card', '.card');
+
+        // Copy selector writes the region's selector to the clipboard.
+        const writeText = vi.fn(() => Promise.resolve());
+        const priorClipboard = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        const copyBtn = actions.querySelector('.structureCopyBtn');
+        expect(copyBtn).toBeTruthy();
+        copyBtn.click();
+        expect(writeText).toHaveBeenCalledWith('.card');
+        if (priorClipboard === undefined) {
+            delete navigator.clipboard;
+        } else {
+            Object.defineProperty(navigator, 'clipboard', { value: priorClipboard, configurable: true });
+        }
+    });
 });
 
 describe('renderStructureView — Find in code (live UI lens → Code lens)', () => {
