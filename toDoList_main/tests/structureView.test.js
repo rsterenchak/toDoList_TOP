@@ -329,7 +329,7 @@ describe('renderStructureView — UI lens', () => {
         expect(insertReference).toHaveBeenCalledWith('Task List', '#taskList');
     });
 
-    it('shows a "no published UI map yet" notice for a non-running repo', async () => {
+    it('shows a "no manifest" notice for a non-running repo with no published manifest', async () => {
         state.repos = ['rsterenchak/matchingGame-test'];
         state.activeRepo = 'rsterenchak/matchingGame-test';
         state.runningRepo = 'rsterenchak/toDoList_TOP';
@@ -338,6 +338,140 @@ describe('renderStructureView — UI lens', () => {
         await flush();
         const notice = document.querySelector('.structureNoUiMap');
         expect(notice).toBeTruthy();
-        expect(notice.textContent).toMatch(/no published ui map/i);
+        expect(notice.textContent).toMatch(/no manifest/i);
+    });
+});
+
+describe('renderStructureView — published UI map + states (UI lens, non-running repo)', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+    beforeEach(() => {
+        state.repos = [OTHER, 'rsterenchak/toDoList_TOP'];
+        state.activeRepo = OTHER;
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        setStructureLens('ui');
+    });
+
+    it('renders the published region map from the manifest regions', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js', 'app.css'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }, { file: 'app.css', line: 88 }] },
+                { selector: '[data-region="HUD"]', label: 'HUD', file: 'app.js', line: 40, files: [{ file: 'app.js', line: 40 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const banner = document.querySelector('.structurePublishedBanner');
+        expect(banner).toBeTruthy();
+        const labels = Array.from(document.querySelectorAll('.structureRegionLabel')).map((n) => n.textContent);
+        expect(labels).toContain('Board');
+        expect(labels).toContain('HUD');
+        const selectors = Array.from(document.querySelectorAll('.structureRegionSelector')).map((n) => n.textContent);
+        expect(selectors).toContain('#board');
+        expect(selectors).toContain('[data-region="HUD"]');
+    });
+
+    it('shows a "No UI surface" state when the manifest reports hasDom:false', async () => {
+        state.manifests[OTHER] = { ok: true, files: ['lib.js'], hasDom: false, srcRoot: 'src', regions: [] };
+        renderStructureView();
+        await flush();
+        const notice = document.querySelector('.structureNoUiMap');
+        expect(notice).toBeTruthy();
+        expect(notice.textContent).toMatch(/no ui surface/i);
+    });
+
+    it('shows a "not built yet" state when the manifest predates the UI index (no regions key)', async () => {
+        // regions undefined → manifest fetched but without the build-time index.
+        state.manifests[OTHER] = { ok: true, files: ['app.js'], hasDom: undefined, srcRoot: undefined, regions: undefined };
+        renderStructureView();
+        await flush();
+        const notice = document.querySelector('.structureNoUiMap');
+        expect(notice).toBeTruthy();
+        expect(notice.textContent).toMatch(/not built yet/i);
+    });
+
+    it('a published region row exposes Find in code and a GitHub deep link to its file', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'pkg/src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const row = document.querySelector('.structureRegionRow');
+        expect(row).toBeTruthy();
+        const actions = row.parentNode.querySelector('.structureRegionActions');
+        expect(actions.hidden).toBe(true);
+        row.click();
+        expect(actions.hidden).toBe(false);
+
+        const gh = actions.querySelector('.structureGithubLink');
+        expect(gh).toBeTruthy();
+        expect(gh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/pkg/src/app.js#L12');
+
+        // Find in code reveals the owner file row.
+        actions.querySelector('.structureFindBtn').click();
+        await flush();
+        const owner = actions.querySelector('.structureOwnerFileBtn');
+        expect(owner).toBeTruthy();
+        expect(owner.textContent).toBe('app.js:12');
+    });
+});
+
+describe('renderStructureView — Find in code (live UI lens → Code lens)', () => {
+    beforeEach(() => {
+        state.repos = ['rsterenchak/toDoList_TOP'];
+        state.activeRepo = 'rsterenchak/toDoList_TOP';
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            files: ['main.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#taskList', label: 'Task List', file: 'main.js', line: 200, files: [{ file: 'main.js', line: 200 }] },
+            ],
+        };
+        setStructureLens('ui');
+    });
+
+    function mountUiDom() {
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<main id="mainPanel"><ul id="taskList"><li>x</li></ul></main>';
+    }
+
+    it('resolves a live selector to its owner file, then taps through to the Code lens and reveals it', async () => {
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
+        const taskRow = rows.find((r) => r.querySelector('.structureRegionSelector') && r.querySelector('.structureRegionSelector').textContent === '#taskList');
+        expect(taskRow).toBeTruthy();
+        taskRow.click(); // open actions
+        const actions = taskRow.parentNode.querySelector('.structureRegionActions');
+        actions.querySelector('.structureFindBtn').click();
+        await flush();
+
+        const owner = actions.querySelector('.structureOwnerFileBtn');
+        expect(owner).toBeTruthy();
+        expect(owner.textContent).toBe('main.js:200');
+
+        // Tapping the owner file switches to the Code lens and flashes the file row.
+        owner.click();
+        await flush();
+        expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('code');
+        const fileWrap = document.querySelector('[data-structure-file="main.js"]');
+        expect(fileWrap).toBeTruthy();
     });
 });

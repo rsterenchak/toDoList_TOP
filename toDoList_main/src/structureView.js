@@ -46,8 +46,175 @@ let lens = 'ui';
 // set never collides across repos that happen to share a folder name.
 let openFolders = new Set();
 
+// The build-time UI index for the selected repo, surfaced from its manifest:
+//   • regionsIndex — selector → region record { selector, label, file, line,
+//     files } — powers "Find in code" (live selector or published row → owner
+//     file). Empty until the manifest resolves.
+//   • currentSrcRoot — the repo-root-relative source folder, used to build
+//     GitHub blob deep links.
+//   • currentTreeEl / lensToggleGroup — live references to the rendered tree
+//     container and lens segmented control, so "Find in code" can switch to the
+//     Code lens and reveal a file without re-entering renderStructureView.
+let regionsIndex = new Map();
+let currentSrcRoot = null;
+let currentTreeEl = null;
+let lensToggleGroup = null;
+
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+// Load (cached) the selected repo's manifest and refresh the module-scoped UI
+// index from it. Returns the manifest result so callers can branch on its
+// states. Tolerates a manifest with no `regions` (older deploy) — the index
+// just stays empty.
+function ensureRegionsLoaded(repo) {
+    return loadManifest(repo).then(function (result) {
+        currentSrcRoot = (result && result.srcRoot) || null;
+        const idx = new Map();
+        if (result && Array.isArray(result.regions)) {
+            result.regions.forEach(function (r) {
+                if (r && typeof r.selector === 'string' && !idx.has(r.selector)) {
+                    idx.set(r.selector, r);
+                }
+            });
+        }
+        regionsIndex = idx;
+        return result;
+    });
+}
+
+// A GitHub blob deep link for an owner file, at its line when known. Files are
+// named relative to the manifest's `srcRoot`, so the path is prefixed with it.
+// Returns '' when the repo or source root is unknown (no link rendered).
+function githubBlobUrl(repo, file, line) {
+    if (!repo || !file || !currentSrcRoot) return '';
+    const root = String(currentSrcRoot).replace(/\/+$/, '');
+    const frag = (typeof line === 'number' && line > 0) ? '#L' + line : '';
+    return 'https://github.com/' + repo + '/blob/main/' + root + '/' + file + frag;
+}
+
+// A quiet "View on GitHub ↗" secondary link, or null when no URL is resolvable.
+function buildGithubLink(repo, file, line) {
+    const url = githubBlobUrl(repo, file, line);
+    if (!url) return null;
+    const a = document.createElement('a');
+    a.className = 'structureGithubLink';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = 'View on GitHub ↗';
+    a.addEventListener('click', function (event) { event.stopPropagation(); });
+    return a;
+}
+
+// Sync the lens toggle's active/aria-selected state to the module `lens`,
+// without going through its click handler (which resets open-folder state).
+function applyLensToggleState() {
+    if (!lensToggleGroup) return;
+    Array.prototype.forEach.call(lensToggleGroup.children, function (b) {
+        const sel = b.dataset.lens === lens;
+        b.classList.toggle('active', sel);
+        b.setAttribute('aria-selected', String(sel));
+    });
+}
+
+// Expand every ancestor folder of a file so its row is visible once the Code
+// lens repaints. No-op for top-level (slash-less) file names.
+function expandAncestors(file) {
+    const parts = String(file || '').split('/').filter(Boolean);
+    let prefix = '';
+    for (let i = 0; i < parts.length - 1; i++) {
+        prefix = prefix ? prefix + '/' + parts[i] : parts[i];
+        openFolders.add(prefix);
+    }
+}
+
+// Briefly highlight (and scroll to) a freshly-revealed file row in the Code lens.
+function flashFileRow(file) {
+    if (!currentTreeEl) return;
+    let esc = String(file);
+    try {
+        if (window.CSS && typeof window.CSS.escape === 'function') esc = window.CSS.escape(file);
+        else esc = esc.replace(/["\\]/g, '\\$&');
+    } catch (e) { /* fall back to the raw value */ }
+    const el = currentTreeEl.querySelector('[data-structure-file="' + esc + '"]');
+    if (!el) return;
+    el.classList.add('structureFileWrap--flash');
+    try { if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); } catch (e) { /* jsdom */ }
+    setTimeout(function () { el.classList.remove('structureFileWrap--flash'); }, 1600);
+}
+
+// "Find in code" tap-through: switch to the Code lens (persisting the choice),
+// expand the file's ancestors, repaint the tree, then flash the file row.
+function revealFileInCodeLens(file) {
+    expandAncestors(file);
+    if (lens !== 'code') {
+        lens = 'code';
+        setStructureLens('code');
+        applyLensToggleState();
+    }
+    const painted = renderLens(selectedRepo, currentTreeEl);
+    Promise.resolve(painted).then(function () { flashFileRow(file); });
+}
+
+// One owner-file row inside a "Find in code" result list: the file name taps
+// through to the Code lens; a quiet GitHub link sits beside it.
+function buildOwnerFileRow(repo, owner) {
+    const row = document.createElement('div');
+    row.className = 'structureOwnerFileRow';
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'structureOwnerFileBtn';
+    open.textContent = owner.file + (typeof owner.line === 'number' && owner.line > 0 ? ':' + owner.line : '');
+    open.setAttribute('aria-label', 'Open ' + owner.file + ' in the Code lens');
+    open.addEventListener('click', function (event) {
+        event.stopPropagation();
+        revealFileInCodeLens(owner.file);
+    });
+    row.appendChild(open);
+
+    const link = buildGithubLink(repo, owner.file, owner.line);
+    if (link) row.appendChild(link);
+    return row;
+}
+
+// Look the selector up in the build-time index and fill `resultEl` with its
+// owner file rows (or a gentle "not in the index" note). Loads the manifest
+// lazily so the lookup is robust no matter when the rows were built.
+function findInCode(repo, selector, resultEl, btn) {
+    btn.disabled = true;
+    clear(resultEl);
+    resultEl.hidden = false;
+    const loading = document.createElement('div');
+    loading.className = 'structureFindLoading';
+    loading.textContent = 'Looking up…';
+    resultEl.appendChild(loading);
+
+    ensureRegionsLoaded(repo).then(function () {
+        btn.disabled = false;
+        clear(resultEl);
+        const region = regionsIndex.get(selector);
+        const owners = region && Array.isArray(region.files) ? region.files : [];
+        if (!owners.length) {
+            const none = document.createElement('div');
+            none.className = 'structureFindNone';
+            none.textContent = 'Not found in the source index.';
+            resultEl.appendChild(none);
+            return;
+        }
+        owners.forEach(function (owner) {
+            resultEl.appendChild(buildOwnerFileRow(repo, owner));
+        });
+    }).catch(function () {
+        btn.disabled = false;
+        clear(resultEl);
+        const none = document.createElement('div');
+        none.className = 'structureFindNone';
+        none.textContent = 'Couldn’t reach the source index.';
+        resultEl.appendChild(none);
+    });
 }
 
 // ── CODE LENS ───────────────────────────────────────────────────────────────
@@ -123,6 +290,8 @@ function explainFile(repo, filePath, btn, resultEl) {
 function buildFileRow(repo, file, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'structureFileWrap';
+    // Tag the wrap so "Find in code" can scroll to / flash this file's row.
+    wrap.dataset.structureFile = file.path;
 
     const row = document.createElement('div');
     row.className = 'structureFileRow';
@@ -147,6 +316,10 @@ function buildFileRow(repo, file, depth) {
     explainBtn.textContent = 'Explain with Sonnet';
     explainBtn.setAttribute('aria-label', 'Explain ' + file.path + ' with Sonnet');
     row.appendChild(explainBtn);
+
+    // Quiet escape hatch: open this file on GitHub (no line — it's a whole file).
+    const gh = buildGithubLink(repo, file.path, null);
+    if (gh) row.appendChild(gh);
 
     const result = document.createElement('div');
     result.className = 'structureExplainResult';
@@ -225,7 +398,7 @@ function renderTree(repo, treeEl) {
     loading.textContent = 'Loading source map…';
     treeEl.appendChild(loading);
 
-    return loadManifest(repo).then(function (result) {
+    return ensureRegionsLoaded(repo).then(function (result) {
         // The lens or the repo may have changed while the manifest was in
         // flight; drop the stale result rather than painting over the UI lens.
         if (repo !== selectedRepo || lens !== 'code') return;
@@ -455,7 +628,23 @@ function buildRegionActions(node) {
     });
     actionRow.appendChild(copyBtn);
 
+    // Find in code: resolve this live selector to its owner file(s) via the
+    // build-time index and reveal them inline.
+    const findBtn = document.createElement('button');
+    findBtn.type = 'button';
+    findBtn.className = 'structureFindBtn';
+    findBtn.textContent = 'Find in code';
+    const findResult = document.createElement('div');
+    findResult.className = 'structureFindResult';
+    findResult.hidden = true;
+    findBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        findInCode(selectedRepo, node.selector, findResult, findBtn);
+    });
+    actionRow.appendChild(findBtn);
+
     panel.appendChild(actionRow);
+    panel.appendChild(findResult);
     return panel;
 }
 
@@ -540,29 +729,156 @@ function buildRegionRow(node, depth) {
     return wrap;
 }
 
-// Render the UI lens into the tree container. The running app maps live; any
-// other repo shows a "no published UI map yet" notice until the build-time maps
-// land in the fast-follow.
+// A gentle full-width notice row inside the tree (no-map / no-surface states).
+function appendUiNotice(treeEl, text) {
+    const empty = document.createElement('div');
+    empty.className = 'structureNoUiMap';
+    empty.textContent = text;
+    treeEl.appendChild(empty);
+}
+
+// One row of the published UI map: a handle's label + selector, expandable into
+// an action panel with "Find in code" and a "View on GitHub" link to its
+// primary defining file. Static (no live DOM) — the map comes from `regions`.
+function buildPublishedRegionRow(repo, region) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureRegionWrap';
+
+    const row = document.createElement('div');
+    row.className = 'structureRegionRow';
+    row.style.setProperty('--structure-depth', '0');
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-expanded', 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureRegionCaret structureRegionCaret--leaf';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '';
+    row.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureRegionLabel';
+    label.textContent = region.label || region.selector;
+    row.appendChild(label);
+
+    const selHint = document.createElement('span');
+    selHint.className = 'structureRegionSelector';
+    selHint.textContent = region.selector;
+    row.appendChild(selHint);
+
+    const actions = document.createElement('div');
+    actions.className = 'structureRegionActions';
+    actions.hidden = true;
+
+    const note = document.createElement('div');
+    note.className = 'structureRegionNote';
+    note.textContent = 'Defined in ' + region.file +
+        (typeof region.line === 'number' && region.line > 0 ? ':' + region.line : '') + '.';
+    actions.appendChild(note);
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'structureRegionActionRow';
+
+    const findBtn = document.createElement('button');
+    findBtn.type = 'button';
+    findBtn.className = 'structureFindBtn';
+    findBtn.textContent = 'Find in code';
+    const findResult = document.createElement('div');
+    findResult.className = 'structureFindResult';
+    findResult.hidden = true;
+    findBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        findInCode(repo, region.selector, findResult, findBtn);
+    });
+    actionRow.appendChild(findBtn);
+
+    const gh = buildGithubLink(repo, region.file, region.line);
+    if (gh) actionRow.appendChild(gh);
+
+    actions.appendChild(actionRow);
+    actions.appendChild(findResult);
+
+    const toggle = function () {
+        const nowOpen = actions.hidden;
+        actions.hidden = !nowOpen;
+        row.setAttribute('aria-expanded', String(nowOpen));
+    };
+    row.addEventListener('click', toggle);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+        }
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(actions);
+    return wrap;
+}
+
+// Render the published UI map (a non-running repo) from its manifest result.
+// State precedence: a repo with no DOM at all → "No UI surface"; a manifest that
+// predates the UI index (no `regions` key) → "not built yet"; no fetchable
+// manifest → "no manifest"; otherwise the flat handle→file list.
+function renderPublishedUiMap(repo, result, treeEl) {
+    if (result && result.hasDom === false) {
+        appendUiNotice(treeEl, 'No UI surface for this repo.');
+        return;
+    }
+    if (result && result.ok && result.regions === undefined) {
+        appendUiNotice(treeEl, 'UI map not built yet — redeploy with the updated build step.');
+        return;
+    }
+    if (!result || !result.ok) {
+        appendUiNotice(treeEl, 'No manifest published yet for this repo.');
+        return;
+    }
+    const regions = Array.isArray(result.regions) ? result.regions : [];
+    if (!regions.length) {
+        appendUiNotice(treeEl, 'No mappable regions found.');
+        return;
+    }
+    const banner = document.createElement('div');
+    banner.className = 'structurePublishedBanner';
+    banner.textContent = 'Published UI map — as of last deploy.';
+    treeEl.appendChild(banner);
+    regions.forEach(function (region) {
+        treeEl.appendChild(buildPublishedRegionRow(repo, region));
+    });
+}
+
+// Render the UI lens into the tree container. The running app maps live (and its
+// manifest is loaded in the background so "Find in code" can resolve live
+// selectors); any other repo renders its published map from the build-time
+// index, with distinct empty states.
 function renderUiLens(repo, treeEl) {
     clear(treeEl);
-    if (repo !== getRunningAppRepo()) {
-        const empty = document.createElement('div');
-        empty.className = 'structureNoUiMap';
-        empty.textContent = 'No published UI map yet for this repo.';
-        treeEl.appendChild(empty);
+    if (repo === getRunningAppRepo()) {
+        // Warm the region index so live-region "Find in code" resolves.
+        ensureRegionsLoaded(repo);
+        const tree = buildUiTree();
+        if (!tree.length) {
+            appendUiNotice(treeEl, 'No mappable regions found.');
+            return;
+        }
+        tree.forEach(function (node) {
+            if (node.type === 'collapsed') treeEl.appendChild(buildCollapsedRow(node, 0));
+            else treeEl.appendChild(buildRegionRow(node, 0));
+        });
         return;
     }
-    const tree = buildUiTree();
-    if (!tree.length) {
-        const empty = document.createElement('div');
-        empty.className = 'structureNoUiMap';
-        empty.textContent = 'No mappable regions found.';
-        treeEl.appendChild(empty);
-        return;
-    }
-    tree.forEach(function (node) {
-        if (node.type === 'collapsed') treeEl.appendChild(buildCollapsedRow(node, 0));
-        else treeEl.appendChild(buildRegionRow(node, 0));
+
+    const loading = document.createElement('div');
+    loading.className = 'structureTreeLoading';
+    loading.textContent = 'Loading UI map…';
+    treeEl.appendChild(loading);
+
+    return ensureRegionsLoaded(repo).then(function (result) {
+        // Drop a stale result if the repo or lens changed mid-flight.
+        if (repo !== selectedRepo || lens !== 'ui') return;
+        clear(treeEl);
+        renderPublishedUiMap(repo, result, treeEl);
     });
 }
 
@@ -594,6 +910,7 @@ function buildLensToggle(onChange) {
     group.className = 'structureLensToggle';
     group.setAttribute('role', 'tablist');
     group.setAttribute('aria-label', 'Structure lens');
+    lensToggleGroup = group;
 
     [['ui', 'UI'], ['code', 'Code']].forEach(function (pair) {
         const btn = document.createElement('button');
@@ -609,11 +926,7 @@ function buildLensToggle(onChange) {
             if (lens === pair[0]) return;
             lens = pair[0];
             setStructureLens(lens);
-            Array.prototype.forEach.call(group.children, function (b) {
-                const sel = b.dataset.lens === lens;
-                b.classList.toggle('active', sel);
-                b.setAttribute('aria-selected', String(sel));
-            });
+            applyLensToggleState();
             onChange();
         });
         group.appendChild(btn);
@@ -669,6 +982,9 @@ export function renderStructureView() {
 
     const tree = document.createElement('div');
     tree.className = 'structureTree';
+    // Held module-scoped so "Find in code" can repaint the Code lens into the
+    // same container without re-entering renderStructureView.
+    currentTreeEl = tree;
 
     const toggle = buildLensToggle(function () {
         // Code lens re-renders from scratch each switch; reset its open-folder
