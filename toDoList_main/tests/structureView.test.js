@@ -1119,3 +1119,206 @@ describe('renderStructureView — persisted tree open/closed state (per repo + l
         expect(getStructureTreeState(TOP, 'code')).toBeNull();
     });
 });
+
+describe('renderStructureView — adaptive second lens (Types for a C# repo)', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    // A C# manifest: empty srcRoot (repo-root-relative file paths), lens 'types',
+    // and a types array of classes/interfaces each carrying a members list.
+    function typesManifest() {
+        return {
+            ok: true,
+            files: ['LinearSearch/BST.cs'],
+            hasDom: false,
+            lens: 'types',
+            srcRoot: '',
+            types: [
+                {
+                    kind: 'class', name: 'BinarySearchTree', file: 'LinearSearch/BST.cs', line: 5,
+                    members: [
+                        { signature: 'Insert(int value)', name: 'Insert', line: 12 },
+                        { signature: 'Count : int', name: 'Count', line: 30 },
+                    ],
+                },
+                { kind: 'interface', name: 'IComparable', file: 'LinearSearch/BST.cs', line: 60, members: [] },
+            ],
+        };
+    }
+
+    beforeEach(async () => {
+        try { localStorage.removeItem(STRUCTURE_TREE_KEY); } catch (e) { /* ignore */ }
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        // The persisted lens choice is "second slot" — stored as 'ui'. A types repo
+        // must still land on its Types outline via the active-lens normalization.
+        setStructureLens('ui');
+        // Park on a neutral repo so the first render for OTHER is a clean repo change
+        // (a reload-like hydration that isolates each test from prior module state).
+        state.projectRepos['__neutral__'] = 'rsterenchak/__neutral__';
+        mountDom('__neutral__');
+        renderStructureView();
+        await flush();
+    });
+
+    async function renderTypesRepo() {
+        state.manifests[OTHER] = typesManifest();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+    }
+
+    it('relabels the second toggle segment to Types and renders the class/member outline', async () => {
+        await renderTypesRepo();
+
+        const btns = Array.from(document.querySelectorAll('.structureLensBtn'));
+        expect(btns.map((b) => b.textContent)).toEqual(['Types', 'Code']);
+        const second = btns.find((b) => b.dataset.lens === 'types');
+        expect(second).toBeTruthy();
+        // Persisted choice was 'ui', but normalization keeps the user on the second
+        // slot with this repo's identity — Types is the active segment.
+        expect(second.getAttribute('aria-selected')).toBe('true');
+
+        // One collapsible file-group header per defining file.
+        const headers = Array.from(document.querySelectorAll('.structureFolderName')).map((n) => n.textContent);
+        expect(headers).toContain('LinearSearch/BST.cs');
+
+        // Type rows show kind + name; member rows show the signature.
+        const labels = Array.from(document.querySelectorAll('.structureTypeLabel')).map((n) => n.textContent);
+        expect(labels).toContain('class BinarySearchTree');
+        expect(labels).toContain('interface IComparable');
+        expect(labels).toContain('Insert(int value)');
+        expect(labels).toContain('Count : int');
+    });
+
+    it('switching to Code and back keeps the second slot on Types for a types repo', async () => {
+        await renderTypesRepo();
+        expect(document.querySelector('.structureTypeLabel')).toBeTruthy();
+
+        const codeBtn = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'code');
+        codeBtn.click();
+        await flush();
+        // Code lens shows the source tree, not the type outline.
+        expect(document.querySelector('.structureTypeLabel')).toBeFalsy();
+        expect(document.querySelector('.structureFolderName').textContent).toBe('LinearSearch');
+
+        const second = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'types');
+        second.click();
+        await flush();
+        expect(document.querySelector('.structureTypeLabel')).toBeTruthy();
+    });
+
+    it('a type row exposes Reference/Copy/Find and a GitHub deep link; members carry their own line', async () => {
+        await renderTypesRepo();
+
+        const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
+        const labelOf = (r) => {
+            const l = r.querySelector('.structureTypeLabel');
+            return l ? l.textContent : '';
+        };
+        const typeRow = rows.find((r) => labelOf(r) === 'class BinarySearchTree');
+        expect(typeRow).toBeTruthy();
+        const actions = typeRow.parentNode.querySelector(':scope > .structureRegionActions');
+        expect(actions.hidden).toBe(true);
+        typeRow.click();
+        expect(actions.hidden).toBe(false);
+
+        // Empty srcRoot → repo-root-relative blob path at the type's line, no double slash.
+        const gh = actions.querySelector('.structureGithubLink');
+        expect(gh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/LinearSearch/BST.cs#L5');
+
+        // Reference reframes onto the repo and hands off label + name; Copy writes the name.
+        actions.querySelector('.structureReferenceBtn').click();
+        expect(setChatWorkspaceRepo).toHaveBeenCalledWith(OTHER);
+        expect(insertReference).toHaveBeenCalledWith('class BinarySearchTree', 'BinarySearchTree');
+
+        const writeText = vi.fn(() => Promise.resolve());
+        const priorClipboard = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        actions.querySelector('.structureCopyBtn').click();
+        expect(writeText).toHaveBeenCalledWith('BinarySearchTree');
+        if (priorClipboard === undefined) delete navigator.clipboard;
+        else Object.defineProperty(navigator, 'clipboard', { value: priorClipboard, configurable: true });
+
+        // A member row's GitHub link points at the member's own line.
+        const memberRow = rows.find((r) => labelOf(r) === 'Insert(int value)');
+        expect(memberRow).toBeTruthy();
+        memberRow.click();
+        const mActions = memberRow.parentNode.querySelector(':scope > .structureRegionActions');
+        const mGh = mActions.querySelector('.structureGithubLink');
+        expect(mGh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/LinearSearch/BST.cs#L12');
+    });
+
+    it('shows the empty notice when a types manifest has no types', async () => {
+        state.manifests[OTHER] = { ok: true, files: [], hasDom: false, lens: 'types', srcRoot: '', types: [] };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        const notice = document.querySelector('.structureNoUiMap');
+        expect(notice).toBeTruthy();
+        expect(notice.textContent).toMatch(/no types found/i);
+    });
+
+    it('filtering by a member signature reveals its file group and type, hiding non-matches', async () => {
+        await renderTypesRepo();
+
+        const input = document.querySelector('.structureFilterInput');
+        input.value = 'Insert';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await flush();
+
+        const memberLabel = Array.from(document.querySelectorAll('.structureTypeLabel'))
+            .find((n) => n.textContent === 'Insert(int value)');
+        expect(memberLabel).toBeTruthy();
+        const memberWrap = memberLabel.closest('.structureRegionWrap');
+        expect(memberWrap.classList.contains('structureFilterHidden')).toBe(false);
+
+        // Its containing type wrap and file group are revealed so the match stays reachable.
+        const typeWrap = memberWrap.parentElement.closest('.structureRegionWrap');
+        expect(typeWrap).toBeTruthy();
+        expect(typeWrap.classList.contains('structureFilterHidden')).toBe(false);
+        const group = memberWrap.closest('.structurePublishedFileGroup');
+        expect(group.classList.contains('structureFilterHidden')).toBe(false);
+
+        // A non-matching sibling type is hidden.
+        const ifaceLabel = Array.from(document.querySelectorAll('.structureTypeLabel'))
+            .find((n) => n.textContent === 'interface IComparable');
+        expect(ifaceLabel.closest('.structureRegionWrap').classList.contains('structureFilterHidden')).toBe(true);
+    });
+
+    it('persists a collapsed type file group under the repo:types key across a reload cycle', async () => {
+        await renderTypesRepo();
+
+        let header = document.querySelector('.structureFolderRow');
+        expect(header.nextSibling.hidden).toBe(false); // expanded by default
+        header.click(); // collapse
+        expect(header.nextSibling.hidden).toBe(true);
+        expect(getStructureTreeState(OTHER, 'types')).toContain('LinearSearch/BST.cs');
+
+        // Reload: park on the running repo, then back to the types repo.
+        mountDom('My Project');
+        renderStructureView();
+        await flush();
+        state.manifests[OTHER] = typesManifest();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+
+        header = document.querySelector('.structureFolderRow');
+        expect(header.getAttribute('aria-expanded')).toBe('false');
+        expect(header.nextSibling.hidden).toBe(true);
+    });
+
+    it('a manifest without a lens field keeps the UI lens (back-compat)', async () => {
+        state.manifests[OTHER] = {
+            ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
+            regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] }],
+        };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+
+        const btns = Array.from(document.querySelectorAll('.structureLensBtn'));
+        expect(btns.map((b) => b.textContent)).toEqual(['UI', 'Code']);
+        expect(document.querySelector('.structureTypeLabel')).toBeFalsy();
+        expect(document.querySelector('.structurePublishedBanner')).toBeTruthy();
+    });
+});

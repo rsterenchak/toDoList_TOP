@@ -67,6 +67,12 @@ let collapsedPublishedFiles = new Set();
 // alongside `openFolders` / `collapsedPublishedFiles`.
 let openRegions = new Set();
 
+// Defining files the user has COLLAPSED in the Types lens's file-grouped outline,
+// keyed by the type's `file`. Mirrors `collapsedPublishedFiles` (every file header
+// defaults to expanded, so membership marks the exceptions) but is a distinct slot
+// so its persisted key is `<repo>:types`. Reset on repo switch alongside the others.
+let collapsedTypeFiles = new Set();
+
 // The build-time UI index for the selected repo, surfaced from its manifest:
 //   • regionsIndex — selector → region record { selector, label, file, line,
 //     files } — powers "Find in code" (live selector or published row → owner
@@ -86,6 +92,17 @@ let currentSrcRoot = null;
 let currentSha = null;
 let currentTreeEl = null;
 let lensToggleGroup = null;
+
+// The active repo's manifest-declared second lens and its type outline:
+//   • currentLens — which lens fills the toggle's second (non-Code) slot for this
+//     repo: 'ui' (web repos, the default for back-compat) or 'types' (a manifest
+//     that declares `"lens":"types"`, e.g. the C# scanner's class/member outline).
+//   • currentTypes — the manifest's `types` array (classes/interfaces/structs/
+//     enums/records, each with a `members` list) the Types lens renders. Empty
+//     for a UI repo or a manifest with no `types`.
+// Both are refreshed from the manifest in ensureRegionsLoaded, alongside srcRoot/sha.
+let currentLens = 'ui';
+let currentTypes = [];
 
 // Filter box state. The input lives in the view's persistent header region (not
 // in the tree container `clear()` empties on each lens render), so it survives a
@@ -122,6 +139,8 @@ function hydrateActiveLensState(repo, lens) {
     const keys = stored || [];
     if (lens === 'code') {
         openFolders = new Set(keys);
+    } else if (lens === 'types') {
+        collapsedTypeFiles = new Set(keys);
     } else if (liveUiForRepo(repo)) {
         openRegions = new Set(keys);
     } else {
@@ -136,6 +155,7 @@ function persistActiveLensState(repo, lens) {
     if (!repo || !lens) return;
     let keys;
     if (lens === 'code') keys = Array.from(openFolders);
+    else if (lens === 'types') keys = Array.from(collapsedTypeFiles);
     else if (liveUiForRepo(repo)) keys = Array.from(openRegions);
     else keys = Array.from(collapsedPublishedFiles);
     setStructureTreeState(repo, lens, keys);
@@ -149,6 +169,12 @@ function ensureRegionsLoaded(repo) {
     return loadManifest(repo).then(function (result) {
         currentSrcRoot = (result && result.srcRoot) || null;
         currentSha = (result && typeof result.sha === 'string' && result.sha) ? result.sha : null;
+        // The second lens is adaptive: a manifest that declares `"lens":"types"`
+        // gets the Types outline; anything else (web repos, pre-field manifests)
+        // keeps the UI lens. Any non-'types' value coerces to 'ui' so an unknown
+        // future lens id can't desync the toggle or the active-lens normalization.
+        currentLens = (result && result.lens === 'types') ? 'types' : 'ui';
+        currentTypes = (result && Array.isArray(result.types)) ? result.types : [];
         const idx = new Map();
         if (result && Array.isArray(result.regions)) {
             result.regions.forEach(function (r) {
@@ -1145,13 +1171,251 @@ function renderUiLens(repo, treeEl) {
     });
 }
 
-// Dispatch the active lens into the shared tree container.
+// One row in the Types lens — a type (kind + name) or one of its members
+// (signature). Both mirror the published region row's shape: a label plus an
+// expandable action panel carrying Reference in chat + Copy, Find in code, and a
+// View-on-GitHub deep link to the defining file at the row's line. A type row
+// additionally nests its members as collapsible children (depth + 1), so the
+// filter's ancestor-reveal surfaces a type when one of its members matches.
+// `spec` is { label, name, file, line, members? }.
+function buildTypeOutlineRow(repo, spec, depth) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureRegionWrap';
+
+    const members = Array.isArray(spec.members) ? spec.members : [];
+    const hasChildren = members.length > 0;
+
+    const row = document.createElement('div');
+    row.className = 'structureRegionRow';
+    row.style.setProperty('--structure-depth', String(depth));
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-expanded', 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureRegionCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = hasChildren ? '▸' : '';
+    if (!hasChildren) caret.classList.add('structureRegionCaret--leaf');
+    row.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureRegionLabel structureTypeLabel';
+    label.textContent = spec.label;
+    row.appendChild(label);
+
+    // Action panel: the same primary/secondary set as a published region row.
+    const actions = document.createElement('div');
+    actions.className = 'structureRegionActions';
+    actions.hidden = true;
+
+    const note = document.createElement('div');
+    note.className = 'structureRegionNote';
+    note.textContent = typeof spec.line === 'number' && spec.line > 0
+        ? 'Line ' + spec.line + '.'
+        : 'Line not recorded.';
+    actions.appendChild(note);
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'structureRegionActionRow';
+    appendReferenceCopyActions(actionRow, spec.label, spec.name, repo);
+
+    const findBtn = document.createElement('button');
+    findBtn.type = 'button';
+    findBtn.className = 'structureFindBtn';
+    findBtn.textContent = 'Find in code';
+    const findResult = document.createElement('div');
+    findResult.className = 'structureFindResult';
+    findResult.hidden = true;
+    findBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        findInCode(repo, spec.name, findResult, findBtn);
+    });
+    actionRow.appendChild(findBtn);
+
+    const gh = buildGithubLink(repo, spec.file, spec.line);
+    if (gh) actionRow.appendChild(gh);
+
+    actions.appendChild(actionRow);
+    actions.appendChild(findResult);
+
+    // Member children: visible by default so the outline reads fully on open; the
+    // caret collapses them (ephemeral — only file-group folds persist).
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureRegionChildren';
+    childWrap.hidden = !hasChildren;
+    if (hasChildren) {
+        row.classList.add('expanded');
+        caret.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const nowOpen = childWrap.hidden;
+            childWrap.hidden = !nowOpen;
+            row.classList.toggle('expanded', nowOpen);
+        });
+        members.forEach(function (member) {
+            childWrap.appendChild(buildTypeOutlineRow(repo, {
+                label: member.signature || member.name || '',
+                name: member.name || '',
+                file: spec.file,
+                line: member.line,
+            }, depth + 1));
+        });
+    }
+
+    const toggle = function () {
+        const nowOpen = actions.hidden;
+        actions.hidden = !nowOpen;
+        row.setAttribute('aria-expanded', String(nowOpen));
+    };
+    row.addEventListener('click', toggle);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+        }
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(actions);
+    wrap.appendChild(childWrap);
+    return wrap;
+}
+
+// A collapsible file header for the Types lens: every type defined in `file`
+// (and its members) nests beneath it. Mirrors buildPublishedFileGroup — defaults
+// to expanded, persists the user's fold choice in `collapsedTypeFiles` under the
+// `<repo>:types` key, and reuses the Code lens's folder-row styling.
+function buildTypeFileGroup(repo, file, fileTypes) {
+    const expanded = !collapsedTypeFiles.has(file);
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'structureFolderRow';
+    head.style.setProperty('--structure-depth', '0');
+    head.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureFolderCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▸';
+    head.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureFolderName';
+    label.textContent = file;
+    head.appendChild(label);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureFolderChildren';
+    if (!expanded) childWrap.hidden = true;
+
+    fileTypes.forEach(function (type) {
+        childWrap.appendChild(buildTypeOutlineRow(repo, {
+            label: ((type.kind ? type.kind + ' ' : '') + (type.name || '')).trim(),
+            name: type.name || '',
+            file: type.file,
+            line: type.line,
+            members: type.members,
+        }, 1));
+    });
+
+    head.addEventListener('click', function () {
+        const nowOpen = collapsedTypeFiles.has(file);
+        if (nowOpen) collapsedTypeFiles.delete(file);
+        else collapsedTypeFiles.add(file);
+        head.classList.toggle('expanded', nowOpen);
+        head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+        childWrap.hidden = !nowOpen;
+        persistActiveLensState(repo, lens);
+    });
+    if (expanded) head.classList.add('expanded');
+
+    const group = document.createElement('div');
+    group.className = 'structurePublishedFileGroup';
+    group.appendChild(head);
+    group.appendChild(childWrap);
+    return group;
+}
+
+// Render the Types lens: the manifest's `types` grouped by defining file under
+// collapsible headers, each type expanding into its member outline. Files
+// alphabetical; types within a file by line. Empty → the structure empty notice.
+function renderTypesLens(repo, treeEl) {
+    clear(treeEl);
+    if (!currentTypes.length) {
+        appendUiNotice(treeEl, 'No types found in this repo’s source.');
+        return;
+    }
+
+    const byFile = new Map();
+    currentTypes.forEach(function (type) {
+        const file = (type && type.file) || '(unknown file)';
+        if (!byFile.has(file)) byFile.set(file, []);
+        byFile.get(file).push(type);
+    });
+
+    Array.from(byFile.keys()).sort().forEach(function (file) {
+        const fileTypes = byFile.get(file).slice().sort(function (a, b) {
+            const la = typeof a.line === 'number' ? a.line : 0;
+            const lb = typeof b.line === 'number' ? b.line : 0;
+            return la - lb;
+        });
+        treeEl.appendChild(buildTypeFileGroup(repo, file, fileTypes));
+    });
+}
+
+// Render the toggle's second slot — adaptive between the UI lens and the Types
+// lens by the active repo's manifest. The manifest's `lens` isn't known until it
+// loads, so this resolves it first, then normalizes the active lens to this
+// repo's second-slot identity (the persisted choice is "Code vs second slot", not
+// a literal lens id), relabels the toggle segment, and renders the right lens.
+function renderSecondLens(repo, treeEl) {
+    clear(treeEl);
+    const loading = document.createElement('div');
+    loading.className = 'structureTreeLoading';
+    loading.textContent = 'Loading…';
+    treeEl.appendChild(loading);
+
+    return ensureRegionsLoaded(repo).then(function (result) {
+        // Drop a stale result if the repo or lens changed mid-flight (e.g. the
+        // user switched to Code, or to another project, while this was loading).
+        if (repo !== selectedRepo || lens === 'code') return;
+        // Adopt this repo's second-slot identity. When it differs from the
+        // persisted choice (`ui` ↔ `types`), switch the active lens and re-hydrate
+        // its fold set so the correct `<repo>:<lens>` state drives the outline.
+        if (lens !== currentLens) {
+            lens = currentLens;
+            hydrateActiveLensState(repo, lens);
+        }
+        relabelSecondLensSegment();
+        applyLensToggleState();
+        updateFilterPlaceholder();
+        clear(treeEl);
+        if (currentLens === 'types') {
+            renderTypesLens(repo, treeEl);
+        } else {
+            renderPublishedUiMap(repo, result, treeEl);
+        }
+    });
+}
+
+// Dispatch the active lens into the shared tree container. The second slot is
+// adaptive: the running app is always the live UI map; any other repo resolves
+// its second lens (UI or Types) from the manifest via renderSecondLens.
 function renderLens(repo, treeEl) {
-    if (lens === 'ui') {
+    if (lens === 'code') {
+        renderTree(repo, treeEl);
+        return;
+    }
+    if (repo === getRunningAppRepo()) {
+        // The running app is the web app — always the live UI map, never Types.
+        currentLens = 'ui';
+        relabelSecondLensSegment();
+        applyLensToggleState();
         renderUiLens(repo, treeEl);
         return;
     }
-    renderTree(repo, treeEl);
+    return renderSecondLens(repo, treeEl);
 }
 
 // ── FILTER ──────────────────────────────────────────────────────────────────
@@ -1427,7 +1691,10 @@ function applyStructureFilter(rawQuery) {
 // Placeholder copy tracks the active lens (files vs handles).
 function updateFilterPlaceholder() {
     if (!filterInputEl) return;
-    filterInputEl.placeholder = lens === 'code' ? 'Filter files…' : 'Filter handles…';
+    let placeholder = 'Filter handles…';
+    if (lens === 'code') placeholder = 'Filter files…';
+    else if (lens === 'types') placeholder = 'Filter types…';
+    filterInputEl.placeholder = placeholder;
 }
 
 // Build the filter box: a magnifier glyph, the live input, an "X of Y" count,
@@ -1498,8 +1765,25 @@ function appendEmptyState(view, text) {
     view.appendChild(empty);
 }
 
-// Build the Code/UI segmented control. Switching persists the choice and
-// repaints the tree via `onChange`.
+// Relabel the toggle's second (non-Code) segment to the active repo's adaptive
+// lens: `Types` (data-lens `types`) for a repo whose manifest declares it, `UI`
+// otherwise. The toggle is built optimistically as UI before the manifest
+// resolves, so this runs once `currentLens` is known and on every repo switch.
+function relabelSecondLensSegment() {
+    if (!lensToggleGroup) return;
+    const seg = Array.prototype.find.call(lensToggleGroup.children, function (b) {
+        return b.dataset && b.dataset.lens !== 'code';
+    });
+    if (!seg) return;
+    seg.dataset.lens = currentLens === 'types' ? 'types' : 'ui';
+    seg.textContent = currentLens === 'types' ? 'Types' : 'UI';
+}
+
+// Build the Code / second-slot segmented control. The second slot's identity is
+// adaptive (UI or Types — see relabelSecondLensSegment); switching persists the
+// choice and repaints the tree via `onChange`. The click handler reads the live
+// `data-lens` rather than a captured value so a relabeled segment switches to its
+// current identity.
 function buildLensToggle(onChange) {
     const group = document.createElement('div');
     group.className = 'structureLensToggle';
@@ -1518,8 +1802,9 @@ function buildLensToggle(onChange) {
         btn.setAttribute('aria-selected', String(on));
         if (on) btn.classList.add('active');
         btn.addEventListener('click', function () {
-            if (lens === pair[0]) return;
-            lens = pair[0];
+            const target = btn.dataset.lens;
+            if (lens === target) return;
+            lens = target;
             setStructureLens(lens);
             applyLensToggleState();
             onChange();
@@ -1573,6 +1858,7 @@ export function renderStructureView() {
         openFolders = new Set();
         collapsedPublishedFiles = new Set();
         openRegions = new Set();
+        collapsedTypeFiles = new Set();
         hydrateActiveLensState(repo, lens);
     }
     selectedRepo = repo;
