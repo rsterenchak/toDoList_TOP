@@ -672,3 +672,15 @@
   - File: `toDoList_main/src/claudeSheet.js`
   - Completed:
   <!-- id: 97acf6b5-5f8d-4caa-a7ec-3f9822db69eb -->
+
+- [ ] **[MEDIUM]** Make "Find in code" search the type index in the Structure Types lens
+  - Type: feature
+  - Description: In the Structure tab's Types lens, every row's "Find in code" reports "Not found in the source index" because `findInCode` (toDoList_main/src/structureView.js ~L292) searches the manifest's `regions` by CSS selector — and a C# manifest has `regions: []`. Repoint Find-in-code on type/member rows at the `types` data instead, so it lists where the queried name is defined (file + line), across the whole repo (a name defined in several classes lists all of them — which the single-line View-on-GitHub link can't). Separately, the reused row labels its copy button "Copy selector" even on a type row where it copies a type/member name — relabel it "Copy name" in the Types lens.
+  - Behavior:
+    - Add `findTypeInCode(repo, name, resultEl, btn)` (sibling to `findInCode`): scan the module-scoped `currentTypes` for every type whose `name` equals the queried name and every member (across all types) whose `name` equals it; collect each match as a `{ file, line }` owner — a type match uses `type.file`/`type.line`, a member match uses its owning `type.file` and the member's `line`. Dedupe by `file`+`line`, sort by file then line, and render each via the existing `buildOwnerFileRow(repo, owner)` (the same `{ file, line }` shape `region.files` entries use, so the rows and their View-on-GitHub deep links come for free). No async/network needed — `currentTypes` is already loaded for the rendering lens — so resolve synchronously; on no match, show a quiet "Not found in the type index." note in `resultEl`.
+    - In the Types row builder `buildTypeOutlineRow`, wire the "Find in code" button to call `findTypeInCode(repo, spec.name, findResult, findBtn)` instead of `findInCode`. The UI-lens region rows keep calling `findInCode` unchanged.
+    - Relabel the copy action for type rows: give `appendReferenceCopyActions` an optional 5th parameter `copyLabel` defaulting to `'Copy selector'`; `buildTypeOutlineRow` passes `'Copy name'`. All other callers (the live UI map row, `buildPublishedRegionRow`) omit it and keep `'Copy selector'` unchanged.
+  - Out of scope: `findInCode` and the UI/Code lenses (additive only — do not touch); call-site/usage search (the manifest carries definitions only, so this reports definitions, not references); the scanner; any new manifest field.
+  - File: `toDoList_main/src/structureView.js`
+  - Completed:
+  <!-- id: 96685b3a-f770-407c-b74d-8eae699be8a5 -->
