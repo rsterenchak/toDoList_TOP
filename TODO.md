@@ -635,3 +635,13 @@
   - File: `toDoList_main/src/structureView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fbfe9490-7bbd-4bfd-8437-af230b5e091e -->
+
+- [ ] **[LOW]** Render View-on-GitHub links for C# repos (empty srcRoot)
+- Type: bug
+- Description: In the Structure tab Code lens, file rows for C# repos never show the "View on GitHub ↗" link. C# manifests emit `srcRoot: ""` with full repo-relative file paths (e.g. `LinearSearch/BST.cs`), but `githubBlobUrl` returns `''` whenever `currentSrcRoot` is falsy, so the link is suppressed. Web repos (non-empty srcRoot) are unaffected.
+- Behavior: When `currentSrcRoot` is empty but `repo` and `file` are present, build the blob URL without a root segment — `https://github.com/<repo>/blob/main/<file><#Lline>` — since the file path is already repo-root-relative. When `currentSrcRoot` is non-empty, keep current behavior exactly (prefix `/<root>/`). Never emit a double slash (`blob/main//file`).
+- Implementation notes: In `githubBlobUrl` (structureView.js ~L168), drop the `!currentSrcRoot` clause from the early-return so empty root no longer suppresses the link, then assemble the path so the root segment is included only when non-empty — e.g. compute `root` as the trimmed srcRoot, and build the path as `'/blob/main/' + (root ? root + '/' : '') + file`. Keep the `!repo || !file` guard. `buildGithubLink` needs no change (it already returns null only when the URL is empty).
+- Out of scope: UI lens; the Explain button; any change to web-repo link output; manifest generation.
+- File: toDoList_main/src/structureView.js
+- Completed:
+  <!-- id: ef616fe1-8d61-4007-b713-3f28516c18c3 -->
