@@ -646,7 +646,7 @@
 - Completed:
   <!-- id: ef616fe1-8d61-4007-b713-3f28516c18c3 -->
 
-- [ ] **[MEDIUM]** Render an adaptive second lens in the Structure tab — Types for C# repos, UI for web
+- [x] **[MEDIUM]** Render an adaptive second lens in the Structure tab — Types for C# repos, UI for web — Completed: 2026-06-28
   - Type: feature
   - Description: The Structure tab's second lens is hard-coded to `UI`, which is empty for C#/.NET repos (no DOM → "no UI surface"). Make the second lens adaptive to the active repo's manifest: web repos keep the `UI` lens unchanged; repos whose `src-manifest.json` declares `"lens":"types"` (the csharp scanner now emits this plus a `types` array — classes/interfaces/structs/enums/records, each with a `members` list of methods/constructors/properties carrying `signature` and `line`) show a `Types` lens instead, a navigable class/member outline. The Code lens is unchanged for both.
   - Behavior:
