@@ -250,6 +250,33 @@ export function toggleClaudeSheet() {
     else openClaudeSheet();
 }
 
+// Drop a "reference" into the chat composer: a backticked selector plus a
+// plain-English label, appended to whatever the user has already typed without
+// clobbering it. The Structure view's UI lens calls this so a region can be
+// handed straight to the conversation. On mobile the sheet must be open for the
+// composer to be visible (open it if it isn't); on desktop the pane is always
+// mounted, so opening is unnecessary. Always lands on the Chat tab — a
+// reference is a chat action, not a Runs one. A blank selector is ignored.
+export function insertReference(label, selector) {
+    const sel = String(selector || '').trim();
+    if (!sel) return;
+    if (!isClaudeSheetOpen() && window.innerWidth <= MOBILE_MAX_WIDTH) {
+        openClaudeSheet();
+    }
+    setActiveTab('chat');
+    const input = sheetQuery('#claudeComposerInput');
+    if (!input) return;
+    const lbl = String(label || '').trim();
+    const ref = '`' + sel + '`' + (lbl ? ' (' + lbl + ')' : '');
+    const existing = input.value || '';
+    const sep = existing && !/\s$/.test(existing) ? ' ' : '';
+    input.value = existing + sep + ref;
+    try { input.focus(); } catch (e) { /* defensive */ }
+    try { input.selectionStart = input.selectionEnd = input.value.length; } catch (e) { /* defensive */ }
+    // Nudge the composer's auto-grow listener so it resizes to the new content.
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* defensive */ }
+}
+
 // Auto-expand / auto-collapse the Claude chat pane when the active project
 // changes. A project "has a repo configured" by the SAME gate the sidebar
 // project-row thunderbolt (⚡) uses — inject is configured globally AND this
@@ -1438,6 +1465,42 @@ export function getAttachRepos() {
 
 export function getActiveChatRepo() {
     return activeChatRepo;
+}
+
+// The app's own repo — the "running app" the UI lens can walk live. The
+// Structure view compares its selected repo against this to decide between the
+// live DOM map and the "no published UI map yet" state.
+export function getRunningAppRepo() {
+    return DEFAULT_ATTACH_REPO;
+}
+
+// Reframe the conversation on `repo`, the same deliberate switch the chat's
+// workspace pill performed: set the active workspace and start fresh on the new
+// repo — wipe the in-memory thread and its persisted copy, drop any iterate
+// seed (so a follow-up can't pull the prior repo's diff), and clear the
+// attachment chips (they're single-repo). No-op when the repo isn't an allowed
+// workspace or already equals the active one. Exported for the Structure view's
+// repo picker, which is bound to the chat workspace.
+export function setChatWorkspaceRepo(repo) {
+    if (!repo || attachRepos.indexOf(repo) === -1) return;
+    if (repo === activeChatRepo) return;
+    setActiveChatRepo(repo);
+
+    chatHistory = [];
+    deleteChatHistory(repo);
+    activeIterateEntry = null;
+    deleteIterateEntry(repo);
+    const surface = sheetQuery('#claudeChatSurface');
+    if (surface) surface.innerHTML = '';
+
+    const panel = sheetQuery('#claudeAttachPanel');
+    const pickerWasOpen = !!(panel && !panel.hidden);
+    clearAttachments();
+    renderWorkspacePill();
+    if (pickerWasOpen && panel) {
+        setAttachPanelHidden(false);
+        refreshAttachPickerMode();
+    }
 }
 
 // Reload the inject-targets cache from Supabase, then re-project the workspace

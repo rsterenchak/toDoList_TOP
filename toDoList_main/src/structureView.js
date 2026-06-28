@@ -1,32 +1,56 @@
 import { chatWithWorker } from './inject.js';
-import { loadManifest, getAttachRepos, getActiveChatRepo } from './claudeSheet.js';
+import {
+    loadManifest,
+    getAttachRepos,
+    getActiveChatRepo,
+    getRunningAppRepo,
+    setChatWorkspaceRepo,
+    insertReference,
+} from './claudeSheet.js';
+import { getStructureLens, setStructureLens } from './prefs.js';
 
-// The STRUCTURE view: a cross-repo map of a project's source. This first cut is
-// the Code lens — a repo picker selects which allowlisted repo to view, and that
-// repo's published `src-manifest.json` (the same artifact the chat's attach-file
-// picker fetches) renders as a collapsible folder/file tree. Tapping a file
-// reveals an "Explain with Sonnet" action that runs a one-shot Fast-mode chat
-// turn with that file attached and shows the returned summary inline.
+// The STRUCTURE view: a cross-repo map of a project's source and UI. A Code/UI
+// toggle swaps between two lenses of the selected repo:
+//   • Code lens — the repo's published `src-manifest.json` (the same artifact
+//     the chat's attach-file picker fetches) rendered as a collapsible
+//     folder/file tree, with a per-file "Explain with Sonnet" action.
+//   • UI lens — a live, tappable map of the running app's on-screen regions,
+//     walked straight from the DOM. Tapping a region exposes its selector plus
+//     a "Reference in chat" action that hands the selector to the Claude
+//     composer, and a "Copy selector" action. Non-running repos show a "no
+//     published UI map yet" notice until build-time maps land in the fast-follow.
+//
+// The repo picker is bound to the chat workspace: it reflects `activeChatRepo`
+// on render and, on select, reframes the conversation on that repo (the same
+// switch the chat's workspace pill performed) so a referenced selector always
+// lands in a chat framed on the repo you mapped it from.
 //
 // Like the other view modules this module reaches the DOM via getElementById /
 // createElement at call time and only exports renderStructureView — there is no
-// back-edge into main.js. It never touches localStorage; the repo allowlist and
-// manifest loader are reused from claudeSheet.js so the two never drift.
+// back-edge into main.js. It never touches localStorage directly except via the
+// prefs accessors; the repo allowlist, manifest loader, workspace setter, and
+// running-app repo are all reused from claudeSheet.js so the two never drift.
 
-// The repo currently shown in the tree. Held at module scope so a re-render
-// (view switch, manifest refresh) preserves the user's selection. Null until
-// first resolved against the live allowlist.
+// The repo currently shown. Held at module scope so a re-render (view switch,
+// manifest refresh) preserves the user's selection. Null until first resolved
+// against the live allowlist.
 let selectedRepo = null;
 
-// Folder paths the user has expanded, keyed by full slash-joined path. Survives
-// re-renders so the tree doesn't collapse on every repaint. Folder paths are
-// scoped per repo by their leading segments, so the set never collides across
-// repos that happen to share a folder name.
+// The active lens, 'code' or 'ui'. Hydrated from prefs on each render so the
+// tab reopens on the lens you last used.
+let lens = 'ui';
+
+// Folder paths the user has expanded in the Code lens, keyed by full
+// slash-joined path. Survives re-renders so the tree doesn't collapse on every
+// repaint. Folder paths are scoped per repo by their leading segments, so the
+// set never collides across repos that happen to share a folder name.
 let openFolders = new Set();
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
+
+// ── CODE LENS ───────────────────────────────────────────────────────────────
 
 // Group a flat list of repo-relative paths into a nested folder tree. Each node
 // is `{ name, path, dirs: {childName: node}, files: [{name, path}] }`; the
@@ -202,7 +226,9 @@ function renderTree(repo, treeEl) {
     treeEl.appendChild(loading);
 
     return loadManifest(repo).then(function (result) {
-        if (repo !== selectedRepo) return;
+        // The lens or the repo may have changed while the manifest was in
+        // flight; drop the stale result rather than painting over the UI lens.
+        if (repo !== selectedRepo || lens !== 'code') return;
         clear(treeEl);
         if (!result || !result.ok || !result.files.length) {
             const empty = document.createElement('div');
@@ -216,19 +242,388 @@ function renderTree(repo, treeEl) {
     });
 }
 
-// Resolve which repo the picker should show: keep the current selection if it's
-// still in the allowlist, otherwise default to the active chat workspace repo
-// (if allowed), otherwise the first allowed repo.
+// ── UI LENS ─────────────────────────────────────────────────────────────────
+
+// Element ids whose subtrees the walk skips entirely, so the map can't include
+// the Structure view itself or the chat surfaces.
+const EXCLUDED_IDS = { structureView: 1, desktopChatPane: 1, claudeSheet: 1 };
+
+// ARIA landmark roles that mark an element as a keepable region.
+const LANDMARK_ROLES = {
+    banner: 1, complementary: 1, contentinfo: 1, form: 1, main: 1,
+    navigation: 1, region: 1, search: 1, dialog: 1,
+};
+
+// Semantic tags that carry an implicit landmark role, mapped to that role name.
+const IMPLICIT_LANDMARK_TAGS = {
+    NAV: 'navigation', MAIN: 'main', HEADER: 'banner',
+    FOOTER: 'contentinfo', ASIDE: 'complementary',
+};
+
+// A run of this many or more consecutive id-less, role-less siblings sharing one
+// tag+class signature (todo/project rows) collapses to a single "× N rows" line
+// rather than listing each.
+const REPEAT_COLLAPSE_MIN = 3;
+
+function isExcludedEl(el) {
+    return !!(el.id && EXCLUDED_IDS[el.id]);
+}
+
+// The landmark role an element carries, explicit or implicit; '' when none.
+function regionRole(el) {
+    const role = (el.getAttribute('role') || '').trim().toLowerCase();
+    if (role && LANDMARK_ROLES[role]) return role;
+    const implicit = IMPLICIT_LANDMARK_TAGS[el.tagName];
+    if (implicit) return implicit;
+    return '';
+}
+
+// A region is "kept" (gets its own row in the map) when it carries an id, a
+// data-region, or a landmark role. Everything else is walked through.
+function isKept(el) {
+    return !!(el.id || (el.getAttribute('data-region') || '').trim() || regionRole(el));
+}
+
+// Turn an id/data-region token into a human label: split camelCase and
+// dash/underscore runs, then title-case.
+function prettify(token) {
+    return String(token || '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+}
+
+// Label precedence: data-region > aria-label > prettified id > role > tag.
+function regionLabel(el) {
+    const dr = (el.getAttribute('data-region') || '').trim();
+    if (dr) return dr;
+    const al = (el.getAttribute('aria-label') || '').trim();
+    if (al) return al;
+    if (el.id) return prettify(el.id);
+    const role = regionRole(el);
+    if (role) return role.charAt(0).toUpperCase() + role.slice(1);
+    return el.tagName.toLowerCase();
+}
+
+// Selector precedence: #id > [data-region="…"] > tag.firstClass > tag[role] > tag.
+function regionSelector(el) {
+    if (el.id) return '#' + el.id;
+    const dr = (el.getAttribute('data-region') || '').trim();
+    if (dr) return '[data-region="' + dr + '"]';
+    const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean)[0];
+    const tag = el.tagName.toLowerCase();
+    if (cls) return tag + '.' + cls;
+    const role = (el.getAttribute('role') || '').trim();
+    if (role) return tag + '[role="' + role + '"]';
+    return tag;
+}
+
+// On-screen "now" vs. latent: an element is visible when it isn't display:none /
+// visibility:hidden and has layout (an offsetParent or client rects). Surfaces
+// hidden only by a parent's data-view attribute still have layout-less presence
+// in the DOM and read as dimmed, which is what lets latent views show up.
+function isOnScreen(el) {
+    try {
+        const cs = window.getComputedStyle(el);
+        if (cs && (cs.display === 'none' || cs.visibility === 'hidden')) return false;
+    } catch (e) { /* defensive — treat as laid out */ }
+    if (el.offsetParent !== null) return true;
+    if (typeof el.getClientRects === 'function' && el.getClientRects().length) return true;
+    return false;
+}
+
+// A signature for collapse-detection: same tag + same class string. Uses the
+// raw class attribute so SVG elements (object-valued className) don't throw.
+function elSignature(el) {
+    return el.tagName + '|' + ((el.getAttribute('class') || '').trim());
+}
+
+// Length of the run of consecutive collapsible siblings starting at `start`
+// that share its signature. A collapsible element is one that wouldn't be kept
+// on its own (no id, no data-region, no landmark role).
+function repeatRunLength(children, start) {
+    const first = children[start];
+    if (isKept(first)) return 0;
+    const sig = elSignature(first);
+    let n = 1;
+    for (let j = start + 1; j < children.length; j++) {
+        if (!isKept(children[j]) && elSignature(children[j]) === sig) n++;
+        else break;
+    }
+    return n;
+}
+
+// Walk an element's descendants and return the list of region/collapsed nodes
+// it contains. Kept elements become region nodes (with their own kept
+// descendants nested); non-kept elements are walked through, hoisting their
+// kept descendants up to the nearest kept ancestor. Excluded subtrees are
+// skipped whole; runs of repeated id-less siblings collapse to one line.
+function walk(el) {
+    const children = Array.prototype.slice.call(el.children || []);
+    const out = [];
+    let i = 0;
+    while (i < children.length) {
+        const child = children[i];
+        const runLen = repeatRunLength(children, i);
+        if (runLen >= REPEAT_COLLAPSE_MIN) {
+            out.push({ type: 'collapsed', count: runLen, tag: child.tagName.toLowerCase() });
+            i += runLen;
+            continue;
+        }
+        if (isExcludedEl(child)) { i++; continue; }
+        const descendants = walk(child);
+        if (isKept(child)) {
+            out.push({
+                type: 'region',
+                label: regionLabel(child),
+                selector: regionSelector(child),
+                visible: isOnScreen(child),
+                children: descendants,
+            });
+        } else {
+            for (let k = 0; k < descendants.length; k++) out.push(descendants[k]);
+        }
+        i++;
+    }
+    return out;
+}
+
+// Build the UI region tree from the live DOM. Pure read — never mutates the page.
+function buildUiTree() {
+    if (!document.body) return [];
+    return walk(document.body);
+}
+
+// Copy a selector to the clipboard, flashing the button label as feedback.
+// Degrades silently when the Clipboard API is unavailable (older/insecure
+// contexts) — the selector is still visible in the panel to copy by hand.
+function copySelector(selector, btn) {
+    const prior = btn.textContent;
+    const flash = function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = prior; }, 1200);
+    };
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(selector).then(flash, flash);
+            return;
+        }
+    } catch (e) { /* fall through to the no-op flash */ }
+    flash();
+}
+
+// The action panel revealed under a region row: the full selector, a one-line
+// note about its on-screen state, a primary "Reference in chat", and a
+// secondary "Copy selector".
+function buildRegionActions(node) {
+    const panel = document.createElement('div');
+    panel.className = 'structureRegionActions';
+    panel.hidden = true;
+
+    const sel = document.createElement('code');
+    sel.className = 'structureRegionSelectorFull';
+    sel.textContent = node.selector;
+    panel.appendChild(sel);
+
+    const note = document.createElement('div');
+    note.className = 'structureRegionNote';
+    note.textContent = node.visible ? 'On screen now.' : 'Not currently on screen.';
+    panel.appendChild(note);
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'structureRegionActionRow';
+
+    const refBtn = document.createElement('button');
+    refBtn.type = 'button';
+    refBtn.className = 'structureReferenceBtn';
+    refBtn.textContent = 'Reference in chat';
+    refBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        insertReference(node.label, node.selector);
+    });
+    actionRow.appendChild(refBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'structureCopyBtn';
+    copyBtn.textContent = 'Copy selector';
+    copyBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        copySelector(node.selector, copyBtn);
+    });
+    actionRow.appendChild(copyBtn);
+
+    panel.appendChild(actionRow);
+    return panel;
+}
+
+// Render a collapsed "× N rows" placeholder for a run of repeated siblings.
+function buildCollapsedRow(node, depth) {
+    const row = document.createElement('div');
+    row.className = 'structureCollapsedRow';
+    row.style.setProperty('--structure-depth', String(depth));
+    row.textContent = '× ' + node.count + ' ' + node.tag + ' rows';
+    return row;
+}
+
+// Render a region row: a caret (when it has children) toggles its nested
+// regions; tapping the row body toggles its action panel. Off-screen regions
+// render dimmed. Depth drives the left indent.
+function buildRegionRow(node, depth) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureRegionWrap';
+
+    const hasChildren = node.children && node.children.length;
+
+    const row = document.createElement('div');
+    row.className = 'structureRegionRow';
+    if (!node.visible) row.classList.add('structureRegionRow--dim');
+    row.style.setProperty('--structure-depth', String(depth));
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-expanded', 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureRegionCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = hasChildren ? '▸' : '';
+    if (!hasChildren) caret.classList.add('structureRegionCaret--leaf');
+    row.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureRegionLabel';
+    label.textContent = node.label;
+    row.appendChild(label);
+
+    const selHint = document.createElement('span');
+    selHint.className = 'structureRegionSelector';
+    selHint.textContent = node.selector;
+    row.appendChild(selHint);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureRegionChildren';
+    childWrap.hidden = true;
+
+    const actions = buildRegionActions(node);
+
+    if (hasChildren) {
+        caret.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const nowOpen = childWrap.hidden;
+            childWrap.hidden = !nowOpen;
+            row.classList.toggle('expanded', nowOpen);
+        });
+        node.children.forEach(function (child) {
+            if (child.type === 'collapsed') childWrap.appendChild(buildCollapsedRow(child, depth + 1));
+            else childWrap.appendChild(buildRegionRow(child, depth + 1));
+        });
+    }
+
+    const toggleActions = function () {
+        const nowOpen = actions.hidden;
+        actions.hidden = !nowOpen;
+        row.setAttribute('aria-expanded', String(nowOpen));
+    };
+    row.addEventListener('click', toggleActions);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleActions();
+        }
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(actions);
+    wrap.appendChild(childWrap);
+    return wrap;
+}
+
+// Render the UI lens into the tree container. The running app maps live; any
+// other repo shows a "no published UI map yet" notice until the build-time maps
+// land in the fast-follow.
+function renderUiLens(repo, treeEl) {
+    clear(treeEl);
+    if (repo !== getRunningAppRepo()) {
+        const empty = document.createElement('div');
+        empty.className = 'structureNoUiMap';
+        empty.textContent = 'No published UI map yet for this repo.';
+        treeEl.appendChild(empty);
+        return;
+    }
+    const tree = buildUiTree();
+    if (!tree.length) {
+        const empty = document.createElement('div');
+        empty.className = 'structureNoUiMap';
+        empty.textContent = 'No mappable regions found.';
+        treeEl.appendChild(empty);
+        return;
+    }
+    tree.forEach(function (node) {
+        if (node.type === 'collapsed') treeEl.appendChild(buildCollapsedRow(node, 0));
+        else treeEl.appendChild(buildRegionRow(node, 0));
+    });
+}
+
+// Dispatch the active lens into the shared tree container.
+function renderLens(repo, treeEl) {
+    if (lens === 'ui') {
+        renderUiLens(repo, treeEl);
+        return;
+    }
+    renderTree(repo, treeEl);
+}
+
+// ── SHELL ───────────────────────────────────────────────────────────────────
+
+// Resolve which repo the picker shows. The picker is bound to the chat
+// workspace, so it reflects `activeChatRepo` whenever that's an allowed repo;
+// it falls back to the last selection, then the first allowed repo.
 function resolveSelectedRepo(repos) {
-    if (selectedRepo && repos.indexOf(selectedRepo) !== -1) return selectedRepo;
     const active = getActiveChatRepo();
     if (active && repos.indexOf(active) !== -1) return active;
+    if (selectedRepo && repos.indexOf(selectedRepo) !== -1) return selectedRepo;
     return repos[0] || null;
 }
 
+// Build the Code/UI segmented control. Switching persists the choice and
+// repaints the tree via `onChange`.
+function buildLensToggle(onChange) {
+    const group = document.createElement('div');
+    group.className = 'structureLensToggle';
+    group.setAttribute('role', 'tablist');
+    group.setAttribute('aria-label', 'Structure lens');
+
+    [['ui', 'UI'], ['code', 'Code']].forEach(function (pair) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'structureLensBtn';
+        btn.dataset.lens = pair[0];
+        btn.textContent = pair[1];
+        btn.setAttribute('role', 'tab');
+        const on = pair[0] === lens;
+        btn.setAttribute('aria-selected', String(on));
+        if (on) btn.classList.add('active');
+        btn.addEventListener('click', function () {
+            if (lens === pair[0]) return;
+            lens = pair[0];
+            setStructureLens(lens);
+            Array.prototype.forEach.call(group.children, function (b) {
+                const sel = b.dataset.lens === lens;
+                b.classList.toggle('active', sel);
+                b.setAttribute('aria-selected', String(sel));
+            });
+            onChange();
+        });
+        group.appendChild(btn);
+    });
+    return group;
+}
+
 // Render the STRUCTURE view. Safe to call before component() has built the shell
-// (a missing #structureView short-circuits). Builds the repo picker and the tree
-// container synchronously; the tree itself fills in once the manifest resolves.
+// (a missing #structureView short-circuits). Builds the repo picker, the Code/UI
+// toggle, and the tree container synchronously; the active lens fills the tree.
 export function renderStructureView() {
     const view = document.getElementById('structureView');
     if (!view) return;
@@ -242,19 +637,23 @@ export function renderStructureView() {
         view.appendChild(empty);
         return;
     }
+    lens = getStructureLens();
     selectedRepo = resolveSelectedRepo(repos);
 
-    // Header: a labeled repo picker. The <select> font-size stays ≥16px in CSS
-    // to avoid iOS Safari auto-zoom on focus.
+    // Header: a labeled repo picker plus the Code/UI lens toggle beside it.
     const header = document.createElement('div');
     header.className = 'structureHeader';
+
+    const pickerGroup = document.createElement('div');
+    pickerGroup.className = 'structurePickerGroup';
 
     const pickerLabel = document.createElement('label');
     pickerLabel.className = 'structurePickerLabel';
     pickerLabel.textContent = 'Repository';
     pickerLabel.setAttribute('for', 'structureRepoPicker');
-    header.appendChild(pickerLabel);
+    pickerGroup.appendChild(pickerLabel);
 
+    // The <select> font-size stays ≥16px in CSS to avoid iOS Safari auto-zoom.
     const picker = document.createElement('select');
     picker.id = 'structureRepoPicker';
     picker.className = 'structureRepoPicker';
@@ -265,11 +664,20 @@ export function renderStructureView() {
         if (repo === selectedRepo) opt.selected = true;
         picker.appendChild(opt);
     });
-    header.appendChild(picker);
-    view.appendChild(header);
+    pickerGroup.appendChild(picker);
+    header.appendChild(pickerGroup);
 
     const tree = document.createElement('div');
     tree.className = 'structureTree';
+
+    const toggle = buildLensToggle(function () {
+        // Code lens re-renders from scratch each switch; reset its open-folder
+        // state so a fresh switch starts collapsed.
+        if (lens === 'code') openFolders = new Set();
+        renderLens(selectedRepo, tree);
+    });
+    header.appendChild(toggle);
+    view.appendChild(header);
     view.appendChild(tree);
 
     picker.addEventListener('change', function () {
@@ -278,8 +686,12 @@ export function renderStructureView() {
         // Open-folder state is path-scoped per repo, so switching repos starts
         // the new tree collapsed rather than inheriting another repo's open set.
         openFolders = new Set();
-        renderTree(selectedRepo, tree);
+        // Bind the picker to the chat workspace: selecting a repo here reframes
+        // the conversation on it (same as the chat's workspace switch), so a
+        // referenced selector always lands in a chat framed on that repo.
+        setChatWorkspaceRepo(selectedRepo);
+        renderLens(selectedRepo, tree);
     });
 
-    renderTree(selectedRepo, tree);
+    renderLens(selectedRepo, tree);
 }
