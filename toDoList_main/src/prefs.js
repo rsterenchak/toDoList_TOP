@@ -271,6 +271,58 @@ export function setStructureLens(lens) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Structure tab open/closed tree state (per repo + lens) ──
+// The Structure tab's tree (Code-lens folders, published-map file groups, live-
+// map regions) otherwise resets to its default expansion on every reload. We
+// remember the set of "exception" node keys per repo + lens so the tree comes
+// back the way it was left: open folder paths (Code lens), open region selectors
+// (live UI map), or collapsed file names (published UI map — which defaults every
+// header to expanded, so the exceptions it records are the collapsed ones). The
+// whole thing is one object keyed by `<repo>:<lens>`, LRU-ordered (freshest entry
+// last) and capped so it can't grow unbounded as repos and lenses accumulate.
+export const STRUCTURE_TREE_KEY = 'todoapp_structureTree';
+const STRUCTURE_TREE_MAX_ENTRIES = 24;
+
+function readStructureTreeStore() {
+    try {
+        const raw = localStorage.getItem(STRUCTURE_TREE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// The stored array of node keys for repo + lens, or null when none is stored
+// (the caller then falls back to that lens's default expansion on first open).
+export function getStructureTreeState(repo, lens) {
+    if (!repo || !lens) return null;
+    const store = readStructureTreeStore();
+    const val = store[repo + ':' + lens];
+    return Array.isArray(val) ? val.slice() : null;
+}
+
+// Persist the array of node keys for repo + lens, re-inserting the entry at the
+// tail (most-recently-used) and pruning the oldest entries past the cap.
+export function setStructureTreeState(repo, lens, keys) {
+    if (!repo || !lens) return;
+    try {
+        const store = readStructureTreeStore();
+        const k = repo + ':' + lens;
+        // Delete-then-reassign moves the key to the tail of iteration order, so
+        // the freshest entry is last and the oldest sit at the front for pruning.
+        delete store[k];
+        store[k] = Array.isArray(keys) ? keys.slice() : [];
+        const allKeys = Object.keys(store);
+        if (allKeys.length > STRUCTURE_TREE_MAX_ENTRIES) {
+            allKeys.slice(0, allKeys.length - STRUCTURE_TREE_MAX_ENTRIES)
+                .forEach(function (old) { delete store[old]; });
+        }
+        localStorage.setItem(STRUCTURE_TREE_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is

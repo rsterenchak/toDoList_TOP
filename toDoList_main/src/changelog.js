@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             "A filter box on the Structure tab narrows the tree live as you type — by file in the Code lens, by handle in the UI lens — with matches highlighted.",
             "Structure tab file explanations are now cached per commit, so re-opening an unchanged file shows its summary instantly without another Sonnet call.",
+            "The Structure tab's tree now remembers which folders and regions you left open, restoring them after a reload.",
         ],
     },
     {
         version: '1.1',
         date: '2026-06-27',
         fixed: [
-            "The quick-option chips under the mobile add-task field now appear in full instead of being clipped or overlapping the first task below.",
             "The task editor's Inject button now uses a deeper, flatter purple fill matching the rest of the accent palette.",
             "A linked repo's published UI map now offers \"Reference in chat\" and \"Copy selector\" on each region, matching the live map.",
         ],
