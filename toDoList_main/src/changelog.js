@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-27',
         changed: [
-            "The Structure view now maps the selected project's linked repo automatically instead of offering a repository picker.",
+            "A linked repo's published UI map now groups regions under collapsible file headers by their defining file, matching the foldable structure of the live map.",
         ],
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",

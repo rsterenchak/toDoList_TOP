@@ -49,6 +49,13 @@ let lens = 'ui';
 // set never collides across repos that happen to share a folder name.
 let openFolders = new Set();
 
+// Defining files the user has COLLAPSED in the published UI map's file-grouped
+// view, keyed by `region.file`. The published map defaults every file header to
+// expanded, so membership here marks the exceptions; surviving re-renders keeps
+// a header's fold state stable across repaints. Reset on repo switch alongside
+// `openFolders`.
+let collapsedPublishedFiles = new Set();
+
 // The build-time UI index for the selected repo, surfaced from its manifest:
 //   • regionsIndex — selector → region record { selector, label, file, line,
 //     files } — powers "Find in code" (live selector or published row → owner
@@ -755,13 +762,15 @@ function appendUiNotice(treeEl, text) {
 // One row of the published UI map: a handle's label + selector, expandable into
 // an action panel with "Find in code" and a "View on GitHub" link to its
 // primary defining file. Static (no live DOM) — the map comes from `regions`.
-function buildPublishedRegionRow(repo, region) {
+// `depth` drives the left indent so rows nest beneath their file-group header.
+function buildPublishedRegionRow(repo, region, depth) {
+    const indent = typeof depth === 'number' ? depth : 0;
     const wrap = document.createElement('div');
     wrap.className = 'structureRegionWrap';
 
     const row = document.createElement('div');
     row.className = 'structureRegionRow';
-    row.style.setProperty('--structure-depth', '0');
+    row.style.setProperty('--structure-depth', String(indent));
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
     row.setAttribute('aria-expanded', 'false');
@@ -786,10 +795,13 @@ function buildPublishedRegionRow(repo, region) {
     actions.className = 'structureRegionActions';
     actions.hidden = true;
 
+    // The defining file is now the group header, so the per-row note carries
+    // only the line within that file.
     const note = document.createElement('div');
     note.className = 'structureRegionNote';
-    note.textContent = 'Defined in ' + region.file +
-        (typeof region.line === 'number' && region.line > 0 ? ':' + region.line : '') + '.';
+    note.textContent = typeof region.line === 'number' && region.line > 0
+        ? 'Line ' + region.line + '.'
+        : 'Line not recorded.';
     actions.appendChild(note);
 
     const actionRow = document.createElement('div');
@@ -863,9 +875,75 @@ function renderPublishedUiMap(repo, result, treeEl) {
     banner.className = 'structurePublishedBanner';
     banner.textContent = 'Published UI map — as of last deploy.';
     treeEl.appendChild(banner);
+
+    // The published map can't reconstruct DOM containment, but every region
+    // carries its defining file — so group the rows under collapsible file
+    // headers (reusing the Code lens's folder-row vocabulary) to give the map a
+    // foldable structure. Files alphabetical; rows within a file by line.
+    const byFile = new Map();
     regions.forEach(function (region) {
-        treeEl.appendChild(buildPublishedRegionRow(repo, region));
+        const file = region.file || '(unknown file)';
+        if (!byFile.has(file)) byFile.set(file, []);
+        byFile.get(file).push(region);
     });
+
+    Array.from(byFile.keys()).sort().forEach(function (file) {
+        const fileRegions = byFile.get(file).slice().sort(function (a, b) {
+            const la = typeof a.line === 'number' ? a.line : 0;
+            const lb = typeof b.line === 'number' ? b.line : 0;
+            return la - lb;
+        });
+        treeEl.appendChild(buildPublishedFileGroup(repo, file, fileRegions));
+    });
+}
+
+// A collapsible file header for the published UI map: every region defined in
+// `file` nests beneath it. Defaults to expanded (so all handles are visible on
+// open); the user's fold choice persists across re-renders via
+// `collapsedPublishedFiles`. Reuses the Code lens's folder-row styling.
+function buildPublishedFileGroup(repo, file, fileRegions) {
+    const expanded = !collapsedPublishedFiles.has(file);
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'structureFolderRow';
+    head.style.setProperty('--structure-depth', '0');
+    head.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureFolderCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▸';
+    head.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureFolderName';
+    label.textContent = file;
+    head.appendChild(label);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureFolderChildren';
+    if (!expanded) childWrap.hidden = true;
+
+    fileRegions.forEach(function (region) {
+        childWrap.appendChild(buildPublishedRegionRow(repo, region, 1));
+    });
+
+    head.addEventListener('click', function () {
+        const nowOpen = collapsedPublishedFiles.has(file);
+        if (nowOpen) collapsedPublishedFiles.delete(file);
+        else collapsedPublishedFiles.add(file);
+        head.classList.toggle('expanded', nowOpen);
+        head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+        childWrap.hidden = !nowOpen;
+    });
+    if (expanded) head.classList.add('expanded');
+
+    const group = document.createElement('div');
+    group.className = 'structurePublishedFileGroup';
+    group.appendChild(head);
+    group.appendChild(childWrap);
+    return group;
 }
 
 // Render the UI lens into the tree container. The running app maps live (and its
@@ -998,7 +1076,10 @@ export function renderStructureView() {
     lens = getStructureLens();
     // Reset the open-folder set when the resolved repo changes (project switch),
     // since folder paths are repo-scoped and shouldn't carry across repos.
-    if (repo !== selectedRepo) openFolders = new Set();
+    if (repo !== selectedRepo) {
+        openFolders = new Set();
+        collapsedPublishedFiles = new Set();
+    }
     selectedRepo = repo;
 
     // Header: a read-only repo label (the repo string with the project name as a
