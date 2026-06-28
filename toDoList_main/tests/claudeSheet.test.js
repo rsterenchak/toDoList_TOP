@@ -17,6 +17,8 @@ import {
     getActiveChatRepo,
     getAttachRepos,
     getRunningAppRepo,
+    loadManifest,
+    manifestUrlForRepo,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
@@ -4023,5 +4025,54 @@ describe('Claude sheet — Structure view seams (insertReference / setChatWorksp
         expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
         setChatWorkspaceRepo(DEFAULT_REPO);
         expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+    });
+});
+
+// loadManifest must surface the newer `lens` and `types` manifest fields so the
+// Structure tab's adaptive Types lens can engage for C# repos (which publish a
+// manifest with `"lens":"types"` and a populated `types` array). Each test uses
+// a unique repo name to dodge the module-level srcManifestCache.
+describe('loadManifest lens/types passthrough', () => {
+    let realFetch;
+    beforeEach(() => { realFetch = globalThis.fetch; });
+    afterEach(() => { globalThis.fetch = realFetch; });
+
+    function mockManifest(repo, data) {
+        globalThis.fetch = vi.fn((url) => {
+            if (url === manifestUrlForRepo(repo)) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve(data) });
+            }
+            return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+        });
+    }
+
+    it('surfaces lens and types from a types-lens (C#) manifest', async () => {
+        const repo = 'rsterenchak/csharp-types-repo';
+        const types = [{ kind: 'class', name: 'Foo', members: [] }];
+        mockManifest(repo, { files: ['Foo.cs'], lens: 'types', types: types });
+        const result = await loadManifest(repo);
+        expect(result.ok).toBe(true);
+        expect(result.lens).toBe('types');
+        expect(result.types).toEqual(types);
+    });
+
+    it('leaves lens/types undefined for an older lens-less (web) manifest', async () => {
+        const repo = 'rsterenchak/web-no-lens-repo';
+        mockManifest(repo, { files: ['index.js'], hasDom: true });
+        const result = await loadManifest(repo);
+        expect(result.ok).toBe(true);
+        expect(result.lens).toBeUndefined();
+        expect(result.types).toBeUndefined();
+        // Existing consumers are unaffected.
+        expect(result.files).toEqual(['index.js']);
+        expect(result.hasDom).toBe(true);
+    });
+
+    it('ignores malformed lens/types (wrong types) rather than passing them through', async () => {
+        const repo = 'rsterenchak/malformed-lens-repo';
+        mockManifest(repo, { files: ['a.js'], lens: 123, types: 'nope' });
+        const result = await loadManifest(repo);
+        expect(result.lens).toBeUndefined();
+        expect(result.types).toBeUndefined();
     });
 });

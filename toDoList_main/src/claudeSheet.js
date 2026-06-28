@@ -1103,6 +1103,12 @@ export async function loadManifest(repo) {
                 // explanations keyed by it; absent on deterministic /
                 // served-from-source manifests, where it stays undefined.
                 sha: isObj && typeof data.sha === 'string' && data.sha ? data.sha : undefined,
+                // The lens the manifest declares ('ui' | 'code' | 'types') and
+                // its non-DOM symbol index. Surfaced for the Structure tab's
+                // adaptive Types lens; left undefined for web / older manifests
+                // that predate them, where structureView defaults to the UI lens.
+                lens: isObj && typeof data.lens === 'string' ? data.lens : undefined,
+                types: isObj && Array.isArray(data.types) ? data.types : undefined,
             };
         }
     } catch (e) {
