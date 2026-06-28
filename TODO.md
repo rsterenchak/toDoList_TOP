@@ -474,7 +474,7 @@
   - Completed: 2026-06-27
   <!-- id: 949653a0-39fb-46b5-b598-6bd7d8bc97f2 -->
 
-- [ ] **[MEDIUM]** Add a Structure tab with a cross-repo Code lens
+- [x] **[MEDIUM]** Add a Structure tab with a cross-repo Code lens — Completed: 2026-06-27
   - Type: feature
   - Description: Add a new "Structure" view to the dashboard — a third pill in the desktop view switcher and a third tab on the mobile bottom bar — that renders a navigable, cross-repo map of a project's source. This first cut is the Code lens: a repo picker selects which allowlisted repo to view, and that repo's source files render as a collapsible tree built from its published `src-manifest.json` (the same artifact and fetch path the chat's attach-file picker already uses). Tapping a file reveals an "Explain with Sonnet" action that runs a one-shot Fast-mode chat turn with that file attached and shows the returned 2–3 sentence summary inline. A new `structureView.js` follows the `conceiveView.js` contract — it owns its `#structureView` container, exports a single `renderStructureView()`, reaches the DOM at call time, and has no back-edges into `main.js`.
   - Behavior:
