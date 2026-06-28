@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-28T04:44:05.146Z",
-  "sha": "735f86d2e82167ade3665e5c1dbd21114aa9308b",
+  "generatedAt": "2026-06-28T05:09:09.675Z",
+  "sha": "5920d08789f555b0d6f8c5438e10f709790017f4",
   "files": [
     "auth.js",
     "changelog.js",
@@ -48,5 +48,4557 @@
     "undoToast.js",
     "viewport.js",
     "welcomeCarousel.js"
-  ]
+  ],
+  "srcRoot": "toDoList_main/src",
+  "regions": [
+    {
+      "selector": "#addGlyph",
+      "label": "Add Glyph",
+      "file": "toDoRow.js",
+      "line": 1346,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1346
+        },
+        {
+          "file": "style.css",
+          "line": 4689
+        }
+      ]
+    },
+    {
+      "selector": "#addProj",
+      "label": "Add Proj",
+      "file": "main.js",
+      "line": 188,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 188
+        },
+        {
+          "file": "style.css",
+          "line": 510
+        }
+      ]
+    },
+    {
+      "selector": "#addProject",
+      "label": "Add Project",
+      "file": "coachmark.js",
+      "line": 112,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 112
+        }
+      ]
+    },
+    {
+      "selector": "#authModalEmailInput",
+      "label": "Auth Modal Email Input",
+      "file": "auth.js",
+      "line": 83,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 83
+        }
+      ]
+    },
+    {
+      "selector": "#authModalError",
+      "label": "Auth Modal Error",
+      "file": "auth.js",
+      "line": 101,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 101
+        }
+      ]
+    },
+    {
+      "selector": "#authModalForm",
+      "label": "Auth Modal Form",
+      "file": "auth.js",
+      "line": 79,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 79
+        },
+        {
+          "file": "style.css",
+          "line": 9727
+        }
+      ]
+    },
+    {
+      "selector": "#authModalResend",
+      "label": "Auth Modal Resend",
+      "file": "auth.js",
+      "line": 182,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 182
+        }
+      ]
+    },
+    {
+      "selector": "#authModalSubmit",
+      "label": "Auth Modal Submit",
+      "file": "auth.js",
+      "line": 96,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 96
+        }
+      ]
+    },
+    {
+      "selector": "#authModalTitle",
+      "label": "Auth Modal Title",
+      "file": "auth.js",
+      "line": 73,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "selector": "#authModalUseDifferent",
+      "label": "Auth Modal Use Different",
+      "file": "auth.js",
+      "line": 202,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 202
+        }
+      ]
+    },
+    {
+      "selector": "#bars",
+      "label": "Bars",
+      "file": "musicVisualizer.js",
+      "line": 22,
+      "files": [
+        {
+          "file": "musicVisualizer.js",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "selector": "#blobs",
+      "label": "Blobs",
+      "file": "musicVisualizer.js",
+      "line": 20,
+      "files": [
+        {
+          "file": "musicVisualizer.js",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "selector": "#bootWatchdogOverlay",
+      "label": "Boot Watchdog Overlay",
+      "file": "template.html",
+      "line": 65,
+      "files": [
+        {
+          "file": "template.html",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "selector": "#bootWatchdogStyle",
+      "label": "Boot Watchdog Style",
+      "file": "template.html",
+      "line": 79,
+      "files": [
+        {
+          "file": "template.html",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheet",
+      "label": "Bottom Sheet",
+      "file": "main.js",
+      "line": 524,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 524
+        },
+        {
+          "file": "style.css",
+          "line": 11030
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheetBackdrop",
+      "label": "Bottom Sheet Backdrop",
+      "file": "main.js",
+      "line": 529,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 529
+        },
+        {
+          "file": "style.css",
+          "line": 11062
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheetExpanded",
+      "label": "Bottom Sheet Expanded",
+      "file": "main.js",
+      "line": 610,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 610
+        },
+        {
+          "file": "style.css",
+          "line": 11242
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheetMusicPlayerTarget",
+      "label": "Bottom Sheet Music Player Target",
+      "file": "main.js",
+      "line": 777,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 777
+        },
+        {
+          "file": "style.css",
+          "line": 11443
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheetNub",
+      "label": "Bottom Sheet Nub",
+      "file": "main.js",
+      "line": 535,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 535
+        },
+        {
+          "file": "style.css",
+          "line": 11079
+        }
+      ]
+    },
+    {
+      "selector": "#bottomSheetPeek",
+      "label": "Bottom Sheet Peek",
+      "file": "main.js",
+      "line": 548,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 548
+        },
+        {
+          "file": "style.css",
+          "line": 11137
+        }
+      ]
+    },
+    {
+      "selector": "#bulkDescActions",
+      "label": "Bulk Desc Actions",
+      "file": "main.js",
+      "line": 1965,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1965
+        },
+        {
+          "file": "style.css",
+          "line": 2922
+        }
+      ]
+    },
+    {
+      "selector": "#changelogDot",
+      "label": "Changelog Dot",
+      "file": "main.js",
+      "line": 1549,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1549
+        },
+        {
+          "file": "style.css",
+          "line": 351
+        }
+      ]
+    },
+    {
+      "selector": "#changelogMobileSheet",
+      "label": "Changelog Mobile Sheet",
+      "file": "mobileSheets.js",
+      "line": 619,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 619
+        },
+        {
+          "file": "style.css",
+          "line": 5800
+        }
+      ]
+    },
+    {
+      "selector": "#changelogMobileSheetBackdrop",
+      "label": "Changelog Mobile Sheet Backdrop",
+      "file": "mobileSheets.js",
+      "line": 616,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 616
+        },
+        {
+          "file": "style.css",
+          "line": 5786
+        }
+      ]
+    },
+    {
+      "selector": "#changelogMobileSheetBody",
+      "label": "Changelog Mobile Sheet Body",
+      "file": "mobileSheets.js",
+      "line": 647,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 647
+        },
+        {
+          "file": "style.css",
+          "line": 5819
+        }
+      ]
+    },
+    {
+      "selector": "#changelogMobileSheetTitle",
+      "label": "Changelog Mobile Sheet Title",
+      "file": "mobileSheets.js",
+      "line": 632,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 632
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModal",
+      "label": "Changelog Modal",
+      "file": "modals.js",
+      "line": 583,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 583
+        },
+        {
+          "file": "style.css",
+          "line": 963
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalActions",
+      "label": "Changelog Modal Actions",
+      "file": "modals.js",
+      "line": 610,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 610
+        },
+        {
+          "file": "style.css",
+          "line": 1064
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalBackdrop",
+      "label": "Changelog Modal Backdrop",
+      "file": "modals.js",
+      "line": 580,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 580
+        },
+        {
+          "file": "style.css",
+          "line": 949
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalBody",
+      "label": "Changelog Modal Body",
+      "file": "modals.js",
+      "line": 605,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 605
+        },
+        {
+          "file": "style.css",
+          "line": 1010
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalClose",
+      "label": "Changelog Modal Close",
+      "file": "modals.js",
+      "line": 596,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 596
+        },
+        {
+          "file": "style.css",
+          "line": 997
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalCloseBtn",
+      "label": "Changelog Modal Close Btn",
+      "file": "modals.js",
+      "line": 613,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 613
+        },
+        {
+          "file": "style.css",
+          "line": 1072
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalHeader",
+      "label": "Changelog Modal Header",
+      "file": "modals.js",
+      "line": 589,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 589
+        },
+        {
+          "file": "style.css",
+          "line": 980
+        }
+      ]
+    },
+    {
+      "selector": "#changelogModalTitle",
+      "label": "Changelog Modal Title",
+      "file": "modals.js",
+      "line": 592,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 592
+        },
+        {
+          "file": "style.css",
+          "line": 988
+        }
+      ]
+    },
+    {
+      "selector": "#chatCollapseButton",
+      "label": "Chat Collapse Button",
+      "file": "main.js",
+      "line": 469,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 469
+        },
+        {
+          "file": "style.css",
+          "line": 8951
+        }
+      ]
+    },
+    {
+      "selector": "#chatExpandButton",
+      "label": "Chat Expand Button",
+      "file": "main.js",
+      "line": 474,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 474
+        },
+        {
+          "file": "style.css",
+          "line": 8952
+        }
+      ]
+    },
+    {
+      "selector": "#checkToDo",
+      "label": "Check To Do",
+      "file": "toDoRow.js",
+      "line": 198,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 198
+        },
+        {
+          "file": "style.css",
+          "line": 4487
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachChips",
+      "label": "Claude Attach Chips",
+      "file": "claudeSheet.js",
+      "line": 756,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 756
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachIntro",
+      "label": "Claude Attach Intro",
+      "file": "claudeSheet.js",
+      "line": 1366,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 1366
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachList",
+      "label": "Claude Attach List",
+      "file": "claudeSheet.js",
+      "line": 628,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 628
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachNotice",
+      "label": "Claude Attach Notice",
+      "file": "claudeSheet.js",
+      "line": 663,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 663
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPanel",
+      "label": "Claude Attach Panel",
+      "file": "claudeSheet.js",
+      "line": 610,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 610
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathAdd",
+      "label": "Claude Attach Path Add",
+      "file": "claudeSheet.js",
+      "line": 646,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 646
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathInput",
+      "label": "Claude Attach Path Input",
+      "file": "claudeSheet.js",
+      "line": 641,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 641
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathRow",
+      "label": "Claude Attach Path Row",
+      "file": "claudeSheet.js",
+      "line": 637,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 637
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachSearch",
+      "label": "Claude Attach Search",
+      "file": "claudeSheet.js",
+      "line": 623,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 623
+        }
+      ]
+    },
+    {
+      "selector": "#claudeChatSurface",
+      "label": "Claude Chat Surface",
+      "file": "claudeSheet.js",
+      "line": 751,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 751
+        }
+      ]
+    },
+    {
+      "selector": "#claudeChatView",
+      "label": "Claude Chat View",
+      "file": "claudeSheet.js",
+      "line": 746,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 746
+        },
+        {
+          "file": "style.css",
+          "line": 1783
+        }
+      ]
+    },
+    {
+      "selector": "#claudeClearChat",
+      "label": "Claude Clear Chat",
+      "file": "claudeSheet.js",
+      "line": 558,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 558
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposer",
+      "label": "Claude Composer",
+      "file": "claudeSheet.js",
+      "line": 760,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 760
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerAttach",
+      "label": "Claude Composer Attach",
+      "file": "claudeSheet.js",
+      "line": 595,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 595
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerInput",
+      "label": "Claude Composer Input",
+      "file": "claudeSheet.js",
+      "line": 763,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 763
+        },
+        {
+          "file": "style.css",
+          "line": 1857
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerMic",
+      "label": "Claude Composer Mic",
+      "file": "claudeSheet.js",
+      "line": 921,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 921
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerModeMenu",
+      "label": "Claude Composer Mode Menu",
+      "file": "claudeSheet.js",
+      "line": 799,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 799
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerSend",
+      "label": "Claude Composer Send",
+      "file": "claudeSheet.js",
+      "line": 774,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 774
+        },
+        {
+          "file": "style.css",
+          "line": 1960
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerSendCaret",
+      "label": "Claude Composer Send Caret",
+      "file": "claudeSheet.js",
+      "line": 787,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 787
+        }
+      ]
+    },
+    {
+      "selector": "#claudeComposerSendSplit",
+      "label": "Claude Composer Send Split",
+      "file": "claudeSheet.js",
+      "line": 833,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 833
+        }
+      ]
+    },
+    {
+      "selector": "#claudeLauncher",
+      "label": "Claude Launcher",
+      "file": "claudeSheet.js",
+      "line": 504,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 504
+        },
+        {
+          "file": "style.css",
+          "line": 1614
+        }
+      ]
+    },
+    {
+      "selector": "#claudeRunsClear",
+      "label": "Claude Runs Clear",
+      "file": "claudeSheet.js",
+      "line": 2161,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2161
+        }
+      ]
+    },
+    {
+      "selector": "#claudeRunsEmpty",
+      "label": "Claude Runs Empty",
+      "file": "claudeSheet.js",
+      "line": 2137,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2137
+        }
+      ]
+    },
+    {
+      "selector": "#claudeRunsList",
+      "label": "Claude Runs List",
+      "file": "claudeSheet.js",
+      "line": 2082,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2082
+        }
+      ]
+    },
+    {
+      "selector": "#claudeRunsNew",
+      "label": "Claude Runs New",
+      "file": "claudeSheet.js",
+      "line": 2086,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2086
+        }
+      ]
+    },
+    {
+      "selector": "#claudeRunsView",
+      "label": "Claude Runs View",
+      "file": "claudeSheet.js",
+      "line": 2051,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2051
+        }
+      ]
+    },
+    {
+      "selector": "#claudeScrollDown",
+      "label": "Claude Scroll Down",
+      "file": "claudeSheet.js",
+      "line": 873,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 873
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheet",
+      "label": "Claude Sheet",
+      "file": "claudeSheet.js",
+      "line": 2821,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2821
+        },
+        {
+          "file": "style.css",
+          "line": 1670
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetBackdrop",
+      "label": "Claude Sheet Backdrop",
+      "file": "claudeSheet.js",
+      "line": 2976,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2976
+        },
+        {
+          "file": "style.css",
+          "line": 1669
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetBody",
+      "label": "Claude Sheet Body",
+      "file": "claudeSheet.js",
+      "line": 2881,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2881
+        },
+        {
+          "file": "style.css",
+          "line": 8800
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetClose",
+      "label": "Claude Sheet Close",
+      "file": "claudeSheet.js",
+      "line": 2840,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2840
+        },
+        {
+          "file": "style.css",
+          "line": 1697
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetCloseRow",
+      "label": "Claude Sheet Close Row",
+      "file": "claudeSheet.js",
+      "line": 2849,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2849
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetHandle",
+      "label": "Claude Sheet Handle",
+      "file": "claudeSheet.js",
+      "line": 2831,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2831
+        },
+        {
+          "file": "style.css",
+          "line": 1691
+        }
+      ]
+    },
+    {
+      "selector": "#claudeSheetTabs",
+      "label": "Claude Sheet Tabs",
+      "file": "claudeSheet.js",
+      "line": 2854,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2854
+        },
+        {
+          "file": "style.css",
+          "line": 1723
+        }
+      ]
+    },
+    {
+      "selector": "#claudeUpdateNudge",
+      "label": "Claude Update Nudge",
+      "file": "claudeSheet.js",
+      "line": 2059,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2059
+        }
+      ]
+    },
+    {
+      "selector": "#claudeUpdateReload",
+      "label": "Claude Update Reload",
+      "file": "claudeSheet.js",
+      "line": 2066,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2066
+        }
+      ]
+    },
+    {
+      "selector": "#claudeWorkspacePill",
+      "label": "Claude Workspace Pill",
+      "file": "claudeSheet.js",
+      "line": 542,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 542
+        }
+      ]
+    },
+    {
+      "selector": "#closeButtonToDo",
+      "label": "Close Button To Do",
+      "file": "toDoRow.js",
+      "line": 1351,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1351
+        },
+        {
+          "file": "style.css",
+          "line": 5120
+        }
+      ]
+    },
+    {
+      "selector": "#closer",
+      "label": "Closer",
+      "file": "welcomeCarousel.js",
+      "line": 56,
+      "files": [
+        {
+          "file": "welcomeCarousel.js",
+          "line": 56
+        }
+      ]
+    },
+    {
+      "selector": "#coachmarkTitle",
+      "label": "Coachmark Title",
+      "file": "coachmark.js",
+      "line": 294,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 294
+        }
+      ]
+    },
+    {
+      "selector": "#companion",
+      "label": "Companion",
+      "file": "companion.js",
+      "line": 71,
+      "files": [
+        {
+          "file": "companion.js",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "selector": "#completedHeader",
+      "label": "Completed Header",
+      "file": "emptyState.js",
+      "line": 117,
+      "files": [
+        {
+          "file": "emptyState.js",
+          "line": 117
+        },
+        {
+          "file": "style.css",
+          "line": 4305
+        }
+      ]
+    },
+    {
+      "selector": "#completedMobileSheet",
+      "label": "Completed Mobile Sheet",
+      "file": "mobileSheets.js",
+      "line": 145,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 145
+        },
+        {
+          "file": "style.css",
+          "line": 5708
+        }
+      ]
+    },
+    {
+      "selector": "#completedMobileSheetBackdrop",
+      "label": "Completed Mobile Sheet Backdrop",
+      "file": "mobileSheets.js",
+      "line": 142,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 142
+        },
+        {
+          "file": "style.css",
+          "line": 5694
+        }
+      ]
+    },
+    {
+      "selector": "#completedMobileSheetTitle",
+      "label": "Completed Mobile Sheet Title",
+      "file": "mobileSheets.js",
+      "line": 158,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 158
+        }
+      ]
+    },
+    {
+      "selector": "#conceiveView",
+      "label": "Conceive View",
+      "file": "main.js",
+      "line": 1911,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1911
+        },
+        {
+          "file": "style.css",
+          "line": 2899
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModal",
+      "label": "Confirm Modal",
+      "file": "modals.js",
+      "line": 38,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 38
+        },
+        {
+          "file": "style.css",
+          "line": 855
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModalActions",
+      "label": "Confirm Modal Actions",
+      "file": "modals.js",
+      "line": 47,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 47
+        },
+        {
+          "file": "style.css",
+          "line": 875
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModalBackdrop",
+      "label": "Confirm Modal Backdrop",
+      "file": "modals.js",
+      "line": 35,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 35
+        },
+        {
+          "file": "style.css",
+          "line": 837
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModalCancel",
+      "label": "Confirm Modal Cancel",
+      "file": "modals.js",
+      "line": 50,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 50
+        },
+        {
+          "file": "style.css",
+          "line": 881
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModalConfirm",
+      "label": "Confirm Modal Confirm",
+      "file": "modals.js",
+      "line": 55,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 55
+        },
+        {
+          "file": "style.css",
+          "line": 882
+        }
+      ]
+    },
+    {
+      "selector": "#confirmModalMessage",
+      "label": "Confirm Modal Message",
+      "file": "modals.js",
+      "line": 43,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 43
+        },
+        {
+          "file": "style.css",
+          "line": 869
+        }
+      ]
+    },
+    {
+      "selector": "#copyTitleBtn",
+      "label": "Copy Title Btn",
+      "file": "toDoRow.js",
+      "line": 1375,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1375
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModal",
+      "label": "Desc Editor Modal",
+      "file": "modals.js",
+      "line": 142,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 142
+        },
+        {
+          "file": "style.css",
+          "line": 1117
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalActions",
+      "label": "Desc Editor Modal Actions",
+      "file": "modals.js",
+      "line": 287,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 287
+        },
+        {
+          "file": "style.css",
+          "line": 1267
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalBackdrop",
+      "label": "Desc Editor Modal Backdrop",
+      "file": "modals.js",
+      "line": 139,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 139
+        },
+        {
+          "file": "style.css",
+          "line": 1103
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalBody",
+      "label": "Desc Editor Modal Body",
+      "file": "modals.js",
+      "line": 270,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 270
+        },
+        {
+          "file": "style.css",
+          "line": 1233
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalClear",
+      "label": "Desc Editor Modal Clear",
+      "file": "modals.js",
+      "line": 290,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 290
+        },
+        {
+          "file": "style.css",
+          "line": 1280
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalClose",
+      "label": "Desc Editor Modal Close",
+      "file": "modals.js",
+      "line": 196,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 196
+        },
+        {
+          "file": "style.css",
+          "line": 1217
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalCopy",
+      "label": "Desc Editor Modal Copy",
+      "file": "modals.js",
+      "line": 296,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 296
+        },
+        {
+          "file": "style.css",
+          "line": 1281
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalHeader",
+      "label": "Desc Editor Modal Header",
+      "file": "modals.js",
+      "line": 151,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 151
+        },
+        {
+          "file": "style.css",
+          "line": 1135
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusControl",
+      "label": "Desc Editor Modal Status Control",
+      "file": "modals.js",
+      "line": 328,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 328
+        },
+        {
+          "file": "style.css",
+          "line": 1346
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusLabel",
+      "label": "Desc Editor Modal Status Label",
+      "file": "modals.js",
+      "line": 324,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 324
+        },
+        {
+          "file": "style.css",
+          "line": 1338
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusRow",
+      "label": "Desc Editor Modal Status Row",
+      "file": "modals.js",
+      "line": 321,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 321
+        },
+        {
+          "file": "style.css",
+          "line": 1332
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTextarea",
+      "label": "Desc Editor Modal Textarea",
+      "file": "modals.js",
+      "line": 273,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 273
+        },
+        {
+          "file": "style.css",
+          "line": 1240
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitle",
+      "label": "Desc Editor Modal Title",
+      "file": "modals.js",
+      "line": 154,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 154
+        },
+        {
+          "file": "style.css",
+          "line": 1144
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitleEdit",
+      "label": "Desc Editor Modal Title Edit",
+      "file": "modals.js",
+      "line": 171,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 171
+        },
+        {
+          "file": "style.css",
+          "line": 1184
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitleEyebrow",
+      "label": "Desc Editor Modal Title Eyebrow",
+      "file": "modals.js",
+      "line": 164,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 164
+        },
+        {
+          "file": "style.css",
+          "line": 1152
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitleEyebrowLabel",
+      "label": "Desc Editor Modal Title Eyebrow Label",
+      "file": "modals.js",
+      "line": 167,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 167
+        },
+        {
+          "file": "style.css",
+          "line": 1159
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitleInput",
+      "label": "Desc Editor Modal Title Input",
+      "file": "modals.js",
+      "line": 183,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 183
+        },
+        {
+          "file": "style.css",
+          "line": 1195
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalTitleText",
+      "label": "Desc Editor Modal Title Text",
+      "file": "modals.js",
+      "line": 179,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 179
+        },
+        {
+          "file": "style.css",
+          "line": 1169
+        }
+      ]
+    },
+    {
+      "selector": "#descIndicator",
+      "label": "Desc Indicator",
+      "file": "toDoRow.js",
+      "line": 1452,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1452
+        },
+        {
+          "file": "style.css",
+          "line": 1400
+        }
+      ]
+    },
+    {
+      "selector": "#descInput",
+      "label": "Desc Input",
+      "file": "toDoRow.js",
+      "line": 1408,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1408
+        },
+        {
+          "file": "style.css",
+          "line": 5609
+        }
+      ]
+    },
+    {
+      "selector": "#descSibling",
+      "label": "Desc Sibling",
+      "file": "toDoRow.js",
+      "line": 1406,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1406
+        },
+        {
+          "file": "style.css",
+          "line": 4072
+        }
+      ]
+    },
+    {
+      "selector": "#descSpacer1",
+      "label": "Desc Spacer1",
+      "file": "toDoRow.js",
+      "line": 1407,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1407
+        }
+      ]
+    },
+    {
+      "selector": "#descSpacer2",
+      "label": "Desc Spacer2",
+      "file": "toDoRow.js",
+      "line": 1409,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1409
+        }
+      ]
+    },
+    {
+      "selector": "#descToggle",
+      "label": "Desc Toggle",
+      "file": "coachmark.js",
+      "line": 95,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 95
+        },
+        {
+          "file": "toDoRow.js",
+          "line": 1384
+        },
+        {
+          "file": "style.css",
+          "line": 5096
+        }
+      ]
+    },
+    {
+      "selector": "#desktopChatPane",
+      "label": "Desktop Chat Pane",
+      "file": "main.js",
+      "line": 458,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 458
+        },
+        {
+          "file": "style.css",
+          "line": 8651
+        }
+      ]
+    },
+    {
+      "selector": "#desktopViewSubBand",
+      "label": "Desktop View Sub Band",
+      "file": "main.js",
+      "line": 455,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 455
+        },
+        {
+          "file": "style.css",
+          "line": 127
+        }
+      ]
+    },
+    {
+      "selector": "#drawerFooter",
+      "label": "Drawer Footer",
+      "file": "main.js",
+      "line": 2544,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2544
+        },
+        {
+          "file": "style.css",
+          "line": 6839
+        }
+      ]
+    },
+    {
+      "selector": "#drawerFooterCount",
+      "label": "Drawer Footer Count",
+      "file": "main.js",
+      "line": 2549,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2549
+        },
+        {
+          "file": "style.css",
+          "line": 7802
+        }
+      ]
+    },
+    {
+      "selector": "#drawerFooterVersion",
+      "label": "Drawer Footer Version",
+      "file": "main.js",
+      "line": 2546,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2546
+        },
+        {
+          "file": "style.css",
+          "line": 7801
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtn",
+      "label": "Drawer Settings Btn",
+      "file": "main.js",
+      "line": 2412,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2412
+        },
+        {
+          "file": "style.css",
+          "line": 7725
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnUpdateDot",
+      "label": "Drawer Settings Btn Update Dot",
+      "file": "main.js",
+      "line": 2430,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2430
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnWrap",
+      "label": "Drawer Settings Btn Wrap",
+      "file": "main.js",
+      "line": 2540,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2540
+        },
+        {
+          "file": "style.css",
+          "line": 7718
+        }
+      ]
+    },
+    {
+      "selector": "#dueDatePopover",
+      "label": "Due Date Popover",
+      "file": "dueDate.js",
+      "line": 612,
+      "files": [
+        {
+          "file": "dueDate.js",
+          "line": 612
+        },
+        {
+          "file": "style.css",
+          "line": 1660
+        }
+      ]
+    },
+    {
+      "selector": "#duePill",
+      "label": "Due Pill",
+      "file": "coachmark.js",
+      "line": 78,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 78
+        },
+        {
+          "file": "toDoRow.js",
+          "line": 1303
+        },
+        {
+          "file": "style.css",
+          "line": 4709
+        }
+      ]
+    },
+    {
+      "selector": "#emptyState",
+      "label": "Empty State",
+      "file": "emptyState.js",
+      "line": 193,
+      "files": [
+        {
+          "file": "emptyState.js",
+          "line": 193
+        },
+        {
+          "file": "style.css",
+          "line": 4125
+        }
+      ]
+    },
+    {
+      "selector": "#emptyStateCreateBtn",
+      "label": "Empty State Create Btn",
+      "file": "emptyState.js",
+      "line": 227,
+      "files": [
+        {
+          "file": "emptyState.js",
+          "line": 227
+        },
+        {
+          "file": "style.css",
+          "line": 4179
+        }
+      ]
+    },
+    {
+      "selector": "#emptyStateInput",
+      "label": "Empty State Input",
+      "file": "emptyState.js",
+      "line": 337,
+      "files": [
+        {
+          "file": "emptyState.js",
+          "line": 337
+        },
+        {
+          "file": "style.css",
+          "line": 4246
+        }
+      ]
+    },
+    {
+      "selector": "#focusModeOverlay",
+      "label": "Focus Mode Overlay",
+      "file": "focusMode.js",
+      "line": 49,
+      "files": [
+        {
+          "file": "focusMode.js",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "selector": "#focusModeToggle",
+      "label": "Focus Mode Toggle",
+      "file": "main.js",
+      "line": 326,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 326
+        },
+        {
+          "file": "style.css",
+          "line": 10479
+        }
+      ]
+    },
+    {
+      "selector": "#footBar",
+      "label": "Foot Bar",
+      "file": "main.js",
+      "line": 166,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 166
+        },
+        {
+          "file": "style.css",
+          "line": 315
+        }
+      ]
+    },
+    {
+      "selector": "#footCounts",
+      "label": "Foot Counts",
+      "file": "main.js",
+      "line": 1567,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1567
+        },
+        {
+          "file": "style.css",
+          "line": 371
+        }
+      ]
+    },
+    {
+      "selector": "#footDone",
+      "label": "Foot Done",
+      "file": "main.js",
+      "line": 1569,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1569
+        },
+        {
+          "file": "style.css",
+          "line": 379
+        }
+      ]
+    },
+    {
+      "selector": "#footOpen",
+      "label": "Foot Open",
+      "file": "main.js",
+      "line": 1568,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1568
+        },
+        {
+          "file": "style.css",
+          "line": 378
+        }
+      ]
+    },
+    {
+      "selector": "#footVersion",
+      "label": "Foot Version",
+      "file": "main.js",
+      "line": 1538,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1538
+        },
+        {
+          "file": "style.css",
+          "line": 324
+        }
+      ]
+    },
+    {
+      "selector": "#footVersionLabel",
+      "label": "Foot Version Label",
+      "file": "main.js",
+      "line": 1545,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1545
+        },
+        {
+          "file": "style.css",
+          "line": 339
+        }
+      ]
+    },
+    {
+      "selector": "#ghost",
+      "label": "Ghost",
+      "file": "musicVisualizer.js",
+      "line": 23,
+      "files": [
+        {
+          "file": "musicVisualizer.js",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "selector": "#helpModal",
+      "label": "Help Modal",
+      "file": "modals.js",
+      "line": 764,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 764
+        },
+        {
+          "file": "style.css",
+          "line": 1435
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalActions",
+      "label": "Help Modal Actions",
+      "file": "modals.js",
+      "line": 868,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 868
+        },
+        {
+          "file": "style.css",
+          "line": 1575
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalBackdrop",
+      "label": "Help Modal Backdrop",
+      "file": "modals.js",
+      "line": 761,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 761
+        },
+        {
+          "file": "style.css",
+          "line": 1421
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalBody",
+      "label": "Help Modal Body",
+      "file": "modals.js",
+      "line": 786,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 786
+        },
+        {
+          "file": "style.css",
+          "line": 1482
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalClose",
+      "label": "Help Modal Close",
+      "file": "modals.js",
+      "line": 777,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 777
+        },
+        {
+          "file": "style.css",
+          "line": 1469
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalCloseBtn",
+      "label": "Help Modal Close Btn",
+      "file": "modals.js",
+      "line": 871,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 871
+        },
+        {
+          "file": "style.css",
+          "line": 1583
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalHeader",
+      "label": "Help Modal Header",
+      "file": "modals.js",
+      "line": 770,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 770
+        },
+        {
+          "file": "style.css",
+          "line": 1452
+        }
+      ]
+    },
+    {
+      "selector": "#helpModalTitle",
+      "label": "Help Modal Title",
+      "file": "modals.js",
+      "line": 773,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 773
+        },
+        {
+          "file": "style.css",
+          "line": 1460
+        }
+      ]
+    },
+    {
+      "selector": "#importDropOverlay",
+      "label": "Import Drop Overlay",
+      "file": "exportImport.js",
+      "line": 223,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 223
+        },
+        {
+          "file": "style.css",
+          "line": 9485
+        }
+      ]
+    },
+    {
+      "selector": "#importDropOverlayIcon",
+      "label": "Import Drop Overlay Icon",
+      "file": "exportImport.js",
+      "line": 236,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 236
+        },
+        {
+          "file": "style.css",
+          "line": 9509
+        }
+      ]
+    },
+    {
+      "selector": "#importDropOverlayInner",
+      "label": "Import Drop Overlay Inner",
+      "file": "exportImport.js",
+      "line": 229,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 229
+        },
+        {
+          "file": "style.css",
+          "line": 9495
+        }
+      ]
+    },
+    {
+      "selector": "#importDropOverlayLabel",
+      "label": "Import Drop Overlay Label",
+      "file": "exportImport.js",
+      "line": 248,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 248
+        },
+        {
+          "file": "style.css",
+          "line": 9513
+        }
+      ]
+    },
+    {
+      "selector": "#importDropOverlaySubline",
+      "label": "Import Drop Overlay Subline",
+      "file": "exportImport.js",
+      "line": 253,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 253
+        },
+        {
+          "file": "style.css",
+          "line": 9521
+        }
+      ]
+    },
+    {
+      "selector": "#importErrorToast",
+      "label": "Import Error Toast",
+      "file": "exportImport.js",
+      "line": 111,
+      "files": [
+        {
+          "file": "exportImport.js",
+          "line": 111
+        },
+        {
+          "file": "style.css",
+          "line": 9999
+        }
+      ]
+    },
+    {
+      "selector": "#injectAddTargetBtn",
+      "label": "Inject Add Target Btn",
+      "file": "inject.js",
+      "line": 1293,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1293
+        },
+        {
+          "file": "style.css",
+          "line": 12512
+        }
+      ]
+    },
+    {
+      "selector": "#injectConnectionEditBtn",
+      "label": "Inject Connection Edit Btn",
+      "file": "inject.js",
+      "line": 1106,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1106
+        }
+      ]
+    },
+    {
+      "selector": "#injectConnectionSection",
+      "label": "Inject Connection Section",
+      "file": "inject.js",
+      "line": 1092,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1092
+        }
+      ]
+    },
+    {
+      "selector": "#injectProjectRoutingBody",
+      "label": "Inject Project Routing Body",
+      "file": "inject.js",
+      "line": 1403,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1403
+        },
+        {
+          "file": "style.css",
+          "line": 12606
+        }
+      ]
+    },
+    {
+      "selector": "#injectProjectRoutingEmpty",
+      "label": "Inject Project Routing Empty",
+      "file": "inject.js",
+      "line": 1413,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1413
+        }
+      ]
+    },
+    {
+      "selector": "#injectProjectRoutingSection",
+      "label": "Inject Project Routing Section",
+      "file": "inject.js",
+      "line": 1391,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1391
+        }
+      ]
+    },
+    {
+      "selector": "#injectProjectRoutingTable",
+      "label": "Inject Project Routing Table",
+      "file": "inject.js",
+      "line": 1429,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1429
+        }
+      ]
+    },
+    {
+      "selector": "#injectProjectRoutingTitle",
+      "label": "Inject Project Routing Title",
+      "file": "inject.js",
+      "line": 1397,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1397
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsActions",
+      "label": "Inject Settings Actions",
+      "file": "inject.js",
+      "line": 1196,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1196
+        },
+        {
+          "file": "style.css",
+          "line": 12350
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsBackdrop",
+      "label": "Inject Settings Backdrop",
+      "file": "inject.js",
+      "line": 1062,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1062
+        },
+        {
+          "file": "style.css",
+          "line": 12207
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsBody",
+      "label": "Inject Settings Body",
+      "file": "inject.js",
+      "line": 1145,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1145
+        },
+        {
+          "file": "style.css",
+          "line": 12294
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsClear",
+      "label": "Inject Settings Clear",
+      "file": "inject.js",
+      "line": 1214,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1214
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsClose",
+      "label": "Inject Settings Close",
+      "file": "inject.js",
+      "line": 1077,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1077
+        },
+        {
+          "file": "style.css",
+          "line": 12249
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsHeader",
+      "label": "Inject Settings Header",
+      "file": "inject.js",
+      "line": 1072,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1072
+        },
+        {
+          "file": "style.css",
+          "line": 12230
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsModal",
+      "label": "Inject Settings Modal",
+      "file": "inject.js",
+      "line": 1065,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1065
+        },
+        {
+          "file": "style.css",
+          "line": 12217
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsSave",
+      "label": "Inject Settings Save",
+      "file": "inject.js",
+      "line": 1199,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1199
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsScroll",
+      "label": "Inject Settings Scroll",
+      "file": "inject.js",
+      "line": 1500,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1500
+        },
+        {
+          "file": "style.css",
+          "line": 12238
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsStatusRow",
+      "label": "Inject Settings Status Row",
+      "file": "inject.js",
+      "line": 1103,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1103
+        },
+        {
+          "file": "style.css",
+          "line": 12263
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsTest",
+      "label": "Inject Settings Test",
+      "file": "inject.js",
+      "line": 1205,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1205
+        }
+      ]
+    },
+    {
+      "selector": "#injectSettingsTitle",
+      "label": "Inject Settings Title",
+      "file": "inject.js",
+      "line": 1074,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1074
+        },
+        {
+          "file": "style.css",
+          "line": 12245
+        }
+      ]
+    },
+    {
+      "selector": "#injectSharedSecretInput",
+      "label": "Inject Shared Secret Input",
+      "file": "inject.js",
+      "line": 1165,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1165
+        },
+        {
+          "file": "style.css",
+          "line": 12308
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubActions",
+      "label": "Inject Target Sub Actions",
+      "file": "inject.js",
+      "line": 937,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 937
+        },
+        {
+          "file": "style.css",
+          "line": 12592
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubBackdrop",
+      "label": "Inject Target Sub Backdrop",
+      "file": "inject.js",
+      "line": 871,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 871
+        },
+        {
+          "file": "style.css",
+          "line": 12520
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubBody",
+      "label": "Inject Target Sub Body",
+      "file": "inject.js",
+      "line": 893,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 893
+        },
+        {
+          "file": "style.css",
+          "line": 12564
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubCancel",
+      "label": "Inject Target Sub Cancel",
+      "file": "inject.js",
+      "line": 940,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 940
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubClose",
+      "label": "Inject Target Sub Close",
+      "file": "inject.js",
+      "line": 885,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 885
+        },
+        {
+          "file": "style.css",
+          "line": 12551
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubHeader",
+      "label": "Inject Target Sub Header",
+      "file": "inject.js",
+      "line": 880,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 880
+        },
+        {
+          "file": "style.css",
+          "line": 12540
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubModal",
+      "label": "Inject Target Sub Modal",
+      "file": "inject.js",
+      "line": 874,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 874
+        },
+        {
+          "file": "style.css",
+          "line": 12529
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubSave",
+      "label": "Inject Target Sub Save",
+      "file": "inject.js",
+      "line": 946,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 946
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetSubTitle",
+      "label": "Inject Target Sub Title",
+      "file": "inject.js",
+      "line": 882,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 882
+        },
+        {
+          "file": "style.css",
+          "line": 12547
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetsBody",
+      "label": "Inject Targets Body",
+      "file": "inject.js",
+      "line": 1269,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1269
+        },
+        {
+          "file": "style.css",
+          "line": 12452
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetsEmpty",
+      "label": "Inject Targets Empty",
+      "file": "inject.js",
+      "line": 1279,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1279
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetsList",
+      "label": "Inject Targets List",
+      "file": "inject.js",
+      "line": 1285,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1285
+        }
+      ]
+    },
+    {
+      "selector": "#injectTargetsSection",
+      "label": "Inject Targets Section",
+      "file": "inject.js",
+      "line": 1258,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1258
+        }
+      ]
+    },
+    {
+      "selector": "#injectToast",
+      "label": "Inject Toast",
+      "file": "inject.js",
+      "line": 91,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 91
+        },
+        {
+          "file": "style.css",
+          "line": 12671
+        }
+      ]
+    },
+    {
+      "selector": "#injectWorkerUrlInput",
+      "label": "Inject Worker Url Input",
+      "file": "inject.js",
+      "line": 1151,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1151
+        },
+        {
+          "file": "style.css",
+          "line": 12307
+        }
+      ]
+    },
+    {
+      "selector": "#jsonImportExportToast",
+      "label": "Json Import Export Toast",
+      "file": "jsonImportExport.js",
+      "line": 73,
+      "files": [
+        {
+          "file": "jsonImportExport.js",
+          "line": 73
+        },
+        {
+          "file": "style.css",
+          "line": 10000
+        }
+      ]
+    },
+    {
+      "selector": "#mainBar",
+      "label": "Main Bar",
+      "file": "main.js",
+      "line": 169,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 169
+        },
+        {
+          "file": "style.css",
+          "line": 2677
+        }
+      ]
+    },
+    {
+      "selector": "#mainList",
+      "label": "Main List",
+      "file": "main.js",
+      "line": 197,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 197
+        },
+        {
+          "file": "style.css",
+          "line": 1781
+        }
+      ]
+    },
+    {
+      "selector": "#mainSec",
+      "label": "Main Sec",
+      "file": "main.js",
+      "line": 165,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 165
+        },
+        {
+          "file": "style.css",
+          "line": 429
+        }
+      ]
+    },
+    {
+      "selector": "#mainSplit",
+      "label": "Main Split",
+      "file": "main.js",
+      "line": 445,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 445
+        },
+        {
+          "file": "style.css",
+          "line": 8637
+        }
+      ]
+    },
+    {
+      "selector": "#menu",
+      "label": "Menu",
+      "file": "welcomeCarousel.js",
+      "line": 50,
+      "files": [
+        {
+          "file": "welcomeCarousel.js",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModal",
+      "label": "Missed Dates Modal",
+      "file": "modals.js",
+      "line": 940,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 940
+        },
+        {
+          "file": "style.css",
+          "line": 5390
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalActions",
+      "label": "Missed Dates Modal Actions",
+      "file": "modals.js",
+      "line": 1042,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 1042
+        },
+        {
+          "file": "style.css",
+          "line": 5462
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalBackdrop",
+      "label": "Missed Dates Modal Backdrop",
+      "file": "modals.js",
+      "line": 937,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 937
+        },
+        {
+          "file": "style.css",
+          "line": 1658
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalBody",
+      "label": "Missed Dates Modal Body",
+      "file": "modals.js",
+      "line": 962,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 962
+        },
+        {
+          "file": "style.css",
+          "line": 5436
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalClose",
+      "label": "Missed Dates Modal Close",
+      "file": "modals.js",
+      "line": 953,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 953
+        },
+        {
+          "file": "style.css",
+          "line": 5424
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalCloseBtn",
+      "label": "Missed Dates Modal Close Btn",
+      "file": "modals.js",
+      "line": 1045,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 1045
+        },
+        {
+          "file": "style.css",
+          "line": 5469
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalHeader",
+      "label": "Missed Dates Modal Header",
+      "file": "modals.js",
+      "line": 946,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 946
+        },
+        {
+          "file": "style.css",
+          "line": 5406
+        }
+      ]
+    },
+    {
+      "selector": "#missedDatesModalTitle",
+      "label": "Missed Dates Modal Title",
+      "file": "modals.js",
+      "line": 949,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 949
+        },
+        {
+          "file": "style.css",
+          "line": 5413
+        }
+      ]
+    },
+    {
+      "selector": "#mobileCreateChips",
+      "label": "Mobile Create Chips",
+      "file": "mobileTaskCreate.js",
+      "line": 91,
+      "files": [
+        {
+          "file": "mobileTaskCreate.js",
+          "line": 91
+        },
+        {
+          "file": "style.css",
+          "line": 7214
+        }
+      ]
+    },
+    {
+      "selector": "#mobileCreateDescChip",
+      "label": "Mobile Create Desc Chip",
+      "file": "mobileTaskCreate.js",
+      "line": 117,
+      "files": [
+        {
+          "file": "mobileTaskCreate.js",
+          "line": 117
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjChevron",
+      "label": "Mobile Proj Chevron",
+      "file": "main.js",
+      "line": 1662,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1662
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjCounts",
+      "label": "Mobile Proj Counts",
+      "file": "main.js",
+      "line": 1641,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1641
+        },
+        {
+          "file": "style.css",
+          "line": 7529
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjHeader",
+      "label": "Mobile Proj Header",
+      "file": "main.js",
+      "line": 1634,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1634
+        },
+        {
+          "file": "style.css",
+          "line": 2920
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjLabel",
+      "label": "Mobile Proj Label",
+      "file": "main.js",
+      "line": 1635,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1635
+        },
+        {
+          "file": "style.css",
+          "line": 7425
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjName",
+      "label": "Mobile Proj Name",
+      "file": "main.js",
+      "line": 1638,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1638
+        },
+        {
+          "file": "style.css",
+          "line": 7452
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjNext",
+      "label": "Mobile Proj Next",
+      "file": "main.js",
+      "line": 1639,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1639
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjPrev",
+      "label": "Mobile Proj Prev",
+      "file": "main.js",
+      "line": 1637,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1637
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjRunSpinner",
+      "label": "Mobile Proj Run Spinner",
+      "file": "main.js",
+      "line": 1675,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1675
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjStats",
+      "label": "Mobile Proj Stats",
+      "file": "main.js",
+      "line": 1640,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1640
+        },
+        {
+          "file": "style.css",
+          "line": 7521
+        }
+      ]
+    },
+    {
+      "selector": "#mobileProjTitleRow",
+      "label": "Mobile Proj Title Row",
+      "file": "main.js",
+      "line": 1636,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1636
+        },
+        {
+          "file": "style.css",
+          "line": 7441
+        }
+      ]
+    },
+    {
+      "selector": "#mobileSidebarClose",
+      "label": "Mobile Sidebar Close",
+      "file": "main.js",
+      "line": 1946,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1946
+        },
+        {
+          "file": "style.css",
+          "line": 6705
+        }
+      ]
+    },
+    {
+      "selector": "#mobileTabBar",
+      "label": "Mobile Tab Bar",
+      "file": "main.js",
+      "line": 942,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 942
+        },
+        {
+          "file": "style.css",
+          "line": 6758
+        }
+      ]
+    },
+    {
+      "selector": "#mobileTabConceive",
+      "label": "Mobile Tab Conceive",
+      "file": "main.js",
+      "line": 1008,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1008
+        }
+      ]
+    },
+    {
+      "selector": "#mobileTabProjects",
+      "label": "Mobile Tab Projects",
+      "file": "main.js",
+      "line": 1007,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1007
+        }
+      ]
+    },
+    {
+      "selector": "#mobileTabStructure",
+      "label": "Mobile Tab Structure",
+      "file": "main.js",
+      "line": 1009,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1009
+        }
+      ]
+    },
+    {
+      "selector": "#mobileUpdatePill",
+      "label": "Mobile Update Pill",
+      "file": "main.js",
+      "line": 2470,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2470
+        },
+        {
+          "file": "style.css",
+          "line": 11799
+        }
+      ]
+    },
+    {
+      "selector": "#music",
+      "label": "Music",
+      "file": "coachmark.js",
+      "line": 129,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 129
+        }
+      ]
+    },
+    {
+      "selector": "#musicPlayerTarget",
+      "label": "Music Player Target",
+      "file": "music.js",
+      "line": 783,
+      "files": [
+        {
+          "file": "music.js",
+          "line": 783
+        },
+        {
+          "file": "style.css",
+          "line": 10577
+        }
+      ]
+    },
+    {
+      "selector": "#musicPopover",
+      "label": "Music Popover",
+      "file": "music.js",
+      "line": 732,
+      "files": [
+        {
+          "file": "music.js",
+          "line": 732
+        },
+        {
+          "file": "style.css",
+          "line": 10509
+        }
+      ]
+    },
+    {
+      "selector": "#musicToggle",
+      "label": "Music Toggle",
+      "file": "main.js",
+      "line": 276,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 276
+        },
+        {
+          "file": "style.css",
+          "line": 10374
+        }
+      ]
+    },
+    {
+      "selector": "#navBar",
+      "label": "Nav Bar",
+      "file": "main.js",
+      "line": 164,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 164
+        },
+        {
+          "file": "style.css",
+          "line": 139
+        }
+      ]
+    },
+    {
+      "selector": "#nowPlayingStrip",
+      "label": "Now Playing Strip",
+      "file": "music.js",
+      "line": 587,
+      "files": [
+        {
+          "file": "music.js",
+          "line": 587
+        },
+        {
+          "file": "style.css",
+          "line": 155
+        }
+      ]
+    },
+    {
+      "selector": "#outerContainer",
+      "label": "Outer Container",
+      "file": "main.js",
+      "line": 163,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 163
+        },
+        {
+          "file": "style.css",
+          "line": 123
+        }
+      ]
+    },
+    {
+      "selector": "#pomodoro",
+      "label": "Pomodoro",
+      "file": "coachmark.js",
+      "line": 121,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "selector": "#pomodoroPopover",
+      "label": "Pomodoro Popover",
+      "file": "pomodoro.js",
+      "line": 681,
+      "files": [
+        {
+          "file": "pomodoro.js",
+          "line": 681
+        },
+        {
+          "file": "style.css",
+          "line": 10205
+        }
+      ]
+    },
+    {
+      "selector": "#pomodoroToggle",
+      "label": "Pomodoro Toggle",
+      "file": "main.js",
+      "line": 240,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 240
+        },
+        {
+          "file": "style.css",
+          "line": 9187
+        }
+      ]
+    },
+    {
+      "selector": "#projButton",
+      "label": "Proj Button",
+      "file": "main.js",
+      "line": 189,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 189
+        },
+        {
+          "file": "style.css",
+          "line": 520
+        }
+      ]
+    },
+    {
+      "selector": "#projChild",
+      "label": "Proj Child",
+      "file": "main.js",
+      "line": 3368,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 3368
+        },
+        {
+          "file": "style.css",
+          "line": 573
+        }
+      ]
+    },
+    {
+      "selector": "#projContextMenu",
+      "label": "Proj Context Menu",
+      "file": "projectMenu.js",
+      "line": 112,
+      "files": [
+        {
+          "file": "projectMenu.js",
+          "line": 112
+        },
+        {
+          "file": "style.css",
+          "line": 755
+        }
+      ]
+    },
+    {
+      "selector": "#projInput",
+      "label": "Proj Input",
+      "file": "main.js",
+      "line": 3376,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 3376
+        },
+        {
+          "file": "style.css",
+          "line": 596
+        }
+      ]
+    },
+    {
+      "selector": "#projRowContextMenu",
+      "label": "Proj Row Context Menu",
+      "file": "projectPicker.js",
+      "line": 586,
+      "files": [
+        {
+          "file": "projectPicker.js",
+          "line": 586
+        },
+        {
+          "file": "style.css",
+          "line": 754
+        }
+      ]
+    },
+    {
+      "selector": "#projectPickerDropdown",
+      "label": "Project Picker Dropdown",
+      "file": "main.js",
+      "line": 1708,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1708
+        },
+        {
+          "file": "style.css",
+          "line": 771
+        }
+      ]
+    },
+    {
+      "selector": "#projects",
+      "label": "Projects",
+      "file": "welcomeCarousel.js",
+      "line": 44,
+      "files": [
+        {
+          "file": "welcomeCarousel.js",
+          "line": 44
+        }
+      ]
+    },
+    {
+      "selector": "#projectsGhostSpacer",
+      "label": "Projects Ghost Spacer",
+      "file": "emptyState.js",
+      "line": 36,
+      "files": [
+        {
+          "file": "emptyState.js",
+          "line": 36
+        },
+        {
+          "file": "style.css",
+          "line": 7610
+        }
+      ]
+    },
+    {
+      "selector": "#recurringGlyph",
+      "label": "Recurring Glyph",
+      "file": "dueDate.js",
+      "line": 451,
+      "files": [
+        {
+          "file": "dueDate.js",
+          "line": 451
+        }
+      ]
+    },
+    {
+      "selector": "#rings",
+      "label": "Rings",
+      "file": "musicVisualizer.js",
+      "line": 21,
+      "files": [
+        {
+          "file": "musicVisualizer.js",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "selector": "#sampleProject",
+      "label": "Sample Project",
+      "file": "coachmark.js",
+      "line": 61,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 61
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModal",
+      "label": "Seed Tasks Modal",
+      "file": "seedTasksModal.js",
+      "line": 196,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 196
+        },
+        {
+          "file": "style.css",
+          "line": 3750
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalAdd",
+      "label": "Seed Tasks Modal Add",
+      "file": "seedTasksModal.js",
+      "line": 230,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalBackdrop",
+      "label": "Seed Tasks Modal Backdrop",
+      "file": "seedTasksModal.js",
+      "line": 193,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 193
+        },
+        {
+          "file": "style.css",
+          "line": 1656
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalBody",
+      "label": "Seed Tasks Modal Body",
+      "file": "seedTasksModal.js",
+      "line": 218,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 218
+        },
+        {
+          "file": "style.css",
+          "line": 3799
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalCancel",
+      "label": "Seed Tasks Modal Cancel",
+      "file": "seedTasksModal.js",
+      "line": 224,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 224
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalClose",
+      "label": "Seed Tasks Modal Close",
+      "file": "seedTasksModal.js",
+      "line": 209,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 209
+        },
+        {
+          "file": "style.css",
+          "line": 3784
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalFooter",
+      "label": "Seed Tasks Modal Footer",
+      "file": "seedTasksModal.js",
+      "line": 221,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 221
+        },
+        {
+          "file": "style.css",
+          "line": 3920
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalHeader",
+      "label": "Seed Tasks Modal Header",
+      "file": "seedTasksModal.js",
+      "line": 202,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 202
+        },
+        {
+          "file": "style.css",
+          "line": 3768
+        }
+      ]
+    },
+    {
+      "selector": "#seedTasksModalTitle",
+      "label": "Seed Tasks Modal Title",
+      "file": "seedTasksModal.js",
+      "line": 205,
+      "files": [
+        {
+          "file": "seedTasksModal.js",
+          "line": 205
+        },
+        {
+          "file": "style.css",
+          "line": 3777
+        }
+      ]
+    },
+    {
+      "selector": "#settings",
+      "label": "Settings",
+      "file": "coachmark.js",
+      "line": 137,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 137
+        }
+      ]
+    },
+    {
+      "selector": "#settingsAboutSection",
+      "label": "Settings About Section",
+      "file": "main.js",
+      "line": 2635,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2635
+        }
+      ]
+    },
+    {
+      "selector": "#settingsAccountSection",
+      "label": "Settings Account Section",
+      "file": "main.js",
+      "line": 2758,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2758
+        }
+      ]
+    },
+    {
+      "selector": "#settingsAppearanceSection",
+      "label": "Settings Appearance Section",
+      "file": "main.js",
+      "line": 2618,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2618
+        }
+      ]
+    },
+    {
+      "selector": "#settingsDataSection",
+      "label": "Settings Data Section",
+      "file": "main.js",
+      "line": 2727,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2727
+        }
+      ]
+    },
+    {
+      "selector": "#settingsHelpSection",
+      "label": "Settings Help Section",
+      "file": "main.js",
+      "line": 2693,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2693
+        }
+      ]
+    },
+    {
+      "selector": "#settingsMenu",
+      "label": "Settings Menu",
+      "file": "settingsMenu.js",
+      "line": 172,
+      "files": [
+        {
+          "file": "settingsMenu.js",
+          "line": 172
+        },
+        {
+          "file": "style.css",
+          "line": 1662
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModal",
+      "label": "Settings Modal",
+      "file": "main.js",
+      "line": 2583,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2583
+        },
+        {
+          "file": "style.css",
+          "line": 7712
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBackdrop",
+      "label": "Settings Modal Backdrop",
+      "file": "main.js",
+      "line": 2580,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2580
+        },
+        {
+          "file": "style.css",
+          "line": 7940
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBody",
+      "label": "Settings Modal Body",
+      "file": "main.js",
+      "line": 2605,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2605
+        },
+        {
+          "file": "style.css",
+          "line": 8001
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalClose",
+      "label": "Settings Modal Close",
+      "file": "main.js",
+      "line": 2596,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2596
+        },
+        {
+          "file": "style.css",
+          "line": 7988
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalHeader",
+      "label": "Settings Modal Header",
+      "file": "main.js",
+      "line": 2589,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2589
+        },
+        {
+          "file": "style.css",
+          "line": 7971
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalTitle",
+      "label": "Settings Modal Title",
+      "file": "main.js",
+      "line": 2592,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2592
+        },
+        {
+          "file": "style.css",
+          "line": 7979
+        }
+      ]
+    },
+    {
+      "selector": "#settingsToggle",
+      "label": "Settings Toggle",
+      "file": "main.js",
+      "line": 351,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 351
+        },
+        {
+          "file": "style.css",
+          "line": 9185
+        }
+      ]
+    },
+    {
+      "selector": "#settingsViewSection",
+      "label": "Settings View Section",
+      "file": "main.js",
+      "line": 2608,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2608
+        }
+      ]
+    },
+    {
+      "selector": "#sideBar",
+      "label": "Side Bar",
+      "file": "main.js",
+      "line": 168,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 168
+        },
+        {
+          "file": "style.css",
+          "line": 441
+        }
+      ]
+    },
+    {
+      "selector": "#sideMa",
+      "label": "Side Ma",
+      "file": "main.js",
+      "line": 186,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 186
+        },
+        {
+          "file": "style.css",
+          "line": 493
+        }
+      ]
+    },
+    {
+      "selector": "#sideTit",
+      "label": "Side Tit",
+      "file": "main.js",
+      "line": 185,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 185
+        },
+        {
+          "file": "style.css",
+          "line": 470
+        }
+      ]
+    },
+    {
+      "selector": "#sidebarBottom",
+      "label": "Sidebar Bottom",
+      "file": "main.js",
+      "line": 1605,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1605
+        },
+        {
+          "file": "style.css",
+          "line": 452
+        }
+      ]
+    },
+    {
+      "selector": "#sidebarOverlay",
+      "label": "Sidebar Overlay",
+      "file": "main.js",
+      "line": 213,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 213
+        },
+        {
+          "file": "style.css",
+          "line": 6661
+        }
+      ]
+    },
+    {
+      "selector": "#sidebarToggle",
+      "label": "Sidebar Toggle",
+      "file": "main.js",
+      "line": 208,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 208
+        },
+        {
+          "file": "style.css",
+          "line": 229
+        }
+      ]
+    },
+    {
+      "selector": "#sidebarTop",
+      "label": "Sidebar Top",
+      "file": "main.js",
+      "line": 1604,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1604
+        },
+        {
+          "file": "style.css",
+          "line": 451
+        }
+      ]
+    },
+    {
+      "selector": "#spacer",
+      "label": "Spacer",
+      "file": "toDoRow.js",
+      "line": 1308,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1308
+        },
+        {
+          "file": "style.css",
+          "line": 4793
+        }
+      ]
+    },
+    {
+      "selector": "#starfield",
+      "label": "Starfield",
+      "file": "musicVisualizer.js",
+      "line": 19,
+      "files": [
+        {
+          "file": "musicVisualizer.js",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "selector": "#statsModal",
+      "label": "Stats Modal",
+      "file": "toDoRow.js",
+      "line": 743,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 743
+        },
+        {
+          "file": "style.css",
+          "line": 5514
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalBackdrop",
+      "label": "Stats Modal Backdrop",
+      "file": "toDoRow.js",
+      "line": 740,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 740
+        },
+        {
+          "file": "style.css",
+          "line": 1659
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalBody",
+      "label": "Stats Modal Body",
+      "file": "toDoRow.js",
+      "line": 775,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 775
+        },
+        {
+          "file": "style.css",
+          "line": 5574
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalClose",
+      "label": "Stats Modal Close",
+      "file": "toDoRow.js",
+      "line": 766,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 766
+        },
+        {
+          "file": "style.css",
+          "line": 5561
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalHeader",
+      "label": "Stats Modal Header",
+      "file": "toDoRow.js",
+      "line": 749,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 749
+        },
+        {
+          "file": "style.css",
+          "line": 5530
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalSubtitle",
+      "label": "Stats Modal Subtitle",
+      "file": "toDoRow.js",
+      "line": 759,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 759
+        },
+        {
+          "file": "style.css",
+          "line": 5551
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalTitle",
+      "label": "Stats Modal Title",
+      "file": "toDoRow.js",
+      "line": 755,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 755
+        },
+        {
+          "file": "style.css",
+          "line": 5542
+        }
+      ]
+    },
+    {
+      "selector": "#statsModalTitleWrap",
+      "label": "Stats Modal Title Wrap",
+      "file": "toDoRow.js",
+      "line": 752,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 752
+        },
+        {
+          "file": "style.css",
+          "line": 5538
+        }
+      ]
+    },
+    {
+      "selector": "#statsSibling",
+      "label": "Stats Sibling",
+      "file": "toDoRow.js",
+      "line": 543,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 543
+        },
+        {
+          "file": "style.css",
+          "line": 4072
+        }
+      ]
+    },
+    {
+      "selector": "#statsToggle",
+      "label": "Stats Toggle",
+      "file": "toDoRow.js",
+      "line": 1397,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1397
+        },
+        {
+          "file": "style.css",
+          "line": 5143
+        }
+      ]
+    },
+    {
+      "selector": "#structureRepoPicker",
+      "label": "Structure Repo Picker",
+      "file": "structureView.js",
+      "line": 971,
+      "files": [
+        {
+          "file": "structureView.js",
+          "line": 971
+        }
+      ]
+    },
+    {
+      "selector": "#structureView",
+      "label": "Structure View",
+      "file": "main.js",
+      "line": 1918,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1918
+        },
+        {
+          "file": "style.css",
+          "line": 2930
+        }
+      ]
+    },
+    {
+      "selector": "#taskFilterBar",
+      "label": "Task Filter Bar",
+      "file": "taskFilter.js",
+      "line": 89,
+      "files": [
+        {
+          "file": "taskFilter.js",
+          "line": 89
+        },
+        {
+          "file": "style.css",
+          "line": 2685
+        }
+      ]
+    },
+    {
+      "selector": "#taskFilterEmpty",
+      "label": "Task Filter Empty",
+      "file": "taskFilter.js",
+      "line": 318,
+      "files": [
+        {
+          "file": "taskFilter.js",
+          "line": 318
+        }
+      ]
+    },
+    {
+      "selector": "#taskSortBtn",
+      "label": "Task Sort Btn",
+      "file": "main.js",
+      "line": 1983,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1983
+        },
+        {
+          "file": "style.css",
+          "line": 4013
+        }
+      ]
+    },
+    {
+      "selector": "#taskSortBtnMobile",
+      "label": "Task Sort Btn Mobile",
+      "file": "main.js",
+      "line": 2015,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2015
+        },
+        {
+          "file": "style.css",
+          "line": 4014
+        }
+      ]
+    },
+    {
+      "selector": "#taskSortMenu",
+      "label": "Task Sort Menu",
+      "file": "main.js",
+      "line": 2107,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2107
+        },
+        {
+          "file": "style.css",
+          "line": 9254
+        }
+      ]
+    },
+    {
+      "selector": "#themeToggle",
+      "label": "Theme Toggle",
+      "file": "theme.js",
+      "line": 71,
+      "files": [
+        {
+          "file": "theme.js",
+          "line": 71
+        },
+        {
+          "file": "style.css",
+          "line": 259
+        }
+      ]
+    },
+    {
+      "selector": "#toDoChild",
+      "label": "To Do Child",
+      "file": "toDoRow.js",
+      "line": 1287,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1287
+        },
+        {
+          "file": "style.css",
+          "line": 1411
+        }
+      ]
+    },
+    {
+      "selector": "#toDoInput",
+      "label": "To Do Input",
+      "file": "toDoRow.js",
+      "line": 1323,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1323
+        },
+        {
+          "file": "style.css",
+          "line": 4516
+        }
+      ]
+    },
+    {
+      "selector": "#toDoTitleDisplay",
+      "label": "To Do Title Display",
+      "file": "toDoRow.js",
+      "line": 1316,
+      "files": [
+        {
+          "file": "toDoRow.js",
+          "line": 1316
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerCard",
+      "label": "Todo Md Viewer Card",
+      "file": "todoMdViewer.js",
+      "line": 437,
+      "files": [
+        {
+          "file": "todoMdViewer.js",
+          "line": 437
+        },
+        {
+          "file": "style.css",
+          "line": 4308
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerMobileSheet",
+      "label": "Todo Md Viewer Mobile Sheet",
+      "file": "mobileSheets.js",
+      "line": 320,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 320
+        },
+        {
+          "file": "style.css",
+          "line": 5842
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerMobileSheetBackdrop",
+      "label": "Todo Md Viewer Mobile Sheet Backdrop",
+      "file": "mobileSheets.js",
+      "line": 317,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 317
+        },
+        {
+          "file": "style.css",
+          "line": 5828
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerMobileSheetTitle",
+      "label": "Todo Md Viewer Mobile Sheet Title",
+      "file": "mobileSheets.js",
+      "line": 333,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 333
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerOverflowMobileSheet",
+      "label": "Todo Md Viewer Overflow Mobile Sheet",
+      "file": "mobileSheets.js",
+      "line": 469,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 469
+        },
+        {
+          "file": "style.css",
+          "line": 6347
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerOverflowMobileSheetBackdrop",
+      "label": "Todo Md Viewer Overflow Mobile Sheet Backdrop",
+      "file": "mobileSheets.js",
+      "line": 466,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 466
+        },
+        {
+          "file": "style.css",
+          "line": 6333
+        }
+      ]
+    },
+    {
+      "selector": "#todoMdViewerOverflowMobileSheetTitle",
+      "label": "Todo Md Viewer Overflow Mobile Sheet Title",
+      "file": "mobileSheets.js",
+      "line": 482,
+      "files": [
+        {
+          "file": "mobileSheets.js",
+          "line": 482
+        }
+      ]
+    },
+    {
+      "selector": "#todoStatusLabel",
+      "label": "Todo Status Label",
+      "file": "todoStatus.js",
+      "line": 67,
+      "files": [
+        {
+          "file": "todoStatus.js",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "selector": "#todoStatusPopover",
+      "label": "Todo Status Popover",
+      "file": "todoStatus.js",
+      "line": 131,
+      "files": [
+        {
+          "file": "todoStatus.js",
+          "line": 131
+        }
+      ]
+    },
+    {
+      "selector": "#viewPillConceive",
+      "label": "View Pill Conceive",
+      "file": "main.js",
+      "line": 1850,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1850
+        }
+      ]
+    },
+    {
+      "selector": "#viewPillProjects",
+      "label": "View Pill Projects",
+      "file": "main.js",
+      "line": 1842,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1842
+        }
+      ]
+    },
+    {
+      "selector": "#viewPillStructure",
+      "label": "View Pill Structure",
+      "file": "main.js",
+      "line": 1858,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1858
+        }
+      ]
+    },
+    {
+      "selector": "#viewSwitcher",
+      "label": "View Switcher",
+      "file": "main.js",
+      "line": 1837,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 1837
+        },
+        {
+          "file": "style.css",
+          "line": 2854
+        }
+      ]
+    },
+    {
+      "selector": "#welcome",
+      "label": "Welcome",
+      "file": "welcomeCarousel.js",
+      "line": 38,
+      "files": [
+        {
+          "file": "welcomeCarousel.js",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "selector": "#youtubeIframeApi",
+      "label": "Youtube Iframe Api",
+      "file": "music.js",
+      "line": 230,
+      "files": [
+        {
+          "file": "music.js",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "selector": "[data-region=\"…\"]",
+      "label": "…",
+      "file": "structureView.js",
+      "line": 483,
+      "files": [
+        {
+          "file": "structureView.js",
+          "line": 483
+        }
+      ]
+    }
+  ],
+  "hasDom": true
 }
