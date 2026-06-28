@@ -550,7 +550,7 @@
   - File: `toDoList_main/src/structureView.js`,
   <!-- id: 56fc12b6-628f-476a-9b29-6a320ba32060 -->
 
-- [ ] **[MEDIUM]** Add Reference in chat and Copy selector to published UI-map rows
+- [x] **[MEDIUM]** Add Reference in chat and Copy selector to published UI-map rows
   - Type: bug
   - Description: On the Structure tab's UI lens, the published-map rows (shown for any repo that isn't the running app) render only "Find in code" and a "View on GitHub" link — they're missing "Reference in chat" and "Copy selector" that the live map's rows have. Confirmed in `structureView.js`: the live row renderer `buildRegionRow` wires all three (Reference via the imported `insertReference`, Copy via the standalone clipboard helper, plus Find in code), while the later published row renderer `buildPublishedRegionRow` only got Find-in-code and the GitHub link. That's why the live map in the PWA shows all three but a linked repo's published map doesn't. Reference-in-chat is the tab's primary action and is just as valid for a published handle (e.g. matchingGame's `.card`) as a live one, so published rows should offer the same three.
   - Behavior:
@@ -563,5 +563,5 @@
     - Constraint: vanilla JS, plain CSS, no new dependencies. Work in `structureView.js`; touch `style.css` only if the published row needs the same action-row flex treatment as the live row.
   - Out of scope: the live map (`buildRegionRow`) is unchanged; no change to the manifest/build step or the region data the consumer reads.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-27
   <!-- id: 714cee5d-41e2-4ae8-8297-8babc0983074 -->
