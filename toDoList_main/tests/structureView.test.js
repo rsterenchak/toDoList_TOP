@@ -60,7 +60,12 @@ vi.mock('../src/inject.js', () => ({
 import { renderStructureView } from '../src/structureView.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
-import { setStructureLens, STRUCTURE_LENS_KEY } from '../src/prefs.js';
+import {
+    setStructureLens,
+    STRUCTURE_LENS_KEY,
+    STRUCTURE_TREE_KEY,
+    getStructureTreeState,
+} from '../src/prefs.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 4) {
@@ -917,4 +922,165 @@ describe('renderStructureView — filter box', () => {
         }
         return true;
     }
+});
+
+describe('renderStructureView — persisted tree open/closed state (per repo + lens)', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    beforeEach(async () => {
+        try { localStorage.removeItem(STRUCTURE_TREE_KEY); } catch (e) { /* ignore */ }
+        state.runningRepo = TOP;
+        // The module keeps `selectedRepo` and its fold sets across renders by
+        // design (a same-repo re-render is not a reload). Park selection on a
+        // neutral repo that no test targets, so each test's first render for TOP
+        // or OTHER is a genuine repo change — a clean reload-like hydration that
+        // isolates it from module state a prior test left behind.
+        state.projectRepos['__neutral__'] = 'rsterenchak/__neutral__';
+        mountDom('__neutral__');
+        renderStructureView();
+        await flush();
+    });
+
+    // Re-point the view at a project (and thus its repo) from a fresh DOM, as a
+    // page would after a reload or a project switch.
+    async function renderFor(project) {
+        mountDom(project);
+        renderStructureView();
+        await flush();
+    }
+
+    function folderByName(name) {
+        return Array.from(document.querySelectorAll('.structureFolderRow'))
+            .find((h) => h.querySelector('.structureFolderName').textContent === name);
+    }
+
+    it('Code lens: an expanded folder is restored after switching repos away and back', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js', 'src/util/a.js'] };
+        state.manifests[OTHER] = { ok: true, files: ['game.js'] };
+
+        await renderFor('My Project');
+        let src = folderByName('src');
+        expect(src.nextElementSibling.hidden).toBe(true); // collapsed by default
+        src.click();
+        expect(src.nextElementSibling.hidden).toBe(false);
+        // The open folder path was persisted under repo + lens.
+        expect(getStructureTreeState(TOP, 'code')).toContain('src');
+
+        // Switch to another repo (resets live state), then back — a reload-like cycle.
+        await renderFor('Game');
+        await renderFor('My Project');
+
+        src = folderByName('src');
+        expect(src.getAttribute('aria-expanded')).toBe('true');
+        expect(src.nextElementSibling.hidden).toBe(false);
+    });
+
+    it('Code lens: collapsing a previously open folder clears it from storage', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js'] };
+        await renderFor('My Project');
+
+        const folder = document.querySelector('.structureFolderRow');
+        folder.click(); // open
+        expect(getStructureTreeState(TOP, 'code')).toContain('src');
+        folder.click(); // close
+        expect(getStructureTreeState(TOP, 'code') || []).not.toContain('src');
+    });
+
+    it('Published UI map: a collapsed file group is restored after a reload cycle', async () => {
+        setStructureLens('ui');
+        state.manifests[OTHER] = {
+            ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
+            regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] }],
+        };
+        await renderFor('Game');
+
+        let header = document.querySelector('.structureFolderRow');
+        expect(header.nextSibling.hidden).toBe(false); // expanded by default
+        header.click(); // collapse
+        expect(header.nextSibling.hidden).toBe(true);
+        // The published map records collapsed headers as its exception set.
+        expect(getStructureTreeState(OTHER, 'ui')).toContain('app.js');
+
+        // Reload: park on the running repo (live map), then back to Game.
+        await renderFor('My Project');
+        await renderFor('Game');
+
+        header = document.querySelector('.structureFolderRow');
+        expect(header.getAttribute('aria-expanded')).toBe('false');
+        expect(header.nextSibling.hidden).toBe(true);
+    });
+
+    it('Live UI map: an expanded region is restored after a reload cycle', async () => {
+        setStructureLens('ui');
+        state.runningRepo = TOP;
+        function mountLive() {
+            document.body.innerHTML =
+                '<div id="structureView"></div>' +
+                '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+                '<main id="mainPanel" data-region="Tasks"><section data-region="Sidebar"></section></main>';
+        }
+        function mainPanelRow() {
+            return Array.from(document.querySelectorAll('.structureRegionRow'))
+                .find((r) => r.querySelector('.structureRegionSelector').textContent === '#mainPanel');
+        }
+
+        mountLive();
+        renderStructureView();
+        await flush();
+
+        let row = mainPanelRow();
+        let childWrap = row.parentNode.querySelector('.structureRegionChildren');
+        expect(childWrap.hidden).toBe(true); // collapsed by default
+        row.querySelector('.structureRegionCaret').click();
+        expect(childWrap.hidden).toBe(false);
+        // The live map records open region selectors as its exception set.
+        expect(getStructureTreeState(TOP, 'ui')).toContain('#mainPanel');
+
+        // Reload: park on the other repo, then re-render the live map.
+        await renderFor('Game');
+        mountLive();
+        renderStructureView();
+        await flush();
+
+        row = mainPanelRow();
+        childWrap = row.parentNode.querySelector('.structureRegionChildren');
+        expect(childWrap.hidden).toBe(false);
+        expect(row.classList.contains('expanded')).toBe(true);
+    });
+
+    it('keeps each repo + lens state independent', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js'] };
+        state.manifests[OTHER] = { ok: true, files: ['lib/x.js'] };
+
+        await renderFor('My Project');
+        folderByName('src').click();
+        await renderFor('Game');
+        folderByName('lib').click();
+
+        expect(getStructureTreeState(TOP, 'code')).toEqual(['src']);
+        expect(getStructureTreeState(OTHER, 'code')).toEqual(['lib']);
+    });
+
+    it('the filter’s temporary auto-expand is not persisted (only manual toggles persist)', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/util/a.js'] };
+        await renderFor('My Project');
+        // Nothing stored before any manual toggle.
+        expect(getStructureTreeState(TOP, 'code')).toBeNull();
+
+        // Typing a query that matches the nested file auto-expands its ancestors.
+        const input = document.querySelector('.structureFilterInput');
+        input.value = 'a.js';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await flush();
+        const util = folderByName('util');
+        expect(util.nextElementSibling.hidden).toBe(false); // revealed by the filter
+
+        // …but the auto-expand was never written to storage.
+        expect(getStructureTreeState(TOP, 'code')).toBeNull();
+    });
 });

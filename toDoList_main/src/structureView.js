@@ -6,7 +6,12 @@ import {
     insertReference,
 } from './claudeSheet.js';
 import { resolveProjectRepo } from './seedTasksModal.js';
-import { getStructureLens, setStructureLens } from './prefs.js';
+import {
+    getStructureLens,
+    setStructureLens,
+    getStructureTreeState,
+    setStructureTreeState,
+} from './prefs.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -56,6 +61,12 @@ let openFolders = new Set();
 // `openFolders`.
 let collapsedPublishedFiles = new Set();
 
+// Region selectors the user has EXPANDED in the live UI map. The live map
+// defaults every region to collapsed, so membership marks the exceptions; the
+// selector is the stable per-node key the tree already uses. Reset on repo switch
+// alongside `openFolders` / `collapsedPublishedFiles`.
+let openRegions = new Set();
+
 // The build-time UI index for the selected repo, surfaced from its manifest:
 //   • regionsIndex — selector → region record { selector, label, file, line,
 //     files } — powers "Find in code" (live selector or published row → owner
@@ -90,6 +101,44 @@ let currentNoMatchEl = null;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+// Which module-scoped fold set backs the given repo + lens. The UI lens splits by
+// sub-mode: the running app's repo renders the live region map (open selectors),
+// every other repo renders its published map (collapsed file headers). A repo is
+// exclusively one or the other, so the single `<repo>:ui` storage slot never
+// holds both representations at once.
+function liveUiForRepo(repo) {
+    return repo === getRunningAppRepo();
+}
+
+// Hydrate the fold set that backs `lens` for `repo` from persisted state, falling
+// back to that lens's default expansion when nothing is stored yet (first open).
+// Only called at genuine "enter this lens" moments (view render, lens switch) —
+// never on the find-in-code repaint, which mutates `openFolders` itself and must
+// not have those additions wiped.
+function hydrateActiveLensState(repo, lens) {
+    const stored = getStructureTreeState(repo, lens);
+    const keys = stored || [];
+    if (lens === 'code') {
+        openFolders = new Set(keys);
+    } else if (liveUiForRepo(repo)) {
+        openRegions = new Set(keys);
+    } else {
+        collapsedPublishedFiles = new Set(keys);
+    }
+}
+
+// Persist the current fold set for `repo` + `lens`. Called from the user-toggle
+// click handlers only, so the filter box's temporary auto-expand (which never
+// touches these sets) is never written.
+function persistActiveLensState(repo, lens) {
+    if (!repo || !lens) return;
+    let keys;
+    if (lens === 'code') keys = Array.from(openFolders);
+    else if (liveUiForRepo(repo)) keys = Array.from(openRegions);
+    else keys = Array.from(collapsedPublishedFiles);
+    setStructureTreeState(repo, lens, keys);
 }
 
 // Load (cached) the selected repo's manifest and refresh the module-scoped UI
@@ -487,6 +536,7 @@ function renderNode(repo, node, container, depth) {
             head.classList.toggle('expanded', nowOpen);
             head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
             childWrap.hidden = !nowOpen;
+            persistActiveLensState(repo, lens);
         });
         if (expanded) head.classList.add('expanded');
 
@@ -821,7 +871,10 @@ function buildRegionRow(node, depth) {
 
     const childWrap = document.createElement('div');
     childWrap.className = 'structureRegionChildren';
-    childWrap.hidden = true;
+    // The live map defaults to collapsed; a persisted open selector reopens it.
+    const startExpanded = hasChildren && openRegions.has(node.selector);
+    childWrap.hidden = !startExpanded;
+    if (startExpanded) row.classList.add('expanded');
 
     const actions = buildRegionActions(node);
 
@@ -831,6 +884,9 @@ function buildRegionRow(node, depth) {
             const nowOpen = childWrap.hidden;
             childWrap.hidden = !nowOpen;
             row.classList.toggle('expanded', nowOpen);
+            if (nowOpen) openRegions.add(node.selector);
+            else openRegions.delete(node.selector);
+            persistActiveLensState(selectedRepo, lens);
         });
         node.children.forEach(function (child) {
             if (child.type === 'collapsed') childWrap.appendChild(buildCollapsedRow(child, depth + 1));
@@ -1042,6 +1098,7 @@ function buildPublishedFileGroup(repo, file, fileRegions) {
         head.classList.toggle('expanded', nowOpen);
         head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
         childWrap.hidden = !nowOpen;
+        persistActiveLensState(repo, lens);
     });
     if (expanded) head.classList.add('expanded');
 
@@ -1504,11 +1561,17 @@ export function renderStructureView() {
     }
 
     lens = getStructureLens();
-    // Reset the open-folder set when the resolved repo changes (project switch),
-    // since folder paths are repo-scoped and shouldn't carry across repos.
+    // Folder paths, published-map file names, and live-map region selectors are
+    // all repo-scoped, so a resolved-repo change (project switch) drops the prior
+    // repo's fold sets and re-hydrates the active lens from THIS repo's persisted
+    // state — falling back to default expansion the first time. The inactive lens
+    // re-hydrates when the user toggles into it. A same-repo re-render leaves the
+    // live sets intact, so a transient find-in-code reveal isn't wiped.
     if (repo !== selectedRepo) {
         openFolders = new Set();
         collapsedPublishedFiles = new Set();
+        openRegions = new Set();
+        hydrateActiveLensState(repo, lens);
     }
     selectedRepo = repo;
 
@@ -1553,9 +1616,9 @@ export function renderStructureView() {
     currentNoMatchEl = null;
 
     const toggle = buildLensToggle(function () {
-        // Code lens re-renders from scratch each switch; reset its open-folder
-        // state so a fresh switch starts collapsed.
-        if (lens === 'code') openFolders = new Set();
+        // Entering a lens restores that lens's persisted fold state for this repo
+        // (or its default expansion the first time), independent of the other.
+        hydrateActiveLensState(selectedRepo, lens);
         const painted = renderLens(selectedRepo, tree);
         updateFilterPlaceholder();
         // Re-apply the active query to the freshly rendered lens so switching
