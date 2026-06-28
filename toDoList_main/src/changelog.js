@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-06-27',
-        changed: [
-            "A linked repo's published UI map now groups regions under collapsible file headers by their defining file, matching the foldable structure of the live map.",
+        date: '2026-06-28',
+        added: [
+            "A filter box on the Structure tab narrows the tree live as you type — by file in the Code lens, by handle in the UI lens — with matches highlighted.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-06-27',
         fixed: [
             "Mobile task titles now clear the left-edge status tab so the first letter no longer collides with the colored sliver.",
             "The quick-option chips under the mobile add-task field now appear in full instead of being clipped or overlapping the first task below.",

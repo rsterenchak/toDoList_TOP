@@ -642,3 +642,185 @@ describe('renderStructureView — Find in code (live UI lens → Code lens)', ()
         expect(fileWrap).toBeTruthy();
     });
 });
+
+describe('renderStructureView — filter box', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    // Mount the structure container plus live regions (for the UI lens) and the
+    // selected-project row; default project resolves to the running app repo.
+    function mountUiDom(extraHtml, projectName) {
+        const name = projectName === undefined ? 'My Project' : projectName;
+        const projectRow = name
+            ? '<div class="selectedProject"><input id="projInput" value="' + name + '"></div>'
+            : '';
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            projectRow +
+            '<header id="appHeader" aria-label="App header"></header>' +
+            '<main id="mainPanel" data-region="Tasks">' +
+            '  <section data-region="Sidebar"></section>' +
+            '</main>' +
+            (extraHtml || '');
+    }
+
+    function typeFilter(value) {
+        const input = document.querySelector('.structureFilterInput');
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return input;
+    }
+
+    it('renders a filter input that reflects the active lens in its placeholder', async () => {
+        setStructureLens('code');
+        state.manifests['rsterenchak/toDoList_TOP'] = { ok: true, files: ['src/main.js'] };
+        renderStructureView();
+        await flush();
+        const input = document.querySelector('.structureFilterInput');
+        expect(input).toBeTruthy();
+        expect(input.placeholder).toMatch(/filter files/i);
+
+        // Switching to the UI lens updates the placeholder copy.
+        const uiBtn = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'ui');
+        uiBtn.click();
+        await flush();
+        expect(document.querySelector('.structureFilterInput').placeholder).toMatch(/filter handles/i);
+    });
+
+    it('Code lens: filters files by path, hides non-matches, and shows an "X of Y" count', async () => {
+        setStructureLens('code');
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            files: ['src/main.js', 'src/util/alpha.js', 'src/util/beta.js', 'README.md'],
+        };
+        renderStructureView();
+        await flush();
+
+        typeFilter('alpha');
+        // The matching file stays; non-matches are filter-hidden.
+        const wraps = Array.from(document.querySelectorAll('.structureFileWrap'));
+        const visible = wraps.filter((w) => !w.classList.contains('structureFilterHidden'));
+        expect(visible.length).toBe(1);
+        expect(visible[0].dataset.structureFile).toBe('src/util/alpha.js');
+        // Its folder ancestors are revealed (not filter-hidden).
+        const utilHead = Array.from(document.querySelectorAll('.structureFolderName')).find((n) => n.textContent === 'util');
+        expect(utilHead.closest('.structureFolderRow').classList.contains('structureFilterHidden')).toBe(false);
+        // Count reads visible-of-total.
+        expect(document.querySelector('.structureFilterCount').textContent).toBe('1 of 4');
+        // The matched substring is highlighted in the file name.
+        expect(visible[0].querySelector('.structureFilterMark')).toBeTruthy();
+    });
+
+    it('Code lens: a folder-name query keeps every file under that folder', async () => {
+        setStructureLens('code');
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            files: ['src/util/alpha.js', 'src/util/beta.js', 'src/main.js'],
+        };
+        renderStructureView();
+        await flush();
+
+        typeFilter('util');
+        const visible = Array.from(document.querySelectorAll('.structureFileWrap'))
+            .filter((w) => !w.classList.contains('structureFilterHidden'))
+            .map((w) => w.dataset.structureFile)
+            .sort();
+        expect(visible).toEqual(['src/util/alpha.js', 'src/util/beta.js']);
+    });
+
+    it('clearing the filter restores the full tree and prior fold state', async () => {
+        setStructureLens('code');
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            files: ['src/util/alpha.js', 'README.md'],
+        };
+        renderStructureView();
+        await flush();
+
+        // The util folder starts collapsed.
+        const utilHead = document.querySelector('.structureFolderRow');
+        const utilChildren = utilHead.nextElementSibling;
+        expect(utilChildren.hidden).toBe(true);
+
+        typeFilter('alpha');
+        // Filtering auto-expanded the folder to reveal the match.
+        expect(utilChildren.hidden).toBe(false);
+
+        // Clearing via the × button restores everything.
+        const clear = document.querySelector('.structureFilterClear');
+        expect(clear.hidden).toBe(false);
+        clear.click();
+        expect(document.querySelectorAll('.structureFilterHidden').length).toBe(0);
+        expect(document.querySelectorAll('.structureFilterMark').length).toBe(0);
+        // Prior collapsed state is restored.
+        expect(utilChildren.hidden).toBe(true);
+        expect(document.querySelector('.structureFilterCount').textContent).toBe('');
+        expect(clear.hidden).toBe(true);
+    });
+
+    it('shows a quiet no-match notice when nothing matches', async () => {
+        setStructureLens('code');
+        state.manifests['rsterenchak/toDoList_TOP'] = { ok: true, files: ['src/main.js'] };
+        renderStructureView();
+        await flush();
+
+        typeFilter('zzzznope');
+        const note = document.querySelector('.structureFilterNoMatch');
+        expect(note).toBeTruthy();
+        expect(note.textContent).toMatch(/no matches for/i);
+        expect(note.textContent).toContain('zzzznope');
+        expect(document.querySelector('.structureFilterCount').textContent).toBe('0 of 1');
+    });
+
+    it('UI lens: filters live regions by label or selector', async () => {
+        setStructureLens('ui');
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        // Match by label: "Tasks" keeps the #mainPanel region.
+        typeFilter('tasks');
+        const visibleSelectors = Array.from(document.querySelectorAll('.structureRegionWrap'))
+            .filter((w) => !w.classList.contains('structureFilterHidden'))
+            .map((w) => w.querySelector('.structureRegionSelector').textContent);
+        expect(visibleSelectors).toContain('#mainPanel');
+        // The id-less Sidebar region (selector [data-region="Sidebar"]) is hidden.
+        const sidebar = Array.from(document.querySelectorAll('.structureRegionWrap'))
+            .find((w) => w.querySelector('.structureRegionSelector').textContent === '[data-region="Sidebar"]');
+        expect(sidebar.classList.contains('structureFilterHidden')).toBe(true);
+    });
+
+    it('published UI map: filters by grouping file and keeps that file’s rows', async () => {
+        mountDom('Game');
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        setStructureLens('ui');
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['board.js', 'hud.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'board.js', line: 12, files: [{ file: 'board.js', line: 12 }] },
+                { selector: '[data-region="HUD"]', label: 'HUD', file: 'hud.js', line: 40, files: [{ file: 'hud.js', line: 40 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        // Filtering by the grouping file name keeps that group's rows and hides
+        // the other file group entirely.
+        typeFilter('hud.js');
+        const visibleRows = Array.from(document.querySelectorAll('.structureRegionWrap'))
+            .filter((w) => isVisibleUnder(w))
+            .map((w) => w.querySelector('.structureRegionLabel').textContent);
+        expect(visibleRows).toEqual(['HUD']);
+    });
+
+    function isVisibleUnder(el) {
+        let n = el;
+        while (n && !n.classList.contains('structureTree')) {
+            if (n.classList.contains('structureFilterHidden')) return false;
+            n = n.parentElement;
+        }
+        return true;
+    }
+});

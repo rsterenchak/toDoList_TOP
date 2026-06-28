@@ -70,6 +70,18 @@ let currentSrcRoot = null;
 let currentTreeEl = null;
 let lensToggleGroup = null;
 
+// Filter box state. The input lives in the view's persistent header region (not
+// in the tree container `clear()` empties on each lens render), so it survives a
+// lens switch; `filterQuery` is the active query, re-applied to the freshly
+// rendered lens after a switch. The filter hides/reveals already-rendered rows
+// rather than re-rendering, so inline "Explain with Sonnet" results and the
+// user's expand/collapse state survive every keystroke.
+let filterQuery = '';
+let filterInputEl = null;
+let filterCountEl = null;
+let filterClearEl = null;
+let currentNoMatchEl = null;
+
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
@@ -989,6 +1001,330 @@ function renderLens(repo, treeEl) {
     renderTree(repo, treeEl);
 }
 
+// ── FILTER ──────────────────────────────────────────────────────────────────
+// One live filter narrows whichever lens is showing: in the Code lens by file
+// name/path, in the UI lens by a region's label or selector (and, for the
+// published map, its grouping file). It walks the already-rendered DOM and
+// toggles a `.structureFilterHidden` class plus an ancestor-reveal so matches
+// stay reachable — never a re-render — preserving Explain results and fold state.
+
+function matchesQuery(text, q) {
+    return !!q && String(text).toLowerCase().indexOf(q) !== -1;
+}
+
+function setFilterHidden(el, hide) {
+    el.classList.toggle('structureFilterHidden', hide);
+}
+
+// True when neither `el` nor any ancestor up to (not including) `tree` is
+// filter-hidden — used to count genuinely visible leaves regardless of which
+// level hid them (a leaf can be hidden by its own row or by an ancestor group).
+function isFilterVisible(el, tree) {
+    let n = el;
+    while (n && n !== tree) {
+        if (n.classList && n.classList.contains('structureFilterHidden')) return false;
+        n = n.parentElement;
+    }
+    return true;
+}
+
+// The container-open head for a child-wrap, so an ancestor-reveal can mark it
+// expanded: code/published folder children sit beside their folder-row head; a
+// live region's children sit inside the region wrap beside its row.
+function headForChildWrap(cw) {
+    if (cw.classList.contains('structureFolderChildren')) return cw.previousElementSibling;
+    if (cw.classList.contains('structureRegionChildren')) {
+        return cw.parentElement.querySelector(':scope > .structureRegionRow');
+    }
+    return null;
+}
+
+// Reveal a container while filtering, stashing its pre-filter hidden state once
+// so the original fold state can be restored on clear. Folder heads carry
+// aria-expanded; a live region row uses only the `expanded` class (its
+// aria-expanded drives the separate action panel and must not be touched here).
+function expandContainer(cw) {
+    if (cw.dataset.filterPrev === undefined) cw.dataset.filterPrev = cw.hidden ? '1' : '0';
+    cw.hidden = false;
+    const head = headForChildWrap(cw);
+    if (head) {
+        head.classList.add('expanded');
+        if (cw.classList.contains('structureFolderChildren') && head.hasAttribute('aria-expanded')) {
+            head.setAttribute('aria-expanded', 'true');
+        }
+    }
+}
+
+// Restore a container's pre-filter fold state (mirror of expandContainer).
+function restoreContainer(cw) {
+    const wasHidden = cw.dataset.filterPrev === '1';
+    cw.hidden = wasHidden;
+    delete cw.dataset.filterPrev;
+    const head = headForChildWrap(cw);
+    if (head) {
+        head.classList.toggle('expanded', !wasHidden);
+        if (cw.classList.contains('structureFolderChildren') && head.hasAttribute('aria-expanded')) {
+            head.setAttribute('aria-expanded', wasHidden ? 'false' : 'true');
+        }
+    }
+}
+
+// The pristine text of a label element — its stashed pre-highlight value when a
+// highlight is currently applied, otherwise its live text.
+function filterOrigText(el) {
+    if (!el) return '';
+    return el.dataset.filterOrig !== undefined ? el.dataset.filterOrig : el.textContent;
+}
+
+// Wrap each case-insensitive occurrence of `q` in `el`'s text with a <mark>,
+// stashing the original so it can be restored. With no match, restore any prior
+// highlight and leave the text plain.
+function highlightIn(el, q) {
+    if (!el) return;
+    const orig = filterOrigText(el);
+    const lower = orig.toLowerCase();
+    const idx = q ? lower.indexOf(q) : -1;
+    if (idx === -1) {
+        if (el.dataset.filterOrig !== undefined) {
+            el.textContent = orig;
+            delete el.dataset.filterOrig;
+        }
+        return;
+    }
+    if (el.dataset.filterOrig === undefined) el.dataset.filterOrig = orig;
+    el.textContent = '';
+    let pos = 0;
+    let i = lower.indexOf(q, pos);
+    while (i !== -1) {
+        if (i > pos) el.appendChild(document.createTextNode(orig.slice(pos, i)));
+        const mark = document.createElement('mark');
+        mark.className = 'structureFilterMark';
+        mark.textContent = orig.slice(i, i + q.length);
+        el.appendChild(mark);
+        pos = i + q.length;
+        i = lower.indexOf(q, pos);
+    }
+    if (pos < orig.length) el.appendChild(document.createTextNode(orig.slice(pos)));
+}
+
+function clearHighlight(el) {
+    if (el && el.dataset.filterOrig !== undefined) {
+        el.textContent = el.dataset.filterOrig;
+        delete el.dataset.filterOrig;
+    }
+}
+
+// Drop the filter overlay (hidden classes, highlights, fold stashes) under
+// `root` so everything reads as freshly rendered again.
+function unhideSubtree(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('.structureFilterHidden'), function (el) {
+        el.classList.remove('structureFilterHidden');
+    });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-filter-orig]'), function (el) {
+        clearHighlight(el);
+    });
+}
+
+// Filter the direct children of `container`, recursing into nested folders and
+// region trees. Returns true when at least one descendant matched, so a parent
+// can decide whether to stay visible and reveal itself.
+function filterNodes(container, q) {
+    let anyVisible = false;
+    Array.prototype.forEach.call(container.children, function (el) {
+        if (!el.classList) return;
+        // Child-wraps are handled together with their head/row, not standalone.
+        if (el.classList.contains('structureFolderChildren')) return;
+        if (el.classList.contains('structureRegionChildren')) return;
+
+        if (el.classList.contains('structureFolderRow')) {
+            // Code-lens folder: head followed by its children wrap.
+            const childWrap = el.nextElementSibling;
+            const childMatched = childWrap ? filterNodes(childWrap, q) : false;
+            setFilterHidden(el, !childMatched);
+            if (childWrap) setFilterHidden(childWrap, !childMatched);
+            if (childMatched) {
+                if (childWrap) expandContainer(childWrap);
+                anyVisible = true;
+            }
+            return;
+        }
+
+        if (el.classList.contains('structurePublishedFileGroup')) {
+            const head = el.querySelector(':scope > .structureFolderRow');
+            const childWrap = el.querySelector(':scope > .structureFolderChildren');
+            const nameEl = head ? head.querySelector('.structureFolderName') : null;
+            const fileMatch = matchesQuery(filterOrigText(nameEl), q);
+            let groupVisible;
+            if (fileMatch) {
+                // The grouping file matched — surface the whole group's rows.
+                if (childWrap) unhideSubtree(childWrap);
+                highlightIn(nameEl, q);
+                groupVisible = true;
+            } else {
+                clearHighlight(nameEl);
+                groupVisible = childWrap ? filterNodes(childWrap, q) : false;
+            }
+            setFilterHidden(el, !groupVisible);
+            if (groupVisible && childWrap) expandContainer(childWrap);
+            if (groupVisible) anyVisible = true;
+            return;
+        }
+
+        if (el.classList.contains('structureFileWrap')) {
+            const m = matchesQuery(el.dataset.structureFile || '', q);
+            setFilterHidden(el, !m);
+            const nameEl = el.querySelector('.structureFileName');
+            if (m) {
+                highlightIn(nameEl, q);
+                anyVisible = true;
+            } else {
+                clearHighlight(nameEl);
+            }
+            return;
+        }
+
+        if (el.classList.contains('structureRegionWrap')) {
+            if (filterRegion(el, q)) anyVisible = true;
+            return;
+        }
+
+        if (el.classList.contains('structureCollapsedRow')) {
+            // A "× N rows" placeholder carries no searchable handle.
+            setFilterHidden(el, true);
+            return;
+        }
+    });
+    return anyVisible;
+}
+
+// Filter one region wrap (live or published). A region shows when its own
+// label/selector matches OR a descendant matches; a descendant match reveals
+// the ancestor chain by expanding this wrap's children.
+function filterRegion(wrap, q) {
+    const row = wrap.querySelector(':scope > .structureRegionRow');
+    const labelEl = row ? row.querySelector(':scope > .structureRegionLabel') : null;
+    const selEl = row ? row.querySelector(':scope > .structureRegionSelector') : null;
+    const text = (filterOrigText(labelEl) + ' ' + filterOrigText(selEl)).toLowerCase();
+    const selfMatch = !!q && text.indexOf(q) !== -1;
+    const childWrap = wrap.querySelector(':scope > .structureRegionChildren');
+    const childMatched = childWrap ? filterNodes(childWrap, q) : false;
+    const visible = selfMatch || childMatched;
+    setFilterHidden(wrap, !visible);
+    if (selfMatch) {
+        highlightIn(labelEl, q);
+        highlightIn(selEl, q);
+    } else {
+        clearHighlight(labelEl);
+        clearHighlight(selEl);
+    }
+    if (visible && childMatched && childWrap) expandContainer(childWrap);
+    return visible;
+}
+
+// Apply (or clear) the live filter against the current tree. Empty query →
+// restore the full tree and its prior fold state; otherwise hide non-matches,
+// reveal matched ancestors, refresh the "X of Y" count, and show a quiet
+// no-match notice in place of the tree when nothing matches.
+function applyStructureFilter(rawQuery) {
+    filterQuery = rawQuery || '';
+    const tree = currentTreeEl;
+    if (!tree) return;
+    const q = filterQuery.trim().toLowerCase();
+
+    if (currentNoMatchEl && currentNoMatchEl.parentNode) {
+        currentNoMatchEl.parentNode.removeChild(currentNoMatchEl);
+    }
+    currentNoMatchEl = null;
+
+    if (filterClearEl) filterClearEl.hidden = filterQuery.length === 0;
+
+    if (!q) {
+        Array.prototype.forEach.call(tree.querySelectorAll('.structureFilterHidden'), function (el) {
+            el.classList.remove('structureFilterHidden');
+        });
+        Array.prototype.forEach.call(tree.querySelectorAll('[data-filter-prev]'), function (cw) {
+            restoreContainer(cw);
+        });
+        Array.prototype.forEach.call(tree.querySelectorAll('[data-filter-orig]'), function (el) {
+            clearHighlight(el);
+        });
+        if (filterCountEl) filterCountEl.textContent = '';
+        return;
+    }
+
+    filterNodes(tree, q);
+
+    const leafSel = lens === 'code' ? '.structureFileWrap' : '.structureRegionWrap';
+    const leaves = tree.querySelectorAll(leafSel);
+    let visible = 0;
+    Array.prototype.forEach.call(leaves, function (el) {
+        if (isFilterVisible(el, tree)) visible++;
+    });
+    if (filterCountEl) filterCountEl.textContent = visible + ' of ' + leaves.length;
+
+    if (visible === 0) {
+        const note = document.createElement('div');
+        note.className = 'structureFilterNoMatch';
+        note.textContent = 'No matches for “' + filterQuery.trim() + '”.';
+        tree.appendChild(note);
+        currentNoMatchEl = note;
+    }
+}
+
+// Placeholder copy tracks the active lens (files vs handles).
+function updateFilterPlaceholder() {
+    if (!filterInputEl) return;
+    filterInputEl.placeholder = lens === 'code' ? 'Filter files…' : 'Filter handles…';
+}
+
+// Build the filter box: a magnifier glyph, the live input, an "X of Y" count,
+// and a clear (×) button that appears only once there's text.
+function buildFilterBox() {
+    const box = document.createElement('div');
+    box.className = 'structureFilterBox';
+
+    const icon = document.createElement('span');
+    icon.className = 'structureFilterIcon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML =
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
+    box.appendChild(icon);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'structureFilterInput';
+    input.setAttribute('aria-label', 'Filter the structure tree');
+    box.appendChild(input);
+
+    const count = document.createElement('span');
+    count.className = 'structureFilterCount';
+    count.setAttribute('aria-live', 'polite');
+    box.appendChild(count);
+
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'structureFilterClear';
+    clear.setAttribute('aria-label', 'Clear filter');
+    clear.textContent = '×';
+    clear.hidden = true;
+    box.appendChild(clear);
+
+    input.addEventListener('input', function () {
+        applyStructureFilter(input.value);
+    });
+    clear.addEventListener('click', function () {
+        input.value = '';
+        applyStructureFilter('');
+        input.focus();
+    });
+
+    filterInputEl = input;
+    filterCountEl = count;
+    filterClearEl = clear;
+    return box;
+}
+
 // ── SHELL ───────────────────────────────────────────────────────────────────
 
 // Resolve the currently-selected project's name from the sidebar — the same
@@ -1117,14 +1453,32 @@ export function renderStructureView() {
     // same container without re-entering renderStructureView.
     currentTreeEl = tree;
 
+    // Reset the filter on a fresh render (project switch / view entry); the box
+    // is rebuilt empty and the query state cleared so nothing carries over.
+    filterQuery = '';
+    currentNoMatchEl = null;
+
     const toggle = buildLensToggle(function () {
         // Code lens re-renders from scratch each switch; reset its open-folder
         // state so a fresh switch starts collapsed.
         if (lens === 'code') openFolders = new Set();
-        renderLens(selectedRepo, tree);
+        const painted = renderLens(selectedRepo, tree);
+        updateFilterPlaceholder();
+        // Re-apply the active query to the freshly rendered lens so switching
+        // lenses keeps the current filter (requirement: filter follows the lens).
+        Promise.resolve(painted).then(function () {
+            if (filterInputEl) applyStructureFilter(filterInputEl.value);
+        });
     });
     header.appendChild(toggle);
     view.appendChild(header);
+
+    // The filter box lives in the view (a persistent sibling of the tree), so a
+    // lens render — which only clears `tree` — never wipes it.
+    const filterBox = buildFilterBox();
+    view.appendChild(filterBox);
+    updateFilterPlaceholder();
+
     view.appendChild(tree);
 
     renderLens(selectedRepo, tree);
