@@ -600,3 +600,21 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR
   <!-- id: 37836a31-9340-47e8-8926-5d4dbd872582 -->
+
+- [ ] **[MEDIUM]** Cache "Explain with Sonnet" results per file + commit SHA
+  - Type: feature
+  - Description: Each tap of "Explain with Sonnet" in the Structure Code lens spends a fresh Sonnet call, even when re-opening a file whose source hasn't changed. Cache the explanation per repo + file + manifest SHA so revisits render instantly and cost nothing, invalidating automatically when a new commit changes the SHA. The manifest already carries `sha`, so the key is free and correctness is automatic.
+  - Behavior:
+    1. Before calling the Worker in `explainFile`, check a cache keyed by repo + file path + the loaded manifest's `sha`; on a hit, render the stored explanation immediately with no Worker call.
+    2. On a miss, call the Worker as today, then store the returned explanation under that key.
+    3. A new commit means a new SHA, so the key naturally misses and re-explains against current source — stale explanations never surface.
+    4. If the manifest has no `sha` (deterministic / served-from-source manifests omit it), skip the cache and always call — never risk a stale explanation.
+    5. Only successful explanations are cached; failed/error results are not.
+  - Implementation notes:
+    - Client-side only in `structureView.js`. The SHA is already on the manifest result (`result.sha`) that `ensureRegionsLoaded` reads — thread or re-read it where `explainFile` runs. No Worker change.
+    - Persist in localStorage under a `todoapp_`-prefixed key (the app's convention), e.g. `todoapp_structureExplain:<repo>:<file>:<sha>`, value = the explanation text. Bound it with a small LRU cap (e.g. last ~50) so it can't grow unbounded; explanations are small.
+    - Keep the existing inline result UI; a hit just fills it instantly (no spinner). A subtle "cached" affordance is optional, not required.
+  - Out of scope: caching across SHAs (intentional — a new commit re-explains), caching the UI lens or the chat, and any server-side caching.
+  - File: `toDoList_main/src/structureView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 612a533a-208d-46de-b2ee-48f5c3bf2e3d -->
