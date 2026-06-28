@@ -663,3 +663,12 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed:
   <!-- id: 9c286c48-be5f-47c2-8076-baecb495a472 -->
+
+- [ ] **[HIGH]** Surface `lens` and `types` from the manifest in `loadManifest`
+  - Type: bug
+  - Description: The Structure tab's Types lens never activates for C# repos — the toggle stays `UI | Code` with "No UI surface" even when the repo's `src-manifest.json` declares `"lens":"types"` and a populated `types` array (confirmed live at the repo's Pages URL). Root cause: `loadManifest` in `toDoList_main/src/claudeSheet.js` (~L1077) constructs its `result` object from an explicit field list (`ok`/`files`/`regions`/`hasDom`/`srcRoot`/`sha`) and never copies the newer `lens` and `types` fields. So `structureView`'s `result.lens` / `result.types` are always `undefined`, `currentLens` coerces to `'ui'`, and the adaptive Types lens (already shipped and correct in structureView.js) can never engage.
+  - Behavior: In `loadManifest`'s success branch — the `result = { ok: true, ... }` object — add two fields: `lens: isObj && typeof data.lens === 'string' ? data.lens : undefined` and `types: isObj && Array.isArray(data.types) ? data.types : undefined`. Purely additive: the existing `files`/`regions`/`hasDom`/`srcRoot`/`sha` consumers (the attach picker, the Code and UI lenses) are unaffected. After this, a C# manifest (`lens:"types"`) drives the Types lens, while web and older lens-less manifests leave `lens` undefined so structureView's existing `result.lens === 'types' ? 'types' : 'ui'` default keeps them on UI.
+  - Out of scope: structureView rendering (already correct — do not touch); the scanner (already emits `lens`/`types`); the manifest fetch URL and the in-memory `srcManifestCache` (no change).
+  - File: `toDoList_main/src/claudeSheet.js`
+  - Completed:
+  <!-- id: 97acf6b5-5f8d-4caa-a7ec-3f9822db69eb -->
