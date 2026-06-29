@@ -762,3 +762,18 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-28
   <!-- id: 327fd9f0-7090-434f-9bcc-4cf849e68e84 -->
+
+- [ ] **[LOW]** Revamp the mobile project header into a clean prominent centered title (Tasks View)
+  - Type: feature
+  - Description: On mobile, the project header that opens the project picker (`#mobileProjHeader` → `#mobileProjName` plus the `#mobileProjChevron` ▾) currently renders as a bordered centered pill with the ▾ drifting out to the pill's right edge, away from the title. Revamp it into a confident, clean centered title: keep it centered but make the name a prominent title with the ▾ sitting immediately beside it as one centered group, and soften the boxed-pill border down to a clean title with at most a hairline divider. Mobile-only; tapping still opens the project drawer — this is styling only, no behavior change.
+  - Behavior:
+    1. The title and its ▾ chevron render as one centered inline group — the chevron immediately to the right of the name in the row's center, not pushed to the far edge.
+    2. The project name reads as a prominent centered title (~18–20px, the existing mono chrome font, the accent / `#9D93EE` purple), wrapping to at most two lines for long names so the header height stays bounded.
+    3. Soften the boxed pill: drop the heavy border for a clean title with at most a hairline bottom divider; the whole header stays the picker's tap target (existing `activateProjectPicker` wiring) with a subtle hover/pressed state.
+  - Implementation notes:
+    - Work in the mobile `max-width` header block(s) in `style.css`. The live header differs from the older comments in the file, so grep the current `#mobileProjHeader` / `#mobileProjTitleRow` / `#mobileProjName` rules and adjust from what's actually there: center the title row, size the name up, and replace the boxed border with a hairline divider. Leave the `activateProjectPicker` click wiring untouched.
+    - Touch `main.js` only if the centered name+chevron grouping needs a small markup change (e.g. wrapping `#mobileProjName` + `#mobileProjChevron` in one span so they center together). `main.js` is over 25k tokens — grep to the `mobileProjHeader` build site with offset/limit, never read it whole. No new dependencies; reuse the Void tokens.
+  - Out of scope: the desktop header (≥1024px) — unchanged; the All/Active/Ideas filter + sort bar (the separate follow-up entry, which also replaces your unshipped `#taskFilterBar` revamp draft); the run spinner and any open/done count pills (placement unchanged); any change to `activateProjectPicker` or the project drawer.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b32d95a0-1725-46e1-bcac-1c6b57bcf6ae -->
