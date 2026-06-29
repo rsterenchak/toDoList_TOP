@@ -10,10 +10,11 @@ import { dirname, resolve } from 'node:path';
 // hidden. On mobile it opens a bottom SHEET (#taskSortSheet) of sort chips
 // rather than the desktop dropdown, but drives the same getTaskSort/setTaskSort/
 // applyTaskSortChoice/syncTaskSortButton machinery so desktop and mobile share
-// one sort state. The trigger is two-line: "⇅ Sort" over the current-sort label
-// (green when active, dimmed "None" otherwise). These tests pin that wiring
-// (source-pattern) and the CSS that keeps exactly one Sort trigger visible per
-// breakpoint.
+// one sort state. The trigger is icon-only: a single ⇅ glyph carrying a small
+// accent dot when a sort other than None is active, and it lives inside the
+// fused mobile segmented bar alongside the filter segments. These tests pin
+// that wiring (source-pattern) and the CSS that keeps exactly one Sort trigger
+// visible per breakpoint.
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 function read(relative) {
@@ -51,13 +52,14 @@ describe('mobile Sort trigger — main.js wiring', () => {
         expect(main).toMatch(/id\s*=\s*['"]taskSortBtnMobile['"]/);
     });
 
-    it('appends the divider and the mobile Sort trigger to the status-filter row', () => {
-        // The trigger rides in #taskFilterBar so it sits opposite the filter
-        // tabs; a vertical divider precedes it. The desktop overlay
-        // #bulkDescActions is left untouched.
+    it('mounts the divider and the mobile Sort trigger inside the segmented surface', () => {
+        // The trigger now lives INSIDE the mobile segmented control (queried off
+        // the filter bar), so the segments, divider, and sort button read as one
+        // fused rounded bar. The desktop overlay #bulkDescActions is untouched.
         expect(main).toMatch(/taskFilterBarDivider/);
-        expect(main).toMatch(/taskFilterBar\.appendChild\(mobileSortDivider\)/);
-        expect(main).toMatch(/taskFilterBar\.appendChild\(mobileSortBtn\)/);
+        expect(main).toMatch(/taskFilterBar\.querySelector\(['"]\.taskFilterSegmented['"]\)/);
+        expect(main).toMatch(/mobileSortHost\.appendChild\(mobileSortDivider\)/);
+        expect(main).toMatch(/mobileSortHost\.appendChild\(mobileSortBtn\)/);
     });
 
     it('drives the shared sort machinery rather than a parallel implementation', () => {
@@ -92,33 +94,40 @@ describe('mobile Sort trigger — main.js wiring', () => {
         expect(main).toMatch(/event\.key === ['"]Escape['"]/);
     });
 
-    it('renders the trigger two-line: a sort glyph + "Sort" over the current-sort label', () => {
+    it('renders the trigger icon-only: a ⇅ sort glyph plus an active-sort accent dot', () => {
         expect(main).toMatch(/taskSortBtnMobileGlyph/);
-        expect(main).toMatch(/taskSortBtnMobileWord/);
-        expect(main).toMatch(/taskSortBtnMobileLabel/);
-        // The active-sort dot is retired in favour of the painted label.
-        expect(main).not.toMatch(/taskSortBtnMobileDot/);
+        expect(main).toMatch(/taskSortBtnMobileDot/);
+        // The two-line "Sort" word + current-sort label were retired in favour
+        // of the icon-only glyph + dot.
+        expect(main).not.toMatch(/taskSortBtnMobileWord/);
+        expect(main).not.toMatch(/taskSortBtnMobileLabel/);
     });
 });
 
 describe('mobile Sort trigger — CSS visibility', () => {
     const css = read('style.css');
 
-    it('is hidden by default and stacks its two lines (desktop owns the overlay Sort button)', () => {
+    it('is hidden by default and reads as a borderless inset segment (desktop owns the overlay Sort button)', () => {
         const ruleRe = /#taskSortBtnMobile\s*\{([^}]*)\}/;
         const match = css.match(ruleRe);
         expect(match).not.toBeNull();
         expect(match[1]).toMatch(/display:\s*none/);
-        expect(match[1]).toMatch(/flex-direction:\s*column/);
+        // Icon-only and flush inside the fused bar: borderless, square corners,
+        // position:relative to anchor the active-sort dot. No two-line column.
+        expect(match[1]).toMatch(/border:\s*none/);
+        expect(match[1]).toMatch(/position:\s*relative/);
+        expect(match[1]).not.toMatch(/flex-direction:\s*column/);
     });
 
-    it('separates the trigger from the filter tabs with a right-pushed divider', () => {
+    it('divides the segments from the trigger with a thin in-bar divider, not a right-pushed one', () => {
         const ruleRe = /\.taskFilterBarDivider\s*\{([^}]*)\}/;
         const match = css.match(ruleRe);
         expect(match).not.toBeNull();
-        // Hidden on desktop, pushed to the right end of the row on mobile.
+        // Hidden on desktop; on mobile it sits contiguous inside the fused bar
+        // (no margin-left:auto pushing the Sort cluster to the row's far edge).
         expect(match[1]).toMatch(/display:\s*none/);
-        expect(match[1]).toMatch(/margin-left:\s*auto/);
+        expect(match[1]).toMatch(/align-self:\s*stretch/);
+        expect(match[1]).not.toMatch(/margin-left:\s*auto/);
     });
 
     it('reveals the trigger and the divider at the mobile breakpoint where #bulkDescActions is hidden', () => {
@@ -132,9 +141,9 @@ describe('mobile Sort trigger — CSS visibility', () => {
         expect(overlayRule).toMatch(/display:\s*none/);
     });
 
-    it('greens the current-sort label when a sort other than None is active', () => {
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileLabel/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileLabel/);
+    it('reveals the active-sort accent dot when a sort other than None is active', () => {
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileDot/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileDot/);
     });
 });
 

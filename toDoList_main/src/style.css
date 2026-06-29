@@ -2814,9 +2814,12 @@ button.claudeAttachChipLabel { cursor: pointer; }
   outline: 1px solid var(--accent);
   outline-offset: -2px;
 }
+/* Active segment: a soft accent tint with accent-purple text rather than a
+   solid #6C5DF5 block, matching #descEditorModalStatusControl so the status
+   FILTER and the status SETTER share one segmented-control visual language. */
 .taskFilterSeg.selected {
-  background: #6C5DF5;
-  color: #fff;
+  background: var(--accent-dim);
+  color: var(--accent-text);
 }
 
 .taskFilterSegCount {
@@ -4263,39 +4266,44 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: var(--accent-text);
 }
 
-/* Vertical divider separating the mobile status-filter tabs from the Sort
-   trigger. Desktop-hidden (the desktop bar has no in-row Sort trigger);
-   revealed at the mobile breakpoint alongside #taskSortBtnMobile. margin-left:
-   auto pushes the divider + Sort cluster to the right end of the row, opposite
-   the tabs. */
+/* Thin vertical divider between the three filter segments and the Sort trigger.
+   Desktop-hidden (the desktop bar has no in-row Sort trigger); revealed at the
+   mobile breakpoint. It lives INSIDE the segmented surface, contiguous with the
+   segments, so the bar reads as one fused control — no margin-left:auto pushing
+   the Sort cluster away. align-self:stretch makes it span the bar's height like
+   the segments' own dividing borders. */
 .taskFilterBarDivider {
   display: none;
   width: 1px;
   align-self: stretch;
   min-height: 28px;
-  margin-left: auto;
   background: var(--border-bright);
 }
 
-/* The mobile Sort trigger rides in the status-filter row but is desktop-hidden:
-   on wide layouts the #bulkDescActions overlay owns the Sort dropdown. It is
-   revealed only at the mobile breakpoint (where #bulkDescActions is display:none)
-   so exactly one Sort trigger is ever visible. Two-line: a "⇅ Sort" top row over
-   the current-sort label. The preceding divider carries margin-left:auto, so
-   together they sit at the right end of the row, opposite the filter tabs. */
+/* The mobile Sort trigger is the trailing element of the fused segmented bar,
+   desktop-hidden: on wide layouts the #bulkDescActions overlay owns the Sort
+   dropdown. Revealed only at the mobile breakpoint (where #bulkDescActions is
+   display:none) so exactly one Sort trigger is ever visible. Icon-only — a
+   single ⇅ glyph — styled as an inset segment (borderless, square corners,
+   segment background) so it sits flush inside the rounded surface rather than
+   reading as its own pill. position:relative anchors the active-sort dot. */
 #taskSortBtnMobile {
   display: none;
-  flex-shrink: 0;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  position: relative;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
   line-height: 1;
 }
 
-.taskSortBtnMobileTop {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+#taskSortBtnMobile:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* The ⇅ glyph carries its own font-size so it survives the ≤420px .bulkDescBtn
@@ -4306,24 +4314,23 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: inline-block;
 }
 
-.taskSortBtnMobileWord {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+/* Active-sort accent dot overlaying the ⇅ glyph — hidden by default, shown when
+   a sort other than None is active (the button's data-sort drives it). Replaces
+   the retired two-line current-sort label as the at-a-glance active cue. */
+.taskSortBtnMobileDot {
+  display: none;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-text);
 }
 
-/* Current-sort label beneath "⇅ Sort": dimmed for None, green when a sort is
-   active (data-sort on the button drives the colour). */
-.taskSortBtnMobileLabel {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-muted);
-}
-
-#taskSortBtnMobile[data-sort="due"] .taskSortBtnMobileLabel,
-#taskSortBtnMobile[data-sort="status"] .taskSortBtnMobileLabel {
-  color: var(--type-feature);
+#taskSortBtnMobile[data-sort="due"] .taskSortBtnMobileDot,
+#taskSortBtnMobile[data-sort="status"] .taskSortBtnMobileDot {
+  display: block;
 }
 
 /* TODO LIST */
@@ -9472,13 +9479,12 @@ body.row-dragging * { cursor: grabbing !important; }
      the "Todo Items" header on narrow phones. */
   .bulkDescBtn { font-size: 0; padding: 6px; }
   .bulkDescBtn::after { font-size: 12px; }
-  /* The mobile Sort trigger shares the .bulkDescBtn class but must keep its
-     "Sort" label readable here — the chevron-only collapse above targets the
-     desktop overlay buttons (already display:none at this breakpoint). The ID
-     selector restores the base font-size and horizontal padding so the label
-     shows alongside the caret; flex-shrink: 0 keeps it from crowding the
-     status pills. */
-  #taskSortBtnMobile { font-size: 10px; padding: 6px 8px; }
+  /* The icon-only mobile Sort trigger shares the .bulkDescBtn class, so the
+     .bulkDescBtn font-size:0 collapse above would zero its ⇅ glyph — but the
+     glyph carries its own non-zero font-size, so it stays visible. Tighten the
+     trigger's horizontal padding here so it stays compact inside the fused
+     segmented bar on narrow phones. */
+  #taskSortBtnMobile { padding: 8px; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }
