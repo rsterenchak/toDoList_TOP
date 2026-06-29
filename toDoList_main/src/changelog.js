@@ -10,12 +10,14 @@ export const changelog = [
             "On phones, the All/Active/Ideas filter segments and the sort button are now larger and easier to tap.",
             "On desktop, the All/Active/Ideas filter pill now sits flush to the left of the task list instead of centered.",
         ],
+        fixed: [
+            "On phones, the TODO.md viewer no longer shows a dark bar across the top of its content area.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-06-28',
         fixed: [
-            "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
             "The Structure tab's Types outline now activates for C# and .NET repositories that previously stayed stuck on an empty UI view.",
             "On phones, a long project name now stays on one line beside its dropdown caret in a subtle pill instead of wrapping and pushing the caret out of place.",
         ],
