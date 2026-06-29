@@ -2710,7 +2710,10 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  /* Left-align the desktop cycle pill so it sits flush with the left edge of
+     the main content area. The mobile segmented control re-centres itself in
+     the max-width media block below, where exactly that control is shown. */
+  justify-content: flex-start;
   gap: 8px;
   padding: 8px 12px 6px;
   background: var(--bg-base);
@@ -7902,7 +7905,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainBar         { grid-template-rows: auto auto 1fr; }
   /* Top/bottom padding bumped (sides stay tight at 4px) so the taller
      segmented filter + sort controls sit in the bar without clipping. */
-  #taskFilterBar   { grid-row: 2; padding: 10px 4px 8px; }
+  #taskFilterBar   { grid-row: 2; padding: 10px 4px 8px; justify-content: center; }
   #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
   /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so

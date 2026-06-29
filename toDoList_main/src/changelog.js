@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-06-29',
         changed: [
             "On phones, the All/Active/Ideas filter segments and the sort button are now larger and easier to tap.",
+            "On desktop, the All/Active/Ideas filter pill now sits flush to the left of the task list instead of centered.",
         ],
     },
     {
         version: '1.1',
         date: '2026-06-28',
-        changed: [
-            "The All/Active/Ideas filter bar now sits centered above the task list instead of left-aligned.",
-        ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
             "The Structure tab's Types outline now activates for C# and .NET repositories that previously stayed stuck on an empty UI view.",
