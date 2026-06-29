@@ -12346,21 +12346,22 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   #mobileProjTitleRow {
     min-width: 0;
     min-height: 0;
-    gap: 4px;
-    /* A3 pill: wrap the project name + chevron in a rounded pill on a
-       slightly-raised purple-tinted surface. */
-    border-radius: 14px;
-    background: #1a1826;
-    border: 1px solid rgba(108, 93, 245, 0.45);
-    padding: 1px 4px 1px 12px;
-    /* True bar-centered placement: take the pill out of flow and center it
-       against the full header width (its containing block is
+    gap: 2px;
+    align-items: center;
+    /* Clean centered title: the boxed pill (border / fill / radius / inset
+       padding) is dropped so the project name reads as a confident title
+       rather than a chip. The name + ▾ chevron stay grouped (small gap) and
+       centered together as one unit. */
+    /* True bar-centered placement: take the title group out of flow and
+       center it against the full header width (its containing block is
        #mobileProjHeader, position:relative) rather than the leftover flex
-       space beside the counts. width:max-content keeps the pill snug around
-       its content; max-width caps it so a long name still ellipsises. */
+       space beside the counts — and center it vertically too so a two-line
+       name stays contained within the bar. width:max-content keeps the group
+       snug around its content; max-width caps it so a long name wraps. */
     position: absolute;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     width: max-content;
     max-width: 60%;
     justify-content: center;
@@ -12371,24 +12372,29 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
 
   #mobileProjName {
-    font-size: 14px;
-    /* Option A: centered, bold, near-white title. */
+    font-size: 18px;
+    /* Prominent centered title in the accent purple, the Void mono chrome
+       (font-family inherited from the STACK block above). */
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.25;
     text-align: center;
-    color: #e8e8f0;
-    -webkit-line-clamp: 1;
+    color: #9D93EE;
+    /* Wrap long names to at most two lines so the header height stays
+       bounded; short names render as a single centered line. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-word;
     cursor: pointer;
+    transition: opacity 0.12s ease;
   }
 
   .mobileProjDropdownChev {
     flex: 0 0 auto;
-    /* A3: full accent purple chevron to match the pill's purple-tinted edge. */
+    /* Accent purple chevron sitting immediately beside the title. */
     color: #6C5DF5;
     font-size: 12px;
     line-height: 1;
@@ -12398,6 +12404,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
        the inline flow. */
     padding: 6px 6px;
     user-select: none;
+    transition: opacity 0.12s ease;
+  }
+
+  /* Subtle pressed feedback — the whole header is the picker tap target
+     (activateProjectPicker wiring), so dim the title + chevron on press. */
+  #mobileProjHeader:active #mobileProjName,
+  #mobileProjHeader:active .mobileProjDropdownChev {
+    opacity: 0.6;
   }
 
   /* Stats container, pushed to the right edge of the row via

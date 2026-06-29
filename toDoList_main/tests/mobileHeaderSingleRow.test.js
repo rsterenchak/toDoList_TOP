@@ -11,16 +11,16 @@ function read(relative) {
 
 // Pins the compressed single-row mobile project header. At the ≤1023px
 // breakpoint the header collapses from a stacked block (large name on one
-// line, count pills on a second line) into ONE row on a deep #15151e bar
-// (Option A): the centered, bold near-white project name with a short
-// name + its ▾ dropdown chevron wrapped in a purple-tinted rounded pill
-// (A3) that is absolute-centered against the full bar width, plus the
-// open/done counts as inline plain text on the right, with the hamburger
-// staying absolute-anchored at the top-right. The styling lives in the
-// "Compressed single-row mobile header" override block; the JS count/label
-// contract and the workspace-picker tap wiring stay intact. Verified
-// through source inspection because main.js is too large to instantiate in
-// jsdom (per CLAUDE.md guidance).
+// line, count pills on a second line) into ONE row on a deep #15151e bar:
+// the project name renders as a prominent, bold, accent-purple (#9D93EE)
+// centered title with its ▾ dropdown chevron grouped immediately beside it
+// — a clean title rather than a boxed pill — absolute-centered against the
+// full bar width and height, plus the open/done counts as inline plain text
+// on the right, with the hamburger staying absolute-anchored at the
+// top-right. The styling lives in the "Compressed single-row mobile header"
+// override block; the JS count/label contract and the workspace-picker tap
+// wiring stay intact. Verified through source inspection because main.js is
+// too large to instantiate in jsdom (per CLAUDE.md guidance).
 describe('Compressed single-row mobile header', () => {
     const css = read('style.css');
     const main = read('main.js');
@@ -61,15 +61,17 @@ describe('Compressed single-row mobile header', () => {
         expect(rule(block, '.mobileProjChev')).toMatch(/display:\s*none/);
     });
 
-    it('renders the title at 14px, centered and bold in near-white #e8e8f0, ellipsised to one line (Option A)', () => {
+    it('renders the title as a prominent 18px centered bold accent-purple #9D93EE title, wrapping to at most two lines', () => {
         const name = rule(denseBlock(), '#mobileProjName');
-        expect(name).toMatch(/font-size:\s*14px/);
+        expect(name).toMatch(/font-size:\s*18px/);
         expect(name).toMatch(/font-weight:\s*700/);
         expect(name).toMatch(/text-align:\s*center/);
-        expect(name).toMatch(/color:\s*#e8e8f0/i);
-        expect(name).toMatch(/text-overflow:\s*ellipsis/);
-        expect(name).toMatch(/white-space:\s*nowrap/);
+        expect(name).toMatch(/color:\s*#9D93EE/i);
+        // Two-line wrap (clamp), not the old single-line ellipsis.
+        expect(name).toMatch(/-webkit-line-clamp:\s*2/);
+        expect(name).toMatch(/-webkit-box-orient:\s*vertical/);
         expect(name).toMatch(/overflow:\s*hidden/);
+        expect(name).not.toMatch(/white-space:\s*nowrap/);
     });
 
     it('paints the bar in the deep near-black #15151e (Option A)', () => {
@@ -77,27 +79,31 @@ describe('Compressed single-row mobile header', () => {
         expect(header).toMatch(/background:\s*#15151e/i);
     });
 
-    it('wraps the name + chevron in a purple-tinted rounded pill (A3)', () => {
+    it('drops the boxed pill chrome for a clean centered title group', () => {
         const titleRow = rule(denseBlock(), '#mobileProjTitleRow');
-        expect(titleRow).toMatch(/border-radius:\s*14px/);
-        expect(titleRow).toMatch(/background:\s*#1a1826/i);
-        expect(titleRow).toMatch(/border:\s*1px solid rgba\(108,\s*93,\s*245,\s*0?\.45\)/i);
-        // The pill sits inset from the top/bottom edges of the header bar — its
-        // vertical padding is trimmed to 1px so it breathes within the 40px bar.
-        expect(titleRow).toMatch(/padding:\s*1px 4px 1px 12px/);
+        // The A3 pill (rounded border + tinted fill + inset padding) is gone —
+        // the title now reads as a confident title, not a chip.
+        expect(titleRow).not.toMatch(/border-radius:\s*14px/);
+        expect(titleRow).not.toMatch(/background:\s*#1a1826/i);
+        expect(titleRow).not.toMatch(/border:\s*1px solid rgba\(108,\s*93,\s*245/i);
+        expect(titleRow).not.toMatch(/padding:\s*1px 4px 1px 12px/);
+        // The name and ▾ stay grouped and centered as one unit.
+        expect(titleRow).toMatch(/align-items:\s*center/);
+        expect(titleRow).toMatch(/justify-content:\s*center/);
     });
 
-    it('centers the pill against the full bar width via absolute positioning (A3)', () => {
+    it('centers the title group against the full bar width and height via absolute positioning', () => {
         const block = denseBlock();
-        // The header is the containing block for the absolutely-centered pill.
+        // The header is the containing block for the absolutely-centered group.
         const header = rule(block, '#mobileProjHeader');
         expect(header).toMatch(/position:\s*relative/);
-        // The pill is taken out of flow and centered against the whole bar
-        // (not the leftover flex space) — absolute + left:50% + translateX.
+        // The group is taken out of flow and centered against the whole bar
+        // (not the leftover flex space) — absolute + left/top:50% + translate.
         const titleRow = rule(block, '#mobileProjTitleRow');
         expect(titleRow).toMatch(/position:\s*absolute/);
         expect(titleRow).toMatch(/left:\s*50%/);
-        expect(titleRow).toMatch(/transform:\s*translateX\(-50%\)/);
+        expect(titleRow).toMatch(/top:\s*50%/);
+        expect(titleRow).toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
         expect(titleRow).toMatch(/width:\s*max-content/);
         expect(titleRow).toMatch(/max-width:\s*60%/);
         expect(titleRow).toMatch(/justify-content:\s*center/);
