@@ -12554,21 +12554,6 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     background: var(--bg-elevated);
   }
 
-  /* ── Task-pane canvas match ──
-     Desktop paints #mainBar / #mainList with --bg-base (the darkest token),
-     but the mobile frame (#outerContainer above), the project header, and
-     #mobileTabBar all sit on --bg-elevated. On a short list the bare canvas
-     below the last card would otherwise read as a dark band between the
-     content and the lighter tab bar. Repaint the canvas to --bg-elevated so
-     it disappears into the surrounding chrome; rows keep their own --bg-row
-     fill + border, so the list still reads as distinct cards. Mobile-only —
-     desktop keeps its darker --bg-base canvas. Uses the theme token so the
-     light theme recolors for free. */
-  #mainBar,
-  #mainList {
-    background: var(--bg-elevated);
-  }
-
   /* The persistent tab bar floats above the bottom of the main panel.
      Reserve scroll padding equal to its full height — including the
      home-indicator safe-area inset the bar now absorbs — so the last
