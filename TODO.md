@@ -850,7 +850,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7fc750da-5cbb-45c3-b2ef-55b862f57747 -->
 
-- [ ] **[MEDIUM]** Collapse the trailing black band below `#mainList` content in the wide/sidebar layout the phone falls into
+- [x] **[MEDIUM]** Collapse the trailing black band below `#mainList` content in the wide/sidebar layout the phone falls into
   - Type: bug
   - Description: PR #594 collapsed the mobile ghost spacer's trailing black band, but gated the logic behind `window.matchMedia('(max-width: 1023px)')`. Live layout telemetry from the affected device shows `#mainList` rendering in the WIDE layout (112px sidebar offset, 839px content column), where that matchMedia returns false, so `sizeMainListGhostSpacer` bails and never runs — the spacer falls back to the base `.viewGhostSpacer { display: none }` (computed `flex-direction:row; padding:0`, i.e. the desktop rule). The result: `#mainList` is 1031px tall while its last content child (the TODO.md card) ends at ~809px, leaving ~220px of bare `#mainList` grid background painted as a black band below the content. Fix: extend the spacer sizing/collapse so it also covers the breakpoint range where the sidebar is shown but the spacer is hidden (the layout this device uses) — collapse the void to zero there as it already does in mobile portrait. Confirm the exact width range by finding where the sidebar layout begins vs. where the `.viewGhostSpacer` mobile rules end; the gap between those two breakpoints is the uncovered band. Mobile-portrait behavior (already correct) and true desktop (reported fine) must be unchanged.
   - Acceptance:
