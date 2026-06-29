@@ -816,5 +816,3 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-29
   <!-- id: 5be1e1a8-8de0-4b22-a841-024a036febac -->
-
-- [ ] **[MEDIUM]** Left-align the selected task filter cycle pill on desktop
