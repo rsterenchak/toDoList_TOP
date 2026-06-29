@@ -777,3 +777,11 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
   - Completed: 2026-06-28
   <!-- id: b32d95a0-1725-46e1-bcac-1c6b57bcf6ae -->
+
+- [ ] **[MEDIUM]** Fuse the mobile filter segments and sort into one segmented control bar (Tasks View)
+  - Type: feature
+  - Description: On mobile, the All·Active·Ideas segmented filter and the sort trigger render as two separate controls — filled segments on the left and a chunky two-line "SORT / STATUS" outlined button on the right — that don't share a visual language. Fuse them into a single rounded segmented bar that reads as one control: the three segments, a thin vertical divider, then an icon-only sort button. Soften the active segment from its solid fill to the accent tint (matching the status selector's segmented control), and collapse the sort trigger to a sort glyph carrying a small accent dot when a sort is active. Mobile-only; the sort button still opens the existing `#taskSortMenu`. Desktop is untouched.
+  - Behavior:
+    1. On mobile, the segmented filter (`.taskFilterSeg` group) and the mobile sort trigger (`#taskSortBtnMobile`) sit inside one rounded segmented surface that reads as a single control: three segments, a thin vertical divider, then the sort button at the trailing edge.
+    2. Segments lose their individual pill borders and become inset buttons within the shared surface; the active segment uses the accent tint + accent-purple text (not a solid `#6C5DF5` block), matching `#descEditorModalStatusControl` so filtering and status-setting share one
+  <!-- id: 0462cd29-bcdd-470e-b70a-e5d3da208ddb -->
