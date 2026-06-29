@@ -8304,6 +8304,69 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 }
 
+/* ── Empty-state ghost spacer — wide touch layout ──
+   The painted ghost-spacer rules above live inside the ≤1023px mobile block,
+   so above 1024px the spacer falls back to the base `display: none` rule. A
+   large-screen TOUCH device (e.g. a big phone or tablet whose CSS width clears
+   1024px) still renders #mainList as a single stacked column with the sidebar
+   as an overlay drawer — the same presentation as mobile portrait — yet the
+   spacer was hidden there, so a short content list trailed a bare #mainList
+   background band below the last card. Re-paint the spacer for that range
+   (≥1024px AND a coarse pointer) so sizeMainListGhostSpacer can anchor short
+   lists with the ghost and collapse the void to zero when the list fills the
+   screen, exactly as it does in mobile portrait. True desktop (a fine pointer)
+   is excluded, so its layout is unchanged. */
+@media (min-width: 1024px) and (pointer: coarse) {
+  .viewGhostSpacer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    padding: 24px 16px;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .viewGhostSpacer--collapsed {
+    display: none;
+  }
+
+  #mainList > #projectsGhostSpacer {
+    grid-column: 1 / -1;
+  }
+
+  .viewGhostMascot {
+    width: 112px;
+    height: 130px;
+    background-image: url('./ghost_purple.svg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.5;
+  }
+
+  .viewGhostCaption {
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  #mainList.emptyStatePresent #projectsGhostSpacer {
+    display: none;
+  }
+
+  body.companion-ghost-off .viewGhostMascot,
+  body.companion-ghost-off .viewGhostCaption {
+    visibility: hidden;
+  }
+}
+
 /* Mobile: shrink the Structure tab's Collapse all / Expand all pill ~25% so it
    matches the density of the other small controls in the structure header. The
    base rule keeps font-size at 16px to dodge iOS Safari auto-zoom on focusable
