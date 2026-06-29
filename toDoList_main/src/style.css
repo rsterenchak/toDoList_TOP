@@ -3177,6 +3177,68 @@ button.claudeAttachChipLabel { cursor: pointer; }
   outline-offset: 2px;
 }
 
+/* Shared selection toolbar: a single strip pinned directly above the tree (UI +
+   Types lenses) that acts on the currently selected handle, replacing the action
+   panels that used to repeat under every row. Hidden ([hidden]) on the Code lens.
+   Renders identically at both breakpoints — the structure view is a flex column
+   at every width. */
+.structureActionToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--border-dim);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+}
+
+/* Idle state — nothing selected: muted hint, no actions (cleared in JS). */
+.structureActionToolbar--idle .structureActionToolbarLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.structureActionToolbarHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.structureActionToolbarLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureActionToolbarContext {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.structureActionToolbarContext:empty {
+  display: none;
+}
+
+.structureActionToolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.structureActionToolbarActions:empty {
+  display: none;
+}
+
 .structureFolderRow,
 .structureFileRow {
   /* --structure-depth drives the left indent: 14px per nesting level. */
@@ -3329,6 +3391,21 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 .structureRegionRow--dim {
   opacity: 0.5;
+}
+
+/* The selected handle — the row the shared toolbar is currently acting on. A
+   Void purple tint plus an accent-tinted label so the active selection reads at
+   a glance. Independent of `.expanded` (which rotates the caret for child fold). */
+.structureRegionRow.is-selected {
+  background: rgba(108, 93, 245, 0.16);
+}
+
+.structureRegionRow.is-selected:hover {
+  background: rgba(108, 93, 245, 0.22);
+}
+
+.structureRegionRow.is-selected .structureRegionLabel {
+  color: #9D93EE;
 }
 
 .structureRegionCaret {

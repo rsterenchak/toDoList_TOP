@@ -116,6 +116,22 @@ let filterCountEl = null;
 let filterClearEl = null;
 let currentNoMatchEl = null;
 
+// The shared selection toolbar (UI + Types lenses). One handle is selected at a
+// time; tapping a row selects it (or deselects when it's already selected), and
+// the toolbar reflects that selection and runs Reference / Copy / Find / GitHub
+// against it — replacing the per-row action panels that used to repeat under
+// every row. The selection is a small descriptor the toolbar can drive for any
+// kind: { kind, label, value, copyLabel, repo, file, line, visible }. It's
+// ephemeral (not persisted): cleared on repo change and lens change, and
+// re-applied to the matching row on a same-repo/same-lens repaint (match by
+// `value` + `kind`), falling to idle if that handle no longer exists.
+let selectedHandle = null;
+let actionToolbarEl = null;
+let actionToolbarLabelEl = null;
+let actionToolbarContextEl = null;
+let actionToolbarActionsEl = null;
+let actionToolbarResultEl = null;
+
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
@@ -264,6 +280,8 @@ function revealFileInCodeLens(file) {
     Promise.resolve(painted).then(function () {
         flashFileRow(file);
         refreshCollapseAllPill();
+        // Now on the Code lens, which has no handles — hide the action toolbar.
+        refreshActionToolbar();
     });
 }
 
@@ -863,48 +881,181 @@ function appendReferenceCopyActions(actionRow, label, selector, repo, copyLabel)
     actionRow.appendChild(copyBtn);
 }
 
-// The action panel revealed under a region row: the full selector, a one-line
-// note about its on-screen state, a primary "Reference in chat", and a
-// secondary "Copy selector".
-function buildRegionActions(node) {
-    const panel = document.createElement('div');
-    panel.className = 'structureRegionActions';
-    panel.hidden = true;
+// ── SELECTION + SHARED ACTION TOOLBAR ────────────────────────────────────────
+// Tapping a UI/Types row no longer reveals its own action panel; it selects the
+// row, and a single toolbar pinned above the tree acts on that selection.
 
-    const sel = document.createElement('code');
-    sel.className = 'structureRegionSelectorFull';
-    sel.textContent = node.selector;
-    panel.appendChild(sel);
+// Two descriptors name the same handle when their kind and value match — the
+// stable identity used to toggle a re-tap off and to re-find the row across a
+// repaint.
+function sameHandle(a, b) {
+    return !!a && !!b && a.kind === b.kind && a.value === b.value;
+}
 
-    const note = document.createElement('div');
-    note.className = 'structureRegionNote';
-    note.textContent = node.visible ? 'On screen now.' : 'Not currently on screen.';
-    panel.appendChild(note);
+// The one-line context the toolbar shows beneath the selected handle's label:
+// a live handle adds its on/off-screen status, a published/Types handle its line.
+function handleContextLine(d) {
+    if (d.kind === 'live') {
+        return d.value + ' · ' + (d.visible ? 'On screen now.' : 'Not currently on screen.');
+    }
+    const line = typeof d.line === 'number' && d.line > 0 ? 'Line ' + d.line + '.' : 'Line not recorded.';
+    return d.value + ' · ' + line;
+}
 
-    const actionRow = document.createElement('div');
-    actionRow.className = 'structureRegionActionRow';
+// Strip the selected style from every row in the tree (used before selecting a
+// new row and when clearing the selection).
+function clearSelectedRows() {
+    const tree = currentTreeEl;
+    if (!tree) return;
+    Array.prototype.forEach.call(tree.querySelectorAll('.structureRegionRow.is-selected'), function (r) {
+        r.classList.remove('is-selected');
+        r.setAttribute('aria-pressed', 'false');
+    });
+}
 
-    // Reference (which reframes onto the live `selectedRepo`) + Copy selector.
-    appendReferenceCopyActions(actionRow, node.label, node.selector, selectedRepo);
+// Select a handle from its row, or deselect when the same handle is re-tapped.
+// The caret keeps its own job (toggling children) — selection only ever reacts
+// to a tap on the row body, so expanding/collapsing and selecting stay separate.
+function selectHandle(descriptor, rowEl) {
+    if (sameHandle(selectedHandle, descriptor)) {
+        clearSelection();
+        return;
+    }
+    clearSelectedRows();
+    selectedHandle = descriptor;
+    if (rowEl) {
+        rowEl.classList.add('is-selected');
+        rowEl.setAttribute('aria-pressed', 'true');
+    }
+    renderActionToolbar();
+}
 
-    // Find in code: resolve this live selector to its owner file(s) via the
-    // build-time index and reveal them inline.
+// Drop the active selection back to the idle toolbar state.
+function clearSelection() {
+    clearSelectedRows();
+    selectedHandle = null;
+    renderActionToolbar();
+}
+
+// Build the shared toolbar strip: the selected handle's label + context line,
+// the action buttons (Reference / Copy / Find / GitHub), and a result area for
+// Find in code. Held module-scoped like the collapse toolbar so a lens repaint
+// (which only clears the tree) never wipes it.
+function buildActionToolbar() {
+    const bar = document.createElement('div');
+    bar.className = 'structureActionToolbar';
+
+    const head = document.createElement('div');
+    head.className = 'structureActionToolbarHead';
+
+    const label = document.createElement('div');
+    label.className = 'structureActionToolbarLabel';
+    head.appendChild(label);
+
+    const context = document.createElement('div');
+    context.className = 'structureActionToolbarContext';
+    head.appendChild(context);
+
+    bar.appendChild(head);
+
+    const actions = document.createElement('div');
+    actions.className = 'structureActionToolbarActions';
+    bar.appendChild(actions);
+
+    const result = document.createElement('div');
+    result.className = 'structureFindResult';
+    result.hidden = true;
+    bar.appendChild(result);
+
+    actionToolbarEl = bar;
+    actionToolbarLabelEl = label;
+    actionToolbarContextEl = context;
+    actionToolbarActionsEl = actions;
+    actionToolbarResultEl = result;
+    return bar;
+}
+
+// Paint the toolbar for the current selection (or the idle hint when nothing is
+// selected). Rebuilds the action buttons from the active descriptor and clears
+// any prior Find result, so a selection change never leaks the previous handle's
+// owner-file list.
+function renderActionToolbar() {
+    if (!actionToolbarEl) return;
+    clear(actionToolbarActionsEl);
+    clear(actionToolbarResultEl);
+    actionToolbarResultEl.hidden = true;
+
+    if (!selectedHandle) {
+        actionToolbarEl.classList.add('structureActionToolbar--idle');
+        actionToolbarLabelEl.textContent = 'Select a handle to reference it';
+        actionToolbarContextEl.textContent = '';
+        return;
+    }
+
+    const d = selectedHandle;
+    actionToolbarEl.classList.remove('structureActionToolbar--idle');
+    actionToolbarLabelEl.textContent = d.label;
+    actionToolbarContextEl.textContent = handleContextLine(d);
+
+    // Reference in chat (primary, reframes onto the handle's repo) + Copy.
+    appendReferenceCopyActions(actionToolbarActionsEl, d.label, d.value, d.repo, d.copyLabel);
+
+    // Find in code: live/published handles resolve a selector through the
+    // build-time index; Types rows resolve a name through the in-memory types.
     const findBtn = document.createElement('button');
     findBtn.type = 'button';
     findBtn.className = 'structureFindBtn';
     findBtn.textContent = 'Find in code';
-    const findResult = document.createElement('div');
-    findResult.className = 'structureFindResult';
-    findResult.hidden = true;
     findBtn.addEventListener('click', function (event) {
         event.stopPropagation();
-        findInCode(selectedRepo, node.selector, findResult, findBtn);
+        if (d.kind === 'type') findTypeInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
+        else findInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
     });
-    actionRow.appendChild(findBtn);
+    actionToolbarActionsEl.appendChild(findBtn);
 
-    panel.appendChild(actionRow);
-    panel.appendChild(findResult);
-    return panel;
+    // A View-on-GitHub deep link only for handles that carry a defining file
+    // (published + Types); live-map handles resolve via Find in code instead.
+    if (d.file) {
+        const gh = buildGithubLink(d.repo, d.file, d.line);
+        if (gh) actionToolbarActionsEl.appendChild(gh);
+    }
+}
+
+// Re-apply the active selection to the freshly painted tree: clear stale marks,
+// then re-mark the row whose descriptor still matches. If the handle is gone
+// (filtered out lens, removed region), fall back to the idle state.
+function reapplySelection() {
+    clearSelectedRows();
+    if (!selectedHandle) return;
+    const tree = currentTreeEl;
+    if (!tree) return;
+    let matched = null;
+    Array.prototype.forEach.call(tree.querySelectorAll('.structureRegionRow'), function (r) {
+        if (matched || !r.dataset) return;
+        if (r.dataset.handleValue === selectedHandle.value && r.dataset.handleKind === selectedHandle.kind) {
+            matched = r;
+        }
+    });
+    if (matched) {
+        matched.classList.add('is-selected');
+        matched.setAttribute('aria-pressed', 'true');
+    } else {
+        selectedHandle = null;
+    }
+}
+
+// Sync the toolbar to the live tree after a paint: the Code lens has no handles
+// to act on, so hide it there; the UI/Types lenses show it, re-applying the
+// selection and repainting its content.
+function refreshActionToolbar() {
+    if (!actionToolbarEl) return;
+    if (lens === 'code') {
+        actionToolbarEl.hidden = true;
+        return;
+    }
+    actionToolbarEl.hidden = false;
+    reapplySelection();
+    renderActionToolbar();
 }
 
 // Render a collapsed "× N rows" placeholder for a run of repeated siblings.
@@ -917,8 +1068,8 @@ function buildCollapsedRow(node, depth) {
 }
 
 // Render a region row: a caret (when it has children) toggles its nested
-// regions; tapping the row body toggles its action panel. Off-screen regions
-// render dimmed. Depth drives the left indent.
+// regions; tapping the row body selects it, driving the shared action toolbar.
+// Off-screen regions render dimmed. Depth drives the left indent.
 function buildRegionRow(node, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'structureRegionWrap';
@@ -931,7 +1082,9 @@ function buildRegionRow(node, depth) {
     row.style.setProperty('--structure-depth', String(depth));
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
-    row.setAttribute('aria-expanded', 'false');
+    row.setAttribute('aria-pressed', 'false');
+    row.dataset.handleKind = 'live';
+    row.dataset.handleValue = node.selector;
 
     const caret = document.createElement('span');
     caret.className = 'structureRegionCaret';
@@ -957,8 +1110,6 @@ function buildRegionRow(node, depth) {
     childWrap.hidden = !startExpanded;
     if (startExpanded) row.classList.add('expanded');
 
-    const actions = buildRegionActions(node);
-
     if (hasChildren) {
         caret.addEventListener('click', function (event) {
             event.stopPropagation();
@@ -975,21 +1126,27 @@ function buildRegionRow(node, depth) {
         });
     }
 
-    const toggleActions = function () {
-        const nowOpen = actions.hidden;
-        actions.hidden = !nowOpen;
-        row.setAttribute('aria-expanded', String(nowOpen));
+    const select = function () {
+        selectHandle({
+            kind: 'live',
+            label: node.label,
+            value: node.selector,
+            copyLabel: 'Copy selector',
+            repo: selectedRepo,
+            file: null,
+            line: null,
+            visible: node.visible,
+        }, row);
     };
-    row.addEventListener('click', toggleActions);
+    row.addEventListener('click', select);
     row.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            toggleActions();
+            select();
         }
     });
 
     wrap.appendChild(row);
-    wrap.appendChild(actions);
     wrap.appendChild(childWrap);
     return wrap;
 }
@@ -1002,10 +1159,11 @@ function appendUiNotice(treeEl, text) {
     treeEl.appendChild(empty);
 }
 
-// One row of the published UI map: a handle's label + selector, expandable into
-// an action panel with "Find in code" and a "View on GitHub" link to its
-// primary defining file. Static (no live DOM) — the map comes from `regions`.
-// `depth` drives the left indent so rows nest beneath their file-group header.
+// One row of the published UI map: a handle's label + selector. Tapping it
+// selects the handle, driving the shared toolbar (Find in code + a "View on
+// GitHub" link to its defining file). Static (no live DOM) — the map comes from
+// `regions`. `depth` drives the left indent so rows nest beneath their
+// file-group header.
 function buildPublishedRegionRow(repo, region, depth) {
     const indent = typeof depth === 'number' ? depth : 0;
     const wrap = document.createElement('div');
@@ -1016,7 +1174,9 @@ function buildPublishedRegionRow(repo, region, depth) {
     row.style.setProperty('--structure-depth', String(indent));
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
-    row.setAttribute('aria-expanded', 'false');
+    row.setAttribute('aria-pressed', 'false');
+    row.dataset.handleKind = 'published';
+    row.dataset.handleValue = region.selector;
 
     const caret = document.createElement('span');
     caret.className = 'structureRegionCaret structureRegionCaret--leaf';
@@ -1034,61 +1194,26 @@ function buildPublishedRegionRow(repo, region, depth) {
     selHint.textContent = region.selector;
     row.appendChild(selHint);
 
-    const actions = document.createElement('div');
-    actions.className = 'structureRegionActions';
-    actions.hidden = true;
-
-    // The defining file is now the group header, so the per-row note carries
-    // only the line within that file.
-    const note = document.createElement('div');
-    note.className = 'structureRegionNote';
-    note.textContent = typeof region.line === 'number' && region.line > 0
-        ? 'Line ' + region.line + '.'
-        : 'Line not recorded.';
-    actions.appendChild(note);
-
-    const actionRow = document.createElement('div');
-    actionRow.className = 'structureRegionActionRow';
-
-    // Reference in chat + Copy selector — the same primary/secondary pair the
-    // live map's rows offer; valid for a published handle and just as much the
-    // tab's primary action. Reference reframes onto the published `repo`.
-    appendReferenceCopyActions(actionRow, region.label || region.selector, region.selector, repo);
-
-    const findBtn = document.createElement('button');
-    findBtn.type = 'button';
-    findBtn.className = 'structureFindBtn';
-    findBtn.textContent = 'Find in code';
-    const findResult = document.createElement('div');
-    findResult.className = 'structureFindResult';
-    findResult.hidden = true;
-    findBtn.addEventListener('click', function (event) {
-        event.stopPropagation();
-        findInCode(repo, region.selector, findResult, findBtn);
-    });
-    actionRow.appendChild(findBtn);
-
-    const gh = buildGithubLink(repo, region.file, region.line);
-    if (gh) actionRow.appendChild(gh);
-
-    actions.appendChild(actionRow);
-    actions.appendChild(findResult);
-
-    const toggle = function () {
-        const nowOpen = actions.hidden;
-        actions.hidden = !nowOpen;
-        row.setAttribute('aria-expanded', String(nowOpen));
+    const select = function () {
+        selectHandle({
+            kind: 'published',
+            label: region.label || region.selector,
+            value: region.selector,
+            copyLabel: 'Copy selector',
+            repo: repo,
+            file: region.file,
+            line: region.line,
+        }, row);
     };
-    row.addEventListener('click', toggle);
+    row.addEventListener('click', select);
     row.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            toggle();
+            select();
         }
     });
 
     wrap.appendChild(row);
-    wrap.appendChild(actions);
     return wrap;
 }
 
@@ -1227,12 +1352,12 @@ function renderUiLens(repo, treeEl) {
 }
 
 // One row in the Types lens — a type (kind + name) or one of its members
-// (signature). Both mirror the published region row's shape: a label plus an
-// expandable action panel carrying Reference in chat + Copy, Find in code, and a
-// View-on-GitHub deep link to the defining file at the row's line. A type row
-// additionally nests its members as collapsible children (depth + 1), so the
-// filter's ancestor-reveal surfaces a type when one of its members matches.
-// `spec` is { label, name, file, line, members? }.
+// (signature). Tapping the row body selects it, driving the shared toolbar
+// (Reference in chat + Copy name, Find in code, and a View-on-GitHub deep link
+// to the defining file at the row's line). A type row additionally nests its
+// members as collapsible children (depth + 1), so the filter's ancestor-reveal
+// surfaces a type when one of its members matches. `spec` is
+// { label, name, file, line, members? }.
 function buildTypeOutlineRow(repo, spec, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'structureRegionWrap';
@@ -1245,7 +1370,9 @@ function buildTypeOutlineRow(repo, spec, depth) {
     row.style.setProperty('--structure-depth', String(depth));
     row.setAttribute('role', 'button');
     row.setAttribute('tabindex', '0');
-    row.setAttribute('aria-expanded', 'false');
+    row.setAttribute('aria-pressed', 'false');
+    row.dataset.handleKind = 'type';
+    row.dataset.handleValue = spec.name;
 
     const caret = document.createElement('span');
     caret.className = 'structureRegionCaret';
@@ -1258,41 +1385,6 @@ function buildTypeOutlineRow(repo, spec, depth) {
     label.className = 'structureRegionLabel structureTypeLabel';
     label.textContent = spec.label;
     row.appendChild(label);
-
-    // Action panel: the same primary/secondary set as a published region row.
-    const actions = document.createElement('div');
-    actions.className = 'structureRegionActions';
-    actions.hidden = true;
-
-    const note = document.createElement('div');
-    note.className = 'structureRegionNote';
-    note.textContent = typeof spec.line === 'number' && spec.line > 0
-        ? 'Line ' + spec.line + '.'
-        : 'Line not recorded.';
-    actions.appendChild(note);
-
-    const actionRow = document.createElement('div');
-    actionRow.className = 'structureRegionActionRow';
-    appendReferenceCopyActions(actionRow, spec.label, spec.name, repo, 'Copy name');
-
-    const findBtn = document.createElement('button');
-    findBtn.type = 'button';
-    findBtn.className = 'structureFindBtn';
-    findBtn.textContent = 'Find in code';
-    const findResult = document.createElement('div');
-    findResult.className = 'structureFindResult';
-    findResult.hidden = true;
-    findBtn.addEventListener('click', function (event) {
-        event.stopPropagation();
-        findTypeInCode(repo, spec.name, findResult, findBtn);
-    });
-    actionRow.appendChild(findBtn);
-
-    const gh = buildGithubLink(repo, spec.file, spec.line);
-    if (gh) actionRow.appendChild(gh);
-
-    actions.appendChild(actionRow);
-    actions.appendChild(findResult);
 
     // Member children: visible by default so the outline reads fully on open; the
     // caret collapses them (ephemeral — only file-group folds persist).
@@ -1317,21 +1409,26 @@ function buildTypeOutlineRow(repo, spec, depth) {
         });
     }
 
-    const toggle = function () {
-        const nowOpen = actions.hidden;
-        actions.hidden = !nowOpen;
-        row.setAttribute('aria-expanded', String(nowOpen));
+    const select = function () {
+        selectHandle({
+            kind: 'type',
+            label: spec.label,
+            value: spec.name,
+            copyLabel: 'Copy name',
+            repo: repo,
+            file: spec.file,
+            line: spec.line,
+        }, row);
     };
-    row.addEventListener('click', toggle);
+    row.addEventListener('click', select);
     row.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            toggle();
+            select();
         }
     });
 
     wrap.appendChild(row);
-    wrap.appendChild(actions);
     wrap.appendChild(childWrap);
     return wrap;
 }
@@ -1516,8 +1613,8 @@ function headForChildWrap(cw) {
 
 // Reveal a container while filtering, stashing its pre-filter hidden state once
 // so the original fold state can be restored on clear. Folder heads carry
-// aria-expanded; a live region row uses only the `expanded` class (its
-// aria-expanded drives the separate action panel and must not be touched here).
+// aria-expanded; a live region/type row uses only the `expanded` class (its
+// aria-pressed drives selection, not child fold, and must not be touched here).
 function expandContainer(cw) {
     if (cw.dataset.filterPrev === undefined) cw.dataset.filterPrev = cw.hidden ? '1' : '0';
     cw.hidden = false;
@@ -1842,8 +1939,8 @@ function structureSections(tree) {
 // Expand (expand=true) or collapse (expand=false) one section's DOM in place,
 // mirroring its own chevron handler so the two never drift: show/hide the
 // children wrap and toggle the head's `expanded` class. Folder heads also carry
-// an aria-expanded that tracks their children; a region row's aria-expanded
-// drives its separate action panel, so it's left untouched (matching the filter's
+// an aria-expanded that tracks their children; a region row's aria-pressed
+// drives selection, not child fold, so it's left untouched (matching the filter's
 // expandContainer). Any stashed filter fold state is updated too so clearing an
 // active filter restores to this choice rather than the pre-bulk one.
 function setSectionExpanded(section, expand) {
@@ -2009,6 +2106,8 @@ export function renderStructureView() {
         currentTreeEl = null;
         collapseToolbarEl = null;
         collapseAllBtn = null;
+        actionToolbarEl = null;
+        selectedHandle = null;
         appendEmptyState(view, 'Select a project to see its structure.');
         return;
     }
@@ -2021,6 +2120,8 @@ export function renderStructureView() {
         currentTreeEl = null;
         collapseToolbarEl = null;
         collapseAllBtn = null;
+        actionToolbarEl = null;
+        selectedHandle = null;
         appendEmptyState(
             view,
             projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.'
@@ -2041,6 +2142,9 @@ export function renderStructureView() {
         openRegions = new Set();
         collapsedTypeFiles = new Set();
         hydrateActiveLensState(repo, lens);
+        // The selection is repo-scoped — drop it so a stale handle from the prior
+        // repo can't survive into the new one's toolbar.
+        selectedHandle = null;
     }
     selectedRepo = repo;
 
@@ -2094,6 +2198,9 @@ export function renderStructureView() {
     currentNoMatchEl = null;
 
     const toggle = buildLensToggle(function () {
+        // Switching lenses clears the selection — a handle belongs to the lens it
+        // was selected in, and the Code lens has no toolbar at all.
+        selectedHandle = null;
         // Entering a lens restores that lens's persisted fold state for this repo
         // (or its default expansion the first time), independent of the other.
         hydrateActiveLensState(selectedRepo, lens);
@@ -2104,6 +2211,7 @@ export function renderStructureView() {
         Promise.resolve(painted).then(function () {
             if (filterInputEl) applyStructureFilter(filterInputEl.value);
             refreshCollapseAllPill();
+            refreshActionToolbar();
         });
     });
     header.appendChild(toggle);
@@ -2121,7 +2229,16 @@ export function renderStructureView() {
     const toolbar = buildCollapseToolbar();
     view.appendChild(toolbar);
 
+    // The shared selection toolbar sits directly above the tree (UI/Types lenses
+    // only — hidden on the Code lens). A persistent sibling of the tree like the
+    // collapse strip, so a lens repaint doesn't wipe it.
+    const actionToolbar = buildActionToolbar();
+    view.appendChild(actionToolbar);
+
     view.appendChild(tree);
 
-    Promise.resolve(renderLens(selectedRepo, tree)).then(refreshCollapseAllPill);
+    Promise.resolve(renderLens(selectedRepo, tree)).then(function () {
+        refreshCollapseAllPill();
+        refreshActionToolbar();
+    });
 }

@@ -493,22 +493,36 @@ describe('renderStructureView — UI lens', () => {
         expect(collapsed.textContent).toBe('× 4 li rows');
     });
 
-    it('tapping a region reveals its actions; Reference in chat hands the selector off', async () => {
+    it('tapping a region selects it; the shared toolbar references the selector, re-tap deselects', async () => {
         mountUiDom();
         renderStructureView();
         await flush();
 
-        // Find the #taskList region row and toggle its action panel.
+        // The shared toolbar starts idle (no row selected).
+        const toolbar = document.querySelector('.structureActionToolbar');
+        expect(toolbar).toBeTruthy();
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(true);
+        expect(toolbar.querySelector('.structureReferenceBtn')).toBeFalsy();
+
+        // Find the #taskList region row and select it.
         const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
         const taskRow = rows.find((r) => r.querySelector('.structureRegionSelector').textContent === '#taskList');
         expect(taskRow).toBeTruthy();
-        const actions = taskRow.parentNode.querySelector('.structureRegionActions');
-        expect(actions.hidden).toBe(true);
         taskRow.click();
-        expect(actions.hidden).toBe(false);
+        expect(taskRow.classList.contains('is-selected')).toBe(true);
+        expect(taskRow.getAttribute('aria-pressed')).toBe('true');
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(false);
+        expect(toolbar.querySelector('.structureActionToolbarLabel').textContent).toBe('Task List');
 
-        actions.querySelector('.structureReferenceBtn').click();
+        // The toolbar's Reference action hands off the selected handle.
+        toolbar.querySelector('.structureReferenceBtn').click();
         expect(insertReference).toHaveBeenCalledWith('Task List', '#taskList');
+
+        // Re-tapping the selected row deselects it back to the idle toolbar.
+        taskRow.click();
+        expect(taskRow.classList.contains('is-selected')).toBe(false);
+        expect(taskRow.getAttribute('aria-pressed')).toBe('false');
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(true);
     });
 
     it('shows a "no manifest" notice for a non-running repo with no published manifest', async () => {
@@ -526,6 +540,12 @@ describe('renderStructureView — UI lens', () => {
 describe('renderStructureView — published UI map + states (UI lens, non-running repo)', () => {
     const OTHER = 'rsterenchak/matchingGame-test';
     beforeEach(() => {
+        // Reset any module-scoped selection a prior test left behind by rendering
+        // the no-project empty state first (it clears the active handle), so the
+        // selection toolbar starts idle for each test rather than re-applying a
+        // stale same-repo selection.
+        mountDom('');
+        renderStructureView();
         // 'Game' resolves to OTHER (matchingGame-test), the non-running repo, so
         // the view renders that repo's published map rather than a live walk.
         mountDom('Game');
@@ -576,7 +596,7 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         expect(notice.textContent).toMatch(/not built yet/i);
     });
 
-    it('a published region row exposes Find in code and a GitHub deep link to its file', async () => {
+    it('selecting a published region row exposes Find in code and a GitHub deep link to its file', async () => {
         state.manifests[OTHER] = {
             ok: true,
             files: ['app.js'],
@@ -591,24 +611,24 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
 
         const row = document.querySelector('.structureRegionRow');
         expect(row).toBeTruthy();
-        const actions = row.parentNode.querySelector('.structureRegionActions');
-        expect(actions.hidden).toBe(true);
+        const toolbar = document.querySelector('.structureActionToolbar');
+        // Idle until the row is selected — no GitHub link in the toolbar yet.
+        expect(toolbar.querySelector('.structureGithubLink')).toBeFalsy();
         row.click();
-        expect(actions.hidden).toBe(false);
 
-        const gh = actions.querySelector('.structureGithubLink');
+        const gh = toolbar.querySelector('.structureGithubLink');
         expect(gh).toBeTruthy();
         expect(gh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/pkg/src/app.js#L12');
 
-        // Find in code reveals the owner file row.
-        actions.querySelector('.structureFindBtn').click();
+        // Find in code reveals the owner file row inside the toolbar's result area.
+        toolbar.querySelector('.structureFindBtn').click();
         await flush();
-        const owner = actions.querySelector('.structureOwnerFileBtn');
+        const owner = toolbar.querySelector('.structureOwnerFileBtn');
         expect(owner).toBeTruthy();
         expect(owner.textContent).toBe('app.js:12');
     });
 
-    it('a published region row also exposes Reference in chat and Copy selector', async () => {
+    it('a selected published region row also exposes Reference in chat and Copy selector', async () => {
         state.manifests[OTHER] = {
             ok: true,
             files: ['app.js'],
@@ -622,13 +642,13 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         await flush();
 
         const row = document.querySelector('.structureRegionRow');
-        const actions = row.parentNode.querySelector('.structureRegionActions');
+        const toolbar = document.querySelector('.structureActionToolbar');
         row.click();
-        expect(actions.hidden).toBe(false);
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(false);
 
         // Reference in chat reframes onto the published repo and hands off the
         // region's label + selector — identical contract to the live row.
-        const refBtn = actions.querySelector('.structureReferenceBtn');
+        const refBtn = toolbar.querySelector('.structureReferenceBtn');
         expect(refBtn).toBeTruthy();
         refBtn.click();
         expect(setChatWorkspaceRepo).toHaveBeenCalledWith(OTHER);
@@ -638,7 +658,7 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         const writeText = vi.fn(() => Promise.resolve());
         const priorClipboard = navigator.clipboard;
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-        const copyBtn = actions.querySelector('.structureCopyBtn');
+        const copyBtn = toolbar.querySelector('.structureCopyBtn');
         expect(copyBtn).toBeTruthy();
         copyBtn.click();
         expect(writeText).toHaveBeenCalledWith('.card');
@@ -697,9 +717,11 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
 
         const row = group.querySelector('.structureRegionRow');
         row.click();
-        const note = row.parentNode.querySelector('.structureRegionNote');
-        expect(note.textContent).toBe('Line 5.');
-        expect(note.textContent).not.toMatch(/app\.js/);
+        // The per-row note moved to the shared toolbar's context line — it carries
+        // the selector plus just the line within the grouping file (no file name).
+        const context = document.querySelector('.structureActionToolbarContext');
+        expect(context.textContent).toContain('Line 5.');
+        expect(context.textContent).not.toMatch(/app\.js/);
     });
 
     it('collapses a file group when its header is clicked, hiding the nested rows', async () => {
@@ -724,6 +746,121 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         header.click();
         expect(childWrap.hidden).toBe(false);
         expect(header.getAttribute('aria-expanded')).toBe('true');
+    });
+});
+
+describe('renderStructureView — shared selection toolbar', () => {
+    beforeEach(() => {
+        setStructureLens('ui');
+        // Reset any selection a prior test left in module state by rendering the
+        // no-project empty state first (it clears the active handle), so each test
+        // starts idle rather than re-applying a stale same-repo selection.
+        mountDom('');
+        renderStructureView();
+    });
+
+    function mountUiDom() {
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+            '<main id="mainPanel" data-region="Tasks">' +
+            '  <ul id="taskList"><li>a</li></ul>' +
+            '  <section data-region="Sidebar"></section>' +
+            '</main>';
+    }
+
+    const toolbar = () => document.querySelector('.structureActionToolbar');
+    const rowFor = (selector) =>
+        Array.from(document.querySelectorAll('.structureRegionRow')).find(
+            (r) => r.querySelector('.structureRegionSelector') &&
+                r.querySelector('.structureRegionSelector').textContent === selector
+        );
+
+    it('starts idle: a muted hint and no action buttons', async () => {
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        const bar = toolbar();
+        expect(bar).toBeTruthy();
+        expect(bar.hidden).toBe(false); // the UI lens shows it
+        expect(bar.classList.contains('structureActionToolbar--idle')).toBe(true);
+        expect(bar.querySelector('.structureActionToolbarLabel').textContent).toMatch(/select a handle/i);
+        expect(bar.querySelector('.structureReferenceBtn')).toBeFalsy();
+        expect(bar.querySelector('.structureFindBtn')).toBeFalsy();
+    });
+
+    it('the caret toggles children without selecting the row', async () => {
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        // #mainPanel (Tasks) nests child regions, so its row carries a caret.
+        const tasksRow = rowFor('#mainPanel');
+        expect(tasksRow).toBeTruthy();
+        const caret = tasksRow.querySelector('.structureRegionCaret');
+        const childWrap = tasksRow.parentNode.querySelector('.structureRegionChildren');
+        expect(childWrap.hidden).toBe(true);
+
+        caret.click();
+        // Children expand, but the row is NOT selected and the toolbar stays idle.
+        expect(childWrap.hidden).toBe(false);
+        expect(tasksRow.classList.contains('expanded')).toBe(true);
+        expect(tasksRow.classList.contains('is-selected')).toBe(false);
+        expect(toolbar().classList.contains('structureActionToolbar--idle')).toBe(true);
+    });
+
+    it('keeps a single active selection — selecting another row moves it', async () => {
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        const tasksRow = rowFor('#mainPanel');
+        const listRow = rowFor('#taskList');
+        expect(tasksRow).toBeTruthy();
+        expect(listRow).toBeTruthy();
+
+        tasksRow.click();
+        expect(tasksRow.classList.contains('is-selected')).toBe(true);
+
+        listRow.click();
+        // Selection moved — only one row is selected at a time.
+        expect(listRow.classList.contains('is-selected')).toBe(true);
+        expect(tasksRow.classList.contains('is-selected')).toBe(false);
+        expect(document.querySelectorAll('.structureRegionRow.is-selected').length).toBe(1);
+        expect(toolbar().querySelector('.structureActionToolbarLabel').textContent).toBe('Task List');
+    });
+
+    it('re-applies the selection to the matching row across a same-repo re-render', async () => {
+        mountUiDom();
+        renderStructureView();
+        await flush();
+
+        rowFor('#taskList').click();
+        expect(rowFor('#taskList').classList.contains('is-selected')).toBe(true);
+
+        // A same-repo, same-lens repaint re-finds the handle by its value and
+        // re-marks the row; the toolbar still reflects it.
+        renderStructureView();
+        await flush();
+        const reRow = rowFor('#taskList');
+        expect(reRow.classList.contains('is-selected')).toBe(true);
+        expect(reRow.getAttribute('aria-pressed')).toBe('true');
+        expect(toolbar().classList.contains('structureActionToolbar--idle')).toBe(false);
+        expect(toolbar().querySelector('.structureActionToolbarLabel').textContent).toBe('Task List');
+    });
+
+    it('hides the toolbar on the Code lens (no handles to act on)', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = { ok: true, files: ['src/main.js'] };
+        mountUiDom();
+        renderStructureView();
+        await flush();
+        expect(toolbar().hidden).toBe(false);
+
+        const codeBtn = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'code');
+        codeBtn.click();
+        await flush();
+        expect(toolbar().hidden).toBe(true);
     });
 });
 
@@ -759,8 +896,8 @@ describe('renderStructureView — Find in code (live UI lens → Code lens)', ()
         const rows = Array.from(document.querySelectorAll('.structureRegionRow'));
         const taskRow = rows.find((r) => r.querySelector('.structureRegionSelector') && r.querySelector('.structureRegionSelector').textContent === '#taskList');
         expect(taskRow).toBeTruthy();
-        taskRow.click(); // open actions
-        const actions = taskRow.parentNode.querySelector('.structureRegionActions');
+        taskRow.click(); // select the handle
+        const actions = document.querySelector('.structureActionToolbar');
         actions.querySelector('.structureFindBtn').click();
         await flush();
 
@@ -1216,34 +1353,34 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         };
         const typeRow = rows.find((r) => labelOf(r) === 'class BinarySearchTree');
         expect(typeRow).toBeTruthy();
-        const actions = typeRow.parentNode.querySelector(':scope > .structureRegionActions');
-        expect(actions.hidden).toBe(true);
+        const toolbar = document.querySelector('.structureActionToolbar');
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(true);
         typeRow.click();
-        expect(actions.hidden).toBe(false);
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(false);
 
         // Empty srcRoot → repo-root-relative blob path at the type's line, no double slash.
-        const gh = actions.querySelector('.structureGithubLink');
+        const gh = toolbar.querySelector('.structureGithubLink');
         expect(gh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/LinearSearch/BST.cs#L5');
 
         // Reference reframes onto the repo and hands off label + name; Copy writes the name.
-        actions.querySelector('.structureReferenceBtn').click();
+        toolbar.querySelector('.structureReferenceBtn').click();
         expect(setChatWorkspaceRepo).toHaveBeenCalledWith(OTHER);
         expect(insertReference).toHaveBeenCalledWith('class BinarySearchTree', 'BinarySearchTree');
 
         const writeText = vi.fn(() => Promise.resolve());
         const priorClipboard = navigator.clipboard;
         Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-        actions.querySelector('.structureCopyBtn').click();
+        toolbar.querySelector('.structureCopyBtn').click();
         expect(writeText).toHaveBeenCalledWith('BinarySearchTree');
         if (priorClipboard === undefined) delete navigator.clipboard;
         else Object.defineProperty(navigator, 'clipboard', { value: priorClipboard, configurable: true });
 
-        // A member row's GitHub link points at the member's own line.
+        // Selecting a member row repaints the shared toolbar with the member's own
+        // GitHub link, pointing at the member's line.
         const memberRow = rows.find((r) => labelOf(r) === 'Insert(int value)');
         expect(memberRow).toBeTruthy();
         memberRow.click();
-        const mActions = memberRow.parentNode.querySelector(':scope > .structureRegionActions');
-        const mGh = mActions.querySelector('.structureGithubLink');
+        const mGh = toolbar.querySelector('.structureGithubLink');
         expect(mGh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/LinearSearch/BST.cs#L12');
     });
 
@@ -1317,8 +1454,8 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         };
         const typeRow = rows.find((r) => labelOf(r) === 'class BinarySearchTree');
         typeRow.click();
-        const actions = typeRow.parentNode.querySelector(':scope > .structureRegionActions');
-        expect(actions.querySelector('.structureCopyBtn').textContent).toBe('Copy name');
+        const toolbar = document.querySelector('.structureActionToolbar');
+        expect(toolbar.querySelector('.structureCopyBtn').textContent).toBe('Copy name');
     });
 
     it('Find in code lists every definition of a name from the type index, sorted by file then line', async () => {
@@ -1349,15 +1486,15 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         const resetRow = rows.find((r) => labelOf(r) === 'Reset()');
         expect(resetRow).toBeTruthy();
         resetRow.click();
-        const actions = resetRow.parentNode.querySelector(':scope > .structureRegionActions');
-        actions.querySelector('.structureFindBtn').click();
+        const toolbar = document.querySelector('.structureActionToolbar');
+        toolbar.querySelector('.structureFindBtn').click();
         await flush();
 
-        const owners = Array.from(actions.querySelectorAll('.structureOwnerFileBtn')).map((b) => b.textContent);
+        const owners = Array.from(toolbar.querySelectorAll('.structureOwnerFileBtn')).map((b) => b.textContent);
         expect(owners).toEqual(['A.cs:9', 'B.cs:44']);
 
         // The owner file row taps through to the Code lens, like the UI-lens Find.
-        actions.querySelector('.structureOwnerFileBtn').click();
+        toolbar.querySelector('.structureOwnerFileBtn').click();
         await flush();
         expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('code');
     });
