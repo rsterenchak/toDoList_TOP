@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         added: [
-            "In the Structure tab's Types outline, \"Find in code\" now lists everywhere a class or member name is defined across the repository instead of reporting nothing.",
             "A Collapse all / Expand all pill in the Structure tab toolbar folds or unfolds every section at once, on both mobile and desktop.",
         ],
         changed: [
             "The Structure tab's Collapse all / Expand all pill is now more compact on mobile.",
+            "On phones, the task filter bar pairs filled purple status tabs with a Sort button that opens a bottom sheet to sort by None, Due date, or Status.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",

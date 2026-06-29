@@ -707,9 +707,9 @@
   - Completed:
   <!-- id: 237cac2b-b1d0-4c4e-913e-6f0472d1f022 -->
 
-- [ ] **[MEDIUM]** Revamp `#taskFilterBar` on mobile with single-row filter tabs + sort button that opens a bottom sheet
+- [x] **[MEDIUM]** Revamp `#taskFilterBar` on mobile with single-row filter tabs + sort button that opens a bottom sheet
   - Type: feature
   - Description: On mobile viewports only, replace the current filter bar with a compact single-row bar: filter tabs (Active / Ideas / All) on the left with the active tab shown as a filled purple pill, and a "⇅ Sort" button on the right separated by a vertical divider that shows the current sort label beneath it (e.g. "Due date" in green, or dimmed "None"). Tapping the sort button opens a mobile bottom sheet with three sort chips — None, Due date, Status — where the active choice is purple-filled. The selected sort is applied to the visible task list and persisted to localStorage under `todoapp_taskSort`; it survives page reload and resets to "None" if the key is absent. The desktop filter bar layout must remain unchanged — gate all new bar markup and styles behind the existing mobile breakpoint in `style.css`.
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed:
+  - Completed: 2026-06-28
   <!-- id: 5b52b6d5-1497-49e6-99c6-72e20aaa2af2 -->

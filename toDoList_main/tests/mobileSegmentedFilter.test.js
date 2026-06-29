@@ -59,23 +59,24 @@ describe('mobile segmented filter — breakpoint gating', () => {
         expect(pill).toMatch(/display:\s*none/);
     });
 
-    it('tints the active segment with the accent tint + accent-purple text, matching the status selector family', () => {
+    it('fills the active segment with a solid purple pill, matching the filter pill family', () => {
         const sel = baseRule('.taskFilterSeg.selected');
         expect(sel).not.toBeNull();
-        // Softened from the solid accent fill to a tinted background + accent
-        // text, so the two segmented controls read as one visual language.
-        expect(sel).toMatch(/background:\s*var\(--accent-dim\)/);
-        expect(sel).toMatch(/color:\s*var\(--accent-text\)/);
+        // The active tab reads as a filled purple pill (same #6C5DF5 fill the
+        // desktop cycle pill's selected state uses).
+        expect(sel.toLowerCase()).toMatch(/background:\s*#6c5df5/);
+        expect(sel.toLowerCase()).toMatch(/color:\s*#fff/);
     });
 });
 
-describe('mobile Sort trigger — active-sort dot', () => {
-    it('hides the dot by default and shows it when a sort is active', () => {
-        const dot = baseRule('.taskSortBtnMobileDot');
-        expect(dot).not.toBeNull();
-        expect(dot).toMatch(/display:\s*none/);
-        // The dot is revealed by the same data-sort hook that tints the trigger.
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileDot/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileDot/);
+describe('mobile Sort trigger — current-sort label', () => {
+    it('greens the current-sort label when a sort is active, dims it for None', () => {
+        // The active-sort dot was retired in favour of a painted current-sort
+        // label beneath "⇅ Sort": dimmed by default, green when a sort is active.
+        const label = baseRule('.taskSortBtnMobileLabel');
+        expect(label).not.toBeNull();
+        expect(label).toMatch(/color:\s*var\(--text-muted\)/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileLabel/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileLabel/);
     });
 });

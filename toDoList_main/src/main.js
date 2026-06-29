@@ -2001,31 +2001,51 @@ function component() {
     // display:none at the mobile breakpoint — leaving phones with no way to
     // change the task sort after the Expand-All→Sort refactor. This compact
     // trigger rides at the right end of the status-filter row (#taskFilterBar),
-    // opposite the status pills, and is shown ONLY where #bulkDescActions is
-    // hidden (CSS-gated to the mobile breakpoint), so exactly one Sort trigger
-    // is ever visible. It opens the SAME #taskSortMenu and drives the same
-    // getTaskSort/setTaskSort/applyTaskSortChoice/syncTaskSortButton machinery,
-    // so desktop and mobile share one sort state.
-    // Icon-only on mobile: a sort glyph (no "Sort: …" text label) carrying a
-    // small accent dot when the active sort is anything other than None. The
-    // glyph + dot replace the former text label; the desktop #taskSortBtn keeps
-    // its label. An aria-label (kept current by syncTaskSortButton) names the
-    // control + active sort for screen readers since the text is gone.
+    // opposite the status filter tabs and separated from them by a vertical
+    // divider, and is shown ONLY where #bulkDescActions is hidden (CSS-gated to
+    // the mobile breakpoint), so exactly one Sort trigger is ever visible. On
+    // mobile it opens a bottom SHEET (#taskSortSheet) rather than the desktop
+    // dropdown, but drives the same getTaskSort/setTaskSort/applyTaskSortChoice/
+    // syncTaskSortButton machinery, so desktop and mobile share one sort state.
+    // Two-line on mobile: a "⇅ Sort" top line plus the current sort label
+    // beneath it (green when a sort is active, dimmed "None" otherwise). The
+    // desktop #taskSortBtn keeps its own inline label. An aria-label (kept
+    // current by syncTaskSortButton) names the control + active sort.
+
+    // Vertical divider between the status-filter tabs and the Sort trigger.
+    // Mobile-only (CSS-gated); margin-left:auto on it pushes the divider + Sort
+    // cluster to the right end of the row, opposite the tabs.
+    const mobileSortDivider = document.createElement('span');
+    mobileSortDivider.className = 'taskFilterBarDivider';
+    mobileSortDivider.setAttribute('aria-hidden', 'true');
+    taskFilterBar.appendChild(mobileSortDivider);
+
     const mobileSortBtn = document.createElement('button');
     mobileSortBtn.type = 'button';
     mobileSortBtn.id = 'taskSortBtnMobile';
     mobileSortBtn.className = 'bulkDescBtn taskSortBtn taskSortBtnMobile';
-    mobileSortBtn.setAttribute('aria-haspopup', 'menu');
+    mobileSortBtn.setAttribute('aria-haspopup', 'dialog');
     mobileSortBtn.setAttribute('aria-expanded', 'false');
+    // Top line: the ⇅ glyph + "Sort". The glyph carries its own font-size so it
+    // survives the ≤420px .bulkDescBtn font-size:0 label collapse.
+    const mobileSortBtnTop = document.createElement('span');
+    mobileSortBtnTop.className = 'taskSortBtnMobileTop';
     const mobileSortBtnGlyph = document.createElement('span');
     mobileSortBtnGlyph.className = 'taskSortBtnMobileGlyph';
     mobileSortBtnGlyph.textContent = '⇅';
     mobileSortBtnGlyph.setAttribute('aria-hidden', 'true');
-    const mobileSortBtnDot = document.createElement('span');
-    mobileSortBtnDot.className = 'taskSortBtnMobileDot';
-    mobileSortBtnDot.setAttribute('aria-hidden', 'true');
-    mobileSortBtn.appendChild(mobileSortBtnGlyph);
-    mobileSortBtn.appendChild(mobileSortBtnDot);
+    const mobileSortBtnWord = document.createElement('span');
+    mobileSortBtnWord.className = 'taskSortBtnMobileWord';
+    mobileSortBtnWord.textContent = 'Sort';
+    mobileSortBtnTop.appendChild(mobileSortBtnGlyph);
+    mobileSortBtnTop.appendChild(mobileSortBtnWord);
+    // Second line: the current sort label — green when a sort is active, dimmed
+    // "None" otherwise (data-sort on the button drives the colour).
+    const mobileSortBtnLabel = document.createElement('span');
+    mobileSortBtnLabel.className = 'taskSortBtnMobileLabel';
+    mobileSortBtnLabel.setAttribute('aria-hidden', 'true');
+    mobileSortBtn.appendChild(mobileSortBtnTop);
+    mobileSortBtn.appendChild(mobileSortBtnLabel);
     taskFilterBar.appendChild(mobileSortBtn);
 
     function taskSortButtonText(key) {
@@ -2034,14 +2054,23 @@ function component() {
         return 'Sort';
     }
 
+    // Short current-sort label painted on the mobile trigger's second line and
+    // used as the bottom-sheet chip labels' source of truth.
+    function taskSortLabelText(key) {
+        if (key === 'due') return 'Due date';
+        if (key === 'status') return 'Status';
+        return 'None';
+    }
+
     function syncTaskSortButton() {
         const key = getTaskSort();
         const text = taskSortButtonText(key);
         taskSortBtnLabel.textContent = text;
         taskSortBtn.setAttribute('data-sort', key);
-        // Mobile trigger is icon-only: drive its data-sort (CSS shows the dot +
-        // tints it when active) and keep its aria-label current in lieu of text.
+        // Mobile trigger: drive its data-sort (CSS tints the current-sort label),
+        // paint that label, and keep its aria-label current.
         mobileSortBtn.setAttribute('data-sort', key);
+        mobileSortBtnLabel.textContent = taskSortLabelText(key);
         mobileSortBtn.setAttribute('aria-label', text);
     }
     syncTaskSortButton();
@@ -2162,8 +2191,121 @@ function component() {
             showTaskSortMenu();
         }
     }
+
+    // ── Mobile Sort bottom sheet ──
+    // On mobile the Sort trigger opens a slide-up bottom sheet (not the desktop
+    // dropdown): three chips — None / Due date / Status — with the active choice
+    // purple-filled. It shares the same TASK_SORT_OPTIONS / getTaskSort /
+    // applyTaskSortChoice machinery as the desktop dropdown, so both surfaces
+    // drive one persisted sort state. Three-affordance close per CLAUDE.md — X
+    // button, backdrop tap, Escape — reusing the .completedMobileSheet* chrome.
+    let taskSortSheetKeydownHandler = null;
+
+    function hideTaskSortSheet() {
+        const backdrop = document.getElementById('taskSortSheetBackdrop');
+        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        mobileSortBtn.setAttribute('aria-expanded', 'false');
+        if (taskSortSheetKeydownHandler) {
+            document.removeEventListener('keydown', taskSortSheetKeydownHandler, true);
+            taskSortSheetKeydownHandler = null;
+        }
+        try { mobileSortBtn.focus(); } catch (_) { /* defensive */ }
+    }
+
+    function showTaskSortSheet() {
+        const current = getTaskSort();
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'taskSortSheetBackdrop';
+
+        const sheet = document.createElement('div');
+        sheet.id = 'taskSortSheet';
+        sheet.setAttribute('role', 'dialog');
+        sheet.setAttribute('aria-modal', 'true');
+        sheet.setAttribute('aria-labelledby', 'taskSortSheetTitle');
+
+        const handle = document.createElement('span');
+        handle.className = 'completedMobileSheetHandle';
+        handle.setAttribute('aria-hidden', 'true');
+
+        const headerEl = document.createElement('div');
+        headerEl.className = 'completedMobileSheetHeader';
+        const title = document.createElement('div');
+        title.id = 'taskSortSheetTitle';
+        title.className = 'completedMobileSheetTitle';
+        title.textContent = 'Sort by';
+        const closeX = document.createElement('button');
+        closeX.type = 'button';
+        closeX.className = 'completedMobileSheetClose';
+        closeX.setAttribute('aria-label', 'Close sort menu');
+        closeX.textContent = '×';
+        headerEl.appendChild(title);
+        headerEl.appendChild(closeX);
+
+        const body = document.createElement('div');
+        body.className = 'completedMobileSheetBody';
+        const chips = document.createElement('div');
+        chips.className = 'taskSortSheetChips';
+        TASK_SORT_OPTIONS.forEach(function(opt) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'taskSortSheetChip' + (opt.key === current ? ' selected' : '');
+            chip.setAttribute('role', 'menuitemradio');
+            chip.setAttribute('aria-checked', opt.key === current ? 'true' : 'false');
+            chip.setAttribute('data-sort', opt.key);
+            const label = document.createElement('span');
+            label.className = 'taskSortSheetChipLabel';
+            label.textContent = opt.label;
+            chip.appendChild(label);
+            if (opt.subtitle) {
+                const sub = document.createElement('span');
+                sub.className = 'taskSortSheetChipSub';
+                sub.textContent = opt.subtitle;
+                chip.appendChild(sub);
+            }
+            chip.addEventListener('click', function() {
+                hideTaskSortSheet();
+                applyTaskSortChoice(opt.key);
+            });
+            chips.appendChild(chip);
+        });
+        body.appendChild(chips);
+
+        sheet.appendChild(handle);
+        sheet.appendChild(headerEl);
+        sheet.appendChild(body);
+        backdrop.appendChild(sheet);
+        document.body.appendChild(backdrop);
+
+        closeX.addEventListener('click', hideTaskSortSheet);
+        backdrop.addEventListener('click', function(event) {
+            if (event.target === backdrop) hideTaskSortSheet();
+        });
+        taskSortSheetKeydownHandler = function(event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                hideTaskSortSheet();
+            }
+        };
+        document.addEventListener('keydown', taskSortSheetKeydownHandler, true);
+
+        mobileSortBtn.setAttribute('aria-expanded', 'true');
+        requestAnimationFrame(function() { backdrop.classList.add('is-open'); });
+        try { closeX.focus(); } catch (_) { /* defensive */ }
+    }
+
+    function toggleTaskSortSheet(event) {
+        event.stopPropagation();
+        if (document.getElementById('taskSortSheetBackdrop')) {
+            hideTaskSortSheet();
+        } else {
+            showTaskSortSheet();
+        }
+    }
+
     taskSortBtn.addEventListener('click', toggleTaskSortMenu);
-    mobileSortBtn.addEventListener('click', toggleTaskSortMenu);
+    mobileSortBtn.addEventListener('click', toggleTaskSortSheet);
 
     // ── bulk description expand/collapse state ──
     // Formerly owned by the on-screen "Expand All" button (retired in favour of
