@@ -8062,6 +8062,17 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 }
 
+/* Mobile: shrink the Structure tab's Collapse all / Expand all pill ~25% so it
+   matches the density of the other small controls in the structure header. The
+   base rule keeps font-size at 16px to dodge iOS Safari auto-zoom on focusable
+   inputs, but a button is exempt, so the mobile override can drop below 16px. */
+@media (max-width: 1023px) {
+  .structureCollapseAllPill {
+    font-size: 12px;
+    padding: 3px 10px;
+  }
+}
+
 /* SETTINGS MODAL — opened by #drawerSettingsBtn at the bottom of the
    mobile sidebar drawer. Mirrors the changelog/help modal chrome
    (header / scrollable body) so the three share visual vocabulary. The
