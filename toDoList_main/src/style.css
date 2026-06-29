@@ -2710,6 +2710,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 8px 12px 6px;
   background: var(--bg-base);
