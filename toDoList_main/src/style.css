@@ -12223,7 +12223,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     gap: 10px;
     min-height: 40px;
     /* Option A restyle: deep near-black header bar so the centered title
-       and its accent underline carry the visual weight on mobile. */
+       pill carries the visual weight on mobile. position:relative is the
+       containing block for the absolutely-positioned title-row pill, which
+       centers against the full bar width rather than leftover flex space. */
+    position: relative;
     background: #15151e;
     /* Right padding keeps a gap at the right edge of the row — formerly
        the hamburger's slot, now free space reserved for future header
@@ -12235,39 +12238,30 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .mobileProjChev  { display: none; }
 
   #mobileProjTitleRow {
-    /* Grow to fill the space left of the counts so the centered name reads
-       as centered within the bar. */
-    flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
     gap: 4px;
-    /* Option A: center the project name, with room beneath it for the
-       accent underline (positioned via the ::after below). */
-    position: relative;
+    /* A3 pill: wrap the project name + chevron in a rounded pill on a
+       slightly-raised purple-tinted surface. */
+    border-radius: 14px;
+    background: #1a1826;
+    border: 1px solid rgba(108, 93, 245, 0.45);
+    padding: 2px 4px 2px 12px;
+    /* True bar-centered placement: take the pill out of flow and center it
+       against the full header width (its containing block is
+       #mobileProjHeader, position:relative) rather than the leftover flex
+       space beside the counts. width:max-content keeps the pill snug around
+       its content; max-width caps it so a long name still ellipsises. */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 60%;
     justify-content: center;
-    padding-bottom: 9px;
     /* Dense layout: the swipe gesture is disabled here since the carousel
        pattern is gone (the chevron-dropdown pattern owns project switching
        now). */
     touch-action: auto;
-  }
-
-  /* Option A: short purple accent underline centered beneath the project
-     name. Lives on the title row rather than #mobileProjName, whose
-     overflow:hidden ellipsis clip would crop a pseudo-element. Decorative,
-     so pointer-events:none keeps the name/▾ tap targets intact. */
-  #mobileProjTitleRow::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%);
-    width: 120px;
-    max-width: 70%;
-    height: 2.5px;
-    border-radius: 2px;
-    background: #6C5DF5;
-    pointer-events: none;
   }
 
   #mobileProjName {
@@ -12288,7 +12282,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
   .mobileProjDropdownChev {
     flex: 0 0 auto;
-    color: var(--text-muted);
+    /* A3: full accent purple chevron to match the pill's purple-tinted edge. */
+    color: #6C5DF5;
     font-size: 12px;
     line-height: 1;
     margin-left: 2px;

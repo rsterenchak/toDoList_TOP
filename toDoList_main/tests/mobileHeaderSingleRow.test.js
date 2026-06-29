@@ -13,7 +13,8 @@ function read(relative) {
 // breakpoint the header collapses from a stacked block (large name on one
 // line, count pills on a second line) into ONE row on a deep #15151e bar
 // (Option A): the centered, bold near-white project name with a short
-// purple accent underline beneath it and its ▾ dropdown chevron, plus the
+// name + its ▾ dropdown chevron wrapped in a purple-tinted rounded pill
+// (A3) that is absolute-centered against the full bar width, plus the
 // open/done counts as inline plain text on the right, with the hamburger
 // staying absolute-anchored at the top-right. The styling lives in the
 // "Compressed single-row mobile header" override block; the JS count/label
@@ -76,27 +77,43 @@ describe('Compressed single-row mobile header', () => {
         expect(header).toMatch(/background:\s*#15151e/i);
     });
 
-    it('draws a short purple accent underline centered beneath the name (Option A)', () => {
-        const block = denseBlock();
-        // The title row grows + centers so the name reads as centered, with
-        // room reserved below for the underline.
-        const titleRow = rule(block, '#mobileProjTitleRow');
-        expect(titleRow).toMatch(/justify-content:\s*center/);
-        expect(titleRow).toMatch(/position:\s*relative/);
-        // The underline pseudo-element: ~120px wide, 2.5px tall, accent purple,
-        // centered horizontally, and non-interactive so taps still reach the name.
-        const underline = rule(block, '#mobileProjTitleRow::after');
-        expect(underline).toMatch(/width:\s*120px/);
-        expect(underline).toMatch(/height:\s*2\.5px/);
-        expect(underline).toMatch(/background:\s*#6C5DF5/i);
-        expect(underline).toMatch(/left:\s*50%/);
-        expect(underline).toMatch(/transform:\s*translateX\(-50%\)/);
-        expect(underline).toMatch(/pointer-events:\s*none/);
+    it('wraps the name + chevron in a purple-tinted rounded pill (A3)', () => {
+        const titleRow = rule(denseBlock(), '#mobileProjTitleRow');
+        expect(titleRow).toMatch(/border-radius:\s*14px/);
+        expect(titleRow).toMatch(/background:\s*#1a1826/i);
+        expect(titleRow).toMatch(/border:\s*1px solid rgba\(108,\s*93,\s*245,\s*0?\.45\)/i);
     });
 
-    it('keeps the ▾ project-menu chevron in a muted-gray token (Option A)', () => {
+    it('centers the pill against the full bar width via absolute positioning (A3)', () => {
+        const block = denseBlock();
+        // The header is the containing block for the absolutely-centered pill.
+        const header = rule(block, '#mobileProjHeader');
+        expect(header).toMatch(/position:\s*relative/);
+        // The pill is taken out of flow and centered against the whole bar
+        // (not the leftover flex space) — absolute + left:50% + translateX.
+        const titleRow = rule(block, '#mobileProjTitleRow');
+        expect(titleRow).toMatch(/position:\s*absolute/);
+        expect(titleRow).toMatch(/left:\s*50%/);
+        expect(titleRow).toMatch(/transform:\s*translateX\(-50%\)/);
+        expect(titleRow).toMatch(/width:\s*max-content/);
+        expect(titleRow).toMatch(/max-width:\s*60%/);
+        expect(titleRow).toMatch(/justify-content:\s*center/);
+        // The old flex-grow centering is gone.
+        expect(titleRow).not.toMatch(/flex:\s*1 1 auto/);
+    });
+
+    it('removes the accent-underline pseudo-element and its reserved space (A3)', () => {
+        const block = denseBlock();
+        // The ::after underline is gone entirely.
+        expect(block).not.toMatch(/#mobileProjTitleRow::after/);
+        // And the padding-bottom that reserved room for it is gone from the row.
+        const titleRow = rule(block, '#mobileProjTitleRow');
+        expect(titleRow).not.toMatch(/padding-bottom/);
+    });
+
+    it('paints the ▾ project-menu chevron in full accent purple (A3)', () => {
         const chev = rule(denseBlock(), '.mobileProjDropdownChev');
-        expect(chev).toMatch(/color:\s*var\(--text-muted\)/);
+        expect(chev).toMatch(/color:\s*#6C5DF5/i);
     });
 
     it('pushes the counts to the right edge of the row', () => {
