@@ -12222,6 +12222,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     align-items: center;
     gap: 10px;
     min-height: 40px;
+    /* Option A restyle: deep near-black header bar so the centered title
+       and its accent underline carry the visual weight on mobile. */
+    background: #15151e;
     /* Right padding keeps a gap at the right edge of the row — formerly
        the hamburger's slot, now free space reserved for future header
        chips — so the inline counts don't hug the edge. */
@@ -12232,23 +12235,48 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .mobileProjChev  { display: none; }
 
   #mobileProjTitleRow {
-    flex: 0 1 auto;
+    /* Grow to fill the space left of the counts so the centered name reads
+       as centered within the bar. */
+    flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
     gap: 4px;
-    /* Dense layout reads left-to-right: name + ▾ on the left. The swipe
-       gesture is disabled here since the carousel pattern is gone (the
-       chevron-dropdown pattern owns project switching now). */
+    /* Option A: center the project name, with room beneath it for the
+       accent underline (positioned via the ::after below). */
+    position: relative;
+    justify-content: center;
+    padding-bottom: 9px;
+    /* Dense layout: the swipe gesture is disabled here since the carousel
+       pattern is gone (the chevron-dropdown pattern owns project switching
+       now). */
     touch-action: auto;
+  }
+
+  /* Option A: short purple accent underline centered beneath the project
+     name. Lives on the title row rather than #mobileProjName, whose
+     overflow:hidden ellipsis clip would crop a pseudo-element. Decorative,
+     so pointer-events:none keeps the name/▾ tap targets intact. */
+  #mobileProjTitleRow::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 120px;
+    max-width: 70%;
+    height: 2.5px;
+    border-radius: 2px;
+    background: #6C5DF5;
+    pointer-events: none;
   }
 
   #mobileProjName {
     font-size: 14px;
+    /* Option A: centered, bold, near-white title. */
+    font-weight: 700;
     line-height: 1.3;
-    text-align: left;
-    /* Lighter-purple title token, matching the status/filter chrome.
-       Replaces the per-project accent on the compressed mobile header. */
-    color: #9D93EE;
+    text-align: center;
+    color: #e8e8f0;
     -webkit-line-clamp: 1;
     flex: 0 1 auto;
     min-width: 0;

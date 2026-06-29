@@ -714,9 +714,9 @@
   - Completed: 2026-06-28
   <!-- id: 5b52b6d5-1497-49e6-99c6-72e20aaa2af2 -->
 
-- [ ] **[MEDIUM]** Revamp `#mobileProjHeader` on mobile with minimal accent-underline style
+- [x] **[MEDIUM]** Revamp `#mobileProjHeader` on mobile with minimal accent-underline style
   - Type: feature
   - Description: On mobile viewports only, restyle the existing project header bar (`#mobileProjHeader`) to match the Option A design: project name centered and bold in `#e8e8f0`, a short purple accent underline (`#6C5DF5`, ~120px wide, 2.5px tall, centered beneath the name) directly below the name text, back arrow on the left in purple, and the ⋯ menu button on the right in muted gray. The bar background should use `#15151e`. All existing event listeners, ARIA attributes, and functionality (back navigation, project menu, any name-update logic) must remain completely untouched — this is a CSS/layout-only change. Gate all new styles behind the existing mobile breakpoint in `style.css` so the desktop header is unaffected.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed:
+  - Completed: 2026-06-28
   <!-- id: fa339e90-9270-4010-becc-f40eb3582751 -->
