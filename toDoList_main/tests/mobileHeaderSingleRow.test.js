@@ -61,17 +61,18 @@ describe('Compressed single-row mobile header', () => {
         expect(rule(block, '.mobileProjChev')).toMatch(/display:\s*none/);
     });
 
-    it('renders the title as a prominent 18px centered bold accent-purple #9D93EE title, wrapping to at most two lines', () => {
+    it('renders the title as a one-line 15px centered bold accent-purple #9D93EE title that ellipsizes', () => {
         const name = rule(denseBlock(), '#mobileProjName');
-        expect(name).toMatch(/font-size:\s*18px/);
+        expect(name).toMatch(/font-size:\s*15px/);
         expect(name).toMatch(/font-weight:\s*700/);
         expect(name).toMatch(/text-align:\s*center/);
         expect(name).toMatch(/color:\s*#9D93EE/i);
-        // Two-line wrap (clamp), not the old single-line ellipsis.
-        expect(name).toMatch(/-webkit-line-clamp:\s*2/);
-        expect(name).toMatch(/-webkit-box-orient:\s*vertical/);
+        // One line with ellipsis, not the old two-line clamp — a name too long
+        // for one line truncates rather than wrapping the chevron off the row.
+        expect(name).toMatch(/white-space:\s*nowrap/);
+        expect(name).toMatch(/text-overflow:\s*ellipsis/);
         expect(name).toMatch(/overflow:\s*hidden/);
-        expect(name).not.toMatch(/white-space:\s*nowrap/);
+        expect(name).not.toMatch(/-webkit-line-clamp:\s*2/);
     });
 
     it('paints the bar in the deep near-black #15151e (Option A)', () => {
@@ -79,15 +80,19 @@ describe('Compressed single-row mobile header', () => {
         expect(header).toMatch(/background:\s*#15151e/i);
     });
 
-    it('drops the boxed pill chrome for a clean centered title group', () => {
-        const titleRow = rule(denseBlock(), '#mobileProjTitleRow');
-        // The A3 pill (rounded border + tinted fill + inset padding) is gone —
-        // the title now reads as a confident title, not a chip.
-        expect(titleRow).not.toMatch(/border-radius:\s*14px/);
-        expect(titleRow).not.toMatch(/background:\s*#1a1826/i);
-        expect(titleRow).not.toMatch(/border:\s*1px solid rgba\(108,\s*93,\s*245/i);
-        expect(titleRow).not.toMatch(/padding:\s*1px 4px 1px 12px/);
-        // The name and ▾ stay grouped and centered as one unit.
+    it('wraps the name + ▾ in a subtle centered pill', () => {
+        const block = denseBlock();
+        // The name + ▾ live inside a dedicated wrapper that carries the subtle
+        // pill: a hairline accent-tinted border, a slightly elevated fill, and a
+        // ~10px radius — gentle containment, not the heavy original chip.
+        const pill = rule(block, '#mobileProjPill');
+        expect(pill).toMatch(/display:\s*inline-flex/);
+        expect(pill).toMatch(/align-items:\s*center/);
+        expect(pill).toMatch(/border:\s*0\.5px solid rgba\(157,\s*147,\s*238,\s*0\.30\)/i);
+        expect(pill).toMatch(/background:\s*#1a1b24/i);
+        expect(pill).toMatch(/border-radius:\s*10px/);
+        // The group still centers as one unit against the bar.
+        const titleRow = rule(block, '#mobileProjTitleRow');
         expect(titleRow).toMatch(/align-items:\s*center/);
         expect(titleRow).toMatch(/justify-content:\s*center/);
     });

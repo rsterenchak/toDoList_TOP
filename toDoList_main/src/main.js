@@ -1651,7 +1651,6 @@ function component() {
 
     mobileProjStats.appendChild(mobileProjCounts);
     mobileProjTitleRow.appendChild(mobileProjPrev);
-    mobileProjTitleRow.appendChild(mobileProjName);
 
     // Dense-mobile-header affordance (≤1023px only — hidden on desktop
     // via CSS): the ▾ chevron next to the project name advertises the
@@ -1663,6 +1662,21 @@ function component() {
     mobileProjChevron.className = 'mobileProjDropdownChev';
     mobileProjChevron.setAttribute('aria-hidden', 'true');
     mobileProjChevron.textContent = '▾';
+
+    // Mobile-header title pill: wrap the project name + ▾ chevron in one
+    // container so they center as a single unit and the subtle pill border can
+    // contain them together. Previously the chevron was a loose sibling of the
+    // name in the title row, so a two-line wrap detached it to the row corner;
+    // grouping them locks the ▾ immediately beside the (now one-line) name.
+    // The wrapper is transparent at desktop (display:contents) so the desktop
+    // project pill layout is unchanged. The pill itself has no click handler —
+    // taps on its padding bubble to the #mobileProjHeader handler, which the
+    // name/chevron own-handler guard deliberately does not skip for it, so a
+    // tap anywhere on the pill opens the picker exactly once.
+    const mobileProjPill = document.createElement('div');
+    mobileProjPill.id = 'mobileProjPill';
+    mobileProjPill.appendChild(mobileProjName);
+    mobileProjPill.appendChild(mobileProjChevron);
 
     // Cross-device run indicator: a small purple spinner that trails the
     // project name + ▾ caret on both breakpoints (the pill is the project
@@ -1676,7 +1690,7 @@ function component() {
     mobileProjRunSpinner.className = 'mobileProjRunSpinner';
     mobileProjRunSpinner.setAttribute('aria-hidden', 'true');
 
-    mobileProjTitleRow.appendChild(mobileProjChevron);
+    mobileProjTitleRow.appendChild(mobileProjPill);
     mobileProjTitleRow.appendChild(mobileProjRunSpinner);
     mobileProjTitleRow.appendChild(mobileProjNext);
     mobileProjHeader.appendChild(mobileProjLabel);
