@@ -67,18 +67,28 @@ const MIN_GHOST_SPACE = 160;
 // so no black band trails the content; on a sparse project it expands to
 // exactly the leftover height and shows the centered ghost, as before.
 //
-// Desktop keeps the spacer display:none via the base .viewGhostSpacer rule, and
-// the #mainList.emptyStatePresent override owns the empty-state case — bail in
-// both so this never fights CSS or reflows for nothing.
+// The spacer is painted in two layout ranges (see style.css): the ≤1023px
+// mobile STACK breakpoint, and the wider layout a large-screen TOUCH device
+// falls into (≥1024px with a coarse pointer), where #mainList still renders as
+// a single stacked column and the sidebar is an overlay drawer. Run the sizing
+// in both so a short list never trails a bare #mainList background band there.
+// True desktop (a fine pointer ≥1024px) keeps the spacer display:none via the
+// base .viewGhostSpacer rule, and the #mainList.emptyStatePresent override owns
+// the empty-state case — bail in both so this never fights CSS or reflows for
+// nothing.
 export function sizeMainListGhostSpacer(mainListDiv) {
     if (!mainListDiv) return;
     const spacer = mainListDiv.querySelector('#projectsGhostSpacer');
     if (!spacer) return;
 
-    const mq = typeof window !== 'undefined' && window.matchMedia
-        ? window.matchMedia('(max-width: 1023px)')
+    const hasMatchMedia = typeof window !== 'undefined' && window.matchMedia;
+    const mobileMq = hasMatchMedia ? window.matchMedia('(max-width: 1023px)') : null;
+    const wideTouchMq = hasMatchMedia
+        ? window.matchMedia('(min-width: 1024px) and (pointer: coarse)')
         : null;
-    if (!mq || !mq.matches) return;
+    const spacerPainted = (mobileMq && mobileMq.matches)
+        || (wideTouchMq && wideTouchMq.matches);
+    if (!spacerPainted) return;
 
     if (mainListDiv.classList.contains('emptyStatePresent')) return;
 
@@ -104,10 +114,15 @@ export function sizeMainListGhostSpacer(mainListDiv) {
 // screen. One-shot guarded so repeated render passes don't stack listeners.
 if (typeof window !== 'undefined' && !window.__ghostSpacerResizeBound) {
     window.__ghostSpacerResizeBound = true;
-    window.addEventListener('resize', function () {
+    const reSize = function () {
         const ml = document.getElementById('mainList');
         if (ml) sizeMainListGhostSpacer(ml);
-    });
+    };
+    window.addEventListener('resize', reSize);
+    // orientationchange doesn't always emit a resize on every browser, and a
+    // rotate can swap which layout range (mobile vs. wide-touch) applies, so
+    // re-evaluate explicitly there too.
+    window.addEventListener('orientationchange', reSize);
 }
 
 
@@ -198,6 +213,12 @@ export function updateCompletedSection(mainListDiv) {
         mainListDiv.classList.toggle('completedCollapsed', !nowOpen);
         caret.textContent = nowOpen ? '▼' : '▶';
         header.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+        // Collapsing/expanding the completed section hides or reveals rows via
+        // a class with no DOM mutation or resize, so the content height changes
+        // under the spacer. Re-size it here so the void collapses (or the ghost
+        // re-expands) to match the new list height instead of leaving a stale
+        // band or a stale gap below the content.
+        sizeMainListGhostSpacer(mainListDiv);
     }
 
     header.addEventListener('click', toggle);

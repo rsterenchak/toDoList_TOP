@@ -99,4 +99,54 @@ describe('mobile ghost spacer collapse — sizeMainListGhostSpacer', () => {
         expect(spacer.classList.contains('viewGhostSpacer--collapsed')).toBe(false);
         expect(spacer.style.height).toBe('200px');
     });
+
+    // Wide touch layout: a large-screen touch device clears the 1023px mobile
+    // breakpoint (so '(max-width: 1023px)' is false) but still renders the
+    // stacked single-column layout where the ghost spacer is painted. The sizer
+    // must run there too — otherwise a short list trails a bare #mainList band.
+    describe('wide touch layout (≥1024px, coarse pointer)', () => {
+        // Query-aware stub: the mobile breakpoint does NOT match, but the
+        // wide-touch query DOES — exactly the affected device's state.
+        function setWideTouchViewport() {
+            window.matchMedia = function (query) {
+                const matches = /pointer:\s*coarse/.test(query) && /min-width/.test(query);
+                return { matches, media: query, addListener() {}, removeListener() {} };
+            };
+        }
+
+        it('collapses the spacer to zero when the visible list fills the viewport', () => {
+            setWideTouchViewport();
+            // content = 820 - 0 = 820; remaining = 800 - 820 = -20 (< MIN_GHOST_SPACE).
+            const { spacer } = makeMainList({ clientHeight: 800, scrollHeight: 820, spacerHeight: 0 });
+            spacer.style.height = '200px';
+            sizeMainListGhostSpacer(document.getElementById('mainList'));
+            expect(spacer.classList.contains('viewGhostSpacer--collapsed')).toBe(true);
+            expect(spacer.style.height).toBe('');
+        });
+
+        it('expands the spacer to the leftover height when the list is short', () => {
+            setWideTouchViewport();
+            // content = 300 - 0 = 300; remaining = 800 - 300 = 500 (>= MIN_GHOST_SPACE).
+            const { spacer } = makeMainList({ clientHeight: 800, scrollHeight: 300, spacerHeight: 0 });
+            sizeMainListGhostSpacer(document.getElementById('mainList'));
+            expect(spacer.classList.contains('viewGhostSpacer--collapsed')).toBe(false);
+            expect(spacer.style.height).toBe('500px');
+        });
+    });
+
+    // Guard: the wide-touch path must NOT fire on a fine-pointer desktop, where
+    // neither query matches and the base `display: none` rule still owns the
+    // spacer. Acceptance: true desktop layout stays unchanged.
+    it('stays a no-op on fine-pointer desktop (neither breakpoint matches)', () => {
+        window.matchMedia = function (query) {
+            // Mobile false; the wide-touch query is false because the pointer is
+            // fine, not coarse.
+            return { matches: false, media: query, addListener() {}, removeListener() {} };
+        };
+        const { spacer } = makeMainList({ clientHeight: 800, scrollHeight: 300, spacerHeight: 0 });
+        spacer.style.height = '200px';
+        sizeMainListGhostSpacer(document.getElementById('mainList'));
+        expect(spacer.classList.contains('viewGhostSpacer--collapsed')).toBe(false);
+        expect(spacer.style.height).toBe('200px');
+    });
 });
