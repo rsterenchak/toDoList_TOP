@@ -714,7 +714,7 @@
   - Completed: 2026-06-28
   <!-- id: fa339e90-9270-4010-becc-f40eb3582751 -->
 
-- [ ] **[MEDIUM]** Move the Structure tab's per-row actions into one shared selection toolbar (UI + Types lenses)
+- [x] **[MEDIUM]** Move the Structure tab's per-row actions into one shared selection toolbar (UI + Types lenses) — Completed: 2026-06-29
   - Type: feature
   - Description: On the Structure tab's UI lens (live map + published map) and Types lens, every handle row carries its own inline action panel — Reference in chat, Copy selector/name, Find in code, plus the published/Types View-on-GitHub link — so the same trio repeats under every row and the list reads as noise. Replace the per-row panels with a single shared toolbar pinned above the tree that acts on the currently selected handle: tapping a row selects it (instead of expanding an inline panel) and the toolbar reflects that selection and runs the chosen action against it. This kills the repetition, gives the actions one predictable home, and keeps each row a clean single line. The Code lens (file tree) is untouched — it keeps its per-file Explain / View on GitHub.
   - Behavior:
