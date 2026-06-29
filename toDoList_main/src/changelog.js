@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-29',
         changed: [
-            "On phones, the All/Active/Ideas filter segments and the sort button are now larger and easier to tap.",
             "On desktop, the All/Active/Ideas filter pill now sits flush to the left of the task list instead of centered.",
         ],
         fixed: [
             "On phones, the TODO.md viewer no longer shows a dark bar across the top of its content area.",
             "On phones, a project whose task list fills the screen no longer trails a black band with a faint ghost below the list.",
             "On large-screen touch devices, a project list no longer trails a bare black band below the last item when the list doesn't fill the screen.",
+            "On phones, the chat launcher button no longer covers the TODO.md viewer's collapse and menu controls.",
         ],
     },
 ];
