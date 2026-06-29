@@ -849,3 +849,15 @@
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/taskFilter.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7fc750da-5cbb-45c3-b2ef-55b862f57747 -->
+
+- [ ] **[MEDIUM]** Collapse the trailing black band below `#mainList` content in the wide/sidebar layout the phone falls into
+  - Type: bug
+  - Description: PR #594 collapsed the mobile ghost spacer's trailing black band, but gated the logic behind `window.matchMedia('(max-width: 1023px)')`. Live layout telemetry from the affected device shows `#mainList` rendering in the WIDE layout (112px sidebar offset, 839px content column), where that matchMedia returns false, so `sizeMainListGhostSpacer` bails and never runs — the spacer falls back to the base `.viewGhostSpacer { display: none }` (computed `flex-direction:row; padding:0`, i.e. the desktop rule). The result: `#mainList` is 1031px tall while its last content child (the TODO.md card) ends at ~809px, leaving ~220px of bare `#mainList` grid background painted as a black band below the content. Fix: extend the spacer sizing/collapse so it also covers the breakpoint range where the sidebar is shown but the spacer is hidden (the layout this device uses) — collapse the void to zero there as it already does in mobile portrait. Confirm the exact width range by finding where the sidebar layout begins vs. where the `.viewGhostSpacer` mobile rules end; the gap between those two breakpoints is the uncovered band. Mobile-portrait behavior (already correct) and true desktop (reported fine) must be unchanged.
+  - Acceptance:
+    1. On the device/width that currently shows the band (wide layout, sidebar visible, `matchMedia('(max-width:1023px)')` false per telemetry), a list whose content fills the viewport no longer trails a black band below the last content card — the void collapses to zero.
+    2. Mobile portrait (≤1023px) keeps PR #594's exact behavior: ghost shown on sparse lists, collapsed when the list fills the screen. Existing `mobileGhostSpacerCollapse.test.js` cases still pass.
+    3. True desktop layout is unchanged from today.
+    4. The fix re-evaluates on the same triggers as #594 — project switch, add/remove/complete, filter change, resize/orientation — and on the completed-section toggle if that path doesn't already route through `ensureMainListGhostSpacer`.
+  - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileGhostSpacerCollapse.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 40b7c950-4423-4fdb-8e6c-14e4ff55ee80 -->
