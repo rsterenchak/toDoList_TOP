@@ -748,7 +748,7 @@
   - Completed: 2026-06-28
   <!-- id: 28a6fb50-ef2f-470a-b074-0863f855f8b9 -->
 
-- [ ] **[LOW]** Add left-gutter guide lines to the Structure tab tree (both lenses)
+- [x] **[LOW]** Add left-gutter guide lines to the Structure tab tree (both lenses)
   - Type: feature
   - Description: The Structure tab's tree shows nesting through whitespace indentation alone, so which sections sit inside which containers has to be inferred from indent depth. Add subtle vertical guide lines down the left gutter — one per ancestor level, aligned under each parent's caret — so containment reads at a glance across the Code lens (folder/file nesting), the live UI map (DOM-containment nesting), and the published-map / Types file-group and member nesting. Pure CSS, keyed off the existing `--structure-depth`; no DOM or JS change.
   - Behavior:
@@ -760,5 +760,5 @@
     - Apply only to the row classes above — not to the result/content panels (`.structureExplainResult`, `.structureFindResult`) or the children wrappers, which would otherwise pick up stray lines.
   - Out of scope: horizontal connector ticks into each row (verticals only, to keep it quiet); any DOM or JS change; the shared action toolbar (separate entry); the Code lens's per-file Explain / View-on-GitHub actions.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-28
   <!-- id: 327fd9f0-7090-434f-9bcc-4cf849e68e84 -->
