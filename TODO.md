@@ -861,3 +861,20 @@
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileGhostSpacerCollapse.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 40b7c950-4423-4fdb-8e6c-14e4ff55ee80 -->
+
+- [ ] **[LOW]** Lighten the mobile task-pane canvas to match the frame — kill the black band below short lists
+  - Type: bug
+  - Description: On mobile, the task-pane canvas (`#mainBar` and `#mainList`) is painted `--bg-base`, the darkest token, while everything around it — the app frame (`#outerContainer`), the project header, and the bottom tab bar (`#mobileTabBar`) — is `--bg-elevated`, a notch lighter. So whenever the visible list is short (e.g. Completed collapsed), the empty canvas below the content shows as a bounded dark band between the last card and the lighter tab bar, reading as a stray black bar. Repaint the mobile task-pane canvas to `--bg-elevated` so the content area matches the frame and tab bar and the band disappears into the surface. Rows keep their own `--bg-row` fill and border, so the list still reads as distinct cards. Mobile-only, CSS-only; desktop keeps its darker canvas.
+  - Behavior:
+    1. On mobile, the canvas behind the list — including the empty area below short content — is `--bg-elevated`, matching the frame, the project header, and the bottom tab bar, so there's no darker band between the last card and the tab bar at any list length.
+    2. Task rows, the TODO.md card, and the row drawers keep their own backgrounds and borders, so the list still reads as distinct cards on the slightly lighter canvas.
+    3. Desktop is unchanged — the task pane keeps its `--bg-base` canvas there.
+  - Implementation notes:
+    - Add `#mainBar, #mainList { background: var(--bg-elevated); }` inside the existing mobile media block — the same one that already repaints `#outerContainer` to `var(--bg-elevated)` and styles `#mobileTabBar`. Grep for that `#outerContainer` mobile rule and place the override beside it so it tracks the same breakpoint. The stylesheet is mid-migration between `max-width: 700px` and `max-width: 1023px` mobile blocks (some chrome rules are duplicated across both) — if both blocks carry the `#outerContainer` / `#mobileTabBar` rules, mirror the canvas override into both so the canvas matches the chrome at every mobile width.
+    - Use the `--bg-elevated` token, not a hardcoded hex, so the light theme recolors for free (both `--bg-base` and `--bg-elevated` are themed).
+    - Do NOT touch the base (desktop) `#mainBar` / `#mainList { background: var(--bg-base) }` rules — the override must live only inside the mobile media query so desktop keeps its darker canvas.
+    - No JS changes. Rows (`#toDoChild`, `--bg-row`), the TODO.md card (`.todoMdViewerCard`), and the drawers (`#descSibling`, `#statsSibling`, `#mobileCreateChips`) all set their own backgrounds, so they stay distinct — confirm the Conceive overlay and the Structure tab still paint their own surfaces (they should); this override is the shared task-pane canvas behind Projects / Today / Calendar.
+  - Out of scope: the bottom tab bar's own background (stays `--bg-elevated` — it's the match target, not the thing changing); the companion ghost spacer (separate entry); the desktop canvas; row / card / drawer backgrounds; the project header (separate entry).
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a0bcf422-5498-4dbb-850d-3cb021f86824 -->
