@@ -7,9 +7,9 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         added: [
-            "The Structure tab's tree now remembers which folders and regions you left open, restoring them after a reload.",
             "The Structure tab now shows a navigable Types outline — classes and their members — for C# and .NET repositories, in place of the UI lens.",
             "In the Structure tab's Types outline, \"Find in code\" now lists everywhere a class or member name is defined across the repository instead of reporting nothing.",
+            "A Collapse all / Expand all pill in the Structure tab toolbar folds or unfolds every section at once, on both mobile and desktop.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",

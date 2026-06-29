@@ -3142,6 +3142,41 @@ button.claudeAttachChipLabel { cursor: pointer; }
    results and fold state. */
 .structureFilterHidden { display: none !important; }
 
+/* Thin toolbar strip between the filter and the tree: holds the single
+   collapse/expand-all pill, right-aligned. Hidden (display:none via [hidden])
+   when the active lens has no collapsible sections. Renders identically at both
+   mobile and desktop breakpoints — the structure view is a flex column at every
+   width. */
+.structureToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.structureCollapseAllPill {
+  font-family: inherit;
+  /* ≥16px keeps iOS Safari from auto-zooming on focus of the adjacent filter. */
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.structureCollapseAllPill:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.structureCollapseAllPill:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
 .structureFolderRow,
 .structureFileRow {
   /* --structure-depth drives the left indent: 14px per nesting level. */
