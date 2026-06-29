@@ -763,7 +763,7 @@
   - Completed: 2026-06-28
   <!-- id: 327fd9f0-7090-434f-9bcc-4cf849e68e84 -->
 
-- [ ] **[LOW]** Revamp the mobile project header into a clean prominent centered title (Tasks View)
+- [x] **[LOW]** Revamp the mobile project header into a clean prominent centered title (Tasks View)
   - Type: feature
   - Description: On mobile, the project header that opens the project picker (`#mobileProjHeader` → `#mobileProjName` plus the `#mobileProjChevron` ▾) currently renders as a bordered centered pill with the ▾ drifting out to the pill's right edge, away from the title. Revamp it into a confident, clean centered title: keep it centered but make the name a prominent title with the ▾ sitting immediately beside it as one centered group, and soften the boxed-pill border down to a clean title with at most a hairline divider. Mobile-only; tapping still opens the project drawer — this is styling only, no behavior change.
   - Behavior:
@@ -775,5 +775,5 @@
     - Touch `main.js` only if the centered name+chevron grouping needs a small markup change (e.g. wrapping `#mobileProjName` + `#mobileProjChevron` in one span so they center together). `main.js` is over 25k tokens — grep to the `mobileProjHeader` build site with offset/limit, never read it whole. No new dependencies; reuse the Void tokens.
   - Out of scope: the desktop header (≥1024px) — unchanged; the All/Active/Ideas filter + sort bar (the separate follow-up entry, which also replaces your unshipped `#taskFilterBar` revamp draft); the run spinner and any open/done count pills (placement unchanged); any change to `activateProjectPicker` or the project drawer.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-28
   <!-- id: b32d95a0-1725-46e1-bcac-1c6b57bcf6ae -->
