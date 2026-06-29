@@ -892,3 +892,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4db6aa83-b75b-4b51-8b51-8b94351a6b15 -->
+
+- [ ] **[MEDIUM]** Replace launcher-lift fix with scroll-clearance padding on the task list
+  - Type: bug
+  - Description: PR #598 fixed the TODO.md viewer header overlap by raising `#claudeLauncher` to `bottom: 108px` when the viewer card is present. Replace that approach with bottom padding on `#mainList` instead: when `#mainList #todoMdViewerCard` is in the DOM, add enough `padding-bottom` to `#mainList` that the user can scroll the viewer card's header row (collapse `⌄` and overflow `⋯` buttons) fully above the FAB. Remove the `body:has(#mainList #todoMdViewerCard) #claudeLauncher { bottom: 108px; }` rule added in PR #598 and replace it with `body:has(#mainList #todoMdViewerCard) #mainList { padding-bottom: <value>px; }` inside the same `@media (max-width: 1023px)` block. The padding value should equal the FAB height plus its base `bottom` offset plus a small clearance gap (~8px) — approximately 100px. Update the regression test in `mobileLauncherClearsViewer.test.js` to check for the padding rule instead of the bottom-lift rule.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileLauncherClearsViewer.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 61ca4f44-a4d7-488c-b0ea-7af37057f952 -->
