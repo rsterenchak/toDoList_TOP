@@ -693,7 +693,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 546e66c5-bfd0-49bf-8baf-04cdf8ac34ea -->
 
-- [ ] **[LOW]** Shrink the Structure tab collapse/expand pill by ~25% on mobile
+- [x] **[LOW]** Shrink the Structure tab collapse/expand pill by ~25% on mobile — Completed: 2026-06-28
   - Type: feature
   - Description: The `.structureCollapseAllPill` renders at 104×33px on mobile (font-size 16px, padding 5px 14px). Add a mobile-breakpoint override in `.structureToolbar` / `.structureCollapseAllPill` that reduces font-size to 12px and padding to 3px 10px, bringing the pill to roughly 78×25px — matching the density of other small controls in the structure header. The 16px font-size in the base rule exists solely to prevent iOS Safari auto-zoom on focusable inputs; a button is exempt, so the mobile override can go below 16px. Scope the override inside the existing mobile media query already used for structure-view rules in style.css (check for a `max-width` breakpoint near the `.structureToolbar` block). No JS changes needed.
   - File: `toDoList_main/src/style.css`
