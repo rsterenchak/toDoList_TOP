@@ -802,10 +802,10 @@
   - Completed: 2026-06-28
   <!-- id: 4ac66400-60e7-4608-930e-262b38a26238 -->
 
-- [ ] **[LOW]** Center the all/active/ideas filter sort bar horizontally
+- [x] **[LOW]** Center the all/active/ideas filter sort bar horizontally
 
   - Type: feature
   - Description: The all/active/ideas filter bar (task filter tabs) is currently left-aligned. Update its container to use `display: flex; justify-content: center` (or equivalent) so the bar sits centered in its parent. Change is purely cosmetic — no logic or event wiring is affected.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/taskFilter.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-28
   <!-- id: e9730cb3-a795-44c1-8d8a-1635cd0322ca -->
