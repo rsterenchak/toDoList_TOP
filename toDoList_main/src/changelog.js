@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         changed: [
-            "The Structure tab's UI and Types maps now act on a selected handle through one shared toolbar instead of repeating the Reference, Copy, and Find actions under every row.",
             "On phones, the project name now reads as a bold purple centered title with its dropdown caret beside it, replacing the boxed pill.",
             "On phones, the All/Active/Ideas filter and the sort control now fuse into one rounded segmented bar, with a softer accent-tinted active segment and a compact icon-only sort button.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
             "The Structure tab's Types outline now activates for C# and .NET repositories that previously stayed stuck on an empty UI view.",
+            "On phones, a long project name now stays on one line beside its dropdown caret in a subtle pill instead of wrapping and pushing the caret out of place.",
         ],
     },
 ];

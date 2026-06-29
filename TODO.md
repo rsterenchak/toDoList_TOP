@@ -786,7 +786,7 @@
     2. Segments lose their individual pill borders and become inset buttons within the shared surface; the active segment uses the accent tint + accent-purple text (not a solid `#6C5DF5` block), matching `#descEditorModalStatusControl` so filtering and status-setting share one
   <!-- id: 0462cd29-bcdd-470e-b70a-e5d3da208ddb -->
 
-- [ ] **[MEDIUM]** Tighten the mobile project title to one line with the chevron beside it in a subtle pill
+- [x] **[MEDIUM]** Tighten the mobile project title to one line with the chevron beside it in a subtle pill
   - Type: bug
   - Description: After the header revamp, the mobile project title (`#mobileProjHeader` → `#mobileProjName` + the `#mobileProjChevron` ▾) renders oversized — "Task Management App" wraps to two lines at the mobile width — and because the ▾ is a separate sibling, the wrap pushes it out to the top-right corner where it detaches from the title and crowds the ☰ menu, instead of sitting beside the name. Constrain the title to a single line at a size that fits the mobile viewport, lock the ▾ immediately after the name as one centered group, and give that group the subtle-pill containment chosen for this header. Mobile-only, styling/layout only; tapping still opens the project picker.
   - Behavior:
@@ -799,5 +799,5 @@
     - No new dependencies; reuse the Void tokens. The pill is a content-width centered element, so it must not collide with the absolute `#sidebarToggle` (☰) — keep adequate top padding for the safe-area inset and horizontal room for the menu.
   - Out of scope: the desktop header (≥1024px) — unchanged; the All/Active/Ideas filter + sort bar (separate entry); the run spinner and any count pills; any change to `activateProjectPicker` or the project drawer behavior.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-28
   <!-- id: 4ac66400-60e7-4608-930e-262b38a26238 -->

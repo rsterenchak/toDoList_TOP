@@ -59,7 +59,10 @@ describe('STACK mobile project header', () => {
         expect(main).toMatch(/mobileProjPrev\.id\s*=\s*['"]mobileProjPrev['"]/);
         expect(main).toMatch(/mobileProjNext\.id\s*=\s*['"]mobileProjNext['"]/);
         expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjPrev\)/);
-        expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjName\)/);
+        // The name + ▾ chevron are grouped inside the #mobileProjPill wrapper,
+        // which is the element appended into the title row between the chevrons.
+        expect(main).toMatch(/mobileProjPill\.appendChild\(mobileProjName\)/);
+        expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjPill\)/);
         expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjNext\)/);
     });
 

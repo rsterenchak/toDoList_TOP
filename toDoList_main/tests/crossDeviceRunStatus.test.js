@@ -54,9 +54,9 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
     it('mounts a decorative, non-interactive spinner in the title row by the chevron', () => {
         expect(main).toMatch(/mobileProjRunSpinner\.id\s*=\s*['"]mobileProjRunSpinner['"]/);
         expect(main).toMatch(/mobileProjRunSpinner\.setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
-        // Inserted between the ▾ chevron and the next-project carousel button.
+        // Inserted between the name+▾ pill and the next-project carousel button.
         expect(main).toMatch(
-            /mobileProjTitleRow\.appendChild\(mobileProjChevron\);[\s\S]{0,120}mobileProjTitleRow\.appendChild\(mobileProjRunSpinner\);/
+            /mobileProjTitleRow\.appendChild\(mobileProjPill\);[\s\S]{0,120}mobileProjTitleRow\.appendChild\(mobileProjRunSpinner\);/
         );
     });
 

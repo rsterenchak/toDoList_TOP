@@ -8637,6 +8637,13 @@ body.row-dragging * { cursor: grabbing !important; }
     touch-action: auto;
   }
 
+  /* The mobile title pill is the desktop project pill's own chrome's job
+     (#mobileProjHeader). Make the wrapper transparent to layout here so the
+     name + ▾ lay out as direct title-row children exactly as before. */
+  #mobileProjPill {
+    display: contents;
+  }
+
   #mobileProjName {
     font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 14px;
@@ -12354,16 +12361,13 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     min-height: 0;
     gap: 2px;
     align-items: center;
-    /* Clean centered title: the boxed pill (border / fill / radius / inset
-       padding) is dropped so the project name reads as a confident title
-       rather than a chip. The name + ▾ chevron stay grouped (small gap) and
-       centered together as one unit. */
     /* True bar-centered placement: take the title group out of flow and
        center it against the full header width (its containing block is
        #mobileProjHeader, position:relative) rather than the leftover flex
-       space beside the counts — and center it vertically too so a two-line
-       name stays contained within the bar. width:max-content keeps the group
-       snug around its content; max-width caps it so a long name wraps. */
+       space beside the counts — and center it vertically too so the one-line
+       title pill stays contained within the bar. width:max-content keeps the
+       group snug around its content; max-width caps it so a long name's pill
+       can't run into the inline counts. */
     position: absolute;
     top: 50%;
     left: 50%;
@@ -12377,23 +12381,41 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     touch-action: auto;
   }
 
+  /* Subtle title pill wrapping the name + ▾ as one centered unit. A hairline
+     accent-tinted border, a slightly elevated fill, and a ~10px radius give
+     gentle containment — not the heavy original chip. min-width:0 lets the
+     one-line name ellipsize inside it rather than forcing the pill wider than
+     the title row's max-width. */
+  #mobileProjPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 6px 14px;
+    border: 0.5px solid rgba(157, 147, 238, 0.30);
+    background: #1a1b24;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
   #mobileProjName {
-    font-size: 18px;
+    font-size: 15px;
     /* Prominent centered title in the accent purple, the Void mono chrome
        (font-family inherited from the STACK block above). */
     font-weight: 700;
     line-height: 1.25;
     text-align: center;
     color: #9D93EE;
-    /* Wrap long names to at most two lines so the header height stays
-       bounded; short names render as a single centered line. */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    /* One line that fits the mobile viewport: a name too long for the row
+       ellipsizes rather than wrapping, so the ▾ chevron never gets pushed off
+       the title group. */
+    display: block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    word-break: break-word;
     cursor: pointer;
     transition: opacity 0.12s ease;
   }
