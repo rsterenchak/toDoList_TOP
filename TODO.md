@@ -832,7 +832,7 @@
   - Completed: 2026-06-29
   <!-- id: cfbcb86b-4ac8-49e4-8a55-358adaaf3281 -->
 
-- [ ] **[MEDIUM]** Collapse the mobile ghost spacer when the list fills the screen — kill the trailing black band
+- [x] **[MEDIUM]** Collapse the mobile ghost spacer when the list fills the screen — kill the trailing black band
   - Type: bug
   - Description: On mobile, the companion-ghost spacer (`#projectsGhostSpacer`, the `.viewGhostSpacer` slab appended as the last child of `#mainList`) is forced to a hard `min-height: 200px` because `#mainList` is a grid on mobile and flex-grow can't fill voids. That fixed height is unconditional, so on a project whose task list already fills or overflows the viewport, scrolling to the bottom reveals a ~200px black band trailing the list (and the TODO.md launcher card) with the dimmed ghost's eyes peeking up at the tab bar. Make the spacer conditional: it should only occupy space when the visible list leaves real room beneath it. When the list fills the screen, collapse the spacer to zero so nothing trails the content; when the list is short, size the spacer to exactly the leftover height and show the ghost centered, as today. Mobile-only; the ghost still anchors sparse projects.
   - Behavior:
