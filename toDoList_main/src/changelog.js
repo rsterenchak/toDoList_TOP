@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         changed: [
-            "On phones, the project name now reads as a bold purple centered title with its dropdown caret beside it, replacing the boxed pill.",
             "On phones, the All/Active/Ideas filter and the sort control now fuse into one rounded segmented bar, with a softer accent-tinted active segment and a compact icon-only sort button.",
+            "The All/Active/Ideas filter bar now sits centered above the task list instead of left-aligned.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",
