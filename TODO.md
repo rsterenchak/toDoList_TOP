@@ -740,3 +740,10 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileHeaderSingleRow.test.js`
   - Completed: 2026-06-28
   <!-- id: a49537bb-6ba4-4078-b241-974ae3ce5eba -->
+
+- [ ] **[LOW]** Reduce mobile project name pill height so it breathes within the header bar
+  - Type: feature
+  - Description: In the `≤1023px` breakpoint, change `#mobileProjTitleRow` padding from `2px 4px 2px 12px` to `1px 4px 1px 12px`. This trims 2px of vertical padding from the pill so it sits visibly inset from the top and bottom edges of the `#mobileProjHeader` bar (which stays at its `min-height: 40px`) rather than spanning flush to the bar's height. No other values change — border-radius, background, border, absolute centering, and max-width are all untouched.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 28a6fb50-ef2f-470a-b074-0863f855f8b9 -->
