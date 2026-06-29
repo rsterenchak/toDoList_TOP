@@ -13235,6 +13235,24 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 /* ══════════════════════════════════════════
+   MOBILE CLAUDE LAUNCHER — clear the TODO.md viewer
+   ──────────────────────────────────────────
+   When a repo-backed project is selected its inline TODO.md viewer card mounts
+   at the bottom of the task list. At its base `bottom: 56px` the launcher FAB
+   floats directly over the viewer card's header controls (the collapse `⌄` and
+   overflow `⋯` buttons on the right), covering them so they can't be tapped.
+   While the viewer card is present, lift the launcher above the viewer's
+   header row so both the FAB and the viewer controls stay reachable. The card
+   is in the DOM only when the viewer is open (repo-backed project), so the
+   `:has()` selector tracks that state with no JS. Mobile-only: the launcher is
+   replaced by the persistent desktop chat pane at ≥1024px. */
+@media (max-width: 1023px) {
+  body:has(#mainList #todoMdViewerCard) #claudeLauncher {
+    bottom: 108px;
+  }
+}
+
+/* ══════════════════════════════════════════
    Focus mode — desktop-only ambient space scene
    ──────────────────────────────────────────
    A calm, endlessly-drifting starfield that hides the entire dashboard for
