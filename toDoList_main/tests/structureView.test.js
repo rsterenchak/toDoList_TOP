@@ -1377,3 +1377,130 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         expect(document.querySelector('.structurePublishedBanner')).toBeTruthy();
     });
 });
+
+describe('renderStructureView — collapse / expand all toolbar pill', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    beforeEach(async () => {
+        try { localStorage.removeItem(STRUCTURE_TREE_KEY); } catch (e) { /* ignore */ }
+        state.runningRepo = TOP;
+        // Park selection on a neutral repo so each test's first render for a target
+        // repo is a genuine repo change (clean fold-set hydration), isolating it
+        // from module state a prior test left behind.
+        state.projectRepos['__neutral__'] = 'rsterenchak/__neutral__';
+        mountDom('__neutral__');
+        renderStructureView();
+        await flush();
+    });
+
+    async function renderFor(project) {
+        mountDom(project);
+        renderStructureView();
+        await flush();
+    }
+
+    const pill = () => document.querySelector('.structureCollapseAllPill');
+    const folderChildren = () =>
+        Array.from(document.querySelectorAll('.structureFolderChildren'));
+
+    it('renders the pill in a toolbar strip when the lens has collapsible sections', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js', 'lib/x.js'] };
+        await renderFor('My Project');
+
+        const toolbar = document.querySelector('.structureToolbar');
+        expect(toolbar).toBeTruthy();
+        expect(toolbar.hidden).toBe(false);
+        expect(pill()).toBeTruthy();
+        // Code-lens folders default collapsed, so the next action is to expand.
+        expect(pill().textContent).toBe('Expand all');
+    });
+
+    it('hides the toolbar when the lens has no collapsible sections', async () => {
+        setStructureLens('code');
+        // A flat list of top-level files — no folders, so nothing to fold.
+        state.manifests[TOP] = { ok: true, files: ['README.md', 'LICENSE'] };
+        await renderFor('My Project');
+
+        expect(document.querySelector('.structureFolderRow')).toBeFalsy();
+        expect(document.querySelector('.structureToolbar').hidden).toBe(true);
+    });
+
+    it('Expand all opens every section then relabels; clicking again re-collapses', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = {
+            ok: true,
+            files: ['src/main.js', 'src/util/a.js', 'lib/x.js'],
+        };
+        await renderFor('My Project');
+
+        // src, util (nested), lib → three folder sections, all collapsed by default.
+        let kids = folderChildren();
+        expect(kids.length).toBe(3);
+        expect(kids.every((c) => c.hidden)).toBe(true);
+        expect(pill().textContent).toBe('Expand all');
+
+        pill().click();
+        kids = folderChildren();
+        expect(kids.every((c) => !c.hidden)).toBe(true);
+        // Every section head carries the open chevron state in sync.
+        expect(Array.from(document.querySelectorAll('.structureFolderRow'))
+            .every((h) => h.classList.contains('expanded'))).toBe(true);
+        expect(pill().textContent).toBe('Collapse all');
+
+        pill().click();
+        kids = folderChildren();
+        expect(kids.every((c) => c.hidden)).toBe(true);
+        expect(pill().textContent).toBe('Expand all');
+    });
+
+    it('a per-section chevron toggle keeps the pill label in sync', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js', 'lib/x.js'] };
+        await renderFor('My Project');
+
+        pill().click(); // expand everything
+        expect(pill().textContent).toBe('Collapse all');
+
+        // Collapse one folder by its own chevron — the pill must flip to Expand all.
+        const folder = document.querySelector('.structureFolderRow');
+        folder.click();
+        await tick(); // the capture-phase listener relabels on the next microtask
+        expect(pill().textContent).toBe('Expand all');
+    });
+
+    it('the bulk fold is UI-only and never written to persisted tree state', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js', 'lib/x.js'] };
+        await renderFor('My Project');
+
+        pill().click(); // expand all
+        pill().click(); // collapse all
+        // Per-section toggles persist; the bulk pill must not. Nothing was clicked
+        // individually, so the Code-lens open-folder set stays empty.
+        expect(getStructureTreeState(TOP, 'code') || []).toEqual([]);
+    });
+
+    it('Published UI map: file groups default open, so the pill starts on Collapse all', async () => {
+        setStructureLens('ui');
+        state.runningRepo = TOP; // OTHER is the non-running repo → published map
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+                { selector: '#hud', label: 'HUD', file: 'ui.js', line: 5, files: [{ file: 'ui.js', line: 5 }] },
+            ],
+        };
+        await renderFor('Game');
+
+        expect(pill().textContent).toBe('Collapse all');
+        pill().click();
+        // Both file-group children wraps collapse.
+        expect(folderChildren().every((c) => c.hidden)).toBe(true);
+        expect(pill().textContent).toBe('Expand all');
+    });
+});

@@ -685,7 +685,7 @@
   - Completed:
   <!-- id: 96685b3a-f770-407c-b74d-8eae699be8a5 -->
 
-- [ ] **[MEDIUM]** Add "Collapse all / Expand all" pill to the Structure tab toolbar on both mobile and desktop
+- [x] **[MEDIUM]** Add "Collapse all / Expand all" pill to the Structure tab toolbar on both mobile and desktop — Completed: 2026-06-28
 
   - Type: feature
   - Description: The Structure tab (`#mobileTabStructure` on mobile, the desktop structure panel) has no way to collapse sections — on deep trees the user must scroll extensively. Add a thin toolbar strip below the tab bar containing a pill button that collapses all sections at once; when any section is collapsed the pill label switches to "Expand all" and re-expands everything. Each section header should also gain an individual chevron for per-section toggling that stays in sync with the global pill state. Collapsed state is UI-only (not persisted); it resets when the tab is closed or re-opened. Ensure the toolbar and pill render correctly at both mobile and desktop breakpoints using existing CSS variables.

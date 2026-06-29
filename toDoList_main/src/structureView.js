@@ -261,7 +261,10 @@ function revealFileInCodeLens(file) {
         applyLensToggleState();
     }
     const painted = renderLens(selectedRepo, currentTreeEl);
-    Promise.resolve(painted).then(function () { flashFileRow(file); });
+    Promise.resolve(painted).then(function () {
+        flashFileRow(file);
+        refreshCollapseAllPill();
+    });
 }
 
 // One owner-file row inside a "Find in code" result list: the file name taps
@@ -606,7 +609,9 @@ function renderNode(repo, node, container, depth) {
         if (!expanded) childWrap.hidden = true;
 
         head.addEventListener('click', function () {
-            const nowOpen = !openFolders.has(dir.path);
+            // Direction follows the live DOM (not just the set) so a collapse/
+            // expand-all bulk fold — which drives the DOM directly — stays in sync.
+            const nowOpen = childWrap.hidden;
             if (nowOpen) openFolders.add(dir.path);
             else openFolders.delete(dir.path);
             head.classList.toggle('expanded', nowOpen);
@@ -1168,7 +1173,9 @@ function buildPublishedFileGroup(repo, file, fileRegions) {
     });
 
     head.addEventListener('click', function () {
-        const nowOpen = collapsedPublishedFiles.has(file);
+        // Direction follows the live DOM so a collapse/expand-all bulk fold stays
+        // in sync with this header's own chevron.
+        const nowOpen = childWrap.hidden;
         if (nowOpen) collapsedPublishedFiles.delete(file);
         else collapsedPublishedFiles.add(file);
         head.classList.toggle('expanded', nowOpen);
@@ -1368,7 +1375,9 @@ function buildTypeFileGroup(repo, file, fileTypes) {
     });
 
     head.addEventListener('click', function () {
-        const nowOpen = collapsedTypeFiles.has(file);
+        // Direction follows the live DOM so a collapse/expand-all bulk fold stays
+        // in sync with this header's own chevron.
+        const nowOpen = childWrap.hidden;
         if (nowOpen) collapsedTypeFiles.delete(file);
         else collapsedTypeFiles.add(file);
         head.classList.toggle('expanded', nowOpen);
@@ -1452,16 +1461,17 @@ function renderSecondLens(repo, treeEl) {
 // its second lens (UI or Types) from the manifest via renderSecondLens.
 function renderLens(repo, treeEl) {
     if (lens === 'code') {
-        renderTree(repo, treeEl);
-        return;
+        // Return the paint promise so callers that chain on it (filter re-apply,
+        // find-in-code flash, the collapse-all pill refresh) run after the tree
+        // is actually painted, not on the next microtask.
+        return renderTree(repo, treeEl);
     }
     if (repo === getRunningAppRepo()) {
         // The running app is the web app — always the live UI map, never Types.
         currentLens = 'ui';
         relabelSecondLensSegment();
         applyLensToggleState();
-        renderUiLens(repo, treeEl);
-        return;
+        return renderUiLens(repo, treeEl);
     }
     return renderSecondLens(repo, treeEl);
 }
@@ -1793,6 +1803,125 @@ function buildFilterBox() {
     return box;
 }
 
+// ── COLLAPSE / EXPAND ALL ─────────────────────────────────────────────────────
+// The toolbar's single pill folds or unfolds every section of the active lens at
+// once. A "section" is any collapsible node: a Code-lens folder or a published-
+// map / Types file-group header (the .structureFolderRow + .structureFolderChildren
+// pair, at any depth) and any live-UI region or Types type row that nests children
+// (the .structureRegionRow + .structureRegionChildren pair). The bulk fold is
+// UI-only — it drives the DOM and the per-section chevrons directly and never
+// writes the persisted fold sets, so it resets on the next render (project switch
+// / view re-entry), exactly as the chevrons it keeps in sync do.
+
+let collapseToolbarEl = null;
+let collapseAllBtn = null;
+
+// Every collapsible section in `tree`, as { head, childWrap, kind } where kind is
+// 'folder' (folder / file-group header) or 'region' (live region / type row). A
+// region pair only counts when it actually nests child rows — a leaf region has
+// an empty children wrap and no caret to keep in sync.
+function structureSections(tree) {
+    if (!tree) return [];
+    const out = [];
+    Array.prototype.forEach.call(tree.querySelectorAll('.structureFolderChildren'), function (cw) {
+        const head = cw.previousElementSibling;
+        if (head && head.classList && head.classList.contains('structureFolderRow')) {
+            out.push({ head: head, childWrap: cw, kind: 'folder' });
+        }
+    });
+    Array.prototype.forEach.call(tree.querySelectorAll('.structureRegionChildren'), function (cw) {
+        if (!cw.children.length) return;
+        const head = cw.parentElement
+            ? cw.parentElement.querySelector(':scope > .structureRegionRow')
+            : null;
+        if (head) out.push({ head: head, childWrap: cw, kind: 'region' });
+    });
+    return out;
+}
+
+// Expand (expand=true) or collapse (expand=false) one section's DOM in place,
+// mirroring its own chevron handler so the two never drift: show/hide the
+// children wrap and toggle the head's `expanded` class. Folder heads also carry
+// an aria-expanded that tracks their children; a region row's aria-expanded
+// drives its separate action panel, so it's left untouched (matching the filter's
+// expandContainer). Any stashed filter fold state is updated too so clearing an
+// active filter restores to this choice rather than the pre-bulk one.
+function setSectionExpanded(section, expand) {
+    section.childWrap.hidden = !expand;
+    section.head.classList.toggle('expanded', expand);
+    if (section.kind === 'folder' && section.head.hasAttribute('aria-expanded')) {
+        section.head.setAttribute('aria-expanded', expand ? 'true' : 'false');
+    }
+    if (section.childWrap.dataset.filterPrev !== undefined) {
+        section.childWrap.dataset.filterPrev = expand ? '0' : '1';
+    }
+}
+
+// True when at least one filter-visible section is currently collapsed. Drives
+// both the pill label and the next bulk action; filter-hidden sections are
+// ignored so the pill reflects only the structure the user can actually see.
+function anySectionCollapsed(sections, tree) {
+    return sections.some(function (s) {
+        return isFilterVisible(s.head, tree) && s.childWrap.hidden;
+    });
+}
+
+// Sync the toolbar pill to the live tree: hide the whole strip when the active
+// lens has no collapsible sections (a flat file list, an empty state); otherwise
+// show it and label it for the next action ("Expand all" when something is
+// collapsed, "Collapse all" when everything's open).
+function refreshCollapseAllPill() {
+    if (!collapseToolbarEl || !collapseAllBtn) return;
+    const tree = currentTreeEl;
+    const sections = structureSections(tree);
+    if (!sections.length) {
+        collapseToolbarEl.hidden = true;
+        return;
+    }
+    collapseToolbarEl.hidden = false;
+    const collapsed = anySectionCollapsed(sections, tree);
+    collapseAllBtn.textContent = collapsed ? 'Expand all' : 'Collapse all';
+    collapseAllBtn.setAttribute(
+        'aria-label',
+        collapsed ? 'Expand all sections' : 'Collapse all sections'
+    );
+}
+
+// Bulk-toggle handler: if anything's collapsed, expand everything; otherwise
+// collapse everything. Acts only on filter-visible sections, then relabels.
+function onCollapseAllToggle() {
+    const tree = currentTreeEl;
+    const sections = structureSections(tree);
+    if (!sections.length) return;
+    const expand = anySectionCollapsed(sections, tree);
+    sections.forEach(function (s) {
+        if (!isFilterVisible(s.head, tree)) return;
+        setSectionExpanded(s, expand);
+    });
+    refreshCollapseAllPill();
+}
+
+// Build the thin toolbar strip (below the lens toggle + filter, above the tree)
+// holding the single collapse/expand-all pill. Hidden until a paint reveals it
+// has sections to act on.
+function buildCollapseToolbar() {
+    const bar = document.createElement('div');
+    bar.className = 'structureToolbar';
+    bar.hidden = true;
+    collapseToolbarEl = bar;
+
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'structureCollapseAllPill';
+    pill.textContent = 'Collapse all';
+    pill.setAttribute('aria-label', 'Collapse all sections');
+    pill.addEventListener('click', onCollapseAllToggle);
+    bar.appendChild(pill);
+    collapseAllBtn = pill;
+
+    return bar;
+}
+
 // ── SHELL ───────────────────────────────────────────────────────────────────
 
 // Resolve the currently-selected project's name from the sidebar — the same
@@ -1878,6 +2007,8 @@ export function renderStructureView() {
         // late "Find in code" can't act against a tree that's no longer shown.
         selectedRepo = null;
         currentTreeEl = null;
+        collapseToolbarEl = null;
+        collapseAllBtn = null;
         appendEmptyState(view, 'Select a project to see its structure.');
         return;
     }
@@ -1888,6 +2019,8 @@ export function renderStructureView() {
         // where to link one, the same place the ⚡ inject routing is configured.
         selectedRepo = null;
         currentTreeEl = null;
+        collapseToolbarEl = null;
+        collapseAllBtn = null;
         appendEmptyState(
             view,
             projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.'
@@ -1945,6 +2078,15 @@ export function renderStructureView() {
     // Held module-scoped so "Find in code" can repaint the Code lens into the
     // same container without re-entering renderStructureView.
     currentTreeEl = tree;
+    // Any in-tree click that toggles a section (a folder/region chevron) settles
+    // synchronously during dispatch; a capture-phase listener schedules a
+    // microtask so the collapse/expand-all pill relabels once the DOM has its
+    // final fold state, keeping the pill in sync with per-section toggles. Capture
+    // fires regardless of a handler's stopPropagation, and the tree element
+    // survives lens switches, so one listener covers every repaint.
+    tree.addEventListener('click', function () {
+        Promise.resolve().then(refreshCollapseAllPill);
+    }, true);
 
     // Reset the filter on a fresh render (project switch / view entry); the box
     // is rebuilt empty and the query state cleared so nothing carries over.
@@ -1961,6 +2103,7 @@ export function renderStructureView() {
         // lenses keeps the current filter (requirement: filter follows the lens).
         Promise.resolve(painted).then(function () {
             if (filterInputEl) applyStructureFilter(filterInputEl.value);
+            refreshCollapseAllPill();
         });
     });
     header.appendChild(toggle);
@@ -1972,7 +2115,13 @@ export function renderStructureView() {
     view.appendChild(filterBox);
     updateFilterPlaceholder();
 
+    // Thin toolbar strip between the filter and the tree, carrying the
+    // collapse/expand-all pill. Also a persistent sibling of the tree; it stays
+    // hidden until the first paint confirms the lens has sections.
+    const toolbar = buildCollapseToolbar();
+    view.appendChild(toolbar);
+
     view.appendChild(tree);
 
-    renderLens(selectedRepo, tree);
+    Promise.resolve(renderLens(selectedRepo, tree)).then(refreshCollapseAllPill);
 }
