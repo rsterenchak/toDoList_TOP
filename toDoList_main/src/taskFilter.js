@@ -19,6 +19,7 @@
 // the known fragile inline-style override pattern is avoided.
 
 import { getTaskFilter, setTaskFilter } from './prefs.js';
+import { sizeMainListGhostSpacer } from './emptyState.js';
 
 
 // Known workflow statuses. Mirrors listLogic/todoStatus normalisation so a
@@ -257,6 +258,11 @@ export function applyTaskFilter() {
 
     updateCounts(counts);
     updateFilterEmptyState(mainList, active, total, visible);
+
+    // Filtering hides/shows rows via a class with no DOM mutation or resize, so
+    // re-size the ghost spacer here too — otherwise hiding rows could shrink the
+    // list below the viewport without the spacer re-expanding to fill the void.
+    sizeMainListGhostSpacer(mainList);
 }
 
 

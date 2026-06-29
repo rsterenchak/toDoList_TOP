@@ -7943,21 +7943,28 @@ body.row-dragging * { cursor: grabbing !important; }
      Flex-anchored slab below the Projects content list. Reuses the
      purple ghost from the no-projects welcome screen, dimmed to 50%, so
      short item lists no longer leave a large unanchored void above the
-     bottom tab bar. flex:1 1 auto lets the spacer fill remaining column
-     space; min-height carves out reserved space inside
-     #mainList's grid context where flex-grow doesn't apply. When the list
-     grows enough to fill the viewport, the spacer scrolls naturally below
-     the visible area — no extra logic is needed to hide it. */
+     bottom tab bar. flex:1 1 auto keeps the spacer growing into spare column
+     space; its concrete height is set inline by sizeMainListGhostSpacer to
+     exactly the leftover room beneath the list (and zeroed via the
+     --collapsed modifier below when the list already fills the viewport, so
+     no fixed slab trails the content). */
   .viewGhostSpacer {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     flex: 1 1 auto;
-    min-height: 200px;
     padding: 24px 16px;
     gap: 10px;
     pointer-events: none;
+  }
+
+  /* Collapsed: the visible list already fills (or overflows) the viewport, so
+     the spacer would only trail a black band below the content. Hide it
+     entirely. JS adds this class and clears the inline height in that case;
+     on desktop the base .viewGhostSpacer { display: none } already wins. */
+  .viewGhostSpacer--collapsed {
+    display: none;
   }
 
   /* #mainList is display:grid on mobile (its desktop rule sticks). Span

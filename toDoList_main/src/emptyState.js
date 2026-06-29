@@ -47,6 +47,67 @@ function ensureMainListGhostSpacer(mainListDiv) {
     if (mainListDiv.lastChild !== spacer) {
         mainListDiv.appendChild(spacer);
     }
+    // Every render path that ensures the spacer also re-sizes it, so a project
+    // whose list now fills the screen collapses the spacer instead of trailing
+    // a fixed slab below the content.
+    sizeMainListGhostSpacer(mainListDiv);
+}
+
+
+// Minimum leftover room (px) worth showing a ghost in: the mascot is 112×130
+// and the caption sits below it, so anything under ~160px would clip the ghost.
+// A gap smaller than this collapses to zero rather than trailing a partial slab
+// (and the ghost's eyes) under the content.
+const MIN_GHOST_SPACE = 160;
+
+
+// Mobile-only: size — or collapse — the ghost spacer based on how much vertical
+// room the visible task list leaves beneath it. On a project whose rows already
+// fill or overflow the #mainList scroll viewport, the spacer collapses to zero
+// so no black band trails the content; on a sparse project it expands to
+// exactly the leftover height and shows the centered ghost, as before.
+//
+// Desktop keeps the spacer display:none via the base .viewGhostSpacer rule, and
+// the #mainList.emptyStatePresent override owns the empty-state case — bail in
+// both so this never fights CSS or reflows for nothing.
+export function sizeMainListGhostSpacer(mainListDiv) {
+    if (!mainListDiv) return;
+    const spacer = mainListDiv.querySelector('#projectsGhostSpacer');
+    if (!spacer) return;
+
+    const mq = typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(max-width: 1023px)')
+        : null;
+    if (!mq || !mq.matches) return;
+
+    if (mainListDiv.classList.contains('emptyStatePresent')) return;
+
+    // Exclude the spacer's own height from the measurement so revealing or
+    // collapsing it can't feed back into the next reading and flip-flop:
+    //   content   = everything in the list except the spacer
+    //   remaining = viewport room left beneath that content
+    const content = mainListDiv.scrollHeight - spacer.offsetHeight;
+    const remaining = mainListDiv.clientHeight - content;
+
+    if (remaining >= MIN_GHOST_SPACE) {
+        spacer.classList.remove('viewGhostSpacer--collapsed');
+        spacer.style.height = remaining + 'px';
+    } else {
+        spacer.classList.add('viewGhostSpacer--collapsed');
+        spacer.style.height = '';
+    }
+}
+
+
+// Re-size the current #mainList spacer on viewport resize / orientation change
+// so a rotate or window resize re-evaluates whether the list now fills the
+// screen. One-shot guarded so repeated render passes don't stack listeners.
+if (typeof window !== 'undefined' && !window.__ghostSpacerResizeBound) {
+    window.__ghostSpacerResizeBound = true;
+    window.addEventListener('resize', function () {
+        const ml = document.getElementById('mainList');
+        if (ml) sizeMainListGhostSpacer(ml);
+    });
 }
 
 

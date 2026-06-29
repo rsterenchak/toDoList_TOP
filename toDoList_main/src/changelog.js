@@ -12,13 +12,13 @@ export const changelog = [
         ],
         fixed: [
             "On phones, the TODO.md viewer no longer shows a dark bar across the top of its content area.",
+            "On phones, a project whose task list fills the screen no longer trails a black band with a faint ghost below the list.",
         ],
     },
     {
         version: '1.1',
         date: '2026-06-28',
         fixed: [
-            "The Structure tab's Types outline now activates for C# and .NET repositories that previously stayed stuck on an empty UI view.",
             "On phones, a long project name now stays on one line beside its dropdown caret in a subtle pill instead of wrapping and pushing the caret out of place.",
         ],
     },
