@@ -3529,6 +3529,35 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--text-muted);
 }
 
+/* Left-gutter guide lines — one thin vertical line per ancestor level down the
+   indented Structure rows so containment (folder/file, DOM, or file-group/Types
+   nesting) reads at a glance across every lens. Drawn as a ::before rather than a
+   row background: the rows' :hover { background } shorthand would wipe a
+   background-image, whereas the pseudo-element survives it and also paints above
+   the selected-row tint. Keyed off --structure-depth — a depth-N row paints N
+   1px lines on a 14px period (each aligned under an ancestor's caret); a depth-0
+   row gets zero width and so no guide. */
+.structureFolderRow,
+.structureFileRow,
+.structureRegionRow,
+.structureCollapsedRow {
+  position: relative;
+}
+
+.structureFolderRow::before,
+.structureFileRow::before,
+.structureRegionRow::before,
+.structureCollapsedRow::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--structure-depth, 0) * 14px);
+  pointer-events: none;
+  background-image: repeating-linear-gradient(to right, rgba(157, 147, 238, 0.22) 0 1px, transparent 1px 14px);
+}
+
 /* Find-in-code + UI-index affordances (entry 3): the "Find in code" button, its
    inline owner-file results, the quiet GitHub deep link, and the published-map
    banner. They reuse the entry-1/2 structure vocabulary and Void tokens. */
