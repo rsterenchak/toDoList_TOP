@@ -824,3 +824,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0af33dac-1c8d-4a45-92d8-d809e12b61ee -->
+
+- [ ] **[MEDIUM]** Left-align the selected task filter cycle pill on desktop
+  - Type: bug
+  - Description: The `.taskFilterPill.taskCyclePill.selected` pill is incorrectly centered on desktop after a recent change. It should be left-aligned within its container, consistent with the other filter pills. Fix the centering rule (likely a stray `margin: auto`, `justify-content: center`, or `text-align: center`) in the desktop breakpoint styles targeting this pill or its parent.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/taskFilter.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 832160cb-a610-46e1-8535-9f74199447e8 -->
