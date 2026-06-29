@@ -2793,13 +2793,13 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 9px 6px;
+  gap: 6px;
+  padding: 11px 8px;
   background: var(--bg-elevated);
   border: none;
   border-left: 0.5px solid var(--border-bright);
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -7900,7 +7900,9 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Three tracks at this breakpoint: the mobile project header (row 1), the
      status filter pill row (row 2), and the scrollable list (row 3). */
   #mainBar         { grid-template-rows: auto auto 1fr; }
-  #taskFilterBar   { grid-row: 2; }
+  /* Top/bottom padding bumped (sides stay tight at 4px) so the taller
+     segmented filter + sort controls sit in the bar without clipping. */
+  #taskFilterBar   { grid-row: 2; padding: 10px 4px 8px; }
   #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
   /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so
@@ -9492,7 +9494,7 @@ body.row-dragging * { cursor: grabbing !important; }
      glyph carries its own non-zero font-size, so it stays visible. Tighten the
      trigger's horizontal padding here so it stays compact inside the fused
      segmented bar on narrow phones. */
-  #taskSortBtnMobile { padding: 8px; }
+  #taskSortBtnMobile { padding: 10px; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }
