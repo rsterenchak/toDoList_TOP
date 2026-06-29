@@ -885,3 +885,10 @@
   - File: `src/PlayPage.jsx`, `src/MainSection.jsx`, `src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b403bacf-9b51-4dc3-b9bf-03fec46411a8 -->
+
+- [ ] **[HIGH]** Raise the Claude launcher above the TODO viewer collapse button on mobile
+  - Type: bug
+  - Description: On mobile the `#claudeLauncher` FAB is `position: fixed; bottom: 56px; right: 18px` (36×36px, y≈588). When the TODO.md viewer is open, the `.todoMdViewerCollapseBtn` renders at `x:344, y:598, 28×28px` — directly beneath the launcher, making it unreachable. Fix by adding a CSS rule that increases `#claudeLauncher`'s `bottom` offset when the viewer is open, enough to clear the viewer's header row (~100px should suffice). Grep `todoMdViewer.js` and `main.js` for the class or attribute added to the body or viewer container when the viewer is active, then scope the rule to that state (e.g. `body.todoViewerOpen #claudeLauncher { bottom: 100px; }`). No JS or logic changes needed if the open-state class already exists; if not, ensure the viewer open/close toggle sets a body class alongside the existing visibility change.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4db6aa83-b75b-4b51-8b51-8b94351a6b15 -->
