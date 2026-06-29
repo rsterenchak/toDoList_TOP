@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-29',
+        changed: [
+            "On phones, the All/Active/Ideas filter segments and the sort button are now larger and easier to tap.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-28',
         changed: [
-            "On phones, the All/Active/Ideas filter and the sort control now fuse into one rounded segmented bar, with a softer accent-tinted active segment and a compact icon-only sort button.",
             "The All/Active/Ideas filter bar now sits centered above the task list instead of left-aligned.",
         ],
         fixed: [
