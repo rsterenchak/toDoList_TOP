@@ -8224,6 +8224,17 @@ body.row-dragging * { cursor: grabbing !important; }
     color: var(--text-primary);
     white-space: nowrap;
   }
+  /* Inside the full-screen mobile sheet the card's header carried the inline
+     card's `background: var(--bg-elevated)` — a band darker than the card's
+     `--bg-surface` interior. Stacked directly under the sheet's own header it
+     read as a rogue black bar across the card's content area. Clear it so the
+     header fills with the card surface and the interior reads uniform; the
+     header's `border-bottom` still separates the tab row from the body. Scoped
+     to the sheet so the desktop inline card's elevated header is untouched. */
+  #todoMdViewerMobileSheet .todoMdViewerHeader {
+    background: transparent;
+  }
+
   /* In the full-screen mobile sheet the header action row used to cram the
      synced caption, run-state control, and Sync onto one line beside the
      tabs. Stack it instead by making the tabs and the meta row each span the
