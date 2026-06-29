@@ -733,3 +733,10 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5ec905bc-709a-4464-8f9f-39945585c835 -->
+
+- [ ] **[MEDIUM]** Restyle mobile project header name pill: A3 without underline, with true bar-centered placement
+  - Type: feature
+  - Description: Update `#mobileProjTitleRow` inside the `≤1023px` breakpoint to render as a pill (border-radius: 14px, background: `#1a1826`, border: 1px solid `rgba(108,93,245,0.45)`) wrapping the project name and chevron. Remove the `#mobileProjTitleRow::after` accent-underline pseudo-element entirely and remove the `padding-bottom: 9px` that reserved space for it. Set `.mobileProjDropdownChev` color to `#6C5DF5` (full accent purple). Fix centering by making `#mobileProjHeader` `position: relative` and switching `#mobileProjTitleRow` from flex-grow to `position: absolute; left: 50%; transform: translateX(-50%); width: max-content; max-width: 60%` so the pill centers against the full bar width rather than the leftover flex space. Update `mobileHeaderSingleRow.test.js` to assert the new pill styles, the removed underline, and the absolute-center positioning.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileHeaderSingleRow.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a49537bb-6ba4-4078-b241-974ae3ce5eba -->
