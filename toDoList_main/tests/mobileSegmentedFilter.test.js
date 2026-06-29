@@ -59,24 +59,28 @@ describe('mobile segmented filter — breakpoint gating', () => {
         expect(pill).toMatch(/display:\s*none/);
     });
 
-    it('fills the active segment with a solid purple pill, matching the filter pill family', () => {
+    it('tints the active segment with the accent tint + accent text, not a solid purple block', () => {
         const sel = baseRule('.taskFilterSeg.selected');
         expect(sel).not.toBeNull();
-        // The active tab reads as a filled purple pill (same #6C5DF5 fill the
-        // desktop cycle pill's selected state uses).
-        expect(sel.toLowerCase()).toMatch(/background:\s*#6c5df5/);
-        expect(sel.toLowerCase()).toMatch(/color:\s*#fff/);
+        // The active segment was softened from its solid #6C5DF5 fill to the
+        // accent tint + accent-purple text, matching #descEditorModalStatusControl
+        // so filtering and status-setting share one segmented-control language.
+        expect(sel.toLowerCase()).toMatch(/background:\s*var\(--accent-dim\)/);
+        expect(sel.toLowerCase()).toMatch(/color:\s*var\(--accent-text\)/);
+        expect(sel.toLowerCase()).not.toMatch(/#6c5df5/);
     });
 });
 
-describe('mobile Sort trigger — current-sort label', () => {
-    it('greens the current-sort label when a sort is active, dims it for None', () => {
-        // The active-sort dot was retired in favour of a painted current-sort
-        // label beneath "⇅ Sort": dimmed by default, green when a sort is active.
-        const label = baseRule('.taskSortBtnMobileLabel');
-        expect(label).not.toBeNull();
-        expect(label).toMatch(/color:\s*var\(--text-muted\)/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileLabel/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileLabel/);
+describe('mobile Sort trigger — active-sort accent dot', () => {
+    it('shows an accent dot on the icon-only trigger when a sort other than None is active', () => {
+        // The two-line current-sort label was retired in favour of an icon-only
+        // ⇅ glyph carrying a small accent dot — hidden by default, revealed when
+        // the button's data-sort is an active sort.
+        const dot = baseRule('.taskSortBtnMobileDot');
+        expect(dot).not.toBeNull();
+        expect(dot).toMatch(/display:\s*none/);
+        expect(dot.toLowerCase()).toMatch(/background:\s*var\(--accent-text\)/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileDot/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileDot/);
     });
 });

@@ -778,7 +778,7 @@
   - Completed: 2026-06-28
   <!-- id: b32d95a0-1725-46e1-bcac-1c6b57bcf6ae -->
 
-- [ ] **[MEDIUM]** Fuse the mobile filter segments and sort into one segmented control bar (Tasks View)
+- [x] **[MEDIUM]** Fuse the mobile filter segments and sort into one segmented control bar (Tasks View) — Completed: 2026-06-28
   - Type: feature
   - Description: On mobile, the All·Active·Ideas segmented filter and the sort trigger render as two separate controls — filled segments on the left and a chunky two-line "SORT / STATUS" outlined button on the right — that don't share a visual language. Fuse them into a single rounded segmented bar that reads as one control: the three segments, a thin vertical divider, then an icon-only sort button. Soften the active segment from its solid fill to the accent tint (matching the status selector's segmented control), and collapse the sort trigger to a sort glyph carrying a small accent dot when a sort is active. Mobile-only; the sort button still opens the existing `#taskSortMenu`. Desktop is untouched.
   - Behavior:

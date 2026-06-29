@@ -2012,13 +2012,13 @@ function component() {
     // desktop #taskSortBtn keeps its own inline label. An aria-label (kept
     // current by syncTaskSortButton) names the control + active sort.
 
-    // Vertical divider between the status-filter tabs and the Sort trigger.
-    // Mobile-only (CSS-gated); margin-left:auto on it pushes the divider + Sort
-    // cluster to the right end of the row, opposite the tabs.
+    // Thin vertical divider between the three filter segments and the Sort
+    // trigger. Mobile-only (CSS-gated). It lives INSIDE the segmented surface
+    // (see the mount below), so the segments, the divider, and the icon-only
+    // Sort button read as one fused rounded segmented bar.
     const mobileSortDivider = document.createElement('span');
     mobileSortDivider.className = 'taskFilterBarDivider';
     mobileSortDivider.setAttribute('aria-hidden', 'true');
-    taskFilterBar.appendChild(mobileSortDivider);
 
     const mobileSortBtn = document.createElement('button');
     mobileSortBtn.type = 'button';
@@ -2026,27 +2026,31 @@ function component() {
     mobileSortBtn.className = 'bulkDescBtn taskSortBtn taskSortBtnMobile';
     mobileSortBtn.setAttribute('aria-haspopup', 'dialog');
     mobileSortBtn.setAttribute('aria-expanded', 'false');
-    // Top line: the ⇅ glyph + "Sort". The glyph carries its own font-size so it
-    // survives the ≤420px .bulkDescBtn font-size:0 label collapse.
-    const mobileSortBtnTop = document.createElement('span');
-    mobileSortBtnTop.className = 'taskSortBtnMobileTop';
+    // Icon-only trigger: a single ⇅ sort glyph (no "Sort" word, no current-sort
+    // label line). The glyph carries its own font-size so it survives the
+    // ≤420px .bulkDescBtn font-size:0 label collapse. A small accent dot
+    // overlays the glyph when a sort other than None is active — CSS-gated on
+    // the button's data-sort, replacing the retired two-line label.
     const mobileSortBtnGlyph = document.createElement('span');
     mobileSortBtnGlyph.className = 'taskSortBtnMobileGlyph';
     mobileSortBtnGlyph.textContent = '⇅';
     mobileSortBtnGlyph.setAttribute('aria-hidden', 'true');
-    const mobileSortBtnWord = document.createElement('span');
-    mobileSortBtnWord.className = 'taskSortBtnMobileWord';
-    mobileSortBtnWord.textContent = 'Sort';
-    mobileSortBtnTop.appendChild(mobileSortBtnGlyph);
-    mobileSortBtnTop.appendChild(mobileSortBtnWord);
-    // Second line: the current sort label — green when a sort is active, dimmed
-    // "None" otherwise (data-sort on the button drives the colour).
-    const mobileSortBtnLabel = document.createElement('span');
-    mobileSortBtnLabel.className = 'taskSortBtnMobileLabel';
-    mobileSortBtnLabel.setAttribute('aria-hidden', 'true');
-    mobileSortBtn.appendChild(mobileSortBtnTop);
-    mobileSortBtn.appendChild(mobileSortBtnLabel);
-    taskFilterBar.appendChild(mobileSortBtn);
+    const mobileSortBtnDot = document.createElement('span');
+    mobileSortBtnDot.className = 'taskSortBtnMobileDot';
+    mobileSortBtnDot.setAttribute('aria-hidden', 'true');
+    mobileSortBtn.appendChild(mobileSortBtnGlyph);
+    mobileSortBtn.appendChild(mobileSortBtnDot);
+
+    // Mount the divider + Sort trigger INSIDE the mobile segmented control so
+    // the filter segments and the sort button share one rounded surface. The
+    // segmented surface is display:none on desktop, so both the mobile divider
+    // and the mobile trigger stay hidden there (desktop keeps its own Sort
+    // button in the #bulkDescActions overlay). Fall back to the bar itself if
+    // the segmented control isn't present, so the trigger is never orphaned.
+    const segmentedSurface = taskFilterBar.querySelector('.taskFilterSegmented');
+    const mobileSortHost = segmentedSurface || taskFilterBar;
+    mobileSortHost.appendChild(mobileSortDivider);
+    mobileSortHost.appendChild(mobileSortBtn);
 
     function taskSortButtonText(key) {
         if (key === 'due') return 'Sort: Due';
@@ -2054,23 +2058,15 @@ function component() {
         return 'Sort';
     }
 
-    // Short current-sort label painted on the mobile trigger's second line and
-    // used as the bottom-sheet chip labels' source of truth.
-    function taskSortLabelText(key) {
-        if (key === 'due') return 'Due date';
-        if (key === 'status') return 'Status';
-        return 'None';
-    }
-
     function syncTaskSortButton() {
         const key = getTaskSort();
         const text = taskSortButtonText(key);
         taskSortBtnLabel.textContent = text;
         taskSortBtn.setAttribute('data-sort', key);
-        // Mobile trigger: drive its data-sort (CSS tints the current-sort label),
-        // paint that label, and keep its aria-label current.
+        // Mobile trigger: drive its data-sort (CSS shows the active-sort accent
+        // dot on the icon-only glyph) and keep its aria-label current — the
+        // glyph itself is aria-hidden, so the label names the control + sort.
         mobileSortBtn.setAttribute('data-sort', key);
-        mobileSortBtnLabel.textContent = taskSortLabelText(key);
         mobileSortBtn.setAttribute('aria-label', text);
     }
     syncTaskSortButton();
