@@ -810,9 +810,9 @@
   - Completed: 2026-06-28
   <!-- id: e9730cb3-a795-44c1-8d8a-1635cd0322ca -->
 
-- [ ] **[LOW]** Increase mobile filter segmented bar tap targets by ~20%
+- [x] **[LOW]** Increase mobile filter segmented bar tap targets by ~20%
   - Type: feature
   - Description: The `.taskFilterSeg` buttons are currently 35px tall (padding `9px 6px`, font-size `11px`) and `#taskSortBtnMobile` is 35px tall (padding `8px`). Increase all three segments and the sort button by ~20%: set `.taskFilterSeg` padding to `11px 8px`, font-size to `13px`, and gap to `6px`; set `#taskSortBtnMobile` padding to `10px`; bump `#taskFilterBar` padding to `10px 4px 8px` so the bar accommodates the taller control without clipping. Changes are mobile-only (inside the existing `max-width` media block that defines `.taskFilterSegmented` and `.taskFilterSeg`). No logic or event changes.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-29
   <!-- id: 5be1e1a8-8de0-4b22-a841-024a036febac -->
