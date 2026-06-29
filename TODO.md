@@ -816,3 +816,11 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-29
   <!-- id: 5be1e1a8-8de0-4b22-a841-024a036febac -->
+
+- [ ] **[LOW]** Left-align the task filter cycle pill on desktop in the main bar
+
+  - Type: feature
+  - Description: The task filter pill inside `#mainBar` is currently centered or right-aligned on desktop. It should be left-aligned so it sits flush with the left edge of the main content area. Update the flex/layout rules for the filter pill container in `style.css` targeting desktop breakpoints so the pill aligns left rather than centered.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/taskFilter.js`
+  - Completed:
+  <!-- id: 979c350b-bf49-43a1-bc63-7aa07e07680b -->
