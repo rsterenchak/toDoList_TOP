@@ -825,9 +825,9 @@
   - Completed: 2026-06-29
   <!-- id: 979c350b-bf49-43a1-bc63-7aa07e07680b -->
 
-- [ ] **[MEDIUM]** Remove rogue black bar background from `#todoMdViewerCard` mobile view
+- [x] **[MEDIUM]** Remove rogue black bar background from `#todoMdViewerCard` mobile view
   - Type: bug
   - Description: In the mobile view of the TODO.md Viewer card, a black bar spans the width of the card's content area, likely a leftover `background` or `background-color` property on an inner element or section divider. The expected behavior is that the card's interior background is uniform, matching the app's dark theme variables with no black stripe. Locate and remove or correct the errant color value in the mobile-specific styles for `#todoMdViewerCard` and its child elements.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
-  - Completed:
+  - Completed: 2026-06-29
   <!-- id: cfbcb86b-4ac8-49e4-8a55-358adaaf3281 -->
