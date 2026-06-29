@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-06-28',
+        added: [
+            "The Structure tab tree now shows subtle guide lines down the left gutter linking each nested row to its parent.",
+        ],
         changed: [
-            "On phones, the project name and dropdown chevron now sit in a centered purple-tinted pill on the project header.",
             "On phones, the project name pill now sits slightly inset from the top and bottom edges of the project header bar.",
             "The Structure tab's UI and Types maps now act on a selected handle through one shared toolbar instead of repeating the Reference, Copy, and Find actions under every row.",
         ],
