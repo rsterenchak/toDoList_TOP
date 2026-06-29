@@ -12246,7 +12246,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     border-radius: 14px;
     background: #1a1826;
     border: 1px solid rgba(108, 93, 245, 0.45);
-    padding: 2px 4px 2px 12px;
+    padding: 1px 4px 1px 12px;
     /* True bar-centered placement: take the pill out of flow and center it
        against the full header width (its containing block is
        #mobileProjHeader, position:relative) rather than the leftover flex

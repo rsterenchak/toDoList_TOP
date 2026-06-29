@@ -7,9 +7,9 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-28',
         changed: [
-            "On phones, the task filter bar pairs filled purple status tabs with a Sort button that opens a bottom sheet to sort by None, Due date, or Status.",
             "On phones, the project header now centers the project name with a short purple accent underline on a deeper near-black bar.",
             "On phones, the project name and dropdown chevron now sit in a centered purple-tinted pill on the project header.",
+            "On phones, the project name pill now sits slightly inset from the top and bottom edges of the project header bar.",
         ],
         fixed: [
             "Structure tab file rows now show a \"View on GitHub\" link for repositories whose source sits at the repository root, such as C# projects.",

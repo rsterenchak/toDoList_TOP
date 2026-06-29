@@ -82,6 +82,9 @@ describe('Compressed single-row mobile header', () => {
         expect(titleRow).toMatch(/border-radius:\s*14px/);
         expect(titleRow).toMatch(/background:\s*#1a1826/i);
         expect(titleRow).toMatch(/border:\s*1px solid rgba\(108,\s*93,\s*245,\s*0?\.45\)/i);
+        // The pill sits inset from the top/bottom edges of the header bar — its
+        // vertical padding is trimmed to 1px so it breathes within the 40px bar.
+        expect(titleRow).toMatch(/padding:\s*1px 4px 1px 12px/);
     });
 
     it('centers the pill against the full bar width via absolute positioning (A3)', () => {
