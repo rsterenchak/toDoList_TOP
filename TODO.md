@@ -747,3 +747,18 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-28
   <!-- id: 28a6fb50-ef2f-470a-b074-0863f855f8b9 -->
+
+- [ ] **[LOW]** Add left-gutter guide lines to the Structure tab tree (both lenses)
+  - Type: feature
+  - Description: The Structure tab's tree shows nesting through whitespace indentation alone, so which sections sit inside which containers has to be inferred from indent depth. Add subtle vertical guide lines down the left gutter — one per ancestor level, aligned under each parent's caret — so containment reads at a glance across the Code lens (folder/file nesting), the live UI map (DOM-containment nesting), and the published-map / Types file-group and member nesting. Pure CSS, keyed off the existing `--structure-depth`; no DOM or JS change.
+  - Behavior:
+    1. Each indented row shows a thin vertical line in its left gutter for every ancestor level, the rightmost line sitting directly under its immediate parent's caret, so a child visibly hangs off its parent's column. Top-level (depth-0) rows show no guide.
+    2. Lines are quiet — the caret purple at low alpha — and continuous down a run of sibling rows, reading like a file-tree's connectors without horizontal ticks.
+  - Implementation notes:
+    - Draw the guides with a `::before` on the indented row classes — `.structureFolderRow`, `.structureFileRow`, `.structureRegionRow`, and `.structureCollapsedRow` — never on the row's `background`: the rows' `:hover { background: var(--bg-hover) }` shorthand would wipe a background-image, whereas a pseudo-element survives it and also paints above the selected-row tint from the toolbar entry.
+    - Give those rows `position: relative`, and the `::before`: `left: 10px` (≈ the caret-column center, since padding-left is `4px + depth*14px` and the caret is ~6px wide), `top: 0; bottom: 0`, `width: calc(var(--structure-depth, 0) * 14px)`, `pointer-events: none`, and `background-image: repeating-linear-gradient(to right, rgba(157,147,238,0.22) 0 1px, transparent 1px 14px)`. The 14px period matches the indent step, so the strip paints exactly one 1px line per ancestor level (lines at gutter-x 10, 24, … aligning under each ancestor caret); a depth-0 row gets zero width and so no guide. The `rgba(157,147,238,0.22)` matches the `#9D93EE` carets.
+    - Apply only to the row classes above — not to the result/content panels (`.structureExplainResult`, `.structureFindResult`) or the children wrappers, which would otherwise pick up stray lines.
+  - Out of scope: horizontal connector ticks into each row (verticals only, to keep it quiet); any DOM or JS change; the shared action toolbar (separate entry); the Code lens's per-file Explain / View-on-GitHub actions.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 327fd9f0-7090-434f-9bcc-4cf849e68e84 -->
