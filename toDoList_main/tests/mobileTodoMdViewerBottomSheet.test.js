@@ -291,21 +291,21 @@ describe('Mobile inline TODO.md viewer launcher', () => {
         expect(inMobileMediaBlock(idx)).toBe(true);
     });
 
-    it('constrains the inline card to a single launcher row that fits the 54px grid track', () => {
+    it('constrains the inline card to a single launcher row that fits the 50px grid track', () => {
         // The inline card must not exceed its floored grid track, so it can
         // never clip to a sliver: cap its height and let overflow hide any
         // spillover. Scoped to the inline card via the child combinator so
         // the bottom-sheet copy (flex:1 1 auto / min-height:0) is untouched.
         const block = css.match(/#mainList\s*>\s*#todoMdViewerCard\s*\{([^}]*)\}/);
         expect(block).toBeTruthy();
-        expect(block[1]).toMatch(/max-height:\s*54px/);
+        expect(block[1]).toMatch(/max-height:\s*50px/);
         expect(block[1]).toMatch(/overflow:\s*hidden/);
         const idx = css.indexOf(block[0]);
         expect(inMobileMediaBlock(idx)).toBe(true);
     });
 
     it('sizes the launcher to the todo-row rhythm so it fits the floor without the track growing', () => {
-        // max-height alone left the card's outer margin + content over the 54px
+        // max-height alone left the card's outer margin + content over the 50px
         // floor; with no free space in an overflowing grid the track stayed
         // pinned and overflow:hidden shaved the baseline. The fix mirrors the
         // todo-row box: an explicit height of var(--item-h) plus a small
@@ -314,7 +314,7 @@ describe('Mobile inline TODO.md viewer launcher', () => {
         const block = css.match(/#mainList\s*>\s*#todoMdViewerCard\s*\{([^}]*)\}/);
         expect(block).toBeTruthy();
         expect(block[1]).toMatch(/height:\s*var\(--item-h\)/);
-        expect(block[1]).toMatch(/margin:\s*5px\s+8px/);
+        expect(block[1]).toMatch(/margin:\s*3px\s+10px/);
         expect(block[1]).toMatch(/justify-content:\s*center/);
         const header = css.match(/#mainList\s*>\s*#todoMdViewerCard\s+\.todoMdViewerHeader\s*\{([^}]*)\}/);
         expect(header).toBeTruthy();

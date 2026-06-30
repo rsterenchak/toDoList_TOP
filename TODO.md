@@ -900,7 +900,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 61ca4f44-a4d7-488c-b0ea-7af37057f952 -->
 
-- [ ] **[MEDIUM]** Tighten mobile Tasks View density — shrink row gaps, unify insets to 10px, and trim filter/divider/header chrome
+- [x] **[MEDIUM]** Tighten mobile Tasks View density — shrink row gaps, unify insets to 10px, and trim filter/divider/header chrome — Completed: 2026-06-30
   - Type: feature
   - Description: The mobile (≤1023px) Tasks View reads looser than intended: row-to-row gaps are wide, the filter chips and COMPLETED divider carry extra vertical padding, and the task rows sit at a 14px horizontal inset while the COMPLETED divider and the inline TODO.md launcher sit at 8px — so their left/right edges don't line up. Tighten the vertical rhythm and pull every list element to a shared 10px inset so the rows, divider, and launcher card align on one edge. Keep the task-row height at 44px (touch target) — this is purely a gap/inset/chrome pass, not a row-height change. All edits are confined to the ≤1023px breakpoint; desktop (≥1024px) rhythm must be untouched.
   - Behavior:

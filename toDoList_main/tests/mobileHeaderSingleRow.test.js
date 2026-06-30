@@ -52,7 +52,7 @@ describe('Compressed single-row mobile header', () => {
         expect(header).toMatch(/align-items:\s*center/);
         // Right padding reserves space for the absolute hamburger so the
         // inline counts never paint underneath it.
-        expect(header).toMatch(/padding:[^;]*\)\s+60px\s+8px\s+16px/);
+        expect(header).toMatch(/padding:[^;]*\)\s+60px\s+6px\s+16px/);
     });
 
     it('hides the PROJECT N OF M label and the ‹ › carousel chevrons', () => {
