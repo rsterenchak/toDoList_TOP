@@ -915,3 +915,20 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5086d5cb-1ac1-4cbd-a678-8d093aff7f80 -->
+
+- [ ] **[LOW]** Make the mobile chat launcher a flat rounded square instead of a glowing circle
+  - Type: feature
+  - Description: The mobile chat launcher FAB (`#claudeLauncher`, the purple ✦ button bottom-right) renders as a circle with a soft purple halo, but the intended design is a flat purple rounded square (squircle) with no glow — just the existing dark drop shadow. Change the button's shape from a circle to a rounded square and drop the three purple glow rings so the face reads flat, matching the target. Size, position, the ✦ glyph, and its centering nudge all stay exactly as-is — this is purely a corner-radius + halo change.
+  - Behavior:
+    1. The launcher is a rounded square (clearly not circular) rather than a full circle.
+    2. The purple halo is gone — the face is a flat #6C5DF5 fill with only the subtle dark drop shadow beneath it.
+    3. Footprint (36px), fixed position (`right: 18px; bottom: 56px`), the ✦ glyph size, and its optical-center transform are unchanged.
+  - Implementation notes:
+    - Base rule `#claudeLauncher` (the `position: fixed` rule near the top of the file, currently `width: 36px; height: 36px; border-radius: 50%;`): change `border-radius: 50%;` → `border-radius: 10px;`. Leave `width`/`height`/`position`/`right`/`bottom`/`border`/`background` untouched.
+    - Mobile rule `#claudeLauncher` inside the `MOBILE CLAUDE LAUNCHER GLOW` block (the `@media (max-width: 1023px)` rule that currently sets `background: #6C5DF5`, the glyph `transform: translateY(-15px)`, and a four-layer `box-shadow`): remove the three purple glow layers from `box-shadow`, keeping only the dark drop shadow — i.e. replace the whole declaration with `box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);` (which equals the base rule's shadow, so deleting the override entirely works too). Keep `background`, `color`, `border-color`, `font-size: 21.6px`, and the `transform`.
+    - Trim the now-stale `MOBILE CLAUDE LAUNCHER GLOW` comment block above that rule so it no longer describes a halo that's been removed (the rule's remaining job is just the purple face + flat shadow).
+    - The `:focus` ring (`box-shadow: 0 0 0 2px var(--accent-dim), ...`) and hover state need no edits — a `box-shadow` ring follows the new `border-radius`, so the focus ring becomes a rounded-square ring automatically.
+  - Out of scope: button size (stays 36px — no size bump in this entry), position, the ✦ glyph font-size and `translateY` centering, the `#mainList` 100px bottom-clearance padding (unchanged since the FAB height is unchanged), the desktop chat pane (`#claudeLauncher` is `display: none` ≥1024px), and the legacy `#helpFab` rules (leave them alone).
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 278957c1-1b0d-4e19-a960-fef9e3e38a50 -->
