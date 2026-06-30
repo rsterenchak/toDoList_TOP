@@ -862,7 +862,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 40b7c950-4423-4fdb-8e6c-14e4ff55ee80 -->
 
-- [ ] **[LOW]** Lighten the mobile task-pane canvas to match the frame — kill the black band below short lists
+- [x] **[LOW]** Lighten the mobile task-pane canvas to match the frame — kill the black band below short lists
   - Type: bug
   - Description: On mobile, the task-pane canvas (`#mainBar` and `#mainList`) is painted `--bg-base`, the darkest token, while everything around it — the app frame (`#outerContainer`), the project header, and the bottom tab bar (`#mobileTabBar`) — is `--bg-elevated`, a notch lighter. So whenever the visible list is short (e.g. Completed collapsed), the empty canvas below the content shows as a bounded dark band between the last card and the lighter tab bar, reading as a stray black bar. Repaint the mobile task-pane canvas to `--bg-elevated` so the content area matches the frame and tab bar and the band disappears into the surface. Rows keep their own `--bg-row` fill and border, so the list still reads as distinct cards. Mobile-only, CSS-only; desktop keeps its darker canvas.
   - Behavior:
@@ -876,7 +876,7 @@
     - No JS changes. Rows (`#toDoChild`, `--bg-row`), the TODO.md card (`.todoMdViewerCard`), and the drawers (`#descSibling`, `#statsSibling`, `#mobileCreateChips`) all set their own backgrounds, so they stay distinct — confirm the Conceive overlay and the Structure tab still paint their own surfaces (they should); this override is the shared task-pane canvas behind Projects / Today / Calendar.
   - Out of scope: the bottom tab bar's own background (stays `--bg-elevated` — it's the match target, not the thing changing); the companion ghost spacer (separate entry); the desktop canvas; row / card / drawer backgrounds; the project header (separate entry).
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-29
   <!-- id: a0bcf422-5498-4dbb-850d-3cb021f86824 -->
 
 - [ ] **[MEDIUM]** Add music toggle button and volume slider to PlayPage nav on desktop
