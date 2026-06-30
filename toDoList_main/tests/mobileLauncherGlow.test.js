@@ -78,13 +78,12 @@ describe('mobile Claude launcher glow', () => {
         expect(css.includes('#' + id)).toBe(true);
     });
 
-    it('puts a Void-accent glow on the launcher inside the mobile media query', () => {
+    it('carries the Void accent and a drop shadow on the launcher inside the mobile media query', () => {
         const id = renderedLauncherId();
         const body = ruleBody(mobileMediaText(), id);
         expect(body, `expected a #${id} rule inside @media (max-width: 1023px)`).toBeTruthy();
-        // The glow must be a real visible layer: a box-shadow (or radial glow)
-        // carrying the Void accent #6C5DF5 → rgb(108, 93, 245). This is the
-        // assertion that would have failed against the washed-out no-op.
+        // The flat FAB keeps its dark drop shadow (box-shadow) and the Void accent
+        // #6C5DF5 → rgb(108, 93, 245) as the face fill.
         expect(/box-shadow|radial-gradient/.test(body)).toBe(true);
         expect(/108\s*,\s*93\s*,\s*245|#6C5DF5/i.test(body)).toBe(true);
     });
@@ -104,15 +103,28 @@ describe('mobile Claude launcher glow', () => {
         expect(/textContent\s*=\s*['"]✦['"]/.test(fn[1])).toBe(true);
     });
 
-    it('builds the glow as a three-layer Void-accent halo', () => {
+    it('drops the purple halo so the face reads flat (no accent glow layers)', () => {
+        // The launcher is now a flat purple rounded square — only the subtle dark
+        // drop shadow, no purple bloom. The box-shadow must carry ZERO Void-accent
+        // (rgba(108,93,245,…)) layers; the only shadow is the dark drop shadow.
         const id = renderedLauncherId();
         const body = ruleBody(mobileMediaText(), id) || '';
         const shadow = body.match(/box-shadow\s*:([^;]*)/i);
         expect(shadow, `expected a box-shadow on #${id}`).toBeTruthy();
-        // Three radial glow layers carry the Void accent in rgba form; a final
-        // dark drop shadow may follow. Count the accent-colored layers.
         const accentLayers = (shadow[1].match(/rgba\(\s*108\s*,\s*93\s*,\s*245/gi) || []).length;
-        expect(accentLayers).toBeGreaterThanOrEqual(3);
+        expect(accentLayers).toBe(0);
+    });
+
+    it('shapes the launcher as a rounded square, not a circle', () => {
+        // The base #claudeLauncher rule (the first occurrence in the file, before
+        // any media query) sets the corner radius. The squircle uses a finite px
+        // radius, never the 50% that draws a circle.
+        const id = renderedLauncherId();
+        const base = ruleBody(css, id) || '';
+        const radius = base.match(/border-radius\s*:\s*([^;]+);/i);
+        expect(radius, `expected a border-radius on the base #${id} rule`).toBeTruthy();
+        expect(/%/.test(radius[1])).toBe(false);
+        expect(/\d+px/.test(radius[1])).toBe(true);
     });
 
     it('keeps the launcher in its fixed position (no layout-shifting glow)', () => {

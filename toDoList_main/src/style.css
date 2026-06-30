@@ -1618,7 +1618,7 @@ body {
   z-index: 90;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--bg-elevated);
   color: var(--text-secondary);
   border: 0.5px solid var(--border-bright);
@@ -13216,44 +13216,31 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 #injectToast.injectToast--error { border-color: var(--text-danger);  color: var(--text-danger);  }
 
 /* ══════════════════════════════════════════
-   MOBILE CLAUDE LAUNCHER GLOW
+   MOBILE CLAUDE LAUNCHER FACE
    ──────────────────────────────────────────
-   A soft purple halo so the chat launcher reads as a primary FAB instead of a
-   subtle dot. The halo is drawn with box-shadow rings rather than a ::before
-   pseudo-element: #claudeLauncher is `position: fixed` (+ z-index), so it forms
-   its own stacking context — a negative-z pseudo-element painted just above the
-   button's opaque fill at ~15–18% opacity, washed out and effectively invisible
-   on real devices. A box-shadow draws OUTSIDE the button's fill, so the halo
-   always shows, never gets covered by the button, and never intercepts taps.
-   The launcher reads as a purple FAB: a #6C5DF5 face with a white sparkle (✦)
-   glyph, wrapped in three concentric Void accent (#6C5DF5 → rgb 108, 93, 245)
-   glow layers — a tight inner ring, a mid bloom, and a soft outer wash — that
-   sit ahead of the launcher's existing dark drop shadow, which stays as the
-   final layer. Position is untouched; box-shadow adds
-   no layout. Mobile-only: the launcher is replaced by the persistent desktop
-   chat pane at ≥1024px, so the desktop layout is unaffected. Defined here, after
-   the main mobile-overrides block, so the launcher's base rules stay grouped
-   near the top while the glow stays gated to the breakpoint and wins the cascade
-   over the base #claudeLauncher box-shadow by source order. */
+   The mobile chat launcher reads as a flat purple FAB: a #6C5DF5 face with a
+   white sparkle (✦) glyph, sitting on only the launcher's existing dark drop
+   shadow — no purple halo. Position and size are untouched; the rule adds no
+   layout. Mobile-only: the launcher is replaced by the persistent desktop chat
+   pane at ≥1024px, so the desktop layout is unaffected. Defined here, after the
+   main mobile-overrides block, so the launcher's base rules stay grouped near
+   the top while the purple face stays gated to the breakpoint and wins the
+   cascade over the base #claudeLauncher rule by source order. */
 @media (max-width: 1023px) {
   #claudeLauncher {
     background: #6C5DF5;
     color: #ffffff;
     border-color: #6C5DF5;
     /* Sparkle glyph bumped 20% over the base 18px (→ 21.6px) so the ✦ reads
-       bolder on the mobile FAB. Button size/position/glow are unchanged. */
+       bolder on the mobile FAB. Button size/position are unchanged. */
     font-size: 21.6px;
     /* The button already flex-centers its content (see the base rule), which
        centers the glyph's line box. But the ✦ ink sits high within its em box,
        so on the FAB it reads visually below center. Nudge the glyph up by a
        fixed 15px to land it on the optical center. Transform only — no layout
-       shift, so the button's size, fixed position, and glow are untouched. */
+       shift, so the button's size and fixed position are untouched. */
     transform: translateY(-15px);
-    box-shadow:
-      0 0 8px 4px rgba(108, 93, 245, 0.35),
-      0 0 18px 8px rgba(108, 93, 245, 0.18),
-      0 0 30px 14px rgba(108, 93, 245, 0.10),
-      0 4px 12px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   }
 }
 
