@@ -899,3 +899,26 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/mobileLauncherClearsViewer.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 61ca4f44-a4d7-488c-b0ea-7af37057f952 -->
+
+- [ ] **[MEDIUM]** Tighten mobile Tasks View density — shrink row gaps, unify insets to 10px, and trim filter/divider/header chrome
+  - Type: feature
+  - Description: The mobile (≤1023px) Tasks View reads looser than intended: row-to-row gaps are wide, the filter chips and COMPLETED divider carry extra vertical padding, and the task rows sit at a 14px horizontal inset while the COMPLETED divider and the inline TODO.md launcher sit at 8px — so their left/right edges don't line up. Tighten the vertical rhythm and pull every list element to a shared 10px inset so the rows, divider, and launcher card align on one edge. Keep the task-row height at 44px (touch target) — this is purely a gap/inset/chrome pass, not a row-height change. All edits are confined to the ≤1023px breakpoint; desktop (≥1024px) rhythm must be untouched.
+  - Behavior:
+    1. Task rows sit closer together (vertical gap 4px → 3px) and the row grid track tightens in lockstep so the pitch actually drops (~54px → ~50px), compounding down the list.
+    2. Task rows, the COMPLETED divider, and the inline TODO.md launcher all share a 10px left/right inset, so their edges line up (currently rows 14px vs divider/launcher 8px).
+    3. The segmented filter (All / Active / Ideas) is shorter (less vertical padding) and the filter bar band is tighter.
+    4. The COMPLETED divider is shorter and tighter.
+    5. The mobile project header's top/bottom breathing room is eased slightly (status-bar / notch clearance preserved).
+  - Implementation notes:
+    - `#toDoChild` (in the existing `@media (max-width: 1023px)` rule, currently `margin: 4px calc(14px + env(safe-area-inset-right, 0px)) 4px calc(14px + env(safe-area-inset-left, 0px));`): change the vertical 4px → 3px and the horizontal base 14px → 10px, i.e. `margin: 3px calc(10px + env(safe-area-inset-right, 0px)) 3px calc(10px + env(safe-area-inset-left, 0px));`. Leave `padding: 0 8px 0 4px;` unchanged.
+    - `#mainList`: the base rule sets `grid-auto-rows: minmax(54px, auto)` and drives the row pitch — do NOT edit the base (it governs desktop). Instead ADD a `≤1023px`-scoped override: `#mainList { grid-auto-rows: minmax(50px, auto); }`. (44px row + 3px + 3px margin = 50px, so the floored track matches the row exactly.)
+    - `.taskFilterSeg` (base rule, currently `padding: 11px 8px;`): change to `padding: 8px 10px;`. This control only renders on mobile (the segmented control is `display:none` above 1023px; desktop uses `.taskCyclePill`), so editing it in place is safe — but scope it to the breakpoint if you prefer.
+    - `#taskFilterBar` (in the `≤1023px` block, currently `padding: 10px 4px 8px;`): change to `padding: 7px 4px 6px;`. Do not touch the desktop `#taskFilterBar` rule.
+    - `#completedHeader`: the base rule (currently `margin: 6px 8px 4px; padding: 8px 12px; height: 32px;`) applies to desktop too — do NOT edit it. ADD a `≤1023px`-scoped override: `#completedHeader { margin: 4px 10px 2px; padding: 6px 12px; height: 28px; }`.
+    - `#mainList > #todoMdViewerCard` (in the `≤1023px` block, currently `height: var(--item-h); max-height: 54px; margin: 5px 8px;`): change to `margin: 3px 10px;` and `max-height: 50px;`. Keep `height: var(--item-h);`. INVARIANT: the inline launcher is sized to exactly fill the floored grid track, so `height (44px) + 3px + 3px = 50px` must equal both the new `#mainList` mobile `grid-auto-rows` floor (50px) and this `max-height` (50px) — keep all three in lockstep or the launcher will clip or leave a gap.
+    - `#mobileProjHeader` (phone-width rule, currently `padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 8px) 60px 8px 16px;`): change the top additive 8px → 4px and the bottom 8px → 6px, i.e. `padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px) 60px 6px 16px;`. Leave the `max(env(safe-area-inset-top), 12px)` term, the 60px right (hamburger reserve), and 16px left intact.
+    - Borders and radii are unchanged (rows stay `border-radius: 6px` with the hairline `0.5px` border); the tighter look comes from spacing/alignment, not stroke changes.
+  - Out of scope: task-row height (`--item-h` stays 44px — do not reduce); the `#mobileProjName` font (already SpaceMono); all desktop (≥1024px) layout; landscape side-notch inset parity for the divider/launcher (portrait edges align at 10px; the divider/launcher use plain 10px without `env(safe-area-inset-left/right)`, matching current behavior).
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5086d5cb-1ac1-4cbd-a678-8d093aff7f80 -->
