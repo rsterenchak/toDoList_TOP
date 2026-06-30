@@ -12554,6 +12554,19 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     background: var(--bg-elevated);
   }
 
+  /* Match the task-pane canvas to the surrounding frame on mobile. The base
+     desktop rule paints #mainBar / #mainList with --bg-base, which on a phone
+     left the empty area below a short list reading as a darker band between
+     the last card and the lighter #mobileTabBar (and project header). Repaint
+     to --bg-elevated here so the canvas merges into the frame at every list
+     length. Rows, the TODO.md card, and the drawers keep their own
+     backgrounds, so cards still read as distinct. Desktop, scoped above this
+     media block, keeps its darker canvas. */
+  #mainBar,
+  #mainList {
+    background: var(--bg-elevated);
+  }
+
   /* The persistent tab bar floats above the bottom of the main panel.
      Reserve scroll padding equal to its full height — including the
      home-indicator safe-area inset the bar now absorbs — so the last
