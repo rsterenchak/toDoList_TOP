@@ -879,13 +879,6 @@
   - Completed: 2026-06-29
   <!-- id: a0bcf422-5498-4dbb-850d-3cb021f86824 -->
 
-- [ ] **[MEDIUM]** Add music toggle button and volume slider to PlayPage nav on desktop
-  - Type: feature
-  - Description: Despite a prior implementation attempt, the music toggle button (`.musicBlock2`) and volume slider (`<input type="range">`) are absent from `PlayPage`'s `.navSection` on desktop — both exist on `HomePage` but were not successfully added to `PlayPage`. Add the toggle button reusing the `.musicBlock*` yellow-glow pattern and wire it to the existing `setAudioPause`/`setAudioPlay` props. Add the native range slider with the same `.volumeSliderWrapper` structure already present on `HomePage`, bound to the `isVolume`/`onVolumeChange` props passed from `MainSection`. Both controls must be hidden at ≤640px (matching the existing `display: none` breakpoint in `style.css`) and must have `style={popUpStyle}` applied so they show a disabled cursor during the end-game popup. Verify that `MainSection` is already passing `activeCurrentAudio`, `setAudioPause`, `setAudioPlay`, `isVolume`, and `onVolumeChange` to `PlayPage`; if any prop is missing, add it.
-  - File: `src/PlayPage.jsx`, `src/MainSection.jsx`, `src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: b403bacf-9b51-4dc3-b9bf-03fec46411a8 -->
-
 - [x] **[HIGH]** Raise the Claude launcher above the TODO viewer collapse button on mobile
   - Type: bug
   - Description: On mobile the `#claudeLauncher` FAB is `position: fixed; bottom: 56px; right: 18px` (36×36px, y≈588). When the TODO.md viewer is open, the `.todoMdViewerCollapseBtn` renders at `x:344, y:598, 28×28px` — directly beneath the launcher, making it unreachable. Fix by adding a CSS rule that increases `#claudeLauncher`'s `bottom` offset when the viewer is open, enough to clear the viewer's header row (~100px should suffice). Grep `todoMdViewer.js` and `main.js` for the class or attribute added to the body or viewer container when the viewer is active, then scope the rule to that state (e.g. `body.todoViewerOpen #claudeLauncher { bottom: 100px; }`). No JS or logic changes needed if the open-state class already exists; if not, ensure the viewer open/close toggle sets a body class alongside the existing visibility change.
