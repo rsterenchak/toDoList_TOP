@@ -2797,7 +2797,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 11px 8px;
+  padding: 8px 10px;
   background: var(--bg-elevated);
   border: none;
   border-left: 0.5px solid var(--border-bright);
@@ -7283,7 +7283,7 @@ body.row-dragging * { cursor: grabbing !important; }
      applying the inset as margin (rather than padding on #mainList) keeps
      each row's swipe panes spanning the full row width. */
   #toDoChild {
-    margin: 4px calc(14px + env(safe-area-inset-right, 0px)) 4px calc(14px + env(safe-area-inset-left, 0px));
+    margin: 3px calc(10px + env(safe-area-inset-right, 0px)) 3px calc(10px + env(safe-area-inset-left, 0px));
     padding: 0 8px 0 4px;
   }
 
@@ -7905,7 +7905,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainBar         { grid-template-rows: auto auto 1fr; }
   /* Top/bottom padding bumped (sides stay tight at 4px) so the taller
      segmented filter + sort controls sit in the bar without clipping. */
-  #taskFilterBar   { grid-row: 2; padding: 10px 4px 8px; justify-content: center; }
+  #taskFilterBar   { grid-row: 2; padding: 7px 4px 6px; justify-content: center; }
   #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
   /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so
@@ -8181,11 +8181,22 @@ body.row-dragging * { cursor: grabbing !important; }
     max-height: 240px;
   }
 
+  /* Mobile density pass: tighten the row pitch so list rows sit closer.
+     The base rule sets grid-auto-rows: minmax(54px, auto) for desktop; floor
+     the mobile track to 50px instead (44px row + 3px + 3px margin = 50px), so
+     the pitch drops in lockstep with the tighter #toDoChild margins above. */
+  #mainList { grid-auto-rows: minmax(50px, auto); }
+
+  /* COMPLETED divider: shorter and tighter on mobile, pulled to the shared
+     10px inset so its edges line up with the rows and the inline launcher.
+     The base #completedHeader rule governs desktop and is left untouched. */
+  #completedHeader { margin: 4px 10px 2px; padding: 6px 12px; height: 28px; }
+
   /* Inline-card launcher mode. The inline #mainList card is redundant on
      mobile — tapping it opens the full-screen bottom sheet that holds the
      real (full) view. Rendered inline at full height it fought #mainList's
      grid: a long list exhausts the grid's free space, every auto-row pins to
-     the 54px floor, and the card (overflow:hidden) clips to a sliver and
+     the 50px floor, and the card (overflow:hidden) clips to a sliver and
      overlaps the ghost spacer below. So collapse the inline card to a single
      launcher row that fits the floored track — a "TODO.md" label on the left,
      Run backlog + Sync on the right — and cap its height so it can never
@@ -8194,18 +8205,17 @@ body.row-dragging * { cursor: grabbing !important; }
      keeps rendering full height with its body.
 
      Sizing follow-up: capping with max-height alone wasn't enough. The card's
-     12px/16px outer margin plus its content pushed card-height-plus-margin past
-     the 54px floor, and with no free space left in the overflowing grid the
-     track stayed pinned at 54px while overflow:hidden shaved the content's
-     baseline. Mirror the todo-row rhythm instead — an explicit
-     `height: var(--item-h)` (44px) with `margin: 5px 8px` totals exactly the
-     54px track, so the launcher fits the floor without ever depending on the
-     track growing. */
+     outer margin plus its content pushed card-height-plus-margin past the
+     floor, and with no free space left in the overflowing grid the track
+     stayed pinned while overflow:hidden shaved the content's baseline. Mirror
+     the todo-row rhythm instead — an explicit `height: var(--item-h)` (44px)
+     with `margin: 3px 10px` totals exactly the 50px track, so the launcher
+     fits the floor without ever depending on the track growing. */
   #mainList > #todoMdViewerCard {
     min-height: 0;
     height: var(--item-h);
-    max-height: 54px;
-    margin: 5px 8px;
+    max-height: 50px;
+    margin: 3px 10px;
     overflow: hidden;
     justify-content: center;
   }
@@ -12437,7 +12447,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     /* Right padding keeps a gap at the right edge of the row — formerly
        the hamburger's slot, now free space reserved for future header
        chips — so the inline counts don't hug the edge. */
-    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 8px) 60px 8px 16px;
+    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px) 60px 6px 16px;
   }
 
   #mobileProjLabel { display: none; }

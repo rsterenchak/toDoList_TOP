@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-06-30',
+        changed: [
+            "On phones, the Tasks View is more compact — tighter row spacing and the rows, completed divider, and TODO.md launcher now line up along a shared edge.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-29',
         fixed: [
-            "On phones, a project whose task list fills the screen no longer trails a black band with a faint ghost below the list.",
             "On large-screen touch devices, a project list no longer trails a bare black band below the last item when the list doesn't fill the screen.",
             "On phones, the chat launcher button no longer covers the TODO.md viewer's collapse and menu controls.",
             "On phones, the TODO.md viewer's collapse and menu controls can now be scrolled clear of the chat launcher button.",
