@@ -916,7 +916,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5086d5cb-1ac1-4cbd-a678-8d093aff7f80 -->
 
-- [ ] **[LOW]** Make the mobile chat launcher a flat rounded square instead of a glowing circle
+- [x] **[LOW]** Make the mobile chat launcher a flat rounded square instead of a glowing circle
   - Type: feature
   - Description: The mobile chat launcher FAB (`#claudeLauncher`, the purple ✦ button bottom-right) renders as a circle with a soft purple halo, but the intended design is a flat purple rounded square (squircle) with no glow — just the existing dark drop shadow. Change the button's shape from a circle to a rounded square and drop the three purple glow rings so the face reads flat, matching the target. Size, position, the ✦ glyph, and its centering nudge all stay exactly as-is — this is purely a corner-radius + halo change.
   - Behavior:
@@ -930,5 +930,5 @@
     - The `:focus` ring (`box-shadow: 0 0 0 2px var(--accent-dim), ...`) and hover state need no edits — a `box-shadow` ring follows the new `border-radius`, so the focus ring becomes a rounded-square ring automatically.
   - Out of scope: button size (stays 36px — no size bump in this entry), position, the ✦ glyph font-size and `translateY` centering, the `#mainList` 100px bottom-clearance padding (unchanged since the FAB height is unchanged), the desktop chat pane (`#claudeLauncher` is `display: none` ≥1024px), and the legacy `#helpFab` rules (leave them alone).
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-06-30
   <!-- id: 278957c1-1b0d-4e19-a960-fef9e3e38a50 -->
