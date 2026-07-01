@@ -6897,6 +6897,16 @@ body.row-dragging * { cursor: grabbing !important; }
   max-height: none;
 }
 
+/* On mobile, hide the ⋯ overflow control while the viewer card is collapsed
+   so the collapsed strip carries only the synced label, Run backlog, Sync,
+   and the expand chevron. Expanding removes `collapsed`, so the wrap returns
+   to its default display and Show/Clear completed stay reachable there. */
+@media (max-width: 700px) {
+  .todoMdViewerCard.collapsed .todoMdViewerOverflowWrap {
+    display: none;
+  }
+}
+
 .todoMdViewerNote,
 .todoMdViewerError {
   font-size: 12px;
