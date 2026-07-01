@@ -964,7 +964,7 @@
   - Completed: 2026-07-01
   <!-- id: 81897700-8ed1-4987-b5d2-e37f74672401 -->
 
-- [ ] **[LOW]** Fix mobile chat launcher grazing the TODO.md viewer bar — widen list bottom clearance
+- [x] **[LOW]** Fix mobile chat launcher grazing the TODO.md viewer bar — widen list bottom clearance
   - Type: bug
   - Behavior:
     1. On mobile (≤1023px), when a repo-backed project's TODO.md viewer card is mounted, the fixed purple chat launcher (`#claudeLauncher`) still overlaps the bottom edge of the collapsed TODO.md bar even at full scroll, grazing its right-side controls.
@@ -975,7 +975,7 @@
     - Out-of-scope note for the agent: the `transform: translateY(-15px)` glyph-centering hack on the mobile launcher moves the whole FAB, not just the `✦`; a cleaner long-term fix recenters the glyph via line-height/padding and drops the transform — do not attempt that here, just widen the clearance.
   - Out of scope: desktop chat pane (≥1024px) and launcher visibility rules; the launcher's purple fill / glyph styling; the TODO.md card's own layout.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-01
   <!-- id: fadd8cc1-afc4-46d9-9ee9-af7c2ec5b095 -->
 
 - [ ] **[LOW]** Restyle the active filter toggle from a solid-purple slab to the app's accent-tint selected treatment
