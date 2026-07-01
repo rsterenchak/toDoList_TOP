@@ -13284,14 +13284,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    Rather than lifting the FAB (which only relocates the overlap to whatever sits
    below), give the task list extra bottom padding while the card is present so
    the user can scroll the viewer's header row fully clear of the FAB. The
-   padding equals the FAB height (36px) plus its base `bottom` offset (56px)
-   plus an ~8px clearance gap → 100px. The card is in the DOM only when the
-   viewer is open (repo-backed project), so the `:has()` selector tracks that
-   state with no JS. Mobile-only: the launcher is replaced by the persistent
-   desktop chat pane at ≥1024px. */
+   mobile launcher also carries `transform: translateY(-15px)`, lifting the
+   whole button so its real top edge sits at its base `bottom` offset (56px)
+   plus the 15px lift plus the FAB height (36px) → 107px from the viewport
+   bottom; the padding is that top edge plus a ~17px clearance gap → 124px. The
+   card is in the DOM only when the viewer is open (repo-backed project), so the
+   `:has()` selector tracks that state with no JS. Mobile-only: the launcher is
+   replaced by the persistent desktop chat pane at ≥1024px. */
 @media (max-width: 1023px) {
   body:has(#mainList #todoMdViewerCard) #mainList {
-    padding-bottom: 100px;
+    padding-bottom: 124px;
   }
 }
 
