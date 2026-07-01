@@ -2731,7 +2731,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: #15151e;
   color: var(--text-muted);
   border: 0.5px solid #2a2a3a;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 5px 11px;
   line-height: 1;
   cursor: pointer;
@@ -2750,9 +2750,9 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 .taskFilterPill.selected {
-  background: rgba(108, 93, 245, 0.16);
+  background: var(--bg-elevated);
   color: var(--accent-text);
-  border-color: #6C5DF5;
+  border-color: var(--border-bright);
 }
 
 .taskFilterCount {
