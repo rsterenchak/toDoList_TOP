@@ -4279,7 +4279,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 #taskSortBtn[data-sort="due"],
 #taskSortBtn[data-sort="status"] {
   color: var(--accent-text);
-  border-color: var(--accent-text);
+  border-color: var(--border-bright);
 }
 
 /* Thin vertical divider between the three filter segments and the Sort trigger.

@@ -1008,7 +1008,7 @@
   - Completed: 2026-07-01
   <!-- id: 9c596ad3-2014-4016-9c62-6b8dfda55b18 -->
 
-- [ ] **[LOW]** Neutralize the desktop Sort button's active-state border to match the active filter toggle
+- [x] **[LOW]** Neutralize the desktop Sort button's active-state border to match the active filter toggle
   - Type: feature
   - Behavior:
     1. When a sort is applied on desktop (`#taskSortBtn` with `data-sort="due"` or `data-sort="status"`), the button currently takes a purple accent border — a leftover from when the filter toggle also had a purple border. Now that the toggle is neutralized (dark face, `--border-bright` edge, accent-text label), drop the Sort button's purple border so its active state reads as the toggle's sibling: neutral border, accent-text label carries the "active" signal.
@@ -1017,5 +1017,5 @@
     - Leave the base `.bulkDescBtn` untouched — do NOT change its `--radius-sm` corner, `--bg-surface` face, or the shared hover rule (`.bulkDescBtn:hover { border-color: var(--accent-text) }` stays; hover accent is fine). Scoping to `#taskSortBtn[data-sort=...]` keeps the "Expand all" button (same class, same overlay) consistent with the Sort button.
   - Out of scope: the mobile Sort trigger (`#taskSortBtnMobile`, its own active-sort dot), the base `.bulkDescBtn` chrome / radius / face, the Expand-all button, and the sort menu behavior are all untouched — this only swaps the desktop active-sort border color.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-01
   <!-- id: 0af57867-6fa3-47f5-b100-c7889e62aa1b -->
