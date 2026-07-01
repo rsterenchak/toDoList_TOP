@@ -2731,7 +2731,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: #15151e;
   color: var(--text-muted);
   border: 0.5px solid #2a2a3a;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 5px 11px;
   line-height: 1;
   cursor: pointer;
@@ -2750,8 +2750,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 .taskFilterPill.selected {
-  background: #6C5DF5;
-  color: #fff;
+  background: rgba(108, 93, 245, 0.16);
+  color: var(--accent-text);
   border-color: #6C5DF5;
 }
 
@@ -2763,8 +2763,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 /* Trailing position indicator on the single cycle pill — one dot per filter,
    the active filter's dot filled, so the two hidden filters stay discoverable.
-   The dots ride on the pill's solid #6C5DF5 selected fill, so white /
-   translucent-white is what reads. */
+   The dots ride on the pill's purple-tinted selected fill, so accent-tinted
+   purple is what reads. */
 .taskFilterDots {
   display: inline-flex;
   gap: 4px;
@@ -2775,11 +2775,11 @@ button.claudeAttachChipLabel { cursor: pointer; }
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(139, 123, 255, 0.32);
 }
 
 .taskFilterDot--on {
-  background: #fff;
+  background: var(--accent-text);
 }
 
 /* ── MOBILE SEGMENTED STATUS FILTER (All · Active · Ideas) ──
