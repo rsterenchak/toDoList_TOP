@@ -932,3 +932,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-06-30
   <!-- id: 278957c1-1b0d-4e19-a960-fef9e3e38a50 -->
+
+- [ ] **[MEDIUM]** Switch mobile task filter to the single cycle pill with position dots and move Sort to a chat-button-style chip
+  - Type: feature
+  - Behavior:
+    1. On the mobile breakpoint (≤700px), show the existing single cycle pill (`.taskCyclePill`) instead of the three-segment control. Each tap advances ALL → Active → Ideas (the desktop cycle behavior, now on mobile). The pill hugs its content at the LEFT of `#taskFilterBar` and must never stretch to the row width.
+    2. Replace the pill's trailing `›` cue with a 3-dot position indicator (one dot per filter, the active filter's dot filled) so the two hidden filters stay discoverable.
+    3. Move the mobile Sort trigger (`#taskSortBtnMobile`, the `⇅`) to the FAR RIGHT of the row and restyle it to match the Claude chat launcher (`#claudeLauncher`): a 36×36, 10px-radius bordered chip.
+  - Implementation:
+    - `taskFilter.js` (`buildTaskFilterBar`): swap the `.taskFilterCycleCue` `›` span for a `.taskFilterDots` container holding 3 `.taskFilterDot` spans (one per FILTERS entry; keep `aria-hidden` on the container — the pill's aria-label already announces the active filter + "tap to cycle"). In `paintCyclePill`, after `data-filter` is set, clear `.taskFilterDot--on` from all dots and add it to the dot at the current FILTERS index (order is all=0, active=1, ideas=2).
+    - `main.js` (filter-bar assembly, ~line 2064): the mobile divider + `mobileSortBtn` are currently appended INTO `.taskFilterSegmented` (`mobileSortHost = segmentedSurface`). Re-host onto the bar itself — `mobileSortHost = taskFilterBar` — so hiding the segmented control on mobile doesn't also hide Sort. The fused divider (`.taskFilterBarDivider`) is no longer needed in the un-fused layout; stop appending it (or keep it `display:none`).
+    - `style.css` mobile block (≈lines 7908–7921): flip the filter swap to `.taskCyclePill { display: inline-flex }` and `.taskFilterSegmented { display: none }`. Change `#taskFilterBar` from `justify-content: center` to `flex-start`, add `flex: 0 0 auto` to the cycle pill so it can't grow, and push Sort to the edge with `margin-left: auto` on `#taskSortBtnMobile`. Keep `.taskFilterBarDivider { display: none }`.
+    - `style.css` `#taskSortBtnMobile`: restyle from the inset segment (`border:none; border-radius:0; padding:9px 11px`) to the chat chip — `width:36px; height:36px; padding:0; border:0.5px solid var(--border-bright); border-radius:10px; background:var(--bg-elevated); color:var(--text-secondary)`, hover `background:var(--bg-hover); color:var(--accent-text); border-color:var(--accent-text)` (mirrors `#claudeLauncher`; omit its floating drop-shadow since this chip is inline). Keep `.taskSortBtnMobileGlyph` (`⇅`) and the `.taskSortBtnMobileDot` active-sort dot (its `top:5px; right:5px` still fits 36×36).
+    - `style.css` new `.taskFilterDots` / `.taskFilterDot`: container `display:inline-flex; gap:4px; padding-left:3px`; each dot a 5px circle, inactive `background: rgba(255,255,255,0.42)`, active (`.taskFilterDot--on`) `background:#fff` — dots ride on the pill's solid `#6C5DF5` selected fill, so white / translucent-white is what reads.
+    - Reconcile the narrower-breakpoint overrides that assume the old controls: `#taskSortBtnMobile { padding: 10px }` (≈line 9591) will distort the fixed 36×36 chip — drop or neutralize it; and re-check the `#taskFilterBar` overrides at the <600px and ≈line 12602 blocks against the new flex-start + chip layout.
+  - Out of scope: desktop filter row (cycle pill already owns that breakpoint) and the desktop `#taskSortBtn` overlay stay untouched; the segmented markup stays in the DOM (only its mobile display flips); no change to filter logic, counts, `applyTaskFilter`, or the sort menu/options — only the mobile Sort trigger's chrome and placement.
+  - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: add37b28-ec1e-48ba-822a-f54e5bf350f5 -->
