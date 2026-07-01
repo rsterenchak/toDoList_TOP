@@ -5,16 +5,16 @@ import { dirname, resolve } from 'node:path';
 // The task sort was unreachable on mobile: the Sort dropdown (#taskSortBtn)
 // lives only inside #bulkDescActions, the desktop overlay that is display:none
 // at the mobile breakpoint. A compact Sort trigger (#taskSortBtnMobile) rides at
-// the right end of the status-filter row (#taskFilterBar), separated from the
-// filter tabs by a vertical divider, shown ONLY where #bulkDescActions is
+// the FAR RIGHT of the status-filter row (#taskFilterBar) as its own chip
+// (mirroring the Claude chat launcher), shown ONLY where #bulkDescActions is
 // hidden. On mobile it opens a bottom SHEET (#taskSortSheet) of sort chips
 // rather than the desktop dropdown, but drives the same getTaskSort/setTaskSort/
 // applyTaskSortChoice/syncTaskSortButton machinery so desktop and mobile share
 // one sort state. The trigger is icon-only: a single ⇅ glyph carrying a small
-// accent dot when a sort other than None is active, and it lives inside the
-// fused mobile segmented bar alongside the filter segments. These tests pin
-// that wiring (source-pattern) and the CSS that keeps exactly one Sort trigger
-// visible per breakpoint.
+// accent dot when a sort other than None is active, mounted directly on the
+// filter bar (not fused into the segmented control, which is retired on mobile
+// in favour of the cycle pill). These tests pin that wiring (source-pattern) and
+// the CSS that keeps exactly one Sort trigger visible per breakpoint.
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 function read(relative) {
@@ -52,14 +52,13 @@ describe('mobile Sort trigger — main.js wiring', () => {
         expect(main).toMatch(/id\s*=\s*['"]taskSortBtnMobile['"]/);
     });
 
-    it('mounts the divider and the mobile Sort trigger inside the segmented surface', () => {
-        // The trigger now lives INSIDE the mobile segmented control (queried off
-        // the filter bar), so the segments, divider, and sort button read as one
-        // fused rounded bar. The desktop overlay #bulkDescActions is untouched.
-        expect(main).toMatch(/taskFilterBarDivider/);
-        expect(main).toMatch(/taskFilterBar\.querySelector\(['"]\.taskFilterSegmented['"]\)/);
-        expect(main).toMatch(/mobileSortHost\.appendChild\(mobileSortDivider\)/);
+    it('mounts the mobile Sort trigger directly on the filter bar, not inside the segmented control', () => {
+        // The trigger is re-hosted onto the bar itself so hiding the segmented
+        // control on mobile doesn't also hide Sort. The retired fused divider is
+        // no longer appended. The desktop overlay #bulkDescActions is untouched.
+        expect(main).toMatch(/mobileSortHost\s*=\s*taskFilterBar/);
         expect(main).toMatch(/mobileSortHost\.appendChild\(mobileSortBtn\)/);
+        expect(main).not.toMatch(/mobileSortHost\.appendChild\(mobileSortDivider\)/);
     });
 
     it('drives the shared sort machinery rather than a parallel implementation', () => {
@@ -107,34 +106,39 @@ describe('mobile Sort trigger — main.js wiring', () => {
 describe('mobile Sort trigger — CSS visibility', () => {
     const css = read('style.css');
 
-    it('is hidden by default and reads as a borderless inset segment (desktop owns the overlay Sort button)', () => {
+    it('is hidden by default and reads as a bordered 36×36 chip (desktop owns the overlay Sort button)', () => {
         const ruleRe = /#taskSortBtnMobile\s*\{([^}]*)\}/;
         const match = css.match(ruleRe);
         expect(match).not.toBeNull();
         expect(match[1]).toMatch(/display:\s*none/);
-        // Icon-only and flush inside the fused bar: borderless, square corners,
-        // position:relative to anchor the active-sort dot. No two-line column.
-        expect(match[1]).toMatch(/border:\s*none/);
+        // Its own chip mirroring #claudeLauncher: a fixed 36×36 square with a
+        // hairline border and 10px radius, position:relative to anchor the
+        // active-sort dot. No two-line column, and no longer borderless.
+        expect(match[1]).toMatch(/width:\s*36px/);
+        expect(match[1]).toMatch(/height:\s*36px/);
+        expect(match[1]).toMatch(/border-radius:\s*10px/);
+        expect(match[1]).toMatch(/border:\s*0\.5px\s+solid/);
         expect(match[1]).toMatch(/position:\s*relative/);
+        expect(match[1]).not.toMatch(/border:\s*none/);
         expect(match[1]).not.toMatch(/flex-direction:\s*column/);
     });
 
-    it('divides the segments from the trigger with a thin in-bar divider, not a right-pushed one', () => {
+    it('keeps the retired fused divider hidden at base scope', () => {
         const ruleRe = /\.taskFilterBarDivider\s*\{([^}]*)\}/;
         const match = css.match(ruleRe);
         expect(match).not.toBeNull();
-        // Hidden on desktop; on mobile it sits contiguous inside the fused bar
-        // (no margin-left:auto pushing the Sort cluster to the row's far edge).
+        // The divider is retired in the un-fused layout — it must stay hidden.
         expect(match[1]).toMatch(/display:\s*none/);
-        expect(match[1]).toMatch(/align-self:\s*stretch/);
-        expect(match[1]).not.toMatch(/margin-left:\s*auto/);
     });
 
-    it('reveals the trigger and the divider at the mobile breakpoint where #bulkDescActions is hidden', () => {
+    it('reveals the trigger, hides the divider, and pushes Sort to the far right at the mobile breakpoint', () => {
         const triggerRule = extractMobileRule(css, '#taskSortBtnMobile');
         expect(triggerRule).toMatch(/display:\s*inline-flex/);
+        // The chip is pushed to the row's far edge in the un-fused layout.
+        expect(triggerRule).toMatch(/margin-left:\s*auto/);
+        // The retired divider stays hidden at the mobile breakpoint too.
         const dividerRule = extractMobileRule(css, '.taskFilterBarDivider');
-        expect(dividerRule).toMatch(/display:\s*block/);
+        expect(dividerRule).toMatch(/display:\s*none/);
         // The desktop overlay stays hidden at this breakpoint — exactly one
         // Sort trigger is ever visible.
         const overlayRule = extractMobileRule(css, '#bulkDescActions');

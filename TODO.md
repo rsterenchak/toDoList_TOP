@@ -933,7 +933,7 @@
   - Completed: 2026-06-30
   <!-- id: 278957c1-1b0d-4e19-a960-fef9e3e38a50 -->
 
-- [ ] **[MEDIUM]** Switch mobile task filter to the single cycle pill with position dots and move Sort to a chat-button-style chip
+- [x] **[MEDIUM]** Switch mobile task filter to the single cycle pill with position dots and move Sort to a chat-button-style chip
   - Type: feature
   - Behavior:
     1. On the mobile breakpoint (≤700px), show the existing single cycle pill (`.taskCyclePill`) instead of the three-segment control. Each tap advances ALL → Active → Ideas (the desktop cycle behavior, now on mobile). The pill hugs its content at the LEFT of `#taskFilterBar` and must never stretch to the row width.
@@ -948,7 +948,7 @@
     - Reconcile the narrower-breakpoint overrides that assume the old controls: `#taskSortBtnMobile { padding: 10px }` (≈line 9591) will distort the fixed 36×36 chip — drop or neutralize it; and re-check the `#taskFilterBar` overrides at the <600px and ≈line 12602 blocks against the new flex-start + chip layout.
   - Out of scope: desktop filter row (cycle pill already owns that breakpoint) and the desktop `#taskSortBtn` overlay stay untouched; the segmented markup stays in the DOM (only its mobile display flips); no change to filter logic, counts, `applyTaskFilter`, or the sort menu/options — only the mobile Sort trigger's chrome and placement.
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-01
   <!-- id: add37b28-ec1e-48ba-822a-f54e5bf350f5 -->
 
 - [ ] **[LOW]** Hide the TODO.md overflow (⋯) control while the viewer card is collapsed, on mobile

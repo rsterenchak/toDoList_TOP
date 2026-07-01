@@ -2761,13 +2761,25 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
-/* Trailing cycle hint on the single filter pill — muted so it reads as a
-   secondary affordance rather than competing with the label. */
-.taskFilterCycleCue {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  opacity: 0.7;
+/* Trailing position indicator on the single cycle pill — one dot per filter,
+   the active filter's dot filled, so the two hidden filters stay discoverable.
+   The dots ride on the pill's solid #6C5DF5 selected fill, so white /
+   translucent-white is what reads. */
+.taskFilterDots {
+  display: inline-flex;
+  gap: 4px;
+  padding-left: 3px;
+}
+
+.taskFilterDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.taskFilterDot--on {
+  background: #fff;
 }
 
 /* ── MOBILE SEGMENTED STATUS FILTER (All · Active · Ideas) ──
@@ -4284,22 +4296,25 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: var(--border-bright);
 }
 
-/* The mobile Sort trigger is the trailing element of the fused segmented bar,
-   desktop-hidden: on wide layouts the #bulkDescActions overlay owns the Sort
-   dropdown. Revealed only at the mobile breakpoint (where #bulkDescActions is
-   display:none) so exactly one Sort trigger is ever visible. Icon-only — a
-   single ⇅ glyph — styled as an inset segment (borderless, square corners,
-   segment background) so it sits flush inside the rounded surface rather than
-   reading as its own pill. position:relative anchors the active-sort dot. */
+/* The mobile Sort trigger, desktop-hidden: on wide layouts the #bulkDescActions
+   overlay owns the Sort dropdown. Revealed only at the mobile breakpoint (where
+   #bulkDescActions is display:none) so exactly one Sort trigger is ever visible.
+   Icon-only — a single ⇅ glyph — styled as its own 36×36 bordered chip mirroring
+   the Claude chat launcher (#claudeLauncher), sitting at the row's far right
+   rather than fused into the filter control. position:relative anchors the
+   active-sort dot; the floating drop-shadow is omitted since this chip is
+   inline. */
 #taskSortBtnMobile {
   display: none;
   position: relative;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 9px 11px;
-  border: none;
-  border-radius: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 10px;
   background: var(--bg-elevated);
   color: var(--text-secondary);
   line-height: 1;
@@ -4307,7 +4322,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 #taskSortBtnMobile:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
 }
 
 /* The ⇅ glyph carries its own font-size so it survives the ≤420px .bulkDescBtn
@@ -7905,20 +7921,24 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainBar         { grid-template-rows: auto auto 1fr; }
   /* Top/bottom padding bumped (sides stay tight at 4px) so the taller
      segmented filter + sort controls sit in the bar without clipping. */
-  #taskFilterBar   { grid-row: 2; padding: 7px 4px 6px; justify-content: center; }
+  /* Left-align the un-fused row so the cycle pill hugs its content at the left
+     and the Sort chip can be pushed to the far right (margin-left:auto below). */
+  #taskFilterBar   { grid-row: 2; padding: 7px 4px 6px; justify-content: flex-start; }
   #mainList        { grid-row: 3; }
   #bulkDescActions { display: none; }
   /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so
      the task sort stays reachable on phones. Shown only here, so exactly one
-     Sort trigger is ever visible. The divider before it appears in lockstep. */
-  #taskSortBtnMobile { display: inline-flex; }
-  .taskFilterBarDivider { display: block; }
+     Sort trigger is ever visible. It sits as its own chip at the row's far
+     right edge (margin-left:auto), no longer fused to the filter control. */
+  #taskSortBtnMobile { display: inline-flex; margin-left: auto; }
+  /* The fused divider is retired in the un-fused layout — keep it hidden. */
+  .taskFilterBarDivider { display: none; }
 
-  /* Swap the filter control to the segmented variant: hide the desktop cycle
-     pill and reveal the three-segment control, so exactly one filter control is
-     visible per breakpoint (mirroring the dual Sort-trigger swap above). */
-  .taskCyclePill        { display: none; }
-  .taskFilterSegmented  { display: flex; }
+  /* Swap the filter control to the single cycle pill on mobile: reveal the
+     cycle pill (hugging its content at the left) and hide the three-segment
+     control, so exactly one filter control is visible per breakpoint. */
+  .taskCyclePill        { display: inline-flex; flex: 0 0 auto; }
+  .taskFilterSegmented  { display: none; }
 
   /* Narrower viewports (<600px) tighten the pill letter-spacing and
      nav gaps so the four 36px nav buttons still fit alongside three
@@ -9585,10 +9605,10 @@ body.row-dragging * { cursor: grabbing !important; }
   .bulkDescBtn::after { font-size: 12px; }
   /* The icon-only mobile Sort trigger shares the .bulkDescBtn class, so the
      .bulkDescBtn font-size:0 collapse above would zero its ⇅ glyph — but the
-     glyph carries its own non-zero font-size, so it stays visible. Tighten the
-     trigger's horizontal padding here so it stays compact inside the fused
-     segmented bar on narrow phones. */
-  #taskSortBtnMobile { padding: 10px; }
+     glyph carries its own non-zero font-size, so it stays visible. The trigger
+     is a fixed 36×36 chip here too, so keep its padding at 0 rather than
+     inheriting the .bulkDescBtn 6px that would distort the square. */
+  #taskSortBtnMobile { padding: 0; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }

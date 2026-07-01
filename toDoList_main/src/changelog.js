@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-01',
+        changed: [
+            "On phones, the task filter is now a single tap-to-cycle pill with position dots, and Sort moved to a rounded chip at the far right of the row.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-06-30',
         changed: [
             "On phones, the Tasks View is more compact — tighter row spacing and the rows, completed divider, and TODO.md launcher now line up along a shared edge.",
@@ -15,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-29',
         fixed: [
-            "On phones, the chat launcher button no longer covers the TODO.md viewer's collapse and menu controls.",
             "On phones, the TODO.md viewer's collapse and menu controls can now be scrolled clear of the chat launcher button.",
             "On phones, a project with a short task list no longer trails a darker band below the last item — the task pane now matches the surrounding frame.",
         ],

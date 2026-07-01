@@ -2,11 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-// The mobile filter rework adds a three-segment status filter (All · Active ·
-// Ideas) alongside the existing desktop cycle pill, gated by CSS so exactly one
-// is visible per breakpoint — mirroring the dual Sort-trigger pattern. These
+// The mobile filter now uses the SAME single cycle pill as desktop (tap to
+// advance ALL → Active → Ideas), with the three-segment control retired from
+// the mobile breakpoint. The two controls are still gated by CSS so exactly one
+// is visible per breakpoint — but the mobile breakpoint now shows the cycle
+// pill and hides the segmented control (the reverse of the earlier swap). These
 // tests pin that CSS gating (so the swap can't silently regress to showing both
-// or neither) and the shared-visual-language tint on the active segment.
+// or neither) and the shared-visual-language tint on the active segment (still
+// present in the DOM for the desktop-hidden control's base styling).
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 const css = readFileSync(resolve(srcDir, 'style.css'), 'utf8');
@@ -49,14 +52,14 @@ describe('mobile segmented filter — breakpoint gating', () => {
         expect(rule).toMatch(/display:\s*none/);
     });
 
-    it('reveals the segmented control and hides the cycle pill at the mobile breakpoint', () => {
-        const seg = extractMobileRule('.taskFilterSegmented');
-        expect(seg).not.toBeNull();
-        expect(seg).toMatch(/display:\s*flex/);
-
+    it('reveals the cycle pill and hides the segmented control at the mobile breakpoint', () => {
         const pill = extractMobileRule('.taskCyclePill');
         expect(pill).not.toBeNull();
-        expect(pill).toMatch(/display:\s*none/);
+        expect(pill).toMatch(/display:\s*inline-flex/);
+
+        const seg = extractMobileRule('.taskFilterSegmented');
+        expect(seg).not.toBeNull();
+        expect(seg).toMatch(/display:\s*none/);
     });
 
     it('tints the active segment with the accent tint + accent text, not a solid purple block', () => {

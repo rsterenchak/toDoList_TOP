@@ -41,6 +41,16 @@ function pillCount(bar) {
     return cyclePill(bar).querySelector('.taskFilterCount').textContent;
 }
 
+// The trailing position indicator replaced the old `›` cycle cue: 3 dots (one
+// per filter), the active filter's dot carrying the --on modifier.
+function dots(bar) {
+    return Array.from(cyclePill(bar).querySelectorAll('.taskFilterDot'));
+}
+
+function activeDotIndex(bar) {
+    return dots(bar).findIndex(d => d.classList.contains('taskFilterDot--on'));
+}
+
 function isHidden(row) {
     return row.classList.contains('taskFilterHidden');
 }
@@ -92,8 +102,9 @@ describe('buildTaskFilterBar — cycle pill + segmented control', () => {
         expect(getTaskFilter()).toBe('all');
         expect(pillLabel(bar)).toBe('ALL');
         expect(cyclePill(bar).getAttribute('data-filter')).toBe('all');
-        // The cue glyph is always the trailing character.
-        expect(cyclePill(bar).textContent.endsWith('›')).toBe(true);
+        // Position dots: three dots, the ALL dot (index 0) filled.
+        expect(dots(bar).length).toBe(3);
+        expect(activeDotIndex(bar)).toBe(0);
     });
 
     it('paints the persisted filter set ahead of mount', () => {
@@ -101,7 +112,8 @@ describe('buildTaskFilterBar — cycle pill + segmented control', () => {
         const bar = buildTaskFilterBar();
         expect(pillLabel(bar)).toBe('Ideas');
         expect(cyclePill(bar).getAttribute('data-filter')).toBe('ideas');
-        expect(cyclePill(bar).textContent.endsWith('›')).toBe(true);
+        // Ideas is index 2, so the third (last) dot is the filled one.
+        expect(activeDotIndex(bar)).toBe(2);
     });
 });
 
@@ -554,19 +566,24 @@ describe('completed items excluded from pill counts', () => {
 });
 
 
-// (5) The › cue is present in every cycle state — never hidden, never replaced.
-describe('cycle cue invariant', () => {
-    it('keeps the › glyph as the trailing character in every state', () => {
+// (5) The position dots are present in every cycle state — always exactly three
+// dots with exactly one filled, and the filled dot tracks the active filter's
+// index (all=0, active=1, ideas=2) as the pill cycles.
+describe('position dots invariant', () => {
+    it('keeps three dots with the active filter\'s dot filled in every state', () => {
         makeMainList();
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
-        for (let i = 0; i < 3; i++) {
-            expect(cyclePill(bar).textContent.endsWith('›')).toBe(true);
+        // Starts at ALL (index 0), then advances one index per click, wrapping.
+        const expectedOrder = [0, 1, 2, 0];
+        for (let i = 0; i < expectedOrder.length; i++) {
+            expect(dots(bar).length).toBe(3);
+            // Exactly one dot filled at any time.
+            expect(dots(bar).filter(d => d.classList.contains('taskFilterDot--on')).length).toBe(1);
+            expect(activeDotIndex(bar)).toBe(expectedOrder[i]);
             cyclePill(bar).click();
         }
-        // Back to the start, still present.
-        expect(cyclePill(bar).textContent.endsWith('›')).toBe(true);
     });
 });
 
