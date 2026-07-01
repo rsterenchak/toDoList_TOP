@@ -951,7 +951,7 @@
   - Completed: 2026-07-01
   <!-- id: add37b28-ec1e-48ba-822a-f54e5bf350f5 -->
 
-- [ ] **[LOW]** Hide the TODO.md overflow (⋯) control while the viewer card is collapsed, on mobile
+- [x] **[LOW]** Hide the TODO.md overflow (⋯) control while the viewer card is collapsed, on mobile
   - Type: feature
   - Behavior:
     1. On the mobile breakpoint (≤700px), hide the `⋯` overflow control in the TODO.md viewer's collapsed header (the strip on the Tasks View) so that bar carries only the synced label, Run backlog, Sync, and the expand chevron.
@@ -961,5 +961,5 @@
     - Inside the app's ≤700px block, add `.todoMdViewerCard.collapsed .todoMdViewerOverflowWrap { display: none; }`. Expanding the card removes `collapsed`, so the wrap returns to its default display — no JS change.
   - Out of scope: desktop TODO.md bar stays unchanged (overflow visible there); the overflow menu contents, the mobile overflow bottom-sheet (`todoMdViewerOverflowMobileSheet`), the Run backlog / Sync / expand controls, and the collapse/expand logic are all untouched.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-01
   <!-- id: 81897700-8ed1-4987-b5d2-e37f74672401 -->
