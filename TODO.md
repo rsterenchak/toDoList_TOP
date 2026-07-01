@@ -978,7 +978,7 @@
   - Completed: 2026-07-01
   <!-- id: fadd8cc1-afc4-46d9-9ee9-af7c2ec5b095 -->
 
-- [ ] **[LOW]** Restyle the active filter toggle from a solid-purple slab to the app's accent-tint selected treatment
+- [x] **[LOW]** Restyle the active filter toggle from a solid-purple slab to the app's accent-tint selected treatment
   - Type: feature
   - Behavior:
     1. Change the cycle pill's active appearance (`.taskFilterPill.selected` — the pill is always in the selected state) from the solid `#6C5DF5` fill with white text to a subtle purple-tint fill with accent-text, matching how "selected/active" already reads elsewhere in the app (e.g. the open-count pill, the old active view-pill). Applies wherever the cycle pill shows (desktop + mobile).
@@ -991,5 +991,5 @@
     - `.taskFilterDot--on`: `background: #fff` → `var(--accent-text)` (active dot).
   - Out of scope: the cycle behavior, live counts, `paintCyclePill` / dot-position logic, and the mobile segmented control (`.taskFilterSeg`) are all untouched — this is purely the selected pill's fill / text / radius and the dot colors. The sort chip and desktop `#taskSortBtn` stay as-is.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-01
   <!-- id: 003bf18b-4520-47eb-be4d-965c56caeaf2 -->

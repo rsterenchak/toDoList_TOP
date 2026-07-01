@@ -9,6 +9,7 @@ export const changelog = [
         changed: [
             "On phones, the task filter is now a single tap-to-cycle pill with position dots, and Sort moved to a rounded chip at the far right of the row.",
             "On phones, the ⋯ overflow menu is now hidden while the Tasks View card is collapsed, returning when the card is expanded.",
+            "The active task filter pill now uses a subtle purple tint with accent-colored text and dots instead of a solid purple fill.",
         ],
         fixed: [
             "On phones, the chat launcher no longer grazes the bottom of the Tasks View bar — the list now scrolls fully clear of it.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-06-30',
         changed: [
-            "On phones, the Tasks View is more compact — tighter row spacing and the rows, completed divider, and TODO.md launcher now line up along a shared edge.",
             "On phones, the chat launcher is now a flat purple rounded square instead of a glowing circle.",
         ],
     },
