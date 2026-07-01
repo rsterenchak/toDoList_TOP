@@ -977,3 +977,19 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fadd8cc1-afc4-46d9-9ee9-af7c2ec5b095 -->
+
+- [ ] **[LOW]** Restyle the active filter toggle from a solid-purple slab to the app's accent-tint selected treatment
+  - Type: feature
+  - Behavior:
+    1. Change the cycle pill's active appearance (`.taskFilterPill.selected` — the pill is always in the selected state) from the solid `#6C5DF5` fill with white text to a subtle purple-tint fill with accent-text, matching how "selected/active" already reads elsewhere in the app (e.g. the open-count pill, the old active view-pill). Applies wherever the cycle pill shows (desktop + mobile).
+    2. Recolor the position dots so they read on the new tinted (dark) fill instead of the solid purple.
+  - Implementation:
+    - `.taskFilterPill.selected`: `background: #6C5DF5` → `background: rgba(108, 93, 245, 0.16)`; `color: #fff` → `color: var(--accent-text)`; keep `border-color: #6C5DF5`.
+    - `.taskFilterPill` (base): bump `border-radius: 6px` → `8px`. Only the cycle pill uses this class; the mobile segmented control uses `.taskFilterSeg`, so it's unaffected.
+    - `.taskFilterCount` and the label span carry no explicit color and inherit the pill's `color`, so they follow to `--accent-text` automatically — no separate rule needed.
+    - `.taskFilterDot`: `background: rgba(255, 255, 255, 0.42)` → `rgba(139, 123, 255, 0.32)` (inactive dot, accent-tinted).
+    - `.taskFilterDot--on`: `background: #fff` → `var(--accent-text)` (active dot).
+  - Out of scope: the cycle behavior, live counts, `paintCyclePill` / dot-position logic, and the mobile segmented control (`.taskFilterSeg`) are all untouched — this is purely the selected pill's fill / text / radius and the dot colors. The sort chip and desktop `#taskSortBtn` stay as-is.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 003bf18b-4520-47eb-be4d-965c56caeaf2 -->
