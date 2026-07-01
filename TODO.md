@@ -993,3 +993,17 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-01
   <!-- id: 003bf18b-4520-47eb-be4d-965c56caeaf2 -->
+
+- [ ] **[LOW]** Neutralize the active filter toggle to match the other button chrome (drop purple border + tint)
+  - Type: feature
+  - Behavior:
+    1. Bring the cycle pill's active appearance (`.taskFilterPill.selected` — the pill is always selected) fully in line with the neutral dark chips beside it (the mobile sort chip, the project dropdown): dark face, neutral border, no purple tint. Purple is carried only by the accent-text label and the position dots. Applies wherever the cycle pill shows (desktop + mobile).
+  - Implementation:
+    - `.taskFilterPill.selected`: `background: rgba(108, 93, 245, 0.16)` → `var(--bg-elevated)`; `border-color: #6C5DF5` → `var(--border-bright)`; keep `color: var(--accent-text)`.
+    - `.taskFilterPill` (base): `border-radius: 8px` → `10px` so it matches the sort chip's 10px corner (only the cycle pill uses this class; the mobile segmented `.taskFilterSeg` is unaffected).
+    - Dots are already accent-tinted from the prior change (`.taskFilterDot` `rgba(139,123,255,0.32)` / `.taskFilterDot--on` `var(--accent-text)`) — leave them as-is; they read correctly on the dark face.
+    - Label + count inherit the pill's `color`, so they stay `--accent-text` with no separate rule.
+  - Out of scope: cycle behavior, live counts, `paintCyclePill`/dot-position logic, the mobile segmented control, and the sort chip / desktop `#taskSortBtn` are all untouched — this only swaps the selected pill's fill + border + radius.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9c596ad3-2014-4016-9c62-6b8dfda55b18 -->
