@@ -105,14 +105,19 @@ export function buildTaskFilterBar() {
     countSpan.textContent = '0';
     pill.appendChild(countSpan);
 
-    // Muted trailing glyph hinting the control cycles rather than toggles. Kept
-    // as a real text node (not a ::after) so the cue rides in the pill's
-    // textContent in every state.
-    const cueSpan = document.createElement('span');
-    cueSpan.className = 'taskFilterCycleCue';
-    cueSpan.setAttribute('aria-hidden', 'true');
-    cueSpan.textContent = '›';
-    pill.appendChild(cueSpan);
+    // Position indicator: one dot per filter, the active filter's dot filled, so
+    // the two hidden filters stay discoverable as the pill cycles. Decorative
+    // (aria-hidden) — the pill's aria-label already announces the active filter
+    // + "tap to cycle". Replaces the earlier trailing `›` cycle cue.
+    const dots = document.createElement('span');
+    dots.className = 'taskFilterDots';
+    dots.setAttribute('aria-hidden', 'true');
+    FILTERS.forEach(function () {
+        const dot = document.createElement('span');
+        dot.className = 'taskFilterDot';
+        dots.appendChild(dot);
+    });
+    pill.appendChild(dots);
 
     bar.appendChild(pill);
     bar.appendChild(buildSegmentedControl());
@@ -201,6 +206,14 @@ function paintCyclePill(bar) {
     pill.setAttribute('aria-label', 'Filter: ' + filter.label + '. Tap to cycle filters.');
     const labelSpan = pill.querySelector('.taskFilterPillLabel');
     if (labelSpan) labelSpan.textContent = filter.label;
+    // Position dots: fill the dot at the active filter's index (all=0,
+    // active=1, ideas=2) and clear the rest, so the two hidden filters stay
+    // discoverable.
+    const idx = FILTERS.findIndex(function (f) { return f.key === filter.key; });
+    const dots = pill.querySelectorAll('.taskFilterDot');
+    dots.forEach(function (dot, i) {
+        dot.classList.toggle('taskFilterDot--on', i === idx);
+    });
 }
 
 

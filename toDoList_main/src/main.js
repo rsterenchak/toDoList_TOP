@@ -2027,13 +2027,9 @@ function component() {
     // current by syncTaskSortButton) names the control + active sort.
 
     // Thin vertical divider between the three filter segments and the Sort
-    // trigger. Mobile-only (CSS-gated). It lives INSIDE the segmented surface
-    // (see the mount below), so the segments, the divider, and the icon-only
-    // Sort button read as one fused rounded segmented bar.
-    const mobileSortDivider = document.createElement('span');
-    mobileSortDivider.className = 'taskFilterBarDivider';
-    mobileSortDivider.setAttribute('aria-hidden', 'true');
-
+    // trigger. Mobile-only (CSS-gated). It sits at the far RIGHT of the filter
+    // bar as its own chat-launcher-style chip (see the mount below), no longer
+    // fused into the segmented surface.
     const mobileSortBtn = document.createElement('button');
     mobileSortBtn.type = 'button';
     mobileSortBtn.id = 'taskSortBtnMobile';
@@ -2055,15 +2051,13 @@ function component() {
     mobileSortBtn.appendChild(mobileSortBtnGlyph);
     mobileSortBtn.appendChild(mobileSortBtnDot);
 
-    // Mount the divider + Sort trigger INSIDE the mobile segmented control so
-    // the filter segments and the sort button share one rounded surface. The
-    // segmented surface is display:none on desktop, so both the mobile divider
-    // and the mobile trigger stay hidden there (desktop keeps its own Sort
-    // button in the #bulkDescActions overlay). Fall back to the bar itself if
-    // the segmented control isn't present, so the trigger is never orphaned.
-    const segmentedSurface = taskFilterBar.querySelector('.taskFilterSegmented');
-    const mobileSortHost = segmentedSurface || taskFilterBar;
-    mobileSortHost.appendChild(mobileSortDivider);
+    // Mount the Sort trigger directly onto the filter bar (not into the
+    // segmented control) so hiding the segmented control on the mobile
+    // breakpoint doesn't also hide Sort — the mobile block pushes it to the
+    // row's far edge with margin-left:auto. The trigger stays display:none on
+    // desktop (the #bulkDescActions overlay owns Sort there), so exactly one
+    // Sort trigger is ever visible.
+    const mobileSortHost = taskFilterBar;
     mobileSortHost.appendChild(mobileSortBtn);
 
     function taskSortButtonText(key) {
