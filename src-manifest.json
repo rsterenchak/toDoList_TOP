@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-30T12:36:35.238Z",
-  "sha": "6360b077f255f911ce5cf57a6fa398bd9b9027ac",
+  "generatedAt": "2026-07-01T09:01:37.887Z",
+  "sha": "9dc9fd56952aa6df88475ded6d211d7f51bf746c",
   "files": [
     "auth.js",
     "changelog.js",
@@ -63,7 +63,7 @@
         },
         {
           "file": "style.css",
-          "line": 4961
+          "line": 4977
         }
       ]
     },
@@ -131,7 +131,7 @@
         },
         {
           "file": "style.css",
-          "line": 10191
+          "line": 10211
         }
       ]
     },
@@ -243,7 +243,7 @@
         },
         {
           "file": "style.css",
-          "line": 11494
+          "line": 11514
         }
       ]
     },
@@ -259,7 +259,7 @@
         },
         {
           "file": "style.css",
-          "line": 11526
+          "line": 11546
         }
       ]
     },
@@ -275,7 +275,7 @@
         },
         {
           "file": "style.css",
-          "line": 11706
+          "line": 11726
         }
       ]
     },
@@ -291,7 +291,7 @@
         },
         {
           "file": "style.css",
-          "line": 11907
+          "line": 11927
         }
       ]
     },
@@ -307,7 +307,7 @@
         },
         {
           "file": "style.css",
-          "line": 11543
+          "line": 11563
         }
       ]
     },
@@ -323,7 +323,7 @@
         },
         {
           "file": "style.css",
-          "line": 11601
+          "line": 11621
         }
       ]
     },
@@ -339,7 +339,7 @@
         },
         {
           "file": "style.css",
-          "line": 2929
+          "line": 2941
         }
       ]
     },
@@ -371,7 +371,7 @@
         },
         {
           "file": "style.css",
-          "line": 6153
+          "line": 6169
         }
       ]
     },
@@ -387,7 +387,7 @@
         },
         {
           "file": "style.css",
-          "line": 6139
+          "line": 6155
         }
       ]
     },
@@ -403,7 +403,7 @@
         },
         {
           "file": "style.css",
-          "line": 6172
+          "line": 6188
         }
       ]
     },
@@ -559,7 +559,7 @@
         },
         {
           "file": "style.css",
-          "line": 9416
+          "line": 9436
         }
       ]
     },
@@ -575,7 +575,7 @@
         },
         {
           "file": "style.css",
-          "line": 9417
+          "line": 9437
         }
       ]
     },
@@ -591,7 +591,7 @@
         },
         {
           "file": "style.css",
-          "line": 4759
+          "line": 4775
         }
       ]
     },
@@ -979,7 +979,7 @@
         },
         {
           "file": "style.css",
-          "line": 9265
+          "line": 9285
         }
       ]
     },
@@ -1091,7 +1091,7 @@
         },
         {
           "file": "style.css",
-          "line": 5392
+          "line": 5408
         }
       ]
     },
@@ -1143,7 +1143,7 @@
         },
         {
           "file": "style.css",
-          "line": 4577
+          "line": 4593
         }
       ]
     },
@@ -1159,7 +1159,7 @@
         },
         {
           "file": "style.css",
-          "line": 5980
+          "line": 5996
         }
       ]
     },
@@ -1175,7 +1175,7 @@
         },
         {
           "file": "style.css",
-          "line": 5966
+          "line": 5982
         }
       ]
     },
@@ -1203,7 +1203,7 @@
         },
         {
           "file": "style.css",
-          "line": 2906
+          "line": 2918
         }
       ]
     },
@@ -1631,7 +1631,7 @@
         },
         {
           "file": "style.css",
-          "line": 5881
+          "line": 5897
         }
       ]
     },
@@ -1647,7 +1647,7 @@
         },
         {
           "file": "style.css",
-          "line": 4344
+          "line": 4360
         }
       ]
     },
@@ -1691,7 +1691,7 @@
         },
         {
           "file": "style.css",
-          "line": 5368
+          "line": 5384
         }
       ]
     },
@@ -1707,7 +1707,7 @@
         },
         {
           "file": "style.css",
-          "line": 9116
+          "line": 9136
         }
       ]
     },
@@ -1731,15 +1731,15 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 2697,
+      "line": 2691,
       "files": [
         {
           "file": "main.js",
-          "line": 2697
+          "line": 2691
         },
         {
           "file": "style.css",
-          "line": 7192
+          "line": 7208
         }
       ]
     },
@@ -1747,65 +1747,21 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 2702,
+      "line": 2696,
       "files": [
         {
           "file": "main.js",
-          "line": 2702
+          "line": 2696
         },
         {
           "file": "style.css",
-          "line": 8165
+          "line": 8185
         }
       ]
     },
     {
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
-      "file": "main.js",
-      "line": 2699,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2699
-        },
-        {
-          "file": "style.css",
-          "line": 8164
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtn",
-      "label": "Drawer Settings Btn",
-      "file": "main.js",
-      "line": 2565,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2565
-        },
-        {
-          "file": "style.css",
-          "line": 8088
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtnUpdateDot",
-      "label": "Drawer Settings Btn Update Dot",
-      "file": "main.js",
-      "line": 2583,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2583
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtnWrap",
-      "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
       "line": 2693,
       "files": [
@@ -1815,7 +1771,51 @@
         },
         {
           "file": "style.css",
-          "line": 8081
+          "line": 8184
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtn",
+      "label": "Drawer Settings Btn",
+      "file": "main.js",
+      "line": 2559,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2559
+        },
+        {
+          "file": "style.css",
+          "line": 8108
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnUpdateDot",
+      "label": "Drawer Settings Btn Update Dot",
+      "file": "main.js",
+      "line": 2577,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2577
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnWrap",
+      "label": "Drawer Settings Btn Wrap",
+      "file": "main.js",
+      "line": 2687,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2687
+        },
+        {
+          "file": "style.css",
+          "line": 8101
         }
       ]
     },
@@ -1851,7 +1851,7 @@
         },
         {
           "file": "style.css",
-          "line": 4981
+          "line": 4997
         }
       ]
     },
@@ -1867,7 +1867,7 @@
         },
         {
           "file": "style.css",
-          "line": 4397
+          "line": 4413
         }
       ]
     },
@@ -1883,7 +1883,7 @@
         },
         {
           "file": "style.css",
-          "line": 4451
+          "line": 4467
         }
       ]
     },
@@ -1899,7 +1899,7 @@
         },
         {
           "file": "style.css",
-          "line": 4518
+          "line": 4534
         }
       ]
     },
@@ -1927,7 +1927,7 @@
         },
         {
           "file": "style.css",
-          "line": 10943
+          "line": 10963
         }
       ]
     },
@@ -2179,7 +2179,7 @@
         },
         {
           "file": "style.css",
-          "line": 9949
+          "line": 9969
         }
       ]
     },
@@ -2195,7 +2195,7 @@
         },
         {
           "file": "style.css",
-          "line": 9973
+          "line": 9993
         }
       ]
     },
@@ -2211,7 +2211,7 @@
         },
         {
           "file": "style.css",
-          "line": 9959
+          "line": 9979
         }
       ]
     },
@@ -2227,7 +2227,7 @@
         },
         {
           "file": "style.css",
-          "line": 9977
+          "line": 9997
         }
       ]
     },
@@ -2243,7 +2243,7 @@
         },
         {
           "file": "style.css",
-          "line": 9985
+          "line": 10005
         }
       ]
     },
@@ -2259,7 +2259,7 @@
         },
         {
           "file": "style.css",
-          "line": 10463
+          "line": 10483
         }
       ]
     },
@@ -2275,7 +2275,7 @@
         },
         {
           "file": "style.css",
-          "line": 13041
+          "line": 13061
         }
       ]
     },
@@ -2315,7 +2315,7 @@
         },
         {
           "file": "style.css",
-          "line": 13135
+          "line": 13155
         }
       ]
     },
@@ -2379,7 +2379,7 @@
         },
         {
           "file": "style.css",
-          "line": 12879
+          "line": 12899
         }
       ]
     },
@@ -2395,7 +2395,7 @@
         },
         {
           "file": "style.css",
-          "line": 12736
+          "line": 12756
         }
       ]
     },
@@ -2411,7 +2411,7 @@
         },
         {
           "file": "style.css",
-          "line": 12823
+          "line": 12843
         }
       ]
     },
@@ -2439,7 +2439,7 @@
         },
         {
           "file": "style.css",
-          "line": 12778
+          "line": 12798
         }
       ]
     },
@@ -2455,7 +2455,7 @@
         },
         {
           "file": "style.css",
-          "line": 12759
+          "line": 12779
         }
       ]
     },
@@ -2471,7 +2471,7 @@
         },
         {
           "file": "style.css",
-          "line": 12746
+          "line": 12766
         }
       ]
     },
@@ -2499,7 +2499,7 @@
         },
         {
           "file": "style.css",
-          "line": 12767
+          "line": 12787
         }
       ]
     },
@@ -2515,7 +2515,7 @@
         },
         {
           "file": "style.css",
-          "line": 12792
+          "line": 12812
         }
       ]
     },
@@ -2543,7 +2543,7 @@
         },
         {
           "file": "style.css",
-          "line": 12774
+          "line": 12794
         }
       ]
     },
@@ -2559,7 +2559,7 @@
         },
         {
           "file": "style.css",
-          "line": 12837
+          "line": 12857
         }
       ]
     },
@@ -2575,7 +2575,7 @@
         },
         {
           "file": "style.css",
-          "line": 13121
+          "line": 13141
         }
       ]
     },
@@ -2591,7 +2591,7 @@
         },
         {
           "file": "style.css",
-          "line": 13049
+          "line": 13069
         }
       ]
     },
@@ -2607,7 +2607,7 @@
         },
         {
           "file": "style.css",
-          "line": 13093
+          "line": 13113
         }
       ]
     },
@@ -2635,7 +2635,7 @@
         },
         {
           "file": "style.css",
-          "line": 13080
+          "line": 13100
         }
       ]
     },
@@ -2651,7 +2651,7 @@
         },
         {
           "file": "style.css",
-          "line": 13069
+          "line": 13089
         }
       ]
     },
@@ -2667,7 +2667,7 @@
         },
         {
           "file": "style.css",
-          "line": 13058
+          "line": 13078
         }
       ]
     },
@@ -2695,7 +2695,7 @@
         },
         {
           "file": "style.css",
-          "line": 13076
+          "line": 13096
         }
       ]
     },
@@ -2711,7 +2711,7 @@
         },
         {
           "file": "style.css",
-          "line": 12981
+          "line": 13001
         }
       ]
     },
@@ -2763,7 +2763,7 @@
         },
         {
           "file": "style.css",
-          "line": 13200
+          "line": 13220
         }
       ]
     },
@@ -2779,7 +2779,7 @@
         },
         {
           "file": "style.css",
-          "line": 12836
+          "line": 12856
         }
       ]
     },
@@ -2795,7 +2795,7 @@
         },
         {
           "file": "style.css",
-          "line": 10464
+          "line": 10484
         }
       ]
     },
@@ -2859,7 +2859,7 @@
         },
         {
           "file": "style.css",
-          "line": 9102
+          "line": 9122
         }
       ]
     },
@@ -2887,7 +2887,7 @@
         },
         {
           "file": "style.css",
-          "line": 5662
+          "line": 5678
         }
       ]
     },
@@ -2903,7 +2903,7 @@
         },
         {
           "file": "style.css",
-          "line": 5734
+          "line": 5750
         }
       ]
     },
@@ -2935,7 +2935,7 @@
         },
         {
           "file": "style.css",
-          "line": 5708
+          "line": 5724
         }
       ]
     },
@@ -2951,7 +2951,7 @@
         },
         {
           "file": "style.css",
-          "line": 5696
+          "line": 5712
         }
       ]
     },
@@ -2967,7 +2967,7 @@
         },
         {
           "file": "style.css",
-          "line": 5741
+          "line": 5757
         }
       ]
     },
@@ -2983,7 +2983,7 @@
         },
         {
           "file": "style.css",
-          "line": 5678
+          "line": 5694
         }
       ]
     },
@@ -2999,7 +2999,7 @@
         },
         {
           "file": "style.css",
-          "line": 5685
+          "line": 5701
         }
       ]
     },
@@ -3015,7 +3015,7 @@
         },
         {
           "file": "style.css",
-          "line": 7567
+          "line": 7583
         }
       ]
     },
@@ -3055,7 +3055,7 @@
         },
         {
           "file": "style.css",
-          "line": 7882
+          "line": 7898
         }
       ]
     },
@@ -3071,7 +3071,7 @@
         },
         {
           "file": "style.css",
-          "line": 2927
+          "line": 2939
         }
       ]
     },
@@ -3087,7 +3087,7 @@
         },
         {
           "file": "style.css",
-          "line": 7778
+          "line": 7794
         }
       ]
     },
@@ -3103,7 +3103,7 @@
         },
         {
           "file": "style.css",
-          "line": 7805
+          "line": 7821
         }
       ]
     },
@@ -3131,7 +3131,7 @@
         },
         {
           "file": "style.css",
-          "line": 8740
+          "line": 8760
         }
       ]
     },
@@ -3171,7 +3171,7 @@
         },
         {
           "file": "style.css",
-          "line": 7874
+          "line": 7890
         }
       ]
     },
@@ -3187,7 +3187,7 @@
         },
         {
           "file": "style.css",
-          "line": 7794
+          "line": 7810
         }
       ]
     },
@@ -3203,7 +3203,7 @@
         },
         {
           "file": "style.css",
-          "line": 7058
+          "line": 7074
         }
       ]
     },
@@ -3219,7 +3219,7 @@
         },
         {
           "file": "style.css",
-          "line": 7111
+          "line": 7127
         }
       ]
     },
@@ -3263,15 +3263,15 @@
       "selector": "#mobileUpdatePill",
       "label": "Mobile Update Pill",
       "file": "main.js",
-      "line": 2623,
+      "line": 2617,
       "files": [
         {
           "file": "main.js",
-          "line": 2623
+          "line": 2617
         },
         {
           "file": "style.css",
-          "line": 12263
+          "line": 12283
         }
       ]
     },
@@ -3299,7 +3299,7 @@
         },
         {
           "file": "style.css",
-          "line": 11041
+          "line": 11061
         }
       ]
     },
@@ -3315,7 +3315,7 @@
         },
         {
           "file": "style.css",
-          "line": 10973
+          "line": 10993
         }
       ]
     },
@@ -3331,7 +3331,7 @@
         },
         {
           "file": "style.css",
-          "line": 10838
+          "line": 10858
         }
       ]
     },
@@ -3407,7 +3407,7 @@
         },
         {
           "file": "style.css",
-          "line": 10669
+          "line": 10689
         }
       ]
     },
@@ -3423,7 +3423,7 @@
         },
         {
           "file": "style.css",
-          "line": 9651
+          "line": 9671
         }
       ]
     },
@@ -3447,11 +3447,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 3521,
+      "line": 3515,
       "files": [
         {
           "file": "main.js",
-          "line": 3521
+          "line": 3515
         },
         {
           "file": "style.css",
@@ -3479,11 +3479,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 3529,
+      "line": 3523,
       "files": [
         {
           "file": "main.js",
-          "line": 3529
+          "line": 3523
         },
         {
           "file": "style.css",
@@ -3547,7 +3547,7 @@
         },
         {
           "file": "style.css",
-          "line": 7973
+          "line": 7993
         }
       ]
     },
@@ -3599,7 +3599,7 @@
         },
         {
           "file": "style.css",
-          "line": 3995
+          "line": 4007
         }
       ]
     },
@@ -3643,7 +3643,7 @@
         },
         {
           "file": "style.css",
-          "line": 4044
+          "line": 4056
         }
       ]
     },
@@ -3671,7 +3671,7 @@
         },
         {
           "file": "style.css",
-          "line": 4029
+          "line": 4041
         }
       ]
     },
@@ -3687,7 +3687,7 @@
         },
         {
           "file": "style.css",
-          "line": 4165
+          "line": 4177
         }
       ]
     },
@@ -3703,7 +3703,7 @@
         },
         {
           "file": "style.css",
-          "line": 4013
+          "line": 4025
         }
       ]
     },
@@ -3719,7 +3719,7 @@
         },
         {
           "file": "style.css",
-          "line": 4022
+          "line": 4034
         }
       ]
     },
@@ -3739,11 +3739,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "main.js",
-      "line": 2788,
+      "line": 2782,
       "files": [
         {
           "file": "main.js",
-          "line": 2788
+          "line": 2782
         }
       ]
     },
@@ -3751,11 +3751,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "main.js",
-      "line": 2911,
+      "line": 2905,
       "files": [
         {
           "file": "main.js",
-          "line": 2911
+          "line": 2905
         }
       ]
     },
@@ -3763,11 +3763,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "main.js",
-      "line": 2771,
+      "line": 2765,
       "files": [
         {
           "file": "main.js",
-          "line": 2771
+          "line": 2765
         }
       ]
     },
@@ -3775,11 +3775,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "main.js",
-      "line": 2880,
+      "line": 2874,
       "files": [
         {
           "file": "main.js",
-          "line": 2880
+          "line": 2874
         }
       ]
     },
@@ -3787,11 +3787,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "main.js",
-      "line": 2846,
+      "line": 2840,
       "files": [
         {
           "file": "main.js",
-          "line": 2846
+          "line": 2840
         }
       ]
     },
@@ -3815,6 +3815,70 @@
       "selector": "#settingsModal",
       "label": "Settings Modal",
       "file": "main.js",
+      "line": 2730,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2730
+        },
+        {
+          "file": "style.css",
+          "line": 8095
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBackdrop",
+      "label": "Settings Modal Backdrop",
+      "file": "main.js",
+      "line": 2727,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2727
+        },
+        {
+          "file": "style.css",
+          "line": 8418
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBody",
+      "label": "Settings Modal Body",
+      "file": "main.js",
+      "line": 2752,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2752
+        },
+        {
+          "file": "style.css",
+          "line": 8479
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalClose",
+      "label": "Settings Modal Close",
+      "file": "main.js",
+      "line": 2743,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2743
+        },
+        {
+          "file": "style.css",
+          "line": 8466
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalHeader",
+      "label": "Settings Modal Header",
+      "file": "main.js",
       "line": 2736,
       "files": [
         {
@@ -3823,71 +3887,7 @@
         },
         {
           "file": "style.css",
-          "line": 8075
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalBackdrop",
-      "label": "Settings Modal Backdrop",
-      "file": "main.js",
-      "line": 2733,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2733
-        },
-        {
-          "file": "style.css",
-          "line": 8398
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalBody",
-      "label": "Settings Modal Body",
-      "file": "main.js",
-      "line": 2758,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2758
-        },
-        {
-          "file": "style.css",
-          "line": 8459
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalClose",
-      "label": "Settings Modal Close",
-      "file": "main.js",
-      "line": 2749,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2749
-        },
-        {
-          "file": "style.css",
-          "line": 8446
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalHeader",
-      "label": "Settings Modal Header",
-      "file": "main.js",
-      "line": 2742,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2742
-        },
-        {
-          "file": "style.css",
-          "line": 8429
+          "line": 8449
         }
       ]
     },
@@ -3895,15 +3895,15 @@
       "selector": "#settingsModalTitle",
       "label": "Settings Modal Title",
       "file": "main.js",
-      "line": 2745,
+      "line": 2739,
       "files": [
         {
           "file": "main.js",
-          "line": 2745
+          "line": 2739
         },
         {
           "file": "style.css",
-          "line": 8437
+          "line": 8457
         }
       ]
     },
@@ -3919,7 +3919,7 @@
         },
         {
           "file": "style.css",
-          "line": 9649
+          "line": 9669
         }
       ]
     },
@@ -3927,11 +3927,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "main.js",
-      "line": 2761,
+      "line": 2755,
       "files": [
         {
           "file": "main.js",
-          "line": 2761
+          "line": 2755
         }
       ]
     },
@@ -4011,7 +4011,7 @@
         },
         {
           "file": "style.css",
-          "line": 7014
+          "line": 7030
         }
       ]
     },
@@ -4059,7 +4059,7 @@
         },
         {
           "file": "style.css",
-          "line": 5065
+          "line": 5081
         }
       ]
     },
@@ -4087,7 +4087,7 @@
         },
         {
           "file": "style.css",
-          "line": 5786
+          "line": 5802
         }
       ]
     },
@@ -4119,7 +4119,7 @@
         },
         {
           "file": "style.css",
-          "line": 5846
+          "line": 5862
         }
       ]
     },
@@ -4135,7 +4135,7 @@
         },
         {
           "file": "style.css",
-          "line": 5833
+          "line": 5849
         }
       ]
     },
@@ -4151,7 +4151,7 @@
         },
         {
           "file": "style.css",
-          "line": 5802
+          "line": 5818
         }
       ]
     },
@@ -4167,7 +4167,7 @@
         },
         {
           "file": "style.css",
-          "line": 5823
+          "line": 5839
         }
       ]
     },
@@ -4183,7 +4183,7 @@
         },
         {
           "file": "style.css",
-          "line": 5814
+          "line": 5830
         }
       ]
     },
@@ -4199,7 +4199,7 @@
         },
         {
           "file": "style.css",
-          "line": 5810
+          "line": 5826
         }
       ]
     },
@@ -4215,7 +4215,7 @@
         },
         {
           "file": "style.css",
-          "line": 4344
+          "line": 4360
         }
       ]
     },
@@ -4231,7 +4231,7 @@
         },
         {
           "file": "style.css",
-          "line": 5415
+          "line": 5431
         }
       ]
     },
@@ -4247,7 +4247,7 @@
         },
         {
           "file": "style.css",
-          "line": 2937
+          "line": 2949
         }
       ]
     },
@@ -4271,11 +4271,11 @@
       "selector": "#taskFilterEmpty",
       "label": "Task Filter Empty",
       "file": "taskFilter.js",
-      "line": 324,
+      "line": 337,
       "files": [
         {
           "file": "taskFilter.js",
-          "line": 324
+          "line": 337
         }
       ]
     },
@@ -4291,7 +4291,7 @@
         },
         {
           "file": "style.css",
-          "line": 4258
+          "line": 4270
         }
       ]
     },
@@ -4299,15 +4299,15 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 2039,
+      "line": 2035,
       "files": [
         {
           "file": "main.js",
-          "line": 2039
+          "line": 2035
         },
         {
           "file": "style.css",
-          "line": 4259
+          "line": 4271
         }
       ]
     },
@@ -4315,15 +4315,15 @@
       "selector": "#taskSortMenu",
       "label": "Task Sort Menu",
       "file": "main.js",
-      "line": 2147,
+      "line": 2141,
       "files": [
         {
           "file": "main.js",
-          "line": 2147
+          "line": 2141
         },
         {
           "file": "style.css",
-          "line": 9718
+          "line": 9738
         }
       ]
     },
@@ -4331,15 +4331,15 @@
       "selector": "#taskSortSheet",
       "label": "Task Sort Sheet",
       "file": "main.js",
-      "line": 2232,
+      "line": 2226,
       "files": [
         {
           "file": "main.js",
-          "line": 2232
+          "line": 2226
         },
         {
           "file": "style.css",
-          "line": 6072
+          "line": 6088
         }
       ]
     },
@@ -4347,15 +4347,15 @@
       "selector": "#taskSortSheetBackdrop",
       "label": "Task Sort Sheet Backdrop",
       "file": "main.js",
-      "line": 2229,
+      "line": 2223,
       "files": [
         {
           "file": "main.js",
-          "line": 2229
+          "line": 2223
         },
         {
           "file": "style.css",
-          "line": 6058
+          "line": 6074
         }
       ]
     },
@@ -4363,11 +4363,11 @@
       "selector": "#taskSortSheetTitle",
       "label": "Task Sort Sheet Title",
       "file": "main.js",
-      "line": 2244,
+      "line": 2238,
       "files": [
         {
           "file": "main.js",
-          "line": 2244
+          "line": 2238
         }
       ]
     },
@@ -4415,7 +4415,7 @@
         },
         {
           "file": "style.css",
-          "line": 4788
+          "line": 4804
         }
       ]
     },
@@ -4443,7 +4443,7 @@
         },
         {
           "file": "style.css",
-          "line": 4580
+          "line": 4596
         }
       ]
     },
@@ -4459,7 +4459,7 @@
         },
         {
           "file": "style.css",
-          "line": 6195
+          "line": 6211
         }
       ]
     },
@@ -4475,7 +4475,7 @@
         },
         {
           "file": "style.css",
-          "line": 6181
+          "line": 6197
         }
       ]
     },
@@ -4503,7 +4503,7 @@
         },
         {
           "file": "style.css",
-          "line": 6700
+          "line": 6716
         }
       ]
     },
@@ -4519,7 +4519,7 @@
         },
         {
           "file": "style.css",
-          "line": 6686
+          "line": 6702
         }
       ]
     },
@@ -4607,7 +4607,7 @@
         },
         {
           "file": "style.css",
-          "line": 2861
+          "line": 2873
         }
       ]
     },
