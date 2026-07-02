@@ -1019,3 +1019,12 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-01
   <!-- id: 0af57867-6fa3-47f5-b100-c7889e62aa1b -->
+
+- [ ] **[HIGH]** Recede task row action icons to neutral and reserve red for overdue dates
+  - Type: feature
+  - Description: Every task row currently renders its calendar icon in danger red (`#ff5d7a`) regardless of date state, and both row action icons (calendar + copy) sit at mid contrast on all rows, competing with task titles. Change both icons' default color to a dim neutral (`#4a4b58`-range, matching receded utility chrome), and apply `#ff5d7a` to the calendar icon only when the row has a due date in the past (add an `overdue` class on the row's calendar icon during row render when `due` < today). Additionally, replace the single-line title truncation with a 2-line clamp at mobile widths: on the row title element, `display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;` inside the `max-width: 1023px` media range, keeping `line-height` ~1.45 so two lines fit cleanly. Desktop (`min-width: 1024px`) keeps single-line truncation.
+  - Implementation notes: `main.js` is over 25k tokens — locate the row render and icon markup with grep + offset/limit, never a full read. Icon color changes are CSS-only; the only JS change is the conditional overdue class.
+  - Out of scope: no changes to date-picker behavior, copy/duplicate behavior, row layout, or priority bar colors; no date chips (deferred).
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 184444f3-f276-48ef-b7eb-8eb329f1e492 -->
