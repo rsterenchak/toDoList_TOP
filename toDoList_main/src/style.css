@@ -6327,7 +6327,7 @@ body.row-dragging * { cursor: grabbing !important; }
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -6338,40 +6338,53 @@ body.row-dragging * { cursor: grabbing !important; }
   white-space: nowrap;
 }
 
+/* Neutral icon-only 36×36 chip — a quiet refresh glyph that recedes behind
+   the amber Run backlog pill. The "Sync" text label was dropped for the
+   glyph (aria-label + title still name the action). */
 .todoMdViewerSyncBtn {
   appearance: none;
-  background: transparent;
-  color: #9D93EE;
-  border: 1px solid #1e1e2a;
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: #15161d;
+  color: #8b8c99;
+  border: 1px solid rgba(157, 147, 238, 0.25);
+  border-radius: 10px;
   font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
+.todoMdViewerSyncIcon {
+  flex: none;
+}
 .todoMdViewerSyncBtn:hover {
-  background: var(--accent-dim);
-  color: var(--text-primary);
-  border-color: #6C5DF5;
+  background: #1c1d27;
+  color: #cfd0da;
+  border-color: rgba(157, 147, 238, 0.45);
 }
 .todoMdViewerSyncBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+:root[data-theme="light"] .todoMdViewerSyncBtn {
+  background: transparent;
+  color: #787b87;
+  border-color: rgba(108, 93, 245, 0.25);
 }
 .todoMdViewerSyncBtn[disabled],
 .todoMdViewerSyncBtn--loading {
   opacity: 0.6;
   cursor: progress;
 }
-/* In-flight state: the label is swapped for a spinner glyph + "Syncing"
-   text, so lay the button out as a centered flex row and widen it to fit
-   the extra content. */
+/* In-flight state: the glyph is swapped for a spinner + "Syncing" text, so
+   let the chip grow past its 36px square to fit the extra content. */
 .todoMdViewerSyncBtn--loading {
-  display: inline-flex;
-  align-items: center;
+  width: auto;
   gap: 6px;
+  padding: 0 10px;
 }
 .todoMdViewerSyncSpinner {
   flex: none;
@@ -6429,16 +6442,21 @@ body.row-dragging * { cursor: grabbing !important; }
   display: none;
 }
 
+/* Highest-consequence action in the bar — carries the pipeline's amber
+   identity as a 36px-tall pill so it reads as the primary control beside the
+   quiet neutral Sync / expand chips. */
 .todoMdViewerRunBtn {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: #161622;
-  color: #9D93EE;
-  border: 1px solid #2a2a38;
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  background: rgba(217, 184, 106, 0.08);
+  color: #ffbd5e;
+  border: 1px solid rgba(217, 184, 106, 0.55);
+  border-radius: 10px;
+  padding: 0 12px;
   font: inherit;
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -6447,9 +6465,9 @@ body.row-dragging * { cursor: grabbing !important; }
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .todoMdViewerRunBtn:hover {
-  background: var(--accent-dim);
-  color: var(--text-primary);
-  border-color: #6C5DF5;
+  background: rgba(217, 184, 106, 0.16);
+  color: #ffcf86;
+  border-color: rgba(217, 184, 106, 0.75);
 }
 .todoMdViewerRunBtn:focus-visible {
   outline: 2px solid var(--accent);
@@ -6844,25 +6862,27 @@ body.row-dragging * { cursor: grabbing !important; }
   to { transform: rotate(360deg); }
 }
 
+/* Neutral 36×36 chip matching the Sync chip — the quiet counterpart to the
+   amber Run backlog pill. */
 .todoMdViewerCollapseBtn {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  background: none;
-  color: #9D93EE;
-  border: 1px solid rgba(157, 147, 238, 0.38);
-  border-radius: var(--radius-sm);
+  background: #15161d;
+  color: #8b8c99;
+  border: 1px solid rgba(157, 147, 238, 0.25);
+  border-radius: 10px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .todoMdViewerCollapseBtn:hover {
-  background: var(--accent-dim);
-  color: var(--text-primary);
-  border-color: #6C5DF5;
+  background: #1c1d27;
+  color: #cfd0da;
+  border-color: rgba(157, 147, 238, 0.45);
 }
 .todoMdViewerCollapseBtn:focus-visible {
   outline: 2px solid var(--accent);

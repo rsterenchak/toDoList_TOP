@@ -301,6 +301,17 @@ const REVERT_ENTRY_UNDO_GLYPH =
     '<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>' +
     '</svg>';
 
+// Refresh / sync glyph for the icon-only Sync chip in the viewer bar. The
+// button reads as a neutral 36×36 chip alongside the amber Run backlog pill,
+// so the "Sync" text label is dropped in favor of this glyph (the aria-label
+// and title still name the action for assistive tech and hover).
+const SYNC_GLYPH =
+    '<svg class="todoMdViewerSyncIcon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<polyline points="23 4 23 10 17 10"/>' +
+    '<polyline points="1 20 1 14 7 14"/>' +
+    '<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>' +
+    '</svg>';
+
 export function buildViewerRenderedBody(text, options) {
     const opts = options || {};
     const onRunEntry = typeof opts.onRunEntry === 'function' ? opts.onRunEntry : null;
@@ -485,7 +496,8 @@ function buildTodoMdViewerCard(projectName, target) {
     syncBtn.type = 'button';
     syncBtn.className = 'todoMdViewerSyncBtn';
     syncBtn.setAttribute('aria-label', 'Sync TODO.md');
-    syncBtn.textContent = 'Sync';
+    syncBtn.title = 'Sync TODO.md';
+    syncBtn.innerHTML = SYNC_GLYPH;
 
     // Body collapse toggle — hides everything below the header (todo rows
     // and any non-header content) so only the fixed header bar remains.
@@ -691,7 +703,7 @@ function buildTodoMdViewerCard(projectName, target) {
         } finally {
             syncBtn.disabled = false;
             syncBtn.classList.remove('todoMdViewerSyncBtn--loading');
-            syncBtn.textContent = 'Sync';
+            syncBtn.innerHTML = SYNC_GLYPH;
         }
     }
 

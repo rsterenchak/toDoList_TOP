@@ -72,8 +72,12 @@ describe('todo.md viewer — main.js card wiring', () => {
         expect(main).toMatch(/rawTab\.textContent\s*=\s*['"]Raw markdown['"]/);
     });
 
-    it('exposes a Sync button that re-fetches on click', () => {
-        expect(main).toMatch(/syncBtn\.textContent\s*=\s*['"]Sync['"]/);
+    it('exposes an icon-only Sync button that re-fetches on click', () => {
+        // The bar restyle drops the "Sync" text label for a refresh glyph
+        // (aria-label + title keep the action named); the button renders the
+        // SYNC_GLYPH SVG and still wires runSync on click.
+        expect(main).toMatch(/syncBtn\.innerHTML\s*=\s*SYNC_GLYPH/);
+        expect(main).toMatch(/syncBtn\.setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Sync TODO\.md['"]\s*\)/);
         expect(main).toMatch(/syncBtn\.addEventListener\s*\(\s*['"]click['"]\s*,\s*runSync\s*\)/);
     });
 
@@ -92,7 +96,7 @@ describe('todo.md viewer — main.js card wiring', () => {
         const start = main.indexOf('async function runSync');
         const block = main.slice(start, start + 1400);
         expect(block).toMatch(/finally[\s\S]{0,200}syncBtn\.classList\.remove\(\s*['"]todoMdViewerSyncBtn--loading['"]\s*\)/);
-        expect(block).toMatch(/finally[\s\S]{0,240}syncBtn\.textContent\s*=\s*['"]Sync['"]/);
+        expect(block).toMatch(/finally[\s\S]{0,240}syncBtn\.innerHTML\s*=\s*SYNC_GLYPH/);
     });
 
     it('defines the sync spinner with a keyframe rotation and the Void accent color', () => {
@@ -331,13 +335,19 @@ describe('todo.md viewer — body collapse toggle', () => {
         expect(css).toMatch(/\.todoMdViewerCard\.collapsed\s+\.todoMdViewerBody\s*\{[\s\S]{0,80}display:\s*none/);
     });
 
-    it('renders the collapse button as a purple ghost in dark mode (no fill, faint #9D93EE border, #9D93EE chevron)', () => {
+    it('renders the collapse button as a neutral 36×36 chip in dark mode (#15161d fill, faint purple border, #8b8c99 icon)', () => {
+        // Bar restyle: the expand toggle is normalized to the same quiet
+        // neutral chip as Sync so only the amber Run backlog pill carries
+        // color emphasis.
         const ruleMatch = css.match(/\.todoMdViewerCollapseBtn\s*\{[^}]*\}/);
         expect(ruleMatch).not.toBeNull();
         const rule = ruleMatch[0];
-        expect(rule).toMatch(/background:\s*none/);
+        expect(rule).toMatch(/width:\s*36px/);
+        expect(rule).toMatch(/height:\s*36px/);
+        expect(rule).toMatch(/background:\s*#15161d/);
         expect(rule).toMatch(/border:[^;]*rgba\(157,\s*147,\s*238/);
-        expect(rule).toMatch(/color:\s*#9D93EE/);
+        expect(rule).toMatch(/color:\s*#8b8c99/);
+        expect(rule).toMatch(/border-radius:\s*10px/);
     });
 
     it('swaps the collapse button to the deeper #6C5DF5 purple ghost in light mode', () => {
@@ -459,13 +469,18 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
         expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
     });
 
-    it('styles the Run backlog button to match the spec (#161622 fill, #2a2a38 border, #9D93EE text)', () => {
+    it('styles the Run backlog button as an amber 36px pill (amber fill/border/text, radius 10px)', () => {
+        // Bar restyle: Run backlog carries the pipeline's amber identity as
+        // the highest-consequence control, distinct from the neutral Sync /
+        // expand chips.
         const ruleMatch = css.match(/\.todoMdViewerRunBtn\s*\{[^}]*\}/);
         expect(ruleMatch).not.toBeNull();
         const rule = ruleMatch[0];
-        expect(rule).toMatch(/background:\s*#161622/);
-        expect(rule).toMatch(/border:[^;]*#2a2a38/);
-        expect(rule).toMatch(/color:\s*#9D93EE/);
+        expect(rule).toMatch(/height:\s*36px/);
+        expect(rule).toMatch(/background:\s*rgba\(217,\s*184,\s*106,\s*0\.08\)/);
+        expect(rule).toMatch(/border:[^;]*rgba\(217,\s*184,\s*106,\s*0\.55\)/);
+        expect(rule).toMatch(/color:\s*#ffbd5e/);
+        expect(rule).toMatch(/border-radius:\s*10px/);
     });
 
     it('renders the Run backlog button as a ghost in light mode (transparent fill, #6C5DF5 border/text, currentColor icon)', () => {

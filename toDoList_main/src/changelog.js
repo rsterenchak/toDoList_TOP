@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-02',
+        changed: [
+            "The Tasks View bar's Run backlog button now stands out in amber, while Sync and the expand toggle are quiet neutral chips.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-01',
         changed: [
-            "On phones, the ⋯ overflow menu is now hidden while the Tasks View card is collapsed, returning when the card is expanded.",
             "The active task filter pill now uses a subtle purple tint with accent-colored text and dots instead of a solid purple fill.",
             "The active task filter pill now blends into the neutral dark chrome of the chips beside it, with only its label and position dots carrying the accent color.",
             "The active desktop Sort button now uses a neutral border to match the filter toggle beside it, with only its accent-colored label signaling the active sort.",
