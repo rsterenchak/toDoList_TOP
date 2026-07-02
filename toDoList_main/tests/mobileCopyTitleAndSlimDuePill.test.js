@@ -240,23 +240,25 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         expect(parseInt(minH[1], 10)).toBeGreaterThanOrEqual(32);
     });
 
-    it('mobile @media block colors the bare icon per urgency (overdue red, soon amber, future purple, empty gray)', () => {
+    it('mobile @media block colors the bare icon per urgency (overdue red, soon amber, default neutral, empty gray)', () => {
         // The bare icon's color encodes urgency. Use literal hex values
         // rather than the desktop urgency tokens because the bare icon
         // wants its own visual scale independent of the bordered desktop
-        // pill's text-color contrast targets.
+        // pill's text-color contrast targets. The calendar recedes to a
+        // dim neutral by default so it stops competing with the title;
+        // red is reserved for past-due.
         const blocks = allMobileMediaBlocks();
         const joined = blocks.map(b => b.text).join('\n');
-        // Future date set (no urgency class): purple #9D93EE on the base
-        // #duePill rule itself.
+        // Default (date set, no urgency class): dim neutral #4a4b58 on the
+        // base #duePill rule itself.
         const hit = findMobileDuePillRule();
-        expect(hit.body).toMatch(/color:\s*#9D93EE/i);
+        expect(hit.body).toMatch(/color:\s*#4a4b58/i);
         // Empty (no date set): dim gray #5A5A6A.
         expect(joined).toMatch(/#duePill\[data-empty="true"\]\s*\{[^}]*color:\s*#5A5A6A/i);
         // Due-soon: amber #EF9F27.
         expect(joined).toMatch(/#toDoChild\.due-soon\s+#duePill\s*\{[^}]*color:\s*#EF9F27/i);
-        // Overdue: red #E24B4A.
-        expect(joined).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*#E24B4A/i);
+        // Overdue: red #ff5d7a — reserved for a past-due date.
+        expect(joined).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*#ff5d7a/i);
     });
 
     it('desktop top-level #duePill rule keeps its bordered chrome (regression guard for dueDatePillBorder)', () => {
@@ -296,7 +298,9 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         // recolor the bordered pill text via the existing urgency tokens.
         // Lock in the top-level rules so a future refactor doesn't drop
         // the desktop cascade while reworking the mobile bare-icon path.
+        // Due-soon keeps its amber token; overdue is the reserved danger
+        // pink #ff5d7a (was var(--text-urgent)) so it reads at a glance.
         expect(css).toMatch(/#toDoChild\.due-soon\s+#duePill\s*\{[^}]*color:\s*var\(--text-warning\)/);
-        expect(css).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*var\(--text-urgent\)/);
+        expect(css).toMatch(/#toDoChild\.due-overdue\s+#duePill\s*\{[^}]*color:\s*#ff5d7a/);
     });
 });
