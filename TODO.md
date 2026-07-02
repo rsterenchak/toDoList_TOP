@@ -1062,3 +1062,18 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-02
   <!-- id: 1bae40d7-f23d-404c-a905-0b2488b05d26 -->
+
+- [ ] **[LOW]** Restyle the header run spinner as a right-aligned arc spinner
+  - Type: feature
+  - Description: The active-run indicator in the project header (the small spinning glyph beside the project-name pill) currently renders as a plain thin full ring sitting immediately to the right of the pill, which reads ambiguously — it doesn't clearly signal motion and its mid-header position looks incidental. Replace it with a cleaner arc spinner (a single accent segment rotating on a faint track) and move it to the far right edge of the header row. First locate the element that renders this spinner: grep `projectPicker.js` and `main.js` (use offset/limit on `main.js` — it's over 25k tokens) for where the run/active-run indicator is built and toggled, and confirm whether the glyph is a CSS-styled element or a hardcoded ring character set as text content.
+  - Behavior:
+    1. Symbol: the spinner becomes a 14px circle with a 1.6px border where the full ring sits at low-alpha accent (`rgba(139,123,255,0.22)`) and only `border-top-color` is the solid `--accent`, rotated by a `spin` keyframe (`to { transform: rotate(360deg) }`) at roughly 0.9s linear infinite. This reads as one bright arc chasing around a faint track.
+    2. Position: right-align the spinner to the far edge of the header pill row — push it there with `margin-left: auto` (or by making the row `justify-content: space-between`), so the project-name pill stays where it is and the spinner separates to the right rather than hugging the pill.
+    3. Visibility is unchanged — the spinner still only appears while a run is active for the project; this entry only changes its appearance and placement, not when it shows.
+  - Implementation notes:
+    - Prefer a CSS-only change in `style.css`. If the current spinner is a hardcoded ring character (e.g. a `◌`/`○` glyph set via `textContent`), remove that character so the element renders as an empty bordered box the arc CSS can style, sizing it explicitly (14×14) rather than relying on the glyph's intrinsic size — this is the only JS touch, and it's a one-line content change, not a logic change.
+    - Reduced motion: a run spinner is a functional "working" signal, not decoration, so don't freeze it into an indistinguishable full ring under `prefers-reduced-motion`. Hold it at a static partial-arc frame (top segment visible, rotation off) so "active" is still conveyed without movement — matching how the codebase already reasons about the music-viz / pomodoro motion trade-off.
+  - Out of scope: changing when or on which surfaces the spinner appears, the inject-bolt (`⚡`) marker on the mobile pill, the dropdown chevron, the project pill's own styling, and any change to the `active_runs` polling or Worker.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/projectPicker.js`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6ba467fc-f5d7-41b9-a234-ffaa2eb13b2a -->
