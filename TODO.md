@@ -1037,3 +1037,12 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/projectPicker.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 59062eb9-ca48-460b-bba1-924a7c99624f -->
+
+- [ ] **[LOW]** Restyle TODO.md viewer bar: amber Run backlog, neutral 36px chips for Sync and expand
+  - Type: feature
+  - Description: The TODO.md viewer bar's three controls (Run backlog, Sync, expand chevron) currently share roughly equal visual weight and sit below the app's 36px chip standard, with tight spacing between Sync and the chevron. Restyle the bar so Run backlog — the highest-consequence action — carries the pipeline's amber identity: 36px-tall pill, `border-radius: 10px`, border `rgba(217,184,106,0.55)`, text/icon `#ffbd5e`, background `rgba(217,184,106,0.08)`, keeping its play glyph + "Run backlog" label. Convert Sync to a neutral icon-only 36×36 chip (refresh/sync glyph, `#8b8c99` icon, `background: #15161d`, `border: 1px solid rgba(157,147,238,0.25)`, `border-radius: 10px`) and normalize the expand chevron to the same 36×36 neutral chip spec, with 8px gaps between all three controls. Applies at all widths.
+  - Implementation notes: the bar's markup and wiring live in `todoMdViewer.js`; behavior of all three controls is unchanged — this is markup/class + CSS only.
+  - Out of scope: no changes to run dispatch, sync logic, expand/collapse behavior, or the bar's placement; no confirmation-step changes for Run backlog.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 643b8553-0dd5-4c39-b72f-43e1ab894483 -->
