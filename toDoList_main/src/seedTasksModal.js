@@ -31,7 +31,7 @@
 
 import { listLogic } from './listLogic.js';
 import { chatWithWorker, findTargetById } from './inject.js';
-import { actionableStageLabel } from './conceiveShapes.js';
+import { actionableStageLabelForStages } from './conceiveShapes.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 
 // Hard ceiling on proposed tasks so a runaway reply can't flood the list. The
@@ -183,8 +183,13 @@ export function openSeedTasksModal(projectName) {
     if (!projectName) return;
 
     // The actionable stage (task source) depends on the project's shape:
-    // 'Build plan' for Spec projects, 'Next up' for Iterative ones.
-    const actionableLabel = actionableStageLabel(listLogic.getProjectLifecycle(projectName));
+    // 'Build plan' for Spec projects, 'Now' for the Iterative board, and 'Next
+    // up' for legacy Iterative projects. Resolved by the labels present on the
+    // stages so each shape maps correctly regardless of the stored lifecycle.
+    const actionableLabel = actionableStageLabelForStages(
+        listLogic.getProjectStages(projectName),
+        listLogic.getProjectLifecycle(projectName)
+    );
 
     const prior = document.getElementById('seedTasksModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);

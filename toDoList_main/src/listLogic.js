@@ -127,15 +127,19 @@ const MISS_MONTH_SHORT = [
 // ── PER-PROJECT LIFECYCLE STAGES ─────────────────────────────────────
 // Each project carries an ordered `stages` list (the Conceive view's
 // lifecycle surface) plus a `lifecycle` shape label. Two shapes exist:
-// Iterative (Why / Concept / Next up / Iterations) and Spec (the classic
-// SDLC set, Why / Concept / Requirements / Design / Build plan). New
-// projects seed the Iterative shape — most personal apps are built
+// Iterative and Spec. The Iterative shape is a direction board — a one-line
+// North star plus three lanes (Now / Next / Later); the Spec shape is the
+// classic SDLC set (Why / Concept / Requirements / Design / Build plan). New
+// projects seed the Iterative board shape — most personal apps are built
 // iteratively — while Spec stays available for the shape chooser. Legacy
-// projects persisted under the old 'SDLC' label are treated as Spec-shaped.
+// projects persisted under the old 'SDLC' label are treated as Spec-shaped;
+// legacy Iterative projects persisted with the old Why / Concept / Next up /
+// Iterations stages keep those stages (they are never reseeded) and the
+// Conceive view falls back to the stage renderer for them.
 // Declared above the `listLogic` IIFE for the same Babel-transpilation
 // reason as RECURRENCE_PATTERNS — the IIFE's load-time migrate pass
 // calls seedStages() on any project missing its stage list.
-const ITERATIVE_STAGE_LABELS = ['Why', 'Concept', 'Next up', 'Iterations'];
+const BOARD_STAGE_LABELS = ['North star', 'Now', 'Next', 'Later'];
 const SPEC_STAGE_LABELS = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
 const LIFECYCLE_ITERATIVE = 'iterative';
 const LIFECYCLE_SPEC = 'spec';
@@ -144,11 +148,11 @@ const DEFAULT_LIFECYCLE = LIFECYCLE_ITERATIVE;
 // Pick the ordered stage labels for a lifecycle shape. Spec — and its legacy
 // 'SDLC' alias persisted before shapes existed — seeds the five-stage SDLC
 // set; everything else, including 'iterative' and any unset/unknown value,
-// seeds the Iterative set, matching the default new-project shape.
+// seeds the Iterative board set, matching the default new-project shape.
 function stageLabelsForLifecycle(lifecycle) {
     return (lifecycle === LIFECYCLE_SPEC || lifecycle === 'SDLC')
         ? SPEC_STAGE_LABELS
-        : ITERATIVE_STAGE_LABELS;
+        : BOARD_STAGE_LABELS;
 }
 
 // Build the ordered stage list for a shape, each stage seeded with an empty
@@ -1193,6 +1197,51 @@ export const listLogic = (function () {
             });
         }
         return entry.stages;
+    }
+
+    // Move one line from a source stage's body to the end of a target stage's
+    // body, in a single mutation. Used by the Iterative direction board's card
+    // "promote" control (Later → Next, Next → Now): each non-empty line of a
+    // lane's body renders as a card, and promoting a card relocates its exact
+    // line to the next lane up. The line is targeted by its raw index in the
+    // source body (split on '\n') so duplicate lines promote unambiguously.
+    // No-op (returns null) when the project, either stage, or the line index is
+    // unknown, or when the addressed line is blank. Persists locally and mirrors
+    // the whole project row to Supabase through the same toProjectRowPayload +
+    // persistMutation path setProjectStageBody / setProjectShape use, bumping the
+    // row's updated_at so the move wins last-write-wins on the next hydrate.
+    // @category: user-mutation-only
+    function promoteStageLine(projectName, fromStageId, toStageId, lineIndex) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.stages)) return null;
+        const fromStage = entry.stages.find(function(s) { return s.id === fromStageId; });
+        const toStage = entry.stages.find(function(s) { return s.id === toStageId; });
+        if (!fromStage || !toStage) return null;
+        const fromLines = (fromStage.body || '').split('\n');
+        if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= fromLines.length) {
+            return null;
+        }
+        const moved = fromLines[lineIndex];
+        if (!moved || !moved.trim()) return null;
+        fromLines.splice(lineIndex, 1);
+        fromStage.body = fromLines.join('\n');
+        const toBody = toStage.body || '';
+        toStage.body = (toBody && toBody.trim())
+            ? toBody.replace(/\s*$/, '') + '\n' + moved.trim()
+            : moved.trim();
+        saveToStorage();
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
+        return { from: fromStage, to: toStage };
     }
 
 
@@ -2850,6 +2899,7 @@ export const listLogic = (function () {
         getProjectLifecycle,
         setProjectStageBody,
         setProjectShape,
+        promoteStageLine,
         getProjectTargetId,
         setProjectTargetId,
         clearProjectTargetId,

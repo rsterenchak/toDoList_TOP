@@ -2798,23 +2798,21 @@ describe('listLogic — auto-reorder on due-date change when sortByDue is active
 
 // ── PER-PROJECT LIFECYCLE STAGES (Conceive) ──────────────────────────
 // Each project carries an ordered `stages` list (seeded with the Iterative
-// set by default) and a `lifecycle` shape label, replacing the standalone
-// concept store. These pin the seed, the id-targeted body mutator, and that
-// the new fields ride along through rename / snapshot / replace round-trips.
+// board set by default — North star / Now / Next / Later) and a `lifecycle`
+// shape label, replacing the standalone concept store. These pin the seed, the
+// id-targeted body mutator, the promote-line mutation, and that the fields ride
+// along through rename / snapshot / replace round-trips.
 describe('listLogic — per-project lifecycle stages', () => {
+    const BOARD = ['North star', 'Now', 'Next', 'Later'];
+
     beforeEach(() => {
         listLogic._reset();
     });
 
-    it('a newly-created project seeds the four Iterative stages in order plus lifecycle iterative', () => {
+    it('a newly-created project seeds the four Iterative board stages in order plus lifecycle iterative', () => {
         listLogic.addProject('Launch');
         const stages = listLogic.getProjectStages('Launch');
-        expect(stages.map(s => s.label)).toEqual([
-            'Why',
-            'Concept',
-            'Next up',
-            'Iterations',
-        ]);
+        expect(stages.map(s => s.label)).toEqual(BOARD);
         // Each seeded stage starts empty with a unique string id.
         stages.forEach(s => expect(s.body).toBe(''));
         const ids = stages.map(s => s.id);
@@ -2834,7 +2832,7 @@ describe('listLogic — per-project lifecycle stages', () => {
     it('setProjectStageBody targets a stage by id and leaves siblings untouched', () => {
         listLogic.addProject('Launch');
         const stages = listLogic.getProjectStages('Launch');
-        const reqId = stages[2].id; // Next up (Iterative shape)
+        const reqId = stages[2].id; // Next (board shape)
         listLogic.setProjectStageBody('Launch', reqId, 'must do X');
         const after = listLogic.getProjectStages('Launch');
         expect(after[2].body).toBe('must do X');
@@ -2850,11 +2848,11 @@ describe('listLogic — per-project lifecycle stages', () => {
 
     it('setProjectStageBody persists through the localStorage funnel', () => {
         listLogic.addProject('Launch');
-        const stageId = listLogic.getProjectStages('Launch')[1].id; // Concept
-        listLogic.setProjectStageBody('Launch', stageId, 'the concept body');
+        const stageId = listLogic.getProjectStages('Launch')[1].id; // Now
+        listLogic.setProjectStageBody('Launch', stageId, 'the now body');
         const parsed = JSON.parse(localStorage.getItem('allProjects'));
         const persisted = parsed.Launch.stages.find(s => s.id === stageId);
-        expect(persisted.body).toBe('the concept body');
+        expect(persisted.body).toBe('the now body');
     });
 
     it('editProject (rename) preserves the project stages and lifecycle', () => {
@@ -2865,9 +2863,7 @@ describe('listLogic — per-project lifecycle stages', () => {
         listLogic.editProject('Old', 'New');
 
         const stages = listLogic.getProjectStages('New');
-        expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Next up', 'Iterations',
-        ]);
+        expect(stages.map(s => s.label)).toEqual(BOARD);
         expect(stages.find(s => s.id === stageId).body).toBe('why it matters');
         expect(listLogic.getProjectLifecycle('New')).toBe('iterative');
         expect(listLogic.getProjectStages('Old')).toEqual([]);
@@ -2875,15 +2871,13 @@ describe('listLogic — per-project lifecycle stages', () => {
 
     it('snapshotProjects includes stages and lifecycle', () => {
         listLogic.addProject('Launch');
-        const stageId = listLogic.getProjectStages('Launch')[3].id; // Iterations
+        const stageId = listLogic.getProjectStages('Launch')[3].id; // Later
         listLogic.setProjectStageBody('Launch', stageId, 'design notes');
 
         const snap = listLogic.snapshotProjects();
         const entry = snap.find(p => p.name === 'Launch');
         expect(entry.lifecycle).toBe('iterative');
-        expect(entry.stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Next up', 'Iterations',
-        ]);
+        expect(entry.stages.map(s => s.label)).toEqual(BOARD);
         expect(entry.stages.find(s => s.id === stageId).body).toBe('design notes');
     });
 
@@ -2897,19 +2891,89 @@ describe('listLogic — per-project lifecycle stages', () => {
         listLogic.replaceAllProjects(snap);
 
         const stages = listLogic.getProjectStages('Launch');
-        expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Next up', 'Iterations',
-        ]);
+        expect(stages.map(s => s.label)).toEqual(BOARD);
         expect(stages.find(s => s.id === stageId).body).toBe('round-trip body');
         expect(listLogic.getProjectLifecycle('Launch')).toBe('iterative');
     });
 
-    it('replaceAllProjects backfills the Iterative stages for an import missing them', () => {
+    it('replaceAllProjects backfills the Iterative board stages for an import missing them', () => {
         listLogic.replaceAllProjects([{ name: 'Imported', items: [] }]);
         const stages = listLogic.getProjectStages('Imported');
-        expect(stages.map(s => s.label)).toEqual([
-            'Why', 'Concept', 'Next up', 'Iterations',
-        ]);
+        expect(stages.map(s => s.label)).toEqual(BOARD);
         expect(listLogic.getProjectLifecycle('Imported')).toBe('iterative');
+    });
+});
+
+// The Iterative board's card-promotion mutation: it moves one line from a
+// source lane's body to the end of a target lane's body in a single mutation,
+// targeting the line by its raw index so duplicate lines promote unambiguously.
+describe('listLogic.promoteStageLine', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    function stageId(project, label) {
+        return listLogic.getProjectStages(project).find(s => s.label === label).id;
+    }
+
+    it('moves a Later line to the end of Next, leaving other lines untouched', () => {
+        listLogic.addProject('Board');
+        const laterId = stageId('Board', 'Later');
+        const nextId = stageId('Board', 'Next');
+        listLogic.setProjectStageBody('Board', laterId, 'idea A\nidea B\nidea C');
+        listLogic.setProjectStageBody('Board', nextId, 'coming soon');
+
+        // Promote 'idea B' (raw index 1) from Later up to Next.
+        const res = listLogic.promoteStageLine('Board', laterId, nextId, 1);
+        expect(res).not.toBeNull();
+
+        const stages = listLogic.getProjectStages('Board');
+        const later = stages.find(s => s.label === 'Later');
+        const next = stages.find(s => s.label === 'Next');
+        expect(later.body).toBe('idea A\nidea C');
+        expect(next.body).toBe('coming soon\nidea B');
+    });
+
+    it('seeds the target body when it was empty', () => {
+        listLogic.addProject('Board');
+        const nextId = stageId('Board', 'Next');
+        const nowId = stageId('Board', 'Now');
+        listLogic.setProjectStageBody('Board', nextId, 'ship it');
+
+        listLogic.promoteStageLine('Board', nextId, nowId, 0);
+
+        const stages = listLogic.getProjectStages('Board');
+        expect(stages.find(s => s.label === 'Next').body).toBe('');
+        expect(stages.find(s => s.label === 'Now').body).toBe('ship it');
+    });
+
+    it('is a no-op (null) for an unknown project, stage, out-of-range index, or blank line', () => {
+        listLogic.addProject('Board');
+        const laterId = stageId('Board', 'Later');
+        const nextId = stageId('Board', 'Next');
+        listLogic.setProjectStageBody('Board', laterId, 'only line');
+
+        expect(listLogic.promoteStageLine('Nope', laterId, nextId, 0)).toBeNull();
+        expect(listLogic.promoteStageLine('Board', 'bad', nextId, 0)).toBeNull();
+        expect(listLogic.promoteStageLine('Board', laterId, 'bad', 0)).toBeNull();
+        expect(listLogic.promoteStageLine('Board', laterId, nextId, 5)).toBeNull();
+        // Blank line index: a body 'a\n\nb' has a blank at index 1.
+        listLogic.setProjectStageBody('Board', laterId, 'a\n\nb');
+        expect(listLogic.promoteStageLine('Board', laterId, nextId, 1)).toBeNull();
+    });
+
+    it('persists the move through the localStorage funnel', () => {
+        listLogic.addProject('Board');
+        const laterId = stageId('Board', 'Later');
+        const nextId = stageId('Board', 'Next');
+        listLogic.setProjectStageBody('Board', laterId, 'promote me');
+
+        listLogic.promoteStageLine('Board', laterId, nextId, 0);
+
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        const later = parsed.Board.stages.find(s => s.id === laterId);
+        const next = parsed.Board.stages.find(s => s.id === nextId);
+        expect(later.body).toBe('');
+        expect(next.body).toBe('promote me');
     });
 });

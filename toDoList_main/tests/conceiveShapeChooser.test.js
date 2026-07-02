@@ -45,7 +45,7 @@ function functionBody(src, name) {
     return null;
 }
 
-const ITERATIVE = ['Why', 'Concept', 'Next up', 'Iterations'];
+const BOARD = ['North star', 'Now', 'Next', 'Later'];
 const SPEC = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
 
 // A Spec-shaped project entry for replaceAllProjects — addProject only ever
@@ -110,8 +110,8 @@ describe('Conceive shape chooser — pristine detection', () => {
 
     it('hides the chooser the moment any stage body has text', () => {
         listLogic.addProject('Started');
-        const nextUp = listLogic.getProjectStages('Started').find((s) => s.label === 'Next up');
-        listLogic.setProjectStageBody('Started', nextUp.id, 'Ship the import flow.');
+        const now = listLogic.getProjectStages('Started').find((s) => s.label === 'Now');
+        listLogic.setProjectStageBody('Started', now.id, 'Ship the import flow.');
 
         mountDom('Started');
         renderConceiveView();
@@ -121,8 +121,8 @@ describe('Conceive shape chooser — pristine detection', () => {
 
     it('treats whitespace-only bodies as still pristine', () => {
         listLogic.addProject('Spaces');
-        const why = listLogic.getProjectStages('Spaces').find((s) => s.label === 'Why');
-        listLogic.setProjectStageBody('Spaces', why.id, '   \n  ');
+        const northStar = listLogic.getProjectStages('Spaces').find((s) => s.label === 'North star');
+        listLogic.setProjectStageBody('Spaces', northStar.id, '   \n  ');
 
         mountDom('Spaces');
         renderConceiveView();
@@ -177,7 +177,7 @@ describe('Conceive shape chooser — switching reseeds and persists', () => {
         expect(optionLabeled('Spec').classList.contains('active')).toBe(true);
     });
 
-    it('switching back to Iterative restores the Iterative seed and lifecycle', () => {
+    it('switching back to Iterative restores the board seed and lifecycle', () => {
         listLogic.replaceAllProjects([specEntry('Spec')]);
         mountDom('Spec');
         renderConceiveView();
@@ -185,8 +185,11 @@ describe('Conceive shape chooser — switching reseeds and persists', () => {
         optionLabeled('Iterative').click();
 
         expect(listLogic.getProjectLifecycle('Spec')).toBe('iterative');
-        expect(listLogic.getProjectStages('Spec').map((s) => s.label)).toEqual(ITERATIVE);
-        expect(stageLabels()).toEqual(ITERATIVE);
+        expect(listLogic.getProjectStages('Spec').map((s) => s.label)).toEqual(BOARD);
+        // The board renderer draws lanes, not stage sections, so the visible
+        // lane labels are the three lanes (North star renders as a lead input).
+        const laneLabels = [...document.querySelectorAll('.conceiveLaneLabel')].map((n) => n.textContent);
+        expect(laneLabels).toEqual(['Now', 'Next', 'Later']);
     });
 
     it('tapping the already-active option does nothing (no reseed)', () => {
