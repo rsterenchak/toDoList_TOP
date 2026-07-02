@@ -9,7 +9,6 @@ export const changelog = [
         changed: [
             "The project header's dropdown chevron is now a clearer purple glyph, the active-sort cue tints the sort icon instead of showing a corner dot, the add-a-task placeholder drops the \"press Enter\" hint on phones, and the collapsed Completed header is dimmed.",
             "On phones, task rows now sit more clearly above the background, with crisper row separators, a bolder add-a-task outline, and less-dim row icons.",
-            "The project header's running indicator is now a right-aligned arc spinner that reads more clearly as motion.",
             "New iterative projects now open as a Now / Next / Later board with a one-line North star, card promotion between lanes, and quick capture.",
             "In the TODO viewer, the overflow menu button now matches its neighboring toolbar chips, and the Run backlog button turns neutral when there are no pending tasks to run.",
         ],
