@@ -202,6 +202,43 @@ function lifecycleFromRow(row) {
 }
 
 
+// ── CONCEIVE SHIPPED LOG ─────────────────────────────────────────────
+// The Now / Next / Later board carries a fifth, auto-managed "Shipped" stage
+// that records every app-initiated run against the project — no manual
+// journaling. The stage is NOT part of the seeded board set (BOARD_STAGE_LABELS
+// above): it is created lazily on the first append (appendConceiveLogEntry) so
+// board projects that predate this feature gain it for free. Its body is a
+// JSON-serialized array of run log records `{ id, title, verdict, summary,
+// date }`, newest-first, deduped by `id` (the run's entry marker). Storing the
+// log inside the existing `stages` array means it syncs across devices via the
+// same per-row persistence path stage edits already use — no new column, no new
+// sync path, no toProjectRowPayload field.
+const SHIPPED_STAGE_LABEL = 'Shipped';
+
+// Parse a Shipped stage body into an array of log records. Fails safe to an
+// empty array on a missing/blank body or ANY JSON parse error — it never
+// throws, so a corrupted body surfaces as an empty log rather than crashing the
+// board renderer.
+function parseShippedLog(body) {
+    if (typeof body !== 'string' || !body.trim()) return [];
+    try {
+        const parsed = JSON.parse(body);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+// Whether a project's stage list is the Now / Next / Later board shape — its
+// lanes include a "Now". The Shipped log is only kept for board-shape projects
+// (the same gate the Conceive view uses to pick the board renderer).
+function stagesAreBoard(stages) {
+    return Array.isArray(stages) && stages.some(function(s) {
+        return s && s.label === 'Now';
+    });
+}
+
+
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
     
@@ -1242,6 +1279,80 @@ export const listLogic = (function () {
             });
         }
         return { from: fromStage, to: toStage };
+    }
+
+    // Append a run log record to a board project's auto-managed "Shipped" stage.
+    // Gated to board-shape projects (stages include a "Now" lane) — other shapes
+    // and unknown projects append nothing. The Shipped stage is created lazily
+    // when absent, so board projects that predate this feature gain it on their
+    // first append. Idempotent by `record.id` (the run's entry marker): a record
+    // whose id already exists is skipped, since status polling can fire the
+    // completion handler more than once and a log synced from another device may
+    // already hold the run. New records prepend so the list stays newest-first
+    // without a sort. Persists locally and mirrors the whole row to Supabase
+    // through the same toProjectRowPayload + persistMutation path the other stage
+    // mutations use, bumping the row's updated_at so the append wins
+    // last-write-wins on the next cross-device hydrate. Returns the stored record
+    // on append, or null on any no-op (non-board / unknown project, bad record,
+    // or duplicate id).
+    // @category: user-mutation-only
+    function appendConceiveLogEntry(projectName, record) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.stages)) return null;
+        if (!stagesAreBoard(entry.stages)) return null;
+        if (!record || typeof record !== 'object') return null;
+        const id = (typeof record.id === 'string' && record.id.length > 0)
+            ? record.id
+            : (record.id != null ? String(record.id) : '');
+        if (!id) return null;
+
+        let shipped = entry.stages.find(function(s) {
+            return s && s.label === SHIPPED_STAGE_LABEL;
+        });
+        if (!shipped) {
+            shipped = { id: genId(), label: SHIPPED_STAGE_LABEL, body: '' };
+            entry.stages.push(shipped);
+        }
+
+        const log = parseShippedLog(shipped.body);
+        if (log.some(function(r) { return r && r.id === id; })) return null; // dedup
+
+        const clean = {
+            id: id,
+            title: typeof record.title === 'string' ? record.title : '',
+            verdict: record.verdict === 'nochange' ? 'nochange' : 'shipped',
+            summary: typeof record.summary === 'string' ? record.summary : '',
+            date: typeof record.date === 'string' ? record.date : '',
+        };
+        log.unshift(clean);
+        shipped.body = JSON.stringify(log);
+        saveToStorage();
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
+        return clean;
+    }
+
+    // Read a board project's Shipped log as a parsed array (newest-first).
+    // Returns [] for a non-board / unknown project or an absent / corrupt Shipped
+    // stage — never throws. The Conceive view calls this to render the collapsed
+    // Shipped section; all JSON parsing lives here so the view never touches it.
+    function getConceiveLog(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry || !Array.isArray(entry.stages)) return [];
+        const shipped = entry.stages.find(function(s) {
+            return s && s.label === SHIPPED_STAGE_LABEL;
+        });
+        if (!shipped) return [];
+        return parseShippedLog(shipped.body);
     }
 
 
@@ -2900,6 +3011,8 @@ export const listLogic = (function () {
         setProjectStageBody,
         setProjectShape,
         promoteStageLine,
+        appendConceiveLogEntry,
+        getConceiveLog,
         getProjectTargetId,
         setProjectTargetId,
         clearProjectTargetId,

@@ -2718,6 +2718,38 @@ function entryCheckboxState(content, entryId) {
     return null;
 }
 
+// Today's date as an ISO YYYY-MM-DD string (local time) — the completion date
+// stamped onto a Conceive board Shipped-log record.
+function todayIsoDate() {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
+// Log a finalized run to its target project's Conceive board "Shipped" section.
+// Fire-and-forget: fetches the agent's closing summary (the same `run_result`
+// the Runs-tab No-change panel reads) and appends a log record through listLogic,
+// which gates to board-shape projects and dedups by entry id. Skipped — with no
+// run_result fetch — when the run has no project or entry id, or the target
+// project isn't a board (the cheap pre-check mirrors appendConceiveLogEntry's
+// authoritative gate so non-board targets never trigger a fetch).
+function logConceiveRun(project, rec, verdict, runId, target) {
+    if (!project || !rec || !rec.entryId) return;
+    const stages = listLogic.getProjectStages(project);
+    if (!stages.some(function(s) { return s && s.label === 'Now'; })) return;
+    fetchRunResult(runId != null ? runId : rec.correlationId, target).then(function(res) {
+        const summary = (res && res.ok && typeof res.result === 'string') ? res.result : '';
+        listLogic.appendConceiveLogEntry(project, {
+            id: rec.entryId,
+            title: rec.title || '',
+            verdict: verdict,
+            summary: summary,
+            date: todayIsoDate(),
+        });
+    });
+}
+
 // Reconcile a completed-with-success run. A green workflow conclusion alone is
 // NOT proof a change merged: a graceful no-op run (the routine reports the entry
 // ineligible and exits clean with tests green) also returns success. Decide
@@ -2754,6 +2786,7 @@ async function reconcileSuccessConclusion(correlationId, project, runUrl, target
         rec.readMisses = (rec.readMisses || 0) + 1;
         if (rec.readMisses > READ_CONFIRM_RETRIES) {
             setRunRecordStatus(correlationId, 'SHIPPED');
+            logConceiveRun(project, rec, 'shipped', runId, target);
             settle();
         } else {
             saveRunRecords();
@@ -2769,9 +2802,11 @@ async function reconcileSuccessConclusion(correlationId, project, runUrl, target
         if (runUrl) rec.runUrl = runUrl;
         if (runId != null) rec.runId = runId;
         setRunRecordStatus(correlationId, 'NOCHANGE');
+        logConceiveRun(project, rec, 'nochange', runId, target);
     } else {
         // 'checked' → shipped; null (marker absent) → fail safe to SHIPPED.
         setRunRecordStatus(correlationId, 'SHIPPED');
+        logConceiveRun(project, rec, 'shipped', runId, target);
     }
     settle();
 }

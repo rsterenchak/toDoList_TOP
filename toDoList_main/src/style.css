@@ -4190,6 +4190,115 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-style: solid;
 }
 
+/* AUTO-LOGGED "SHIPPED" SECTION — pinned at the bottom of the board, collapsed
+   by default. A mono header row (label + count + chevron) toggles a newest-first
+   list of run records, each with a verdict-colored left border and an inline
+   summary panel that expands on tap. Display-only (no edit/promote/delete). */
+.conceiveShipped {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle, var(--border-mid));
+}
+
+.conceiveShippedHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.conceiveShippedChevron {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
+.conceiveShippedLabel {
+  flex: 0 0 auto;
+}
+
+.conceiveShippedCount {
+  flex: 0 0 auto;
+  font-weight: normal;
+  color: var(--text-muted, var(--text-secondary));
+}
+
+.conceiveShippedList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* A record row: the whole row is the accordion tap target. A full-side left
+   border carries the verdict color, so border-radius is squared on that edge. */
+.conceiveShippedRow {
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-left-width: 3px;
+  border-radius: 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background: var(--bg-elevated, transparent);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.conceiveShippedRow:focus-visible {
+  outline: none;
+  border-color: #6C5DF5;
+}
+
+.conceiveShippedRow--shipped {
+  border-left-color: var(--type-feature);
+}
+
+.conceiveShippedRow--nochange {
+  border-left-color: var(--text-warning);
+}
+
+.conceiveShippedRowHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.conceiveShippedRowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.conceiveShippedRowDate {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted, var(--text-secondary));
+}
+
+.conceiveShippedSummary {
+  margin-top: 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text-secondary, var(--text-muted));
+}
+
 /* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
 #seedTasksModalBackdrop {
   position: fixed;
