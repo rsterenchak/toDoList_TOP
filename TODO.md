@@ -1116,7 +1116,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9358b3c0-2e48-4134-9869-a41069cf21d3 -->
 
-- [ ] **[HIGH]** Auto-migrate pristine legacy Iterative projects to the Now/Next/Later board
+- [x] **[HIGH]** Auto-migrate pristine legacy Iterative projects to the Now/Next/Later board
   - Type: feature
   - Description: The Iterative board shipped, but projects created before it keep their old stored stages (Why / Concept / Next up / Iterations) and are never reseeded, so the Conceive view falls back to the legacy stage renderer for them — the board is invisible on every pre-existing project, and the shape chooser can't fix it because such a project already reads as `lifecycle: 'iterative'` with the chooser's Iterative option active (tapping the active option is a no-op). Add a one-time, lossless load-time migration that reseeds a legacy Iterative project's stages to the board set when — and only when — it has no user content to lose. This is safe by construction: pristine means every stage body is empty, so swapping the labels strands nothing.
   - Behavior:
@@ -1131,5 +1131,5 @@
     - Add listLogic tests: a pristine legacy project (Why/Concept/Next up/Iterations, all empty, lifecycle iterative) migrates to North star/Now/Next/Later; a legacy project with text in any stage does NOT migrate; a Spec project does NOT migrate; an already-board project is a no-op; the migration is idempotent across two consecutive load passes; a populated Shipped stage doesn't block migration of an otherwise-pristine project.
   - Out of scope: any change to `conceiveView.js` or the renderer, migrating non-pristine legacy projects, changing the shape chooser, and any Worker or Supabase schema change.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: a1751755-1c8b-43f2-a464-a45258b3ee58 -->
