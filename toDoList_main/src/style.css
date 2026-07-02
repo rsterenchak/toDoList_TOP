@@ -13673,3 +13673,54 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     animation: none;
   }
 }
+
+/* ── MOBILE INTERACTIVE-LAYER CONTRAST (dark theme) ──
+   On phones the tappable layer sat too close to the near-black canvas:
+   the row fill barely cleared --bg-base, rows were divided by a faint
+   ~10%-opacity purple hairline, and secondary row controls rendered at
+   the receded neutral so they read as disabled. Lift the whole layer at
+   the mobile breakpoint by re-declaring the bg ramp (so every surface
+   inherits the brighter row value) plus a handful of border/color
+   overrides on the rules that hardcode the hairline or the muted glyph.
+   Dark theme only — the light palette already has a bright row/border
+   ramp (--bg-row is #ffffff there), so a dark override would break it;
+   guard with :not([data-theme="light"]). */
+@media (max-width: 1023px) {
+  :root:not([data-theme="light"]) {
+    --bg-row:    #20222e;
+    --bg-hover:  #262838;
+    --bg-active: #232535;
+  }
+
+  /* Row separators: swap the faint purple hairline for the theme's mid
+     border so rows read as distinct surfaces. Todo rows carry a full
+     border (card-ified); project rows a bottom hairline — #projChild
+     (an id) governs the unselected default and the selected state keeps
+     its !important to beat that id. */
+  #toDoChild {
+    border-color: var(--border-mid);
+  }
+  #projChild,
+  .unselectedProject {
+    border-bottom: 0.5px solid var(--border-mid);
+  }
+  .selectedProject {
+    border-bottom: 0.5px solid var(--border-mid) !important;
+  }
+
+  /* Secondary per-row icon control (copy) lifts from the receded neutral
+     to --text-secondary so it stops reading as disabled; the amber
+     due-date calendar icon is high-signal already and keeps its own
+     urgency scale (untouched here). */
+  .copyTitleBtn {
+    color: var(--text-secondary);
+  }
+
+  /* The `+ Add a task` placeholder row announces itself with a solid
+     bright stroke against the rows beneath it; its focus-within accent
+     glow and 16px input font-size are unchanged. */
+  #toDoChild[data-blank-placeholder] {
+    border-style: solid;
+    border-color: var(--border-bright);
+  }
+}
