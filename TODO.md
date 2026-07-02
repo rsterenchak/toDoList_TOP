@@ -1047,7 +1047,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 643b8553-0dd5-4c39-b72f-43e1ab894483 -->
 
-- [ ] **[MEDIUM]** Increase contrast between interactive elements and the background on mobile
+- [x] **[MEDIUM]** Increase contrast between interactive elements and the background on mobile
   - Type: feature
   - Description: On the mobile Tasks view, tappable surfaces are hard to distinguish from the canvas: `--bg-row` (#1b1c25) sits only slightly above `--bg-base` (#0e0f14), rows are separated by a near-invisible 0.5px `rgba(108,93,245,0.10)` hairline, and secondary icon controls on rows (calendar pill, copy/inject buttons) render at `--text-muted`, which reads as disabled. Lift the interactive layer at the mobile breakpoint only, via scoped token overrides rather than per-element restyling, so the whole ramp inherits the change.
   - Behavior:
@@ -1060,5 +1060,5 @@
     - Token overrides + a handful of border/color rule overrides only; no layout, spacing, or radius changes, and no inline style writes from JS.
   - Out of scope: desktop styling, light theme values, row geometry (gaps, radius, card-ification), the bordered icon-chip treatment, priority-bar colors.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: 1bae40d7-f23d-404c-a905-0b2488b05d26 -->
