@@ -1046,3 +1046,19 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 643b8553-0dd5-4c39-b72f-43e1ab894483 -->
+
+- [ ] **[MEDIUM]** Increase contrast between interactive elements and the background on mobile
+  - Type: feature
+  - Description: On the mobile Tasks view, tappable surfaces are hard to distinguish from the canvas: `--bg-row` (#1b1c25) sits only slightly above `--bg-base` (#0e0f14), rows are separated by a near-invisible 0.5px `rgba(108,93,245,0.10)` hairline, and secondary icon controls on rows (calendar pill, copy/inject buttons) render at `--text-muted`, which reads as disabled. Lift the interactive layer at the mobile breakpoint only, via scoped token overrides rather than per-element restyling, so the whole ramp inherits the change.
+  - Behavior:
+    1. Inside the mobile breakpoint (currently 1024px — grep style.css to confirm the active max-width value before writing rules), dark theme only: re-declare `--bg-row: #20222e`, and bump `--bg-hover` and `--bg-active` proportionally so hover/active states still sit visibly above the new row value (e.g. `--bg-hover: #262838`, `--bg-active: #232535`).
+    2. Row separators: within the same mobile block, replace the hardcoded `rgba(108,93,245,0.10)` border-bottom on todo rows (and the matching rule on `.unselectedProject`/`.selectedProject` if shared) with `0.5px solid var(--border-mid)`.
+    3. Secondary icon controls on todo rows (copy/inject and similar muted per-row buttons) go from `--text-muted` to `--text-secondary` at this breakpoint; the amber due-date calendar icon is already high-signal and stays untouched.
+    4. The mobile `+ Add a task` row gets a `0.5px solid var(--border-bright)` stroke so the primary input announces itself against the rows beneath it (its existing 16px font-size rule stays as-is).
+  - Implementation notes:
+    - Scope the token re-declarations so they do NOT apply to the light theme — `--bg-row` is #ffffff there and a dark override would break it. Guard with `:root:not([data-theme="light"])` inside the media query (or the equivalent pattern the theme block already uses).
+    - Token overrides + a handful of border/color rule overrides only; no layout, spacing, or radius changes, and no inline style writes from JS.
+  - Out of scope: desktop styling, light theme values, row geometry (gaps, radius, card-ification), the bordered icon-chip treatment, priority-bar colors.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1bae40d7-f23d-404c-a905-0b2488b05d26 -->
