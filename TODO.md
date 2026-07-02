@@ -1182,7 +1182,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 17593eb1-b376-4150-9fb5-f3689bc68d30 -->
 
-- [ ] **[MEDIUM]** Add per-viewport snapshot buckets and Mobile/Desktop toggle to Structure block canvas
+- [x] **[MEDIUM]** Add per-viewport snapshot buckets and Mobile/Desktop toggle to Structure block canvas — Completed: 2026-07-02
   - Type: feature
   - Description: The Structure tab's block canvas currently renders from a single in-memory rect snapshot, so it can only ever show the layout of the viewport it was captured on — from a phone, the desktop layout (`#sideBar`, `#desktopViewSubBand`) is permanently ghosted. Split the snapshot cache into two buckets keyed by breakpoint — `mobile` (viewport < 1024px) and `desktop` (≥ 1024px), matching the existing `isMobile()` convention — and persist each bucket to localStorage under `todoapp_structureSnapshot_mobile` and `todoapp_structureSnapshot_desktop` (JSON: `{ capturedAt, viewport: { w, h }, handles: { id: { rect, visible } } }`). Every capture (tab-switch away from Tasks View, or the `↻` chip) writes only to the bucket matching the current live viewport. Add a Mobile/Desktop segmented toggle above the canvas that switches which bucket renders.
   - Behavior:

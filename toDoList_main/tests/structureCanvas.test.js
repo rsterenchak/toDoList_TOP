@@ -213,6 +213,162 @@ describe('structureCanvas — filter + two-way sync', () => {
     });
 });
 
+describe('structureCanvas — per-viewport buckets + toggle', () => {
+    const MOBILE_KEY = 'todoapp_structureSnapshot_mobile';
+    const DESKTOP_KEY = 'todoapp_structureSnapshot_desktop';
+
+    function setViewport(w, h) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: h || 800, configurable: true });
+    }
+
+    // A fresh module instance (hydrated: false, empty buckets) so each test fully
+    // controls localStorage → in-memory hydration and viewport-bucket state.
+    async function makeCanvas() {
+        vi.resetModules();
+        return await import('../src/structureCanvas.js');
+    }
+
+    function renderWith(m, host, overrides) {
+        return m.renderStructureCanvas(host, Object.assign({
+            repo: m.SELF_REPO,
+            tree: sampleTree(),
+            onSelect: vi.fn(),
+            onReference: vi.fn(),
+            onViewCode: vi.fn(),
+        }, overrides));
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        setViewport(1024, 800);
+        mountDom();
+    });
+
+    afterEach(() => {
+        setViewport(1024, 800);
+    });
+
+    it('captures into the bucket for the current live viewport and persists it', async () => {
+        const m = await makeCanvas();
+        setViewport(500, 900);
+        m.captureSnapshot(sampleTree());
+
+        // Wrote only the mobile bucket; the desktop bucket is untouched.
+        expect(localStorage.getItem(MOBILE_KEY)).toBeTruthy();
+        expect(localStorage.getItem(DESKTOP_KEY)).toBe(null);
+
+        const parsed = JSON.parse(localStorage.getItem(MOBILE_KEY));
+        expect(parsed.viewport).toEqual({ w: 500, h: 900 });
+        expect(parsed.handles['#main']).toBeTruthy();
+        expect(parsed.handles['#main'].visible).toBe(true);
+    });
+
+    it('renders a Mobile/Desktop toggle; the uncaptured segment is disabled with a helper line', async () => {
+        const m = await makeCanvas();
+        setViewport(1024, 800);
+        m.captureSnapshot(sampleTree()); // desktop bucket only
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        const segs = host.querySelectorAll('.structureCanvasViewSeg');
+        expect(segs.length).toBe(2);
+        const desktop = host.querySelector('.structureCanvasViewSeg[data-bucket="desktop"]');
+        const mobile = host.querySelector('.structureCanvasViewSeg[data-bucket="mobile"]');
+        expect(desktop.classList.contains('is-active')).toBe(true);
+        expect(mobile.disabled).toBe(true);
+        expect(mobile.classList.contains('is-disabled')).toBe(true);
+
+        const hint = host.querySelector('.structureCanvasViewHint');
+        expect(hint).toBeTruthy();
+        expect(hint.textContent).toMatch(/mobile/i);
+    });
+
+    it('switching the toggle renders from the other bucket, flipping ghosts', async () => {
+        const m = await makeCanvas();
+        // Desktop capture: #aside visible.
+        setViewport(1024, 800);
+        mountDom();
+        m.captureSnapshot(sampleTree());
+        // Mobile capture: #aside collapsed to zero size → a ghost in that bucket.
+        setViewport(500, 900);
+        stubRect(document.getElementById('aside'), 0, 0, 0, 0);
+        m.captureSnapshot(sampleTree());
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        // Default tracks the live (mobile) viewport: #aside reads as a ghost.
+        expect(m.isGhostSelector('#aside')).toBe(true);
+        expect(host.querySelector('.structureCanvasViewSeg[data-bucket="mobile"]').classList.contains('is-active')).toBe(true);
+
+        // Toggle to desktop: the same handle un-ghosts from the desktop bucket.
+        host.querySelector('.structureCanvasViewSeg[data-bucket="desktop"]').click();
+        expect(m.isGhostSelector('#aside')).toBe(false);
+        expect(host.querySelector('.structureCanvasViewSeg[data-bucket="desktop"]').classList.contains('is-active')).toBe(true);
+    });
+
+    it('fits the canvas to the selected bucket viewport aspect ratio', async () => {
+        const m = await makeCanvas();
+        setViewport(1440, 900);
+        m.captureSnapshot(sampleTree());
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        const canvas = host.querySelector('.structureCanvasBlocks');
+        expect(canvas.style.aspectRatio).toBe('1440 / 900');
+    });
+
+    it('renders the empty state and a helper when no bucket is captured', async () => {
+        const m = await makeCanvas();
+        const host = mountHost();
+        renderWith(m, host);
+
+        expect(host.querySelector('.structureCanvasEmpty')).toBeTruthy();
+        expect(host.querySelectorAll('.structureCanvasBlock').length).toBe(0);
+        expect(host.querySelector('.structureCanvasViewHint')).toBeTruthy();
+        // Both buckets empty → both segments disabled.
+        expect(host.querySelectorAll('.structureCanvasViewSeg.is-disabled').length).toBe(2);
+    });
+
+    it('rehydrates a persisted bucket on a fresh load and renders it without a live capture', async () => {
+        // Seed a desktop bucket as if it were captured earlier on another device.
+        const payload = {
+            capturedAt: '2026-06-30T12:00:00.000Z',
+            viewport: { w: 1440, h: 900 },
+            handles: {
+                '#appHeader': { rect: { x: 0, y: 0, width: 200, height: 60 }, visible: true },
+                '#main': { rect: { x: 0, y: 60, width: 1440, height: 800 }, visible: true },
+            },
+        };
+        localStorage.setItem(DESKTOP_KEY, JSON.stringify(payload));
+
+        // Fresh load on a mobile viewport with no desktop layout to measure live.
+        setViewport(500, 900);
+        const m = await makeCanvas();
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        // Mobile bucket empty → falls back to the populated desktop bucket, whose
+        // persisted rects mark #main visible.
+        expect(m.isGhostSelector('#main')).toBe(false);
+        expect(host.querySelector('.structureCanvasViewSeg[data-bucket="desktop"]').classList.contains('is-active')).toBe(true);
+        expect(host.querySelector('.structureCanvasViewSeg[data-bucket="mobile"]').disabled).toBe(true);
+    });
+
+    it('discards a corrupt persisted bucket instead of rendering from it', async () => {
+        localStorage.setItem(DESKTOP_KEY, '{not valid json');
+        setViewport(1024, 800);
+        const m = await makeCanvas();
+        // Touching the buckets triggers hydration, which drops the corrupt entry.
+        expect(m.getSnapshotInfo().size).toBe(0);
+        expect(localStorage.getItem(DESKTOP_KEY)).toBe(null);
+    });
+});
+
 describe('structureCanvas — markGhostRows', () => {
     it('flags live tree rows whose handle is a ghost', () => {
         const treeEl = document.createElement('div');

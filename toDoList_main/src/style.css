@@ -3477,6 +3477,48 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: rgba(108, 93, 245, 0.12);
 }
 
+/* Mobile/Desktop bucket toggle: a two-segment control sharing the chip row. */
+.structureCanvasViewToggle {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-mid);
+}
+.structureCanvasViewSeg {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.structureCanvasViewSeg:hover:not(.is-disabled):not(.is-active) {
+  color: var(--text-primary);
+}
+.structureCanvasViewSeg.is-active {
+  background: #6C5DF5;
+  color: #fff;
+}
+.structureCanvasViewSeg.is-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Helper line pointing the user at the device that would fill an empty bucket. */
+.structureCanvasViewHint {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
 .structureCanvasBreadcrumb {
   display: flex;
   flex-wrap: wrap;
