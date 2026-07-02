@@ -1149,3 +1149,18 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/tests/todoMdViewer.test.js`
   - Completed: 2026-07-02
   <!-- id: ad855b61-1fb9-45ee-920a-9c5e6a6b1d05 -->
+
+- [ ] **[LOW]** Revert the mobile project-header run spinner to its original style
+  - Type: feature
+  - Description: The project-header active-run spinner (`.mobileProjRunSpinner`, mounted in the mobile project title row) was restyled into a right-aligned 14px `--accent` arc in a prior change (commit `31fb1ff5`); revert it to exactly its pre-change appearance. This is a faithful undo of that one commit's `style.css` hunk plus its test update — no other spinner is affected (the desktop dropdown's `.projectPickerRunSpinner` was never touched and stays as-is).
+  - Behavior:
+    1. `.mobileProjRunSpinner`: restore `width: 12px; height: 12px;` (from 14px), `border: 2px solid rgba(157, 147, 238, 0.3);` with `border-top-color: #9D93EE;` (from `1.6px solid rgba(139, 123, 255, 0.22)` / `border-top-color: var(--accent)`), and remove the `margin-left: auto;` line so the spinner sits next to the project pill again instead of pushing to the far right edge. Keep the unchanged declarations (`display: none; flex: 0 0 auto; border-radius: 50%; pointer-events: none`). The arc-spinner explanatory comment block added by that commit goes away with the reverted lines.
+    2. `.mobileProjRunSpinner--active`: restore `animation: spin 0.7s linear infinite;` (from 0.9s). The `@keyframes spin` rule predates the arc change — leave it in place.
+    3. Remove the `@media (prefers-reduced-motion: reduce) { .mobileProjRunSpinner--active { animation: none; } }` block that the arc commit added — the original had no reduced-motion override, so a faithful revert removes it. (If you'd rather keep the reduced-motion guard for accessibility, say so and I'll carve it out of the revert.)
+  - Implementation notes:
+    - `style.css`-only in the app source; the spinner `<span>` in `main.js` was never modified by the arc change, so no JS touch is needed.
+    - `tests/crossDeviceRunStatus.test.js`: the arc commit updated the "styles the spinner…" assertions to expect the accent arc track/segment, the 14px size, the right-alignment, and the reduced-motion static frame — revert those assertions back to expecting the original values (`#9D93EE` top segment on the `rgba(157,147,238,0.3)` track, 12px, 2px border, no `margin-left: auto`, `spin 0.7s`, no reduced-motion block).
+  - Out of scope: the desktop `.projectPickerRunSpinner`, the sidebar project-row spinners (`attachProjectRunSpinner`), any change to when the spinner shows or the `active_runs` polling, and any Worker change.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/crossDeviceRunStatus.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b8dbaacb-a095-4b96-9aef-5c967db3edbc -->
