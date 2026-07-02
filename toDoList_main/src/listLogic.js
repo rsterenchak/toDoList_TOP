@@ -238,6 +238,37 @@ function stagesAreBoard(stages) {
     });
 }
 
+// The legacy Iterative stage that predates the Now / Next / Later board. Its
+// presence (with no 'Now') is the signature of a pre-board Iterative project.
+const LEGACY_ITERATIVE_MARKER = 'Next up';
+
+// Whether a project qualifies for the one-time legacy-Iterative → board reseed
+// run by the load-time migrate pass. All three must hold: the shape is
+// Iterative (or unset/defaulted to it — never Spec/SDLC), the stages carry the
+// legacy 'Next up' marker and NOT already 'Now' (so board projects are skipped),
+// and the project is pristine — every stage body empty after trimming. The
+// auto-managed Shipped stage is excluded from the emptiness check, matching
+// conceiveView.isProjectPristine, so a populated Shipped log never blocks the
+// migration. Pristine by construction means swapping the labels strands no user
+// content, so the reseed is lossless.
+function isLegacyIterativePristine(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    const lifecycle = (typeof entry.lifecycle === 'string' && entry.lifecycle.length > 0)
+        ? entry.lifecycle
+        : DEFAULT_LIFECYCLE;
+    if (lifecycle !== LIFECYCLE_ITERATIVE) return false;
+    const stages = entry.stages;
+    if (!Array.isArray(stages) || stages.length === 0) return false;
+    if (stagesAreBoard(stages)) return false;
+    const hasLegacyMarker = stages.some(function(s) {
+        return s && s.label === LEGACY_ITERATIVE_MARKER;
+    });
+    if (!hasLegacyMarker) return false;
+    return stages
+        .filter(function(s) { return s && s.label !== SHIPPED_STAGE_LABEL; })
+        .every(function(s) { return !(s && s.body && s.body.trim()); });
+}
+
 
 // ORIGINAL FUNCTION CALL,
 export const listLogic = (function () {
@@ -346,6 +377,33 @@ export const listLogic = (function () {
             }
             if (!Array.isArray(entry.stages) || entry.stages.length === 0) {
                 entry.stages = seedStages(entry.lifecycle);
+            }
+            // One-time lossless reseed of pristine legacy-Iterative projects to
+            // the Now / Next / Later board. Projects created before the board
+            // shipped keep their old Why / Concept / Next up / Iterations stages
+            // and never gained the board, so Conceive falls back to the stage
+            // renderer and the shape chooser can't fix them (they already read as
+            // Iterative). When such a project has no user content to lose, swap
+            // its stages for the board seed. Persist through the same
+            // saveToStorage + persistMutation route setProjectShape uses so the
+            // reseed saves locally and mirrors to Supabase (bumping updated_at).
+            // Idempotent: after the reseed the stages include 'Now' and drop
+            // 'Next up', so this can't fire again on a later load or another
+            // device.
+            if (isLegacyIterativePristine(entry)) {
+                entry.stages = seedStages(LIFECYCLE_ITERATIVE);
+                saveToStorage();
+                if (entry.id) {
+                    persistMutation({
+                        op: 'update',
+                        table: 'projects',
+                        payload: toProjectRowPayload(
+                            entry,
+                            key,
+                            Object.keys(allProjects).indexOf(key)
+                        ),
+                    });
+                }
             }
             if (typeof entry.color !== 'string' && entry.color !== null) entry.color = null;
             if (typeof entry.color === 'string' && PROJECT_COLOR_KEYS.indexOf(entry.color) === -1) {

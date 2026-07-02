@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-02',
         added: [
-            "The Now / Next / Later board now keeps an auto-logged, collapsible Shipped section recording each run against the project with its outcome and the agent's summary.",
+            "Iterative projects created before the Now / Next / Later board now switch to it automatically when they have no saved stage notes to lose.",
         ],
         changed: [
             "The project header's dropdown chevron is now a clearer purple glyph, the active-sort cue tints the sort icon instead of showing a corner dot, the add-a-task placeholder drops the \"press Enter\" hint on phones, and the collapsed Completed header is dimmed.",

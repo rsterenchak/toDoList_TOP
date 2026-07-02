@@ -2904,6 +2904,116 @@ describe('listLogic — per-project lifecycle stages', () => {
     });
 });
 
+// The one-time load-time migration that reseeds a PRISTINE legacy-Iterative
+// project (old Why / Concept / Next up / Iterations stages) onto the Now / Next
+// / Later board. It fires only when there is no user content to lose, so the
+// label swap is lossless by construction. These exercise the migration through
+// a fresh module load (the migrate pass runs in the load-time IIFE), matching
+// how the other load-time backfill tests re-import via resetModules.
+describe('listLogic — legacy-Iterative pristine board migration', () => {
+    const BOARD = ['North star', 'Now', 'Next', 'Later'];
+
+    function legacyStages(bodies) {
+        const labels = ['Why', 'Concept', 'Next up', 'Iterations'];
+        return labels.map((label, i) => ({
+            id: 'stage-' + i,
+            label,
+            body: (bodies && bodies[i]) || '',
+        }));
+    }
+
+    function projectEntry(overrides) {
+        return Object.assign({
+            id: 'proj-' + Math.random().toString(36).slice(2),
+            color: null,
+            sortByDue: false,
+            target_id: null,
+            items: [],
+            stages: legacyStages(),
+            lifecycle: 'iterative',
+        }, overrides || {});
+    }
+
+    async function loadWith(projects) {
+        localStorage.setItem('allProjects', JSON.stringify(projects));
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+        const fresh = await import('../src/listLogic.js');
+        return fresh.listLogic;
+    }
+
+    afterEach(() => {
+        localStorage.clear();
+    });
+
+    it('reseeds a pristine legacy Iterative project to the board set', async () => {
+        const ll = await loadWith({ Legacy: projectEntry() });
+        const stages = ll.getProjectStages('Legacy');
+        expect(stages.map(s => s.label)).toEqual(BOARD);
+        stages.forEach(s => expect(s.body).toBe(''));
+        expect(ll.getProjectLifecycle('Legacy')).toBe('iterative');
+    });
+
+    it('does NOT migrate a legacy Iterative project with text in any stage', async () => {
+        const ll = await loadWith({
+            Legacy: projectEntry({ stages: legacyStages(['', 'has content', '', '']) }),
+        });
+        const stages = ll.getProjectStages('Legacy');
+        expect(stages.map(s => s.label)).toEqual(['Why', 'Concept', 'Next up', 'Iterations']);
+        expect(stages[1].body).toBe('has content');
+    });
+
+    it('does NOT migrate a Spec project', async () => {
+        const specStages = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan']
+            .map((label, i) => ({ id: 'spec-' + i, label, body: '' }));
+        const ll = await loadWith({
+            Spec: projectEntry({ lifecycle: 'spec', stages: specStages }),
+        });
+        const stages = ll.getProjectStages('Spec');
+        expect(stages.map(s => s.label)).toEqual(['Why', 'Concept', 'Requirements', 'Design', 'Build plan']);
+        expect(ll.getProjectLifecycle('Spec')).toBe('spec');
+    });
+
+    it('is a no-op for an already-board project', async () => {
+        const boardStages = BOARD.map((label, i) => ({ id: 'board-' + i, label, body: '' }));
+        const ll = await loadWith({
+            Board: projectEntry({ stages: boardStages }),
+        });
+        const stages = ll.getProjectStages('Board');
+        // Same ids preserved — no reseed happened.
+        expect(stages.map(s => s.id)).toEqual(['board-0', 'board-1', 'board-2', 'board-3']);
+        expect(stages.map(s => s.label)).toEqual(BOARD);
+    });
+
+    it('is idempotent across two consecutive load passes', async () => {
+        const ll1 = await loadWith({ Legacy: projectEntry() });
+        expect(ll1.getProjectStages('Legacy').map(s => s.label)).toEqual(BOARD);
+        // The first load persisted the reseed to localStorage; loading again
+        // must leave the board stages untouched (marker gone, 'Now' present).
+        const persisted = JSON.parse(localStorage.getItem('allProjects'));
+        const idsAfterFirst = persisted.Legacy.stages.map(s => s.id);
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+        const fresh = await import('../src/listLogic.js');
+        const stages = fresh.listLogic.getProjectStages('Legacy');
+        expect(stages.map(s => s.label)).toEqual(BOARD);
+        expect(stages.map(s => s.id)).toEqual(idsAfterFirst);
+    });
+
+    it('migrates an otherwise-pristine project even with a populated Shipped stage', async () => {
+        const stagesWithShipped = legacyStages().concat([{
+            id: 'shipped-0',
+            label: 'Shipped',
+            body: JSON.stringify([{ id: 'r1', title: 'A run', verdict: 'shipped' }]),
+        }]);
+        const ll = await loadWith({
+            Legacy: projectEntry({ stages: stagesWithShipped }),
+        });
+        const stages = ll.getProjectStages('Legacy');
+        expect(stages.map(s => s.label)).toEqual(BOARD);
+    });
+});
+
 // The Iterative board's card-promotion mutation: it moves one line from a
 // source lane's body to the end of a target lane's body in a single mutation,
 // targeting the line by its raw index so duplicate lines promote unambiguously.
