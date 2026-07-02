@@ -28,6 +28,12 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
         expect(toDoRow).not.toMatch(/toDoInput\.placeholder\s*=\s*['"]New Item['"]/);
     });
 
+    it('drops the "press Enter" hint from the placeholder at mobile widths (<1024)', () => {
+        // Touch has no Enter-key affordance, so a blank placeholder row reads
+        // simply "Add a task" below 1024px; desktop keeps the full hint above.
+        expect(toDoRow).toMatch(/window\.innerWidth\s*<\s*1024[\s\S]{0,120}toDoInput\.placeholder\s*=\s*['"]Add a task['"]/);
+    });
+
     it('renders the `+` glyph only on blank placeholder rows', () => {
         // Glyph is gated on `!item.tit` so committed rows don't carry it,
         // and is stamped with aria-hidden since it's decorative.

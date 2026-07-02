@@ -82,6 +82,15 @@ describe('D1c — desktop project pill', () => {
         expect(rule(block, '.mobileProjDropdownChev')).not.toMatch(/display:\s*none/);
     });
 
+    it('(c2) the dropdown chevron reads as a legible glyph, not a near-invisible dot', () => {
+        // The muted-gray 12px chevron read as a faint dot; it is now a 14px
+        // accent-purple (70%) chevron so the dropdown affordance is legible.
+        const chev = rule(desktopPillBlock(), '.mobileProjDropdownChev');
+        expect(chev).toMatch(/font-size:\s*14px/);
+        expect(chev.replace(/\s+/g, '')).toMatch(/color:rgba\(157,147,238,0\.7\)/);
+        expect(chev).not.toMatch(/color:\s*var\(--text-muted\)/);
+    });
+
     it('(d) the pill tap activates the project picker (drawer at mobile, dropdown at desktop)', () => {
         // activateProjectPicker is wired on the name and the ▾ chevron and
         // branches on viewport: <1024px opens the unified drawer (sidebar-open

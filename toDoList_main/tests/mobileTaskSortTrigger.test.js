@@ -10,8 +10,8 @@ import { dirname, resolve } from 'node:path';
 // hidden. On mobile it opens a bottom SHEET (#taskSortSheet) of sort chips
 // rather than the desktop dropdown, but drives the same getTaskSort/setTaskSort/
 // applyTaskSortChoice/syncTaskSortButton machinery so desktop and mobile share
-// one sort state. The trigger is icon-only: a single ⇅ glyph carrying a small
-// accent dot when a sort other than None is active, mounted directly on the
+// one sort state. The trigger is icon-only: a single ⇅ glyph that tints accent
+// purple when a sort other than None is active, mounted directly on the
 // filter bar (not fused into the segmented control, which is retired on mobile
 // in favour of the cycle pill). These tests pin that wiring (source-pattern) and
 // the CSS that keeps exactly one Sort trigger visible per breakpoint.
@@ -93,11 +93,13 @@ describe('mobile Sort trigger — main.js wiring', () => {
         expect(main).toMatch(/event\.key === ['"]Escape['"]/);
     });
 
-    it('renders the trigger icon-only: a ⇅ sort glyph plus an active-sort accent dot', () => {
+    it('renders the trigger icon-only: a ⇅ sort glyph, active state tinting the glyph (no corner dot)', () => {
         expect(main).toMatch(/taskSortBtnMobileGlyph/);
-        expect(main).toMatch(/taskSortBtnMobileDot/);
+        // The corner dot read as a notification badge and was retired — the
+        // glyph itself tints when a sort other than None is active.
+        expect(main).not.toMatch(/taskSortBtnMobileDot/);
         // The two-line "Sort" word + current-sort label were retired in favour
-        // of the icon-only glyph + dot.
+        // of the icon-only glyph.
         expect(main).not.toMatch(/taskSortBtnMobileWord/);
         expect(main).not.toMatch(/taskSortBtnMobileLabel/);
     });
@@ -145,9 +147,14 @@ describe('mobile Sort trigger — CSS visibility', () => {
         expect(overlayRule).toMatch(/display:\s*none/);
     });
 
-    it('reveals the active-sort accent dot when a sort other than None is active', () => {
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileDot/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileDot/);
+    it('tints the ⇅ glyph accent purple when a sort other than None is active (no corner dot)', () => {
+        // The retired corner dot is gone; the active cue is a tint on the glyph.
+        expect(css).not.toMatch(/\.taskSortBtnMobileDot/);
+        const dueRule = /#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileGlyph[\s\S]*?\{([^}]*)\}/;
+        const match = css.match(dueRule);
+        expect(match).not.toBeNull();
+        expect(match[1].toLowerCase()).toMatch(/#9d93ee/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileGlyph/);
     });
 });
 
