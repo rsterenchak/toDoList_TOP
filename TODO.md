@@ -1196,3 +1196,17 @@
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 75007d66-8476-47a5-b66f-ac8589df64dd -->
+
+- [ ] **[MEDIUM]** Add "Locate in app" action to Structure canvas selection detail bar
+  - Type: feature
+  - Description: Add a third action button, "Locate", to the block canvas's selection detail bar (alongside "View code" and "Reference"). Tapping it switches the app to the Tasks View tab, scrolls the selected handle's real element into view, and flashes it with a purple outline pulse so the user can see exactly which live element the block corresponds to. This turns the Structure canvas from a map into a debugging tool.
+  - Behavior:
+    - **Gating.** The button only renders when (a) the active Structure repo is `rsterenchak/toDoList_TOP` itself (same self-repo gate the canvas already uses), and (b) the selected handle resolves to a visible element in the *current live* DOM — not the snapshot. If the handle exists but is hidden in the live viewport (e.g. `#sideBar` on mobile), render the button disabled (reduced opacity, non-interactive) with mono helper text "hidden in this viewport". Overlay handles (`#bottomSheet`, `#sidebarOverlay`, `#claudeSheetBackdrop`, `#companion`, `#projectPickerDropdown`) never get the button — locating them would require opening the overlay, which is out of scope.
+    - **Locate sequence.** On tap: invoke the existing tab-switch logic to activate Tasks View (do not reimplement tab switching — locate the existing switch function in `main.js` via grep with offset/limit and call it), then after the view settles (one rAF or the switch's own completion hook), `scrollIntoView({ block: 'center', behavior: 'smooth' })` on the element, then apply the pulse class.
+    - **Pulse.** A CSS class (e.g. `.locate-pulse`) applying an animated `box-shadow` outline in `#6C5DF5` — three pulses over ~1.8s (keyframes expanding from `0 0 0 0 rgba(108,93,245,.8)` to `0 0 0 10px rgba(108,93,245,0)`), `border-radius: inherit`. Remove the class on `animationend` so repeated locates re-trigger cleanly. Guard against stacking: remove any existing `.locate-pulse` in the document before applying a new one.
+    - **Non-destructive.** The pulse must not alter layout (box-shadow only, no borders/outlines that shift geometry) and must not persist any class or style after the animation completes.
+  - Implementation notes: Button rendering + gating live in `toDoList_main/src/structureCanvas.js`; the pulse keyframes and disabled-button/helper-text styling go in `style.css`. If the tab-switch function isn't exported from `main.js`, export it (additive export only — do not restructure existing wiring). `main.js` is over 25k tokens — read with grep + offset/limit, never in full.
+  - Out of scope: locating overlay handles or auto-opening sheets/drawers to reveal hidden elements, locating for non-self repos, any desktop-specific locate behavior beyond what the shared code path provides, changes to the snapshot/bucket/toggle logic from the previous entries, and any changes to `webpack.config.js`, `.babelrc`, or `package.json`.
+  - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bfa795cd-8c90-4206-b91a-4fcd46e452d5 -->
