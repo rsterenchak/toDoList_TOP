@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-02',
+        added: [
+            "The Now / Next / Later board now keeps an auto-logged, collapsible Shipped section recording each run against the project with its outcome and the agent's summary.",
+        ],
         changed: [
-            "Task row calendar and copy icons now recede to a dim neutral with red reserved for past-due dates, and long titles wrap to two lines on phones.",
             "The project header's dropdown chevron is now a clearer purple glyph, the active-sort cue tints the sort icon instead of showing a corner dot, the add-a-task placeholder drops the \"press Enter\" hint on phones, and the collapsed Completed header is dimmed.",
             "On phones, task rows now sit more clearly above the background, with crisper row separators, a bolder add-a-task outline, and less-dim row icons.",
             "The project header's running indicator is now a right-aligned arc spinner that reads more clearly as motion.",

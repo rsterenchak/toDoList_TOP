@@ -2977,3 +2977,102 @@ describe('listLogic.promoteStageLine', () => {
         expect(next.body).toBe('promote me');
     });
 });
+
+// The Now / Next / Later board's auto-managed "Shipped" log: appendConceiveLogEntry
+// records a finalized run inside a lazily-created "Shipped" stage (JSON body),
+// deduped by id and newest-first; getConceiveLog reads it back, failing safe on a
+// corrupt body. Gated to board-shape projects (stages include a "Now" lane).
+describe('listLogic — Conceive Shipped log', () => {
+    beforeEach(() => {
+        listLogic._reset();
+    });
+
+    function shippedStage(project) {
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        return parsed[project].stages.find(s => s.label === 'Shipped');
+    }
+
+    const rec = (over) => Object.assign({
+        id: 'e1', title: 'Add a sparkle', verdict: 'shipped',
+        summary: 'Shipped it.', date: '2026-07-02',
+    }, over || {});
+
+    it('lazily creates a Shipped stage on a board project that lacks one', () => {
+        listLogic.addProject('Board');
+        // A fresh board project has no Shipped stage.
+        expect(listLogic.getProjectStages('Board').some(s => s.label === 'Shipped')).toBe(false);
+
+        listLogic.appendConceiveLogEntry('Board', rec());
+
+        const stage = listLogic.getProjectStages('Board').find(s => s.label === 'Shipped');
+        expect(stage).toBeTruthy();
+        expect(typeof stage.body).toBe('string');
+    });
+
+    it('prepends the record and round-trips it through getConceiveLog', () => {
+        listLogic.addProject('Board');
+        listLogic.appendConceiveLogEntry('Board', rec({ id: 'a', title: 'First' }));
+        listLogic.appendConceiveLogEntry('Board', rec({ id: 'b', title: 'Second', verdict: 'nochange' }));
+
+        const log = listLogic.getConceiveLog('Board');
+        // Newest-first: the second append is at the head.
+        expect(log.map(r => r.id)).toEqual(['b', 'a']);
+        expect(log[0]).toEqual({
+            id: 'b', title: 'Second', verdict: 'nochange', summary: 'Shipped it.', date: '2026-07-02',
+        });
+        // The stage body is valid JSON that parses back to the same array.
+        expect(JSON.parse(shippedStage('Board').body)).toEqual(log);
+    });
+
+    it('dedups by id — a repeat append is a no-op that returns null', () => {
+        listLogic.addProject('Board');
+        expect(listLogic.appendConceiveLogEntry('Board', rec({ id: 'x', title: 'Original' }))).toBeTruthy();
+        // Same id, different fields → skipped entirely.
+        expect(listLogic.appendConceiveLogEntry('Board', rec({ id: 'x', title: 'Changed' }))).toBeNull();
+
+        const log = listLogic.getConceiveLog('Board');
+        expect(log.length).toBe(1);
+        expect(log[0].title).toBe('Original');
+    });
+
+    it('renders a corrupted Shipped body as an empty log rather than throwing', () => {
+        listLogic.addProject('Board');
+        // Force a non-JSON body onto a manually-added Shipped stage.
+        listLogic.appendConceiveLogEntry('Board', rec());
+        const stage = listLogic.getProjectStages('Board').find(s => s.label === 'Shipped');
+        stage.body = 'not json {{{';
+
+        expect(() => listLogic.getConceiveLog('Board')).not.toThrow();
+        expect(listLogic.getConceiveLog('Board')).toEqual([]);
+        // A corrupt body doesn't block a new append (which parses fail-safe to []).
+        expect(listLogic.appendConceiveLogEntry('Board', rec({ id: 'fresh' }))).toBeTruthy();
+        expect(listLogic.getConceiveLog('Board').map(r => r.id)).toEqual(['fresh']);
+    });
+
+    it('does not log against a non-board (Spec) project', () => {
+        listLogic.addProject('SpecProj');
+        listLogic.setProjectShape('SpecProj', 'spec');
+        expect(listLogic.getProjectStages('SpecProj').some(s => s.label === 'Now')).toBe(false);
+
+        expect(listLogic.appendConceiveLogEntry('SpecProj', rec())).toBeNull();
+        expect(listLogic.getProjectStages('SpecProj').some(s => s.label === 'Shipped')).toBe(false);
+        expect(listLogic.getConceiveLog('SpecProj')).toEqual([]);
+    });
+
+    it('ignores unknown projects and bad records', () => {
+        listLogic.addProject('Board');
+        expect(listLogic.appendConceiveLogEntry('Nope', rec())).toBeNull();
+        expect(listLogic.appendConceiveLogEntry('Board', null)).toBeNull();
+        expect(listLogic.appendConceiveLogEntry('Board', { title: 'no id' })).toBeNull();
+        expect(listLogic.getConceiveLog('Board')).toEqual([]);
+    });
+
+    it('normalizes verdict to shipped for anything other than nochange', () => {
+        listLogic.addProject('Board');
+        listLogic.appendConceiveLogEntry('Board', rec({ id: 'v1', verdict: 'weird' }));
+        listLogic.appendConceiveLogEntry('Board', rec({ id: 'v2', verdict: 'nochange' }));
+        const byId = Object.fromEntries(listLogic.getConceiveLog('Board').map(r => [r.id, r.verdict]));
+        expect(byId.v1).toBe('shipped');
+        expect(byId.v2).toBe('nochange');
+    });
+});

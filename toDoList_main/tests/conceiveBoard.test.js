@@ -151,3 +151,74 @@ describe('Conceive board — lane edit affordance', () => {
         expect(laneEl('Next').querySelector('.conceiveLaneCards')).toBeTruthy();
     });
 });
+
+describe('Conceive board — auto-logged Shipped section', () => {
+    it('renders no Shipped section when the project has no logged runs', () => {
+        renderConceiveView();
+        expect(document.querySelector('.conceiveShipped')).toBeNull();
+    });
+
+    it('renders a collapsed Shipped section with a count once runs are logged', () => {
+        listLogic.appendConceiveLogEntry('Board', { id: 'a', title: 'Feature A', verdict: 'shipped', summary: 'Done.', date: '2026-07-02' });
+        listLogic.appendConceiveLogEntry('Board', { id: 'b', title: 'Skipped B', verdict: 'nochange', summary: 'Premise gone.', date: '2026-07-02' });
+        renderConceiveView();
+
+        const section = document.querySelector('.conceiveShipped');
+        expect(section).toBeTruthy();
+        expect(section.querySelector('.conceiveShippedCount').textContent).toBe('2');
+        // Collapsed by default — the list is hidden.
+        expect(section.querySelector('.conceiveShippedList').hidden).toBe(true);
+        expect(section.querySelector('.conceiveShippedHeader').getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('renders rows newest-first with verdict-colored classes', () => {
+        listLogic.appendConceiveLogEntry('Board', { id: 'a', title: 'Feature A', verdict: 'shipped', summary: 'Done.', date: '2026-07-01' });
+        listLogic.appendConceiveLogEntry('Board', { id: 'b', title: 'Skipped B', verdict: 'nochange', summary: 'Premise gone.', date: '2026-07-02' });
+        renderConceiveView();
+
+        const rows = [...document.querySelectorAll('.conceiveShippedRow')];
+        expect(rows.map(r => r.querySelector('.conceiveShippedRowTitle').textContent)).toEqual(['Skipped B', 'Feature A']);
+        expect(rows[0].classList.contains('conceiveShippedRow--nochange')).toBe(true);
+        expect(rows[1].classList.contains('conceiveShippedRow--shipped')).toBe(true);
+    });
+
+    it('toggles the section open and persists the collapse state', () => {
+        listLogic.appendConceiveLogEntry('Board', { id: 'a', title: 'Feature A', verdict: 'shipped', summary: 'Done.', date: '2026-07-02' });
+        renderConceiveView();
+
+        const header = document.querySelector('.conceiveShippedHeader');
+        header.click();
+        expect(document.querySelector('.conceiveShippedList').hidden).toBe(false);
+        expect(localStorage.getItem('todoapp_conceiveShippedOpen_' + encodeURIComponent('Board'))).toBe('1');
+
+        // Re-render honors the persisted open state.
+        renderConceiveView();
+        expect(document.querySelector('.conceiveShippedList').hidden).toBe(false);
+        expect(document.querySelector('.conceiveShippedHeader').getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('expands a record row to reveal its summary inline', () => {
+        listLogic.appendConceiveLogEntry('Board', { id: 'a', title: 'Feature A', verdict: 'nochange', summary: 'Premise superseded.', date: '2026-07-02' });
+        localStorage.setItem('todoapp_conceiveShippedOpen_' + encodeURIComponent('Board'), '1');
+        renderConceiveView();
+
+        const row = document.querySelector('.conceiveShippedRow');
+        const summary = row.querySelector('.conceiveShippedSummary');
+        expect(summary.textContent).toBe('Premise superseded.');
+        expect(summary.hidden).toBe(true);
+
+        row.click();
+        expect(summary.hidden).toBe(false);
+        expect(row.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('never renders the Shipped stage as an editable lane and keeps the shape chooser gated', () => {
+        listLogic.appendConceiveLogEntry('Board', { id: 'a', title: 'Feature A', verdict: 'shipped', summary: 'Done.', date: '2026-07-02' });
+        renderConceiveView();
+        // No lane is drawn for the Shipped stage.
+        expect(document.querySelector('.conceiveLane[data-lane="Shipped"]')).toBeNull();
+        // A project with only an auto-logged Shipped record is still pristine, so
+        // the shape chooser remains available.
+        expect(document.querySelector('.conceiveShapeChooser')).toBeTruthy();
+    });
+});

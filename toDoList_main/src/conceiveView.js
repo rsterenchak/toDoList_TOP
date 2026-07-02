@@ -33,6 +33,31 @@ const STAGE_HINTS = {
 const BOARD_LANE_LABELS = ['Now', 'Next', 'Later'];
 const LANE_PROMOTE_TARGET = { 'Next': 'Now', 'Later': 'Next' };
 
+// The auto-managed board log stage (see listLogic.appendConceiveLogEntry). It is
+// display-only here — never rendered as a lane, excluded from pristine detection
+// and the lane renderers — and its records are read via listLogic.getConceiveLog.
+const SHIPPED_STAGE_LABEL = 'Shipped';
+
+// Per-project localStorage key for the Shipped section's collapse state, under
+// the app's `todoapp_` prefix and mirroring the TODO.md viewer's expand key.
+// This is pure UI state (not the data model), so it lives here rather than in
+// listLogic — the only localStorage this view touches.
+const SHIPPED_OPEN_PREFIX = 'todoapp_conceiveShippedOpen_';
+
+function shippedOpenKey(projectName) {
+    return SHIPPED_OPEN_PREFIX + encodeURIComponent(projectName || '');
+}
+function readShippedOpen(projectName) {
+    try {
+        return localStorage.getItem(shippedOpenKey(projectName)) === '1';
+    } catch (e) { return false; }
+}
+function writeShippedOpen(projectName, open) {
+    try {
+        localStorage.setItem(shippedOpenKey(projectName), open ? '1' : '0');
+    } catch (e) { /* private mode — collapse state falls back to default */ }
+}
+
 // Build the "Suggest plan" prompt from the project's non-empty upstream stages
 // (every stage except the actionable one). Each is labeled so the model can map
 // intent to phase; the instruction asks for a concrete, ordered build plan as
@@ -79,8 +104,9 @@ function parsePlanText(reply) {
 //
 // Like the other view modules this module reaches the DOM via getElementById /
 // createElement at call time and only exports renderConceiveView — there is
-// no back-edge into main.js. All persistence routes through listLogic.js;
-// this module never touches localStorage. The selected project is resolved
+// no back-edge into main.js. All data-model persistence routes through
+// listLogic.js; the only localStorage this module touches is the Shipped
+// section's per-project collapse flag (pure UI state). The selected project is resolved
 // the same way the Projects view does: the `.selectedProject` sidebar row
 // and its `#projInput` value.
 
@@ -96,6 +122,12 @@ let expandedStageIds = new Set();
 // per project, so the set never collides across projects.
 let editingStageIds = new Set();
 
+// Track which Shipped-log records have their summary panel expanded, keyed by
+// record id. Module-level so it survives the full re-render each board mutation
+// triggers, but ephemeral by design (not persisted) — it resets on reload, as
+// the spec requires. Record ids are the run entry markers, unique per run.
+let expandedShippedIds = new Set();
+
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
@@ -107,9 +139,13 @@ function clear(el) {
 // shape chooser is offered only while pristine, which is what makes switching
 // shapes non-destructive: there is never written text to lose.
 function isProjectPristine(stages) {
-    return Array.isArray(stages) && stages.length > 0 && stages.every(function (s) {
-        return !(s.body && s.body.trim());
-    });
+    if (!Array.isArray(stages) || stages.length === 0) return false;
+    // The auto-managed Shipped stage is never user content, so a populated log
+    // must not make a project read as non-pristine (nor an empty one count as a
+    // stage). Exclude it from the check entirely.
+    return stages
+        .filter(function (s) { return s && s.label !== SHIPPED_STAGE_LABEL; })
+        .every(function (s) { return !(s.body && s.body.trim()); });
 }
 
 // The one-time Iterative | Spec shape chooser, rendered above the stages while
@@ -793,9 +829,127 @@ function buildQuickCapture(projectName, laterStage) {
     return wrap;
 }
 
+// One record row inside the Shipped section: a header (title + date) with a
+// verdict-colored left border, and a per-row summary panel that expands inline
+// on tap — the same accordion vocabulary as the Runs tab. Display-only: no
+// promote, edit, or delete. Summary-expand state is ephemeral (module set).
+function buildShippedRow(record) {
+    const row = document.createElement('div');
+    const verdict = record.verdict === 'nochange' ? 'nochange' : 'shipped';
+    row.className = 'conceiveShippedRow conceiveShippedRow--' + verdict;
+
+    const head = document.createElement('div');
+    head.className = 'conceiveShippedRowHead';
+
+    const title = document.createElement('span');
+    title.className = 'conceiveShippedRowTitle';
+    title.textContent = record.title || 'Untitled entry';
+    title.title = record.title || '';
+    head.appendChild(title);
+
+    if (record.date) {
+        const date = document.createElement('span');
+        date.className = 'conceiveShippedRowDate';
+        date.textContent = record.date;
+        head.appendChild(date);
+    }
+    row.appendChild(head);
+
+    const summary = document.createElement('div');
+    summary.className = 'conceiveShippedSummary';
+    summary.textContent = (record.summary && record.summary.trim())
+        ? record.summary.trim()
+        : 'No run summary was recorded.';
+
+    const hasId = !!record.id;
+    let expanded = hasId && expandedShippedIds.has(record.id);
+    summary.hidden = !expanded;
+    row.appendChild(summary);
+
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-expanded', String(expanded));
+    const toggle = function () {
+        expanded = !expanded;
+        summary.hidden = !expanded;
+        row.setAttribute('aria-expanded', String(expanded));
+        row.classList.toggle('conceiveShippedRow--expanded', expanded);
+        if (hasId) {
+            if (expanded) expandedShippedIds.add(record.id);
+            else expandedShippedIds.delete(record.id);
+        }
+    };
+    row.classList.toggle('conceiveShippedRow--expanded', expanded);
+    row.addEventListener('click', toggle);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggle();
+        }
+    });
+    return row;
+}
+
+// The auto-managed, collapsed-by-default "Shipped" section pinned at the bottom
+// of the board. A header row (mono label + count + chevron) toggles a
+// newest-first list of run log records. Returns null when the project has no
+// logged runs — an empty section is noise. The section-collapse state persists
+// per-project; per-record summary expand is ephemeral.
+function buildShippedSection(projectName) {
+    const records = listLogic.getConceiveLog(projectName);
+    if (!records.length) return null;
+
+    const section = document.createElement('div');
+    section.className = 'conceiveShipped';
+
+    let open = readShippedOpen(projectName);
+
+    const header = document.createElement('button');
+    header.type = 'button';
+    header.className = 'conceiveShippedHeader';
+    header.setAttribute('aria-expanded', String(open));
+
+    const chevron = document.createElement('span');
+    chevron.className = 'conceiveShippedChevron';
+    chevron.textContent = open ? '▾' : '▸';
+    chevron.setAttribute('aria-hidden', 'true');
+    header.appendChild(chevron);
+
+    const label = document.createElement('span');
+    label.className = 'conceiveShippedLabel';
+    label.textContent = 'Shipped';
+    header.appendChild(label);
+
+    const count = document.createElement('span');
+    count.className = 'conceiveShippedCount';
+    count.textContent = String(records.length);
+    header.appendChild(count);
+
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'conceiveShippedList';
+    list.hidden = !open;
+    records.forEach(function (record) {
+        list.appendChild(buildShippedRow(record));
+    });
+    section.appendChild(list);
+
+    header.addEventListener('click', function () {
+        open = !open;
+        list.hidden = !open;
+        chevron.textContent = open ? '▾' : '▸';
+        header.setAttribute('aria-expanded', String(open));
+        writeShippedOpen(projectName, open);
+    });
+
+    return section;
+}
+
 // Assemble the whole board for an Iterative project: North star, the three
-// lanes in order, then quick-capture. Falls back gracefully if a lane stage is
-// somehow absent.
+// lanes in order, quick-capture, then the auto-managed Shipped log (when the
+// project has logged runs). Falls back gracefully if a lane stage is somehow
+// absent.
 function buildBoardView(projectName, stages, actionableLabel) {
     const board = document.createElement('div');
     board.className = 'conceiveBoard';
@@ -810,6 +964,9 @@ function buildBoardView(projectName, stages, actionableLabel) {
 
     const later = stages.find(function (s) { return s.label === 'Later'; });
     if (later) board.appendChild(buildQuickCapture(projectName, later));
+
+    const shipped = buildShippedSection(projectName);
+    if (shipped) board.appendChild(shipped);
 
     return board;
 }
