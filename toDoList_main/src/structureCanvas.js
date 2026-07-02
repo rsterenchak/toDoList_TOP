@@ -33,14 +33,136 @@ const MINI_PREVIEW_CAP = 8;
 const LONGPRESS_MS = 450;
 const LONGPRESS_SLOP = 8;
 
-// ── SNAPSHOT CACHE ────────────────────────────────────────────────────────────
-// `selector → { rect: {x, y, width, height}, visible }` measured live from the
-// DOM at capture time, plus the capture timestamp. Module-scoped and ephemeral
-// (no persistence) — a fresh page load starts empty and the first capture (on
-// leaving Tasks View, or the ↻ chip) fills it.
+// ── SNAPSHOT CACHE (per-viewport buckets) ──────────────────────────────────────
+// The layout the block canvas measures from is captured per breakpoint into two
+// buckets — `mobile` (viewport < 1024px) and `desktop` (≥ 1024px), matching the
+// app's `isMobile()` convention — so a phone can still render (and view via the
+// toggle) a desktop layout captured earlier on a desktop, and vice-versa. Each
+// bucket holds `selector → { rect: {x, y, width, height}, visible }` plus the
+// capture timestamp and the viewport size it was captured at. Buckets persist to
+// localStorage under the `todoapp_` prefix, so a fresh page load rehydrates any
+// previously-captured view even before the first live capture.
 
-let snapshot = new Map();
-let snapshotAt = null;
+// Below this width a viewport is the `mobile` bucket; at or above it, `desktop`.
+const MOBILE_MAX = 1024;
+
+// localStorage keys, one per bucket.
+const BUCKET_STORAGE = {
+    mobile: 'todoapp_structureSnapshot_mobile',
+    desktop: 'todoapp_structureSnapshot_desktop',
+};
+
+function emptyBucket() {
+    return { at: null, viewport: null, handles: new Map() };
+}
+
+// The two live buckets. Populated by `captureSnapshot` (live measure) and by
+// `hydrateBuckets` (from localStorage on first access).
+const buckets = { mobile: emptyBucket(), desktop: emptyBucket() };
+
+// The bucket the toggle has explicitly selected for rendering, or null to track
+// the current viewport. Reset on repo switch / canvas reset.
+let selectedBucketKey = null;
+
+// Rehydrate-from-storage guard: run once per module lifetime.
+let hydrated = false;
+
+// The bucket key for the current live viewport.
+function currentViewportKey() {
+    const w = (typeof window !== 'undefined' && window.innerWidth) || MOBILE_MAX;
+    return w < MOBILE_MAX ? 'mobile' : 'desktop';
+}
+
+function viewportSize() {
+    const w = (typeof window !== 'undefined' && window.innerWidth) || MOBILE_MAX;
+    const h = (typeof window !== 'undefined' && window.innerHeight) || 768;
+    return { w: w, h: h };
+}
+
+function bucketHasData(key) {
+    const b = buckets[key];
+    return !!(b && b.handles && b.handles.size > 0);
+}
+
+// The bucket currently rendered: an explicit toggle choice when set, otherwise
+// the current viewport's bucket — falling back to whichever bucket has data so a
+// device viewing only the other bucket's capture still renders something.
+function activeBucketKey() {
+    hydrateBuckets();
+    if (selectedBucketKey) return selectedBucketKey;
+    const vp = currentViewportKey();
+    if (bucketHasData(vp)) return vp;
+    const other = vp === 'mobile' ? 'desktop' : 'mobile';
+    if (bucketHasData(other)) return other;
+    return vp;
+}
+
+function activeHandles() {
+    return buckets[activeBucketKey()].handles;
+}
+
+function activeAt() {
+    return buckets[activeBucketKey()].at;
+}
+
+function activeViewport() {
+    return buckets[activeBucketKey()].viewport;
+}
+
+// Storage access, guarded — localStorage can be absent or throw (private mode,
+// quota). A failure just means this run behaves as ephemeral.
+function readStorage(key) {
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+function writeStorage(key, val) {
+    try { window.localStorage.setItem(key, val); } catch (e) { /* unavailable / quota */ }
+}
+function removeStorage(key) {
+    try { window.localStorage.removeItem(key); } catch (e) { /* unavailable */ }
+}
+
+// Rehydrate both buckets from localStorage once. Guards JSON.parse and the
+// expected shape; a corrupt payload is discarded so a fresh capture repopulates
+// it (never render a canvas from a half-parsed bucket).
+function hydrateBuckets() {
+    if (hydrated) return;
+    hydrated = true;
+    ['mobile', 'desktop'].forEach(function (key) {
+        const raw = readStorage(BUCKET_STORAGE[key]);
+        if (!raw) return;
+        let parsed = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+        if (!parsed || typeof parsed !== 'object' || !parsed.handles || typeof parsed.handles !== 'object') {
+            removeStorage(BUCKET_STORAGE[key]);
+            return;
+        }
+        const handles = new Map();
+        Object.keys(parsed.handles).forEach(function (sel) {
+            const h = parsed.handles[sel];
+            if (h && typeof h === 'object') handles.set(sel, { rect: h.rect || null, visible: !!h.visible });
+        });
+        buckets[key] = {
+            at: parsed.capturedAt ? new Date(parsed.capturedAt) : null,
+            viewport: (parsed.viewport && typeof parsed.viewport === 'object') ? parsed.viewport : null,
+            handles: handles,
+        };
+    });
+}
+
+// Persist one bucket to localStorage in the documented JSON shape:
+// { capturedAt, viewport: { w, h }, handles: { selector: { rect, visible } } }.
+function persistBucket(key) {
+    const b = buckets[key];
+    if (!b) return;
+    const handles = {};
+    b.handles.forEach(function (v, sel) { handles[sel] = { rect: v.rect, visible: v.visible }; });
+    const payload = {
+        capturedAt: b.at ? b.at.toISOString() : null,
+        viewport: b.viewport || null,
+        handles: handles,
+    };
+    try { writeStorage(BUCKET_STORAGE[key], JSON.stringify(payload)); } catch (e) { /* skip on serialize failure */ }
+}
 // The handle tree of the most recent render / capture, so the ↻ chip can
 // re-measure without the view re-walking the DOM.
 let lastTree = [];
@@ -57,8 +179,14 @@ function regionChildren(node) {
 // (used by the ↻ re-measure, which may run while Tasks View is backgrounded and
 // its elements are display:none) so a refresh never wipes good rects with zeros.
 export function captureSnapshot(tree, opts) {
+    hydrateBuckets();
     const partial = !!(opts && opts.partial);
-    const next = partial ? snapshot : new Map();
+    // A capture always writes to the bucket for the current LIVE viewport — never
+    // the toggle-selected one — so measuring on a phone can only fill the mobile
+    // bucket. A partial re-measure starts from the existing bucket's rects so it
+    // never wipes good geometry with zeros for backgrounded handles.
+    const key = currentViewportKey();
+    const next = partial ? new Map(buckets[key].handles) : new Map();
     const visit = function (nodes) {
         (nodes || []).forEach(function (node) {
             if (!node || node.type !== 'region' || !node.selector) return;
@@ -74,10 +202,10 @@ export function captureSnapshot(tree, opts) {
         });
     };
     visit(tree);
-    snapshot = next;
-    snapshotAt = new Date();
+    buckets[key] = { at: new Date(), viewport: viewportSize(), handles: next };
     lastTree = tree || [];
-    return snapshot;
+    persistBucket(key);
+    return buckets[key].handles;
 }
 
 // Measure one selector, or null when it doesn't resolve. A zero-size element
@@ -98,14 +226,14 @@ function measureSelector(selector) {
 // Snapshot metadata for tests / callers: capture time and how many handles it
 // covers.
 export function getSnapshotInfo() {
-    return { at: snapshotAt, size: snapshot.size };
+    return { at: activeAt(), size: activeHandles().size };
 }
 
 // A handle is a ghost — never a canvas block — when it's an overlay id, or its
 // snapshot entry is missing / off-screen / zero-size.
 export function isGhostSelector(selector) {
     if (isOverlaySelector(selector)) return true;
-    const snap = snapshot.get(selector);
+    const snap = activeHandles().get(selector);
     if (!snap || !snap.visible || !snap.rect) return true;
     return !(snap.rect.width > 0 && snap.rect.height > 0);
 }
@@ -131,6 +259,7 @@ let paneEl = null;
 export function resetCanvasState() {
     drillPath = [];
     selectedSelector = null;
+    selectedBucketKey = null;
 }
 
 // Resolve the current drill container from a tree + path, clamping a stale path
@@ -205,19 +334,42 @@ function rebuild() {
     paneEl.appendChild(buildSnapshotChip());
     paneEl.appendChild(buildBreadcrumb(drill.chain));
     paneEl.appendChild(buildCanvas(drill.children));
+    const hint = buildEmptyBucketHint();
+    if (hint) paneEl.appendChild(hint);
     paneEl.appendChild(buildDetailBar());
 }
 
-// The `captured <time> · ↻` chip. ↻ re-measures the live DOM (partial, so a
-// backgrounded Tasks View doesn't zero out good rects) and repaints.
+// Helper text below the canvas naming any bucket that has never been captured,
+// pointing the user at the device that would fill it. Null when both buckets
+// hold a capture.
+function buildEmptyBucketHint() {
+    const missing = [];
+    if (!bucketHasData('mobile')) missing.push('mobile');
+    if (!bucketHasData('desktop')) missing.push('desktop');
+    if (!missing.length) return null;
+    const hint = document.createElement('div');
+    hint.className = 'structureCanvasViewHint';
+    hint.dataset.missing = missing.join(',');
+    // Name the first missing bucket; both-missing is the pristine first-run state.
+    hint.textContent = missing[0] === 'desktop'
+        ? 'Open the app on desktop once to capture this view.'
+        : 'Open the app on mobile once to capture this view.';
+    return hint;
+}
+
+// The `captured <time> · ↻` chip plus the Mobile/Desktop bucket toggle. The
+// timestamp reflects the SELECTED bucket's capture, not the live viewport. ↻
+// re-measures the live DOM (partial, so a backgrounded Tasks View doesn't zero
+// out good rects) into the live-viewport bucket and repaints.
 function buildSnapshotChip() {
     const chip = document.createElement('div');
     chip.className = 'structureCanvasSnapChip';
 
+    const at = activeAt();
     const label = document.createElement('span');
     label.className = 'structureCanvasSnapLabel';
-    label.textContent = snapshotAt
-        ? 'captured ' + formatTime(snapshotAt) + ' · '
+    label.textContent = at
+        ? 'captured ' + formatTime(at) + ' · '
         : 'not captured · ';
     chip.appendChild(label);
 
@@ -229,11 +381,53 @@ function buildSnapshotChip() {
     refresh.textContent = '↻';
     refresh.addEventListener('click', function (event) {
         event.stopPropagation();
+        // Re-measure fills the live-viewport bucket; select it so the fresh
+        // capture is what's shown even if the toggle was on the other bucket.
         captureSnapshot(lastTree, { partial: true });
+        selectedBucketKey = currentViewportKey();
         rebuild();
     });
     chip.appendChild(refresh);
+
+    chip.appendChild(buildViewToggle());
     return chip;
+}
+
+// The Mobile/Desktop segmented toggle. Each segment selects that bucket for
+// rendering; a bucket with no capture is disabled (you can't view a view that
+// was never measured on the matching device). Defaults to the current viewport.
+function buildViewToggle() {
+    const toggle = document.createElement('div');
+    toggle.className = 'structureCanvasViewToggle';
+    toggle.setAttribute('role', 'group');
+    toggle.setAttribute('aria-label', 'Snapshot viewport');
+
+    const active = activeBucketKey();
+    [['mobile', 'Mobile'], ['desktop', 'Desktop']].forEach(function (pair) {
+        const key = pair[0];
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'structureCanvasViewSeg';
+        seg.dataset.bucket = key;
+        seg.textContent = pair[1];
+        const has = bucketHasData(key);
+        const isActive = active === key;
+        if (isActive) seg.classList.add('is-active');
+        seg.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (!has) {
+            seg.classList.add('is-disabled');
+            seg.disabled = true;
+            seg.setAttribute('aria-disabled', 'true');
+        }
+        seg.addEventListener('click', function (event) {
+            event.stopPropagation();
+            if (!bucketHasData(key)) return;
+            selectedBucketKey = key;
+            rebuild();
+        });
+        toggle.appendChild(seg);
+    });
+    return toggle;
 }
 
 function formatTime(date) {
@@ -285,11 +479,19 @@ function buildCanvas(children) {
     const canvas = document.createElement('div');
     canvas.className = 'structureCanvasBlocks';
 
+    // Fit the canvas to the SELECTED snapshot's aspect ratio, so a desktop
+    // bucket viewed on a phone draws as a wide, short rectangle rather than
+    // being stretched to the mobile canvas shape.
+    const vp = activeViewport();
+    if (vp && vp.w > 0 && vp.h > 0) {
+        canvas.style.aspectRatio = vp.w + ' / ' + vp.h;
+    }
+
     const blocks = children.filter(function (n) { return !isGhostSelector(n.selector); });
     if (!blocks.length) {
         const empty = document.createElement('div');
         empty.className = 'structureCanvasEmpty';
-        empty.textContent = snapshotAt
+        empty.textContent = activeAt()
             ? 'No measurable blocks at this level.'
             : 'No layout captured yet — tap ↻ or return from Tasks View.';
         canvas.appendChild(empty);
@@ -312,7 +514,7 @@ function inferFlow(blocks) {
     const cx = [];
     const cy = [];
     blocks.forEach(function (n) {
-        const snap = snapshot.get(n.selector);
+        const snap = activeHandles().get(n.selector);
         if (!snap || !snap.rect) return;
         cx.push(snap.rect.x + snap.rect.width / 2);
         cy.push(snap.rect.y + snap.rect.height / 2);
@@ -340,7 +542,7 @@ function buildBlock(node) {
     block.setAttribute('tabindex', '0');
     if (selectedSelector === node.selector) block.classList.add('is-selected');
 
-    const snap = snapshot.get(node.selector);
+    const snap = activeHandles().get(node.selector);
     const grow = snap && snap.rect ? Math.max(snap.rect.width, 1) : 1;
     block.style.flexGrow = String(grow);
     block.style.flexBasis = '0';
@@ -390,7 +592,7 @@ function buildMiniPreview(kids) {
     kids.slice(0, MINI_PREVIEW_CAP).forEach(function (kid) {
         const mini = document.createElement('div');
         mini.className = 'structureCanvasMini';
-        const snap = snapshot.get(kid.selector);
+        const snap = activeHandles().get(kid.selector);
         const grow = snap && snap.rect ? Math.max(snap.rect.width, 1) : 1;
         mini.style.flexGrow = String(grow);
         mini.style.flexBasis = '0';
@@ -524,7 +726,7 @@ function buildDetailBar() {
 
     const node = nodeBySelector(lastTree, selectedSelector);
     const label = node ? node.label : selectedSelector;
-    const snap = snapshot.get(selectedSelector);
+    const snap = activeHandles().get(selectedSelector);
     const ghost = isGhostSelector(selectedSelector);
 
     const head = document.createElement('div');
