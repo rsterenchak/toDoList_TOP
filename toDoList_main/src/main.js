@@ -75,7 +75,7 @@ import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { renderConceiveView } from './conceiveView.js';
-import { renderStructureView } from './structureView.js';
+import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { attachDragDropImport } from './exportImport.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -5001,6 +5001,12 @@ function firstFocusableInActiveMainView() {
 // call before component() has run; missing nodes short-circuit silently so
 // the boot order stays flexible.
 function applyActiveView(view) {
+    // Leaving Tasks View: snapshot the live layout for the Structure block canvas
+    // while the app's regions are still on screen (another view hides them).
+    if (getActiveView() === 'projects' && (view === 'conceive' || view === 'structure')) {
+        captureStructureSnapshot();
+    }
+
     let safe = 'projects';
     if (view === 'conceive') safe = 'conceive';
     else if (view === 'structure') safe = 'structure';

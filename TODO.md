@@ -1165,7 +1165,7 @@
   - Completed: 2026-07-02
   <!-- id: b8dbaacb-a095-4b96-9aef-5c967db3edbc -->
 
-- [ ] **[MEDIUM]** Revamp Structure tab UI lens into a drillable block canvas with synced container tree
+- [x] **[MEDIUM]** Revamp Structure tab UI lens into a drillable block canvas with synced container tree — Completed: 2026-07-02
   - Type: feature
   - Description: Replace the flat handle tree in the Structure tab's UI lens with a two-part view: a block canvas on top and the familiar container tree below it, both scoped to the same drill level. The canvas renders the current container's direct children as proportionally sized "slab" blocks (elevated cards: `background: var(--bg-elevated)` `#191a22`, `border: 1px solid` dim border token, `border-radius: 10px`, `box-shadow: 0 2px 8px rgba(0,0,0,.35)`), laid out with flex in the parent's flow direction, with the handle name (13px, 600 weight) and faint mono `#id` label top-left. Blocks whose handle has children render faint, non-interactive mini-outlines of their level-1 children inside them (a visual "peek") plus a small `»` drill chip (26×26, `rgba(108,93,245,.12)` bg, `rgba(108,93,245,.35)` border) bottom-right. Tap = select; tapping the `»` chip OR long-pressing anywhere on the block drills into that container. A breadcrumb row above the canvas (mono 12px, `›` separators, current leaf in `#9D93EE`) navigates back up.
   - Behavior:

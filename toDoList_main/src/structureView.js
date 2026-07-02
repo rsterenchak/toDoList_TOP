@@ -12,6 +12,15 @@ import {
     getStructureTreeState,
     setStructureTreeState,
 } from './prefs.js';
+import {
+    SELF_REPO,
+    captureSnapshot,
+    renderStructureCanvas,
+    resetCanvasState,
+    revealSelector,
+    applyCanvasFilter,
+    markGhostRows,
+} from './structureCanvas.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -126,6 +135,9 @@ let currentNoMatchEl = null;
 // re-applied to the matching row on a same-repo/same-lens repaint (match by
 // `value` + `kind`), falling to idle if that handle no longer exists.
 let selectedHandle = null;
+// True while the drillable block canvas is mounted (the self-repo live UI lens),
+// so a tree-row tap can mirror its selection onto the canvas via revealSelector.
+let canvasActive = false;
 let actionToolbarEl = null;
 let actionToolbarLabelEl = null;
 let actionToolbarContextEl = null;
@@ -834,6 +846,17 @@ function buildUiTree() {
     return walk(document.body);
 }
 
+// Capture the live layout snapshot the Structure tab's block canvas measures its
+// block proportions from. Called from main.js's view-switch handling the instant
+// the user leaves Tasks View — while the app's regions are still on screen — so
+// the canvas has real geometry even though Tasks View is hidden once Structure
+// owns the panel. Best-effort: a failure just leaves the prior snapshot in place.
+export function captureStructureSnapshot() {
+    try {
+        captureSnapshot(buildUiTree());
+    } catch (e) { /* keep the prior snapshot on any measurement failure */ }
+}
+
 // Copy a selector to the clipboard, flashing the button label as feedback.
 // Degrades silently when the Clipboard API is unavailable (older/insecure
 // contexts) — the selector is still visible in the panel to copy by hand.
@@ -935,6 +958,45 @@ function clearSelection() {
     clearSelectedRows();
     selectedHandle = null;
     renderActionToolbar();
+}
+
+// A canvas block (or its detail-bar Reference) was selected: mirror that handle
+// onto the container tree — mark and scroll its row into view — and drive the
+// shared action toolbar, seeding the existing "Select a handle to reference it"
+// bar. Always selects (never toggles): the canvas owns the toggle in its own
+// detail bar, so echoing here must be idempotent and not deselect.
+function selectFromCanvas(descriptor) {
+    clearSelectedRows();
+    selectedHandle = descriptor;
+    const tree = currentTreeEl;
+    let matched = null;
+    if (tree) {
+        Array.prototype.forEach.call(tree.querySelectorAll('.structureRegionRow'), function (r) {
+            if (matched || !r.dataset) return;
+            if (r.dataset.handleKind === 'live' && r.dataset.handleValue === descriptor.value) {
+                matched = r;
+            }
+        });
+    }
+    if (matched) {
+        matched.classList.add('is-selected');
+        matched.setAttribute('aria-pressed', 'true');
+        try { if (matched.scrollIntoView) matched.scrollIntoView({ block: 'nearest' }); } catch (e) { /* jsdom */ }
+    }
+    renderActionToolbar();
+}
+
+// The canvas detail bar's "View code" action: resolve the handle's selector to
+// its owner file through the build-time index and jump to it in the Code lens —
+// the same destination the tree's "Find in code" affordance reaches.
+function viewCodeFromCanvas(selector) {
+    ensureRegionsLoaded(selectedRepo).then(function () {
+        const region = regionsIndex.get(selector);
+        const owners = region && Array.isArray(region.files) ? region.files : [];
+        if (owners.length && owners[0] && owners[0].file) {
+            revealFileInCodeLens(owners[0].file);
+        }
+    });
 }
 
 // Build the shared toolbar strip: the selected handle's label + context line,
@@ -1137,6 +1199,14 @@ function buildRegionRow(node, depth) {
             line: null,
             visible: node.visible,
         }, row);
+        // Two-way sync: when the block canvas is mounted, tapping a tree row —
+        // including one deeper than the current drill level — drills the canvas
+        // to the row's parent so its block is visible and highlighted. Skip when
+        // the tap deselected (selection cleared) so the canvas doesn't drill on
+        // a toggle-off.
+        if (canvasActive && selectedHandle && selectedHandle.value === node.selector) {
+            revealSelector(node.selector);
+        }
     };
     row.addEventListener('click', select);
     row.addEventListener('keydown', function (event) {
@@ -1323,6 +1393,7 @@ function buildPublishedFileGroup(repo, file, fileRegions) {
 // index, with distinct empty states.
 function renderUiLens(repo, treeEl) {
     clear(treeEl);
+    canvasActive = false;
     if (repo === getRunningAppRepo()) {
         // Warm the region index so live-region "Find in code" resolves.
         ensureRegionsLoaded(repo);
@@ -1331,10 +1402,25 @@ function renderUiLens(repo, treeEl) {
             appendUiNotice(treeEl, 'No mappable regions found.');
             return;
         }
+        // The container tree pane: the familiar live-region rows (kept as-is so
+        // Reference / Copy / Find-in-code and the shared toolbar all still work).
         tree.forEach(function (node) {
             if (node.type === 'collapsed') treeEl.appendChild(buildCollapsedRow(node, 0));
             else treeEl.appendChild(buildRegionRow(node, 0));
         });
+        // The app's own repo also gets the drillable block canvas mounted above
+        // the tree, sized from the live layout snapshot; ghost rows go amber.
+        if (repo === SELF_REPO) {
+            canvasActive = true;
+            renderStructureCanvas(treeEl, {
+                repo: repo,
+                tree: tree,
+                onSelect: selectFromCanvas,
+                onReference: selectFromCanvas,
+                onViewCode: viewCodeFromCanvas,
+            });
+            markGhostRows(treeEl);
+        }
         return;
     }
 
@@ -1810,6 +1896,10 @@ function applyStructureFilter(rawQuery) {
 
     if (filterClearEl) filterClearEl.hidden = filterQuery.length === 0;
 
+    // The block canvas dims non-matching blocks (rather than removing them) so
+    // the layout shape is preserved while filtering the tree below.
+    if (canvasActive) applyCanvasFilter(q);
+
     if (!q) {
         Array.prototype.forEach.call(tree.querySelectorAll('.structureFilterHidden'), function (el) {
             el.classList.remove('structureFilterHidden');
@@ -2145,6 +2235,8 @@ export function renderStructureView() {
         // The selection is repo-scoped — drop it so a stale handle from the prior
         // repo can't survive into the new one's toolbar.
         selectedHandle = null;
+        // The block canvas's drill path + selection are repo-scoped too.
+        resetCanvasState();
     }
     selectedRepo = repo;
 
