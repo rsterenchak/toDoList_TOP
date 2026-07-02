@@ -1197,7 +1197,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 75007d66-8476-47a5-b66f-ac8589df64dd -->
 
-- [ ] **[MEDIUM]** Add "Locate in app" action to Structure canvas selection detail bar
+- [x] **[MEDIUM]** Add "Locate in app" action to Structure canvas selection detail bar — Completed: 2026-07-02
   - Type: feature
   - Description: Add a third action button, "Locate", to the block canvas's selection detail bar (alongside "View code" and "Reference"). Tapping it switches the app to the Tasks View tab, scrolls the selected handle's real element into view, and flashes it with a purple outline pulse so the user can see exactly which live element the block corresponds to. This turns the Structure canvas from a map into a debugging tool.
   - Behavior:
