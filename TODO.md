@@ -1029,7 +1029,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 184444f3-f276-48ef-b7eb-8eb329f1e492 -->
 
-- [ ] **[MEDIUM]** Improve header affordances: picker chevron, sort active tint, mobile placeholder, dim completed header
+- [x] **[MEDIUM]** Improve header affordances: picker chevron, sort active tint, mobile placeholder, dim completed header — Completed: 2026-07-02
   - Type: feature
   - Description: Four small header/Tasks View refinements. (1) The project header pill's dropdown affordance is a near-invisible dot — replace it with a chevron-down glyph at ~14px in `rgba(157,147,238,0.7)` inside the pill, after the project name (keep the inject-bolt marker placement untouched). (2) The sort chip currently signals non-default sort with a white corner dot, which reads as a notification badge — remove the dot and instead tint the sort icon `#9D93EE` when a non-default sort is active, returning to the neutral gray icon color at default sort (matches the filter pill's state language). (3) The add-task input placeholder reads "Add a task — press Enter", which is desktop copy — at mobile widths (`isMobile()`, `< 1024`) set the placeholder to just "Add a task"; desktop keeps the current text. (4) The collapsed `COMPLETED (238)` accordion header is amber, giving a passive element caution-level attention — dim it to a muted neutral/purple (e.g. `#7a74a8`-range) in `style.css`.
   - Implementation notes: `main.js` is over 25k tokens — grep with offset/limit for the sort button wiring, placeholder assignment, and pill markup; the pill/picker markup may live in `projectPicker.js` post-refactor — check there first.
