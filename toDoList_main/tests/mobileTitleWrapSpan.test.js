@@ -119,24 +119,31 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
         const phoneIdx = css.indexOf('@media (max-width: 420px)');
         expect(phoneIdx).toBeGreaterThan(-1);
         const phoneBlock = css.slice(phoneIdx);
+        // The span is surfaced as a -webkit-box (line-clamp needs that
+        // display value); it's still a shown, laid-out element on the row.
         expect(phoneBlock).toMatch(
-            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{[\s\S]{0,400}display:\s*block/
+            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{[\s\S]{0,400}display:\s*-webkit-box/
         );
     });
 
-    it('collapsed phone span has the single-line ellipsis treatment', () => {
-        // Acceptance criterion: "A 60-character title in a collapsed
-        // mobile row truncates with an ellipsis as today."
+    it('collapsed phone span clamps the title to two lines', () => {
+        // Superseded criterion: the collapsed row used to truncate to a
+        // single ellipsis line; it now clamps to two lines so a long task
+        // reads without a tap-to-expand. -webkit-box + line-clamp:2 +
+        // overflow:hidden paints the ellipsis on the 2nd line, and the
+        // ~1.45 line-height keeps both lines inside the fixed row height.
         const phoneIdx = css.indexOf('@media (max-width: 420px)');
         const phoneBlock = css.slice(phoneIdx);
         const spanRule = phoneBlock.match(
-            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{([\s\S]{0,500}?)\}/
+            /#toDoChild:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{([\s\S]{0,600}?)\}/
         );
         expect(spanRule).toBeTruthy();
         const body = spanRule[1];
+        expect(body).toMatch(/display:\s*-webkit-box/);
+        expect(body).toMatch(/-webkit-line-clamp:\s*2/);
+        expect(body).toMatch(/-webkit-box-orient:\s*vertical/);
         expect(body).toMatch(/overflow:\s*hidden/);
-        expect(body).toMatch(/text-overflow:\s*ellipsis/);
-        expect(body).toMatch(/white-space:\s*nowrap/);
+        expect(body).toMatch(/line-height:\s*1\.45/);
     });
 
     it('active mobile-read row unclamps the span so titles wrap multi-line', () => {
