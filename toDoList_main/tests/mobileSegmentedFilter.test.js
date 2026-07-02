@@ -74,16 +74,13 @@ describe('mobile segmented filter — breakpoint gating', () => {
     });
 });
 
-describe('mobile Sort trigger — active-sort accent dot', () => {
-    it('shows an accent dot on the icon-only trigger when a sort other than None is active', () => {
-        // The two-line current-sort label was retired in favour of an icon-only
-        // ⇅ glyph carrying a small accent dot — hidden by default, revealed when
-        // the button's data-sort is an active sort.
-        const dot = baseRule('.taskSortBtnMobileDot');
-        expect(dot).not.toBeNull();
-        expect(dot).toMatch(/display:\s*none/);
-        expect(dot.toLowerCase()).toMatch(/background:\s*var\(--accent-text\)/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileDot/);
-        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileDot/);
+describe('mobile Sort trigger — active-sort glyph tint', () => {
+    it('tints the icon-only ⇅ glyph accent purple when a sort other than None is active', () => {
+        // The corner dot read as a notification badge and was retired — the
+        // active cue is now a tint on the ⇅ glyph itself (gated on the button's
+        // data-sort), matching the filter pill's state language.
+        expect(css).not.toMatch(/\.taskSortBtnMobileDot/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileGlyph/);
+        expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileGlyph/);
     });
 });

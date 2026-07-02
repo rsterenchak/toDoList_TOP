@@ -9,13 +9,13 @@ export const changelog = [
         changed: [
             "The Tasks View bar's Run backlog button now stands out in amber, while Sync and the expand toggle are quiet neutral chips.",
             "Task row calendar and copy icons now recede to a dim neutral with red reserved for past-due dates, and long titles wrap to two lines on phones.",
+            "The project header's dropdown chevron is now a clearer purple glyph, the active-sort cue tints the sort icon instead of showing a corner dot, the add-a-task placeholder drops the \"press Enter\" hint on phones, and the collapsed Completed header is dimmed.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-01',
         changed: [
-            "The active task filter pill now blends into the neutral dark chrome of the chips beside it, with only its label and position dots carrying the accent color.",
             "The active desktop Sort button now uses a neutral border to match the filter toggle beside it, with only its accent-colored label signaling the active sort.",
         ],
         fixed: [

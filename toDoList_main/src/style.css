@@ -4334,23 +4334,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: inline-block;
 }
 
-/* Active-sort accent dot overlaying the ⇅ glyph — hidden by default, shown when
-   a sort other than None is active (the button's data-sort drives it). Replaces
-   the retired two-line current-sort label as the at-a-glance active cue. */
-.taskSortBtnMobileDot {
-  display: none;
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent-text);
-}
-
-#taskSortBtnMobile[data-sort="due"] .taskSortBtnMobileDot,
-#taskSortBtnMobile[data-sort="status"] .taskSortBtnMobileDot {
-  display: block;
+/* Active-sort accent — when a sort other than None is active, the ⇅ glyph tints
+   accent purple (the button's data-sort drives it). This replaced the corner
+   dot, which read as a notification badge; tinting the icon matches the filter
+   pill's state language. At default sort the glyph keeps the neutral gray it
+   inherits from the button. */
+#taskSortBtnMobile[data-sort="due"] .taskSortBtnMobileGlyph,
+#taskSortBtnMobile[data-sort="status"] .taskSortBtnMobileGlyph {
+  color: #9D93EE;
 }
 
 /* TODO LIST */
@@ -5941,7 +5932,9 @@ body.row-dragging * { cursor: grabbing !important; }
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
-  color: var(--accent-text);
+  /* A passive collapsible divider — muted neutral/purple so it doesn't pull
+     caution-level attention the way a brighter accent did. */
+  color: #7a74a8;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -8818,8 +8811,11 @@ body.row-dragging * { cursor: grabbing !important; }
 
   .mobileProjDropdownChev {
     flex: 0 0 auto;
-    color: var(--text-muted);
-    font-size: 12px;
+    /* A legible chevron-down glyph advertising the dropdown — the muted-gray
+       12px version read as a near-invisible dot. Accent purple at 70% keeps it
+       quiet without vanishing. */
+    color: rgba(157, 147, 238, 0.7);
+    font-size: 14px;
     line-height: 1;
     cursor: pointer;
     user-select: none;

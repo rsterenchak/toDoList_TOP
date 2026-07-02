@@ -2038,18 +2038,15 @@ function component() {
     mobileSortBtn.setAttribute('aria-expanded', 'false');
     // Icon-only trigger: a single ⇅ sort glyph (no "Sort" word, no current-sort
     // label line). The glyph carries its own font-size so it survives the
-    // ≤420px .bulkDescBtn font-size:0 label collapse. A small accent dot
-    // overlays the glyph when a sort other than None is active — CSS-gated on
-    // the button's data-sort, replacing the retired two-line label.
+    // ≤420px .bulkDescBtn font-size:0 label collapse. When a sort other than
+    // None is active the glyph itself tints accent purple (CSS-gated on the
+    // button's data-sort) — the old corner dot read as a notification badge and
+    // was retired in favour of tinting the icon.
     const mobileSortBtnGlyph = document.createElement('span');
     mobileSortBtnGlyph.className = 'taskSortBtnMobileGlyph';
     mobileSortBtnGlyph.textContent = '⇅';
     mobileSortBtnGlyph.setAttribute('aria-hidden', 'true');
-    const mobileSortBtnDot = document.createElement('span');
-    mobileSortBtnDot.className = 'taskSortBtnMobileDot';
-    mobileSortBtnDot.setAttribute('aria-hidden', 'true');
     mobileSortBtn.appendChild(mobileSortBtnGlyph);
-    mobileSortBtn.appendChild(mobileSortBtnDot);
 
     // Mount the Sort trigger directly onto the filter bar (not into the
     // segmented control) so hiding the segmented control on the mobile
@@ -2071,9 +2068,10 @@ function component() {
         const text = taskSortButtonText(key);
         taskSortBtnLabel.textContent = text;
         taskSortBtn.setAttribute('data-sort', key);
-        // Mobile trigger: drive its data-sort (CSS shows the active-sort accent
-        // dot on the icon-only glyph) and keep its aria-label current — the
-        // glyph itself is aria-hidden, so the label names the control + sort.
+        // Mobile trigger: drive its data-sort (CSS tints the icon-only glyph
+        // accent purple when a sort other than None is active) and keep its
+        // aria-label current — the glyph itself is aria-hidden, so the label
+        // names the control + sort.
         mobileSortBtn.setAttribute('data-sort', key);
         mobileSortBtn.setAttribute('aria-label', text);
     }

@@ -1322,6 +1322,13 @@ export function buildToDoRow(item, toDoName) {
     toDoInput.autocomplete = "off";
     toDoInput.id          = "toDoInput";
     toDoInput.placeholder = "Add a task — press Enter";
+    // Mobile widths (isMobile(), <1024) drop the desktop "press Enter"
+    // affordance hint — there's no Enter key affordance on touch — so a
+    // blank placeholder row reads simply "Add a task". Desktop keeps the
+    // full hint above; the chained-entry override below still wins on mobile.
+    if (!item.tit && typeof window !== 'undefined' && window.innerWidth < 1024) {
+        toDoInput.placeholder = "Add a task";
+    }
     // Blank placeholders built after the user's first mobile commit in
     // this project session switch to the "Type the next…" copy so the
     // chained-entry flow reads as a continuous stream. The desktop
