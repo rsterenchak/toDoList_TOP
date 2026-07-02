@@ -16,6 +16,16 @@
 // The one repo whose own DOM this canvas can measure and drill.
 export const SELF_REPO = 'rsterenchak/toDoList_TOP';
 
+// The detail bar's "Locate" action switches back to Tasks View. The switch itself
+// (main.js's `applyActiveView`) is registered here at bootstrap rather than
+// imported, so this leaf module never has to import the heavy main.js entry (which
+// would form a load-bearing cycle and pull main's bootstrap into tests). Unset
+// until main.js registers it; locate then just skips the view switch.
+let locateTabSwitch = null;
+export function setLocateTabSwitch(fn) {
+    locateTabSwitch = typeof fn === 'function' ? fn : null;
+}
+
 // Overlay / fixed-position handles that sit outside the container flow: they are
 // never canvas blocks and always read as ghosts (tree-only) when measured.
 const OVERLAY_IDS = {
@@ -709,8 +719,55 @@ function describe(node) {
     };
 }
 
+// Resolve a handle selector to its element in the CURRENT LIVE DOM — not the
+// snapshot — returning it only when it has an on-screen box (width & height > 0,
+// the same visibility test `measureSelector` uses). Null when the selector
+// doesn't resolve or the element is hidden in the live viewport (e.g. `#sideBar`
+// on mobile). Drives the Locate button's enabled/disabled gate.
+function liveVisibleElement(selector) {
+    let el = null;
+    try { el = document.querySelector(selector); } catch (e) { el = null; }
+    if (!el) return null;
+    let visible = false;
+    try {
+        const r = el.getBoundingClientRect();
+        visible = (r.width || 0) > 0 && (r.height || 0) > 0;
+    } catch (e) { visible = false; }
+    return visible ? el : null;
+}
+
+// Flash a live element with the purple locate pulse. Clears any existing pulse
+// first so repeated locates never stack, and removes the class on animationend
+// so nothing persists after the animation (and a re-locate re-triggers cleanly).
+function pulseElement(el) {
+    Array.prototype.forEach.call(document.querySelectorAll('.locate-pulse'), function (n) {
+        n.classList.remove('locate-pulse');
+    });
+    el.classList.add('locate-pulse');
+    const done = function () {
+        el.classList.remove('locate-pulse');
+        el.removeEventListener('animationend', done);
+    };
+    el.addEventListener('animationend', done);
+}
+
+// The Locate sequence: switch to Tasks View, then (once the view has settled)
+// scroll the live element into view and pulse it so the user can see which real
+// element the selected block maps to. No-op if the handle isn't live-visible.
+function locateSelector(selector) {
+    const el = liveVisibleElement(selector);
+    if (!el) return;
+    if (locateTabSwitch) { try { locateTabSwitch(); } catch (e) { /* wiring absent in tests */ } }
+    const run = function () {
+        try { if (el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* jsdom */ }
+        pulseElement(el);
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else run();
+}
+
 // The selection detail bar: name, `#id`, snapshot dimensions (or `— × —`), a
-// visible/hidden pill, and the View code + Reference actions.
+// visible/hidden pill, and the View code + Reference + Locate actions.
 function buildDetailBar() {
     const bar = document.createElement('div');
     bar.className = 'structureCanvasDetail';
@@ -785,6 +842,35 @@ function buildDetailBar() {
         if (node && ctx && typeof ctx.onReference === 'function') ctx.onReference(describe(node));
     });
     actions.appendChild(reference);
+
+    // Locate: jump to the live element in Tasks View and pulse it. Self-repo only
+    // (the canvas is never mounted elsewhere), never for overlay handles (locating
+    // them would require opening the overlay). When the handle has no on-screen box
+    // in the current live viewport it renders disabled with a mono helper note.
+    if (ctx && ctx.repo === SELF_REPO && !isOverlaySelector(selectedSelector)) {
+        const liveEl = liveVisibleElement(selectedSelector);
+        const locate = document.createElement('button');
+        locate.type = 'button';
+        locate.className = 'structureCanvasDetailLocate';
+        locate.textContent = 'Locate';
+        if (liveEl) {
+            locate.addEventListener('click', function (event) {
+                event.stopPropagation();
+                locateSelector(selectedSelector);
+            });
+        } else {
+            locate.classList.add('structureCanvasDetailLocate--disabled');
+            locate.disabled = true;
+            locate.setAttribute('aria-disabled', 'true');
+        }
+        actions.appendChild(locate);
+        if (!liveEl) {
+            const hint = document.createElement('span');
+            hint.className = 'structureCanvasDetailLocateHint';
+            hint.textContent = 'hidden in this viewport';
+            actions.appendChild(hint);
+        }
+    }
 
     bar.appendChild(actions);
     return bar;

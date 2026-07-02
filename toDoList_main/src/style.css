@@ -3719,6 +3719,43 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .structureCanvasDetailReference:hover {
   background: rgba(108, 93, 245, 0.2);
 }
+.structureCanvasDetailLocate {
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 0.5px solid rgba(108, 93, 245, 0.5);
+  background: rgba(108, 93, 245, 0.12);
+  color: #9D93EE;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.structureCanvasDetailLocate:hover {
+  background: rgba(108, 93, 245, 0.2);
+}
+.structureCanvasDetailLocate--disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.structureCanvasDetailLocateHint {
+  align-self: center;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Locate pulse: a purple outline that expands and fades three times, box-shadow
+   only so it never shifts layout. `border-radius: inherit` keeps the halo hugging
+   the element's own corners. The class is removed on animationend by the canvas. */
+.locate-pulse {
+  animation: locatePulse 0.6s ease-out 3;
+  border-radius: inherit;
+}
+@keyframes locatePulse {
+  0% { box-shadow: 0 0 0 0 rgba(108, 93, 245, 0.8); }
+  100% { box-shadow: 0 0 0 10px rgba(108, 93, 245, 0); }
+}
 
 .structureRegionCaret {
   display: inline-flex;
