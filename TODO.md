@@ -1078,7 +1078,7 @@
   - Completed: 2026-07-02
   <!-- id: 6ba467fc-f5d7-41b9-a234-ffaa2eb13b2a -->
 
-- [ ] **[MEDIUM]** Replace the Iterative Conceive shape with a Now / Next / Later direction board
+- [x] **[MEDIUM]** Replace the Iterative Conceive shape with a Now / Next / Later direction board
   - Type: feature
   - Description: Retire the Why / Concept / Next up / Iterations form for new Iterative projects and seed a board shape instead: a one-line "North star" stage (collapsing Why + Concept into a single editable sentence under the header), then three lane stages — "Now", "Next", "Later" — plus a quick-capture input at the bottom that appends to Later. Lane stage bodies stay plain text in the existing stage data model; each non-empty line of a lane's body renders as one card in that lane (title only — no nested note model). Cards in Next and Later get a promote control that moves the line up one lane (Later → Next, Next → Now); the Now lane keeps the existing Generate tasks and Suggest plan buttons, now targeting the "Now" stage. Each lane keeps an edit affordance that swaps the card view for the existing raw stage-body editor as the escape hatch for reordering, demoting, or deleting lines.
   - Behavior:
@@ -1093,5 +1093,5 @@
     - Add listLogic tests for the board seed and the promote mutation (line removed from source, appended to target, other lines untouched).
   - Out of scope: the auto-logged Shipped section (follow-up run — hooks the run follow-up summary path), drag-to-reorder within lanes, demote controls, any migration or reseeding of existing non-pristine projects, Worker changes.
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/conceiveView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: ea8cf59a-4a8c-4bff-841e-8258ae60c8bc -->
