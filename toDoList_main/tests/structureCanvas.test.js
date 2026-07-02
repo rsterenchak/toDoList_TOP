@@ -10,6 +10,7 @@ import {
     revealSelector,
     applyCanvasFilter,
     markGhostRows,
+    setLocateTabSwitch,
 } from '../src/structureCanvas.js';
 
 // The block canvas measures block proportions from a live-DOM snapshot; jsdom's
@@ -185,6 +186,75 @@ describe('structureCanvas — selection detail bar', () => {
 
         expect(onViewCode).toHaveBeenCalledWith('#main');
         expect(onReference).toHaveBeenCalledWith(expect.objectContaining({ value: '#main' }));
+    });
+});
+
+describe('structureCanvas — Locate action', () => {
+    let tabSwitch;
+    beforeEach(() => {
+        tabSwitch = vi.fn();
+        setLocateTabSwitch(tabSwitch);
+    });
+
+    it('renders an enabled Locate button for a live-visible, non-overlay handle', () => {
+        const host = mountHost();
+        render(host);
+
+        host.querySelector('.structureCanvasBlock[data-selector="#main"]').click();
+
+        const locate = host.querySelector('.structureCanvasDetailLocate');
+        expect(locate).toBeTruthy();
+        expect(locate.disabled).toBe(false);
+        expect(host.querySelector('.structureCanvasDetailLocateHint')).toBe(null);
+    });
+
+    it('clicking Locate switches to Tasks View and pulses the live element', () => {
+        const host = mountHost();
+        render(host);
+        // Run the queued frame synchronously so the pulse lands within the test.
+        const raf = global.requestAnimationFrame;
+        global.requestAnimationFrame = (cb) => { cb(); return 0; };
+
+        host.querySelector('.structureCanvasBlock[data-selector="#main"]').click();
+        host.querySelector('.structureCanvasDetailLocate').click();
+
+        global.requestAnimationFrame = raf;
+        expect(tabSwitch).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('main').classList.contains('locate-pulse')).toBe(true);
+    });
+
+    it('renders no Locate button for overlay handles', () => {
+        const host = mountHost();
+        render(host);
+
+        revealSelector('#bottomSheet');
+
+        expect(host.querySelector('.structureCanvasDetailLocate')).toBe(null);
+    });
+
+    it('disables Locate with a helper note when the handle is absent from the live DOM', () => {
+        const host = mountHost();
+        render(host);
+
+        revealSelector('#gone'); // never resolves in the live DOM
+
+        const locate = host.querySelector('.structureCanvasDetailLocate');
+        expect(locate).toBeTruthy();
+        expect(locate.disabled).toBe(true);
+        expect(host.querySelector('.structureCanvasDetailLocateHint').textContent).toBe('hidden in this viewport');
+    });
+
+    it('disables Locate when the handle resolves but has no on-screen box', () => {
+        const host = mountHost();
+        render(host);
+        stubRect(document.getElementById('aside'), 0, 0, 0, 0); // present but hidden
+
+        revealSelector('#aside');
+
+        const locate = host.querySelector('.structureCanvasDetailLocate');
+        expect(locate.disabled).toBe(true);
+        expect(host.querySelector('.structureCanvasDetailLocateHint').textContent).toBe('hidden in this viewport');
+        expect(tabSwitch).not.toHaveBeenCalled();
     });
 });
 

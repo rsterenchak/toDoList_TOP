@@ -76,6 +76,7 @@ import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { renderConceiveView } from './conceiveView.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
+import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { maybeStartFirstRunTour, startCoachmarkTour } from './coachmark.js';
@@ -99,6 +100,10 @@ import button from './addProj_button.svg';
 // button gets rendered — buildToDoRow / showDescEditorModal both call
 // isInjectConfigured() at render time, which reads the cached values.
 initInjectConfig();
+
+// Give the Structure canvas's "Locate" action a way back to Tasks View without
+// making that leaf module import this heavy entry (which would form a cycle).
+setLocateTabSwitch(function () { applyActiveView('projects'); });
 
 // touch: verify SW revisioning 2026-05-31 //
 
