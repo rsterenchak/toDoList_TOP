@@ -279,6 +279,16 @@ export function countCompletedTodoMdEntries(text) {
     return filterCompletedTokens(parseTodoMdChecklist(text), false).completedCount;
 }
 
+// True when the markdown has at least one unchecked (`- [ ]`) top-level entry —
+// i.e. there is a backlog to run. Mirrors the per-entry run-button gate
+// predicate (`tok.indent === 0 && !tok.checked`) so the Run backlog pill's idle
+// state stays in lockstep with whether any entry is actually runnable.
+export function hasUncheckedTodoEntries(text) {
+    return parseTodoMdChecklist(text).some(function(tok) {
+        return tok.type === 'checkbox' && tok.indent === 0 && !tok.checked;
+    });
+}
+
 const RUN_ENTRY_PLAY_GLYPH =
     '<svg class="todoMdViewerRunEntryIcon" viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true">' +
     '<polygon points="6 4 20 12 6 20"/>' +
@@ -679,6 +689,19 @@ function buildTodoMdViewerCard(projectName, target) {
         syncRunEntryButtonsDisabled();
         // Refresh the toggle's (N) now that live content is available.
         applyShowCompletedState();
+        // Neutralize the Run backlog pill when there's nothing pending to run,
+        // so amber means "there's a backlog" and neutral means "nothing to run."
+        // Re-runs after every sync (including the post-run re-fetch once boxes
+        // get checked on main), so the state stays correct with no extra hook.
+        const hasUnchecked = hasUncheckedTodoEntries(content);
+        runBacklogBtn.classList.toggle('todoMdViewerRunBtn--idle', !hasUnchecked);
+        if (hasUnchecked) {
+            runBacklogBtn.setAttribute('aria-label', 'Run backlog automation');
+            runBacklogBtn.title = 'Trigger the automation routine in backlog mode';
+        } else {
+            runBacklogBtn.setAttribute('aria-label', 'Run backlog automation — nothing to run');
+            runBacklogBtn.title = 'Nothing to run — no pending backlog entries';
+        }
     }
 
     async function runSync() {
