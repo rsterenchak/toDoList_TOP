@@ -3989,6 +3989,207 @@ button.claudeAttachChipLabel { cursor: pointer; }
   outline-offset: 2px;
 }
 
+/* ── ITERATIVE DIRECTION BOARD ──────────────────────────────────────
+   The board renderer for Iterative projects: a one-line North star, three
+   stacked lanes (Now / Next / Later), and a quick-capture input. Lanes stack
+   vertically at every breakpoint — this is a direction board, not a kanban
+   column layout. */
+.conceiveBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* One-line North star: a single editable sentence under the header. */
+.conceiveNorthStar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conceiveNorthStarLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.conceiveNorthStarInput {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.conceiveNorthStarInput:focus-visible {
+  outline: none;
+  border-color: #6C5DF5;
+}
+
+.conceiveLane {
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 12px;
+  background: var(--bg-elevated, transparent);
+  padding: 12px 14px;
+}
+
+/* The Now lane is the actionable focus — accent its border. */
+.conceiveLane--now {
+  border-color: var(--accent);
+}
+
+.conceiveLaneHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.conceiveLaneLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.conceiveLaneActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Quiet neutral toggle to swap a lane's cards for its raw stage-body editor. */
+.conceiveLaneEditBtn {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-subtle, var(--border-mid));
+  background: transparent;
+  color: var(--text-secondary, var(--text-muted));
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.conceiveLaneEditBtn:hover { background: var(--bg-hover); }
+.conceiveLaneEditBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.conceiveLaneCards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.conceiveLaneEmpty {
+  margin: 10px 0 2px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.conceiveCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated, var(--bg-base));
+  border: 1px solid var(--border-subtle, var(--border-mid));
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+
+.conceiveCardText {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* Later cards read as the coolest tier — muted text on the elevated surface. */
+.conceiveLane--later .conceiveCardText,
+.conceiveLane[data-lane="Later"] .conceiveCardText {
+  color: var(--text-secondary, var(--text-muted));
+}
+
+/* Promote chip: the neutral dark-chip vocabulary, distinct from the accent
+   Generate-tasks button. */
+.conceiveCardPromoteBtn {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-subtle, var(--border-mid));
+  background: var(--bg-base);
+  color: var(--text-secondary, var(--text-muted));
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.conceiveCardPromoteBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.conceiveCardPromoteBtn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.conceiveLaneEditor {
+  margin-top: 10px;
+}
+
+/* Quick-capture: appends to Later on Enter. */
+.conceiveQuickCapture {
+  display: flex;
+}
+
+.conceiveQuickCaptureInput {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px dashed var(--border-subtle, var(--border-mid));
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.conceiveQuickCaptureInput:focus-visible {
+  outline: none;
+  border-color: #6C5DF5;
+  border-style: solid;
+}
+
 /* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
 #seedTasksModalBackdrop {
   position: fixed;

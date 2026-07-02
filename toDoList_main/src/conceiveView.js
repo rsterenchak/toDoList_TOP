@@ -1,7 +1,7 @@
 import { listLogic } from './listLogic.js';
 import { openSeedTasksModal, resolveProjectRepo } from './seedTasksModal.js';
 import { chatWithWorker } from './inject.js';
-import { actionableStageLabel } from './conceiveShapes.js';
+import { actionableStageLabelForStages } from './conceiveShapes.js';
 
 // Static guidance copy shown under each default stage's label — a muted
 // one-line prompt describing what belongs in that stage. Keyed by the default
@@ -18,7 +18,20 @@ const STAGE_HINTS = {
     'Build plan': 'The ordered steps to build it; each line becomes a task.',
     'Next up': "The slice you're building right now; each line becomes a task.",
     'Iterations': 'A running log of what you’ve added, removed, and why.',
+    // Iterative board labels. The board renderer draws its own lanes rather than
+    // stage sections, but these keep the hints in one place (and cover the
+    // fallback stage renderer for any board stage rendered outside the board).
+    'North star': 'One sentence: what is it, and who is it for?',
+    'Now': "What you're building right now; each line becomes a task.",
+    'Next': 'What comes after Now.',
+    'Later': 'Ideas and someday-maybes; capture them here.',
 };
+
+// The Iterative board's three lanes, top to bottom, and the promote target for
+// each card: a Later card moves up to Next, a Next card up to Now. The Now lane
+// is the actionable task source and has no promote target.
+const BOARD_LANE_LABELS = ['Now', 'Next', 'Later'];
+const LANE_PROMOTE_TARGET = { 'Next': 'Now', 'Later': 'Next' };
 
 // Build the "Suggest plan" prompt from the project's non-empty upstream stages
 // (every stage except the actionable one). Each is labeled so the model can map
@@ -76,6 +89,12 @@ function parsePlanText(reply) {
 // open/closed state the user set. Stage ids are unique per project, so the
 // set never collides across projects.
 let expandedStageIds = new Set();
+
+// Track which board lanes are in raw-edit mode (the escape hatch that swaps the
+// card view for the stage-body textarea), keyed by stage id. Module-level so it
+// survives the full re-render each board mutation triggers. Stage ids are unique
+// per project, so the set never collides across projects.
+let editingStageIds = new Set();
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -425,6 +444,376 @@ function buildStageSection(projectName, stage, actionableLabel) {
     return section;
 }
 
+// ── ITERATIVE DIRECTION BOARD ────────────────────────────────────────
+// A board-shaped renderer for Iterative projects (any project whose stages
+// include a "Now" lane). It replaces the collapsible stage sections with a
+// one-line North star plus three lanes (Now / Next / Later) whose bodies stay
+// plain text in the existing stage data model — each non-empty line of a lane's
+// body renders as one card. Cards in Next and Later carry a promote control
+// (up one lane); every lane has an Edit affordance that swaps the cards for the
+// raw stage-body textarea (the escape hatch for reordering, demoting, deleting).
+// A quick-capture input at the bottom appends to Later. All writes route
+// through listLogic — setProjectStageBody for edits/capture, promoteStageLine
+// for card promotion — exactly like the stage renderer.
+
+// Split a lane body into its non-empty lines, each tagged with its raw index in
+// the body (so promotion targets the exact line even with duplicates).
+function laneCardLines(body) {
+    const cards = [];
+    (body || '').split('\n').forEach(function (line, index) {
+        if (line && line.trim()) cards.push({ index: index, text: line.trim() });
+    });
+    return cards;
+}
+
+// The one-line North star: a single editable sentence under the header,
+// autosaving through the same setProjectStageBody path stage bodies use.
+function buildNorthStar(projectName, stage) {
+    const wrap = document.createElement('div');
+    wrap.className = 'conceiveNorthStar';
+    wrap.setAttribute('data-stage-id', stage.id);
+
+    const label = document.createElement('label');
+    label.className = 'conceiveNorthStarLabel';
+    label.textContent = 'North star';
+    label.setAttribute('for', 'conceiveNorthStarInput');
+    wrap.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'conceiveNorthStarInput';
+    input.className = 'conceiveNorthStarInput';
+    input.value = stage.body || '';
+    input.placeholder = STAGE_HINTS['North star'] || '';
+    input.setAttribute('aria-label', 'North star');
+
+    let debounce = null;
+    function persist() {
+        listLogic.setProjectStageBody(projectName, stage.id, input.value);
+    }
+    input.addEventListener('input', function () {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(persist, 400);
+    });
+    input.addEventListener('blur', function () {
+        if (debounce) { clearTimeout(debounce); debounce = null; }
+        persist();
+    });
+    wrap.appendChild(input);
+    return wrap;
+}
+
+// The raw stage-body editor shown inside a lane while it's in edit mode — the
+// same autosaving textarea the stage renderer uses, so it's the escape hatch
+// for reordering / demoting / deleting lines the cards can't do.
+function buildLaneEditor(projectName, stage) {
+    const editor = document.createElement('div');
+    editor.className = 'conceiveLaneEditor';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'conceiveStageInput';
+    textarea.value = stage.body || '';
+    textarea.setAttribute('aria-label', stage.label + ' lines');
+    textarea.rows = 5;
+
+    let debounce = null;
+    function persist() {
+        listLogic.setProjectStageBody(projectName, stage.id, textarea.value);
+    }
+    textarea.addEventListener('input', function () {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(persist, 400);
+    });
+    textarea.addEventListener('blur', function () {
+        if (debounce) { clearTimeout(debounce); debounce = null; }
+        persist();
+    });
+    editor.appendChild(textarea);
+    return editor;
+}
+
+// The card view of a lane: one card per non-empty line. Cards in Next/Later get
+// a promote button that relocates the exact line up one lane in a single
+// listLogic mutation, then re-renders so the card lands in its new lane.
+function buildLaneCards(projectName, stage) {
+    const list = document.createElement('div');
+    list.className = 'conceiveLaneCards';
+
+    const lines = laneCardLines(stage.body);
+    if (lines.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'conceiveLaneEmpty';
+        empty.textContent = 'Nothing here yet.';
+        list.appendChild(empty);
+        return list;
+    }
+
+    const targetLabel = LANE_PROMOTE_TARGET[stage.label];
+    lines.forEach(function (line) {
+        const card = document.createElement('div');
+        card.className = 'conceiveCard';
+
+        const text = document.createElement('span');
+        text.className = 'conceiveCardText';
+        text.textContent = line.text;
+        card.appendChild(text);
+
+        if (targetLabel) {
+            const promote = document.createElement('button');
+            promote.type = 'button';
+            promote.className = 'conceiveCardPromoteBtn';
+            promote.textContent = '↑ ' + targetLabel;
+            promote.setAttribute('aria-label', 'Promote to ' + targetLabel);
+            promote.title = 'Move to ' + targetLabel;
+            promote.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const target = listLogic.getProjectStages(projectName).find(function (s) {
+                    return s.label === targetLabel;
+                });
+                if (!target) return;
+                listLogic.promoteStageLine(projectName, stage.id, target.id, line.index);
+                renderConceiveView();
+            });
+            card.appendChild(promote);
+        }
+        list.appendChild(card);
+    });
+    return list;
+}
+
+// Wire the Now lane's "Suggest plan" button: drafts the Now body from the
+// upstream stages (North star / Next / Later) via Claude and, on success,
+// writes it through setProjectStageBody and re-renders so the drafted lines land
+// as cards. The lane's Edit mode is the undo/adjust escape hatch, so this keeps
+// a lean inline status (overwrite-confirm + error) rather than the stage
+// renderer's undo/regenerate footer.
+function attachBoardSuggest(projectName, stage, actionableLabel, suggestBtn, statusEl) {
+    function clearStatus() { clear(statusEl); }
+
+    function showError(message) {
+        clearStatus();
+        const err = document.createElement('div');
+        err.className = 'conceiveSuggestError';
+        err.textContent = message;
+        statusEl.appendChild(err);
+    }
+
+    function currentBody() {
+        const s = listLogic.getProjectStages(projectName).find(function (x) {
+            return x.id === stage.id;
+        });
+        return s ? (s.body || '') : '';
+    }
+
+    function fetchPlan() {
+        clearStatus();
+        suggestBtn.disabled = true;
+        const priorLabel = suggestBtn.textContent;
+        suggestBtn.textContent = 'Suggesting…';
+
+        const stages = listLogic.getProjectStages(projectName) || [];
+        const prompt = buildSuggestPlanPrompt(stages, actionableLabel);
+        chatWithWorker([{ role: 'user', content: prompt }], undefined, undefined, resolveProjectRepo(projectName), undefined, true)
+            .then(function (res) {
+                const reply = res && typeof res.reply === 'string' ? res.reply : '';
+                const text = parsePlanText(reply);
+                if (!text) {
+                    suggestBtn.textContent = priorLabel;
+                    suggestBtn.disabled = false;
+                    showError('Couldn’t draft a plan. Please try again.');
+                    return;
+                }
+                // Re-render paints the drafted lines as Now cards; no need to
+                // restore the button (the node is replaced).
+                listLogic.setProjectStageBody(projectName, stage.id, text);
+                renderConceiveView();
+            })
+            .catch(function (e) {
+                suggestBtn.textContent = priorLabel;
+                suggestBtn.disabled = false;
+                const reason = e && e.reason ? e.reason : 'Something went wrong.';
+                showError('Couldn’t draft a plan: ' + reason);
+            });
+    }
+
+    function runSuggest() {
+        const cur = currentBody();
+        if (cur && cur.trim()) {
+            clearStatus();
+            const confirmRow = document.createElement('div');
+            confirmRow.className = 'conceiveSuggestConfirm';
+
+            const msg = document.createElement('span');
+            msg.className = 'conceiveSuggestConfirmMsg';
+            msg.textContent = 'Replace the current Now plan?';
+            confirmRow.appendChild(msg);
+
+            const replaceBtn = document.createElement('button');
+            replaceBtn.type = 'button';
+            replaceBtn.className = 'conceiveSuggestLink';
+            replaceBtn.textContent = 'Replace';
+            replaceBtn.addEventListener('click', function () { fetchPlan(); });
+            confirmRow.appendChild(replaceBtn);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'conceiveSuggestLink';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.addEventListener('click', clearStatus);
+            confirmRow.appendChild(cancelBtn);
+
+            statusEl.appendChild(confirmRow);
+            return;
+        }
+        fetchPlan();
+    }
+
+    suggestBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (suggestBtn.disabled) return;
+        runSuggest();
+    });
+}
+
+// One lane: header (label + actions), the Now lane's suggest status, then either
+// the cards or the raw editor depending on edit mode. The Now lane (the
+// actionable task source) additionally carries the Suggest plan and Generate
+// tasks actions, targeting the Now stage.
+function buildLane(projectName, stage, actionableLabel) {
+    const lane = document.createElement('div');
+    lane.className = 'conceiveLane';
+    lane.setAttribute('data-stage-id', stage.id);
+    lane.setAttribute('data-lane', stage.label);
+    const isNow = stage.label === actionableLabel;
+    if (isNow) lane.classList.add('conceiveLane--now');
+
+    const header = document.createElement('div');
+    header.className = 'conceiveLaneHeader';
+
+    const label = document.createElement('span');
+    label.className = 'conceiveLaneLabel';
+    label.textContent = stage.label;
+    header.appendChild(label);
+
+    const actions = document.createElement('div');
+    actions.className = 'conceiveLaneActions';
+
+    let suggestBtn = null;
+    if (isNow) {
+        suggestBtn = document.createElement('button');
+        suggestBtn.type = 'button';
+        suggestBtn.className = 'conceiveSuggestPlanBtn';
+        suggestBtn.textContent = 'Suggest plan';
+        suggestBtn.setAttribute('aria-label', 'Suggest a plan from the other stages');
+        const hasUpstream = listLogic.getProjectStages(projectName).some(function (s) {
+            return s.label !== actionableLabel && s.body && s.body.trim();
+        });
+        suggestBtn.disabled = !hasUpstream;
+        if (!hasUpstream) suggestBtn.title = 'Fill in another stage first';
+        actions.appendChild(suggestBtn);
+
+        const genBtn = document.createElement('button');
+        genBtn.type = 'button';
+        genBtn.className = 'conceiveGenerateTasksBtn';
+        genBtn.textContent = 'Generate tasks';
+        genBtn.setAttribute('aria-label', 'Generate tasks from this stage');
+        genBtn.disabled = !(stage.body && stage.body.trim());
+        genBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            openSeedTasksModal(projectName);
+        });
+        actions.appendChild(genBtn);
+    }
+
+    const editing = editingStageIds.has(stage.id);
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'conceiveLaneEditBtn';
+    editBtn.textContent = editing ? 'Done' : 'Edit';
+    editBtn.setAttribute('aria-pressed', editing ? 'true' : 'false');
+    editBtn.addEventListener('click', function () {
+        if (editingStageIds.has(stage.id)) editingStageIds.delete(stage.id);
+        else editingStageIds.add(stage.id);
+        renderConceiveView();
+    });
+    actions.appendChild(editBtn);
+
+    header.appendChild(actions);
+    lane.appendChild(header);
+
+    let statusEl = null;
+    if (isNow) {
+        statusEl = document.createElement('div');
+        statusEl.className = 'conceiveSuggestStatus';
+        lane.appendChild(statusEl);
+    }
+
+    lane.appendChild(
+        editing ? buildLaneEditor(projectName, stage) : buildLaneCards(projectName, stage)
+    );
+
+    if (isNow && suggestBtn) {
+        attachBoardSuggest(projectName, stage, actionableLabel, suggestBtn, statusEl);
+    }
+    return lane;
+}
+
+// The quick-capture input pinned at the bottom of the board: pressing Enter
+// appends the text as a new line on the Later stage body (the normal stage-edit
+// path) and re-renders so it shows immediately as a Later card.
+function buildQuickCapture(projectName, laterStage) {
+    const wrap = document.createElement('div');
+    wrap.className = 'conceiveQuickCapture';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'conceiveQuickCaptureInput';
+    input.placeholder = 'Capture an idea → Later';
+    input.setAttribute('aria-label', 'Quick capture to Later');
+
+    input.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const text = (input.value || '').trim();
+        if (!text) return;
+        const stage = listLogic.getProjectStages(projectName).find(function (s) {
+            return s.id === laterStage.id;
+        });
+        const cur = stage ? (stage.body || '') : '';
+        const next = (cur && cur.trim())
+            ? cur.replace(/\s*$/, '') + '\n' + text
+            : text;
+        listLogic.setProjectStageBody(projectName, laterStage.id, next);
+        renderConceiveView();
+        const fresh = document.querySelector('.conceiveQuickCaptureInput');
+        if (fresh) fresh.focus();
+    });
+
+    wrap.appendChild(input);
+    return wrap;
+}
+
+// Assemble the whole board for an Iterative project: North star, the three
+// lanes in order, then quick-capture. Falls back gracefully if a lane stage is
+// somehow absent.
+function buildBoardView(projectName, stages, actionableLabel) {
+    const board = document.createElement('div');
+    board.className = 'conceiveBoard';
+
+    const northStar = stages.find(function (s) { return s.label === 'North star'; });
+    if (northStar) board.appendChild(buildNorthStar(projectName, northStar));
+
+    BOARD_LANE_LABELS.forEach(function (laneLabel) {
+        const stage = stages.find(function (s) { return s.label === laneLabel; });
+        if (stage) board.appendChild(buildLane(projectName, stage, actionableLabel));
+    });
+
+    const later = stages.find(function (s) { return s.label === 'Later'; });
+    if (later) board.appendChild(buildQuickCapture(projectName, later));
+
+    return board;
+}
+
 // Render the CONCEIVE view for the currently selected project. Safe to call
 // before component() has built the shell (a missing #conceiveView
 // short-circuits). With no project selected (or none exist) it shows a gentle
@@ -463,13 +852,16 @@ export function renderConceiveView() {
     header.appendChild(titleRow);
     view.appendChild(header);
 
-    // The actionable stage (the task source) depends on the project's shape —
-    // 'Next up' for Iterative, 'Build plan' for Spec. Resolve it once so every
-    // stage section knows whether it owns the Generate-tasks / Suggest-plan
-    // actions.
-    const actionableLabel = actionableStageLabel(listLogic.getProjectLifecycle(projectName));
-
     const stages = listLogic.getProjectStages(projectName);
+
+    // The actionable stage (the task source) depends on the project's shape —
+    // 'Now' for the Iterative board, 'Build plan' for Spec, 'Next up' for legacy
+    // Iterative projects. Resolve it by the labels present so every stage/lane
+    // knows whether it owns the Generate-tasks / Suggest-plan actions.
+    const actionableLabel = actionableStageLabelForStages(
+        stages,
+        listLogic.getProjectLifecycle(projectName)
+    );
 
     // While the project is pristine (no stage written yet), offer the one-time
     // shape chooser above the stages. Once any stage has text it disappears and
@@ -478,6 +870,15 @@ export function renderConceiveView() {
         view.appendChild(
             buildShapeChooser(projectName, listLogic.getProjectLifecycle(projectName))
         );
+    }
+
+    // Iterative projects render as a direction board (any project whose stages
+    // include a "Now" lane); every other shape — Spec and legacy Iterative —
+    // falls back to the collapsible stage sections.
+    const isBoard = stages.some(function (s) { return s.label === 'Now'; });
+    if (isBoard) {
+        view.appendChild(buildBoardView(projectName, stages, actionableLabel));
+        return;
     }
 
     const stagesEl = document.createElement('div');

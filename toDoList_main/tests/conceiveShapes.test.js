@@ -1,12 +1,13 @@
 import { vi } from 'vitest';
 
 // The per-project lifecycle SHAPE feature: new projects seed the Iterative
-// stage set (Why / Concept / Next up / Iterations) and record
+// board stage set (North star / Now / Next / Later) and record
 // `lifecycle: 'iterative'`, while the Spec set (Why / Concept / Requirements /
 // Design / Build plan) stays available under `lifecycle: 'spec'`. A shared
-// resolver maps a shape to its actionable "task source" stage — 'Next up' for
-// Iterative, 'Build plan' for Spec — and the Conceive view + the Generate-tasks
-// modal both target that stage instead of assuming 'Build plan'.
+// resolver maps the stages to their actionable "task source" stage — 'Now' for
+// the Iterative board, 'Build plan' for Spec, and 'Next up' for legacy
+// Iterative projects — and the Conceive view + the Generate-tasks modal both
+// target that stage instead of assuming 'Build plan'.
 //
 // These tests exercise the real listLogic, the real conceiveShapes resolver,
 // and the real Conceive view / seed-tasks modal; only the Worker chat call is
@@ -19,6 +20,8 @@ vi.mock('../src/inject.js', () => ({
 import { listLogic } from '../src/listLogic.js';
 import {
     actionableStageLabel,
+    actionableStageLabelForStages,
+    BOARD_ACTIONABLE_LABEL,
     ITERATIVE_ACTIONABLE_LABEL,
     SPEC_ACTIONABLE_LABEL,
 } from '../src/conceiveShapes.js';
@@ -31,11 +34,13 @@ async function flush(n = 4) {
     for (let i = 0; i < n; i++) await tick();
 }
 
-const ITERATIVE = ['Why', 'Concept', 'Next up', 'Iterations'];
+const BOARD = ['North star', 'Now', 'Next', 'Later'];
+const LEGACY_ITERATIVE = ['Why', 'Concept', 'Next up', 'Iterations'];
 const SPEC = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
 
 // A Spec-shaped project entry for replaceAllProjects — addProject only ever
-// seeds the Iterative default, so the Spec shape is constructed explicitly.
+// seeds the Iterative board default, so the Spec shape is constructed
+// explicitly.
 function specEntry(name) {
     return {
         name: name,
@@ -47,18 +52,34 @@ function specEntry(name) {
     };
 }
 
+// A legacy Iterative project persisted with the old Why / Concept / Next up /
+// Iterations stages (never reseeded to the board).
+function legacyIterativeEntry(name) {
+    return {
+        name: name,
+        items: [],
+        lifecycle: 'iterative',
+        stages: LEGACY_ITERATIVE.map(function (label, i) {
+            return { id: name + '-st-' + i, label: label, body: '' };
+        }),
+    };
+}
+
 function mountDom(projectName) {
     document.body.innerHTML =
         '<div class="selectedProject"><input id="projInput" value="' + projectName + '"></div>' +
         '<div id="conceiveView"></div>';
 }
 
-// The label of the stage that owns the Generate-tasks / Suggest-plan actions.
-function actionableStageLabelInDom() {
+// The label of the lane/section that owns the Generate-tasks / Suggest-plan
+// actions — works for both the board (lanes) and the stage renderer (sections).
+function actionableLabelInDom() {
     const btn = document.querySelector('.conceiveGenerateTasksBtn');
     if (!btn) return null;
+    const lane = btn.closest('.conceiveLane');
+    if (lane) return lane.querySelector('.conceiveLaneLabel').textContent;
     const section = btn.closest('.conceiveStage');
-    return section.querySelector('.conceiveStageLabel').textContent;
+    return section ? section.querySelector('.conceiveStageLabel').textContent : null;
 }
 
 beforeEach(() => {
@@ -67,9 +88,9 @@ beforeEach(() => {
 });
 
 describe('conceiveShapes — actionable stage resolver', () => {
-    it('resolves Iterative projects to "Next up"', () => {
-        expect(actionableStageLabel('iterative')).toBe('Next up');
-        expect(ITERATIVE_ACTIONABLE_LABEL).toBe('Next up');
+    it('resolves the Iterative board lifecycle to "Now"', () => {
+        expect(actionableStageLabel('iterative')).toBe('Now');
+        expect(BOARD_ACTIONABLE_LABEL).toBe('Now');
     });
 
     it('resolves Spec projects to "Build plan"', () => {
@@ -81,17 +102,33 @@ describe('conceiveShapes — actionable stage resolver', () => {
         expect(actionableStageLabel('SDLC')).toBe('Build plan');
     });
 
-    it('defaults to the Iterative "Next up" for an unset or unknown shape', () => {
-        expect(actionableStageLabel(undefined)).toBe('Next up');
-        expect(actionableStageLabel(null)).toBe('Next up');
-        expect(actionableStageLabel('something-else')).toBe('Next up');
+    it('defaults to the Iterative board "Now" for an unset or unknown shape', () => {
+        expect(actionableStageLabel(undefined)).toBe('Now');
+        expect(actionableStageLabel(null)).toBe('Now');
+        expect(actionableStageLabel('something-else')).toBe('Now');
+    });
+
+    it('resolves by the labels present: board → "Now", legacy → "Next up", spec → "Build plan"', () => {
+        const board = BOARD.map((l) => ({ label: l }));
+        const legacy = LEGACY_ITERATIVE.map((l) => ({ label: l }));
+        const spec = SPEC.map((l) => ({ label: l }));
+        expect(actionableStageLabelForStages(board, 'iterative')).toBe('Now');
+        expect(actionableStageLabelForStages(legacy, 'iterative')).toBe('Next up');
+        expect(actionableStageLabelForStages(spec, 'spec')).toBe('Build plan');
+        expect(ITERATIVE_ACTIONABLE_LABEL).toBe('Next up');
+    });
+
+    it('falls back to the lifecycle map when no known actionable label is present', () => {
+        const custom = [{ label: 'Alpha' }, { label: 'Beta' }];
+        expect(actionableStageLabelForStages(custom, 'spec')).toBe('Build plan');
+        expect(actionableStageLabelForStages(custom, 'iterative')).toBe('Now');
     });
 });
 
-describe('listLogic — new projects default to the Iterative shape', () => {
-    it('seeds the four Iterative stages plus lifecycle "iterative"', () => {
+describe('listLogic — new projects default to the Iterative board shape', () => {
+    it('seeds the four Iterative board stages plus lifecycle "iterative"', () => {
         listLogic.addProject('Fresh');
-        expect(listLogic.getProjectStages('Fresh').map((s) => s.label)).toEqual(ITERATIVE);
+        expect(listLogic.getProjectStages('Fresh').map((s) => s.label)).toEqual(BOARD);
         expect(listLogic.getProjectLifecycle('Fresh')).toBe('iterative');
     });
 
@@ -100,15 +137,30 @@ describe('listLogic — new projects default to the Iterative shape', () => {
         expect(listLogic.getProjectStages('Legacy').map((s) => s.label)).toEqual(SPEC);
         expect(listLogic.getProjectLifecycle('Legacy')).toBe('spec');
     });
+
+    it('keeps a legacy Iterative project intact (no reseed to the board)', () => {
+        listLogic.replaceAllProjects([legacyIterativeEntry('OldIter')]);
+        expect(listLogic.getProjectStages('OldIter').map((s) => s.label)).toEqual(LEGACY_ITERATIVE);
+        expect(listLogic.getProjectLifecycle('OldIter')).toBe('iterative');
+    });
 });
 
 describe('Conceive view — actionable stage is shape-aware', () => {
-    it('puts the Generate-tasks / Suggest-plan actions on "Next up" for an Iterative project', () => {
+    it('puts the Generate-tasks / Suggest-plan actions on the "Now" lane for an Iterative board project', () => {
         listLogic.addProject('Iter');
         mountDom('Iter');
         renderConceiveView();
 
-        expect(actionableStageLabelInDom()).toBe('Next up');
+        expect(actionableLabelInDom()).toBe('Now');
+        expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
+    });
+
+    it('puts the actions on "Next up" for a legacy Iterative project (stage renderer)', () => {
+        listLogic.replaceAllProjects([legacyIterativeEntry('OldIter')]);
+        mountDom('OldIter');
+        renderConceiveView();
+
+        expect(actionableLabelInDom()).toBe('Next up');
         expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
     });
 
@@ -117,37 +169,29 @@ describe('Conceive view — actionable stage is shape-aware', () => {
         mountDom('Spec');
         renderConceiveView();
 
-        expect(actionableStageLabelInDom()).toBe('Build plan');
+        expect(actionableLabelInDom()).toBe('Build plan');
         expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
     });
 });
 
-describe('Conceive view — hints for the Iterative stages', () => {
-    it('renders guidance under "Next up" and "Iterations"', () => {
+describe('Conceive view — Iterative board structure', () => {
+    it('renders a North star input, the three lanes, and a quick-capture input', () => {
         listLogic.addProject('Iter');
         mountDom('Iter');
         renderConceiveView();
 
-        const hintFor = (label) => {
-            const sections = [...document.querySelectorAll('.conceiveStage')];
-            const section = sections.find(
-                (s) => s.querySelector('.conceiveStageLabel').textContent === label
-            );
-            return section ? section.querySelector('.conceiveStageHint') : null;
-        };
-
-        expect(hintFor('Next up')).not.toBeNull();
-        expect(hintFor('Next up').textContent).toMatch(/each line becomes a task/i);
-        expect(hintFor('Iterations')).not.toBeNull();
-        expect(hintFor('Iterations').textContent).toMatch(/added, removed/i);
+        expect(document.querySelector('.conceiveNorthStarInput')).toBeTruthy();
+        const laneLabels = [...document.querySelectorAll('.conceiveLaneLabel')].map((n) => n.textContent);
+        expect(laneLabels).toEqual(['Now', 'Next', 'Later']);
+        expect(document.querySelector('.conceiveQuickCaptureInput')).toBeTruthy();
     });
 });
 
 describe('Generate tasks — decomposes the shape-correct stage', () => {
-    it('targets "Next up" as the task source for an Iterative project', async () => {
+    it('targets "Now" as the task source for an Iterative board project', async () => {
         listLogic.addProject('Iter');
-        const nextUp = listLogic.getProjectStages('Iter').find((s) => s.label === 'Next up');
-        listLogic.setProjectStageBody('Iter', nextUp.id, 'Ship the import flow.');
+        const now = listLogic.getProjectStages('Iter').find((s) => s.label === 'Now');
+        listLogic.setProjectStageBody('Iter', now.id, 'Ship the import flow.');
 
         openSeedTasksModal('Iter');
         await flush();
@@ -155,8 +199,8 @@ describe('Generate tasks — decomposes the shape-correct stage', () => {
         expect(chatWithWorker).toHaveBeenCalledTimes(1);
         const prompt = chatWithWorker.mock.calls[0][0][0].content;
         expect(prompt).toContain('Ship the import flow.');
-        expect(prompt).toContain('Next up (the ONLY source of tasks)');
-        expect(prompt).toMatch(/ONLY from the Next up/i);
+        expect(prompt).toContain('Now (the ONLY source of tasks)');
+        expect(prompt).toMatch(/ONLY from the Now/i);
     });
 
     it('targets "Build plan" as the task source for a Spec project', async () => {

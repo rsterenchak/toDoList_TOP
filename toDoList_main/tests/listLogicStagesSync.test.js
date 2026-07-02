@@ -19,8 +19,9 @@ import { listLogic } from '../src/listLogic.js';
 import { supabase } from '../src/supabaseClient.js';
 
 const SDLC = ['Why', 'Concept', 'Requirements', 'Design', 'Build plan'];
-// The default shape new/legacy projects seed when no stages are stored.
-const ITERATIVE = ['Why', 'Concept', 'Next up', 'Iterations'];
+// The default shape new/legacy projects seed when no stages are stored — the
+// Iterative direction board.
+const BOARD = ['North star', 'Now', 'Next', 'Later'];
 
 // Stub a signed-in Supabase session plus a from() builder that serves the
 // given remote rows from .order() and captures every write so a test can
@@ -140,7 +141,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         expect(listLogic.getProjectLifecycle('Synced')).toBe('SDLC');
     });
 
-    it('backfills the Iterative default when a server row predates the column (null stages)', async () => {
+    it('backfills the Iterative board default when a server row predates the column (null stages)', async () => {
         mockBackend(
             [{
                 id: 'p2', name: 'Legacy', color: null, target_id: null, position: 0,
@@ -153,7 +154,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         await listLogic.hydrateFromSupabase();
 
         expect(listLogic.getProjectStages('Legacy').map(function(s) { return s.label; }))
-            .toEqual(ITERATIVE);
+            .toEqual(BOARD);
         expect(listLogic.getProjectLifecycle('Legacy')).toBe('iterative');
     });
 
@@ -178,7 +179,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         expect(listLogic.getProjectLifecycle('Live')).toBe('SDLC');
     });
 
-    it('backfills the Iterative default on a realtime project row that omits stages', () => {
+    it('backfills the Iterative board default on a realtime project row that omits stages', () => {
         const handlers = wireRealtimeHandlers();
         const projHandler = handlers['public:projects'];
 
@@ -188,7 +189,7 @@ describe('listLogic — per-project stages sync to Supabase', () => {
         });
 
         expect(listLogic.getProjectStages('BareLive').map(function(s) { return s.label; }))
-            .toEqual(ITERATIVE);
+            .toEqual(BOARD);
         expect(listLogic.getProjectLifecycle('BareLive')).toBe('iterative');
     });
 });
