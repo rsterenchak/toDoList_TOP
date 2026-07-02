@@ -6803,6 +6803,26 @@ body.row-dragging * { cursor: grabbing !important; }
 :root[data-theme="light"] .todoMdViewerRunIcon {
   fill: currentColor;
 }
+/* Idle state: when the fetched TODO.md has no unchecked top-level entries there
+   is nothing to run, so the pill drops its amber "there's a backlog" identity
+   for the same neutral chip palette as the Sync / overflow chips. It stays
+   clickable, keeps its pill shape / height / label / play glyph — only colors
+   change. Placed after the base + light rules so it wins by source order. */
+.todoMdViewerRunBtn--idle {
+  background: #15161d;
+  color: #8b8c99;
+  border-color: rgba(157, 147, 238, 0.25);
+}
+.todoMdViewerRunBtn--idle:hover {
+  background: #1c1d27;
+  color: #cfd0da;
+  border-color: rgba(157, 147, 238, 0.45);
+}
+:root[data-theme="light"] .todoMdViewerRunBtn--idle {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-bright);
+}
 
 /* Per-entry "Run this entry" control — lives inline on a rendered checklist
    row for entries whose <!-- id: --> marker resolved. Shares the Run backlog
@@ -6951,19 +6971,25 @@ body.row-dragging * { cursor: grabbing !important; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  background: none;
-  color: #9D93EE;
-  border: 1px solid rgba(157, 147, 238, 0.4);
-  border-radius: 8px;
+  background: #15161d;
+  color: #8b8c99;
+  border: 1px solid rgba(157, 147, 238, 0.25);
+  border-radius: 10px;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
-.todoMdViewerOverflowBtn:hover,
+.todoMdViewerOverflowBtn:hover {
+  background: #1c1d27;
+  color: #cfd0da;
+  border-color: rgba(157, 147, 238, 0.45);
+}
+/* Open-menu affordance kept distinct from the neutral resting/hover chrome so
+   the chip visibly signals the menu is open. */
 .todoMdViewerOverflowBtn[aria-expanded="true"] {
   background: var(--accent-dim);
   color: var(--text-primary);
@@ -7015,8 +7041,9 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-danger);
 }
 :root[data-theme="light"] .todoMdViewerOverflowBtn {
-  color: #6C5DF5;
-  border-color: rgba(108, 93, 245, 0.45);
+  background: transparent;
+  color: #787b87;
+  border-color: rgba(108, 93, 245, 0.25);
 }
 
 /* ── MOBILE TODO.md OVERFLOW BOTTOM SHEET ──

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { parseTodoMdChecklist, buildViewerRenderedBody } from '../src/todoMdViewer.js';
+import { parseTodoMdChecklist, buildViewerRenderedBody, hasUncheckedTodoEntries } from '../src/todoMdViewer.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -246,6 +246,31 @@ describe('todo.md viewer — parseTodoMdChecklist', () => {
         // the exact one-space-each-side shape.
         const tokens = parseTodoMdChecklist('- [ ] Task\n    <!--id:nope-->');
         expect(tokens[0].entryId).toBeUndefined();
+    });
+});
+
+describe('todo.md viewer — hasUncheckedTodoEntries', () => {
+
+    it('returns true when a top-level entry is unchecked', () => {
+        expect(hasUncheckedTodoEntries('- [ ] Buy milk\n- [x] Pay bills')).toBe(true);
+    });
+
+    it('returns false when every top-level entry is checked', () => {
+        expect(hasUncheckedTodoEntries('- [x] Done\n- [X] Also done')).toBe(false);
+    });
+
+    it('ignores nested unchecked items under a completed top-level entry', () => {
+        const text = [
+            '- [x] Parent done',
+            '  - [ ] nested still open',
+        ].join('\n');
+        expect(hasUncheckedTodoEntries(text)).toBe(false);
+    });
+
+    it('returns false for empty or checkbox-free content', () => {
+        expect(hasUncheckedTodoEntries('')).toBe(false);
+        expect(hasUncheckedTodoEntries('# TODO LIST\n\njust prose')).toBe(false);
+        expect(hasUncheckedTodoEntries(null)).toBe(false);
     });
 });
 
