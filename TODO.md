@@ -1150,7 +1150,7 @@
   - Completed: 2026-07-02
   <!-- id: ad855b61-1fb9-45ee-920a-9c5e6a6b1d05 -->
 
-- [ ] **[LOW]** Revert the mobile project-header run spinner to its original style
+- [x] **[LOW]** Revert the mobile project-header run spinner to its original style
   - Type: feature
   - Description: The project-header active-run spinner (`.mobileProjRunSpinner`, mounted in the mobile project title row) was restyled into a right-aligned 14px `--accent` arc in a prior change (commit `31fb1ff5`); revert it to exactly its pre-change appearance. This is a faithful undo of that one commit's `style.css` hunk plus its test update — no other spinner is affected (the desktop dropdown's `.projectPickerRunSpinner` was never touched and stays as-is).
   - Behavior:
@@ -1162,5 +1162,5 @@
     - `tests/crossDeviceRunStatus.test.js`: the arc commit updated the "styles the spinner…" assertions to expect the accent arc track/segment, the 14px size, the right-alignment, and the reduced-motion static frame — revert those assertions back to expecting the original values (`#9D93EE` top segment on the `rgba(157,147,238,0.3)` track, 12px, 2px border, no `margin-left: auto`, `spin 0.7s`, no reduced-motion block).
   - Out of scope: the desktop `.projectPickerRunSpinner`, the sidebar project-row spinners (`attachProjectRunSpinner`), any change to when the spinner shows or the `active_runs` polling, and any Worker change.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/crossDeviceRunStatus.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: b8dbaacb-a095-4b96-9aef-5c967db3edbc -->
