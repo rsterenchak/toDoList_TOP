@@ -101,16 +101,28 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
         );
     });
 
-    it('styles the spinner purple, hidden by default, non-interactive, on the shared spin keyframes', () => {
+    it('renders a right-aligned arc spinner, hidden by default, non-interactive, on the shared spin keyframes', () => {
         const base = css.match(/\.mobileProjRunSpinner\s*\{[^}]*\}/);
         expect(base).not.toBeNull();
         expect(base[0]).toMatch(/display:\s*none/);
-        expect(base[0]).toMatch(/#9D93EE/);
+        // Arc: a faint full-ring track with only the top segment in the solid accent.
+        expect(base[0]).toMatch(/border:\s*1\.6px\s+solid\s+rgba\(139,\s*123,\s*255,\s*0\.22\)/);
+        expect(base[0]).toMatch(/border-top-color:\s*var\(--accent\)/);
+        // Pushed to the far right edge of the header row rather than hugging the pill.
+        expect(base[0]).toMatch(/margin-left:\s*auto/);
         expect(base[0]).toMatch(/pointer-events:\s*none/);
         const active = css.match(/\.mobileProjRunSpinner--active\s*\{[^}]*\}/);
         expect(active).not.toBeNull();
         expect(active[0]).toMatch(/animation:\s*spin\s/);
         expect(css).toMatch(/@keyframes\s+spin\s*\{[\s\S]{0,80}rotate\(360deg\)/);
+    });
+
+    it('holds the arc at a static frame (rotation off) under prefers-reduced-motion', () => {
+        // The spinner is a functional "working" signal, so it must stay legible
+        // as a partial arc rather than freezing into an indistinguishable ring.
+        expect(css).toMatch(
+            /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.mobileProjRunSpinner--active\s*\{[^}]*animation:\s*none/
+        );
     });
 });
 

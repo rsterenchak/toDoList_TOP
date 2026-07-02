@@ -6848,19 +6848,35 @@ body.row-dragging * { cursor: grabbing !important; }
 .mobileProjRunSpinner {
   display: none;
   flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
+  /* Separate the spinner to the far right edge of the header row rather than
+     hugging the project pill, so it reads as a distinct activity indicator
+     instead of an incidental glyph mid-header. */
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(157, 147, 238, 0.3);
-  border-top-color: #9D93EE;
+  /* Arc spinner: a faint full-ring track with a single solid accent segment at
+     the top, rotated by the shared `spin` keyframes — one bright arc chasing a
+     dim track, which signals motion far more clearly than a uniform ring. */
+  border: 1.6px solid rgba(139, 123, 255, 0.22);
+  border-top-color: var(--accent);
   pointer-events: none;
 }
 .mobileProjRunSpinner--active {
   display: inline-block;
-  animation: spin 0.7s linear infinite;
+  animation: spin 0.9s linear infinite;
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+/* A run spinner is a functional "working" signal, not decoration, so reduced
+   motion keeps the "active" meaning without movement: hold the arc at its
+   static top-segment frame (rotation off) rather than freezing it into an
+   indistinguishable full ring. */
+@media (prefers-reduced-motion: reduce) {
+  .mobileProjRunSpinner--active {
+    animation: none;
+  }
 }
 
 /* Neutral 36×36 chip matching the Sync chip — the quiet counterpart to the
