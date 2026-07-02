@@ -1134,7 +1134,7 @@
   - Completed: 2026-07-02
   <!-- id: a1751755-1c8b-43f2-a464-a45258b3ee58 -->
 
-- [ ] **[MEDIUM]** Align the viewer toolbar chips and neutralize the Run backlog button when the backlog is empty
+- [x] **[MEDIUM]** Align the viewer toolbar chips and neutralize the Run backlog button when the backlog is empty
   - Type: feature
   - Description: Two related polish items on the TODO.md viewer header toolbar. First, the "⋯" overflow chip (`.todoMdViewerOverflowBtn`) is the odd one out — 28×28, 8px radius, transparent fill, full-purple `#9D93EE` icon — while its neighbors (`.todoMdViewerSyncBtn`, `.todoMdViewerCollapseBtn`) are 36×36, 10px radius, `#15161d` fill, muted-gray `#8b8c99` icon. Bring the overflow chip fully in line so the three utility chips read as a uniform neutral trio. Second, the amber "Run backlog" pill (`.todoMdViewerRunBtn`) currently always shows its caution/active amber treatment even when there's nothing to run; make it fall back to the same neutral chip palette whenever the fetched TODO.md has no unchecked (`- [ ]`) top-level entries, so amber means "there's a backlog to run" and neutral means "nothing pending." The Run pill stays clickable in the neutral state (not disabled) and keeps its pill shape, height, label, and play icon — only its colors change.
   - Behavior:
@@ -1147,5 +1147,5 @@
     - Extend `tests/todoMdViewer.test.js`: `hasUncheckedTodoEntries` returns true for markdown with a top-level `- [ ]` entry, false when every top-level entry is `- [x]`, and false for empty / checkbox-free content.
   - Out of scope: disabling the Run pill (it stays clickable when idle), any change to the amber treatment itself when work IS pending, the per-entry run/revert/delete buttons, the mobile overflow bottom-sheet, and any Worker change.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/tests/todoMdViewer.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: ad855b61-1fb9-45ee-920a-9c5e6a6b1d05 -->
