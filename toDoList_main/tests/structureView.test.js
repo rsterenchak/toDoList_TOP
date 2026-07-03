@@ -57,7 +57,7 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
-import { renderStructureView, captureStructureSnapshot } from '../src/structureView.js';
+import { renderStructureView, captureStructureSnapshot, buildUiTree } from '../src/structureView.js';
 import { resetCanvasState } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
@@ -98,6 +98,54 @@ beforeEach(() => {
     setChatWorkspaceRepo.mockClear();
     insertReference.mockClear();
     try { localStorage.removeItem(STRUCTURE_LENS_KEY); } catch (e) { /* ignore */ }
+});
+
+describe('buildUiTree — class-identified guest regions (knownClasses)', () => {
+    // A class-based guest document (React-app shape): the only id is the mount
+    // point, and the real regions are keyed by className.
+    function classOnlyDoc() {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML =
+            '<div id="app">' +
+            '<div class="homeSection"><div class="card"></div></div>' +
+            '<div class="navSection"></div>' +
+            '</div>';
+        return doc;
+    }
+
+    it('keeps class-bearing elements when their class is in the known set, nesting them', () => {
+        const doc = classOnlyDoc();
+        const known = new Set(['homeSection', 'card', 'navSection']);
+        const tree = buildUiTree(doc, known);
+        // #app is kept by id; its class-kept descendants nest beneath it.
+        const app = tree.find((n) => n.selector === '#app');
+        expect(app).toBeTruthy();
+        const kids = app.children.map((c) => c.selector);
+        expect(kids).toEqual(expect.arrayContaining(['div.homeSection', 'div.navSection']));
+        const home = app.children.find((c) => c.selector === 'div.homeSection');
+        expect(home.children.map((c) => c.selector)).toContain('div.card');
+    });
+
+    it('drops class-only elements when no known set is passed (self-repo no-regression)', () => {
+        const doc = classOnlyDoc();
+        // No knownClasses → only the id-bearing #app is kept, childless flat root.
+        const flat = buildUiTree(doc);
+        expect(flat.map((n) => n.selector)).toEqual(['#app']);
+        expect(flat[0].children).toEqual([]);
+        // An empty set behaves the same as none — nothing class-only is kept.
+        const empty = buildUiTree(doc, new Set());
+        expect(empty.map((n) => n.selector)).toEqual(['#app']);
+        expect(empty[0].children).toEqual([]);
+    });
+
+    it('still keeps an id-bearing element by id even when it also matches a class', () => {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML = '<div id="app"><section id="stage" class="homeSection"></section></div>';
+        const tree = buildUiTree(doc, new Set(['homeSection']));
+        const app = tree.find((n) => n.selector === '#app');
+        // The dual id+class element keeps its #id selector (id precedence).
+        expect(app.children.map((c) => c.selector)).toEqual(['#stage']);
+    });
 });
 
 describe('renderStructureView — project-derived repo', () => {
