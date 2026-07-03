@@ -20,6 +20,9 @@ import {
     revealSelector,
     applyCanvasFilter,
     markGhostRows,
+    snapshotMetaFor,
+    canLocate,
+    locateHandle,
 } from './structureCanvas.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
@@ -915,10 +918,21 @@ function sameHandle(a, b) {
     return !!a && !!b && a.kind === b.kind && a.value === b.value;
 }
 
-// The one-line context the toolbar shows beneath the selected handle's label:
-// a live handle adds its on/off-screen status, a published/Types handle its line.
+// The one-line context the toolbar shows beneath the selected handle's label.
+// While the block canvas is mounted (self-repo live map), a live handle folds in
+// the measured dims + viewport visibility the deleted detail bar used to show;
+// otherwise a live handle just adds its on/off-screen status, and a
+// published/Types handle its line.
 function handleContextLine(d) {
     if (d.kind === 'live') {
+        if (canvasActive) {
+            const meta = snapshotMetaFor(d.value);
+            const dims = (meta && meta.width > 0 && meta.height > 0)
+                ? meta.width + ' × ' + meta.height
+                : '— × —';
+            const vis = (meta && meta.visible) ? 'Visible in viewport' : 'Hidden in viewport';
+            return d.value + ' · ' + dims + ' · ' + vis;
+        }
         return d.value + ' · ' + (d.visible ? 'On screen now.' : 'Not currently on screen.');
     }
     const line = typeof d.line === 'number' && d.line > 0 ? 'Line ' + d.line + '.' : 'Line not recorded.';
@@ -1074,6 +1088,39 @@ function renderActionToolbar() {
         else findInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
     });
     actionToolbarActionsEl.appendChild(findBtn);
+
+    // Locate (canvas only): jump to the live element in Tasks View and pulse it.
+    // Shown for a live, non-overlay, visible-in-snapshot handle while the block
+    // canvas is mounted; disabled with a mono helper note when the handle has no
+    // on-screen box in the current live viewport. Ghost/hidden/overlay handles
+    // (snapshot visibility false) show no Locate at all.
+    if (canvasActive && d.kind === 'live') {
+        const meta = snapshotMetaFor(d.value);
+        if (meta && meta.visible) {
+            const locateBtn = document.createElement('button');
+            locateBtn.type = 'button';
+            locateBtn.className = 'structureLocateBtn';
+            locateBtn.textContent = 'Locate';
+            const locatable = canLocate(d.value);
+            if (locatable) {
+                locateBtn.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    locateHandle(d.value);
+                });
+            } else {
+                locateBtn.classList.add('structureLocateBtn--disabled');
+                locateBtn.disabled = true;
+                locateBtn.setAttribute('aria-disabled', 'true');
+            }
+            actionToolbarActionsEl.appendChild(locateBtn);
+            if (!locatable) {
+                const hint = document.createElement('span');
+                hint.className = 'structureLocateHint';
+                hint.textContent = 'hidden in this viewport';
+                actionToolbarActionsEl.appendChild(hint);
+            }
+        }
+    }
 
     // A View-on-GitHub deep link only for handles that carry a defining file
     // (published + Types); live-map handles resolve via Find in code instead.
