@@ -448,8 +448,37 @@ describe('structureCanvas — per-viewport buckets + toggle', () => {
         expect(rule).toContain('680px');
         // Width derives back from the definite height + aspect-ratio, centered.
         expect(rule).toMatch(/width:\s*auto/);
+        // The width is bounded to the pane so a floor-engaged wide/short level can
+        // never derive an over-wide canvas that pushes right-side blocks off-pane.
+        expect(rule).toContain('min-height');
+        expect(rule).toMatch(/max-width:\s*100%/);
         // The pane is an inline-size container so 100cqw resolves to the pane width.
         expect(css).toMatch(/\.structureCanvasPane\s*\{[^}]*container-type:\s*inline-size/);
+    });
+
+    it('keeps a right-positioned child at its true normalized left/width in a wide-short level', async () => {
+        const m = await makeCanvas();
+        setViewport(1440, 900);
+        // #main is a wide, short strip (1400 × 48). #aside sits at the right edge of
+        // that strip; #list fills the left. Drilling into #main must place #aside at
+        // its true normalized left/width — the max-width: 100% fix ensures the strip
+        // canvas never over-widens and pushes the right block off-pane.
+        stubRect(document.getElementById('main'), 1400, 48, 0, 60);
+        stubRect(document.getElementById('list'), 200, 15, 0, 60);
+        stubRect(document.getElementById('aside'), 136, 15, 1264, 60);
+        m.captureSnapshot(sampleTree());
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        // Drill into #main by revealing one of its children.
+        m.revealSelector('#list');
+
+        const aside = host.querySelector('.structureCanvasBlock[data-selector="#aside"]');
+        // #aside at x=1264, w=136 within #main's { x:0, w:1400 } box: left = 1264/1400,
+        // width = 136/1400 — the right edge lands at ~100%, on-pane, not off-screen.
+        expect(parseFloat(aside.style.left)).toBeCloseTo((1264 / 1400) * 100, 4);
+        expect(parseFloat(aside.style.width)).toBeCloseTo((136 / 1400) * 100, 4);
     });
 
     it('renders the empty state and a helper when no bucket is captured', async () => {

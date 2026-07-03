@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "Tall containers in the Structure canvas now render at a capped, viewable height instead of stretching several screens tall, while keeping their true proportions.",
+            "Wide, short containers in the Structure canvas now keep every child block on-screen instead of pushing right-side blocks off the pane.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-02',
         changed: [
-            "The Structure block canvas now keeps separate mobile and desktop layout snapshots with a Mobile/Desktop toggle, so a phone can view the captured desktop layout and vice-versa.",
             "Structure canvas blocks now stand out with higher contrast, and a selected block's size, visibility, and Locate action moved from the old detail bar into the shared selection toolbar.",
         ],
         fixed: [
