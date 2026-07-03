@@ -1321,3 +1321,22 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
   - Completed: 2026-07-03
   <!-- id: 5ac2973b-bb6c-462d-8529-5e9391ddbcb1 -->
+
+- [ ] **[MEDIUM]** Key Structure canvas snapshots by repo and lift the self-repo mount guard
+  - Type: feature
+  - Description: Groundwork for showing the block canvas on linked repos. The snapshot store in `structureCanvas.js` is a single pair of viewport buckets persisted under `todoapp_structureSnapshot_mobile` / `todoapp_structureSnapshot_desktop`, and `renderStructureCanvas` hard-bails for any repo but `SELF_REPO` (`if (!host || !opts || opts.repo !== SELF_REPO) return null;`). Make the store per-repo and let the canvas mount for any repo that has captured geometry: buckets become a map keyed by repo (`repo → { mobile, desktop }`), persisted per repo under `todoapp_structureSnapshot_<encodeURIComponent(repo)>_<bucket>`, with a one-time migration that moves the two legacy keys into the `SELF_REPO` entry (read legacy → write new → remove legacy) so existing captures survive. The mount guard becomes: mount when `opts.repo === SELF_REPO` (live capture keeps working exactly as today) OR when the repo has at least one hydrated bucket; otherwise return null as before (a follow-up entry adds the capture flow that fills guest buckets). Also persist the handle TREE per repo alongside the buckets (new `tree` field in the snapshot JSON, or a sibling `todoapp_structureTree_<repo>` key) — the self-repo rebuilds its tree from the live DOM every render, but a guest repo's canvas must render from a stored tree.
+  - Behavior:
+    1. Self-repo behavior is pixel-identical: capture on view-switch, ↻ partial re-measure, bucket toggle, drill/ghost tray/toolbar — all unchanged, now reading/writing the `SELF_REPO` entry.
+    2. Existing users keep their captures: first hydrate migrates the legacy keys into the self-repo entry and removes them; a second load finds only the new keys.
+    3. A non-self repo with stored buckets (+ tree) mounts the canvas and renders from its stored data; the ↻ re-measure chip and Locate are hidden for guest repos (both require the live self DOM — the follow-up capture flow supplies guest refresh).
+    4. A non-self repo with no stored data behaves exactly as today (no canvas pane).
+    5. Switching repos swaps cleanly: `resetCanvasState` continues to clear drill/selection, and all `activeHandles` / `activeViewport` / `snapshotMetaFor` / `isGhostSelector` reads resolve against the current repo's entry — no bleed of one repo's rects into another's toolbar dims or ghost classification.
+  - Implementation notes:
+    - In `structureCanvas.js`: introduce an active-repo module scope set from `renderStructureCanvas(opts.repo)` (and consulted by `captureSnapshot`, which should take/require the repo — the sole caller in `structureView.js` passes `SELF_REPO`); rework `buckets`, `hydrateBuckets` (lazy per repo), `persistBucket`, and `BUCKET_STORAGE` into keyed forms; keep the guarded storage helpers as-is. `snapshotMetaFor`, `canLocate`, and the exported helpers keep their signatures (they read the active repo's entry).
+    - Guest-mode gating: `buildSnapshotChip`'s ↻ and the toolbar Locate path already have clean insertion points — gate both on `repo === SELF_REPO`. The Mobile/Desktop toggle stays for guests (disabled segments for uncaptured buckets already exist via `bucketHasData`).
+    - Tests (`toDoList_main/tests/structureCanvas.test.js`): per-repo key shapes; legacy-key migration (populated → migrated → legacy removed); guard matrix (self always mounts; guest with data mounts; guest without data returns null); no cross-repo bleed (two repos' buckets hydrated, active reads resolve correctly); stored-tree round-trip.
+    - Sequential with the follow-up capture entry (shared files: `structureCanvas.js`, `structureView.js`) — this entry runs first.
+  - Out of scope: the iframe capture flow, Pages URL derivation, and any new UI for triggering a guest capture (next entry); the published UI map tree rendering; C#/Types-lens repos (no UI lens — never mount); changing what a snapshot contains beyond the added tree field.
+  - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 505f3360-9fe7-4afb-9e1e-d96c1afd3a0a -->
