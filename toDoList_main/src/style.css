@@ -3566,6 +3566,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
      below the cap. */
   height: min(calc(100cqw * var(--structure-canvas-ratio, 0)), 60vh, 680px);
   width: auto;
+  /* Bound the width to the pane. When a wide/short level's capped height falls
+     below the min-height floor, the floor wins and width: auto would otherwise
+     derive an over-wide canvas back through the aspect-ratio, pushing
+     right-positioned blocks off-pane. max-width: 100% caps that so aspect-ratio
+     yields to the explicit constraints — a full-pane-wide × floor-height canvas
+     with every block visible. Ratio-true levels are unaffected (their natural
+     width never exceeds the pane). */
+  max-width: 100%;
   margin-inline: auto;
   align-self: center;
 }
