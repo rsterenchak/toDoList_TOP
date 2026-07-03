@@ -2,12 +2,14 @@
 // tree in favour of a two-part drillable view: a block canvas on top and the
 // familiar container tree below, both scoped to the same drill level. This
 // module owns everything above the tree — the snapshot cache the block
-// proportions are measured from, the drill path, the breadcrumb, the block
-// canvas itself, and the selection detail bar. `structureView.js` renders the
-// container tree (reusing its existing region-row styling) and calls into here,
-// passing the handle tree it already walked from the DOM plus a few callbacks
-// (select / reference / view-code) so the two panes stay in sync without this
-// module reaching back into the view or the data model.
+// proportions are measured from, the drill path, the breadcrumb, and the block
+// canvas itself. A selection's measured dims, its visibility, and the Locate
+// action live in `structureView.js`'s shared action toolbar (fed by the
+// `snapshotMetaFor` / `canLocate` / `locateHandle` helpers here), not a separate
+// detail bar. `structureView.js` renders the container tree (reusing its existing
+// region-row styling) and calls into here, passing the handle tree it already
+// walked from the DOM plus a select callback so the two panes stay in sync
+// without this module reaching back into the view or the data model.
 //
 // Repo gating: the canvas only renders for `rsterenchak/toDoList_TOP` — the one
 // repo whose live DOM is available to measure. Any other repo keeps the UI
@@ -16,7 +18,7 @@
 // The one repo whose own DOM this canvas can measure and drill.
 export const SELF_REPO = 'rsterenchak/toDoList_TOP';
 
-// The detail bar's "Locate" action switches back to Tasks View. The switch itself
+// The "Locate" action switches back to Tasks View. The switch itself
 // (main.js's `applyActiveView`) is registered here at bootstrap rather than
 // imported, so this leaf module never has to import the heavy main.js entry (which
 // would form a load-bearing cycle and pull main's bootstrap into tests). Unset
@@ -310,13 +312,12 @@ function clear(el) {
 }
 
 // Mount the canvas pane at the top of `host` (the tree container). `opts` carries
-// the handle tree and the sync callbacks:
-//   • onSelect(descriptor)    — a block/detail selection, so the view can mirror
-//     it onto the tree row + shared action toolbar.
-//   • onReference(descriptor) — the detail bar's Reference action (seeds the
-//     existing "Select a handle to reference it" bar).
-//   • onViewCode(selector)    — the detail bar's View code action (jumps to the
-//     Code lens for that handle).
+// the handle tree and the sync callback:
+//   • onSelect(descriptor) — a block selection, so the view can mirror it onto the
+//     tree row + shared action toolbar.
+// (`onReference` / `onViewCode` may also be passed for backward compatibility; the
+// canvas no longer invokes them now that the detail bar's duplicate actions are
+// gone — the toolbar's own Reference / Find in code cover them.)
 export function renderStructureCanvas(host, opts) {
     if (!host || !opts || opts.repo !== SELF_REPO) return null;
     ctx = opts;
@@ -346,7 +347,6 @@ function rebuild() {
     paneEl.appendChild(buildCanvas(drill.children, parentBoxFor(drill.chain, drill.children)));
     const hint = buildEmptyBucketHint();
     if (hint) paneEl.appendChild(hint);
-    paneEl.appendChild(buildDetailBar());
 }
 
 // Helper text below the canvas naming any bucket that has never been captured,
@@ -555,7 +555,7 @@ function normalizeRect(r, p) {
 }
 
 // Below this percentage on BOTH axes a block is "tiny": its head text is hidden
-// (the detail bar names it on tap) and it gets a small hit-area floor.
+// (the shared toolbar names it on tap) and it gets a small hit-area floor.
 const TINY_PCT = 12;
 
 // The block canvas: the current container's direct, non-ghost children absolutely
@@ -732,8 +732,8 @@ function drillInto(selector) {
     notifySelect(selector);
 }
 
-// Select a node from the canvas: mark it, refresh the detail bar, and mirror the
-// selection onto the tree via the view's onSelect callback.
+// Select a node from the canvas: mark it, repaint the pane, and mirror the
+// selection onto the tree + shared toolbar via the view's onSelect callback.
 function selectFromCanvas(node) {
     selectedSelector = node.selector;
     rebuild();
@@ -833,114 +833,36 @@ function locateSelector(selector) {
     else run();
 }
 
-// The selection detail bar: name, `#id`, snapshot dimensions (or `— × —`), a
-// visible/hidden pill, and the View code + Reference + Locate actions.
-function buildDetailBar() {
-    const bar = document.createElement('div');
-    bar.className = 'structureCanvasDetail';
+// ── TOOLBAR HELPERS ───────────────────────────────────────────────────────────
+// The canvas no longer owns a selection detail bar; the shared action toolbar in
+// structureView surfaces a selection's measured dims, its visibility, and a
+// Locate action instead. These helpers hand that toolbar the canvas-only data.
 
-    if (!selectedSelector) {
-        bar.classList.add('structureCanvasDetail--idle');
-        const hint = document.createElement('div');
-        hint.className = 'structureCanvasDetailHint';
-        hint.textContent = 'Select a block to inspect it.';
-        bar.appendChild(hint);
-        return bar;
-    }
+// The measured metadata for a selector in the ACTIVE bucket: rounded snapshot
+// dimensions and whether it reads as visible (not a ghost/overlay). Null when the
+// selector was never captured, so the toolbar can render `— × —` for it.
+export function snapshotMetaFor(selector) {
+    const snap = activeHandles().get(selector);
+    if (!snap) return null;
+    const r = snap.rect;
+    return {
+        width: (r && r.width > 0) ? Math.round(r.width) : 0,
+        height: (r && r.height > 0) ? Math.round(r.height) : 0,
+        visible: !isGhostSelector(selector),
+    };
+}
 
-    const node = nodeBySelector(lastTree, selectedSelector);
-    const label = node ? node.label : selectedSelector;
-    const snap = activeHandles().get(selectedSelector);
-    const ghost = isGhostSelector(selectedSelector);
+// Whether a handle can be located: it has an on-screen box in the CURRENT live
+// viewport (the same test the detail bar's Locate gate used). Drives the toolbar
+// Locate button's enabled/disabled state.
+export function canLocate(selector) {
+    return !!liveVisibleElement(selector);
+}
 
-    const head = document.createElement('div');
-    head.className = 'structureCanvasDetailHead';
-
-    const name = document.createElement('span');
-    name.className = 'structureCanvasDetailName';
-    name.textContent = label;
-    head.appendChild(name);
-
-    const id = document.createElement('span');
-    id.className = 'structureCanvasDetailId';
-    id.textContent = selectedSelector;
-    head.appendChild(id);
-
-    bar.appendChild(head);
-
-    const meta = document.createElement('div');
-    meta.className = 'structureCanvasDetailMeta';
-
-    const dims = document.createElement('span');
-    dims.className = 'structureCanvasDetailDims';
-    dims.textContent = (snap && snap.rect && snap.rect.width > 0 && snap.rect.height > 0)
-        ? Math.round(snap.rect.width) + ' × ' + Math.round(snap.rect.height)
-        : '— × —';
-    meta.appendChild(dims);
-
-    const badge = document.createElement('span');
-    badge.className = 'structureCanvasDetailBadge ' + (ghost
-        ? 'structureCanvasDetailBadge--hidden'
-        : 'structureCanvasDetailBadge--visible');
-    badge.textContent = ghost ? 'Hidden in viewport' : 'Visible in viewport';
-    meta.appendChild(badge);
-
-    bar.appendChild(meta);
-
-    const actions = document.createElement('div');
-    actions.className = 'structureCanvasDetailActions';
-
-    const viewCode = document.createElement('button');
-    viewCode.type = 'button';
-    viewCode.className = 'structureCanvasDetailViewCode';
-    viewCode.textContent = 'View code';
-    viewCode.addEventListener('click', function (event) {
-        event.stopPropagation();
-        if (ctx && typeof ctx.onViewCode === 'function') ctx.onViewCode(selectedSelector);
-    });
-    actions.appendChild(viewCode);
-
-    const reference = document.createElement('button');
-    reference.type = 'button';
-    reference.className = 'structureCanvasDetailReference';
-    reference.textContent = 'Reference';
-    reference.addEventListener('click', function (event) {
-        event.stopPropagation();
-        if (node && ctx && typeof ctx.onReference === 'function') ctx.onReference(describe(node));
-    });
-    actions.appendChild(reference);
-
-    // Locate: jump to the live element in Tasks View and pulse it. Self-repo only
-    // (the canvas is never mounted elsewhere), never for overlay handles (locating
-    // them would require opening the overlay). When the handle has no on-screen box
-    // in the current live viewport it renders disabled with a mono helper note.
-    if (ctx && ctx.repo === SELF_REPO && !isOverlaySelector(selectedSelector)) {
-        const liveEl = liveVisibleElement(selectedSelector);
-        const locate = document.createElement('button');
-        locate.type = 'button';
-        locate.className = 'structureCanvasDetailLocate';
-        locate.textContent = 'Locate';
-        if (liveEl) {
-            locate.addEventListener('click', function (event) {
-                event.stopPropagation();
-                locateSelector(selectedSelector);
-            });
-        } else {
-            locate.classList.add('structureCanvasDetailLocate--disabled');
-            locate.disabled = true;
-            locate.setAttribute('aria-disabled', 'true');
-        }
-        actions.appendChild(locate);
-        if (!liveEl) {
-            const hint = document.createElement('span');
-            hint.className = 'structureCanvasDetailLocateHint';
-            hint.textContent = 'hidden in this viewport';
-            actions.appendChild(hint);
-        }
-    }
-
-    bar.appendChild(actions);
-    return bar;
+// Run the Locate sequence for a handle: switch to Tasks View, then scroll its
+// live element into view and pulse it. No-op when the handle isn't live-visible.
+export function locateHandle(selector) {
+    locateSelector(selector);
 }
 
 // ── FILTER + GHOST MARKING (called by the view) ───────────────────────────────

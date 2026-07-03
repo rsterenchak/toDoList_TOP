@@ -13,6 +13,7 @@
 :root {
   --bg-base:       #0e0f14;
   --bg-elevated:   #14151b;
+  --bg-raised:     #1c1e27;
   --bg-surface:    #191a22;
   --bg-row:        #1b1c25;
   --bg-hover:      #1f2130;
@@ -63,6 +64,7 @@
 :root[data-theme="light"] {
   --bg-base:       #e8eaef;
   --bg-elevated:   #f0f2f7;
+  --bg-raised:     #ffffff;
   --bg-surface:    #f8f9fc;
   --bg-row:        #ffffff;
   --bg-hover:      #dde0ea;
@@ -3558,8 +3560,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-dim);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-bright);
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   overflow: hidden;
@@ -3575,7 +3577,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   display: none;
 }
 .structureCanvasBlock:hover {
-  border-color: var(--border-bright);
+  border-color: rgba(157, 147, 238, 0.55);
 }
 .structureCanvasBlock.is-selected {
   border-color: #6C5DF5;
@@ -3612,12 +3614,12 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 .structureCanvasMini {
   position: absolute;
-  min-width: 3px;
-  min-height: 3px;
-  border: 0.5px solid var(--border-mid);
+  min-width: 4px;
+  min-height: 4px;
+  border: 1px solid var(--border-mid);
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.02);
-  opacity: 0.5;
+  background: var(--bg-elevated);
+  opacity: 0.9;
 }
 
 .structureCanvasDrillChip {
@@ -3648,110 +3650,6 @@ button.claudeAttachChipLabel { cursor: pointer; }
   padding: 12px;
   color: var(--text-secondary);
   font-size: 13px;
-}
-
-.structureCanvasDetail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  background: var(--bg-elevated);
-  border: 0.5px solid var(--border-mid);
-  border-radius: 8px;
-}
-.structureCanvasDetail--idle {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-.structureCanvasDetailHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.structureCanvasDetailName {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.structureCanvasDetailId {
-  font-family: 'SpaceMono', monospace;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.structureCanvasDetailMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-family: 'SpaceMono', monospace;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-.structureCanvasDetailBadge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-}
-.structureCanvasDetailBadge--visible {
-  background: rgba(108, 93, 245, 0.16);
-  color: #9D93EE;
-}
-.structureCanvasDetailBadge--hidden {
-  background: rgba(217, 184, 106, 0.14);
-  color: #d9b86a;
-}
-.structureCanvasDetailActions {
-  display: flex;
-  gap: 8px;
-}
-.structureCanvasDetailViewCode,
-.structureCanvasDetailReference {
-  min-height: 28px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 0.5px solid var(--border-bright);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.structureCanvasDetailReference {
-  border-color: rgba(108, 93, 245, 0.5);
-  background: rgba(108, 93, 245, 0.12);
-  color: #9D93EE;
-}
-.structureCanvasDetailViewCode:hover {
-  background: var(--bg-hover);
-}
-.structureCanvasDetailReference:hover {
-  background: rgba(108, 93, 245, 0.2);
-}
-.structureCanvasDetailLocate {
-  min-height: 28px;
-  padding: 4px 12px;
-  border-radius: 6px;
-  border: 0.5px solid rgba(108, 93, 245, 0.5);
-  background: rgba(108, 93, 245, 0.12);
-  color: #9D93EE;
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.structureCanvasDetailLocate:hover {
-  background: rgba(108, 93, 245, 0.2);
-}
-.structureCanvasDetailLocate--disabled {
-  opacity: 0.45;
-  cursor: default;
-  pointer-events: none;
-}
-.structureCanvasDetailLocateHint {
-  align-self: center;
-  font-family: 'SpaceMono', monospace;
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 /* Locate pulse: a purple outline that expands and fades three times, box-shadow
@@ -3940,6 +3838,42 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .structureFindBtn:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* Locate (canvas-only): a secondary toolbar action matching the Find button's
+   geometry, in the app's run/locate purple, that flashes the live element. When
+   the handle has no on-screen box in the current viewport it renders disabled
+   next to a mono helper note. */
+.structureLocateBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #9D93EE;
+  background: rgba(108, 93, 245, 0.10);
+  border: 0.5px solid rgba(108, 93, 245, 0.40);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.structureLocateBtn:hover:not(:disabled) {
+  background: rgba(108, 93, 245, 0.20);
+  border-color: #6C5DF5;
+}
+
+.structureLocateBtn:disabled,
+.structureLocateBtn--disabled {
+  opacity: 0.55;
+  cursor: default;
+  pointer-events: none;
+}
+
+.structureLocateHint {
+  align-self: center;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .structureFindResult {

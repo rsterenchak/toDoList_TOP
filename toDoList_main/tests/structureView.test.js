@@ -57,7 +57,8 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
-import { renderStructureView } from '../src/structureView.js';
+import { renderStructureView, captureStructureSnapshot } from '../src/structureView.js';
+import { resetCanvasState } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
 import {
@@ -861,6 +862,111 @@ describe('renderStructureView — shared selection toolbar', () => {
         codeBtn.click();
         await flush();
         expect(toolbar().hidden).toBe(true);
+    });
+});
+
+describe('renderStructureView — canvas toolbar (dims context + Locate)', () => {
+    const toolbar = () => document.querySelector('.structureActionToolbar');
+    const rowFor = (selector) =>
+        Array.from(document.querySelectorAll('.structureRegionRow')).find(
+            (r) => r.querySelector('.structureRegionSelector') &&
+                r.querySelector('.structureRegionSelector').textContent === selector
+        );
+
+    function stubRect(el, w, h) {
+        el.getBoundingClientRect = () => ({ left: 0, top: 0, width: w, height: h, right: w, bottom: h });
+        el.getClientRects = () => (w > 0 && h > 0 ? [{ width: w, height: h }] : []);
+    }
+
+    // A self-repo DOM (My Project → the running app repo) so the block canvas
+    // mounts and `canvasActive` is true; #mainPanel/#taskList carry stubbed rects
+    // so the snapshot measures real dims.
+    function mountSelfDom() {
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+            '<main id="mainPanel" data-region="Tasks">' +
+            '  <ul id="taskList"><li>a</li></ul>' +
+            '</main>';
+        stubRect(document.getElementById('mainPanel'), 300, 400);
+        stubRect(document.getElementById('taskList'), 200, 150);
+    }
+
+    beforeEach(() => {
+        setStructureLens('ui');
+        resetCanvasState();
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        // Start idle so no stale selection leaks in from a prior test.
+        mountDom('');
+        renderStructureView();
+    });
+
+    it('a canvas-active live selection shows dims + Visible text and an enabled Locate', async () => {
+        mountSelfDom();
+        captureStructureSnapshot(); // measures the stubbed rects into the active bucket
+        renderStructureView();
+        await flush();
+
+        rowFor('#mainPanel').click();
+
+        const context = toolbar().querySelector('.structureActionToolbarContext');
+        expect(context.textContent).toBe('#mainPanel · 300 × 400 · Visible in viewport');
+
+        const locate = toolbar().querySelector('.structureLocateBtn');
+        expect(locate).toBeTruthy();
+        expect(locate.disabled).toBe(false);
+        expect(toolbar().querySelector('.structureLocateHint')).toBeFalsy();
+    });
+
+    it('clicking the enabled Locate flashes the live element', async () => {
+        mountSelfDom();
+        captureStructureSnapshot();
+        renderStructureView();
+        await flush();
+
+        const raf = global.requestAnimationFrame;
+        global.requestAnimationFrame = (cb) => { cb(); return 0; };
+        rowFor('#mainPanel').click();
+        toolbar().querySelector('.structureLocateBtn').click();
+        global.requestAnimationFrame = raf;
+
+        expect(document.getElementById('mainPanel').classList.contains('locate-pulse')).toBe(true);
+    });
+
+    it('renders Locate disabled with a helper note when the handle is not live-visible', async () => {
+        mountSelfDom();
+        captureStructureSnapshot(); // #mainPanel captured visible at 300×400
+        // Collapse it in the live DOM: the snapshot still says visible, but the
+        // current viewport has no on-screen box → Locate disabled with the note.
+        stubRect(document.getElementById('mainPanel'), 0, 0);
+        renderStructureView();
+        await flush();
+
+        rowFor('#mainPanel').click();
+
+        const locate = toolbar().querySelector('.structureLocateBtn');
+        expect(locate).toBeTruthy();
+        expect(locate.disabled).toBe(true);
+        expect(toolbar().querySelector('.structureLocateHint').textContent).toBe('hidden in this viewport');
+    });
+
+    it('a non-canvas repo keeps the On screen now. context and shows no Locate', async () => {
+        // A live repo that is NOT the self repo → the canvas never mounts, so the
+        // toolbar context and actions stay exactly as before.
+        state.runningRepo = 'rsterenchak/matchingGame-test';
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="Game"></div>' +
+            '<main id="board" data-region="Board"><div id="cell">x</div></main>';
+        document.getElementById('board').getClientRects = () => [{ width: 100, height: 100 }];
+        renderStructureView();
+        await flush();
+
+        rowFor('#board').click();
+
+        expect(toolbar().querySelector('.structureActionToolbarContext').textContent)
+            .toBe('#board · On screen now.');
+        expect(toolbar().querySelector('.structureLocateBtn')).toBeFalsy();
     });
 });
 

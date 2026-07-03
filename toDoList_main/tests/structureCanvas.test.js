@@ -11,6 +11,9 @@ import {
     applyCanvasFilter,
     markGhostRows,
     setLocateTabSwitch,
+    snapshotMetaFor,
+    canLocate,
+    locateHandle,
 } from '../src/structureCanvas.js';
 
 // The block canvas measures block proportions from a live-DOM snapshot; jsdom's
@@ -204,8 +207,8 @@ describe('structureCanvas — drilling + breadcrumb', () => {
     });
 });
 
-describe('structureCanvas — selection detail bar', () => {
-    it('selecting a block fills the detail bar and calls onSelect with a descriptor', () => {
+describe('structureCanvas — block selection', () => {
+    it('selecting a block calls onSelect with a live descriptor', () => {
         const host = mountHost();
         const onSelect = vi.fn();
         render(host, { onSelect });
@@ -214,93 +217,56 @@ describe('structureCanvas — selection detail bar', () => {
 
         expect(onSelect).toHaveBeenCalledTimes(1);
         expect(onSelect.mock.calls[0][0]).toMatchObject({ kind: 'live', label: 'Main', value: '#main' });
-
-        expect(host.querySelector('.structureCanvasDetailName').textContent).toBe('Main');
-        expect(host.querySelector('.structureCanvasDetailId').textContent).toBe('#main');
-        expect(host.querySelector('.structureCanvasDetailDims').textContent).toBe('300 × 400');
-        expect(host.querySelector('.structureCanvasDetailBadge--visible')).toBeTruthy();
-    });
-
-    it('View code and Reference fire their callbacks', () => {
-        const host = mountHost();
-        const onViewCode = vi.fn();
-        const onReference = vi.fn();
-        render(host, { onViewCode, onReference });
-
-        host.querySelector('.structureCanvasBlock[data-selector="#main"]').click();
-        host.querySelector('.structureCanvasDetailViewCode').click();
-        host.querySelector('.structureCanvasDetailReference').click();
-
-        expect(onViewCode).toHaveBeenCalledWith('#main');
-        expect(onReference).toHaveBeenCalledWith(expect.objectContaining({ value: '#main' }));
+        // The detail bar is gone — the shared toolbar (structureView) surfaces the
+        // dims / visibility / Locate now, so no detail nodes render here.
+        expect(host.querySelector('.structureCanvasDetail')).toBe(null);
     });
 });
 
-describe('structureCanvas — Locate action', () => {
+describe('structureCanvas — snapshotMetaFor + canLocate', () => {
+    it('returns rounded dims and visible=true for a captured, on-screen handle', () => {
+        expect(snapshotMetaFor('#main')).toEqual({ width: 300, height: 400, visible: true });
+    });
+
+    it('returns null for a selector that was never captured', () => {
+        expect(snapshotMetaFor('#neverCaptured')).toBe(null);
+    });
+
+    it('reports a ghost handle as zero-size and not visible (still captured)', () => {
+        // #gone never resolves → captured as a rect-less ghost entry.
+        expect(snapshotMetaFor('#gone')).toEqual({ width: 0, height: 0, visible: false });
+    });
+
+    it('canLocate is true for a live-visible handle, false when absent or zero-size', () => {
+        expect(canLocate('#main')).toBe(true);
+        expect(canLocate('#gone')).toBe(false); // not in the live DOM
+        stubRect(document.getElementById('aside'), 0, 0, 0, 0); // present but 0×0
+        expect(canLocate('#aside')).toBe(false);
+    });
+});
+
+describe('structureCanvas — locateHandle', () => {
     let tabSwitch;
     beforeEach(() => {
         tabSwitch = vi.fn();
         setLocateTabSwitch(tabSwitch);
     });
 
-    it('renders an enabled Locate button for a live-visible, non-overlay handle', () => {
-        const host = mountHost();
-        render(host);
-
-        host.querySelector('.structureCanvasBlock[data-selector="#main"]').click();
-
-        const locate = host.querySelector('.structureCanvasDetailLocate');
-        expect(locate).toBeTruthy();
-        expect(locate.disabled).toBe(false);
-        expect(host.querySelector('.structureCanvasDetailLocateHint')).toBe(null);
-    });
-
-    it('clicking Locate switches to Tasks View and pulses the live element', () => {
-        const host = mountHost();
-        render(host);
+    it('switches to Tasks View and pulses the live element', () => {
         // Run the queued frame synchronously so the pulse lands within the test.
         const raf = global.requestAnimationFrame;
         global.requestAnimationFrame = (cb) => { cb(); return 0; };
 
-        host.querySelector('.structureCanvasBlock[data-selector="#main"]').click();
-        host.querySelector('.structureCanvasDetailLocate').click();
+        locateHandle('#main');
 
         global.requestAnimationFrame = raf;
         expect(tabSwitch).toHaveBeenCalledTimes(1);
         expect(document.getElementById('main').classList.contains('locate-pulse')).toBe(true);
     });
 
-    it('renders no Locate button for overlay handles', () => {
-        const host = mountHost();
-        render(host);
-
-        revealSelector('#bottomSheet');
-
-        expect(host.querySelector('.structureCanvasDetailLocate')).toBe(null);
-    });
-
-    it('disables Locate with a helper note when the handle is absent from the live DOM', () => {
-        const host = mountHost();
-        render(host);
-
-        revealSelector('#gone'); // never resolves in the live DOM
-
-        const locate = host.querySelector('.structureCanvasDetailLocate');
-        expect(locate).toBeTruthy();
-        expect(locate.disabled).toBe(true);
-        expect(host.querySelector('.structureCanvasDetailLocateHint').textContent).toBe('hidden in this viewport');
-    });
-
-    it('disables Locate when the handle resolves but has no on-screen box', () => {
-        const host = mountHost();
-        render(host);
-        stubRect(document.getElementById('aside'), 0, 0, 0, 0); // present but hidden
-
-        revealSelector('#aside');
-
-        const locate = host.querySelector('.structureCanvasDetailLocate');
-        expect(locate.disabled).toBe(true);
-        expect(host.querySelector('.structureCanvasDetailLocateHint').textContent).toBe('hidden in this viewport');
+    it('is a no-op when the handle has no on-screen box in the live DOM', () => {
+        stubRect(document.getElementById('aside'), 0, 0, 0, 0);
+        locateHandle('#aside');
         expect(tabSwitch).not.toHaveBeenCalled();
     });
 });
