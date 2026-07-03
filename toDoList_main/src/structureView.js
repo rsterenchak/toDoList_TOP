@@ -1549,7 +1549,7 @@ function renderUiLens(repo, treeEl) {
         // the tree, sized from the live layout snapshot; ghost rows go amber.
         if (repo === SELF_REPO) {
             canvasActive = true;
-            renderStructureCanvas(treeEl, {
+            const pane = renderStructureCanvas(treeEl, {
                 repo: repo,
                 tree: tree,
                 onSelect: selectFromCanvas,
@@ -1557,6 +1557,16 @@ function renderUiLens(repo, treeEl) {
                 onViewCode: viewCodeFromCanvas,
             });
             markGhostRows(treeEl);
+            // Manual fallback alongside the live auto-capture. The live map (and its
+            // ↻ chip) re-measures the on-screen DOM, which on mobile can catch a
+            // mid-transition / zero-size layout; a standalone "Capture layout from
+            // deployed site" button forces a clean deployed-site measure instead.
+            // Always shown for self (the chip's ↻ is the LIVE refresh, so the
+            // deployed button is never redundant with it). Placed right below the
+            // canvas — the same spot the guest button occupies — above the tree rows.
+            const control = buildCaptureControl(repo, treeEl, true);
+            if (pane && pane.nextSibling) treeEl.insertBefore(control, pane.nextSibling);
+            else treeEl.appendChild(control);
         }
         return;
     }
@@ -1800,23 +1810,28 @@ function renderGuestUiLens(repo, result, treeEl) {
     // even when no manifest is published yet).
     const canCapture = !(result && result.hasDom === false);
     if (canvas || canCapture) {
-        treeEl.appendChild(buildGuestCaptureControl(repo, treeEl, !!canvas));
+        // Guest: show the standalone button only when no canvas is mounted yet —
+        // once it is, the snapshot chip's Re-capture covers the deployed re-measure.
+        treeEl.appendChild(buildCaptureControl(repo, treeEl, !canvas));
     }
 
     renderPublishedUiMap(repo, result, treeEl);
     if (canvas) markGhostRows(treeEl);
 }
 
-// The capture affordance + status line above the published map. With no capture
-// yet it carries the "Capture layout from deployed site" button; once the canvas
-// is mounted the re-capture control lives in the snapshot chip instead, so this
-// row is just the status/error line (module-scoped so the async capture flow can
-// write progress + failure notices into it after a repaint).
-function buildGuestCaptureControl(repo, treeEl, hasCanvas) {
+// The capture affordance + status line above the published/live map. `showButton`
+// controls whether the standalone "Capture layout from deployed site" button
+// renders: a guest hides it once its canvas is mounted (the snapshot chip's
+// Re-capture then covers the deployed re-measure), while the self repo always
+// shows it (the self chip's ↻ is the LIVE refresh, so the deployed button is never
+// redundant with it). The status/error line is always present, module-scoped so
+// the async capture flow can write progress + failure notices into it after a
+// repaint.
+function buildCaptureControl(repo, treeEl, showButton) {
     const control = document.createElement('div');
     control.className = 'structureCaptureControl';
 
-    if (!hasCanvas) {
+    if (showButton) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'structureCaptureBtn';
