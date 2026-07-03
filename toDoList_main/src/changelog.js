@@ -12,14 +12,12 @@ export const changelog = [
         fixed: [
             "Tall containers in the Structure canvas now render at a capped, viewable height instead of stretching several screens tall, while keeping their true proportions.",
             "Wide, short containers in the Structure canvas now keep every child block on-screen instead of pushing right-side blocks off the pane.",
+            "The Structure canvas drill chip is now reliably clickable — it no longer hides behind the block and has a larger tap target.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-02',
-        changed: [
-            "Structure canvas blocks now stand out with higher contrast, and a selected block's size, visibility, and Locate action moved from the old detail bar into the shared selection toolbar.",
-        ],
         fixed: [
             "The Structure block canvas now draws each block at its true position and size from the captured layout, so the drawing matches the real view instead of showing equal-sized rows.",
         ],

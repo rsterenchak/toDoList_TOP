@@ -456,6 +456,22 @@ describe('structureCanvas — per-viewport buckets + toggle', () => {
         expect(css).toMatch(/\.structureCanvasPane\s*\{[^}]*container-type:\s*inline-size/);
     });
 
+    it('stacks the drill chip above the block head and enlarges its hit area', () => {
+        const css = readFileSync(resolve(here, '../src/style.css'), 'utf8');
+        // The chip needs a z-index so it always wins the stacking contest against
+        // the full-width block head (z-index: 1) that would otherwise steal taps.
+        const chip = css.match(/\.structureCanvasDrillChip\s*\{[^}]*\}/);
+        expect(chip).toBeTruthy();
+        expect(chip[0]).toMatch(/z-index:\s*2/);
+        // A ::after pseudo-element extends the tap target past the 26px visual.
+        // jsdom does no hit-testing, so assert the rule text is present.
+        const after = css.match(/\.structureCanvasDrillChip::after\s*\{[^}]*\}/);
+        expect(after).toBeTruthy();
+        expect(after[0]).toMatch(/content:\s*''/);
+        expect(after[0]).toMatch(/position:\s*absolute/);
+        expect(after[0]).toMatch(/inset:\s*-6px/);
+    });
+
     it('keeps a right-positioned child at its true normalized left/width in a wide-short level', async () => {
         const m = await makeCanvas();
         setViewport(1440, 900);
