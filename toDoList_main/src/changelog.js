@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "The Structure canvas now maps the chat surfaces and lists hidden or off-screen containers in a labeled tray below the canvas, so they're visible and selectable instead of silently absent.",
         ],
+        fixed: [
+            "Tall containers in the Structure canvas now render at a capped, viewable height instead of stretching several screens tall, while keeping their true proportions.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-02',
         changed: [
-            "The Structure tab's UI lens now shows a drillable block canvas of proportionally-sized region blocks — with breadcrumb navigation, a layout snapshot, and a selection detail panel — above the container tree.",
             "The Structure block canvas now keeps separate mobile and desktop layout snapshots with a Mobile/Desktop toggle, so a phone can view the captured desktop layout and vice-versa.",
             "Structure canvas blocks now stand out with higher contrast, and a selected block's size, visibility, and Locate action moved from the old detail bar into the shared selection toolbar.",
         ],

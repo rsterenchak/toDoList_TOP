@@ -647,10 +647,24 @@ function buildCanvas(children, parentBox) {
 
     // Fit the canvas to the parent box's aspect ratio: at root this is the
     // selected snapshot's viewport shape; drilled levels take the drilled
-    // container's true shape.
+    // container's true shape. The RENDERED height is capped in CSS so drilling
+    // into a tall container (a scrollable body measures at its full content
+    // height, which can be several screens tall) can't blow the canvas past a
+    // viewable size: the `.structureCanvasBlocks` rule sets
+    // `height: min(calc(100cqw * var(--structure-canvas-ratio)), 60vh, 680px)`
+    // (the pane is an inline-size container, so `100cqw` is the pane width). We
+    // feed it the parent box's true height/width ratio here. With `aspect-ratio`
+    // still set to the TRUE box and `width: auto`, the width then derives from the
+    // definite (possibly capped) height, so a capped level scales down without
+    // distorting and stays horizontally centered. Wide/short levels never reach
+    // the cap and render full-width exactly as before (height resolves to
+    // `100cqw * ratio`, width back to `100cqw`). The ratio is a CSS custom
+    // property rather than a full inline `min()` because the latter isn't
+    // round-trippable through every DOM style engine.
     const p = parentBox || viewportBox() || { x: 0, y: 0, width: 1, height: 1 };
     if (p.width > 0 && p.height > 0) {
         canvas.style.aspectRatio = p.width + ' / ' + p.height;
+        canvas.style.setProperty('--structure-canvas-ratio', String(p.height / p.width));
     }
 
     const blocks = children.filter(function (n) { return !isGhostSelector(n.selector); });
