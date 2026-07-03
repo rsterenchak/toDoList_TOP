@@ -1454,3 +1454,21 @@
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d2ae5019-43c3-41d1-b8d1-5b213cb05219 -->
+
+- [ ] **[LOW]** Align the "Capture layout from deployed site" button placement across repos
+  - Type: bug
+  - Description: The deployed-site capture button sits in a different place on the self repo vs guest repos, making the Structure tab look inconsistent. On a guest repo (`renderGuestUiLens`) the button is appended to the tree container before the published map renders, so it sits at the top — above the canvas. On the self repo (`renderUiLens`), the button is inserted after the canvas pane (`pane.nextSibling`) but before the tree rows; because the self canvas is full-height, "right after the canvas" renders far down the scroll, so the button appears at the bottom of the view instead. Make the self-repo placement match the guest: the capture button should sit ABOVE the canvas pane, consistently in both paths.
+  - Behavior:
+    1. On both the self repo and guest repos, the "Capture layout from deployed site" button renders in the same position relative to the canvas — above it, near the top of the tree/canvas area — so switching between projects shows the control in a stable spot.
+    2. The self repo's live canvas, ghost rows, tree, and the snapshot chip's ↻ are otherwise unchanged; only the button's DOM insertion point moves.
+    3. Guest repos are visually unchanged (they already place it on top); if their placement is refactored to share a helper, the rendered position must stay identical.
+  - Implementation notes:
+    - In `structureView.js` `renderUiLens`'s self branch (around line 1567), the button is currently inserted at `pane.nextSibling`. Change it to insert BEFORE the canvas pane instead — e.g. `treeEl.insertBefore(control, pane)` (or build/append the control before calling `renderStructureCanvas`, mirroring the guest order where the control is added ahead of the map). Keep `buildCaptureControl(repo, treeEl, true)` for self.
+    - Verify the guest path (around line 1815) still renders the button in the same visual spot; if it helps, factor a single "insert capture control at top of tree area" placement so both paths can't drift again — but only if it doesn't change the guest's rendered position.
+    - The status line (`captureStatusEl`) must remain wired the same way after the move so progress/error notices still render (it's part of the control element).
+    - Tests (`toDoList_main/tests/structureView.test.js`): assert the capture control precedes the canvas pane in DOM order for BOTH the self repo and a captured guest repo (so the placement contract is pinned and symmetric).
+    - No `style.css` changes.
+  - Out of scope: the button's styling, label, or behavior; the snapshot chip's ↻ live-refresh; the canvas/tree/ghost-tray rendering; whether the button shows at all (that logic is unchanged — this only moves where it renders).
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureView.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5cdec22b-3853-44de-9c86-598ca57b63e4 -->
