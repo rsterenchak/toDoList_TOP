@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-03T10:20:34.720Z",
-  "sha": "08c1d9c63b60800479b6c326dfc84edb076947bc",
+  "generatedAt": "2026-07-03T10:48:28.572Z",
+  "sha": "2268d034f9b479848d3216d476f54280e5323913",
   "files": [
     "auth.js",
     "changelog.js",
@@ -4653,11 +4653,11 @@
       "selector": "[data-region=\"…\"]",
       "label": "…",
       "file": "structureView.js",
-      "line": 771,
+      "line": 800,
       "files": [
         {
           "file": "structureView.js",
-          "line": 771
+          "line": 800
         }
       ]
     }
