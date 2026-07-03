@@ -1455,7 +1455,7 @@
   - Completed: 2026-07-03
   <!-- id: d2ae5019-43c3-41d1-b8d1-5b213cb05219 -->
 
-- [ ] **[LOW]** Align the "Capture layout from deployed site" button placement across repos
+- [x] **[LOW]** Align the "Capture layout from deployed site" button placement across repos
   - Type: bug
   - Description: The deployed-site capture button sits in a different place on the self repo vs guest repos, making the Structure tab look inconsistent. On a guest repo (`renderGuestUiLens`) the button is appended to the tree container before the published map renders, so it sits at the top — above the canvas. On the self repo (`renderUiLens`), the button is inserted after the canvas pane (`pane.nextSibling`) but before the tree rows; because the self canvas is full-height, "right after the canvas" renders far down the scroll, so the button appears at the bottom of the view instead. Make the self-repo placement match the guest: the capture button should sit ABOVE the canvas pane, consistently in both paths.
   - Behavior:
@@ -1470,5 +1470,5 @@
     - No `style.css` changes.
   - Out of scope: the button's styling, label, or behavior; the snapshot chip's ↻ live-refresh; the canvas/tree/ghost-tray rendering; whether the button shows at all (that logic is unchanged — this only moves where it renders).
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureView.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: 5cdec22b-3853-44de-9c86-598ca57b63e4 -->
