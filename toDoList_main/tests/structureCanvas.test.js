@@ -1,4 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 import {
     SELF_REPO,
@@ -402,6 +407,49 @@ describe('structureCanvas — per-viewport buckets + toggle', () => {
 
         const canvas = host.querySelector('.structureCanvasBlocks');
         expect(canvas.style.aspectRatio).toBe('1440 / 900');
+    });
+
+    it('caps a tall drilled level via the height clamp while keeping the true ratio; a wide root stays full-width', async () => {
+        const m = await makeCanvas();
+        setViewport(1440, 900);
+        // #main is a tall, narrow column so drilling into it yields a tall parent box.
+        stubRect(document.getElementById('main'), 300, 4000, 0, 60);
+        stubRect(document.getElementById('list'), 300, 3000, 0, 60);
+        stubRect(document.getElementById('aside'), 300, 800, 0, 60);
+        m.captureSnapshot(sampleTree());
+
+        const host = mountHost();
+        renderWith(m, host);
+
+        // Root level takes the wide 1440x900 viewport: plain aspect-ratio, and its
+        // ratio var is < 1 so the clamped height resolves to the full-width term.
+        const root = host.querySelector('.structureCanvasBlocks');
+        expect(root.style.aspectRatio).toBe('1440 / 900');
+        expect(root.style.getPropertyValue('--structure-canvas-ratio')).toBe(String(900 / 1440));
+
+        // Drill into the tall #main (reveal a child so the drill path becomes #main):
+        // the canvas keeps #main's true 300x4000 ratio, and the ratio var it feeds the
+        // CSS height clamp reflects that tall box (4000/300), so a 300x4000 column
+        // renders capped, not several screens tall.
+        m.revealSelector('#list');
+        const drilled = host.querySelector('.structureCanvasBlocks');
+        expect(drilled.style.aspectRatio).toBe('300 / 4000');
+        expect(drilled.style.getPropertyValue('--structure-canvas-ratio')).toBe(String(4000 / 300));
+    });
+
+    it('wires the height clamp (min(60vh, 680px)) to the ratio var in style.css', () => {
+        const css = readFileSync(resolve(here, '../src/style.css'), 'utf8');
+        const block = css.match(/\.structureCanvasBlocks\s*\{[^}]*\}/);
+        expect(block).toBeTruthy();
+        const rule = block[0];
+        // The cap is driven off the inline ratio var and clamped to min(60vh, 680px).
+        expect(rule).toMatch(/height:\s*min\(\s*calc\(\s*100cqw\s*\*\s*var\(--structure-canvas-ratio/);
+        expect(rule).toContain('60vh');
+        expect(rule).toContain('680px');
+        // Width derives back from the definite height + aspect-ratio, centered.
+        expect(rule).toMatch(/width:\s*auto/);
+        // The pane is an inline-size container so 100cqw resolves to the pane width.
+        expect(css).toMatch(/\.structureCanvasPane\s*\{[^}]*container-type:\s*inline-size/);
     });
 
     it('renders the empty state and a helper when no bucket is captured', async () => {

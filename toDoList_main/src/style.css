@@ -3451,6 +3451,10 @@ button.claudeAttachChipLabel { cursor: pointer; }
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 0.5px solid var(--border-mid);
+  /* Inline-size query container: the canvas derives its capped height from the
+     pane's own width (100cqw), so a tall drilled level scales down to a viewable
+     height without a JS resize listener. */
+  container-type: inline-size;
 }
 
 .structureCanvasSnapChip {
@@ -3552,6 +3556,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   position: relative;
   min-height: 80px;
   overflow: hidden;
+  /* Cap the rendered height so a tall drilled level (e.g. a scrollable body
+     measured at full content height) stays viewable. The natural height at full
+     pane width is 100cqw × the parent box's true height/width ratio (set inline
+     as --structure-canvas-ratio); clamp it to min(60vh, 680px). Width is auto so
+     it derives back from the definite height + true aspect-ratio (no distortion,
+     just a smaller ratio-true canvas), centered when the cap makes it narrower
+     than the pane. Wide/short levels stay full-width — their natural height is
+     below the cap. */
+  height: min(calc(100cqw * var(--structure-canvas-ratio, 0)), 60vh, 680px);
+  width: auto;
+  margin-inline: auto;
+  align-self: center;
 }
 
 .structureCanvasBlock {
