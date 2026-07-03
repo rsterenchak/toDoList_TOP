@@ -57,9 +57,16 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
+// The deployed-site capture is stubbed so the capture-button flow can be exercised
+// without a real off-screen iframe fetch — tests assert the button routes into it.
+vi.mock('../src/structureRemoteCapture.js', () => ({
+    captureRemote: vi.fn(function () { return Promise.resolve({ ok: true, passes: 2 }); }),
+}));
+
 import { renderStructureView, captureStructureSnapshot, buildUiTree } from '../src/structureView.js';
 import { resetCanvasState } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
+import { captureRemote } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
 import {
     setStructureLens,
@@ -884,15 +891,40 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
         expect(document.querySelector('.structureTypeLabel')).toBeTruthy();
     });
 
-    it('omits the trigger on the self (running) repo live UI lens', async () => {
-        // 'My Project' resolves to the running repo → the live self map, never the trigger.
+    it('shows the trigger on the self (running) repo live UI lens as a manual fallback', async () => {
+        // 'My Project' resolves to the running repo → the live self map, which now
+        // also offers the deployed-site capture button alongside the live auto-capture.
         document.body.innerHTML =
             '<div id="structureView"></div>' +
             '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
             '<main id="mainPanel" data-region="Tasks"></main>';
         renderStructureView();
         await flush();
-        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+        const btn = document.querySelector('.structureCaptureBtn');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toMatch(/capture layout/i);
+        // The live block canvas still mounts (the auto-capture path is unchanged),
+        // and the button sits right below it, above the live region rows.
+        const canvas = document.querySelector('.structureCanvasPane');
+        expect(canvas).toBeTruthy();
+        expect(canvas.nextSibling.querySelector('.structureCaptureBtn')).toBe(btn);
+    });
+
+    it('routes the self trigger into the deployed-site capture when tapped', async () => {
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+            '<main id="mainPanel" data-region="Tasks"></main>';
+        renderStructureView();
+        await flush();
+        const btn = document.querySelector('.structureCaptureBtn');
+        expect(btn).toBeTruthy();
+        captureRemote.mockClear();
+        btn.click();
+        await flush();
+        expect(captureRemote).toHaveBeenCalled();
+        // Measured against the self repo (its own deployed Pages site).
+        expect(captureRemote.mock.calls[0][0]).toBe('rsterenchak/toDoList_TOP');
     });
 });
 
