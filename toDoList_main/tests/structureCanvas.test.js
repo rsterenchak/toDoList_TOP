@@ -138,6 +138,53 @@ describe('structureCanvas — render + repo gating', () => {
     });
 });
 
+describe('structureCanvas — true-to-layout positioning', () => {
+    // The outer beforeEach captures at jsdom's default viewport (1024 × 768), so
+    // the root parent box is { x:0, y:0, width:1024, height:768 }.
+    it('positions and sizes each block from its rect as parent-relative percentages', () => {
+        const host = mountHost();
+        render(host);
+
+        const header = host.querySelector('.structureCanvasBlock[data-selector="#appHeader"]');
+        // #appHeader is 200 × 60 at (0, 0) within the 1024 × 768 viewport.
+        expect(header.style.left).toBe('0%');
+        expect(header.style.top).toBe('0%');
+        expect(parseFloat(header.style.width)).toBeCloseTo((200 / 1024) * 100, 4);
+        expect(parseFloat(header.style.height)).toBeCloseTo((60 / 768) * 100, 4);
+
+        const main = host.querySelector('.structureCanvasBlock[data-selector="#main"]');
+        // #main is 300 × 400 at (0, 60).
+        expect(main.style.left).toBe('0%');
+        expect(parseFloat(main.style.top)).toBeCloseTo((60 / 768) * 100, 4);
+        expect(parseFloat(main.style.width)).toBeCloseTo((300 / 1024) * 100, 4);
+        expect(parseFloat(main.style.height)).toBeCloseTo((400 / 768) * 100, 4);
+    });
+
+    it('paints blocks largest-first so small overlays land on top', () => {
+        const host = mountHost();
+        render(host);
+        // #main (300 × 400 = 120000) has a larger area than #appHeader (200 × 60 =
+        // 12000), so it is appended first and small blocks paint over it.
+        const order = Array.from(host.querySelectorAll('.structureCanvasBlock')).map((b) => b.dataset.selector);
+        expect(order).toEqual(['#main', '#appHeader']);
+    });
+
+    it('flags a block tiny on both axes and leaves larger siblings untouched', () => {
+        const host = mountHost();
+        // Shrink #aside to a tiny overlay inside #main's box, then re-measure.
+        stubRect(document.getElementById('aside'), 20, 20, 10, 70);
+        captureSnapshot(sampleTree());
+        render(host);
+        host.querySelector('.structureCanvasBlock[data-selector="#main"] .structureCanvasDrillChip').click();
+
+        // Inside #main's 300 × 400 box: #aside is 6.7% × 5% → tiny; #list is not.
+        const aside = host.querySelector('.structureCanvasBlock[data-selector="#aside"]');
+        const list = host.querySelector('.structureCanvasBlock[data-selector="#list"]');
+        expect(aside.classList.contains('structureCanvasBlock--tiny')).toBe(true);
+        expect(list.classList.contains('structureCanvasBlock--tiny')).toBe(false);
+    });
+});
+
 describe('structureCanvas — drilling + breadcrumb', () => {
     it('the drill chip descends a level and grows the breadcrumb; a crumb navigates back up', () => {
         const host = mountHost();

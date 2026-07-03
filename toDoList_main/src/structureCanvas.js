@@ -343,7 +343,7 @@ function rebuild() {
 
     paneEl.appendChild(buildSnapshotChip());
     paneEl.appendChild(buildBreadcrumb(drill.chain));
-    paneEl.appendChild(buildCanvas(drill.children));
+    paneEl.appendChild(buildCanvas(drill.children, parentBoxFor(drill.chain, drill.children)));
     const hint = buildEmptyBucketHint();
     if (hint) paneEl.appendChild(hint);
     paneEl.appendChild(buildDetailBar());
@@ -482,19 +482,95 @@ function buildBreadcrumb(chain) {
     return bar;
 }
 
-// The block canvas: the current container's direct, non-ghost children laid out
-// as proportionally-sized slabs in the container's inferred flow direction. An
-// empty level (no measurable children) shows a gentle hint.
-function buildCanvas(children) {
+// ── LAYOUT NORMALIZATION ──────────────────────────────────────────────────────
+// Blocks are positioned true-to-layout: each child's snapshot rect is normalized
+// to its parent box (the drilled container's rect, or the viewport at root) into
+// `left/top/width/height` percentages, so size AND position match the captured
+// layout rather than a flow guess.
+
+// The snapshot rect for a selector in the active bucket, or null.
+function rectFor(selector) {
+    const snap = activeHandles().get(selector);
+    return (snap && snap.rect) ? snap.rect : null;
+}
+
+// Positive rect area (0 when unmeasured), for paint ordering.
+function rectArea(selector) {
+    const r = rectFor(selector);
+    return r ? Math.max(r.width, 0) * Math.max(r.height, 0) : 0;
+}
+
+// The viewport box for the active bucket as a rect, or null when uncaptured.
+function viewportBox() {
+    const vp = activeViewport();
+    if (vp && vp.w > 0 && vp.h > 0) return { x: 0, y: 0, width: vp.w, height: vp.h };
+    return null;
+}
+
+// The bounding union of a set of children's measured rects, or null when none
+// measure. Used as a fallback parent box when a drilled node's own rect is gone.
+function unionBox(children) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    (children || []).forEach(function (n) {
+        const r = rectFor(n.selector);
+        if (!r || !(r.width > 0 && r.height > 0)) return;
+        if (r.x < minX) minX = r.x;
+        if (r.y < minY) minY = r.y;
+        if (r.x + r.width > maxX) maxX = r.x + r.width;
+        if (r.y + r.height > maxY) maxY = r.y + r.height;
+    });
+    if (minX === Infinity) return null;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+// The parent box a level's children are normalized against: the drilled
+// container's own rect from the active bucket, falling back to the union of the
+// children's rects, then the viewport. At the root (empty chain) it is the
+// viewport box, with the same union fallback if the viewport is uncaptured.
+function parentBoxFor(chain, children) {
+    if (chain && chain.length) {
+        const tail = chain[chain.length - 1];
+        const r = rectFor(tail.selector);
+        if (r && r.width > 0 && r.height > 0) return r;
+        return unionBox(children) || viewportBox() || { x: 0, y: 0, width: 1, height: 1 };
+    }
+    return viewportBox() || unionBox(children) || { x: 0, y: 0, width: 1, height: 1 };
+}
+
+function clampPct(v) {
+    if (!(v > 0)) return 0;
+    if (v > 100) return 100;
+    return v;
+}
+
+// Normalize a child rect to percentage left/top/width/height of a parent box,
+// clamped to the 0–100 range (the canvas clips anything past the edge).
+function normalizeRect(r, p) {
+    return {
+        left: clampPct(((r.x - p.x) / p.width) * 100),
+        top: clampPct(((r.y - p.y) / p.height) * 100),
+        width: clampPct((r.width / p.width) * 100),
+        height: clampPct((r.height / p.height) * 100),
+    };
+}
+
+// Below this percentage on BOTH axes a block is "tiny": its head text is hidden
+// (the detail bar names it on tap) and it gets a small hit-area floor.
+const TINY_PCT = 12;
+
+// The block canvas: the current container's direct, non-ghost children absolutely
+// positioned at their true relative rects within the parent box. An empty level
+// (no measurable children) shows a gentle hint.
+function buildCanvas(children, parentBox) {
     const canvas = document.createElement('div');
     canvas.className = 'structureCanvasBlocks';
 
-    // Fit the canvas to the SELECTED snapshot's aspect ratio, so a desktop
-    // bucket viewed on a phone draws as a wide, short rectangle rather than
-    // being stretched to the mobile canvas shape.
-    const vp = activeViewport();
-    if (vp && vp.w > 0 && vp.h > 0) {
-        canvas.style.aspectRatio = vp.w + ' / ' + vp.h;
+    // Fit the canvas to the parent box's aspect ratio: at root this is the
+    // selected snapshot's viewport shape; drilled levels take the drilled
+    // container's true shape.
+    const p = parentBox || viewportBox() || { x: 0, y: 0, width: 1, height: 1 };
+    if (p.width > 0 && p.height > 0) {
+        canvas.style.aspectRatio = p.width + ' / ' + p.height;
     }
 
     const blocks = children.filter(function (n) { return !isGhostSelector(n.selector); });
@@ -508,43 +584,22 @@ function buildCanvas(children) {
         return canvas;
     }
 
-    canvas.classList.add(inferFlow(blocks) === 'column'
-        ? 'structureCanvasBlocks--col'
-        : 'structureCanvasBlocks--row');
-
-    blocks.forEach(function (node) {
-        canvas.appendChild(buildBlock(node));
+    // Paint largest-first so small overlays (FAB, chips) sit on top of the big
+    // containers they float over and stay tappable.
+    const ordered = blocks.slice().sort(function (a, b) {
+        return rectArea(b.selector) - rectArea(a.selector);
+    });
+    ordered.forEach(function (node) {
+        canvas.appendChild(buildBlock(node, p));
     });
     return canvas;
 }
 
-// Row vs column: compare the spread of block centers. Wider horizontal spread →
-// a row; wider vertical spread → a column. Defaults to row with no rects.
-function inferFlow(blocks) {
-    const cx = [];
-    const cy = [];
-    blocks.forEach(function (n) {
-        const snap = activeHandles().get(n.selector);
-        if (!snap || !snap.rect) return;
-        cx.push(snap.rect.x + snap.rect.width / 2);
-        cy.push(snap.rect.y + snap.rect.height / 2);
-    });
-    if (cx.length < 2) return 'row';
-    return spread(cx) >= spread(cy) ? 'row' : 'column';
-}
-
-function spread(vals) {
-    let min = Infinity;
-    let max = -Infinity;
-    vals.forEach(function (v) { if (v < min) min = v; if (v > max) max = v; });
-    return max - min;
-}
-
-// One slab block: elevated card with the handle name + faint `#id`, a proportional
-// flex-grow from its snapshot size, mini-outlines of its level-1 children, and a
-// `»` drill chip when it nests containers. Tap selects; the chip or a long-press
-// drills.
-function buildBlock(node) {
+// One block: elevated card absolutely positioned and sized from its snapshot rect
+// normalized to `parentBox`, with the handle name + faint `#id`, mini-outlines of
+// its level-1 children, and a `»` drill chip when it nests containers. Tap
+// selects; the chip or a long-press drills.
+function buildBlock(node, parentBox) {
     const block = document.createElement('div');
     block.className = 'structureCanvasBlock';
     block.dataset.selector = node.selector;
@@ -552,10 +607,17 @@ function buildBlock(node) {
     block.setAttribute('tabindex', '0');
     if (selectedSelector === node.selector) block.classList.add('is-selected');
 
-    const snap = activeHandles().get(node.selector);
-    const grow = snap && snap.rect ? Math.max(snap.rect.width, 1) : 1;
-    block.style.flexGrow = String(grow);
-    block.style.flexBasis = '0';
+    const rect = rectFor(node.selector);
+    if (rect && parentBox && parentBox.width > 0 && parentBox.height > 0) {
+        const pos = normalizeRect(rect, parentBox);
+        block.style.left = pos.left + '%';
+        block.style.top = pos.top + '%';
+        block.style.width = pos.width + '%';
+        block.style.height = pos.height + '%';
+        if (pos.width < TINY_PCT && pos.height < TINY_PCT) {
+            block.classList.add('structureCanvasBlock--tiny');
+        }
+    }
 
     const head = document.createElement('div');
     head.className = 'structureCanvasBlockHead';
@@ -574,7 +636,7 @@ function buildBlock(node) {
 
     const kids = regionChildren(node);
     if (kids.length) {
-        block.appendChild(buildMiniPreview(kids));
+        block.appendChild(buildMiniPreview(kids, rect));
 
         const chip = document.createElement('button');
         chip.type = 'button';
@@ -594,18 +656,23 @@ function buildBlock(node) {
 }
 
 // A faint, non-interactive peek of a block's level-1 children as mini-outlines,
-// proportionally sized like the real blocks.
-function buildMiniPreview(kids) {
+// each absolutely positioned within the preview layer at its true relative rect
+// (normalized against the parent block's own rect), matching the real layout.
+function buildMiniPreview(kids, blockRect) {
     const preview = document.createElement('div');
     preview.className = 'structureCanvasMiniPreview';
     preview.setAttribute('aria-hidden', 'true');
     kids.slice(0, MINI_PREVIEW_CAP).forEach(function (kid) {
         const mini = document.createElement('div');
         mini.className = 'structureCanvasMini';
-        const snap = activeHandles().get(kid.selector);
-        const grow = snap && snap.rect ? Math.max(snap.rect.width, 1) : 1;
-        mini.style.flexGrow = String(grow);
-        mini.style.flexBasis = '0';
+        const r = rectFor(kid.selector);
+        if (r && blockRect && blockRect.width > 0 && blockRect.height > 0) {
+            const pos = normalizeRect(r, blockRect);
+            mini.style.left = pos.left + '%';
+            mini.style.top = pos.top + '%';
+            mini.style.width = pos.width + '%';
+            mini.style.height = pos.height + '%';
+        }
         preview.appendChild(mini);
     });
     return preview;
