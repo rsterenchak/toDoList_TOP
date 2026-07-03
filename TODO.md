@@ -1288,3 +1288,20 @@
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5699d52c-d487-4c91-ba92-f062aa55c8ad -->
+
+- [ ] **[HIGH]** Fix wide-short canvas levels blowing out horizontally — right-side blocks render off-pane
+  - Type: bug
+  - Description: Drilling the Structure canvas into a wide, short container (e.g. Foot Bar, ~1400×48) makes right-positioned children invisible even though they're measured and visible (`#footCounts`, 136×15, shows "Visible in viewport" in the toolbar but has no block on the canvas). Cause: `.structureCanvasBlocks` combines `min-height: 80px` with an inline `aspect-ratio: <p.w> / <p.h>` and `width: auto`. When the level's natural capped height (`100cqw × ratio` ≈ 26px for Foot Bar) falls below the 80px floor, the floor wins the height — and `width: auto` then derives from the 80px height through the aspect ratio, blowing the canvas to roughly 80 × (1400/48) ≈ 2,330px wide. The pane clips everything past its own width, so left-edge blocks render (oversized) and right-side blocks land thousands of pixels off-screen. Fix by bounding the width: add `max-width: 100%` to `.structureCanvasBlocks` so the canvas can never exceed the pane. When the min-height floor engages, `aspect-ratio` yields to the explicit constraints (per CSS sizing rules), giving a full-pane-wide × 80px canvas — vertically exaggerated for extreme strips, but every block visible at its correct relative position, which is the right trade for a readability floor. All other levels are unaffected: tall levels keep the ratio-true capped-height centered rendering, normal levels keep full-width ratio-true rendering.
+  - Behavior:
+    1. Drilling into Foot Bar shows BOTH children: `#footVersion` at its true left-side position/width and `#footCounts` as a block at the right edge, matching the real footer layout.
+    2. The canvas never renders wider than the pane at any drill level, in either bucket, at any window size.
+    3. Tall-level behavior from the height-cap entry is unchanged (capped height, ratio-true width, centered), and normal levels are pixel-identical to today.
+    4. Blocks on a floor-engaged strip level remain positioned by the same percentages (relative geometry stays truthful; only the strip's rendered thickness is exaggerated to the 80px floor).
+  - Implementation notes:
+    - One-line core fix in `style.css`: `max-width: 100%;` inside the `.structureCanvasBlocks` rule (grep `structureCanvasBlocks` — the rule with the `min-height: 80px` + `height: min(...)` clamp). Keep `min-height`, the `height: min(...)` clamp, `width: auto`, and `margin-inline: auto` as they are.
+    - `toDoList_main/tests/structureCanvas.test.js`: extend the existing canvas-sizing assertions to require the `.structureCanvasBlocks` rule to carry `max-width` alongside `min-height` (style-rule text assertion, consistent with the suite's existing CSS checks — jsdom performs no real layout, so don't assert computed pixels), plus a case rendering a wide-short parent box (e.g. 1400×48) with a right-positioned child and asserting the child block's inline `left`/`width` percentages are the true normalized values (guards the geometry contract the fix restores visibility for).
+    - This entry touches `style.css` — run it sequentially, not in parallel with any other `style.css` entry.
+  - Out of scope: the min-height floor value itself (80px stays); the height cap and centering behavior for tall levels; block/mini styling; any JS changes to `buildCanvas`/`normalizeRect` (the math is correct — the container sizing was the lie); a future ratio-true "thin strip" rendering mode without vertical exaggeration.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 41d7830b-7c4e-4641-9c58-d764391ee7cc -->
