@@ -1473,7 +1473,7 @@
   - Completed: 2026-07-03
   <!-- id: 5cdec22b-3853-44de-9c86-598ca57b63e4 -->
 
-- [ ] **[LOW]** Unify the Structure capture control into one "Re-capture" button in the snapshot chip for both repos
+- [x] **[LOW]** Unify the Structure capture control into one "Re-capture" button in the snapshot chip for both repos — Completed: 2026-07-03
   - Type: feature
   - Description: The deployed-site capture affordance currently takes two different forms that swap by state, which looks inconsistent across project Structure tabs: with no capture yet, a large purple `structureCaptureBtn` labeled "Capture layout from deployed site" renders in the tree area (`buildCaptureControl`); once a capture exists, a small `structureCanvasRecapture` labeled "Re-capture" renders inside the snapshot chip beside the Mobile/Desktop toggle (`buildSnapshotChip` in `structureCanvas.js`). Consolidate to ONE control: always show the compact chip button, in both states and for both the self repo and guest repos, positioned in the snapshot chip. Drop the large standalone `structureCaptureBtn` entirely. When no capture exists the chip already reads "not captured ·"; the compact button sits there labeled "Capture" (or "Re-capture" once data exists), so the affordance is in the same place and style regardless of state or repo.
   - Behavior:

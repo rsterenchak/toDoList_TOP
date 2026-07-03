@@ -453,9 +453,11 @@ function clear(el) {
 // (`onReference` / `onViewCode` may also be passed for backward compatibility; the
 // canvas no longer invokes them now that the detail bar's duplicate actions are
 // gone — the toolbar's own Reference / Find in code cover them.)
-//   • onRecapture() — a guest repo's re-capture trigger, rendered in the snapshot
-//     chip in place of the self-only ↻ (a guest has no live DOM to re-measure, so
-//     it re-runs the deployed-site iframe capture instead).
+//   • onRecapture() — the deployed-site capture trigger, rendered as the compact
+//     "Capture" / "Re-capture" button in the snapshot chip for BOTH repos (a guest
+//     has no live DOM, so this is its only capture; the self repo shows it beside
+//     the live ↻ so a clean deployed measure is always reachable). Re-runs the
+//     deployed-site iframe capture.
 export function renderStructureCanvas(host, opts) {
     if (!host || !opts || !opts.repo) return null;
     const repo = opts.repo;
@@ -609,7 +611,12 @@ function buildEmptyBucketHint() {
 // The `captured <time> · ↻` chip plus the Mobile/Desktop bucket toggle. The
 // timestamp reflects the SELECTED bucket's capture, not the live viewport. ↻
 // re-measures the live DOM (partial, so a backgrounded Tasks View doesn't zero
-// out good rects) into the live-viewport bucket and repaints.
+// out good rects) into the live-viewport bucket and repaints. Beside it sits the
+// single deployed-site capture control: one compact "Capture" / "Re-capture"
+// button, present for BOTH repos whenever `ctx.onRecapture` is wired, labelled
+// from whether the active bucket already holds geometry. The self repo therefore
+// shows both the live ↻ (re-measures the on-screen DOM) and the deployed
+// Capture/Re-capture button; a guest shows just the latter (it has no live DOM).
 function buildSnapshotChip() {
     const chip = document.createElement('div');
     chip.className = 'structureCanvasSnapChip';
@@ -640,15 +647,23 @@ function buildSnapshotChip() {
             rebuild();
         });
         chip.appendChild(refresh);
-    } else if (ctx && typeof ctx.onRecapture === 'function') {
-        // A guest canvas has no live DOM to re-measure; its refresh is an explicit
-        // re-capture of the deployed site, sitting where the self-only ↻ would.
+    }
+
+    // The deployed-site capture control: one compact button, in the chip, for both
+    // repos. Its label reflects state — "Capture" until the active bucket holds
+    // geometry, then "Re-capture" — while its placement and style stay identical, so
+    // the affordance sits in the same spot regardless of state or repo. Tapping it
+    // runs the same deployed-site capture flow via `ctx.onRecapture`.
+    if (ctx && typeof ctx.onRecapture === 'function') {
+        const hasData = bucketHasData(activeBucketKey());
         const recapture = document.createElement('button');
         recapture.type = 'button';
         recapture.className = 'structureCanvasRecapture';
-        recapture.setAttribute('aria-label', 'Re-capture layout from the deployed site');
-        recapture.title = 'Re-capture from deployed site';
-        recapture.textContent = 'Re-capture';
+        recapture.setAttribute('aria-label', hasData
+            ? 'Re-capture layout from the deployed site'
+            : 'Capture layout from the deployed site');
+        recapture.title = hasData ? 'Re-capture from deployed site' : 'Capture from deployed site';
+        recapture.textContent = hasData ? 'Re-capture' : 'Capture';
         recapture.addEventListener('click', function (event) {
             event.stopPropagation();
             ctx.onRecapture();

@@ -860,64 +860,78 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
         setStructureLens('ui');
     });
 
-    it('shows the "Capture layout from deployed site" trigger on a guest web repo UI lens', async () => {
+    it('shows the compact "Capture" control on a guest web repo with no capture yet', async () => {
         state.manifests[OTHER] = {
             ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
             regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 1, files: [{ file: 'app.js', line: 1 }] }],
         };
         renderStructureView();
         await flush();
-        const btn = document.querySelector('.structureCaptureBtn');
+        // No capture yet → no canvas/chip, so the compact chip-style button renders in
+        // the tree's top slot instead. It reads "Capture" (no geometry stored).
+        const control = document.querySelector('.structureCaptureControl');
+        expect(control).toBeTruthy();
+        const btn = control.querySelector('.structureCanvasRecapture');
         expect(btn).toBeTruthy();
-        expect(btn.textContent).toMatch(/capture layout/i);
-    });
-
-    it('omits the trigger for a repo whose manifest reports no UI surface', async () => {
-        state.manifests[OTHER] = { ok: true, files: ['lib.js'], hasDom: false, srcRoot: 'src', regions: [] };
-        renderStructureView();
-        await flush();
+        expect(btn.textContent).toMatch(/^capture$/i);
+        // The retired large in-tree button never renders.
         expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
     });
 
-    it('omits the trigger on the Types lens', async () => {
+    it('omits the capture control for a repo whose manifest reports no UI surface', async () => {
+        state.manifests[OTHER] = { ok: true, files: ['lib.js'], hasDom: false, srcRoot: 'src', regions: [] };
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureCanvasRecapture')).toBeFalsy();
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+    });
+
+    it('omits the capture control on the Types lens', async () => {
         state.manifests[OTHER] = {
             ok: true, files: ['Game.cs'], lens: 'types',
             types: [{ kind: 'class', name: 'Game', file: 'Game.cs', line: 3, members: [] }],
         };
         renderStructureView();
         await flush();
+        expect(document.querySelector('.structureCanvasRecapture')).toBeFalsy();
         expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
         // Sanity: the Types outline did render (so absence isn't just an empty lens).
         expect(document.querySelector('.structureTypeLabel')).toBeTruthy();
     });
 
-    it('shows the trigger on the self (running) repo live UI lens as a manual fallback', async () => {
-        // 'My Project' resolves to the running repo → the live self map, which now
-        // also offers the deployed-site capture button alongside the live auto-capture.
+    it('shows the compact capture control in the snapshot chip on the self live UI lens', async () => {
+        // 'My Project' resolves to the running repo → the live self map, which offers
+        // the deployed-site capture button in the chip alongside the live ↻ refresh.
         document.body.innerHTML =
             '<div id="structureView"></div>' +
             '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
             '<main id="mainPanel" data-region="Tasks"></main>';
         renderStructureView();
         await flush();
-        const btn = document.querySelector('.structureCaptureBtn');
+        const chip = document.querySelector('.structureCanvasSnapChip');
+        expect(chip).toBeTruthy();
+        const btn = chip.querySelector('.structureCanvasRecapture');
         expect(btn).toBeTruthy();
-        expect(btn.textContent).toMatch(/capture layout/i);
-        // The live block canvas still mounts (the auto-capture path is unchanged),
-        // and the capture control sits ABOVE it, near the top of the tree/canvas area.
+        expect(btn.textContent).toMatch(/capture/i);
+        // The live ↻ refresh sits alongside it (self repo has a live DOM to re-measure).
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBeTruthy();
+        // The retired large in-tree button never renders.
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+        // The live block canvas still mounts (the auto-capture path is unchanged), and
+        // the capture status control sits ABOVE it, near the top of the tree/canvas area.
         const canvas = document.querySelector('.structureCanvasPane');
         expect(canvas).toBeTruthy();
         const control = document.querySelector('.structureCaptureControl');
         expect(control).toBeTruthy();
-        expect(control.querySelector('.structureCaptureBtn')).toBe(btn);
         // Control precedes the canvas pane in DOM order (symmetric with guest repos).
         expect(control.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
     });
 
-    it('places the capture control above the canvas on a captured guest repo', async () => {
-        // A guest with captured geometry mounts its block canvas; the capture control
-        // must sit ABOVE that canvas pane, symmetric with the self repo's placement.
+    it('shows the compact "Re-capture" chip button and status control above the canvas on a captured guest repo', async () => {
+        // A guest with captured geometry mounts its block canvas; the capture button is
+        // the compact "Re-capture" in the chip, and the status control sits ABOVE the
+        // canvas pane, symmetric with the self repo's placement.
         state.manifests[OTHER] = {
             ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
             regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 1, files: [{ file: 'app.js', line: 1 }] }],
@@ -937,6 +951,12 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
 
         const canvas = document.querySelector('.structureCanvasPane');
         expect(canvas).toBeTruthy();
+        // The capture affordance is the compact button in the chip, reading "Re-capture"
+        // now that geometry is stored. No large in-tree button.
+        const btn = canvas.querySelector('.structureCanvasSnapChip .structureCanvasRecapture');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toMatch(/re-capture/i);
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
         const control = document.querySelector('.structureCaptureControl');
         expect(control).toBeTruthy();
         // Control precedes the canvas pane in DOM order (symmetric with the self repo).
@@ -944,14 +964,14 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
             .toBeTruthy();
     });
 
-    it('routes the self trigger into the deployed-site capture when tapped', async () => {
+    it('routes the self chip capture button into the deployed-site capture when tapped', async () => {
         document.body.innerHTML =
             '<div id="structureView"></div>' +
             '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
             '<main id="mainPanel" data-region="Tasks"></main>';
         renderStructureView();
         await flush();
-        const btn = document.querySelector('.structureCaptureBtn');
+        const btn = document.querySelector('.structureCanvasSnapChip .structureCanvasRecapture');
         expect(btn).toBeTruthy();
         captureRemote.mockClear();
         btn.click();

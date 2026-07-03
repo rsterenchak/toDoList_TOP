@@ -3525,9 +3525,9 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
-/* Guest-repo re-capture control, sitting in the snapshot chip where the self-only
-   ↻ would be (a guest re-captures from its deployed site instead of re-measuring
-   a live DOM it doesn't have). */
+/* The deployed-site Capture / Re-capture control: one compact button sitting in the
+   snapshot chip for both repos (and reused in the tree's top slot for a never-captured
+   guest that has no chip yet), so the affordance looks identical across states. */
 .structureCanvasRecapture {
   display: inline-flex;
   align-items: center;
@@ -3545,30 +3545,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: rgba(108, 93, 245, 0.12);
 }
 
-/* Guest-repo deployed-site capture trigger + status line, rendered above the
-   published UI map when no capture exists yet. */
+/* Capture status line (and, for a never-captured guest with no chip, the compact
+   Capture button) rendered above the published/live map near the snapshot chip. */
 .structureCaptureControl {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   padding: 8px 8px 10px;
-}
-.structureCaptureBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(108, 93, 245, 0.12);
-  color: #9D93EE;
-  border: 0.5px solid rgba(108, 93, 245, 0.35);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.structureCaptureBtn:hover {
-  background: rgba(108, 93, 245, 0.22);
-  border-color: #6C5DF5;
 }
 .structureCaptureStatus {
   font-family: 'SpaceMono', monospace;

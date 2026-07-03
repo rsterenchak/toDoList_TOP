@@ -686,6 +686,67 @@ describe('structureCanvas — per-repo store, migration, guest guard', () => {
     });
 });
 
+describe('structureCanvas — unified capture/re-capture chip button', () => {
+    const GUEST = 'rsterenchak/matchingGame-test';
+
+    it('self repo: the chip renders the live ↻ AND the deployed Capture/Re-capture button', () => {
+        const host = mountHost();
+        // beforeEach captured the self snapshot, so the active bucket has data.
+        render(host, { onRecapture: vi.fn() });
+        const chip = host.querySelector('.structureCanvasSnapChip');
+        expect(chip).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBeTruthy();
+        const btn = chip.querySelector('.structureCanvasRecapture');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toBe('Re-capture');
+    });
+
+    it('guest repo: the chip renders the Capture/Re-capture button but no live ↻', () => {
+        // Seed guest geometry + tree so its canvas (and chip) mount.
+        captureSnapshot(sampleTree(), GUEST);
+        const host = mountHost();
+        renderStructureCanvas(host, {
+            repo: GUEST, tree: sampleTree(), onSelect: vi.fn(), onRecapture: vi.fn(),
+        });
+        const chip = host.querySelector('.structureCanvasSnapChip');
+        expect(chip).toBeTruthy();
+        // A guest has no live DOM to re-measure → no ↻, only the deployed capture button.
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBe(null);
+        const btn = chip.querySelector('.structureCanvasRecapture');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toBe('Re-capture');
+    });
+
+    it('labels the button "Capture" when the active bucket has no geometry yet', async () => {
+        // A fresh module with empty storage → the self canvas mounts but has no capture.
+        localStorage.clear();
+        vi.resetModules();
+        const m = await import('../src/structureCanvas.js');
+        const host = mountHost();
+        m.renderStructureCanvas(host, {
+            repo: m.SELF_REPO, tree: sampleTree(), onSelect: vi.fn(), onRecapture: vi.fn(),
+        });
+        const btn = host.querySelector('.structureCanvasSnapChip .structureCanvasRecapture');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toBe('Capture');
+    });
+
+    it('routes a tap through onRecapture', () => {
+        const onRecapture = vi.fn();
+        const host = mountHost();
+        render(host, { onRecapture });
+        const btn = host.querySelector('.structureCanvasSnapChip .structureCanvasRecapture');
+        btn.click();
+        expect(onRecapture).toHaveBeenCalledTimes(1);
+    });
+
+    it('omits the capture button when no onRecapture is wired', () => {
+        const host = mountHost();
+        render(host); // default helper wires no onRecapture
+        expect(host.querySelector('.structureCanvasRecapture')).toBe(null);
+    });
+});
+
 describe('structureCanvas — guest root-relative normalization', () => {
     const GUEST = 'rsterenchak/matchingGame-test';
     const bucketKey = (repo, bucket) => 'todoapp_structureSnapshot_' + encodeURIComponent(repo) + '_' + bucket;
