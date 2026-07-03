@@ -686,6 +686,115 @@ describe('structureCanvas — per-repo store, migration, guest guard', () => {
     });
 });
 
+describe('structureCanvas — guest root-relative normalization', () => {
+    const GUEST = 'rsterenchak/matchingGame-test';
+    const bucketKey = (repo, bucket) => 'todoapp_structureSnapshot_' + encodeURIComponent(repo) + '_' + bucket;
+    const treeKey = (repo) => 'todoapp_structureTree_' + encodeURIComponent(repo);
+
+    // A guest layout in ROOT (#app) coordinate space: #app is the 1000 × 1200
+    // root, logoSection sits mid-page, and logoContainer2 carries a negative
+    // margin that pulls it ABOVE logoSection's own top — so it is NOT geometrically
+    // contained by its DOM parent (the matchingGame case). Under parent-relative
+    // normalization its top would clamp to 0 (a misaligned full-width band); under
+    // root-relative it lands at its true position.
+    const ROOT = { x: 0, y: 0, width: 1000, height: 1200 };
+    function guestHandles() {
+        return {
+            '#app': { rect: ROOT, visible: true },
+            'div.navSection': { rect: { x: 0, y: 0, width: 1000, height: 200 }, visible: true },
+            'div.logoSection': { rect: { x: 0, y: 200, width: 1000, height: 400 }, visible: true },
+            'img.logoContainer2': { rect: { x: 300, y: 150, width: 400, height: 300 }, visible: true },
+        };
+    }
+    function guestTree() {
+        return [
+            {
+                type: 'region', label: 'App', selector: '#app', visible: true, children: [
+                    { type: 'region', label: 'Nav Section', selector: 'div.navSection', visible: true, children: [] },
+                    {
+                        type: 'region', label: 'Logo Section', selector: 'div.logoSection', visible: true, children: [
+                            { type: 'region', label: 'Logo Container 2', selector: 'img.logoContainer2', visible: true, children: [] },
+                        ],
+                    },
+                ],
+            },
+        ];
+    }
+    function payload(handles) {
+        return { capturedAt: '2026-07-01T00:00:00.000Z', viewport: { w: 1000, h: 1200 }, handles: handles };
+    }
+    async function makeCanvas() {
+        vi.resetModules();
+        return await import('../src/structureCanvas.js');
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+    });
+    afterEach(() => {
+        Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+    });
+
+    it('normalizes a drilled guest level against the ROOT box, not the drilled parent', async () => {
+        localStorage.setItem(bucketKey(GUEST, 'desktop'), JSON.stringify(payload(guestHandles())));
+        localStorage.setItem(treeKey(GUEST), JSON.stringify(guestTree()));
+        const m = await makeCanvas();
+        const host = mountHost();
+        m.renderStructureCanvas(host, { repo: GUEST, onSelect: vi.fn() });
+
+        // Drill App → Logo Section, then read logoContainer2's placement.
+        host.querySelector('.structureCanvasBlock[data-selector="#app"] .structureCanvasDrillChip').click();
+        host.querySelector('.structureCanvasBlock[data-selector="div.logoSection"] .structureCanvasDrillChip').click();
+
+        const logo = host.querySelector('.structureCanvasBlock[data-selector="img.logoContainer2"]');
+        // Root-relative against #app (1000 × 1200): top is 150/1200, NOT clamped to
+        // 0 by a parent-relative (logoSection y=200) crop.
+        expect(parseFloat(logo.style.top)).toBeCloseTo((150 / 1200) * 100, 4);
+        expect(parseFloat(logo.style.left)).toBeCloseTo((300 / 1000) * 100, 4);
+        expect(parseFloat(logo.style.width)).toBeCloseTo((400 / 1000) * 100, 4);
+        expect(parseFloat(logo.style.height)).toBeCloseTo((300 / 1200) * 100, 4);
+        // The parent-relative crop would have clamped top to 0 — assert it didn't.
+        expect(logo.style.top).not.toBe('0%');
+    });
+
+    it('paints the guest root level and its children against the same root box', async () => {
+        localStorage.setItem(bucketKey(GUEST, 'desktop'), JSON.stringify(payload(guestHandles())));
+        localStorage.setItem(treeKey(GUEST), JSON.stringify(guestTree()));
+        const m = await makeCanvas();
+        const host = mountHost();
+        m.renderStructureCanvas(host, { repo: GUEST, onSelect: vi.fn() });
+
+        // Drill into #app: navSection/logoSection sit at their true root-relative
+        // positions (nav spans the top, logo directly beneath), not clamped bands.
+        host.querySelector('.structureCanvasBlock[data-selector="#app"] .structureCanvasDrillChip').click();
+        const nav = host.querySelector('.structureCanvasBlock[data-selector="div.navSection"]');
+        const logoSec = host.querySelector('.structureCanvasBlock[data-selector="div.logoSection"]');
+        expect(nav.style.top).toBe('0%');
+        expect(parseFloat(nav.style.height)).toBeCloseTo((200 / 1200) * 100, 4);
+        expect(parseFloat(logoSec.style.top)).toBeCloseTo((200 / 1200) * 100, 4);
+        expect(parseFloat(logoSec.style.height)).toBeCloseTo((400 / 1200) * 100, 4);
+    });
+
+    it('the self repo still normalizes a drilled level against its immediate parent', async () => {
+        const m = await makeCanvas();
+        mountDom();
+        m.captureSnapshot(sampleTree(), m.SELF_REPO);
+        const host = mountHost();
+        m.renderStructureCanvas(host, { repo: m.SELF_REPO, tree: sampleTree(), onSelect: vi.fn() });
+        host.querySelector('.structureCanvasBlock[data-selector="#main"] .structureCanvasDrillChip').click();
+
+        const list = host.querySelector('.structureCanvasBlock[data-selector="#list"]');
+        // #list (200 × 300 at 0,60) against #main's OWN box (300 × 400 at 0,60):
+        // parent-relative, so width is 200/300 and height 300/400 — not root-relative.
+        expect(parseFloat(list.style.width)).toBeCloseTo((200 / 300) * 100, 4);
+        expect(parseFloat(list.style.height)).toBeCloseTo((300 / 400) * 100, 4);
+        expect(list.style.top).toBe('0%'); // (60 - 60) / 400
+    });
+});
+
 describe('structureCanvas — ghost tray', () => {
     it('classifies #claudeSheet as a ghost via the overlay list', () => {
         expect(isGhostSelector('#claudeSheet')).toBe(true);

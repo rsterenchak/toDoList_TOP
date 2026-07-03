@@ -121,11 +121,15 @@ function loadIframeDoc(url, w, h) {
 // manifest, forwarded into each `buildUiTree` walk so a class-identified guest
 // (e.g. a React app whose only id is its mount point) maps deeply instead of
 // collapsing to its lone root. Omitted for id/role-keyed guests.
+// `opts.classLabels` is an optional class token → manifest label Map, forwarded
+// alongside so class-kept regions read their published section names instead of
+// their tags. Both are omitted for id/role-keyed guests.
 export function captureRemote(repo, opts) {
     opts = opts || {};
     const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : function () {};
     const loadDoc = typeof opts.loadDoc === 'function' ? opts.loadDoc : loadIframeDoc;
     const knownClasses = opts.knownClasses || null;
+    const classLabels = opts.classLabels || null;
 
     const url = pagesUrlFor(repo);
     if (!url) return Promise.resolve({ ok: false, reason: 'bad-repo' });
@@ -145,7 +149,7 @@ export function captureRemote(repo, opts) {
                     throw new Error('no-document');
                 }
                 try {
-                    const tree = buildUiTree(handle.doc, knownClasses);
+                    const tree = buildUiTree(handle.doc, knownClasses, classLabels);
                     captureSnapshot(tree, repo, {
                         doc: handle.doc,
                         bucket: pass.bucket,
