@@ -1378,7 +1378,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 03150d4b-8bb0-4e19-b20d-5f08337a7a11 -->
 
-- [ ] **[MEDIUM]** Let guest-repo layout capture keep class-identified regions so linked apps drill past the root
+- [x] **[MEDIUM]** Let guest-repo layout capture keep class-identified regions so linked apps drill past the root
   - Type: bug
   - Description: Capturing a linked repo's layout (e.g. matchingGame-test) produces a canvas with only the root block (`#app`) and nothing to drill into, even though the repo's published UI map lists 74 regions. Cause: the region walk's `isKept(el)` keeps an element only when it has an `id`, a `data-region` attribute, or an ARIA landmark role. The self repo (toDoList_TOP) is id-rich so it maps deeply, but the matching game is a React app whose UI is identified by `className` — its manifest selectors are all class-based (`.animationSection`, `.card`, `.homeSection`, …, none with `#`), and the only element carrying an `id` is the React mount point `#app`. So the walk keeps `#app`, finds no id/role/data-region descendants, and returns a single childless node. Fix: give the guest walk the set of meaningful class selectors the repo already publishes in its manifest, and have `isKept` additionally keep any element carrying one of those classes. The manifest supplies WHICH classes matter (74 class selectors with labels); the live iframe DOM supplies HOW they nest (the manifest has no nesting field) — the two compose into a real guest tree. `regionSelector` already emits `tag.class` selectors for class-bearing elements (e.g. `div.homeSection`), so kept guest regions get clean, manifest-matchable selectors with no change there. The self-repo walk is unaffected — it passes no known-class set and keeps keying on id/role as today.
   - Behavior:
@@ -1394,5 +1394,5 @@
     - No `style.css` changes — safe to run without style-file sequencing.
   - Out of scope: adding a nesting/parent field to the published manifest (the live DOM supplies containment — no build change needed); the self-repo id-based walk; changing `regionSelector` (already emits `tag.class`); Find-in-code resolution for classes the manifest doesn't carry; capturing repos with no deployed Pages site.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/structureRemoteCapture.js`, `toDoList_main/tests/structureView.test.js`, `toDoList_main/tests/structureRemoteCapture.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: 28215514-15f6-44b1-a3fb-93e916c9d20e -->
