@@ -1305,3 +1305,19 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
   - Completed: 2026-07-03
   <!-- id: 41d7830b-7c4e-4641-9c58-d764391ee7cc -->
+
+- [ ] **[MEDIUM]** Fix the canvas drill chip being hard to click — head overlays it and the hit target is undersized
+  - Type: bug
+  - Description: The `»` drill chip on canvas blocks is unreliable to click, especially on short blocks. Two causes in `style.css`: (1) `.structureCanvasBlockHead` is `position: relative; z-index: 1` and spans the block's full width, while `.structureCanvasDrillChip` (absolute, `right: 6px; bottom: 6px`) has no z-index — so wherever the head's box overlaps the chip (always, on thin strip blocks), the head sits above it in the stacking order and intercepts the pointer, turning an intended drill into a select. (2) The chip is 26×26px, below the app's 36px touch-target standard, so even the un-intercepted sliver is a small target. Fix both without changing the chip's look: give the chip `z-index: 2` so it always stacks above the head, and extend its hit area to ~38×38 via a pseudo-element (`.structureCanvasDrillChip::after { content: ''; position: absolute; inset: -6px; }`) so taps land while the visual stays 26px.
+  - Behavior:
+    1. Hovering/tapping anywhere on or within ~6px around the `»` chip drills — the head never intercepts it, on blocks of any height.
+    2. Tapping the rest of the block (including the head text) still selects, exactly as today; the enlarged hit area is confined to the chip's immediate halo.
+    3. Chip visuals are unchanged (26px square, same colors, hover state), and the ghost-tray chips' drill affordance gets the same two rules if it shares the class (it should — verify, and apply the same treatment if it uses a separate class).
+  - Implementation notes:
+    - CSS-only. Both changes go in the existing `.structureCanvasDrillChip` rule block in `toDoList_main/src/style.css` (grep `structureCanvasDrillChip`, ~line 3649). The `::after` needs no pointer-events tweak — a pseudo-element of a button hit-tests as the button.
+    - `toDoList_main/tests/structureCanvas.test.js`: extend the existing CSS rule-text assertions to require `z-index` in the `.structureCanvasDrillChip` rule and the presence of the `::after` hit-area rule (jsdom does no hit-testing, so assert the rule text, consistent with the suite's existing style checks).
+    - This entry touches `style.css` — run it sequentially, not in parallel with any other `style.css` entry.
+  - Out of scope: the chip's visual size, placement (bottom-right), or icon; the long-press-to-drill gesture (unchanged); repositioning/centering the chip on ultra-short blocks where `overflow: hidden` may shave its edge (revisit only if it still feels off after this lands); the tree rows' caret affordance.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5ac2973b-bb6c-462d-8529-5e9391ddbcb1 -->
