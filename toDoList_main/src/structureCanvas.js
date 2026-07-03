@@ -33,6 +33,7 @@ export function setLocateTabSwitch(fn) {
 const OVERLAY_IDS = {
     bottomSheet: 1,
     sidebarOverlay: 1,
+    claudeSheet: 1,
     claudeSheetBackdrop: 1,
     companion: 1,
     projectPickerDropdown: 1,
@@ -345,8 +346,87 @@ function rebuild() {
     paneEl.appendChild(buildSnapshotChip());
     paneEl.appendChild(buildBreadcrumb(drill.chain));
     paneEl.appendChild(buildCanvas(drill.children, parentBoxFor(drill.chain, drill.children)));
+    const tray = buildGhostTray(drill.children);
+    if (tray) paneEl.appendChild(tray);
     const hint = buildEmptyBucketHint();
     if (hint) paneEl.appendChild(hint);
+}
+
+// The ghost tray, docked below the canvas: every ghost child at the current drill
+// level (overlays, and anything with no on-screen box in the active bucket) gets a
+// labeled chip so hidden containers are seen and selectable instead of silently
+// filtered out. Returns null when the level has no ghost children, so no empty
+// strip renders. Chips route tap/drill through the same handlers blocks use, so
+// toolbar mirroring and two-way sync come for free.
+function buildGhostTray(children) {
+    const ghosts = (children || []).filter(function (n) {
+        return n && n.type === 'region' && isGhostSelector(n.selector);
+    });
+    if (!ghosts.length) return null;
+
+    const tray = document.createElement('div');
+    tray.className = 'structureCanvasGhostTray';
+
+    const caption = document.createElement('div');
+    caption.className = 'structureCanvasGhostCaption';
+    caption.textContent = 'Not in this layout';
+    tray.appendChild(caption);
+
+    const row = document.createElement('div');
+    row.className = 'structureCanvasGhostRow';
+    ghosts.forEach(function (node) {
+        row.appendChild(buildGhostChip(node));
+    });
+    tray.appendChild(row);
+    return tray;
+}
+
+// One ghost chip: the handle name + faint `#id`, an `is-selected` treatment that
+// matches blocks, and — when the ghost nests region children — the same `»` drill
+// chip a block gets. Tapping the chip selects the handle through the same
+// `selectFromCanvas` path a block tap uses (mirroring onto the tree row + shared
+// toolbar); the drill chip descends via `drillInto` (parent-box fallback handles a
+// rect-less ghost).
+function buildGhostChip(node) {
+    const chip = document.createElement('div');
+    chip.className = 'structureCanvasGhostChip';
+    chip.dataset.selector = node.selector;
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('tabindex', '0');
+    if (selectedSelector === node.selector) chip.classList.add('is-selected');
+
+    const name = document.createElement('span');
+    name.className = 'structureCanvasGhostName';
+    name.textContent = node.label;
+    chip.appendChild(name);
+
+    const id = document.createElement('span');
+    id.className = 'structureCanvasGhostId';
+    id.textContent = node.selector;
+    chip.appendChild(id);
+
+    if (regionChildren(node).length) {
+        const drill = document.createElement('button');
+        drill.type = 'button';
+        drill.className = 'structureCanvasDrillChip';
+        drill.setAttribute('aria-label', 'Drill into ' + node.label);
+        drill.title = 'Drill in';
+        drill.textContent = '»';
+        drill.addEventListener('click', function (event) {
+            event.stopPropagation();
+            drillInto(node.selector);
+        });
+        chip.appendChild(drill);
+    }
+
+    chip.addEventListener('click', function () { selectFromCanvas(node); });
+    chip.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectFromCanvas(node);
+        }
+    });
+    return chip;
 }
 
 // Helper text below the canvas naming any bucket that has never been captured,

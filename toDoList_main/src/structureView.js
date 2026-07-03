@@ -698,8 +698,12 @@ function renderTree(repo, treeEl) {
 // ── UI LENS ─────────────────────────────────────────────────────────────────
 
 // Element ids whose subtrees the walk skips entirely, so the map can't include
-// the Structure view itself or the chat surfaces.
-const EXCLUDED_IDS = { structureView: 1, desktopChatPane: 1, claudeSheet: 1 };
+// the Structure view itself. The chat surfaces (#desktopChatPane, #claudeSheet)
+// are deliberately NOT excluded: the desktop chat pane becomes a real block
+// beside #mainSec, and #claudeSheet becomes a tree row that the canvas
+// overlay-classifies into the ghost tray. Only the inspector-from-inside-itself
+// case stays excluded.
+const EXCLUDED_IDS = { structureView: 1 };
 
 // ARIA landmark roles that mark an element as a keepable region.
 const LANDMARK_ROLES = {

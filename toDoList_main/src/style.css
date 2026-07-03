@@ -3652,6 +3652,81 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 13px;
 }
 
+/* Ghost tray: hidden/overlay containers at the current drill level, docked below
+   the canvas as labeled chips. Amber dashed treatment (keyed to --text-warning)
+   reads as "exists, not rendered here" against the purple-accented real blocks. */
+.structureCanvasGhostTray {
+  margin-top: 10px;
+}
+.structureCanvasGhostCaption {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--text-warning);
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.structureCanvasGhostRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.structureCanvasGhostRow::-webkit-scrollbar {
+  display: none;
+}
+.structureCanvasGhostChip {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  height: 40px;
+  min-width: 120px;
+  padding: 6px 34px 6px 10px;
+  border: 1px dashed var(--text-warning);
+  border-radius: 10px;
+  background: rgba(217, 184, 106, 0.08);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.structureCanvasGhostChip:hover {
+  border-color: var(--text-warning);
+  background: rgba(217, 184, 106, 0.14);
+}
+.structureCanvasGhostChip.is-selected {
+  border-color: #6C5DF5;
+  border-style: solid;
+  box-shadow: 0 0 0 1px rgba(108, 93, 245, 0.5);
+}
+.structureCanvasGhostName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-warning);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.structureCanvasGhostId {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.structureCanvasGhostChip .structureCanvasDrillChip {
+  width: 24px;
+  height: 24px;
+  right: 6px;
+  bottom: 50%;
+  transform: translateY(50%);
+}
+
 /* Locate pulse: a purple outline that expands and fades three times, box-shadow
    only so it never shifts layout. `border-radius: inherit` keeps the halo hugging
    the element's own corners. The class is removed on animationend by the canvas. */

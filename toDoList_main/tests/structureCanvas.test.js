@@ -452,6 +452,54 @@ describe('structureCanvas — per-viewport buckets + toggle', () => {
     });
 });
 
+describe('structureCanvas — ghost tray', () => {
+    it('classifies #claudeSheet as a ghost via the overlay list', () => {
+        expect(isGhostSelector('#claudeSheet')).toBe(true);
+    });
+
+    it('lists ghost children as labeled chips at the current level, and none when the level has no ghosts', () => {
+        const host = mountHost();
+        render(host);
+        // Root-level ghosts: #bottomSheet (overlay id) and #gone (unresolvable).
+        const tray = host.querySelector('.structureCanvasGhostTray');
+        expect(tray).toBeTruthy();
+        const chips = Array.from(host.querySelectorAll('.structureCanvasGhostChip'));
+        expect(chips.map((c) => c.dataset.selector).sort()).toEqual(['#bottomSheet', '#gone']);
+        const labels = Array.from(host.querySelectorAll('.structureCanvasGhostName')).map((n) => n.textContent).sort();
+        expect(labels).toEqual(['Gone', 'Overlay']);
+
+        // Drill into #main — its children (#list, #aside) are all measurable, so no tray.
+        host.querySelector('.structureCanvasBlock[data-selector="#main"] .structureCanvasDrillChip').click();
+        expect(host.querySelector('.structureCanvasGhostTray')).toBe(null);
+    });
+
+    it('a chip tap fires the same onSelect mirroring as a block tap', () => {
+        const host = mountHost();
+        const onSelect = vi.fn();
+        render(host, { onSelect });
+        host.querySelector('.structureCanvasGhostChip[data-selector="#bottomSheet"]').click();
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        expect(onSelect.mock.calls[0][0]).toMatchObject({
+            kind: 'live', label: 'Overlay', value: '#bottomSheet', visible: false,
+        });
+    });
+
+    it('a ghost with region children exposes a drill chip', () => {
+        const host = mountHost();
+        const tree = [
+            {
+                type: 'region', label: 'Sheet', selector: '#claudeSheet', visible: true, children: [
+                    { type: 'region', label: 'Sheet Inner', selector: '#sheetInner', visible: true, children: [] },
+                ],
+            },
+        ];
+        render(host, { tree });
+        const chip = host.querySelector('.structureCanvasGhostChip[data-selector="#claudeSheet"]');
+        expect(chip).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasDrillChip')).toBeTruthy();
+    });
+});
+
 describe('structureCanvas — markGhostRows', () => {
     it('flags live tree rows whose handle is a ghost', () => {
         const treeEl = document.createElement('div');
