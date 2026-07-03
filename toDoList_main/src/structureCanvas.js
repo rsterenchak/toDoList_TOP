@@ -304,6 +304,45 @@ export function captureSnapshot(tree, repo, opts) {
         });
     };
     visit(tree);
+    // Commit-time guard against a degenerate full capture. On the mobile
+    // Tasks→Structure view switch (`captureStructureSnapshot` in structureView.js)
+    // the app's regions are measured the instant the user leaves Tasks View, but on
+    // mobile their layout container is already collapsed/not-yet-laid-out at that
+    // instant — so the root (`#outerContainer`) measures real but every descendant
+    // region comes back 0×0 and classifies as a ghost, leaving the drilled canvas
+    // empty. The `partial` path protects prior rects from being overwritten with
+    // zeros, but a first full capture has no prior rects to keep, so the zeros would
+    // commit and become the canvas. Reject a full capture whose root measured
+    // non-zero but where no kept (non-root, non-overlay) region measured a real rect:
+    // leave any prior bucket untouched and don't create one from the garbage.
+    if (!partial) {
+        const rootSelectors = new Set(
+            (tree || [])
+                .filter(function (n) { return n && n.type === 'region' && n.selector; })
+                .map(function (n) { return n.selector; })
+        );
+        const isReal = function (snap) {
+            return !!(snap && snap.rect && snap.rect.width > 0 && snap.rect.height > 0);
+        };
+        let rootReal = false;
+        let keptCount = 0;
+        let keptReal = 0;
+        next.forEach(function (snap, selector) {
+            if (rootSelectors.has(selector)) {
+                if (isReal(snap)) rootReal = true;
+                return;
+            }
+            if (isOverlaySelector(selector)) return;
+            keptCount++;
+            if (isReal(snap)) keptReal++;
+        });
+        // Conservative: only trip when the root measured but essentially nothing
+        // inside did (at least one kept region present, none with a real rect), so a
+        // legitimately sparse layout with even one real child still commits.
+        if (rootReal && keptCount > 0 && keptReal === 0) {
+            return entry[key].handles;
+        }
+    }
     entry[key] = { at: new Date(), viewport: viewport, handles: next };
     lastTree = tree || [];
     persistBucket(targetRepo, key);
