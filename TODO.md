@@ -1494,7 +1494,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cfdf7c7a-4436-4157-8521-96424d66ef23 -->
 
-- [ ] **[MEDIUM]** Render past display:contents pass-through containers in the Structure canvas (fixes empty mobile drill)
+- [x] **[MEDIUM]** Render past display:contents pass-through containers in the Structure canvas (fixes empty mobile drill)
   - Type: bug
   - Description: Drilling into Outer Container on mobile shows an empty canvas with the real children (Nav Bar, Now Playing Strip, Main Split) in the "Not in this layout" ghost tray — even after a clean deployed-site capture. Root cause is not capture timing: `#mainSplit` is `display: contents` at mobile widths (confirmed in `main.js` — "At mobile widths #mainSplit is display:contents"). A `display:contents` element generates NO box of its own — its children render as if parented to ITS parent — so `getBoundingClientRect()` on it returns 0×0 (matching the stored `#mainSplit` 0×0). The walk keeps it (it has an id), it measures zero, classifies as a ghost, and drilling into it finds its region children (`#mainSec`, etc.) — which are geometrically parented to `#outerContainer`, not to the boxless `#mainSplit` — so there's nothing to draw at that level. The canvas currently treats a boxless-but-has-children node identically to a hidden one (line ~312's comment already flags this: "region comes back 0×0 and classifies as a ghost, leaving the drilled canvas [empty]"). Fix: detect a pass-through container (has region children but no box of its own — zero-size rect while its children have real rects) and HOIST its children up to the nearest boxed ancestor for both classification and rendering, so a `display:contents` wrapper is transparent to the canvas rather than a dead-end ghost.
   - Behavior:

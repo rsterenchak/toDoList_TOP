@@ -424,6 +424,59 @@ function resolveDrill(tree, path) {
     return { chain: chain, children: level };
 }
 
+// ── PASS-THROUGH (display:contents) HOISTING ──────────────────────────────────
+// A `display:contents` container generates NO box of its own — its children
+// render as if parented to ITS parent — so its captured rect is 0×0 while its
+// region children keep real rects (they're geometrically parented to the
+// boxless node's ancestor). Treating such a node as a normal ghost strands its
+// children a level below an empty canvas. Instead detect the pass-through
+// signature (boxless node + at least one region descendant with a real box) and
+// make the node transparent: hoist its region children up to its level so the
+// boxed descendants render where they visually belong, and the boxless node
+// itself is neither drawn as a block nor listed in the ghost tray. A boxless
+// node whose region descendants are ALSO boxless is genuinely hidden, not
+// pass-through — it stays a ghost.
+
+// Whether a selector has a real (non-zero) measured box in the active bucket.
+function hasRealBox(selector) {
+    const r = rectFor(selector);
+    return !!(r && r.width > 0 && r.height > 0);
+}
+
+// Whether any region descendant of a node has a real box (recursing through
+// nested boxless wrappers, so a chain of display:contents nodes still resolves).
+function hasRealRegionDescendant(node) {
+    return regionChildren(node).some(function (kid) {
+        return hasRealBox(kid.selector) || hasRealRegionDescendant(kid);
+    });
+}
+
+// A pass-through container: a boxless node (own rect 0×0 / missing) that has
+// region children AND a real-boxed region descendant. Overlays and leaves never
+// qualify.
+function isPassthrough(node) {
+    if (!node || node.type !== 'region' || !node.selector) return false;
+    if (isOverlaySelector(node.selector)) return false;
+    if (hasRealBox(node.selector)) return false;      // has its own box → normal
+    if (!regionChildren(node).length) return false;   // leaf → nothing to hoist
+    return hasRealRegionDescendant(node);
+}
+
+// Replace each pass-through node in a level's children with its own (recursively
+// hoisted) region children, so a display:contents wrapper is transparent to the
+// canvas. Non-pass-through nodes pass through unchanged.
+function hoistPassthrough(children) {
+    const out = [];
+    (children || []).forEach(function (node) {
+        if (isPassthrough(node)) {
+            hoistPassthrough(regionChildren(node)).forEach(function (c) { out.push(c); });
+        } else {
+            out.push(node);
+        }
+    });
+    return out;
+}
+
 // Find a node anywhere in the tree by selector, plus the drill path (list of
 // selectors) that reaches its PARENT — used to drill the canvas so the node's
 // own block is visible when a tree row is tapped.
@@ -495,19 +548,26 @@ function rebuild() {
         drillPath = drill.chain.map(function (n) { return n.selector; });
     }
 
+    // Make display:contents wrappers transparent: a boxless pass-through child is
+    // replaced by its real-boxed region children, hoisted to this level, so the
+    // canvas draws the effective descendants instead of an empty level (and the
+    // boxless node stays out of the ghost tray). A truly hidden boxless node keeps
+    // its children boxless, so it isn't hoisted and remains a ghost.
+    const effectiveChildren = hoistPassthrough(drill.children);
+
     // The self repo normalizes each level's blocks against their immediate drilled
     // parent (its nested box layout makes that geometrically correct). A guest's
     // deployed page uses absolute/negative layout where a child isn't contained by
     // its DOM parent, so every guest level normalizes against the ROOT captured box
     // instead — the coordinate space every stored rect already lives in.
     const parentBox = (activeRepo === SELF_REPO)
-        ? parentBoxFor(drill.chain, drill.children)
+        ? parentBoxFor(drill.chain, effectiveChildren)
         : rootBoxFor(tree);
 
     paneEl.appendChild(buildSnapshotChip());
     paneEl.appendChild(buildBreadcrumb(drill.chain));
-    paneEl.appendChild(buildCanvas(drill.children, parentBox));
-    const tray = buildGhostTray(drill.children);
+    paneEl.appendChild(buildCanvas(effectiveChildren, parentBox));
+    const tray = buildGhostTray(effectiveChildren);
     if (tray) paneEl.appendChild(tray);
     const hint = buildEmptyBucketHint();
     if (hint) paneEl.appendChild(hint);

@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-03',
-        changed: [
-            "The Structure tab's deployed-site capture is now a single compact Capture / Re-capture button in the snapshot chip, consistent across your own and linked projects.",
-        ],
         fixed: [
             "Capturing a class-based linked app's deployed layout now maps its nested regions to drill into, instead of showing only the root block.",
             "A linked app's captured layout in the Structure canvas now places each block at its true position and labels it with its real section name, instead of misaligned full-width bands and generic tags.",
             "On mobile, an empty layout measured during a tab switch no longer overwrites the Structure canvas snapshot, so drilling into the Outer Container keeps showing its real sections.",
             "The Structure tab's \"Capture layout from deployed site\" button now sits above the canvas on your own project too, matching where it appears on linked projects.",
+            "On mobile, drilling into the Outer Container in the Structure canvas now shows the sections nested inside its collapsing layout wrapper, instead of an empty canvas.",
         ],
     },
 ];
