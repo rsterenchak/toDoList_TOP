@@ -1211,7 +1211,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bfa795cd-8c90-4206-b91a-4fcd46e452d5 -->
 
-- [ ] **[MEDIUM]** Make the Structure canvas blocks true-to-layout — position and size every block from its measured rect
+- [x] **[MEDIUM]** Make the Structure canvas blocks true-to-layout — position and size every block from its measured rect
   - Type: bug
   - Description: The Structure tab's block canvas renders each drill level as a single flex row or column (`inferFlow` + `structureCanvasBlocks--row/--col`) and sizes every block with `flexGrow = rect.width` regardless of flow direction, so the drawing doesn't resemble the real view: a column of full-width bands (Nav Bar 64px vs Main Split 600px tall) renders as equal-height rows because only widths feed the grow, the root level draws the Outer Container's vertical band stack as equal side-by-side columns in the mini preview, and cross-axis size and position are discarded entirely (an absolutely-positioned overlay like the FAB would be shoehorned in as a full-size flow sibling). Replace the flow layout with true 2-D positioning: each non-ghost child block is absolutely positioned inside the canvas using its snapshot rect normalized to the drilled container's rect — `left/top/width/height` as percentages of the parent box — so size AND position match the captured layout. The snapshot rects (`x, y, width, height` per selector, per mobile/desktop bucket) already exist in the bucket store; the renderer currently throws the x/y away.
   - Behavior:
@@ -1229,5 +1229,5 @@
     - This entry touches `style.css` — run it sequentially, not in parallel with any other `style.css` entry.
   - Out of scope: the snapshot capture/measure path (`captureSnapshot`, partial re-measure, buckets) — rects are already correct; ghost classification and the ghost tray/tree treatment; the detail bar contents; the breadcrumb and drill interaction model; `structureView.js` beyond whatever tiny change (if any) the `buildCanvas` signature needs at its call site; the Types/Code lenses.
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: 4be5a961-89a5-458c-a326-22942910c48a -->

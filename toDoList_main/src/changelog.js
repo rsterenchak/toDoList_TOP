@@ -6,14 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-02',
-        added: [
-            "The Structure canvas's selection panel now has a Locate action that jumps to the matching live element in Tasks View and flashes it with a purple pulse.",
-        ],
         changed: [
             "New iterative projects now open as a Now / Next / Later board with a one-line North star, card promotion between lanes, and quick capture.",
             "In the TODO viewer, the overflow menu button now matches its neighboring toolbar chips, and the Run backlog button turns neutral when there are no pending tasks to run.",
             "The Structure tab's UI lens now shows a drillable block canvas of proportionally-sized region blocks — with breadcrumb navigation, a layout snapshot, and a selection detail panel — above the container tree.",
             "The Structure block canvas now keeps separate mobile and desktop layout snapshots with a Mobile/Desktop toggle, so a phone can view the captured desktop layout and vice-versa.",
+        ],
+        fixed: [
+            "The Structure block canvas now draws each block at its true position and size from the captured layout, so the drawing matches the real view instead of showing equal-sized rows.",
         ],
     },
 ];
