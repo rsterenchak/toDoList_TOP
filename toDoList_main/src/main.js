@@ -4944,6 +4944,24 @@ function restoreFromStorage(opts) {
     }
 
     if (targetChild) {
+        // deselect whatever is currently selected before marking the new
+        // row, mirroring the two click-driven select paths — otherwise a
+        // programmatic/restore select while another row is already selected
+        // leaves two rows carrying .selectedProject at once, and the
+        // first-match reader (getSelectedProjectName / resolveProjectRepo)
+        // picks the wrong repo. Guard against deselecting targetChild itself
+        // so a same-project re-select doesn't toggle it off.
+        const current = document.querySelector('.selectedProject');
+        if (current && current !== targetChild) {
+            const prevInput = current.querySelector('#projInput');
+            if (prevInput) {
+                prevInput.style.pointerEvents = "none";
+                prevInput.style.cursor = "default";
+                prevInput.blur();
+            }
+            current.classList.remove("selectedProject");
+            current.classList.add("unselectedProject");
+        }
         targetChild.classList.remove("unselectedProject");
         targetChild.classList.add("selectedProject");
     }
