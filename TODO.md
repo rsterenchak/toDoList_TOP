@@ -1271,7 +1271,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0be3c80b-e1a7-4132-ac21-c306c5a95e40 -->
 
-- [ ] **[MEDIUM]** Cap the Structure canvas height so tall containers stay fully viewable
+- [x] **[MEDIUM]** Cap the Structure canvas height so tall containers stay fully viewable — Completed: 2026-07-03
   - Type: bug
   - Description: The canvas takes its `aspect-ratio` from the drilled container's true box, so drilling into a tall container blows the drawing far past a comfortable height — `#desktopChatPane` is a tall narrow column, and `#claudeSheetBody` measures at its full content height (a `getBoundingClientRect` on a scrollable body reports the laid-out content box, not the visible clip), so its level renders as a canvas several screens tall. Cap the rendered canvas height while preserving the true aspect ratio: when a parent box's ratio would exceed the cap at full pane width, render the canvas height-limited at the cap with its width derived from the real ratio, horizontally centered in the pane. Nothing distorts — block positions are percentages of the canvas box, so a ratio-true smaller canvas keeps every block truthful, just scaled down. Applies to both buckets and both breakpoints.
   - Behavior:
