@@ -1415,7 +1415,7 @@
   - Completed: 2026-07-03
   <!-- id: fe7cad4a-422b-40d3-aa16-37171e3ec113 -->
 
-- [ ] **[MEDIUM]** Add the "Capture layout from deployed site" control to the task app's own Structure tab
+- [x] **[MEDIUM]** Add the "Capture layout from deployed site" control to the task app's own Structure tab
   - Type: feature
   - Description: The self repo (toDoList_TOP) has no manual capture control on its Structure tab — it relies solely on the live-DOM auto-capture that runs on tab entry, which on mobile can measure a mid-transition/hidden layout and store zero-size rects (drilling into Outer Container then shows an empty canvas with its children shunted to the "Not in this layout" ghost tray). Guest repos already get a "Capture layout from deployed site" button (via `renderGuestUiLens`) that measures the deployed page in a hidden iframe at real mobile/desktop widths and fills the buckets reliably. Give the self repo the same button as a manual fallback alongside its live auto-capture, so a bad live snapshot can be replaced with a clean deployed-site capture. The self manifest already publishes 313 id-based regions with `hasDom: true` and is deployed, so the existing capture flow works unchanged for it (id-based walk — no known-class set needed). The button is additive: live auto-capture on tab entry stays the default; the button (and the canvas's existing Re-capture chip once a capture exists) let the user force a deployed-site measure.
   - Behavior:
@@ -1432,5 +1432,5 @@
     - No `style.css` changes (reuses the existing capture-control + button rules). No dependency on other pending entries.
   - Out of scope: removing or changing the live auto-capture (kept as the default); the guest class-keep and root-relative geometry work (separate, already drafted/landed); auto-running the deployed capture without a tap (explicit button only); fixing the live mobile self-capture's zero-size measurement (this entry routes around it by giving a reliable deployed-site alternative — the live-capture timing fix, if wanted, is a separate entry).
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureView.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: 22cdc28e-c687-4b4e-91e0-f2c329fb364c -->
