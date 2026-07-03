@@ -1232,7 +1232,7 @@
   - Completed: 2026-07-02
   <!-- id: 4be5a961-89a5-458c-a326-22942910c48a -->
 
-- [ ] **[MEDIUM]** Raise canvas block contrast and fold the canvas detail bar into the shared selection toolbar
+- [x] **[MEDIUM]** Raise canvas block contrast and fold the canvas detail bar into the shared selection toolbar
   - Type: feature
   - Description: Two Structure-canvas refinements in one pass. (1) Contrast: blocks are hard to distinguish from the dark canvas and from each other — `.structureCanvasBlock` sits at `var(--bg-elevated)` with a `var(--border-dim)` border, and `.structureCanvasMini` is nearly invisible (`rgba(255,255,255,0.02)` fill, 0.5px `var(--border-mid)` border). Lift the blocks, not the background: add a `--bg-raised` token one notch above `--bg-elevated` in BOTH theme blocks in `style.css` (dark: `#1c1e27`; light: `#ffffff`) and move blocks onto `var(--bg-raised)` + `1px solid var(--border-bright)`; minis become clearly visible inset panels (`background: var(--bg-elevated); border: 1px solid var(--border-mid); min-width/height: 4px`). The canvas surface itself keeps its current background — only the blocks lighten. (2) Redundancy: a canvas selection currently shows the same handle twice — the shared action toolbar up top ("Reference in chat / Copy selector / Find in code" with the "`#id` · On screen now." context line) and the canvas detail bar at the bottom (name, `#id`, dims, Visible/Hidden badge, View code / Reference / Locate). Delete the detail bar and move its only unique information — the measured dims, the visibility badge, and the Locate action — into the shared toolbar when the canvas is mounted.
   - Behavior:
@@ -1248,5 +1248,5 @@
     - This entry touches `style.css` — run it sequentially, not in parallel with any other `style.css` entry.
   - Out of scope: the canvas positioning/normalization logic and snapshot capture (just shipped — untouched); the toolbar's existing Reference in chat / Copy selector / Find in code actions and their behavior on other repos and the Types lens; the breadcrumb, drill, bucket toggle, and tree; any new token usage outside the canvas blocks (other surfaces stay on their current tokens).
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureCanvas.test.js`, `toDoList_main/tests/structureView.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-02
   <!-- id: 44b1fcbe-ddd6-43eb-bd75-af75cb8786f7 -->
