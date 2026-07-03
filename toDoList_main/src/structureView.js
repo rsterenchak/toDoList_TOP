@@ -24,6 +24,7 @@ import {
     canLocate,
     locateHandle,
 } from './structureCanvas.js';
+import { captureRemote } from './structureRemoteCapture.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -141,6 +142,9 @@ let selectedHandle = null;
 // True while the drillable block canvas is mounted (the self-repo live UI lens),
 // so a tree-row tap can mirror its selection onto the canvas via revealSelector.
 let canvasActive = false;
+// The guest-repo capture status/error line (deployed-site capture flow), held so
+// the async capture can write progress + failure notices after a repaint.
+let captureStatusEl = null;
 let actionToolbarEl = null;
 let actionToolbarLabelEl = null;
 let actionToolbarContextEl = null;
@@ -781,9 +785,13 @@ function regionSelector(el) {
 // visibility:hidden and has layout (an offsetParent or client rects). Surfaces
 // hidden only by a parent's data-view attribute still have layout-less presence
 // in the DOM and read as dimmed, which is what lets latent views show up.
-function isOnScreen(el) {
+function isOnScreen(el, doc) {
+    // Resolve getComputedStyle against the element's own document view so a guest
+    // iframe's regions are measured against the iframe's window, not the host's.
+    const view = ((doc || (typeof document !== 'undefined' ? document : null)) || {}).defaultView
+        || (typeof window !== 'undefined' ? window : null);
     try {
-        const cs = window.getComputedStyle(el);
+        const cs = view && view.getComputedStyle ? view.getComputedStyle(el) : null;
         if (cs && (cs.display === 'none' || cs.visibility === 'hidden')) return false;
     } catch (e) { /* defensive — treat as laid out */ }
     if (el.offsetParent !== null) return true;
@@ -817,7 +825,7 @@ function repeatRunLength(children, start) {
 // descendants nested); non-kept elements are walked through, hoisting their
 // kept descendants up to the nearest kept ancestor. Excluded subtrees are
 // skipped whole; runs of repeated id-less siblings collapse to one line.
-function walk(el) {
+function walk(el, doc) {
     const children = Array.prototype.slice.call(el.children || []);
     const out = [];
     let i = 0;
@@ -830,13 +838,13 @@ function walk(el) {
             continue;
         }
         if (isExcludedEl(child)) { i++; continue; }
-        const descendants = walk(child);
+        const descendants = walk(child, doc);
         if (isKept(child)) {
             out.push({
                 type: 'region',
                 label: regionLabel(child),
                 selector: regionSelector(child),
-                visible: isOnScreen(child),
+                visible: isOnScreen(child, doc),
                 children: descendants,
             });
         } else {
@@ -847,10 +855,14 @@ function walk(el) {
     return out;
 }
 
-// Build the UI region tree from the live DOM. Pure read — never mutates the page.
-function buildUiTree() {
-    if (!document.body) return [];
-    return walk(document.body);
+// Build the UI region tree from a document's live DOM (the host `document` by
+// default, or a guest repo's deployed page loaded into a hidden iframe). Pure
+// read — never mutates the page. Exported so the remote-capture flow can walk a
+// guest document with the exact same region-discovery rules the self repo uses.
+export function buildUiTree(doc) {
+    const root = doc || (typeof document !== 'undefined' ? document : null);
+    if (!root || !root.body) return [];
+    return walk(root.body, root);
 }
 
 // Capture the live layout snapshot the Structure tab's block canvas measures its
@@ -991,7 +1003,10 @@ function selectFromCanvas(descriptor) {
     if (tree) {
         Array.prototype.forEach.call(tree.querySelectorAll('.structureRegionRow'), function (r) {
             if (matched || !r.dataset) return;
-            if (r.dataset.handleKind === 'live' && r.dataset.handleValue === descriptor.value) {
+            // A self canvas mirrors onto live rows; a guest canvas's published map
+            // has 'published' rows, so match either kind by selector value.
+            const kind = r.dataset.handleKind;
+            if ((kind === 'live' || kind === 'published') && r.dataset.handleValue === descriptor.value) {
                 matched = r;
             }
         });
@@ -1098,7 +1113,10 @@ function renderActionToolbar() {
     // canvas is mounted; disabled with a mono helper note when the handle has no
     // on-screen box in the current live viewport. Ghost/hidden/overlay handles
     // (snapshot visibility false) show no Locate at all.
-    if (canvasActive && d.kind === 'live') {
+    // Locate resolves against the live DOM, which only exists for the self repo; a
+    // guest (deployed-site) canvas renders from stored geometry, so Locate stays
+    // hidden entirely rather than shown-disabled.
+    if (canvasActive && d.kind === 'live' && d.repo === SELF_REPO) {
         const meta = snapshotMetaFor(d.value);
         if (meta && meta.visible) {
             const locateBtn = document.createElement('button');
@@ -1685,8 +1703,98 @@ function renderSecondLens(repo, treeEl) {
         if (currentLens === 'types') {
             renderTypesLens(repo, treeEl);
         } else {
-            renderPublishedUiMap(repo, result, treeEl);
+            renderGuestUiLens(repo, result, treeEl);
         }
+    });
+}
+
+// A non-self (guest) repo's UI lens: the deployed-site block canvas when a
+// capture exists, the "Capture layout from deployed site" trigger otherwise, and
+// the published UI map beneath either. The canvas mounts only once the repo has
+// stored geometry (renderStructureCanvas returns null until then), so a
+// never-captured guest shows just the trigger + published map — exactly as
+// before. The trigger never appears on the self repo (which flows through
+// renderUiLens) nor on the Types lens (a different branch), and is suppressed for
+// a repo whose manifest reports no UI surface at all.
+function renderGuestUiLens(repo, result, treeEl) {
+    canvasActive = false;
+    const canvas = renderStructureCanvas(treeEl, {
+        repo: repo,
+        onSelect: selectFromCanvas,
+        onReference: selectFromCanvas,
+        onViewCode: viewCodeFromCanvas,
+        onRecapture: function () { startGuestCapture(repo, treeEl); },
+    });
+    if (canvas) canvasActive = true;
+
+    // A repo the manifest flags as having no browser UI (hasDom:false) can't be
+    // captured; every other guest repo gets the trigger (a deployed page may exist
+    // even when no manifest is published yet).
+    const canCapture = !(result && result.hasDom === false);
+    if (canvas || canCapture) {
+        treeEl.appendChild(buildGuestCaptureControl(repo, treeEl, !!canvas));
+    }
+
+    renderPublishedUiMap(repo, result, treeEl);
+    if (canvas) markGhostRows(treeEl);
+}
+
+// The capture affordance + status line above the published map. With no capture
+// yet it carries the "Capture layout from deployed site" button; once the canvas
+// is mounted the re-capture control lives in the snapshot chip instead, so this
+// row is just the status/error line (module-scoped so the async capture flow can
+// write progress + failure notices into it after a repaint).
+function buildGuestCaptureControl(repo, treeEl, hasCanvas) {
+    const control = document.createElement('div');
+    control.className = 'structureCaptureControl';
+
+    if (!hasCanvas) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'structureCaptureBtn';
+        btn.textContent = 'Capture layout from deployed site';
+        btn.addEventListener('click', function () { startGuestCapture(repo, treeEl); });
+        control.appendChild(btn);
+    }
+
+    const status = document.createElement('div');
+    status.className = 'structureCaptureStatus';
+    status.hidden = true;
+    control.appendChild(status);
+    captureStatusEl = status;
+
+    return control;
+}
+
+// Write a progress or error line into the active capture status element. `tone` is
+// 'progress' or 'error'; an empty text hides the line.
+function setCaptureStatus(text, tone) {
+    const el = captureStatusEl;
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    el.classList.toggle('structureCaptureStatus--error', tone === 'error');
+}
+
+// Run the deployed-site capture for a guest repo, then repaint the UI lens so the
+// fresh canvas mounts. Progress rides the status line; any failure (unreachable
+// page / timeout / cross-origin) leaves the prior capture untouched and shows a
+// quiet mono notice.
+function startGuestCapture(repo, treeEl) {
+    setCaptureStatus('Measuring deployed site…', 'progress');
+    return captureRemote(repo, {
+        onProgress: function (msg) { setCaptureStatus(msg, 'progress'); },
+    }).then(function (res) {
+        // Drop a stale result if the repo or lens changed mid-capture.
+        if (repo !== selectedRepo || lens === 'code' || currentLens !== 'ui') return;
+        if (res && res.ok) {
+            renderLens(selectedRepo, treeEl);
+        } else {
+            setCaptureStatus('Couldn’t reach a deployed site for this repo.', 'error');
+        }
+    }).catch(function () {
+        if (repo !== selectedRepo) return;
+        setCaptureStatus('Couldn’t reach a deployed site for this repo.', 'error');
     });
 }
 

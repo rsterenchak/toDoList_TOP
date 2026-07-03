@@ -1341,7 +1341,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 505f3360-9fe7-4afb-9e1e-d96c1afd3a0a -->
 
-- [ ] **[MEDIUM]** Capture linked-repo layout via same-origin iframe so guest repos get the block canvas
+- [x] **[MEDIUM]** Capture linked-repo layout via same-origin iframe so guest repos get the block canvas
   - Type: feature
   - Description: Give linked web repos the same spatially-true block canvas as the self repo. All the user's deployed sites share one origin (`https://rsterenchak.github.io/<repoName>/`), and same-origin iframes permit direct DOM access — so the Structure tab can load a guest repo's deployed page in a hidden iframe, discover its region tree with the SAME live-DOM walk the self repo uses (real containment — the published UI map is flat and can't provide nesting), measure every region's rect at two viewport widths, and fill that repo's per-repo snapshot buckets + stored tree (from the previous entry). After capture, the existing canvas mounts for the guest repo with drill, ghost tray, breadcrumb, bucket toggle, and toolbar dims/badges — no canvas changes needed. New module `toDoList_main/src/structureRemoteCapture.js` owns the flow; `structureView.js` surfaces the trigger and exports its UI walk for reuse.
   - Behavior:
@@ -1358,5 +1358,5 @@
     - Depends on the per-repo buckets entry — run strictly after it; also touches `style.css`, so not in parallel with any other `style.css` entry.
   - Out of scope: cross-origin sites and CI/build-time measurement (out of reach of an iframe; possible later via a headless-browser publish step); capturing repos without a deployed Pages site; auto-capture on repo switch (explicit trigger only, to keep iframe loads intentional); Locate for guest repos; mobile-bucket fidelity beyond iframe-width simulation (real device capture stays a self-repo concept).
   - File: `toDoList_main/src/structureRemoteCapture.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureRemoteCapture.test.js`, `toDoList_main/tests/structureCanvas.test.js`, `toDoList_main/tests/structureView.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: 009d8efe-a847-418b-b68c-dd188aaafc07 -->

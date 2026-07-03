@@ -267,20 +267,32 @@ function regionChildren(node) {
 // measurement for any handle that doesn't currently resolve or is off-screen
 // (used by the ↻ re-measure, which may run while Tasks View is backgrounded and
 // its elements are display:none) so a refresh never wipes good rects with zeros.
+// `opts` may also carry `doc` — the document to resolve selectors in, so a
+// remote (guest) capture measures the deployed page loaded in a hidden iframe
+// rather than the host `document` — and `bucket` / `viewport`, which force the
+// target bucket and recorded viewport (a remote capture sizes its iframe to a
+// breakpoint the host window is unrelated to, so it can't infer the bucket from
+// `window.innerWidth`). All three default to the live self-repo behavior.
 export function captureSnapshot(tree, repo, opts) {
     const targetRepo = repo || activeRepo;
     const entry = hydrateRepo(targetRepo);
     const partial = !!(opts && opts.partial);
-    // A capture always writes to the bucket for the current LIVE viewport — never
-    // the toggle-selected one — so measuring on a phone can only fill the mobile
-    // bucket. A partial re-measure starts from the existing bucket's rects so it
-    // never wipes good geometry with zeros for backgrounded handles.
-    const key = currentViewportKey();
+    const doc = (opts && opts.doc) || null;
+    // A capture writes to the bucket for the current LIVE viewport — never the
+    // toggle-selected one — so measuring on a phone can only fill the mobile
+    // bucket. A remote capture overrides this with an explicit `bucket` (it sized
+    // its iframe to that breakpoint). A partial re-measure starts from the existing
+    // bucket's rects so it never wipes good geometry with zeros for backgrounded
+    // handles.
+    const key = (opts && (opts.bucket === 'mobile' || opts.bucket === 'desktop'))
+        ? opts.bucket
+        : currentViewportKey();
+    const viewport = (opts && opts.viewport) || viewportSize();
     const next = partial ? new Map(entry[key].handles) : new Map();
     const visit = function (nodes) {
         (nodes || []).forEach(function (node) {
             if (!node || node.type !== 'region' || !node.selector) return;
-            const measured = measureSelector(node.selector);
+            const measured = measureSelector(node.selector, doc);
             if (measured) {
                 next.set(node.selector, measured);
             } else if (!partial) {
@@ -292,7 +304,7 @@ export function captureSnapshot(tree, repo, opts) {
         });
     };
     visit(tree);
-    entry[key] = { at: new Date(), viewport: viewportSize(), handles: next };
+    entry[key] = { at: new Date(), viewport: viewport, handles: next };
     lastTree = tree || [];
     persistBucket(targetRepo, key);
     // Store the tree too, so a guest repo canvas has a structure to render from.
@@ -300,11 +312,14 @@ export function captureSnapshot(tree, repo, opts) {
     return entry[key].handles;
 }
 
-// Measure one selector, or null when it doesn't resolve. A zero-size element
-// still measures (its rect is 0×0) but reads as not-visible below.
-function measureSelector(selector) {
+// Measure one selector, or null when it doesn't resolve. Resolves against `doc`
+// when given (a remote iframe's document), else the host `document`. A zero-size
+// element still measures (its rect is 0×0) but reads as not-visible below.
+function measureSelector(selector, doc) {
+    const root = doc || (typeof document !== 'undefined' ? document : null);
+    if (!root) return null;
     let el = null;
-    try { el = document.querySelector(selector); } catch (e) { el = null; }
+    try { el = root.querySelector(selector); } catch (e) { el = null; }
     if (!el) return null;
     let rect = { x: 0, y: 0, width: 0, height: 0 };
     try {
@@ -399,6 +414,9 @@ function clear(el) {
 // (`onReference` / `onViewCode` may also be passed for backward compatibility; the
 // canvas no longer invokes them now that the detail bar's duplicate actions are
 // gone — the toolbar's own Reference / Find in code cover them.)
+//   • onRecapture() — a guest repo's re-capture trigger, rendered in the snapshot
+//     chip in place of the self-only ↻ (a guest has no live DOM to re-measure, so
+//     it re-runs the deployed-site iframe capture instead).
 export function renderStructureCanvas(host, opts) {
     if (!host || !opts || !opts.repo) return null;
     const repo = opts.repo;
@@ -574,6 +592,20 @@ function buildSnapshotChip() {
             rebuild();
         });
         chip.appendChild(refresh);
+    } else if (ctx && typeof ctx.onRecapture === 'function') {
+        // A guest canvas has no live DOM to re-measure; its refresh is an explicit
+        // re-capture of the deployed site, sitting where the self-only ↻ would.
+        const recapture = document.createElement('button');
+        recapture.type = 'button';
+        recapture.className = 'structureCanvasRecapture';
+        recapture.setAttribute('aria-label', 'Re-capture layout from the deployed site');
+        recapture.title = 'Re-capture from deployed site';
+        recapture.textContent = 'Re-capture';
+        recapture.addEventListener('click', function (event) {
+            event.stopPropagation();
+            ctx.onRecapture();
+        });
+        chip.appendChild(recapture);
     }
 
     chip.appendChild(buildViewToggle());
@@ -970,7 +1002,9 @@ function describe(node) {
         label: node.label,
         value: node.selector,
         copyLabel: 'Copy selector',
-        repo: SELF_REPO,
+        // The active repo, not a hardcoded self — a guest canvas selection must
+        // reframe Reference onto that guest repo, not the self repo.
+        repo: activeRepo,
         file: null,
         line: null,
         visible: !isGhostSelector(node.selector),
