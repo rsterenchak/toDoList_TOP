@@ -1031,3 +1031,108 @@ describe('structureCanvas — markGhostRows', () => {
         expect(rows[2].classList.contains('structureRegionRow--ghost')).toBe(false); // not a live row
     });
 });
+
+describe('structureCanvas — display:contents pass-through hoisting', () => {
+    // #outer wraps a boxless #mainSplit (a display:contents shell on mobile) that
+    // holds two real-boxed regions. The boxless-parent / boxed-children shape is
+    // the pass-through signature the canvas must see through.
+    function mountPassthroughDom(childrenReal) {
+        document.body.innerHTML =
+            '<div id="outer">' +
+            '  <div id="mainSplit">' +
+            '    <div id="mainSec"></div>' +
+            '    <div id="tabBar"></div>' +
+            '  </div>' +
+            '</div>';
+        stubRect(document.getElementById('outer'), 400, 800, 0, 0);
+        stubRect(document.getElementById('mainSplit'), 0, 0, 0, 0); // display:contents → no box
+        if (childrenReal) {
+            stubRect(document.getElementById('mainSec'), 400, 720, 0, 0);
+            stubRect(document.getElementById('tabBar'), 400, 60, 0, 740);
+        } else {
+            stubRect(document.getElementById('mainSec'), 0, 0, 0, 0);
+            stubRect(document.getElementById('tabBar'), 0, 0, 0, 0);
+        }
+    }
+
+    function passthroughTree() {
+        return [
+            {
+                type: 'region', label: 'Outer', selector: '#outer', visible: true, children: [
+                    {
+                        type: 'region', label: 'Main Split', selector: '#mainSplit', visible: true, children: [
+                            { type: 'region', label: 'Main Section', selector: '#mainSec', visible: true, children: [] },
+                            { type: 'region', label: 'Tab Bar', selector: '#tabBar', visible: true, children: [] },
+                        ],
+                    },
+                ],
+            },
+        ];
+    }
+
+    function renderTree(host, tree) {
+        return renderStructureCanvas(host, {
+            repo: SELF_REPO, tree, onSelect: vi.fn(),
+        });
+    }
+
+    it('hoists a boxless pass-through node’s real children up, so drilling in is not an empty canvas and the node is no ghost', () => {
+        mountPassthroughDom(true);
+        const tree = passthroughTree();
+        captureSnapshot(tree);
+        const host = mountHost();
+        renderTree(host, tree);
+
+        // Drill into #outer — its only direct child is the boxless #mainSplit.
+        host.querySelector('.structureCanvasBlock[data-selector="#outer"] .structureCanvasDrillChip').click();
+
+        // The hoisted real children render as blocks (not an empty canvas), and
+        // the pass-through node is neither a block nor a ghost-tray chip.
+        const blocks = Array.from(host.querySelectorAll('.structureCanvasBlock'))
+            .map((b) => b.dataset.selector).sort();
+        expect(blocks).toEqual(['#mainSec', '#tabBar']);
+        expect(host.querySelector('.structureCanvasEmpty')).toBe(null);
+        expect(host.querySelector('.structureCanvasGhostTray')).toBe(null);
+        expect(host.querySelector('[data-selector="#mainSplit"]')).toBe(null);
+    });
+
+    it('leaves a boxed container nesting normally (desktop case — no hoist)', () => {
+        mountPassthroughDom(true);
+        // Desktop: #mainSplit HAS a box, so it is a normal container, not pass-through.
+        stubRect(document.getElementById('mainSplit'), 400, 800, 0, 0);
+        const tree = passthroughTree();
+        captureSnapshot(tree);
+        const host = mountHost();
+        renderTree(host, tree);
+
+        host.querySelector('.structureCanvasBlock[data-selector="#outer"] .structureCanvasDrillChip').click();
+
+        // #mainSplit renders as its own block with a drill chip; its children stay
+        // one level deeper (not hoisted).
+        const split = host.querySelector('.structureCanvasBlock[data-selector="#mainSplit"]');
+        expect(split).toBeTruthy();
+        expect(split.querySelector('.structureCanvasDrillChip')).toBeTruthy();
+        expect(host.querySelector('.structureCanvasBlock[data-selector="#mainSec"]')).toBe(null);
+    });
+
+    it('keeps a truly hidden boxless node (no boxed children) in the ghost tray', () => {
+        mountPassthroughDom(false); // #mainSplit AND its children all zero-size
+        // A real sibling so the capture commits (the degenerate-capture guard needs
+        // at least one real non-root region), while #mainSplit stays genuinely hidden.
+        document.getElementById('outer').insertAdjacentHTML('beforeend', '<div id="sibling"></div>');
+        stubRect(document.getElementById('sibling'), 400, 200, 0, 0);
+        const tree = passthroughTree();
+        tree[0].children.push({ type: 'region', label: 'Sibling', selector: '#sibling', visible: true, children: [] });
+        captureSnapshot(tree);
+        const host = mountHost();
+        renderTree(host, tree);
+
+        host.querySelector('.structureCanvasBlock[data-selector="#outer"] .structureCanvasDrillChip').click();
+
+        // #mainSplit's descendants are all boxless → it is hidden, not pass-through:
+        // it stays a ghost chip and is NOT hoisted, while the real sibling renders.
+        expect(host.querySelector('.structureCanvasGhostChip[data-selector="#mainSplit"]')).toBeTruthy();
+        expect(host.querySelector('.structureCanvasBlock[data-selector="#sibling"]')).toBeTruthy();
+        expect(host.querySelector('.structureCanvasBlock[data-selector="#mainSec"]')).toBe(null);
+    });
+});
