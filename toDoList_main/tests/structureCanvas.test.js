@@ -302,8 +302,9 @@ describe('structureCanvas — filter + two-way sync', () => {
 });
 
 describe('structureCanvas — per-viewport buckets + toggle', () => {
-    const MOBILE_KEY = 'todoapp_structureSnapshot_mobile';
-    const DESKTOP_KEY = 'todoapp_structureSnapshot_desktop';
+    // Snapshots are now keyed per repo; the self repo's buckets live under these keys.
+    const MOBILE_KEY = 'todoapp_structureSnapshot_' + encodeURIComponent(SELF_REPO) + '_mobile';
+    const DESKTOP_KEY = 'todoapp_structureSnapshot_' + encodeURIComponent(SELF_REPO) + '_desktop';
 
     function setViewport(w, h) {
         Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
@@ -542,6 +543,146 @@ describe('structureCanvas — per-viewport buckets + toggle', () => {
         // Touching the buckets triggers hydration, which drops the corrupt entry.
         expect(m.getSnapshotInfo().size).toBe(0);
         expect(localStorage.getItem(DESKTOP_KEY)).toBe(null);
+    });
+});
+
+describe('structureCanvas — per-repo store, migration, guest guard', () => {
+    const GUEST = 'rsterenchak/matchingGame-test';
+    const LEGACY_MOBILE = 'todoapp_structureSnapshot_mobile';
+    const LEGACY_DESKTOP = 'todoapp_structureSnapshot_desktop';
+    const selfKey = (bucket) => 'todoapp_structureSnapshot_' + encodeURIComponent(SELF_REPO) + '_' + bucket;
+    const repoKey = (repo, bucket) => 'todoapp_structureSnapshot_' + encodeURIComponent(repo) + '_' + bucket;
+    const treeKey = (repo) => 'todoapp_structureTree_' + encodeURIComponent(repo);
+
+    function setViewport(w, h) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: h || 800, configurable: true });
+    }
+    async function makeCanvas() {
+        vi.resetModules();
+        return await import('../src/structureCanvas.js');
+    }
+    function bucketPayload(handles) {
+        return { capturedAt: '2026-06-30T12:00:00.000Z', viewport: { w: 1440, h: 900 }, handles: handles };
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        setViewport(1440, 900);
+        mountDom();
+    });
+    afterEach(() => {
+        setViewport(1024, 800);
+    });
+
+    it('migrates the legacy single-pair keys into the self repo entry once, then removes them', async () => {
+        localStorage.setItem(LEGACY_DESKTOP, JSON.stringify(bucketPayload({
+            '#main': { rect: { x: 0, y: 60, width: 1440, height: 800 }, visible: true },
+        })));
+        const m = await makeCanvas();
+        // Touching the store triggers hydrate → migration.
+        expect(m.isGhostSelector('#main')).toBe(false);
+        // Legacy key removed; the self repo's new key now holds the capture.
+        expect(localStorage.getItem(LEGACY_DESKTOP)).toBe(null);
+        expect(localStorage.getItem(selfKey('desktop'))).toBeTruthy();
+        const parsed = JSON.parse(localStorage.getItem(selfKey('desktop')));
+        expect(parsed.handles['#main']).toBeTruthy();
+    });
+
+    it('does not overwrite an existing new self key when a stale legacy key lingers', async () => {
+        localStorage.setItem(selfKey('desktop'), JSON.stringify(bucketPayload({
+            '#main': { rect: { x: 0, y: 60, width: 1440, height: 800 }, visible: true },
+        })));
+        // A stale legacy key with different data must not clobber the migrated entry.
+        localStorage.setItem(LEGACY_DESKTOP, JSON.stringify(bucketPayload({
+            '#appHeader': { rect: { x: 0, y: 0, width: 10, height: 10 }, visible: true },
+        })));
+        const m = await makeCanvas();
+        m.getSnapshotInfo();
+        const parsed = JSON.parse(localStorage.getItem(selfKey('desktop')));
+        expect(parsed.handles['#main']).toBeTruthy();
+        expect(parsed.handles['#appHeader']).toBeUndefined();
+        expect(localStorage.getItem(LEGACY_DESKTOP)).toBe(null);
+    });
+
+    it('the self repo always mounts, even with no captured data', async () => {
+        const m = await makeCanvas();
+        const host = mountHost();
+        const pane = m.renderStructureCanvas(host, { repo: m.SELF_REPO, tree: sampleTree(), onSelect: vi.fn() });
+        expect(pane).toBeTruthy();
+    });
+
+    it('a guest repo with no stored data returns null (tree-only, as before)', async () => {
+        const m = await makeCanvas();
+        const host = mountHost();
+        const pane = m.renderStructureCanvas(host, { repo: GUEST, tree: sampleTree(), onSelect: vi.fn() });
+        expect(pane).toBe(null);
+        expect(host.querySelector('.structureCanvasPane')).toBe(null);
+    });
+
+    it('a guest repo with stored buckets + tree mounts and renders from its stored tree', async () => {
+        localStorage.setItem(repoKey(GUEST, 'desktop'), JSON.stringify(bucketPayload({
+            '#appHeader': { rect: { x: 0, y: 0, width: 200, height: 60 }, visible: true },
+            '#main': { rect: { x: 0, y: 60, width: 1440, height: 800 }, visible: true },
+        })));
+        localStorage.setItem(treeKey(GUEST), JSON.stringify(sampleTree()));
+        const m = await makeCanvas();
+        const host = mountHost();
+        // No tree in opts → the canvas renders from the stored tree.
+        const pane = m.renderStructureCanvas(host, { repo: GUEST, onSelect: vi.fn() });
+        expect(pane).toBeTruthy();
+        const blocks = Array.from(host.querySelectorAll('.structureCanvasBlock')).map((b) => b.dataset.selector).sort();
+        expect(blocks).toEqual(['#appHeader', '#main']);
+    });
+
+    it('hides the ↻ re-measure chip and disables Locate for a guest repo', async () => {
+        localStorage.setItem(repoKey(GUEST, 'desktop'), JSON.stringify(bucketPayload({
+            '#main': { rect: { x: 0, y: 60, width: 1440, height: 800 }, visible: true },
+        })));
+        localStorage.setItem(treeKey(GUEST), JSON.stringify(sampleTree()));
+        const m = await makeCanvas();
+        const host = mountHost();
+        m.renderStructureCanvas(host, { repo: GUEST, onSelect: vi.fn() });
+        expect(host.querySelector('.structureCanvasSnapRefresh')).toBe(null);
+        // #main resolves in the shared jsdom DOM, but Locate is gated off for guests.
+        expect(m.canLocate('#main')).toBe(false);
+    });
+
+    it('keeps the ↻ chip and Locate for the self repo', async () => {
+        const m = await makeCanvas();
+        m.captureSnapshot(sampleTree(), m.SELF_REPO);
+        const host = mountHost();
+        m.renderStructureCanvas(host, { repo: m.SELF_REPO, tree: sampleTree(), onSelect: vi.fn() });
+        expect(host.querySelector('.structureCanvasSnapRefresh')).toBeTruthy();
+        expect(m.canLocate('#main')).toBe(true);
+    });
+
+    it('keeps each repo\'s snapshot isolated — no cross-repo bleed', async () => {
+        // Self: #aside visible. Guest: #aside a zero-size ghost.
+        localStorage.setItem(selfKey('desktop'), JSON.stringify(bucketPayload({
+            '#aside': { rect: { x: 200, y: 60, width: 100, height: 300 }, visible: true },
+        })));
+        localStorage.setItem(repoKey(GUEST, 'desktop'), JSON.stringify(bucketPayload({
+            '#aside': { rect: { x: 0, y: 0, width: 0, height: 0 }, visible: false },
+        })));
+        localStorage.setItem(treeKey(GUEST), JSON.stringify(sampleTree()));
+        const m = await makeCanvas();
+
+        const selfHost = mountHost();
+        m.renderStructureCanvas(selfHost, { repo: m.SELF_REPO, tree: sampleTree(), onSelect: vi.fn() });
+        expect(m.isGhostSelector('#aside')).toBe(false);
+
+        const guestHost = mountHost();
+        m.renderStructureCanvas(guestHost, { repo: GUEST, onSelect: vi.fn() });
+        expect(m.isGhostSelector('#aside')).toBe(true);
+    });
+
+    it('round-trips the handle tree captured for the self repo', async () => {
+        const m = await makeCanvas();
+        m.captureSnapshot(sampleTree(), m.SELF_REPO);
+        const raw = localStorage.getItem(treeKey(SELF_REPO));
+        expect(raw).toBeTruthy();
+        expect(JSON.parse(raw)).toEqual(sampleTree());
     });
 });
 
