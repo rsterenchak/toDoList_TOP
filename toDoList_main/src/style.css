@@ -3663,6 +3663,17 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  /* Stack above the block head, which spans the full block width with
+     z-index: 1 — otherwise the head intercepts taps on thin strip blocks. */
+  z-index: 2;
+}
+/* Extend the hit area to ~38x38 without growing the 26px visual, so taps land
+   in a comfortable halo around the chip. A pseudo-element of a button hit-tests
+   as the button, so no pointer-events tweak is needed. */
+.structureCanvasDrillChip::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 .structureCanvasDrillChip:hover {
   background: rgba(108, 93, 245, 0.22);
