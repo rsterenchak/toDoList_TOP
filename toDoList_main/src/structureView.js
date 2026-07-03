@@ -860,7 +860,7 @@ function buildUiTree() {
 // owns the panel. Best-effort: a failure just leaves the prior snapshot in place.
 export function captureStructureSnapshot() {
     try {
-        captureSnapshot(buildUiTree());
+        captureSnapshot(buildUiTree(), SELF_REPO);
     } catch (e) { /* keep the prior snapshot on any measurement failure */ }
 }
 

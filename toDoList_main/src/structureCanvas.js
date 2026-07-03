@@ -11,9 +11,11 @@
 // walked from the DOM plus a select callback so the two panes stay in sync
 // without this module reaching back into the view or the data model.
 //
-// Repo gating: the canvas only renders for `rsterenchak/toDoList_TOP` — the one
-// repo whose live DOM is available to measure. Any other repo keeps the UI
-// lens's existing tree-only rendering, so this module is never mounted there.
+// Repo gating: the self repo (`rsterenchak/toDoList_TOP`) always renders — it's the
+// one repo whose live DOM is available to measure. A linked repo renders too, but
+// only once it has captured geometry stored (buckets + a handle tree); until then
+// it keeps the UI lens's existing tree-only rendering. Snapshots are keyed per repo
+// so one repo's capture never bleeds into another's.
 
 // The one repo whose own DOM this canvas can measure and drill.
 export const SELF_REPO = 'rsterenchak/toDoList_TOP';
@@ -59,26 +61,52 @@ const LONGPRESS_SLOP = 8;
 // Below this width a viewport is the `mobile` bucket; at or above it, `desktop`.
 const MOBILE_MAX = 1024;
 
-// localStorage keys, one per bucket.
-const BUCKET_STORAGE = {
+// Snapshots are keyed by repo: each repo owns a { mobile, desktop } pair of buckets
+// persisted under `todoapp_structureSnapshot_<encodeURIComponent(repo)>_<bucket>`,
+// plus a sibling `todoapp_structureTree_<encodeURIComponent(repo)>` holding the
+// handle tree a guest canvas renders from (the self repo rebuilds its tree from the
+// live DOM every render, so it never reads the stored tree). This lets a linked
+// repo that has captured geometry mount the same block canvas.
+const SNAPSHOT_KEY_PREFIX = 'todoapp_structureSnapshot_';
+const TREE_KEY_PREFIX = 'todoapp_structureTree_';
+
+// The legacy single-pair keys (pre per-repo). Migrated once into the self repo's
+// entry on first hydrate, then removed.
+const LEGACY_BUCKET_STORAGE = {
     mobile: 'todoapp_structureSnapshot_mobile',
     desktop: 'todoapp_structureSnapshot_desktop',
 };
 
+function bucketStorageKey(repo, bucket) {
+    return SNAPSHOT_KEY_PREFIX + encodeURIComponent(repo) + '_' + bucket;
+}
+function treeStorageKey(repo) {
+    return TREE_KEY_PREFIX + encodeURIComponent(repo);
+}
+
 function emptyBucket() {
     return { at: null, viewport: null, handles: new Map() };
 }
+function emptyRepoEntry() {
+    return { mobile: emptyBucket(), desktop: emptyBucket() };
+}
 
-// The two live buckets. Populated by `captureSnapshot` (live measure) and by
-// `hydrateBuckets` (from localStorage on first access).
-const buckets = { mobile: emptyBucket(), desktop: emptyBucket() };
+// Per-repo snapshot store: repo → { mobile, desktop }. Populated lazily by
+// `hydrateRepo` (from localStorage) and by `captureSnapshot` (live measure).
+const store = new Map();
+// Repos whose localStorage has been read into `store` (hydrate once per repo).
+const hydratedRepos = new Set();
+// The repo the canvas is currently rendering; every active* read resolves against
+// this repo's entry. Set by `renderStructureCanvas`, defaults to the self repo so a
+// bare `captureSnapshot` (self-only caller) lands in the self entry.
+let activeRepo = SELF_REPO;
 
 // The bucket the toggle has explicitly selected for rendering, or null to track
 // the current viewport. Reset on repo switch / canvas reset.
 let selectedBucketKey = null;
 
-// Rehydrate-from-storage guard: run once per module lifetime.
-let hydrated = false;
+// One-time migration guard: run before the first hydrate of any repo.
+let legacyMigrated = false;
 
 // The bucket key for the current live viewport.
 function currentViewportKey() {
@@ -92,16 +120,24 @@ function viewportSize() {
     return { w: w, h: h };
 }
 
+// Whether the given bucket of the ACTIVE repo holds captured handles.
 function bucketHasData(key) {
-    const b = buckets[key];
+    const b = repoEntry(activeRepo)[key];
     return !!(b && b.handles && b.handles.size > 0);
+}
+
+// Whether a repo (either bucket) has captured geometry — drives the guest mount guard.
+function repoHasAnyData(repo) {
+    const entry = repoEntry(repo);
+    return !!((entry.mobile.handles && entry.mobile.handles.size > 0)
+        || (entry.desktop.handles && entry.desktop.handles.size > 0));
 }
 
 // The bucket currently rendered: an explicit toggle choice when set, otherwise
 // the current viewport's bucket — falling back to whichever bucket has data so a
 // device viewing only the other bucket's capture still renders something.
 function activeBucketKey() {
-    hydrateBuckets();
+    hydrateRepo(activeRepo);
     if (selectedBucketKey) return selectedBucketKey;
     const vp = currentViewportKey();
     if (bucketHasData(vp)) return vp;
@@ -111,15 +147,15 @@ function activeBucketKey() {
 }
 
 function activeHandles() {
-    return buckets[activeBucketKey()].handles;
+    return repoEntry(activeRepo)[activeBucketKey()].handles;
 }
 
 function activeAt() {
-    return buckets[activeBucketKey()].at;
+    return repoEntry(activeRepo)[activeBucketKey()].at;
 }
 
 function activeViewport() {
-    return buckets[activeBucketKey()].viewport;
+    return repoEntry(activeRepo)[activeBucketKey()].viewport;
 }
 
 // Storage access, guarded — localStorage can be absent or throw (private mode,
@@ -134,19 +170,43 @@ function removeStorage(key) {
     try { window.localStorage.removeItem(key); } catch (e) { /* unavailable */ }
 }
 
-// Rehydrate both buckets from localStorage once. Guards JSON.parse and the
-// expected shape; a corrupt payload is discarded so a fresh capture repopulates
-// it (never render a canvas from a half-parsed bucket).
-function hydrateBuckets() {
-    if (hydrated) return;
-    hydrated = true;
+// Return the active in-memory entry for a repo, hydrating it from localStorage on
+// first access.
+function repoEntry(repo) {
+    return hydrateRepo(repo || activeRepo);
+}
+
+// Move the two legacy single-pair keys into the self repo's per-repo keys once,
+// then remove them (read legacy → write new → remove legacy) so existing captures
+// survive the switch to per-repo storage. Never overwrites an already-migrated new
+// key. Runs once per module lifetime, before the first hydrate.
+function migrateLegacyKeys() {
+    if (legacyMigrated) return;
+    legacyMigrated = true;
+    ['mobile', 'desktop'].forEach(function (bucket) {
+        const raw = readStorage(LEGACY_BUCKET_STORAGE[bucket]);
+        if (raw == null) return;
+        const newKey = bucketStorageKey(SELF_REPO, bucket);
+        if (readStorage(newKey) == null) writeStorage(newKey, raw);
+        removeStorage(LEGACY_BUCKET_STORAGE[bucket]);
+    });
+}
+
+// Rehydrate one repo's buckets from localStorage, once per repo. Guards JSON.parse
+// and the expected shape; a corrupt payload is discarded so a fresh capture
+// repopulates it (never render a canvas from a half-parsed bucket).
+function hydrateRepo(repo) {
+    migrateLegacyKeys();
+    if (hydratedRepos.has(repo)) return store.get(repo);
+    hydratedRepos.add(repo);
+    const entry = emptyRepoEntry();
     ['mobile', 'desktop'].forEach(function (key) {
-        const raw = readStorage(BUCKET_STORAGE[key]);
+        const raw = readStorage(bucketStorageKey(repo, key));
         if (!raw) return;
         let parsed = null;
         try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
         if (!parsed || typeof parsed !== 'object' || !parsed.handles || typeof parsed.handles !== 'object') {
-            removeStorage(BUCKET_STORAGE[key]);
+            removeStorage(bucketStorageKey(repo, key));
             return;
         }
         const handles = new Map();
@@ -154,18 +214,20 @@ function hydrateBuckets() {
             const h = parsed.handles[sel];
             if (h && typeof h === 'object') handles.set(sel, { rect: h.rect || null, visible: !!h.visible });
         });
-        buckets[key] = {
+        entry[key] = {
             at: parsed.capturedAt ? new Date(parsed.capturedAt) : null,
             viewport: (parsed.viewport && typeof parsed.viewport === 'object') ? parsed.viewport : null,
             handles: handles,
         };
     });
+    store.set(repo, entry);
+    return entry;
 }
 
-// Persist one bucket to localStorage in the documented JSON shape:
+// Persist one repo bucket to localStorage in the documented JSON shape:
 // { capturedAt, viewport: { w, h }, handles: { selector: { rect, visible } } }.
-function persistBucket(key) {
-    const b = buckets[key];
+function persistBucket(repo, key) {
+    const b = repoEntry(repo)[key];
     if (!b) return;
     const handles = {};
     b.handles.forEach(function (v, sel) { handles[sel] = { rect: v.rect, visible: v.visible }; });
@@ -174,7 +236,21 @@ function persistBucket(key) {
         viewport: b.viewport || null,
         handles: handles,
     };
-    try { writeStorage(BUCKET_STORAGE[key], JSON.stringify(payload)); } catch (e) { /* skip on serialize failure */ }
+    try { writeStorage(bucketStorageKey(repo, key), JSON.stringify(payload)); } catch (e) { /* skip on serialize failure */ }
+}
+
+// Persist / load a repo's handle tree — the structure a guest canvas renders from.
+// The self repo rebuilds its tree from the live DOM every render, so it never reads
+// this back; it's stored so a linked repo's canvas has a tree to walk.
+function persistTree(repo, tree) {
+    try { writeStorage(treeStorageKey(repo), JSON.stringify(tree || [])); } catch (e) { /* skip on serialize failure */ }
+}
+function loadTree(repo) {
+    const raw = readStorage(treeStorageKey(repo));
+    if (!raw) return null;
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { return null; }
+    return Array.isArray(parsed) ? parsed : null;
 }
 // The handle tree of the most recent render / capture, so the ↻ chip can
 // re-measure without the view re-walking the DOM.
@@ -191,15 +267,16 @@ function regionChildren(node) {
 // measurement for any handle that doesn't currently resolve or is off-screen
 // (used by the ↻ re-measure, which may run while Tasks View is backgrounded and
 // its elements are display:none) so a refresh never wipes good rects with zeros.
-export function captureSnapshot(tree, opts) {
-    hydrateBuckets();
+export function captureSnapshot(tree, repo, opts) {
+    const targetRepo = repo || activeRepo;
+    const entry = hydrateRepo(targetRepo);
     const partial = !!(opts && opts.partial);
     // A capture always writes to the bucket for the current LIVE viewport — never
     // the toggle-selected one — so measuring on a phone can only fill the mobile
     // bucket. A partial re-measure starts from the existing bucket's rects so it
     // never wipes good geometry with zeros for backgrounded handles.
     const key = currentViewportKey();
-    const next = partial ? new Map(buckets[key].handles) : new Map();
+    const next = partial ? new Map(entry[key].handles) : new Map();
     const visit = function (nodes) {
         (nodes || []).forEach(function (node) {
             if (!node || node.type !== 'region' || !node.selector) return;
@@ -215,10 +292,12 @@ export function captureSnapshot(tree, opts) {
         });
     };
     visit(tree);
-    buckets[key] = { at: new Date(), viewport: viewportSize(), handles: next };
+    entry[key] = { at: new Date(), viewport: viewportSize(), handles: next };
     lastTree = tree || [];
-    persistBucket(key);
-    return buckets[key].handles;
+    persistBucket(targetRepo, key);
+    // Store the tree too, so a guest repo canvas has a structure to render from.
+    persistTree(targetRepo, tree || []);
+    return entry[key].handles;
 }
 
 // Measure one selector, or null when it doesn't resolve. A zero-size element
@@ -273,6 +352,7 @@ export function resetCanvasState() {
     drillPath = [];
     selectedSelector = null;
     selectedBucketKey = null;
+    activeRepo = SELF_REPO;
 }
 
 // Resolve the current drill container from a tree + path, clamping a stale path
@@ -320,9 +400,22 @@ function clear(el) {
 // canvas no longer invokes them now that the detail bar's duplicate actions are
 // gone — the toolbar's own Reference / Find in code cover them.)
 export function renderStructureCanvas(host, opts) {
-    if (!host || !opts || opts.repo !== SELF_REPO) return null;
-    ctx = opts;
-    lastTree = opts.tree || [];
+    if (!host || !opts || !opts.repo) return null;
+    const repo = opts.repo;
+    const isSelf = repo === SELF_REPO;
+    // Self always mounts (it measures the live DOM); a guest mounts only when it has
+    // captured geometry to render from — otherwise the UI lens keeps its tree-only
+    // rendering, exactly as before.
+    if (!isSelf && !repoHasAnyData(repo)) return null;
+    activeRepo = repo;
+    // The self repo rebuilds its tree from the live DOM each render; a guest has no
+    // live DOM to walk, so it renders from the tree stored alongside its buckets
+    // (falling back to any tree the caller passed).
+    const tree = isSelf
+        ? (opts.tree || [])
+        : ((opts.tree && opts.tree.length) ? opts.tree : (loadTree(repo) || []));
+    ctx = Object.assign({}, opts, { tree: tree });
+    lastTree = tree;
     const pane = document.createElement('div');
     pane.className = 'structureCanvasPane';
     paneEl = pane;
@@ -463,21 +556,25 @@ function buildSnapshotChip() {
         : 'not captured · ';
     chip.appendChild(label);
 
-    const refresh = document.createElement('button');
-    refresh.type = 'button';
-    refresh.className = 'structureCanvasSnapRefresh';
-    refresh.setAttribute('aria-label', 'Re-measure the layout snapshot');
-    refresh.title = 'Re-measure now';
-    refresh.textContent = '↻';
-    refresh.addEventListener('click', function (event) {
-        event.stopPropagation();
-        // Re-measure fills the live-viewport bucket; select it so the fresh
-        // capture is what's shown even if the toggle was on the other bucket.
-        captureSnapshot(lastTree, { partial: true });
-        selectedBucketKey = currentViewportKey();
-        rebuild();
-    });
-    chip.appendChild(refresh);
+    // The ↻ re-measure reads the live DOM, so it only makes sense for the self repo;
+    // a guest canvas renders from stored geometry and has no live DOM to re-measure.
+    if (activeRepo === SELF_REPO) {
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.className = 'structureCanvasSnapRefresh';
+        refresh.setAttribute('aria-label', 'Re-measure the layout snapshot');
+        refresh.title = 'Re-measure now';
+        refresh.textContent = '↻';
+        refresh.addEventListener('click', function (event) {
+            event.stopPropagation();
+            // Re-measure fills the live-viewport bucket; select it so the fresh
+            // capture is what's shown even if the toggle was on the other bucket.
+            captureSnapshot(lastTree, activeRepo, { partial: true });
+            selectedBucketKey = currentViewportKey();
+            rebuild();
+        });
+        chip.appendChild(refresh);
+    }
 
     chip.appendChild(buildViewToggle());
     return chip;
@@ -950,12 +1047,17 @@ export function snapshotMetaFor(selector) {
 // viewport (the same test the detail bar's Locate gate used). Drives the toolbar
 // Locate button's enabled/disabled state.
 export function canLocate(selector) {
+    // Locate resolves against the live DOM, which only exists for the self repo; a
+    // guest canvas renders from stored geometry, so the toolbar Locate is gated off.
+    if (activeRepo !== SELF_REPO) return false;
     return !!liveVisibleElement(selector);
 }
 
 // Run the Locate sequence for a handle: switch to Tasks View, then scroll its
-// live element into view and pulse it. No-op when the handle isn't live-visible.
+// live element into view and pulse it. No-op when the handle isn't live-visible,
+// and for any guest repo (no live DOM to locate against).
 export function locateHandle(selector) {
+    if (activeRepo !== SELF_REPO) return;
     locateSelector(selector);
 }
 
