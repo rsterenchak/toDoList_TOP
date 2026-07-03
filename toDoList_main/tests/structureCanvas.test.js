@@ -877,6 +877,84 @@ describe('structureCanvas — captureSnapshot with a foreign document + explicit
     });
 });
 
+describe('structureCanvas — degenerate full-capture guard', () => {
+    const MOBILE_KEY = 'todoapp_structureSnapshot_' + encodeURIComponent(SELF_REPO) + '_mobile';
+
+    function setViewport(w, h) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: h || 800, configurable: true });
+    }
+
+    // A fresh module instance so each test controls its own hydration / buckets.
+    async function makeCanvas() {
+        vi.resetModules();
+        return await import('../src/structureCanvas.js');
+    }
+
+    // Zero out the descendant regions (#list, #row, #aside), leaving the roots
+    // (#appHeader, #main) measuring real — the mobile view-switch degenerate shape.
+    function zeroDescendants() {
+        stubRect(document.getElementById('list'), 0, 0, 0, 0);
+        stubRect(document.getElementById('row'), 0, 0, 0, 0);
+        stubRect(document.getElementById('aside'), 0, 0, 0, 0);
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        setViewport(500, 900); // mobile bucket
+        mountDom();
+    });
+
+    it('does not create a bucket from a capture whose root is real but all children are zero', async () => {
+        const m = await makeCanvas();
+        zeroDescendants();
+        m.captureSnapshot(sampleTree());
+
+        // Nothing persisted and no in-memory bucket — the tab keeps its no-capture state.
+        expect(localStorage.getItem(MOBILE_KEY)).toBe(null);
+        expect(m.getSnapshotInfo().size).toBe(0);
+    });
+
+    it('does not overwrite a prior good bucket with a degenerate capture', async () => {
+        const m = await makeCanvas();
+        // First: a genuine capture with real descendant rects.
+        m.captureSnapshot(sampleTree());
+        expect(m.isGhostSelector('#list')).toBe(false);
+        const goodSize = m.getSnapshotInfo().size;
+
+        // Then: the descendants collapse to zero (the mobile teardown) — rejected.
+        zeroDescendants();
+        m.captureSnapshot(sampleTree());
+
+        // The prior good rects survive; #list is still a non-ghost block.
+        expect(m.isGhostSelector('#list')).toBe(false);
+        expect(m.getSnapshotInfo().size).toBe(goodSize);
+        const parsed = JSON.parse(localStorage.getItem(MOBILE_KEY));
+        expect(parsed.handles['#list'].visible).toBe(true);
+    });
+
+    it('commits normally when at least one descendant measures a real rect', async () => {
+        const m = await makeCanvas();
+        zeroDescendants();
+        // #list alone keeps a real rect — a genuinely sparse layout, not degenerate.
+        stubRect(document.getElementById('list'), 200, 300, 0, 60);
+        m.captureSnapshot(sampleTree());
+
+        expect(localStorage.getItem(MOBILE_KEY)).toBeTruthy();
+        expect(m.isGhostSelector('#list')).toBe(false);
+        expect(m.isGhostSelector('#row')).toBe(true); // zero-size → ghost, but capture committed
+    });
+
+    it('leaves the partial re-measure path untouched — prior rects are preserved', async () => {
+        const m = await makeCanvas();
+        m.captureSnapshot(sampleTree());
+        // A partial re-measure while a handle no longer resolves keeps its prior rect.
+        document.getElementById('appHeader').remove();
+        m.captureSnapshot(sampleTree(), SELF_REPO, { partial: true });
+        expect(m.isGhostSelector('#appHeader')).toBe(false);
+    });
+});
+
 describe('structureCanvas — markGhostRows', () => {
     it('flags live tree rows whose handle is a ghost', () => {
         const treeEl = document.createElement('div');
