@@ -64,7 +64,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
 }));
 
 import { renderStructureView, captureStructureSnapshot, buildUiTree } from '../src/structureView.js';
-import { resetCanvasState } from '../src/structureCanvas.js';
+import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { captureRemote } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
@@ -904,10 +904,44 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
         expect(btn).toBeTruthy();
         expect(btn.textContent).toMatch(/capture layout/i);
         // The live block canvas still mounts (the auto-capture path is unchanged),
-        // and the button sits right below it, above the live region rows.
+        // and the capture control sits ABOVE it, near the top of the tree/canvas area.
         const canvas = document.querySelector('.structureCanvasPane');
         expect(canvas).toBeTruthy();
-        expect(canvas.nextSibling.querySelector('.structureCaptureBtn')).toBe(btn);
+        const control = document.querySelector('.structureCaptureControl');
+        expect(control).toBeTruthy();
+        expect(control.querySelector('.structureCaptureBtn')).toBe(btn);
+        // Control precedes the canvas pane in DOM order (symmetric with guest repos).
+        expect(control.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+    });
+
+    it('places the capture control above the canvas on a captured guest repo', async () => {
+        // A guest with captured geometry mounts its block canvas; the capture control
+        // must sit ABOVE that canvas pane, symmetric with the self repo's placement.
+        state.manifests[OTHER] = {
+            ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
+            regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 1, files: [{ file: 'app.js', line: 1 }] }],
+        };
+        // Seed OTHER's snapshot bucket by measuring a live #board so its canvas mounts.
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="Game"></div>' +
+            '<main id="board">x</main>';
+        const board = document.getElementById('board');
+        board.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100, right: 100, bottom: 100 });
+        board.getClientRects = () => [{ width: 100, height: 100 }];
+        captureSnapshot([{ type: 'region', selector: '#board', label: 'Board' }], OTHER);
+
+        renderStructureView();
+        await flush();
+
+        const canvas = document.querySelector('.structureCanvasPane');
+        expect(canvas).toBeTruthy();
+        const control = document.querySelector('.structureCaptureControl');
+        expect(control).toBeTruthy();
+        // Control precedes the canvas pane in DOM order (symmetric with the self repo).
+        expect(control.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
     });
 
     it('routes the self trigger into the deployed-site capture when tapped', async () => {
