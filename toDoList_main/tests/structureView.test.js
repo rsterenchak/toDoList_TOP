@@ -754,6 +754,60 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
     });
 });
 
+describe('renderStructureView — guest deployed-site capture trigger (UI lens)', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+    beforeEach(() => {
+        // Clear any stale module selection, then point at the guest repo on the UI lens.
+        mountDom('');
+        renderStructureView();
+        mountDom('Game');
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        setStructureLens('ui');
+    });
+
+    it('shows the "Capture layout from deployed site" trigger on a guest web repo UI lens', async () => {
+        state.manifests[OTHER] = {
+            ok: true, files: ['app.js'], hasDom: true, srcRoot: 'src',
+            regions: [{ selector: '#board', label: 'Board', file: 'app.js', line: 1, files: [{ file: 'app.js', line: 1 }] }],
+        };
+        renderStructureView();
+        await flush();
+        const btn = document.querySelector('.structureCaptureBtn');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toMatch(/capture layout/i);
+    });
+
+    it('omits the trigger for a repo whose manifest reports no UI surface', async () => {
+        state.manifests[OTHER] = { ok: true, files: ['lib.js'], hasDom: false, srcRoot: 'src', regions: [] };
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+    });
+
+    it('omits the trigger on the Types lens', async () => {
+        state.manifests[OTHER] = {
+            ok: true, files: ['Game.cs'], lens: 'types',
+            types: [{ kind: 'class', name: 'Game', file: 'Game.cs', line: 3, members: [] }],
+        };
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+        // Sanity: the Types outline did render (so absence isn't just an empty lens).
+        expect(document.querySelector('.structureTypeLabel')).toBeTruthy();
+    });
+
+    it('omits the trigger on the self (running) repo live UI lens', async () => {
+        // 'My Project' resolves to the running repo → the live self map, never the trigger.
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+            '<main id="mainPanel" data-region="Tasks"></main>';
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureCaptureBtn')).toBeFalsy();
+    });
+});
+
 describe('renderStructureView — shared selection toolbar', () => {
     beforeEach(() => {
         setStructureLens('ui');

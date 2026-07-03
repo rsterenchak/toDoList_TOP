@@ -734,6 +734,40 @@ describe('structureCanvas — ghost tray', () => {
     });
 });
 
+describe('structureCanvas — captureSnapshot with a foreign document + explicit bucket', () => {
+    const GUEST = 'rsterenchak/matchingGame-test';
+    function bucketKey(repo, bucket) {
+        return 'todoapp_structureSnapshot_' + encodeURIComponent(repo) + '_' + bucket;
+    }
+    // A detached document (a stand-in for a guest repo's deployed page in an
+    // iframe) whose #alpha is absent from the host document, so a capture that
+    // resolves it proves selectors resolved against the passed doc, not the host.
+    function foreignDoc() {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML = '<main id="alpha"></main>';
+        stubRect(doc.body.querySelector('#alpha'), 120, 90);
+        return doc;
+    }
+
+    it('measures selectors against the passed doc and writes the forced bucket only', () => {
+        localStorage.removeItem(bucketKey(GUEST, 'mobile'));
+        localStorage.removeItem(bucketKey(GUEST, 'desktop'));
+        expect(document.querySelector('#alpha')).toBe(null); // not in the host DOM
+
+        const tree = [{ type: 'region', label: 'Alpha', selector: '#alpha', visible: true, children: [] }];
+        // Force the mobile bucket even though the host viewport (jsdom = 1024px)
+        // reads as desktop — proving the explicit bucket override, not the host width.
+        captureSnapshot(tree, GUEST, { doc: foreignDoc(), bucket: 'mobile', viewport: { w: 390, h: 844 } });
+
+        const mobile = JSON.parse(localStorage.getItem(bucketKey(GUEST, 'mobile')));
+        expect(mobile.handles['#alpha'].rect.width).toBe(120);
+        expect(mobile.handles['#alpha'].rect.height).toBe(90);
+        expect(mobile.viewport).toEqual({ w: 390, h: 844 });
+        // The forced bucket is the only one written — the host viewport is irrelevant.
+        expect(localStorage.getItem(bucketKey(GUEST, 'desktop'))).toBe(null);
+    });
+});
+
 describe('structureCanvas — markGhostRows', () => {
     it('flags live tree rows whose handle is a ghost', () => {
         const treeEl = document.createElement('div');
