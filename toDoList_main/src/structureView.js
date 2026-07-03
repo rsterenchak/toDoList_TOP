@@ -1562,11 +1562,11 @@ function renderUiLens(repo, treeEl) {
             // mid-transition / zero-size layout; a standalone "Capture layout from
             // deployed site" button forces a clean deployed-site measure instead.
             // Always shown for self (the chip's ↻ is the LIVE refresh, so the
-            // deployed button is never redundant with it). Placed right below the
-            // canvas — the same spot the guest button occupies — above the tree rows.
-            const control = buildCaptureControl(repo, treeEl, true);
-            if (pane && pane.nextSibling) treeEl.insertBefore(control, pane.nextSibling);
-            else treeEl.appendChild(control);
+            // deployed button is never redundant with it). Placed ABOVE the canvas —
+            // the same near-top spot the guest button occupies — so switching repos
+            // shows the control in a stable place (the self canvas is full-height, so
+            // inserting after it would push the button far down the scroll).
+            insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, true), pane);
         }
         return;
     }
@@ -1812,7 +1812,10 @@ function renderGuestUiLens(repo, result, treeEl) {
     if (canvas || canCapture) {
         // Guest: show the standalone button only when no canvas is mounted yet —
         // once it is, the snapshot chip's Re-capture covers the deployed re-measure.
-        treeEl.appendChild(buildCaptureControl(repo, treeEl, !canvas));
+        // Placed above the canvas via the shared helper so the control's DOM position
+        // stays symmetric with the self repo (with no canvas mounted the helper falls
+        // back to appending, which keeps the buttoned control at the top as before).
+        insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, !canvas), canvas);
     }
 
     renderPublishedUiMap(repo, result, treeEl);
@@ -1827,6 +1830,17 @@ function renderGuestUiLens(repo, result, treeEl) {
 // redundant with it). The status/error line is always present, module-scoped so
 // the async capture flow can write progress + failure notices into it after a
 // repaint.
+// Place the capture control at the top of the tree/canvas area. When a canvas pane
+// is mounted the control is inserted directly BEFORE it (the pane is treeEl's first
+// child), so the "Capture layout from deployed site" affordance sits near the top —
+// above the canvas — on both the self repo and captured guest repos. With no canvas
+// the control is appended, which still lands it at the top (nothing precedes it yet).
+// Both render paths share this so their placement can't drift apart again.
+function insertCaptureControlAtTop(treeEl, control, pane) {
+    if (pane) treeEl.insertBefore(control, pane);
+    else treeEl.appendChild(control);
+}
+
 function buildCaptureControl(repo, treeEl, showButton) {
     const control = document.createElement('div');
     control.className = 'structureCaptureControl';
