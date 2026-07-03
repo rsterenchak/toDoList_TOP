@@ -1322,7 +1322,7 @@
   - Completed: 2026-07-03
   <!-- id: 5ac2973b-bb6c-462d-8529-5e9391ddbcb1 -->
 
-- [ ] **[MEDIUM]** Key Structure canvas snapshots by repo and lift the self-repo mount guard
+- [x] **[MEDIUM]** Key Structure canvas snapshots by repo and lift the self-repo mount guard — Completed: 2026-07-03
   - Type: feature
   - Description: Groundwork for showing the block canvas on linked repos. The snapshot store in `structureCanvas.js` is a single pair of viewport buckets persisted under `todoapp_structureSnapshot_mobile` / `todoapp_structureSnapshot_desktop`, and `renderStructureCanvas` hard-bails for any repo but `SELF_REPO` (`if (!host || !opts || opts.repo !== SELF_REPO) return null;`). Make the store per-repo and let the canvas mount for any repo that has captured geometry: buckets become a map keyed by repo (`repo → { mobile, desktop }`), persisted per repo under `todoapp_structureSnapshot_<encodeURIComponent(repo)>_<bucket>`, with a one-time migration that moves the two legacy keys into the `SELF_REPO` entry (read legacy → write new → remove legacy) so existing captures survive. The mount guard becomes: mount when `opts.repo === SELF_REPO` (live capture keeps working exactly as today) OR when the repo has at least one hydrated bucket; otherwise return null as before (a follow-up entry adds the capture flow that fills guest buckets). Also persist the handle TREE per repo alongside the buckets (new `tree` field in the snapshot JSON, or a sibling `todoapp_structureTree_<repo>` key) — the self-repo rebuilds its tree from the live DOM every render, but a guest repo's canvas must render from a stored tree.
   - Behavior:
