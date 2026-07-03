@@ -117,10 +117,15 @@ function loadIframeDoc(url, w, h) {
 // prior capture is left untouched (the common failure fails on the first pass,
 // before anything is written). `opts.onProgress(msg)` receives status text;
 // `opts.loadDoc` overrides the iframe loader (used by tests).
+// `opts.knownClasses` is an optional Set of bare class tokens from the repo's
+// manifest, forwarded into each `buildUiTree` walk so a class-identified guest
+// (e.g. a React app whose only id is its mount point) maps deeply instead of
+// collapsing to its lone root. Omitted for id/role-keyed guests.
 export function captureRemote(repo, opts) {
     opts = opts || {};
     const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : function () {};
     const loadDoc = typeof opts.loadDoc === 'function' ? opts.loadDoc : loadIframeDoc;
+    const knownClasses = opts.knownClasses || null;
 
     const url = pagesUrlFor(repo);
     if (!url) return Promise.resolve({ ok: false, reason: 'bad-repo' });
@@ -140,7 +145,7 @@ export function captureRemote(repo, opts) {
                     throw new Error('no-document');
                 }
                 try {
-                    const tree = buildUiTree(handle.doc);
+                    const tree = buildUiTree(handle.doc, knownClasses);
                     captureSnapshot(tree, repo, {
                         doc: handle.doc,
                         bucket: pass.bucket,

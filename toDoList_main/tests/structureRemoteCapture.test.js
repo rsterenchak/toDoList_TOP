@@ -139,6 +139,62 @@ describe('structureRemoteCapture — captureRemote', () => {
         expect(host.querySelector('.structureCanvasPane')).toBeTruthy();
     });
 
+    it('forwards knownClasses into the walk so a class-only guest maps deeply', async () => {
+        // A class-identified guest DOM: the only id is the React mount point, and
+        // its real regions are keyed by className (matching-game shape).
+        const classOnlyDoc = () => {
+            const doc = document.implementation.createHTMLDocument('guest');
+            doc.body.innerHTML =
+                '<div id="app">' +
+                '<div class="homeSection"><div class="card"></div></div>' +
+                '<div class="navSection"></div>' +
+                '</div>';
+            stubRect(doc.body.querySelector('#app'), 300, 600);
+            stubRect(doc.body.querySelector('.homeSection'), 300, 400);
+            stubRect(doc.body.querySelector('.card'), 120, 160);
+            stubRect(doc.body.querySelector('.navSection'), 300, 60);
+            return doc;
+        };
+        const CLASS_GUEST = 'rsterenchak/class-guest-test';
+        const known = new Set(['homeSection', 'card', 'navSection']);
+        const res = await captureRemote(CLASS_GUEST, {
+            knownClasses: known,
+            loadDoc: (url, w, h) => Promise.resolve({ doc: classOnlyDoc(), remove: vi.fn() }),
+        });
+        expect(res.ok).toBe(true);
+
+        // The tree nests the class-kept descendants under #app, not a flat root.
+        const tree = JSON.parse(localStorage.getItem(treeKey(CLASS_GUEST)));
+        const app = tree.find((n) => n.selector === '#app');
+        expect(app).toBeTruthy();
+        const childSelectors = app.children.map((c) => c.selector);
+        expect(childSelectors).toEqual(expect.arrayContaining(['div.homeSection', 'div.navSection']));
+        const home = app.children.find((c) => c.selector === 'div.homeSection');
+        expect(home.children.map((c) => c.selector)).toContain('div.card');
+    });
+
+    it('without knownClasses a class-only guest collapses to its lone id root', async () => {
+        const classOnlyDoc = () => {
+            const doc = document.implementation.createHTMLDocument('guest');
+            doc.body.innerHTML =
+                '<div id="app"><div class="homeSection"><div class="card"></div></div></div>';
+            stubRect(doc.body.querySelector('#app'), 300, 600);
+            stubRect(doc.body.querySelector('.homeSection'), 300, 400);
+            stubRect(doc.body.querySelector('.card'), 120, 160);
+            return doc;
+        };
+        const FLAT_GUEST = 'rsterenchak/flat-guest-test';
+        const res = await captureRemote(FLAT_GUEST, {
+            loadDoc: (url, w, h) => Promise.resolve({ doc: classOnlyDoc(), remove: vi.fn() }),
+        });
+        expect(res.ok).toBe(true);
+
+        // No known-class set → only the id-bearing #app is kept, with no children.
+        const tree = JSON.parse(localStorage.getItem(treeKey(FLAT_GUEST)));
+        expect(tree.map((n) => n.selector)).toEqual(['#app']);
+        expect(tree[0].children).toEqual([]);
+    });
+
     it('rejects a malformed repo without attempting a load', async () => {
         const loadDoc = vi.fn();
         const res = await captureRemote('not-a-repo', { loadDoc });

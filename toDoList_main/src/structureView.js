@@ -740,9 +740,38 @@ function regionRole(el) {
 }
 
 // A region is "kept" (gets its own row in the map) when it carries an id, a
-// data-region, or a landmark role. Everything else is walked through.
-function isKept(el) {
-    return !!(el.id || (el.getAttribute('data-region') || '').trim() || regionRole(el));
+// data-region, or a landmark role. Everything else is walked through. When a
+// `knownClasses` set is supplied (a guest repo whose manifest identifies its
+// regions by className, e.g. a React app whose only id is its mount point), an
+// element is also kept when it carries one of those classes — so a class-based
+// guest DOM maps deeply instead of collapsing to its lone id-bearing root. The
+// self repo passes no set, so its id/role-keyed walk is unaffected.
+function isKept(el, knownClasses) {
+    if (el.id || (el.getAttribute('data-region') || '').trim() || regionRole(el)) return true;
+    if (knownClasses && knownClasses.size) {
+        const classes = (el.getAttribute('class') || '').trim().split(/\s+/);
+        for (let i = 0; i < classes.length; i++) {
+            if (classes[i] && knownClasses.has(classes[i])) return true;
+        }
+    }
+    return false;
+}
+
+// Normalize a guest repo's manifest region selectors into the bare class tokens
+// the walk keys on: each single-class selector (`.homeSection`) contributes its
+// token (`homeSection`); ids, roles, and compound/non-class selectors are
+// ignored defensively (the walk already keys on id/role, and a compound selector
+// has no single class to match). Returns null when no class selectors are
+// present, so a guest with an id-only manifest keeps the default id/role walk.
+function knownClassSet(regions) {
+    if (!Array.isArray(regions)) return null;
+    const set = new Set();
+    regions.forEach(function (r) {
+        const sel = (r && typeof r.selector === 'string') ? r.selector.trim() : '';
+        const m = /^\.([\w-]+)$/.exec(sel);
+        if (m) set.add(m[1]);
+    });
+    return set.size ? set : null;
 }
 
 // Turn an id/data-region token into a human label: split camelCase and
@@ -808,13 +837,13 @@ function elSignature(el) {
 // Length of the run of consecutive collapsible siblings starting at `start`
 // that share its signature. A collapsible element is one that wouldn't be kept
 // on its own (no id, no data-region, no landmark role).
-function repeatRunLength(children, start) {
+function repeatRunLength(children, start, knownClasses) {
     const first = children[start];
-    if (isKept(first)) return 0;
+    if (isKept(first, knownClasses)) return 0;
     const sig = elSignature(first);
     let n = 1;
     for (let j = start + 1; j < children.length; j++) {
-        if (!isKept(children[j]) && elSignature(children[j]) === sig) n++;
+        if (!isKept(children[j], knownClasses) && elSignature(children[j]) === sig) n++;
         else break;
     }
     return n;
@@ -825,21 +854,21 @@ function repeatRunLength(children, start) {
 // descendants nested); non-kept elements are walked through, hoisting their
 // kept descendants up to the nearest kept ancestor. Excluded subtrees are
 // skipped whole; runs of repeated id-less siblings collapse to one line.
-function walk(el, doc) {
+function walk(el, doc, knownClasses) {
     const children = Array.prototype.slice.call(el.children || []);
     const out = [];
     let i = 0;
     while (i < children.length) {
         const child = children[i];
-        const runLen = repeatRunLength(children, i);
+        const runLen = repeatRunLength(children, i, knownClasses);
         if (runLen >= REPEAT_COLLAPSE_MIN) {
             out.push({ type: 'collapsed', count: runLen, tag: child.tagName.toLowerCase() });
             i += runLen;
             continue;
         }
         if (isExcludedEl(child)) { i++; continue; }
-        const descendants = walk(child, doc);
-        if (isKept(child)) {
+        const descendants = walk(child, doc, knownClasses);
+        if (isKept(child, knownClasses)) {
             out.push({
                 type: 'region',
                 label: regionLabel(child),
@@ -859,10 +888,13 @@ function walk(el, doc) {
 // default, or a guest repo's deployed page loaded into a hidden iframe). Pure
 // read — never mutates the page. Exported so the remote-capture flow can walk a
 // guest document with the exact same region-discovery rules the self repo uses.
-export function buildUiTree(doc) {
+// An optional `knownClasses` set (bare class tokens from a guest repo's manifest)
+// makes the walk additionally keep class-identified regions; it defaults to null
+// so every self-repo call site keeps the id/role-only behavior byte-for-byte.
+export function buildUiTree(doc, knownClasses) {
     const root = doc || (typeof document !== 'undefined' ? document : null);
     if (!root || !root.body) return [];
-    return walk(root.body, root);
+    return walk(root.body, root, knownClasses || null);
 }
 
 // Capture the live layout snapshot the Structure tab's block canvas measures its
@@ -1782,8 +1814,17 @@ function setCaptureStatus(text, tone) {
 // quiet mono notice.
 function startGuestCapture(repo, treeEl) {
     setCaptureStatus('Measuring deployed site…', 'progress');
-    return captureRemote(repo, {
-        onProgress: function (msg) { setCaptureStatus(msg, 'progress'); },
+    // Source the guest's meaningful class selectors from its manifest so the
+    // walk keeps class-identified regions (a class-based app whose only id is its
+    // mount point). ensureRegionsLoaded is cached, so this reuses the manifest the
+    // UI lens already loaded. A repo with an id-only (or empty) manifest yields a
+    // null set, leaving the id/role walk unchanged.
+    return ensureRegionsLoaded(repo).then(function (result) {
+        const knownClasses = knownClassSet(result && result.regions);
+        return captureRemote(repo, {
+            onProgress: function (msg) { setCaptureStatus(msg, 'progress'); },
+            knownClasses: knownClasses,
+        });
     }).then(function (res) {
         // Drop a stale result if the repo or lens changed mid-capture.
         if (repo !== selectedRepo || lens === 'code' || currentLens !== 'ui') return;
