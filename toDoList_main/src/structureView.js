@@ -774,6 +774,26 @@ function knownClassSet(regions) {
     return set.size ? set : null;
 }
 
+// The label counterpart to knownClassSet: a class→label map from the manifest's
+// region records, keyed by the bare class token (`.navSection` → its `label`,
+// e.g. "Nav Section"), so a class-kept guest element takes its published section
+// name instead of falling through to its tag. Ids, roles, and compound/non-class
+// selectors are ignored (they don't key on a single class), and a region with no
+// usable label is skipped. Returns null when no class-labelled region is present,
+// so a guest with an id-only manifest (and the self repo) keeps the default
+// id/role labeling.
+function classLabelMap(regions) {
+    if (!Array.isArray(regions)) return null;
+    const map = new Map();
+    regions.forEach(function (r) {
+        const sel = (r && typeof r.selector === 'string') ? r.selector.trim() : '';
+        const m = /^\.([\w-]+)$/.exec(sel);
+        const label = (r && typeof r.label === 'string') ? r.label.trim() : '';
+        if (m && label) map.set(m[1], label);
+    });
+    return map.size ? map : null;
+}
+
 // Turn an id/data-region token into a human label: split camelCase and
 // dash/underscore runs, then title-case.
 function prettify(token) {
@@ -785,13 +805,27 @@ function prettify(token) {
         .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
 }
 
-// Label precedence: data-region > aria-label > prettified id > role > tag.
-function regionLabel(el) {
+// Label precedence: data-region > aria-label > prettified id > matched-class
+// manifest label > prettified first-class token > role > tag. The two class-based
+// steps only fire when a `classLabels` map is supplied (a guest repo whose
+// manifest identifies its regions by className): a kept element takes its
+// published section name when one of its classes matches, else a prettified class
+// token, before falling through to role/tag — so a class-kept guest region reads
+// "Nav Section" rather than "div". The self repo passes no map, so its
+// id/role/tag labeling is byte-for-byte unchanged.
+function regionLabel(el, classLabels) {
     const dr = (el.getAttribute('data-region') || '').trim();
     if (dr) return dr;
     const al = (el.getAttribute('aria-label') || '').trim();
     if (al) return al;
     if (el.id) return prettify(el.id);
+    if (classLabels && classLabels.size) {
+        const classes = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean);
+        for (let i = 0; i < classes.length; i++) {
+            if (classLabels.has(classes[i])) return classLabels.get(classes[i]);
+        }
+        if (classes.length) return prettify(classes[0]);
+    }
     const role = regionRole(el);
     if (role) return role.charAt(0).toUpperCase() + role.slice(1);
     return el.tagName.toLowerCase();
@@ -854,7 +888,7 @@ function repeatRunLength(children, start, knownClasses) {
 // descendants nested); non-kept elements are walked through, hoisting their
 // kept descendants up to the nearest kept ancestor. Excluded subtrees are
 // skipped whole; runs of repeated id-less siblings collapse to one line.
-function walk(el, doc, knownClasses) {
+function walk(el, doc, knownClasses, classLabels) {
     const children = Array.prototype.slice.call(el.children || []);
     const out = [];
     let i = 0;
@@ -867,11 +901,11 @@ function walk(el, doc, knownClasses) {
             continue;
         }
         if (isExcludedEl(child)) { i++; continue; }
-        const descendants = walk(child, doc, knownClasses);
+        const descendants = walk(child, doc, knownClasses, classLabels);
         if (isKept(child, knownClasses)) {
             out.push({
                 type: 'region',
-                label: regionLabel(child),
+                label: regionLabel(child, classLabels),
                 selector: regionSelector(child),
                 visible: isOnScreen(child, doc),
                 children: descendants,
@@ -889,12 +923,14 @@ function walk(el, doc, knownClasses) {
 // read — never mutates the page. Exported so the remote-capture flow can walk a
 // guest document with the exact same region-discovery rules the self repo uses.
 // An optional `knownClasses` set (bare class tokens from a guest repo's manifest)
-// makes the walk additionally keep class-identified regions; it defaults to null
-// so every self-repo call site keeps the id/role-only behavior byte-for-byte.
-export function buildUiTree(doc, knownClasses) {
+// makes the walk additionally keep class-identified regions; an optional
+// `classLabels` map (class token → manifest region label) lets those class-kept
+// regions read their published section name instead of their tag. Both default to
+// null so every self-repo call site keeps the id/role-only behavior byte-for-byte.
+export function buildUiTree(doc, knownClasses, classLabels) {
     const root = doc || (typeof document !== 'undefined' ? document : null);
     if (!root || !root.body) return [];
-    return walk(root.body, root, knownClasses || null);
+    return walk(root.body, root, knownClasses || null, classLabels || null);
 }
 
 // Capture the live layout snapshot the Structure tab's block canvas measures its
@@ -1821,9 +1857,13 @@ function startGuestCapture(repo, treeEl) {
     // null set, leaving the id/role walk unchanged.
     return ensureRegionsLoaded(repo).then(function (result) {
         const knownClasses = knownClassSet(result && result.regions);
+        // The class→label map lets the walk label class-kept regions with their
+        // published section names ("Nav Section") instead of their tags ("div").
+        const classLabels = classLabelMap(result && result.regions);
         return captureRemote(repo, {
             onProgress: function (msg) { setCaptureStatus(msg, 'progress'); },
             knownClasses: knownClasses,
+            classLabels: classLabels,
         });
     }).then(function (res) {
         // Drop a stale result if the repo or lens changed mid-capture.

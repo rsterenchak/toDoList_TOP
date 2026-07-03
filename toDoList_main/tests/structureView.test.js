@@ -148,6 +148,46 @@ describe('buildUiTree — class-identified guest regions (knownClasses)', () => 
     });
 });
 
+describe('buildUiTree — class-kept region labels (classLabels)', () => {
+    it('labels a class-kept region from the manifest map, and prettifies an unmapped class', () => {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML =
+            '<div id="app">' +
+            '<div class="navSection"></div>' +
+            '<div class="logoSection2"></div>' +
+            '</div>';
+        const known = new Set(['navSection', 'logoSection2']);
+        const labels = new Map([['navSection', 'Nav Section']]);
+        const tree = buildUiTree(doc, known, labels);
+        const app = tree.find((n) => n.selector === '#app');
+        const nav = app.children.find((c) => c.selector === 'div.navSection');
+        const logo = app.children.find((c) => c.selector === 'div.logoSection2');
+        // Mapped class → its manifest label; unmapped class → prettified class token.
+        expect(nav.label).toBe('Nav Section');
+        expect(logo.label).toBe('Logo Section2');
+    });
+
+    it('a class-less kept element still reads its role even when a classLabels map is present', () => {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML = '<div id="app"><nav></nav></div>';
+        const tree = buildUiTree(doc, new Set(), new Map([['x', 'X']]));
+        const app = tree.find((n) => n.selector === '#app');
+        // <nav> is kept by its landmark role and carries no class, so it falls
+        // through the (empty) class steps to its role label.
+        expect(app.children[0].label).toBe('Navigation');
+    });
+
+    it('self-repo labeling is unchanged when no classLabels map is passed', () => {
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML = '<div id="app"><nav class="topNav"></nav></div>';
+        // No map → the class-based steps never fire, so the role-kept <nav> keeps
+        // its "Navigation" label rather than a class-derived "Top Nav".
+        const tree = buildUiTree(doc);
+        const app = tree.find((n) => n.selector === '#app');
+        expect(app.children[0].label).toBe('Navigation');
+    });
+});
+
 describe('renderStructureView — project-derived repo', () => {
     it('resolves the repo from the selected project and shows it as a read-only label', async () => {
         mountDom('Game');

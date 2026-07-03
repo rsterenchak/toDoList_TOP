@@ -454,9 +454,18 @@ function rebuild() {
         drillPath = drill.chain.map(function (n) { return n.selector; });
     }
 
+    // The self repo normalizes each level's blocks against their immediate drilled
+    // parent (its nested box layout makes that geometrically correct). A guest's
+    // deployed page uses absolute/negative layout where a child isn't contained by
+    // its DOM parent, so every guest level normalizes against the ROOT captured box
+    // instead — the coordinate space every stored rect already lives in.
+    const parentBox = (activeRepo === SELF_REPO)
+        ? parentBoxFor(drill.chain, drill.children)
+        : rootBoxFor(tree);
+
     paneEl.appendChild(buildSnapshotChip());
     paneEl.appendChild(buildBreadcrumb(drill.chain));
-    paneEl.appendChild(buildCanvas(drill.children, parentBoxFor(drill.chain, drill.children)));
+    paneEl.appendChild(buildCanvas(drill.children, parentBox));
     const tray = buildGhostTray(drill.children);
     if (tray) paneEl.appendChild(tray);
     const hint = buildEmptyBucketHint();
@@ -730,6 +739,21 @@ function unionBox(children) {
     });
     if (minX === Infinity) return null;
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+// The root captured box a GUEST canvas normalizes every drill level against.
+// A deployed page uses absolute positioning and negative margins, so a DOM child
+// is NOT geometrically contained by its DOM parent — parent-relative
+// normalization would clamp overflowing children into misaligned full-width
+// bands, and the deeper the drill the worse the drift. But every stored rect is
+// already in the root (`#app`) coordinate space, so a root-relative crop is what
+// actually matches the page. The root box is the union of the top-level blocks'
+// rects (the captured `#app` rect when the tree has a single mount-point root),
+// falling back to the captured viewport. The self repo never uses this — its
+// clean nested box layout makes parent-relative normalization correct.
+function rootBoxFor(tree) {
+    const top = resolveDrill(tree || [], []).children;
+    return unionBox(top) || viewportBox() || { x: 0, y: 0, width: 1, height: 1 };
 }
 
 // The parent box a level's children are normalized against: the drilled

@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-03',
         fixed: [
-            "Tall containers in the Structure canvas now render at a capped, viewable height instead of stretching several screens tall, while keeping their true proportions.",
             "Wide, short containers in the Structure canvas now keep every child block on-screen instead of pushing right-side blocks off the pane.",
             "The Structure canvas drill chip is now reliably clickable — it no longer hides behind the block and has a larger tap target.",
             "The Structure tab now reliably resolves a linked project's own repo instead of sometimes flipping to this app's layout.",
             "Capturing a class-based linked app's deployed layout now maps its nested regions to drill into, instead of showing only the root block.",
+            "A linked app's captured layout in the Structure canvas now places each block at its true position and labels it with its real section name, instead of misaligned full-width bands and generic tags.",
         ],
     },
 ];

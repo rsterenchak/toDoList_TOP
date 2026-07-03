@@ -1397,7 +1397,7 @@
   - Completed: 2026-07-03
   <!-- id: 28215514-15f6-44b1-a3fb-93e916c9d20e -->
 
-- [ ] **[MEDIUM]** Fix guest canvas geometry and labels — normalize against the root box and use manifest labels
+- [x] **[MEDIUM]** Fix guest canvas geometry and labels — normalize against the root box and use manifest labels
   - Type: bug
   - Description: A captured linked repo (matchingGame-test) renders its blocks misaligned and generically labeled. Two causes, both specific to the guest (class-identified, non-self) canvas. (1) Geometry: the stored rects are correct (verified — `#app` 1276×1303, `div.navSection` at y=0 1276×248, `div.logoSection` at y=248 1276×496, `img.logoContainer2` at x≈477 486×315, matching the live inspector), but they're all measured in the ROOT `#app` coordinate space, and the game uses absolute positioning and negative margins (e.g. logoContainer2 carries `margin: -63.65px`), so a DOM child is not geometrically contained by its DOM parent. When `normalizeRect` normalizes a drilled level's children against their immediate parent's box (`parentBoxFor` → `chain[last]`), children that overflow or sit outside that parent produce out-of-range percentages that `clampPct` flattens to 0/100 — collapsing the true layout into misaligned full-width bands, and the deeper the drill the worse the drift. (2) Labels: class-kept guest elements have no id/aria-label/data-region, so `regionLabel` falls through to `el.tagName` ("div") and the breadcrumb reads "App › App › div › div" instead of the section names the published manifest already carries ("Nav Section", "Logo Section", …). Fix (1) by normalizing guest blocks against the ROOT captured box rather than the immediate drilled parent — every rect is already in root space, and with absolute/negative layout a root-relative crop is what actually matches the page; the self repo (clean nested box layout, parent-relative geometry is correct) keeps parent-relative normalization. Fix (2) by labeling a class-kept element from its matched manifest region label, falling back to the prettified class token, before the tag fallback.
   - Behavior:
@@ -1412,5 +1412,5 @@
     - No `style.css` changes — safe to run without style-file sequencing. Depends on the class-keep capture entry having landed (it did).
   - Out of scope: adding nesting to the manifest (unneeded — root-relative geometry sidesteps it); re-measuring or re-capturing (rects are correct); the self repo's parent-relative model; Find-in-code for classes the manifest doesn't carry; a future per-parent normalization mode for guests with clean nested layouts (root-relative is correct for the absolute/negative-margin case here).
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`, `toDoList_main/tests/structureView.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: fe7cad4a-422b-40d3-aa16-37171e3ec113 -->
