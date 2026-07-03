@@ -1555,18 +1555,17 @@ function renderUiLens(repo, treeEl) {
                 onSelect: selectFromCanvas,
                 onReference: selectFromCanvas,
                 onViewCode: viewCodeFromCanvas,
+                // The deployed-site capture is a manual fallback alongside the live
+                // auto-capture: the live map (and its ↻) re-measures the on-screen DOM,
+                // which on mobile can catch a mid-transition / zero-size layout, so the
+                // chip's Capture/Re-capture button forces a clean deployed measure.
+                onRecapture: function () { startGuestCapture(repo, treeEl); },
             });
             markGhostRows(treeEl);
-            // Manual fallback alongside the live auto-capture. The live map (and its
-            // ↻ chip) re-measures the on-screen DOM, which on mobile can catch a
-            // mid-transition / zero-size layout; a standalone "Capture layout from
-            // deployed site" button forces a clean deployed-site measure instead.
-            // Always shown for self (the chip's ↻ is the LIVE refresh, so the
-            // deployed button is never redundant with it). Placed ABOVE the canvas —
-            // the same near-top spot the guest button occupies — so switching repos
-            // shows the control in a stable place (the self canvas is full-height, so
-            // inserting after it would push the button far down the scroll).
-            insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, true), pane);
+            // The capture affordance now lives in the snapshot chip (via onRecapture),
+            // so the tree-top control carries only the status/error line — placed above
+            // the canvas, right by the chip, so progress stays visible near the button.
+            insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, false), pane);
         }
         return;
     }
@@ -1822,20 +1821,19 @@ function renderGuestUiLens(repo, result, treeEl) {
     if (canvas) markGhostRows(treeEl);
 }
 
-// The capture affordance + status line above the published/live map. `showButton`
-// controls whether the standalone "Capture layout from deployed site" button
-// renders: a guest hides it once its canvas is mounted (the snapshot chip's
-// Re-capture then covers the deployed re-measure), while the self repo always
-// shows it (the self chip's ↻ is the LIVE refresh, so the deployed button is never
-// redundant with it). The status/error line is always present, module-scoped so
-// the async capture flow can write progress + failure notices into it after a
-// repaint.
+// The capture status line — and, in the never-captured guest state, a compact
+// capture button. Every other state hosts the capture affordance in the snapshot
+// chip (via `onRecapture`); but a guest with no capture yet has no canvas, and so
+// no chip, so `showButton` renders the same compact chip-style "Capture" button
+// here in the tree's top slot to keep the flow reachable. The status/error line is
+// always present, module-scoped so the async capture flow can write progress +
+// failure notices into it after a repaint.
 // Place the capture control at the top of the tree/canvas area. When a canvas pane
 // is mounted the control is inserted directly BEFORE it (the pane is treeEl's first
-// child), so the "Capture layout from deployed site" affordance sits near the top —
-// above the canvas — on both the self repo and captured guest repos. With no canvas
-// the control is appended, which still lands it at the top (nothing precedes it yet).
-// Both render paths share this so their placement can't drift apart again.
+// child), so the status line — and the never-captured guest's compact button — sits
+// near the top, right by the snapshot chip, on both the self repo and captured guest
+// repos. With no canvas the control is appended, which still lands it at the top
+// (nothing precedes it yet). Both render paths share this so placement can't drift.
 function insertCaptureControlAtTop(treeEl, control, pane) {
     if (pane) treeEl.insertBefore(control, pane);
     else treeEl.appendChild(control);
@@ -1846,10 +1844,15 @@ function buildCaptureControl(repo, treeEl, showButton) {
     control.className = 'structureCaptureControl';
 
     if (showButton) {
+        // Never-captured guest: no canvas/chip exists yet, so render the same compact
+        // chip-style button here. It reads "Capture" (no geometry stored) and matches
+        // the chip button's style so the affordance looks identical across states.
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'structureCaptureBtn';
-        btn.textContent = 'Capture layout from deployed site';
+        btn.className = 'structureCanvasRecapture';
+        btn.textContent = 'Capture';
+        btn.setAttribute('aria-label', 'Capture layout from the deployed site');
+        btn.title = 'Capture from deployed site';
         btn.addEventListener('click', function () { startGuestCapture(repo, treeEl); });
         control.appendChild(btn);
     }
