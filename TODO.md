@@ -1435,7 +1435,7 @@
   - Completed: 2026-07-03
   <!-- id: 22cdc28e-c687-4b4e-91e0-f2c329fb364c -->
 
-- [ ] **[MEDIUM]** Don't let a zero-size layout capture overwrite the Structure canvas snapshot
+- [x] **[MEDIUM]** Don't let a zero-size layout capture overwrite the Structure canvas snapshot
   - Type: bug
   - Description: On mobile, the self-repo Structure canvas drills into Outer Container and shows an empty canvas with every child (Nav Bar, Now Playing Strip, Main Split) shunted to the "Not in this layout" ghost tray. Cause: `captureStructureSnapshot` runs on the Tasks→Structure view switch (`applyActiveView`), intending to measure while the app's regions are still on screen — but on mobile the Tasks View children are in a layout container that's already collapsed/not-yet-laid-out at that instant, so `getBoundingClientRect` returns zero height. Verified from the stored mobile bucket: `#outerContainer` measures 386×840 (visible), but `#navBar` is 386×0 and `#mainSplit` is 0×0, both `visible:false` — so they classify as ghosts and the drilled canvas has nothing to render. Desktop is unaffected (stable grid). The `partial` re-measure already protects prior good rects from being overwritten with zeros, but a FIRST capture has no prior rects to keep, so the zeros commit and become the canvas. Fix: treat a capture whose kept children all measure zero-size as a degenerate capture and refuse to commit it over (or as) the bucket.
   - Behavior:
@@ -1452,7 +1452,7 @@
     - No `style.css` changes.
   - Out of scope: fixing WHY the mobile view-switch measures zero (the deployed-site capture button is the reliable-capture cure — already landed); the desktop capture path; guest-repo capture; the ghost-tray rendering; re-choreographing the capture timing in `applyActiveView`.
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-03
   <!-- id: d2ae5019-43c3-41d1-b8d1-5b213cb05219 -->
 
 - [ ] **[LOW]** Align the "Capture layout from deployed site" button placement across repos
