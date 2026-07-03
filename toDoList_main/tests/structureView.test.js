@@ -471,17 +471,21 @@ describe('renderStructureView — UI lens', () => {
         expect(selectors).toContain('[data-region="Sidebar"]');
     });
 
-    it('excludes the Structure view and chat surfaces from the map', async () => {
+    it('excludes only the Structure view, and maps the chat surfaces as rows', async () => {
         mountUiDom(
             '<div id="desktopChatPane"><div id="chatInside" data-region="ChatInside"></div></div>' +
-            '<div id="claudeSheet"><div id="sheetInside"></div></div>'
+            '<div id="claudeSheet"><div id="sheetInside" data-region="SheetInside"></div></div>'
         );
         renderStructureView();
         await flush();
         const selectors = Array.from(document.querySelectorAll('.structureRegionSelector')).map((n) => n.textContent);
-        expect(selectors).not.toContain('#desktopChatPane');
-        expect(selectors).not.toContain('#claudeSheet');
-        expect(selectors).not.toContain('#chatInside');
+        // The chat surfaces are now walked into the map (not excluded): the desktop
+        // chat pane and its subtree, plus the Claude sheet and its subtree, appear.
+        expect(selectors).toContain('#desktopChatPane');
+        expect(selectors).toContain('#chatInside');
+        expect(selectors).toContain('#claudeSheet');
+        expect(selectors).toContain('#sheetInside');
+        // Only the Structure view itself stays excluded (mapping from inside itself).
         expect(selectors).not.toContain('#structureView');
     });
 
