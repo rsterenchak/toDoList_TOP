@@ -1434,3 +1434,23 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureView.test.js`
   - Completed: 2026-07-03
   <!-- id: 22cdc28e-c687-4b4e-91e0-f2c329fb364c -->
+
+- [ ] **[MEDIUM]** Don't let a zero-size layout capture overwrite the Structure canvas snapshot
+  - Type: bug
+  - Description: On mobile, the self-repo Structure canvas drills into Outer Container and shows an empty canvas with every child (Nav Bar, Now Playing Strip, Main Split) shunted to the "Not in this layout" ghost tray. Cause: `captureStructureSnapshot` runs on the Tasks→Structure view switch (`applyActiveView`), intending to measure while the app's regions are still on screen — but on mobile the Tasks View children are in a layout container that's already collapsed/not-yet-laid-out at that instant, so `getBoundingClientRect` returns zero height. Verified from the stored mobile bucket: `#outerContainer` measures 386×840 (visible), but `#navBar` is 386×0 and `#mainSplit` is 0×0, both `visible:false` — so they classify as ghosts and the drilled canvas has nothing to render. Desktop is unaffected (stable grid). The `partial` re-measure already protects prior good rects from being overwritten with zeros, but a FIRST capture has no prior rects to keep, so the zeros commit and become the canvas. Fix: treat a capture whose kept children all measure zero-size as a degenerate capture and refuse to commit it over (or as) the bucket.
+  - Behavior:
+    1. A full `captureSnapshot` that measures the root as non-zero but ALL of its kept descendant regions as zero-size is rejected: it does not overwrite an existing bucket, and if none exists it does not create one from the degenerate data (the tab shows its "no capture yet / capture from deployed site" state rather than an empty drilled canvas).
+    2. A capture where at least some descendants measure real rects commits normally (a genuinely-hidden overlay child measuring zero is still fine — the guard only trips when essentially nothing inside measured).
+    3. Desktop self-capture is unchanged.
+    4. The existing `partial` behavior is unchanged; this adds a commit-time guard for the full-capture path.
+    5. Once a good capture exists (from a settled measure, the ↻ chip, or the deployed-site capture button), drilling into Outer Container shows Nav Bar / Now Playing Strip / Main Split as real blocks.
+  - Implementation notes:
+    - In `structureCanvas.js` `captureSnapshot`, after building the `next` handle map for a full (non-partial) capture, compute whether any KEPT region (exclude overlay ids and the root) has a non-zero rect. If none do, bail before assigning `buckets[key]` — leave the prior bucket untouched (or absent) and return without persisting. Comment the mobile view-switch teardown that produces the degenerate capture.
+    - Keep it conservative: "root non-zero AND zero kept children with a rect" so it can't reject a legitimately sparse layout that still has one real child.
+    - Optional: return a value so `captureStructureSnapshot` in `structureView.js` could retry once on a rAF if the first measure was degenerate; gate to a single attempt to avoid loops. Primary fix is not committing garbage.
+    - Tests (`toDoList_main/tests/structureCanvas.test.js`): a full capture with non-zero root and all-zero children doesn't create/overwrite the bucket; mixed real/zero children commits; the partial path still preserves prior rects; a prior good bucket survives a subsequent degenerate capture.
+    - No `style.css` changes.
+  - Out of scope: fixing WHY the mobile view-switch measures zero (the deployed-site capture button is the reliable-capture cure — already landed); the desktop capture path; guest-repo capture; the ghost-tray rendering; re-choreographing the capture timing in `applyActiveView`.
+  - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d2ae5019-43c3-41d1-b8d1-5b213cb05219 -->
