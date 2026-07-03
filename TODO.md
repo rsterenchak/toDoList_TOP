@@ -1251,7 +1251,7 @@
   - Completed: 2026-07-02
   <!-- id: 44b1fcbe-ddd6-43eb-bd75-af75cb8786f7 -->
 
-- [ ] **[MEDIUM]** Surface hidden containers in the Structure canvas — map the chat surfaces and add a labeled ghost tray
+- [x] **[MEDIUM]** Surface hidden containers in the Structure canvas — map the chat surfaces and add a labeled ghost tray — Completed: 2026-07-03
   - Type: feature
   - Description: Two related gaps. (1) The live-DOM walk that builds the UI handle tree skips the chat surfaces entirely (`EXCLUDED_IDS = { structureView: 1, desktopChatPane: 1, claudeSheet: 1 }` in `structureView.js`), so `#desktopChatPane` never becomes a handle — which is why drilling into Main Split shows Main Sec floating beside unexplained dead space where the chat pane actually lives. Remove `desktopChatPane` and `claudeSheet` from `EXCLUDED_IDS` (keep `structureView` — mapping the inspector from inside itself stays excluded). The desktop chat pane then gets measured and rendered as a real block beside `#mainSec`, and both chat surfaces become normal tree rows that work with the filter, Reference in chat, and Find in code. Add `claudeSheet` to `OVERLAY_IDS` in `structureCanvas.js` so the mobile sheet is classified like `bottomSheet` / `projectPickerDropdown` — in the tree, but never a positioned block. (2) Ghost handles (overlays, plus anything with no on-screen box in the active bucket, like `#sideBar` in the mobile capture) are currently filtered out of the canvas with no trace (`buildCanvas`'s `!isGhostSelector` filter). Give them a visible, labeled home: a ghost tray docked below the canvas listing every ghost child at the current drill level as a labeled chip, so hidden containers are seen and selectable instead of silently absent.
   - Behavior:
