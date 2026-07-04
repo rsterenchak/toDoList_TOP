@@ -125,7 +125,21 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
         // The poll is seeded with the run id current at tap time so it can ignore
         // the pre-redeploy run until the new publish registers.
         expect(block).toMatch(/startPagesPoll\s*\(\s*lastPagesRunId\s*\)/);
-        expect(main).toMatch(/deployPill\.addEventListener\(\s*['"]click['"]\s*,\s*requestPagesRedeploy\s*\)/);
+    });
+
+    it('stops the tap from bubbling to the mobile sheet-open handler before redeploying', () => {
+        // On the collapsed mobile launcher, tapping Redeploy re-renders the pill
+        // (detaching the inner glyph the tap landed on), so the card's
+        // openViewerMobileSheet exclusion (event.target.closest('button')) misses
+        // and the sheet opens too. Stopping propagation at the source guarantees
+        // the tap never reaches the card handler regardless of the re-render.
+        const start = main.indexOf("deployPill.addEventListener('click'");
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 200);
+        expect(block).toMatch(/event\.stopPropagation\s*\(\s*\)/);
+        expect(block).toMatch(/requestPagesRedeploy\s*\(\s*\)/);
+        // stopPropagation must run before the redeploy kicks off its re-render.
+        expect(block.indexOf('stopPropagation')).toBeLessThan(block.indexOf('requestPagesRedeploy('));
     });
 
     it('tracks the current deploy run id from every pages_status probe that carries one', () => {

@@ -1477,7 +1477,10 @@ function buildTodoMdViewerCard(projectName, target) {
         startPagesPoll(lastPagesRunId);
     }
 
-    deployPill.addEventListener('click', requestPagesRedeploy);
+    deployPill.addEventListener('click', function(event) {
+        event.stopPropagation();
+        requestPagesRedeploy();
+    });
     // Paint the initial idle content (glyph + "Redeploy" label) synchronously so
     // the pill reads correctly before the first pages_status probe resolves. The
     // mount runSync() then settles it to the real deploy health.
