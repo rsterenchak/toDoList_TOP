@@ -1542,7 +1542,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 31af5e2d-afbf-422d-aa7c-5787da45ab99 -->
 
-- [ ] **[MEDIUM]** Show Run-backlog and Redeploy buttons as icon-only on mobile in the TODO.md viewer card
+- [x] **[MEDIUM]** Show Run-backlog and Redeploy buttons as icon-only on mobile in the TODO.md viewer card — Completed: 2026-07-04
   - Type: feature
   - Description: On mobile widths only, collapse the "Run backlog" button in `#todoMdViewerCard`'s header to a play (▶) glyph with no text label, and change the "Redeploy" button to a rocket (🚀) glyph with no text label. Use compact square icon-buttons with no background fill and monochrome icons that inherit the default button text color (no accent/green/amber tinting). Desktop keeps the existing text labels. Add the mobile behavior behind the existing responsive breakpoint in `style.css`; keep both buttons' click handlers and accessible labels intact (add `aria-label`/`title` so the icon-only buttons remain labeled for screen readers).
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
