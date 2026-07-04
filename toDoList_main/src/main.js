@@ -1,6 +1,7 @@
 import './style.css';
 // Pipeline verification no-op (entry 1ab046ed) — non-functional marker comment.
 // reload-on-update test — safe to remove (entry ddbe5425) — non-functional marker comment.
+// Pipeline verification no-op (entry ccda7890) — non-functional marker comment.
 import { listLogic } from './listLogic.js';
 import {
     isCompanionEnabled,
