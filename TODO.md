@@ -1603,3 +1603,10 @@
   - File: `toDoList_main/src/todoMdViewer.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4e265c2a-663a-4a8c-8559-b42cffd101ec -->
+
+- [ ] **[LOW]** Add harmless comment to index.js to trigger a test deploy
+  - Type: feature
+  - Description: Add a single innocuous comment (e.g. `// deploy test marker`) near the top of the file with no functional code changes. This is intended purely to trigger the build/deploy pipeline for verification purposes. No behavior, styling, or markup should change as a result.
+  - File: `toDoList_main/src/index.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bcf8518b-c358-4bcb-81d6-ed1a737deb08 -->
