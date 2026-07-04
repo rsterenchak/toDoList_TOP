@@ -7639,6 +7639,15 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoMdViewerDeployPillLabel {
   min-width: 0;
 }
+/* Rocket glyph shown only when the inline launcher collapses the Redeploy pill
+   to an icon-only square (see the mobile breakpoint). Hidden on desktop, where
+   the refresh glyph + "Redeploy" label carry the pill. */
+.todoMdViewerDeployPillMobileGlyph {
+  display: none;
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+}
 .todoMdViewerDeployPill:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -9136,6 +9145,31 @@ body.row-dragging * { cursor: grabbing !important; }
     letter-spacing: 0.04em;
     color: var(--text-primary);
     white-space: nowrap;
+  }
+  /* Icon-only Run backlog + Redeploy on the collapsed inline launcher. The
+     single floored row is tight, so drop both buttons' text labels and show
+     only their glyph — a play ▶ for Run backlog, a rocket 🚀 for Redeploy — as
+     compact 36px monochrome squares with no fill and no accent/green/amber
+     tinting (the glyphs inherit the neutral button text color). Click handlers
+     and aria-labels are set in JS and untouched, so screen readers still
+     announce the full action. Scoped to the inline #todoMdViewerCard launcher;
+     the full-screen mobile sheet keeps its labeled 50/50 touch targets. */
+  #mainList > #todoMdViewerCard .todoMdViewerRunBtn,
+  #mainList > #todoMdViewerCard .todoMdViewerDeployPill {
+    width: 36px;
+    padding: 0;
+    gap: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-bright);
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerRunLabel,
+  #mainList > #todoMdViewerCard .todoMdViewerDeployPillGlyph,
+  #mainList > #todoMdViewerCard .todoMdViewerDeployPillLabel {
+    display: none;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerDeployPillMobileGlyph {
+    display: inline-block;
   }
   /* Inside the full-screen mobile sheet the card's header carried the inline
      card's `background: var(--bg-elevated)` — a band darker than the card's

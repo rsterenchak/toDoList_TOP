@@ -1297,6 +1297,17 @@ function buildTodoMdViewerCard(projectName, target) {
             icon.innerHTML = deployPillGlyph;
         }
         deployPill.appendChild(icon);
+        // Mobile-only rocket glyph. On the collapsed inline launcher the pill
+        // reads as an icon-only square (the desktop refresh glyph + "Redeploy"
+        // label are hidden by the responsive breakpoint), so stand in a single
+        // rocket. Omitted while deploying — the amber spinner is the icon there.
+        if (state !== 'deploying') {
+            const mobileGlyph = document.createElement('span');
+            mobileGlyph.className = 'todoMdViewerDeployPillMobileGlyph';
+            mobileGlyph.setAttribute('aria-hidden', 'true');
+            mobileGlyph.textContent = '🚀';
+            deployPill.appendChild(mobileGlyph);
+        }
         const label = document.createElement('span');
         label.className = 'todoMdViewerDeployPillLabel';
         label.textContent = state === 'deploying' ? 'Deploying' : 'Redeploy';
