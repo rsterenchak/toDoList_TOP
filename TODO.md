@@ -1520,3 +1520,10 @@
   - Description: The drawer settings button (`#drawerSettingsBtn`) sits too low relative to its intended position in the drawer layout. Adjust its vertical offset (margin-top, top, or transform) by -20px so it sits higher without affecting sibling elements' spacing. Likely controlled by a positioning rule in style.css tied to `#drawerSettingsBtn` or its parent container.
   - File: `toDoList_main/src/style.css`
   <!-- id: 59ea455a-14af-442c-a93f-2f84e093f08b -->
+
+- [ ] **[LOW]** Fix #drawerSettingsBtn overlapping the drawer item above it after the -20px nudge
+  - Type: bug
+  - Description: The `top: -20px` offset added to `#drawerSettingsBtn` (PR #638) moved the button 4px above its own parent `#drawerSettingsBtnWrap`'s top edge (live measurement: button top 772 vs wrap top 776), causing it to visually overlap the drawer element sitting above the wrap. Fix by reducing the offset (e.g. to -16px, which keeps it flush with the wrap's top edge) or by adding ~4px of top margin/padding to `#drawerSettingsBtnWrap` or its preceding sibling to reserve the space the nudge consumes. Do not use z-index — this is a layout-space overlap, not a stacking-order issue, and z-index would leave the collision unresolved.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/tests/drawerSettingsBtnNudge.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d986bc50-9d13-4e18-ae37-a6e2572d9af5 -->
