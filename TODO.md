@@ -1515,7 +1515,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b154e69c-95d9-47eb-af45-a8ec6ea071de -->
 
-- [ ] **[LOW]** Nudge #drawerSettingsBtn upward by 20px
+- [x] **[LOW]** Nudge #drawerSettingsBtn upward by 20px — Completed: 2026-07-03
   - Type: bug
   - Description: The drawer settings button (`#drawerSettingsBtn`) sits too low relative to its intended position in the drawer layout. Adjust its vertical offset (margin-top, top, or transform) by -20px so it sits higher without affecting sibling elements' spacing. Likely controlled by a positioning rule in style.css tied to `#drawerSettingsBtn` or its parent container.
   - File: `toDoList_main/src/style.css`
