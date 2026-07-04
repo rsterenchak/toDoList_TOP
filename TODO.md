@@ -1589,3 +1589,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: 2026-07-04
   <!-- id: ccda7890-1666-4ab7-8b77-81b5054d7323 -->
+
+- [ ] **[LOW]** Add a harmless comment to style.css to trigger a redeploy
+  - Type: feature
+  - Description: Add a single-line CSS comment near the top of the file (e.g. a brief note on the stylesheet's scope) to produce a trivial, no-behavior-change diff. Purpose is solely to exercise the merge → deploy.yml → GitHub Pages pipeline end-to-end again. No functional/visual change should result.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9f259089-bef1-4202-8091-a729f4eb0a9b -->
