@@ -1,4 +1,5 @@
 // App bootstrap entry point: builds the DOM structure and attaches it to the page.
+// deploy test marker
 import _, { remove } from 'lodash';
 import './style.css';
 import './manifest.webmanifest';
