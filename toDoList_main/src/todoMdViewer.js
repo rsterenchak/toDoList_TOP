@@ -1305,7 +1305,12 @@ function buildTodoMdViewerCard(projectName, target) {
             const mobileGlyph = document.createElement('span');
             mobileGlyph.className = 'todoMdViewerDeployPillMobileGlyph';
             mobileGlyph.setAttribute('aria-hidden', 'true');
-            mobileGlyph.textContent = '🚀';
+            // Monochrome line-rocket that inherits `currentColor`, so it recolors
+            // with the pill state (muted grey when idle, danger red on failure)
+            // and matches the grey stroke icons beside it — unlike the old full-
+            // color '🚀' emoji. Mirrors deployPillGlyph's stroke attributes.
+            mobileGlyph.innerHTML =
+                '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.3c2.1 2.1 2.6 4.7 2 7.7H5c-.6-3-.1-5.6 2-7.7z"/><circle cx="7" cy="5" r="1"/><path d="M5 8.3 3.2 11.5 5.2 10.2"/><path d="M9 8.3 10.8 11.5 8.8 10.2"/><path d="M6 10.5 7 12.7 8 10.5"/></svg>';
             deployPill.appendChild(mobileGlyph);
         }
         const label = document.createElement('span');

@@ -12,22 +12,27 @@ function read(relative) {
 // On mobile widths the inline #todoMdViewerCard collapses to a single floored
 // launcher row, so its Run backlog and Redeploy buttons drop their text labels
 // and show only a glyph — a play ▶ for Run backlog (its existing SVG icon) and a
-// rocket 🚀 for Redeploy — as compact monochrome squares. Desktop keeps the
-// labels. Asserted by source inspection, matching the viewer's test strategy.
+// monochrome currentColor rocket for Redeploy (an inline SVG, not the old full-
+// color emoji) — as compact monochrome squares. Desktop keeps the labels.
+// Asserted by source inspection, matching the viewer's test strategy.
 
 describe('todoMdViewer — icon-only Run backlog / Redeploy on mobile', () => {
     const main = read('todoMdViewer.js');
     const css = read('style.css');
 
-    it('renders a mobile-only rocket glyph on the Redeploy pill for non-deploying states', () => {
+    it('renders a mobile-only monochrome rocket SVG on the Redeploy pill for non-deploying states', () => {
         // The glyph is appended inside the `state !== 'deploying'` guard so the
-        // amber spinner stands alone while a publish is in flight.
+        // amber spinner stands alone while a publish is in flight. It is an inline
+        // SVG stroked with currentColor (not the old '🚀' emoji) so it recolors
+        // with the pill state and stays monochrome next to the other stroke icons.
         const start = main.indexOf('function renderDeployPill');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 1600);
+        const block = main.slice(start, start + 2200);
         expect(block).toMatch(
-            /if\s*\(\s*state\s*!==\s*['"]deploying['"]\s*\)\s*\{[\s\S]*?todoMdViewerDeployPillMobileGlyph[\s\S]*?textContent\s*=\s*['"]🚀['"]/
+            /if\s*\(\s*state\s*!==\s*['"]deploying['"]\s*\)\s*\{[\s\S]*?todoMdViewerDeployPillMobileGlyph[\s\S]*?innerHTML\s*=[\s\S]*?<svg[\s\S]*?stroke="currentColor"/
         );
+        // The old full-color emoji glyph must be gone.
+        expect(block).not.toMatch(/mobileGlyph\.textContent\s*=\s*['"]🚀['"]/);
         expect(block).toMatch(/mobileGlyph\.setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
     });
 
@@ -38,9 +43,14 @@ describe('todoMdViewer — icon-only Run backlog / Redeploy on mobile', () => {
         expect(main).toMatch(/runBacklogBtn\.setAttribute\(\s*['"]aria-label['"]\s*,\s*['"]Run backlog automation['"]\s*\)/);
     });
 
-    it('hides the mobile rocket glyph on desktop by default', () => {
+    it('hides the mobile rocket glyph on desktop by default and centers the SVG', () => {
+        // font-size no longer governs the glyph now that it's an SVG; the span
+        // uses flex centering so the inline rocket sits centered in the square.
         expect(css).toMatch(
-            /\.todoMdViewerDeployPillMobileGlyph\s*\{[^}]*display:\s*none;[^}]*font-size:\s*15px/
+            /\.todoMdViewerDeployPillMobileGlyph\s*\{[^}]*display:\s*none;[^}]*align-items:\s*center;/
+        );
+        expect(css).not.toMatch(
+            /\.todoMdViewerDeployPillMobileGlyph\s*\{[^}]*font-size:\s*15px/
         );
     });
 
@@ -55,7 +65,7 @@ describe('todoMdViewer — icon-only Run backlog / Redeploy on mobile', () => {
             /#mainList > #todoMdViewerCard \.todoMdViewerRunLabel,\s*#mainList > #todoMdViewerCard \.todoMdViewerDeployPillGlyph,\s*#mainList > #todoMdViewerCard \.todoMdViewerDeployPillLabel\s*\{\s*display:\s*none;\s*\}/
         );
         expect(css).toMatch(
-            /#mainList > #todoMdViewerCard \.todoMdViewerDeployPillMobileGlyph\s*\{\s*display:\s*inline-block;\s*\}/
+            /#mainList > #todoMdViewerCard \.todoMdViewerDeployPillMobileGlyph\s*\{\s*display:\s*inline-flex;\s*\}/
         );
     });
 
