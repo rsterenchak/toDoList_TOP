@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         changed: [
-            "The desktop Redeploy button now shows the same monochrome rocket icon as the mobile button, so both breakpoints share one glyph.",
             "The Redeploy button is now disabled while a backlog run is in progress, since a merging run publishes its own site update.",
             "The backlog run status pill now matches the size and shape of the Redeploy and Run backlog buttons, so the viewer header no longer changes shape while a run is active.",
             "On the collapsed mobile launcher, the running Run backlog pill and Sync button now shrink to icon-only spinner squares like Redeploy, so the row no longer widens while they work.",
         ],
         fixed: [
             "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",
+            "The Redeploy button now turns red on its own within about half a minute when a deploy fails while the viewer is open, instead of staying neutral until you manually Sync.",
         ],
     },
 ];
