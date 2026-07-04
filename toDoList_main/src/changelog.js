@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-04',
+        added: [
+            "A Redeploy control in the TODO viewer header shows when the site's last publish failed and lets you re-trigger it in one tap.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-03',
         fixed: [
-            "On mobile, an empty layout measured during a tab switch no longer overwrites the Structure canvas snapshot, so drilling into the Outer Container keeps showing its real sections.",
             "The Structure tab's \"Capture layout from deployed site\" button now sits above the canvas on your own project too, matching where it appears on linked projects.",
             "On mobile, drilling into the Outer Container in the Structure canvas now shows the sections nested inside its collapsing layout wrapper, instead of an empty canvas.",
             "The Settings button in the mobile drawer now sits slightly higher within the drawer.",
