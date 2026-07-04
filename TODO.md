@@ -1568,3 +1568,10 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 909f84ff-6508-4a58-b483-fa062a17f503 -->
+
+- [ ] **[LOW]** Match the run-status pill's box to the Redeploy / Run backlog buttons (36px, 10px radius)
+  - Type: feature
+  - Description: When a backlog run starts, the Run backlog button (`todoMdViewerRunBtn` — `height: 36px`, `border-radius: 10px`, `padding: 0 12px`) is swapped for the `todoMdViewerRunPill`, which is shorter and tighter-cornered (`padding: 4px 10px`, `border-radius: var(--radius-sm)` = 4px, no fixed height), so the header visibly shrinks and changes shape for the run's duration. Give `.todoMdViewerRunPill` the same box as the two 36px controls beside it (the Redeploy `todoMdViewerDeployPill` and the Run backlog `todoMdViewerRunBtn` are already identical): set `height: 36px`, `border-radius: 10px`, `padding: 0 12px`, and add `justify-content: center` to match their content centering. Keep everything else on the base rule unchanged — `display: inline-flex`, `align-items: center`, `gap: 6px`, `font-size: 11px`, `letter-spacing`, `white-space: nowrap`, and every per-state color rule (`--starting`/`--queued`/`--running`/`--success`/`--failure`/`--timeout` only set background/border/color, so they inherit the new box). Since the change is on the base class it applies to all run-pill states, so the pill holds the 36px size through its whole lifecycle (starting → running → Done/Failed) and the header no longer jumps. CSS-only — no JS change, the pill already gets the class. The mobile sheet is unaffected (`#todoMdViewerMobileSheet` already groups the run pill with the deploy pill at `min-height: 44px`, which overrides the 36px height), and the collapsed inline card's run-pill rendering is unchanged.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b92a4f69-956c-42ba-a876-3273998a4372 -->
