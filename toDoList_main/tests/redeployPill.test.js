@@ -104,7 +104,7 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
     it('maps a completed success to idle, a failure conclusion to red, and an in-flight publish to deploying', () => {
         const start = main.indexOf('function applyPagesStatus');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 500);
+        const block = main.slice(start, start + 700);
         expect(block).toMatch(/status\s*&&\s*res\.status\s*!==\s*['"]completed['"][\s\S]{0,80}renderDeployPill\(\s*['"]deploying['"]/);
         expect(block).toMatch(/conclusion\s*===\s*['"]failure['"][\s\S]{0,80}renderDeployPill\(\s*['"]failure['"]/);
         expect(block).toMatch(/renderDeployPill\(\s*['"]idle['"]\s*\)/);
@@ -119,11 +119,42 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
     it('taps to rebuild: optimistic Deploying, then polls until the publish completes', () => {
         const start = main.indexOf('async function requestPagesRedeploy');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 700);
+        const block = main.slice(start, start + 1000);
         expect(block).toMatch(/renderDeployPill\(\s*['"]deploying['"]\s*\)/);
         expect(block).toMatch(/requestPagesRebuild\s*\(\s*target\s*\)/);
-        expect(block).toMatch(/startPagesPoll\s*\(\s*\)/);
+        // The poll is seeded with the run id current at tap time so it can ignore
+        // the pre-redeploy run until the new publish registers.
+        expect(block).toMatch(/startPagesPoll\s*\(\s*lastPagesRunId\s*\)/);
         expect(main).toMatch(/deployPill\.addEventListener\(\s*['"]click['"]\s*,\s*requestPagesRedeploy\s*\)/);
+    });
+
+    it('tracks the current deploy run id from every pages_status probe that carries one', () => {
+        // applyPagesStatus records res.runId into the module-scoped baseline so a
+        // later redeploy has a previous-run id to compare against.
+        expect(main).toMatch(/let\s+lastPagesRunId\s*=\s*null/);
+        const start = main.indexOf('function applyPagesStatus');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/if\s*\(\s*res\.runId\s*\)\s*lastPagesRunId\s*=\s*res\.runId/);
+    });
+
+    it('holds Deploying while the poll still sees the pre-redeploy (baseline) run', () => {
+        const start = main.indexOf('function startPagesPoll');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 1200);
+        // The poll takes a baseline run id.
+        expect(block).toMatch(/function\s+startPagesPoll\s*\(\s*baselineRunId\s*\)/);
+        // When the probe still reports the baseline run, keep Deploying + keep
+        // polling instead of settling on its stale `completed` status. This guard
+        // must sit BEFORE the completed-check so the stale run can't settle first.
+        const guard = block.indexOf('baselineRunId && res.found && res.runId === baselineRunId');
+        const completed = block.indexOf("res.status === 'completed'");
+        expect(guard).toBeGreaterThan(-1);
+        expect(completed).toBeGreaterThan(-1);
+        expect(guard).toBeLessThan(completed);
+        const guardBlock = block.slice(guard, completed);
+        expect(guardBlock).toMatch(/renderDeployPill\(\s*['"]deploying['"]\s*\)/);
+        expect(guardBlock).toMatch(/return/);
     });
 
     it('clears the pages poll interval on teardown so it cannot leak', () => {

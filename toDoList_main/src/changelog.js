@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         changed: [
-            "On mobile, the Run backlog and Redeploy buttons in the TODO viewer header now appear as compact icon-only glyphs.",
             "The mobile Redeploy button now shows a monochrome rocket icon that matches the other header icons and recolors with the button's state.",
             "The desktop Redeploy button now shows the same monochrome rocket icon as the mobile button, so both breakpoints share one glyph.",
             "The Redeploy button is now disabled while a backlog run is in progress, since a merging run publishes its own site update.",
             "The backlog run status pill now matches the size and shape of the Redeploy and Run backlog buttons, so the viewer header no longer changes shape while a run is active.",
+        ],
+        fixed: [
+            "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",
         ],
     },
 ];

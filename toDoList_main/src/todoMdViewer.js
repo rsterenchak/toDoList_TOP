@@ -96,6 +96,11 @@ let viewerServerRunPollInterval = null;
 // flight, so the header's Redeploy pill settles back to neutral (or red) once
 // the GitHub Pages publish completes. Cleared with the card on teardown.
 let viewerPagesPollInterval = null;
+// The run id of the most recently observed Pages deploy, refreshed from every
+// pages_status probe that carries one. A manual redeploy captures this as its
+// baseline so the poll can tell the pre-redeploy run (already completed) apart
+// from the genuinely-new publish it just kicked off.
+let lastPagesRunId = null;
 
 function viewerLastFetchKey(projectName) {
     return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
@@ -1357,6 +1362,9 @@ function buildTodoMdViewerCard(projectName, target) {
     // (ok:false) leaves the current state untouched — never alarm on a blip.
     function applyPagesStatus(res) {
         if (!res || res.ok === false) return;
+        // Remember the current/previous deploy's run id so a manual redeploy can
+        // baseline against it and ignore that stale run until a new one appears.
+        if (res.runId) lastPagesRunId = res.runId;
         if (res.status && res.status !== 'completed') {
             renderDeployPill('deploying');
         } else if (res.conclusion === 'failure') {
@@ -1380,7 +1388,17 @@ function buildTodoMdViewerCard(projectName, target) {
     // Poll the Worker's pages_status probe until the in-flight publish reports
     // completed, then settle the pill to neutral or red. Gives up after
     // PAGES_GIVE_UP_MS and falls back to a passive refresh.
-    function startPagesPoll() {
+    //
+    // baselineRunId is the run id of the deploy that was current when the
+    // redeploy was tapped. A fresh pages-build-deployment run takes ~10-20s to
+    // register, so the first few ticks still see that baseline run — already
+    // `completed` — and must NOT settle the pill: doing so drops it to idle while
+    // the real redeploy is still queued. So long as the probe reports the
+    // baseline run, hold the Deploying state and keep polling; only once a
+    // genuinely-new run id appears does the normal completed-check settle it.
+    // A null baseline (pages_status never carried a run id) falls back to the
+    // old behavior — settle on the first completed run.
+    function startPagesPoll(baselineRunId) {
         stopViewerPagesPoll();
         const startedAt = Date.now();
         viewerPagesPollInterval = setInterval(async function() {
@@ -1392,6 +1410,13 @@ function buildTodoMdViewerCard(projectName, target) {
             }
             const res = await fetchPagesStatus(target);
             if (!res || res.ok === false) return; // transient — keep polling
+            // The new publish hasn't registered yet — the probe is still seeing
+            // the pre-redeploy run. Hold Deploying and keep polling; don't let its
+            // stale `completed` settle the pill.
+            if (baselineRunId && res.found && res.runId === baselineRunId) {
+                renderDeployPill('deploying');
+                return;
+            }
             if (res.status === 'completed') {
                 stopViewerPagesPoll();
                 pagesRebuilding = false;
@@ -1416,7 +1441,10 @@ function buildTodoMdViewerCard(projectName, target) {
             return;
         }
         showInjectToast('Redeploy dispatched');
-        startPagesPoll();
+        // Baseline against the run that was current at tap time so the poll can
+        // ignore it until the new publish registers (falls back to the old
+        // settle-on-first-completed behavior when no run id was ever seen).
+        startPagesPoll(lastPagesRunId);
     }
 
     deployPill.addEventListener('click', requestPagesRedeploy);
