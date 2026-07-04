@@ -16,6 +16,8 @@ import {
     dispatchRun,
     pollRunStatus,
     fetchActiveRuns,
+    fetchPagesStatus,
+    requestPagesRebuild,
     revertEntry,
     showInjectToast,
 } from './inject.js';
@@ -90,6 +92,10 @@ let viewerRunPollInterval = null;
 // the viewer's Running pill (and self-clears when that run finishes), even when
 // no local active-run record exists. Cleared with the card on teardown.
 let viewerServerRunPollInterval = null;
+// Interval that polls the Worker's `pages_status` probe while a Redeploy is in
+// flight, so the header's Redeploy pill settles back to neutral (or red) once
+// the GitHub Pages publish completes. Cleared with the card on teardown.
+let viewerPagesPollInterval = null;
 
 function viewerLastFetchKey(projectName) {
     return VIEWER_LASTFETCH_PREFIX + encodeURIComponent(projectName || '');
@@ -134,6 +140,7 @@ function detachViewerResizeHandler() {
     // firing against a pill whose card was torn down or re-rendered.
     stopViewerRunPoll();
     stopViewerServerRunPoll();
+    stopViewerPagesPoll();
     // Drop the per-project active-run subscription with the card it belonged to
     // so a torn-down card can't keep reacting to run changes.
     if (viewerActiveRunChangeHandler) {
@@ -153,6 +160,13 @@ function stopViewerServerRunPoll() {
     if (viewerServerRunPollInterval) {
         clearInterval(viewerServerRunPollInterval);
         viewerServerRunPollInterval = null;
+    }
+}
+
+function stopViewerPagesPoll() {
+    if (viewerPagesPollInterval) {
+        clearInterval(viewerPagesPollInterval);
+        viewerPagesPollInterval = null;
     }
 }
 
@@ -502,6 +516,17 @@ function buildTodoMdViewerCard(projectName, target) {
         '</svg>' +
         '<span class="todoMdViewerRunLabel">Run backlog</span>';
 
+    // Health-aware "Redeploy" pill. GitHub Pages' managed publish occasionally
+    // fails, leaving the live site stale with no in-app recovery. This pill
+    // reflects the newest deploy's health (quiet/neutral when healthy, red on a
+    // failed publish, an amber spinner while a publish is in flight) and, when
+    // tapped, re-triggers the publish through the Worker. Its live wiring
+    // (fetchPagesStatus / requestPagesRebuild) lives further down the closure.
+    const deployPill = document.createElement('button');
+    deployPill.type = 'button';
+    deployPill.className = 'todoMdViewerDeployPill todoMdViewerDeployPill--idle';
+    deployPill.setAttribute('aria-live', 'polite');
+
     const syncBtn = document.createElement('button');
     syncBtn.type = 'button';
     syncBtn.className = 'todoMdViewerSyncBtn';
@@ -597,6 +622,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     meta.appendChild(syncedLabel);
     meta.appendChild(runBacklogBtn);
+    meta.appendChild(deployPill);
     meta.appendChild(syncBtn);
     meta.appendChild(overflowWrap);
     meta.appendChild(collapseBodyBtn);
@@ -728,6 +754,10 @@ function buildTodoMdViewerCard(projectName, target) {
             syncBtn.classList.remove('todoMdViewerSyncBtn--loading');
             syncBtn.innerHTML = SYNC_GLYPH;
         }
+        // Refresh the Redeploy pill's health after every sync (this includes the
+        // mount fetch, so the pill reflects deploy health on first render too).
+        // Fire-and-forget — a Pages-probe failure never blocks or errors the sync.
+        refreshPagesStatus();
     }
 
     syncBtn.addEventListener('click', runSync);
@@ -1236,6 +1266,125 @@ function buildTodoMdViewerCard(projectName, target) {
         // waiting a full interval.
         pollServerRunSignal();
     }
+
+    // ── Redeploy pill lifecycle ──
+    // The pill mirrors the newest GitHub Pages publish for this project's repo:
+    // quiet/neutral when the latest deploy succeeded, red (danger) when it
+    // failed, and an amber "Deploying" spinner while a publish is in flight.
+    // Tapping it re-triggers the publish and polls until it settles. Pages
+    // publishes usually land in ~2 minutes; give up after 5.
+    const PAGES_POLL_INTERVAL_MS = 5000;
+    const PAGES_GIVE_UP_MS = 5 * 60 * 1000;
+    const deployPillGlyph =
+        '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 7a5 5 0 0 1 8.5-3.5L12 5"/><polyline points="12 1.5 12 5 8.5 5"/><path d="M12 7a5 5 0 0 1-8.5 3.5L2 9"/><polyline points="2 12.5 2 9 5.5 9"/></svg>';
+    // True while a locally-initiated redeploy is being polled — the passive
+    // refresh stands down so it can't stomp the optimistic "Deploying" state.
+    let pagesRebuilding = false;
+
+    // Paint the pill for one of three states: 'idle' (quiet/healthy),
+    // 'failure' (red), or 'deploying' (amber spinner). The label always reads
+    // "Redeploy" except while deploying, and the pill is disabled mid-deploy so
+    // a second publish can't be queued on top of the first.
+    function renderDeployPill(state) {
+        deployPill.className = 'todoMdViewerDeployPill todoMdViewerDeployPill--' + state;
+        deployPill.innerHTML = '';
+        const icon = document.createElement('span');
+        icon.setAttribute('aria-hidden', 'true');
+        if (state === 'deploying') {
+            icon.className = 'todoMdViewerDeployPillSpinner';
+        } else {
+            icon.className = 'todoMdViewerDeployPillGlyph';
+            icon.innerHTML = deployPillGlyph;
+        }
+        deployPill.appendChild(icon);
+        const label = document.createElement('span');
+        label.className = 'todoMdViewerDeployPillLabel';
+        label.textContent = state === 'deploying' ? 'Deploying' : 'Redeploy';
+        deployPill.appendChild(label);
+        deployPill.disabled = state === 'deploying';
+        if (state === 'deploying') {
+            deployPill.setAttribute('aria-label', 'Deploying the site');
+            deployPill.title = 'A site publish is in progress';
+        } else if (state === 'failure') {
+            deployPill.setAttribute('aria-label', 'Redeploy the site — the last publish failed');
+            deployPill.title = 'The last site publish failed — tap to redeploy';
+        } else {
+            deployPill.setAttribute('aria-label', 'Redeploy the site');
+            deployPill.title = 'Redeploy the site';
+        }
+    }
+
+    // Map a fetchPagesStatus result onto a pill state. A transient failure
+    // (ok:false) leaves the current state untouched — never alarm on a blip.
+    function applyPagesStatus(res) {
+        if (!res || res.ok === false) return;
+        if (res.status && res.status !== 'completed') {
+            renderDeployPill('deploying');
+        } else if (res.conclusion === 'failure') {
+            renderDeployPill('failure');
+        } else {
+            renderDeployPill('idle');
+        }
+    }
+
+    // Passive health refresh, called on mount and after each sync. Stands down
+    // while a local redeploy is mid-poll so it can't overwrite the optimistic
+    // "Deploying" state the rebuild flow owns.
+    async function refreshPagesStatus() {
+        if (pagesRebuilding) return;
+        if (!target || !target.repo) return;
+        const res = await fetchPagesStatus(target);
+        if (pagesRebuilding) return; // a redeploy started while the probe was in flight
+        applyPagesStatus(res);
+    }
+
+    // Poll the Worker's pages_status probe until the in-flight publish reports
+    // completed, then settle the pill to neutral or red. Gives up after
+    // PAGES_GIVE_UP_MS and falls back to a passive refresh.
+    function startPagesPoll() {
+        stopViewerPagesPoll();
+        const startedAt = Date.now();
+        viewerPagesPollInterval = setInterval(async function() {
+            if (Date.now() - startedAt >= PAGES_GIVE_UP_MS) {
+                stopViewerPagesPoll();
+                pagesRebuilding = false;
+                refreshPagesStatus();
+                return;
+            }
+            const res = await fetchPagesStatus(target);
+            if (!res || res.ok === false) return; // transient — keep polling
+            if (res.status === 'completed') {
+                stopViewerPagesPoll();
+                pagesRebuilding = false;
+                applyPagesStatus(res);
+            }
+            // Otherwise a publish is still in flight — hold the Deploying state.
+        }, PAGES_POLL_INTERVAL_MS);
+    }
+
+    // Tap handler: re-trigger the Pages publish, flip to the optimistic
+    // "Deploying" state, then poll until it settles.
+    async function requestPagesRedeploy() {
+        if (pagesRebuilding) return;
+        if (!target || !target.repo) return;
+        pagesRebuilding = true;
+        renderDeployPill('deploying');
+        const res = await requestPagesRebuild(target);
+        if (!res || res.ok === false) {
+            showInjectToast('Redeploy failed — ' + ((res && res.reason) || 'unknown error'), 'error');
+            pagesRebuilding = false;
+            refreshPagesStatus();
+            return;
+        }
+        showInjectToast('Redeploy dispatched');
+        startPagesPoll();
+    }
+
+    deployPill.addEventListener('click', requestPagesRedeploy);
+    // Paint the initial idle content (glyph + "Redeploy" label) synchronously so
+    // the pill reads correctly before the first pages_status probe resolves. The
+    // mount runSync() then settles it to the real deploy health.
+    renderDeployPill('idle');
 
     async function runBacklog() {
         if (runBacklogBtn.disabled) return;

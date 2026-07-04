@@ -413,6 +413,55 @@ export async function fetchActiveRuns(target) {
 }
 
 
+// Ambient, fire-and-forget probe of the target repo's latest GitHub Pages
+// deployment, through the same Worker the dispatch and status flows already use
+// (same URL, same Bearer secret). POSTs `{ pages_status: true, repo, filePath }`
+// so the Worker reports the newest "pages build and deployment" run. The parsed
+// response — `{ status, conclusion, ... }` — is spread onto an `{ ok: true }`
+// envelope, mirroring fetchActiveRuns: `status !== 'completed'` means a publish
+// is in flight, and on a completed run `conclusion` is `success` / `failure`.
+// Returns `{ ok: false, reason }` via describeError on any failure; callers
+// treat `ok:false` as "leave the current state" and never raise an error toast,
+// since this is a background health probe rather than a user-initiated action.
+export async function fetchPagesStatus(target) {
+    const t = target || null;
+    try {
+        const res = await postToWorker({
+            pages_status: true,
+            repo: t ? t.repo : undefined,
+            filePath: t ? t.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
+// Kick off a fresh GitHub Pages publish for the target repo through the same
+// Worker every other call here uses (same URL + Bearer secret). POSTs
+// `{ pages_rebuild: true, repo, filePath }` so the Worker re-triggers the
+// "pages build and deployment" that occasionally fails and leaves the live site
+// stale. The parsed response is spread onto an `{ ok: true }` envelope, mirroring
+// fetchActiveRuns; callers flip the Redeploy pill to its optimistic "Deploying"
+// state on `ok:true` and then poll fetchPagesStatus to settle it. Returns
+// `{ ok: false, reason }` via describeError on any failure, matching the
+// vocabulary the other Worker calls already use.
+export async function requestPagesRebuild(target) {
+    const t = target || null;
+    try {
+        const res = await postToWorker({
+            pages_rebuild: true,
+            repo: t ? t.repo : undefined,
+            filePath: t ? t.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Fetch the closing summary a completed run left behind — the agent's verdict on
 // why it merged nothing — through the same Worker the dispatch and status flows
 // use (same URL + Bearer secret). POSTs `{ run_result: true, run_id, repo,
