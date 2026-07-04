@@ -1275,8 +1275,12 @@ function buildTodoMdViewerCard(projectName, target) {
     // publishes usually land in ~2 minutes; give up after 5.
     const PAGES_POLL_INTERVAL_MS = 5000;
     const PAGES_GIVE_UP_MS = 5 * 60 * 1000;
+    // Monochrome line-rocket that inherits `currentColor`, so it recolors with
+    // the pill state (muted grey when idle, danger red on failure) and matches
+    // the grey stroke icons beside it. One rocket definition, shown on desktop
+    // beside the "Redeploy" label and on the collapsed mobile card icon-only.
     const deployPillGlyph =
-        '<svg viewBox="0 0 14 14" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 7a5 5 0 0 1 8.5-3.5L12 5"/><polyline points="12 1.5 12 5 8.5 5"/><path d="M12 7a5 5 0 0 1-8.5 3.5L2 9"/><polyline points="2 12.5 2 9 5.5 9"/></svg>';
+        '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.3c2.1 2.1 2.6 4.7 2 7.7H5c-.6-3-.1-5.6 2-7.7z"/><circle cx="7" cy="5" r="1"/><path d="M5 8.3 3.2 11.5 5.2 10.2"/><path d="M9 8.3 10.8 11.5 8.8 10.2"/><path d="M6 10.5 7 12.7 8 10.5"/></svg>';
     // True while a locally-initiated redeploy is being polled — the passive
     // refresh stands down so it can't stomp the optimistic "Deploying" state.
     let pagesRebuilding = false;
@@ -1297,22 +1301,6 @@ function buildTodoMdViewerCard(projectName, target) {
             icon.innerHTML = deployPillGlyph;
         }
         deployPill.appendChild(icon);
-        // Mobile-only rocket glyph. On the collapsed inline launcher the pill
-        // reads as an icon-only square (the desktop refresh glyph + "Redeploy"
-        // label are hidden by the responsive breakpoint), so stand in a single
-        // rocket. Omitted while deploying — the amber spinner is the icon there.
-        if (state !== 'deploying') {
-            const mobileGlyph = document.createElement('span');
-            mobileGlyph.className = 'todoMdViewerDeployPillMobileGlyph';
-            mobileGlyph.setAttribute('aria-hidden', 'true');
-            // Monochrome line-rocket that inherits `currentColor`, so it recolors
-            // with the pill state (muted grey when idle, danger red on failure)
-            // and matches the grey stroke icons beside it — unlike the old full-
-            // color '🚀' emoji. Mirrors deployPillGlyph's stroke attributes.
-            mobileGlyph.innerHTML =
-                '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.3c2.1 2.1 2.6 4.7 2 7.7H5c-.6-3-.1-5.6 2-7.7z"/><circle cx="7" cy="5" r="1"/><path d="M5 8.3 3.2 11.5 5.2 10.2"/><path d="M9 8.3 10.8 11.5 8.8 10.2"/><path d="M6 10.5 7 12.7 8 10.5"/></svg>';
-            deployPill.appendChild(mobileGlyph);
-        }
         const label = document.createElement('span');
         label.className = 'todoMdViewerDeployPillLabel';
         label.textContent = state === 'deploying' ? 'Deploying' : 'Redeploy';

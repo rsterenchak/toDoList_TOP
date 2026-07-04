@@ -13,13 +13,7 @@ export const changelog = [
             "The backlog run pill's in-progress states now use the same amber styling as the Redeploy pill beside them in the viewer header.",
             "On mobile, the Run backlog and Redeploy buttons in the TODO viewer header now appear as compact icon-only glyphs.",
             "The mobile Redeploy button now shows a monochrome rocket icon that matches the other header icons and recolors with the button's state.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-03',
-        fixed: [
-            "The Settings button in the mobile drawer no longer overlaps the drawer item above it.",
+            "The desktop Redeploy button now shows the same monochrome rocket icon as the mobile button, so both breakpoints share one glyph.",
         ],
     },
 ];
