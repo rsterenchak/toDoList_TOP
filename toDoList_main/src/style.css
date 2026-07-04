@@ -7645,8 +7645,9 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoMdViewerDeployPillMobileGlyph {
   display: none;
   flex: none;
-  font-size: 15px;
-  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 .todoMdViewerDeployPill:focus-visible {
   outline: 2px solid var(--accent);
@@ -9169,7 +9170,7 @@ body.row-dragging * { cursor: grabbing !important; }
     display: none;
   }
   #mainList > #todoMdViewerCard .todoMdViewerDeployPillMobileGlyph {
-    display: inline-block;
+    display: inline-flex;
   }
   /* Inside the full-screen mobile sheet the card's header carried the inline
      card's `background: var(--bg-elevated)` — a band darker than the card's
