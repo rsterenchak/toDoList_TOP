@@ -1625,9 +1625,9 @@
   - Completed: 2026-07-04
   <!-- id: c10a2721-fc20-41b2-95e3-8a75dc8aeac5 -->
 
-- [ ] **[MEDIUM]** Stop the mobile Redeploy button's tap from also opening the viewer sheet
+- [x] **[MEDIUM]** Stop the mobile Redeploy button's tap from also opening the viewer sheet
   - Type: bug
   - Description: On the collapsed mobile launcher, tapping the Redeploy button both runs the redeploy AND opens the full-screen viewer sheet. The sheet-open tap handler in `main.js` already ignores clicks whose target is inside a `button, [role="tab"], a, input, label` (that's how Run backlog and Sync avoid opening the sheet). The Redeploy control IS a `<button>`, but its click handler `requestPagesRedeploy` synchronously calls `renderDeployPill('deploying')`, which does `deployPill.innerHTML = ''` and rebuilds the content — so when the tap lands on the inner glyph/spinner span, that span is detached from the button before the event bubbles to the sheet handler, and `event.target.closest('button')` then returns null (the detached node no longer has the button as an ancestor). The exclusion misses and the sheet opens. Fix by stopping propagation at the source: change `deployPill.addEventListener('click', requestPagesRedeploy)` (in `todoMdViewer.js`) to `deployPill.addEventListener('click', function(event) { event.stopPropagation(); requestPagesRedeploy(); })`, matching the `event.stopPropagation()` guard the per-entry run buttons (`todoMdViewerRunEntryBtn`) already use. This guarantees the tap never reaches the card's `openViewerMobileSheet` handler regardless of the re-render, so Redeploy only redeploys. Note: Run backlog and Sync attach bare click handlers too and also re-render on tap, so if either later shows the same behavior the identical one-line wrapper fixes it — but per the current report only Redeploy needs it.
   - File: `toDoList_main/src/todoMdViewer.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-04
   <!-- id: 4a17b7e1-71e2-4eb5-8a74-e7c147957fbe -->
