@@ -1521,7 +1521,7 @@
   - File: `toDoList_main/src/style.css`
   <!-- id: 59ea455a-14af-442c-a93f-2f84e093f08b -->
 
-- [ ] **[LOW]** Fix #drawerSettingsBtn overlapping the drawer item above it after the -20px nudge
+- [x] **[LOW]** Fix #drawerSettingsBtn overlapping the drawer item above it after the -20px nudge — Completed: 2026-07-03
   - Type: bug
   - Description: The `top: -20px` offset added to `#drawerSettingsBtn` (PR #638) moved the button 4px above its own parent `#drawerSettingsBtnWrap`'s top edge (live measurement: button top 772 vs wrap top 776), causing it to visually overlap the drawer element sitting above the wrap. Fix by reducing the offset (e.g. to -16px, which keeps it flush with the wrap's top edge) or by adding ~4px of top margin/padding to `#drawerSettingsBtnWrap` or its preceding sibling to reserve the space the nudge consumes. Do not use z-index — this is a layout-space overlap, not a stacking-order issue, and z-index would leave the collision unresolved.
   - File: `toDoList_main/src/style.css`, `toDoList_main/tests/drawerSettingsBtnNudge.test.js`
