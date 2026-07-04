@@ -1528,9 +1528,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d986bc50-9d13-4e18-ae37-a6e2572d9af5 -->
 
-- [ ] **[MEDIUM]** Add a health-aware "Redeploy" pill to the Runs-tab header
+- [x] **[MEDIUM]** Add a health-aware "Redeploy" pill to the Runs-tab header
   - Type: feature
   - Description: GitHub Pages' managed "pages build and deployment" publish occasionally fails, leaving the live site stale with no in-app way to recover. Add a "Redeploy" pill to the Runs viewer header bar (built in `todoMdViewer.js`, alongside the existing Sync chip `todoMdViewerSyncBtn` and Run-backlog button `todoMdViewerRunBtn`), reusing the visual language of `todoMdViewerRunPill` but as its own element (e.g. `todoMdViewerDeployPill`). On Runs-tab render and after each `runSync()`, call a new `fetchPagesStatus(target)` in `inject.js` — mirror `fetchActiveRuns`, POSTing `{ pages_status: true, repo, filePath }` — and style the pill quiet/neutral when the latest deploy `conclusion === 'success'`, red (danger token) when `conclusion === 'failure'`, and a spinner "Deploying" state when `status !== 'completed'` (an in-flight publish). Tapping the pill calls a new `requestPagesRebuild(target)` in `inject.js` (POST `{ pages_rebuild: true, repo, filePath }`), flips the pill to its optimistic "Deploying" state, then polls `fetchPagesStatus` until `status === 'completed'` and settles back to neutral or red. The label always reads "Redeploy" except while deploying; the pill is quiet when healthy and only loud (red) on failure. The Worker already exposes `pages_status` and `pages_rebuild` (deployed separately) — this entry only wires the client. Preserve the existing Runs-header controls unchanged: the Run-backlog button and its `--idle` toggle, the run-status pill and its `--<state>` lifecycle, and the Sync chip and its `runSync()` handler must all keep working. Add the new pill's state classes to `style.css` using existing Void token variables (danger red for failed, accent/neutral for idle, amber for the deploying spinner), not hardcoded hex.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-04
   <!-- id: 44712107-fe65-4990-ae21-f9bf16c176dd -->
