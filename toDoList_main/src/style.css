@@ -1,3 +1,4 @@
+/* Global stylesheet: fonts, theme variables, and all app styling. */
 @font-face {
   font-family: 'MyFont';
   src: url('./Zector.otf');
