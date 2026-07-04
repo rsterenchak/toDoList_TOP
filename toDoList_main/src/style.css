@@ -7536,12 +7536,14 @@ body.row-dragging * { cursor: grabbing !important; }
   appearance: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  height: 36px;
   background: #161622;
   color: #8a8699;
   border: 1px solid #2a2a38;
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  border-radius: 10px;
+  padding: 0 12px;
   font: inherit;
   font-size: 11px;
   letter-spacing: 0.04em;
