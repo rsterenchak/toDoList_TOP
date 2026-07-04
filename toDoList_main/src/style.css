@@ -8930,9 +8930,13 @@ body.row-dragging * { cursor: grabbing !important; }
 
   /* The Settings button needs a relative positioning context so the
      absolute-positioned service-worker update dot can anchor to its
-     top-right corner without disturbing the centered label layout. */
+     top-right corner without disturbing the centered label layout. The
+     -20px top offset nudges the button upward within the drawer without
+     reflowing its centered box, so sibling spacing (the footer below)
+     stays put. */
   #drawerSettingsBtn {
     position: relative;
+    top: -20px;
   }
   .drawerSettingsBtnLabel {
     display: inline-block;
