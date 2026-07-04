@@ -1582,3 +1582,10 @@
   - File: `toDoList_main/src/index.js`
   - Completed: 2026-07-04
   <!-- id: e64397da-0991-45a5-9e95-bcc595ff0b31 -->
+
+- [ ] **[LOW]** Add a harmless comment to main.js to trigger a redeploy
+  - Type: feature
+  - Description: Add a single-line comment near the top of the file (e.g. a brief note on the file's role or a marker comment) to produce a trivial, no-behavior-change diff. Purpose is solely to exercise the merge → deploy.yml → GitHub Pages pipeline end-to-end again. No functional code should change.
+  - File: `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ccda7890-1666-4ab7-8b77-81b5054d7323 -->
