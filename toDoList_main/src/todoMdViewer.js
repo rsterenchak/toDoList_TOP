@@ -1065,6 +1065,11 @@ function buildTodoMdViewerCard(projectName, target) {
             link.innerHTML = runPillLinkGlyph;
             runPill.appendChild(link);
         }
+        // Every run-pill state render (start / queued / running and the terminal
+        // settles) passes through here, so this is the single chokepoint that
+        // disables the deploy pill on run start and re-enables it the instant the
+        // run goes terminal.
+        syncDeployPillEnabled();
     }
 
     function restoreRunButton() {
@@ -1074,8 +1079,10 @@ function buildTodoMdViewerCard(projectName, target) {
             runPill.parentNode.replaceChild(runBacklogBtn, runPill);
         }
         runPill = null;
-        // A run is no longer tracked — re-enable the per-entry controls.
+        // A run is no longer tracked — re-enable the per-entry controls and the
+        // deploy pill (in case it was blocked by an active run).
         syncRunEntryButtonsDisabled();
+        syncDeployPillEnabled();
     }
 
     // While a run is being tracked (the pill is mounted), every per-entry
@@ -1305,8 +1312,36 @@ function buildTodoMdViewerCard(projectName, target) {
         label.className = 'todoMdViewerDeployPillLabel';
         label.textContent = state === 'deploying' ? 'Deploying' : 'Redeploy';
         deployPill.appendChild(label);
-        deployPill.disabled = state === 'deploying';
-        if (state === 'deploying') {
+        syncDeployPillEnabled(state);
+    }
+
+    // Reflect the deploy pill's disabled state, its run-blocked styling, and its
+    // title/aria. The pill is disabled while a publish is in flight
+    // (state === 'deploying') AND while a backlog run is active — a run that
+    // merges kicks off its own Pages deploy, so a manual redeploy mid-run is
+    // redundant. The run block uses `!!runPill && !isTerminalRunPill()`, so it
+    // lifts the instant the run goes terminal (success/failure/timeout) rather
+    // than when its pill is dismissed. Called with an explicit deploy state from
+    // renderDeployPill, or with no argument from the run-pill lifecycle
+    // (renderRunPill / restoreRunButton), in which case the current deploy state
+    // is read back off the pill's class so the right per-state title is
+    // restored. Guarded against a run being restored on mount before the pill is
+    // built.
+    function syncDeployPillEnabled(state) {
+        if (!deployPill) return;
+        if (!state) {
+            if (deployPill.classList.contains('todoMdViewerDeployPill--deploying')) state = 'deploying';
+            else if (deployPill.classList.contains('todoMdViewerDeployPill--failure')) state = 'failure';
+            else state = 'idle';
+        }
+        const runActive = !!runPill && !isTerminalRunPill();
+        const runBlocked = runActive && state !== 'deploying';
+        deployPill.disabled = (state === 'deploying') || runActive;
+        deployPill.classList.toggle('todoMdViewerDeployPill--runblocked', runBlocked);
+        if (runBlocked) {
+            deployPill.setAttribute('aria-label', 'Redeploy is unavailable while a backlog run is running');
+            deployPill.title = 'Redeploy is unavailable while a backlog run is running';
+        } else if (state === 'deploying') {
             deployPill.setAttribute('aria-label', 'Deploying the site');
             deployPill.title = 'A site publish is in progress';
         } else if (state === 'failure') {

@@ -142,6 +142,31 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
         expect(main).toMatch(/syncBtn\.addEventListener\(\s*['"]click['"]\s*,\s*runSync\s*\)/);
         expect(main).toMatch(/todoMdViewerRunPill--['"]\s*\+\s*opts\.state/);
     });
+
+    it('disables the deploy pill while a backlog run is active, re-enabling when terminal', () => {
+        const start = main.indexOf('function syncDeployPillEnabled');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 900);
+        // "A run is active" = a pill is up and not yet terminal.
+        expect(block).toMatch(/runActive\s*=\s*!!runPill\s*&&\s*!isTerminalRunPill\(\)/);
+        // Disabled while deploying OR while a run is active.
+        expect(block).toMatch(/deployPill\.disabled\s*=\s*\(state\s*===\s*['"]deploying['"]\)\s*\|\|\s*runActive/);
+        // Run-block styling + messaging when blocked by a run (and not deploying).
+        expect(block).toMatch(/todoMdViewerDeployPill--runblocked/);
+        expect(block).toMatch(/Redeploy is unavailable while a backlog run is running/);
+    });
+
+    it('re-syncs the deploy pill from the run-pill lifecycle chokepoints', () => {
+        // renderRunPill (every run-state render) and restoreRunButton (teardown)
+        // both call the helper with no argument so the button disables on start
+        // and re-enables the instant the run goes terminal / is torn down.
+        const renderStart = main.indexOf('function renderRunPill');
+        const renderBlock = main.slice(renderStart, main.indexOf('function restoreRunButton'));
+        expect(renderBlock).toMatch(/syncDeployPillEnabled\s*\(\s*\)/);
+        const restoreStart = main.indexOf('function restoreRunButton');
+        const restoreBlock = main.slice(restoreStart, restoreStart + 600);
+        expect(restoreBlock).toMatch(/syncDeployPillEnabled\s*\(\s*\)/);
+    });
 });
 
 describe('redeploy pill — style.css state tokens', () => {
@@ -161,6 +186,15 @@ describe('redeploy pill — style.css state tokens', () => {
         expect(css).toMatch(/\.todoMdViewerDeployPill--deploying\s*\{[\s\S]*?color:\s*var\(--text-warning\)/);
         expect(css).toMatch(/\.todoMdViewerDeployPillSpinner\s*\{[\s\S]*?border:\s*2px solid var\(--text-warning\)/);
         expect(css).toMatch(/\.todoMdViewerDeployPillSpinner\s*\{[\s\S]*?animation:\s*todoMdViewerRunSpin/);
+    });
+
+    it('dims the run-blocked pill with a not-allowed cursor that beats the deploying progress cursor', () => {
+        expect(css).toMatch(/\.todoMdViewerDeployPill--runblocked\s*\{[\s\S]*?opacity:\s*0\.45/);
+        expect(css).toMatch(/\.todoMdViewerDeployPill--runblocked\s*\{[\s\S]*?cursor:\s*not-allowed/);
+        // The generic [disabled] progress-cursor rule is gone; the deploying
+        // class owns the progress cursor, so it can't override run-blocked.
+        expect(css).not.toMatch(/\.todoMdViewerDeployPill\[disabled\]/);
+        expect(css).toMatch(/\.todoMdViewerDeployPill--deploying\s*\{[\s\S]*?cursor:\s*progress/);
     });
 
     it('never hardcodes hex colors in the deploy pill rules', () => {

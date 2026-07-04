@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-04',
-        added: [
-            "A Redeploy control in the TODO viewer header shows when the site's last publish failed and lets you re-trigger it in one tap.",
-        ],
         changed: [
             "The backlog run pill's in-progress states now use the same amber styling as the Redeploy pill beside them in the viewer header.",
             "On mobile, the Run backlog and Redeploy buttons in the TODO viewer header now appear as compact icon-only glyphs.",
             "The mobile Redeploy button now shows a monochrome rocket icon that matches the other header icons and recolors with the button's state.",
             "The desktop Redeploy button now shows the same monochrome rocket icon as the mobile button, so both breakpoints share one glyph.",
+            "The Redeploy button is now disabled while a backlog run is in progress, since a merging run publishes its own site update.",
         ],
     },
 ];

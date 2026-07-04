@@ -7663,8 +7663,13 @@ body.row-dragging * { cursor: grabbing !important; }
   border-color: var(--text-warning);
   cursor: progress;
 }
-.todoMdViewerDeployPill[disabled] {
-  cursor: progress;
+/* Disabled while a backlog run is active — a merging run publishes its own
+   Pages deploy, so a manual redeploy mid-run is redundant. Dimmed + not-allowed
+   to read as unavailable rather than in-progress (the --deploying class owns the
+   progress cursor for the in-flight publish). */
+.todoMdViewerDeployPill--runblocked {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .todoMdViewerDeployPillSpinner {
   flex: none;
