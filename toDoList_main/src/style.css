@@ -9166,6 +9166,35 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainList > #todoMdViewerCard .todoMdViewerDeployPillLabel {
     display: none;
   }
+  /* Unify the in-flight states as icon-only spinner squares so the tight
+     single row never widens. Redeploy is already a 36px square; square the run
+     pill's and Sync's loading states to match, keeping each button's existing
+     spinner colour (run pill amber, Sync purple). Only the in-flight run-pill
+     states are squared — the terminal states (--success/--failure/--timeout)
+     keep their label and any tap-to-open-Actions link, which don't belong
+     crammed into a square. */
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--starting,
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--queued,
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--running {
+    width: 36px;
+    padding: 0;
+    gap: 0;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--starting .todoMdViewerRunPillLabel,
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--queued .todoMdViewerRunPillLabel,
+  #mainList > #todoMdViewerCard .todoMdViewerRunPill--running .todoMdViewerRunPillLabel {
+    display: none;
+  }
+  /* Sync's loading state sets `width: auto` to fit its "Syncing" label; override
+     it back to a 36px square and hide the label so only the purple spinner shows. */
+  #mainList > #todoMdViewerCard .todoMdViewerSyncBtn--loading {
+    width: 36px;
+    padding: 0;
+    gap: 0;
+  }
+  #mainList > #todoMdViewerCard .todoMdViewerSyncLabel {
+    display: none;
+  }
   /* Inside the full-screen mobile sheet the card's header carried the inline
      card's `background: var(--bg-elevated)` — a band darker than the card's
      `--bg-surface` interior. Stacked directly under the sheet's own header it
