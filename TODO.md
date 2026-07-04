@@ -1514,3 +1514,9 @@
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`, `toDoList_main/tests/structureView.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b154e69c-95d9-47eb-af45-a8ec6ea071de -->
+
+- [ ] **[LOW]** Nudge #drawerSettingsBtn upward by 20px
+  - Type: bug
+  - Description: The drawer settings button (`#drawerSettingsBtn`) sits too low relative to its intended position in the drawer layout. Adjust its vertical offset (margin-top, top, or transform) by -20px so it sits higher without affecting sibling elements' spacing. Likely controlled by a positioning rule in style.css tied to `#drawerSettingsBtn` or its parent container.
+  - File: `toDoList_main/src/style.css`
+  <!-- id: 59ea455a-14af-442c-a93f-2f84e093f08b -->
