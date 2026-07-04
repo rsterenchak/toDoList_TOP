@@ -165,6 +165,32 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
         expect(block).toMatch(/stopViewerPagesPoll\s*\(\s*\)/);
     });
 
+    it('runs an ambient 30s pages-health poll for the card lifetime so a failed deploy surfaces without a manual Sync', () => {
+        // A dedicated module-scoped interval + a slow 30s cadence, distinct from
+        // the 5s redeploy poll.
+        expect(main).toMatch(/let\s+viewerPagesHealthInterval\s*=\s*null/);
+        expect(main).toMatch(/PAGES_HEALTH_INTERVAL_MS\s*=\s*30000/);
+        // startPagesHealthPoll drives the interval off refreshPagesStatus.
+        const start = main.indexOf('function startPagesHealthPoll');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 300);
+        expect(block).toMatch(/viewerPagesHealthInterval\s*=\s*setInterval\(\s*refreshPagesStatus\s*,\s*PAGES_HEALTH_INTERVAL_MS\s*\)/);
+        // It is started at mount, right after the initial runSync().
+        expect(main).toMatch(/runSync\s*\(\s*\)\s*;[\s\S]{0,400}startPagesHealthPoll\s*\(\s*\)/);
+    });
+
+    it('tears the pages-health poll down with the card so it cannot leak', () => {
+        expect(main).toMatch(/function\s+stopPagesHealthPoll\s*\(/);
+        const stop = main.indexOf('function stopPagesHealthPoll');
+        const stopBlock = main.slice(stop, stop + 200);
+        expect(stopBlock).toMatch(/clearInterval\s*\(\s*viewerPagesHealthInterval\s*\)/);
+        expect(stopBlock).toMatch(/viewerPagesHealthInterval\s*=\s*null/);
+        // detachViewerResizeHandler tears the card down; it must stop this poll too.
+        const start = main.indexOf('function detachViewerResizeHandler');
+        const block = main.slice(start, start + 500);
+        expect(block).toMatch(/stopPagesHealthPoll\s*\(\s*\)/);
+    });
+
     it('preserves the existing header controls unchanged', () => {
         // The Run-backlog button + its --idle toggle, the run-status pill + its
         // lifecycle, and the Sync chip + runSync handler must all keep working.

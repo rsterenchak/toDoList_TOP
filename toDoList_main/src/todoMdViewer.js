@@ -96,6 +96,11 @@ let viewerServerRunPollInterval = null;
 // flight, so the header's Redeploy pill settles back to neutral (or red) once
 // the GitHub Pages publish completes. Cleared with the card on teardown.
 let viewerPagesPollInterval = null;
+// Low-frequency background poll that passively re-reads the latest Pages publish
+// health for the card's whole lifetime, so a deploy that fails while the viewer
+// is already open turns the Redeploy pill red within ~30s without a manual Sync.
+// Cleared with the card on teardown.
+let viewerPagesHealthInterval = null;
 // The run id of the most recently observed Pages deploy, refreshed from every
 // pages_status probe that carries one. A manual redeploy captures this as its
 // baseline so the poll can tell the pre-redeploy run (already completed) apart
@@ -146,6 +151,7 @@ function detachViewerResizeHandler() {
     stopViewerRunPoll();
     stopViewerServerRunPoll();
     stopViewerPagesPoll();
+    stopPagesHealthPoll();
     // Drop the per-project active-run subscription with the card it belonged to
     // so a torn-down card can't keep reacting to run changes.
     if (viewerActiveRunChangeHandler) {
@@ -172,6 +178,13 @@ function stopViewerPagesPoll() {
     if (viewerPagesPollInterval) {
         clearInterval(viewerPagesPollInterval);
         viewerPagesPollInterval = null;
+    }
+}
+
+function stopPagesHealthPoll() {
+    if (viewerPagesHealthInterval) {
+        clearInterval(viewerPagesHealthInterval);
+        viewerPagesHealthInterval = null;
     }
 }
 
@@ -1287,6 +1300,12 @@ function buildTodoMdViewerCard(projectName, target) {
     // publishes usually land in ~2 minutes; give up after 5.
     const PAGES_POLL_INTERVAL_MS = 5000;
     const PAGES_GIVE_UP_MS = 5 * 60 * 1000;
+    // Slow passive health cadence: re-read the latest publish status every 30s
+    // for the card's lifetime so a deploy that fails while the viewer is open
+    // surfaces on the pill on its own. Much slower than the 5s redeploy poll,
+    // and refreshPagesStatus stands down while a local redeploy is mid-poll, so
+    // the two never fight.
+    const PAGES_HEALTH_INTERVAL_MS = 30000;
     // Monochrome line-rocket that inherits `currentColor`, so it recolors with
     // the pill state (muted grey when idle, danger red on failure) and matches
     // the grey stroke icons beside it. One rocket definition, shown on desktop
@@ -1424,6 +1443,17 @@ function buildTodoMdViewerCard(projectName, target) {
             }
             // Otherwise a publish is still in flight — hold the Deploying state.
         }, PAGES_POLL_INTERVAL_MS);
+    }
+
+    // Start the ambient health poll for the card's lifetime. Mirrors
+    // startServerRunPoll: it re-reads the latest publish status on a slow
+    // cadence and repaints the pill, so a deploy that fails (or starts) while
+    // the viewer is already open surfaces within one interval. refreshPagesStatus
+    // early-returns while a local redeploy owns the poll, so this never stomps
+    // the optimistic Deploying state.
+    function startPagesHealthPoll() {
+        stopPagesHealthPoll();
+        viewerPagesHealthInterval = setInterval(refreshPagesStatus, PAGES_HEALTH_INTERVAL_MS);
     }
 
     // Tap handler: re-trigger the Pages publish, flip to the optimistic
@@ -1674,6 +1704,12 @@ function buildTodoMdViewerCard(projectName, target) {
     // timestamp in the header and a "Loading…" body, then the body fills
     // in (or flips to an inline error) when the Worker responds.
     runSync();
+
+    // Begin the ambient Pages health poll for this card's lifetime, so a deploy
+    // that fails while the viewer stays open turns the Redeploy pill red on its
+    // own (~30s) without waiting for a manual Sync. The mount runSync() already
+    // did the first health read; this keeps it fresh from here on.
+    startPagesHealthPoll();
 
     return card;
 }
