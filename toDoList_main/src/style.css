@@ -7555,8 +7555,8 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  border: 2px solid #534AB7;
-  border-top-color: #cdc9ee;
+  border: 2px solid var(--text-warning);
+  border-top-color: transparent;
   animation: todoMdViewerRunSpin 0.7s linear infinite;
 }
 .todoMdViewerRunPillGlyph {
@@ -7577,6 +7577,15 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 .todoMdViewerRunPillLink:hover {
   opacity: 1;
+}
+/* In-flight states — amber transparent chip + spinner mirroring the Deploy
+   pill's "Deploying" treatment sitting beside it in the same header bar. */
+.todoMdViewerRunPill--starting,
+.todoMdViewerRunPill--queued,
+.todoMdViewerRunPill--running {
+  background: transparent;
+  color: var(--text-warning);
+  border-color: var(--text-warning);
 }
 .todoMdViewerRunPill--success {
   background: #0f2a20;

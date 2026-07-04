@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "A Redeploy control in the TODO viewer header shows when the site's last publish failed and lets you re-trigger it in one tap.",
         ],
+        changed: [
+            "The backlog run pill's in-progress states now use the same amber styling as the Redeploy pill beside them in the viewer header.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-03',
         fixed: [
-            "The Structure tab's \"Capture layout from deployed site\" button now sits above the canvas on your own project too, matching where it appears on linked projects.",
             "On mobile, drilling into the Outer Container in the Structure canvas now shows the sections nested inside its collapsing layout wrapper, instead of an empty canvas.",
             "The Settings button in the mobile drawer now sits slightly higher within the drawer.",
             "The Settings button in the mobile drawer no longer overlaps the drawer item above it.",

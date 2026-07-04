@@ -632,13 +632,24 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
         expect(main).not.toMatch(/innerHTML\s*=\s*[^;]*correlationId/);
     });
 
-    it('styles the in-flight pill quiet (muted) and only colors the terminal states', () => {
+    it('styles the in-flight pill amber (matching the Redeploy pill) and colors the terminal states', () => {
         const baseMatch = css.match(/\.todoMdViewerRunPill\s*\{[^}]*\}/);
         expect(baseMatch).not.toBeNull();
         const base = baseMatch[0];
         expect(base).toMatch(/background:\s*#161622/);
         expect(base).toMatch(/border:[^;]*#2a2a38/);
         expect(base).toMatch(/color:\s*#8a8699/);
+
+        // In-flight states (starting/queued/running) now mirror the Deploy
+        // pill's amber "Deploying" treatment: transparent fill, amber text and
+        // border via --text-warning.
+        const inFlight = css.match(
+            /\.todoMdViewerRunPill--starting,\s*\.todoMdViewerRunPill--queued,\s*\.todoMdViewerRunPill--running\s*\{[^}]*\}/
+        );
+        expect(inFlight).not.toBeNull();
+        expect(inFlight[0]).toMatch(/background:\s*transparent/);
+        expect(inFlight[0]).toMatch(/color:\s*var\(--text-warning\)/);
+        expect(inFlight[0]).toMatch(/border-color:\s*var\(--text-warning\)/);
 
         const success = css.match(/\.todoMdViewerRunPill--success\s*\{[^}]*\}/);
         expect(success).not.toBeNull();
@@ -657,10 +668,12 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
         expect(timeout[0]).toMatch(/#444441/);
         expect(timeout[0]).toMatch(/#888780/);
 
+        // The spinner only renders in the in-flight states, so it too is amber,
+        // mirroring .todoMdViewerDeployPillSpinner.
         const spinner = css.match(/\.todoMdViewerRunPillSpinner\s*\{[^}]*\}/);
         expect(spinner).not.toBeNull();
-        expect(spinner[0]).toMatch(/#534AB7/);
-        expect(spinner[0]).toMatch(/#cdc9ee/);
+        expect(spinner[0]).toMatch(/border:\s*2px solid var\(--text-warning\)/);
+        expect(spinner[0]).toMatch(/border-top-color:\s*transparent/);
     });
 });
 
