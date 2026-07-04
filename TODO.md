@@ -1534,3 +1534,10 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-04
   <!-- id: 44712107-fe65-4990-ae21-f9bf16c176dd -->
+
+- [ ] **[LOW]** Restyle the backlog run pill's in-flight states to match the Redeploy pill's amber look
+  - Type: feature
+  - Description: The run pill's in-flight states (`starting`, `queued`, `running`) currently fall through to the base grey chip (`#161622` fill, `#8a8699` text, `#2a2a38` border) with a hardcoded purple spinner (`#534AB7`), which looks inconsistent next to the amber `todoMdViewerDeployPill--deploying` sitting right beside it in the same header bar. Restyle the three in-flight states to match the Deploy pill's "Deploying" treatment: transparent fill, amber text and border, and an amber spinner, all via `var(--text-warning)`. Add a grouped rule `.todoMdViewerRunPill--starting, .todoMdViewerRunPill--queued, .todoMdViewerRunPill--running { background: transparent; color: var(--text-warning); border-color: var(--text-warning); }`, and recolor `.todoMdViewerRunPillSpinner` to `border: 2px solid var(--text-warning); border-top-color: transparent;` to mirror `.todoMdViewerDeployPillSpinner` (the spinner only renders in these in-flight states, so recoloring it globally is safe). Leave the terminal states (`--success` green, `--failure` red, `--timeout` grey) and the run pill's existing geometry (radius, padding, size) unchanged — this is a color-only change, not a resize.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 31af5e2d-afbf-422d-aa7c-5787da45ab99 -->
