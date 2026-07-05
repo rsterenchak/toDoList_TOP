@@ -329,16 +329,22 @@ describe('AGENT view — Dispatch action', () => {
         const btn = document.querySelector('.agentDispatchButton');
         vi.useFakeTimers();
         btn.click();
-        // Drive the full ~6-attempt / 800ms backoff to exhaustion.
-        await vi.advanceTimersByTimeAsync(6 * 800 + 100);
+        // Drive the full ~15-attempt / 1000ms backoff to exhaustion.
+        await vi.advanceTimersByTimeAsync(15 * 1000 + 100);
         vi.useRealTimers();
         await flush();
 
         // Inject happened, but the race guard blocked the dispatch entirely.
         expect(injectCalls.length).toBe(1);
         expect(dispatchCalls.length).toBe(0);
-        // No state was persisted — the row remains drafted for a retry.
+        // The row stays drafted (never dispatched) for a retry…
         expect(updateCalls.some((c) => c.patch.state === 'dispatched')).toBe(false);
+        // …but the minted entry_id is persisted so a retry reuses it and inject
+        // dedup-skips instead of appending a duplicate entry.
+        const persisted = updateCalls.find((c) => c.patch.entry_id === 'mint-0');
+        expect(persisted).toBeTruthy();
+        expect(persisted.id).toBe('d1');
+        expect(persisted.patch.state).toBeUndefined();
         // The read was retried across the attempt budget, not fatal on first miss.
         expect(readTodoCalls.length).toBeGreaterThan(1);
         // Button re-enabled with a non-blocking, retry-oriented error.
@@ -364,7 +370,7 @@ describe('AGENT view — Dispatch action', () => {
         const btn = document.querySelector('.agentDispatchButton');
         vi.useFakeTimers();
         btn.click();
-        await vi.advanceTimersByTimeAsync(2 * 800 + 100);
+        await vi.advanceTimersByTimeAsync(2 * 1000 + 100);
         vi.useRealTimers();
         await flush();
 
@@ -374,6 +380,31 @@ describe('AGENT view — Dispatch action', () => {
         expect(dispatchCalls[0]).toMatchObject({ mode: 'entry', entryId: 'mint-0' });
         const dispatched = updateCalls.find((c) => c.patch.state === 'dispatched');
         expect(dispatched).toBeTruthy();
+    });
+
+    // Regression: re-dispatching a row that already carries an entry_id (e.g.
+    // after a prior confirm-on-main timeout persisted the id) must REUSE that id
+    // rather than minting a fresh one — otherwise inject appends a second copy of
+    // the entry instead of dedup-skipping the already-present marker.
+    it('reuses the row stored entry_id on Dispatch instead of minting a duplicate', async () => {
+        queueRows = [{
+            id: 'd1', state: 'drafted', context: { title: 'Ship it' },
+            draft: 'My entry', entry_id: 'prior-id',
+        }];
+        // Marker already visible on main so the run fires on the first read.
+        readTodoResult = { ok: true, content: todoBody('prior-id', false) };
+        await loadBoard();
+
+        document.querySelector('.agentDispatchButton').click();
+        await flush();
+
+        // Inject reused the stored id — no fresh mint for the entry marker.
+        expect(injectCalls.length).toBe(1);
+        expect(injectCalls[0].id).toBe('prior-id');
+        expect(injectCalls[0].entry).toContain('<!-- id: prior-id -->');
+        // The dispatch targets the same reused id.
+        expect(dispatchCalls.length).toBe(1);
+        expect(dispatchCalls[0]).toMatchObject({ mode: 'entry', entryId: 'prior-id' });
     });
 });
 
