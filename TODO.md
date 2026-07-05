@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[HIGH]** Make the Dispatch confirm-on-main poll non-blocking — dispatch after best-effort confirmation instead of aborting
+- [x] **[HIGH]** Make the Dispatch confirm-on-main poll non-blocking — dispatch after best-effort confirmation instead of aborting — Completed: 2026-07-05
   - Type: bug
   - Description: The confirm-on-main poll in `dispatchDraft` aborts with "Entry not yet visible on main" when it can't read the just-injected marker within its window — but GitHub's write→read propagation is variable and the read sometimes lags past the window even though the inject committed, so legitimate dispatches get blocked. Since inject has already committed the entry and the run's own runner-boot latency (tens of seconds) reliably exceeds propagation, the poll should confirm best-effort and then dispatch regardless, never blocking. Change the timeout branch from abort to dispatch-anyway: poll a few seconds for the marker (fast path, dispatch immediately when seen), and if it isn't seen, dispatch anyway with a console warning. A rare genuine race then no-changes and is self-healed by Retry (which reuses the entry id).
   - Behavior:
