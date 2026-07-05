@@ -43,6 +43,11 @@ const BUCKETS = [
 // cards (queued/running work is low-signal until it needs you or ships).
 const THIN_STATES = ['dispatched', 'running'];
 
+// The in-flight workflow states that drive the header's Working/Idle pill and
+// the "N running" count: a row in any of these is actively moving through the
+// pipeline (being triaged, queued for dispatch, or executing a run).
+const IN_FLIGHT_STATES = ['triaging', 'dispatched', 'running'];
+
 // Human-readable chip label per state.
 const STATE_CHIP = {
     needs_words: 'Needs words',
@@ -972,6 +977,26 @@ function buildBoltIcon() {
     return svg;
 }
 
+// Header count segments derived from the loaded queue rows. flagged = every
+// queue row for the project; running = rows in an in-flight workflow state;
+// shippedToday = shipped rows whose `updated_at` falls on today's local date.
+// Recomputed on each paint() so realtime pushes keep the subline live.
+function computeQueueCounts(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    const today = new Date().toDateString();
+    let running = 0;
+    let shippedToday = 0;
+    list.forEach(function (r) {
+        if (!r) return;
+        if (IN_FLIGHT_STATES.indexOf(r.state) !== -1) running += 1;
+        if (r.state === 'shipped' && r.updated_at) {
+            const d = new Date(r.updated_at);
+            if (!isNaN(d.getTime()) && d.toDateString() === today) shippedToday += 1;
+        }
+    });
+    return { flagged: list.length, running: running, shippedToday: shippedToday };
+}
+
 // The active project's todos that are NOT yet present in the loaded
 // agent_queue rows (matched by todo_id). Blank placeholder rows (empty title)
 // are render artifacts, not real tasks, so they're excluded. Returns a fresh
@@ -1135,16 +1160,43 @@ function paint() {
         return;
     }
 
+    const rows = Array.isArray(_rows) ? _rows : [];
+    const counts = computeQueueCounts(rows);
+
     const header = document.createElement('div');
     header.className = 'agentViewHeader';
-    const name = document.createElement('h2');
-    name.className = 'agentProjectName';
-    name.textContent = projectName;
-    header.appendChild(name);
-    const chip = document.createElement('span');
-    chip.className = 'agentViewChip';
-    chip.textContent = 'Agent queue';
-    header.appendChild(chip);
+
+    // Agent identity block: a rounded bolt-icon badge + "Agent" label. Replaces
+    // the old project-name heading and "Agent queue" chip — the project name is
+    // already shown in the top project switcher/tabs.
+    const identity = document.createElement('div');
+    identity.className = 'agentIdentity';
+    const badge = document.createElement('span');
+    badge.className = 'agentIdentityBadge';
+    badge.appendChild(buildBoltIcon());
+    identity.appendChild(badge);
+    const idLabel = document.createElement('span');
+    idLabel.className = 'agentIdentityLabel';
+    idLabel.textContent = 'Agent';
+    identity.appendChild(idLabel);
+    header.appendChild(identity);
+
+    // Right-side group: a lightweight Working/Idle status pill followed by the
+    // Run button. The pill is an indicator, not a control — "Working" (green
+    // dot) whenever any row is in an in-flight workflow state, else muted "Idle".
+    const controls = document.createElement('div');
+    controls.className = 'agentHeaderControls';
+
+    const working = counts.running > 0;
+    const statusPill = document.createElement('span');
+    statusPill.className = 'agentStatusPill' + (working ? ' agentStatusPill--working' : ' agentStatusPill--idle');
+    const statusDot = document.createElement('span');
+    statusDot.className = 'agentStatusDot';
+    statusPill.appendChild(statusDot);
+    const statusLabel = document.createElement('span');
+    statusLabel.textContent = working ? 'Working' : 'Idle';
+    statusPill.appendChild(statusLabel);
+    controls.appendChild(statusPill);
 
     // Run button: dispatches a triage sweep for the active project. Fire-and-
     // forget — it shows a brief "queued" acknowledgment and neither blocks nor
@@ -1168,10 +1220,19 @@ function paint() {
             }, 1500);
         });
     });
-    header.appendChild(runBtn);
+    controls.appendChild(runBtn);
+    header.appendChild(controls);
     view.appendChild(header);
 
-    const rows = Array.isArray(_rows) ? _rows : [];
+    // Counts subline: "N flagged · N running · N shipped today" (mono). All three
+    // segments show even at 0. Recomputed from _rows each paint(), so realtime
+    // pushes keep it live.
+    const countsLine = document.createElement('div');
+    countsLine.className = 'agentCounts';
+    countsLine.textContent =
+        counts.flagged + ' flagged · ' + counts.running + ' running · ' + counts.shippedToday + ' shipped today';
+    view.appendChild(countsLine);
+
     // Keep the dispatch pollers in step with what's on the board: stop pollers
     // for rows that have left the in-flight states and resume one for any
     // dispatched/running row carrying its ids (e.g. after a tab reopen).
