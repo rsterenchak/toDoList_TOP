@@ -313,15 +313,10 @@ function buildSecondary(row) {
         return buildMockupSecondary(row);
     }
     // Stuck bucket: a genuinely failed run, or a completed run that merged
-    // nothing (no_change). Both surface the row's summary via failure_reason.
+    // nothing (no_change). Both surface the row's summary via failure_reason,
+    // plus Shelve + unflag and Retry actions.
     if (state === 'failed' || state === 'no_change') {
-        const reason = (row.failure_reason || '').trim();
-        const p = document.createElement('p');
-        p.className = 'agentSecondary agentFailure';
-        p.textContent = reason || (state === 'no_change'
-            ? 'The run finished without merging any changes.'
-            : 'The run failed. Retry from the queue.');
-        return p;
+        return buildStuckSecondary(row);
     }
     if (state === 'shipped') {
         const label = row.pr_number ? ('PR #' + row.pr_number) : 'View PR';
@@ -415,6 +410,116 @@ function buildDraftedSecondary(row) {
             fail(res && res.error);
         }).catch(function () {
             fail('Could not dispatch. Try again.');
+        });
+    });
+
+    return wrap;
+}
+
+// Secondary content for a Stuck card (`failed` / `no_change`): the run's reason
+// paragraph plus two actions — "Shelve + unflag" (delete the queue row so the
+// task drops back to Not-assigned) and "Retry" (re-dispatch the task's existing
+// entry through the run pipeline, reusing its stored entry_id so the marker is
+// dedup-skipped and no duplicate lands in TODO.md). Both go through listLogic /
+// dispatchDraft; the view never writes to Supabase directly. Each button
+// disables both while its action is in flight and re-enables with a
+// non-blocking error on failure. Retry is disabled when the row has neither an
+// entry_id nor a draft (nothing to re-dispatch).
+function buildStuckSecondary(row) {
+    const state = row.state;
+    const wrap = document.createElement('div');
+    wrap.className = 'agentSecondary agentStuck';
+
+    const reason = (row.failure_reason || '').trim();
+    const p = document.createElement('p');
+    p.className = 'agentFailure';
+    p.textContent = reason || (state === 'no_change'
+        ? 'The run finished without merging any changes.'
+        : 'The run failed. Retry from the queue.');
+    wrap.appendChild(p);
+
+    const actions = document.createElement('div');
+    actions.className = 'agentStuckActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'agentStuckError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const shelve = document.createElement('button');
+    shelve.type = 'button';
+    shelve.className = 'agentStuckShelve';
+    shelve.textContent = 'Shelve + unflag';
+    actions.appendChild(shelve);
+
+    const draftText = (row.draft || '').trim();
+    const canRetry = !!(row.entry_id || draftText);
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'agentStuckRetry';
+    retry.textContent = 'Retry';
+    retry.disabled = !canRetry;
+    actions.appendChild(retry);
+
+    wrap.appendChild(actions);
+
+    // Restore both buttons to their idle state and surface a non-blocking error.
+    function fail(message) {
+        shelve.disabled = false;
+        shelve.classList.remove('is-pending');
+        shelve.textContent = 'Shelve + unflag';
+        retry.disabled = !canRetry;
+        retry.classList.remove('is-pending');
+        retry.textContent = 'Retry';
+        errorEl.textContent = message || 'Something went wrong. Try again.';
+        errorEl.hidden = false;
+    }
+
+    // Disable both controls before either action fires, so a shelve and a retry
+    // can't race each other on the same card.
+    function beginAction() {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        shelve.disabled = true;
+        retry.disabled = true;
+    }
+
+    shelve.addEventListener('click', function () {
+        if (shelve.disabled) return;
+        beginAction();
+        shelve.classList.add('is-pending');
+        shelve.textContent = 'Shelving…';
+        Promise.resolve(listLogic.unflagAgentTask(row.id)).then(function (res) {
+            if (res && res.ok) {
+                // The row is gone; refresh so the card leaves and the task
+                // reappears in Not-assigned even where realtime isn't observed.
+                refreshAgentQueue(getSelectedProjectName());
+                return;
+            }
+            fail(res && res.error ? res.error : 'Could not shelve. Try again.');
+        }).catch(function () {
+            fail('Could not shelve. Try again.');
+        });
+    });
+
+    retry.addEventListener('click', function () {
+        if (retry.disabled) return;
+        if (!canRetry) return;
+        beginAction();
+        retry.classList.add('is-pending');
+        retry.textContent = 'Retrying…';
+        // Reuse the row's existing entry id so injectEntry dedup-skips the
+        // already-present marker rather than appending a duplicate entry.
+        dispatchDraft(row, draftText, row.entry_id).then(function (res) {
+            if (res && res.ok) {
+                // dispatchDraft persists `dispatched` and refreshes; the card
+                // moves into In progress on its own. Nothing to do here.
+                return;
+            }
+            fail(res && res.error);
+        }).catch(function () {
+            fail('Could not retry. Try again.');
         });
     });
 
@@ -619,10 +724,15 @@ function currentRowState(rowId) {
 // realtime subscription moves the card and a reopen can resume polling) and
 // starts a status poller. Returns { ok } / { ok:false, error } so the button can
 // re-enable and surface a non-blocking failure, leaving the row `drafted`.
-async function dispatchDraft(row, draftText) {
+//
+// `existingEntryId` powers the Stuck-card Retry: passing the row's stored
+// entry_id reuses the marker already in TODO.md, so injectEntry dedup-skips
+// instead of appending a second copy of the entry. When omitted (the normal
+// Dispatch path) a fresh id is minted.
+async function dispatchDraft(row, draftText, existingEntryId) {
     const rowId = row.id;
     const target = resolveDispatchTarget();
-    const entryId = mintEntryId();
+    const entryId = existingEntryId || mintEntryId();
     const entry = embedEntryMarker(draftText, entryId);
 
     const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });

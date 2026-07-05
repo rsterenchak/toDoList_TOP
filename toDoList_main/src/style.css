@@ -4543,6 +4543,100 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--accent-text, var(--accent));
 }
 
+/* Stuck card (failed / no_change): the run's reason paragraph above an actions
+   row with Shelve + unflag (neutral) and Retry (accent) buttons. */
+.agentStuck {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentStuckActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.agentStuckError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentStuckShelve {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentStuckShelve:hover {
+  color: var(--text-primary);
+  border-color: var(--border-bright);
+}
+
+.agentStuckShelve:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentStuckShelve:disabled,
+.agentStuckShelve.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentStuckRetry {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentStuckRetry:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentStuckRetry:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentStuckRetry:disabled,
+.agentStuckRetry.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentStuckRetry.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
 /* needs_mockup launcher: an Open-mockup button that expands the full,
    copy-ready prompt (with Copy + Open Claude Design controls), and a paste-back
    field that stashes the finished entry as the row's draft. */

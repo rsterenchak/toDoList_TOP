@@ -12,8 +12,8 @@ export const changelog = [
             "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
             "Agent view cards, inputs, and read-only blocks now show a subtle neutral border instead of a bright purple one.",
         ],
-        changed: [
-            "The Agent tab header now shows a dedicated Agent identity with a Working/Idle status pill and a live flagged/running/shipped-today counts line.",
+        added: [
+            "Stuck agent cards (failed or no-change runs) now offer Shelve + unflag to send the task back to Not-assigned and Retry to re-run it without duplicating the entry.",
         ],
     },
 ];
