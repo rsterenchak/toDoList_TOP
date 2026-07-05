@@ -12,8 +12,8 @@ export const changelog = [
             "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
         ],
         added: [
-            "A Run button in the Agent tab starts a triage sweep for the current project, and answering an agent's question now auto-starts one so the follow-up loop runs hands-off.",
             "Agent tasks that need a mockup now have a launcher: tap to copy a ready-to-paste prompt into Claude, then paste the finished entry back to queue it for dispatch.",
+            "An empty Claude chat now opens with a short note explaining what it can help with — drafting TODO entries, attaching files, reframing a task for another repo, and iterating on shipped runs.",
         ],
     },
 ];

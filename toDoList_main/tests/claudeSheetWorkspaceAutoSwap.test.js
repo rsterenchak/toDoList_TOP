@@ -123,12 +123,14 @@ describe('syncClaudeSheetForProject — auto-swap chat workspace to the project 
         surface.appendChild(bubble);
 
         // Switching to a repo with no saved thread loads an empty thread, so the
-        // surface is replayed empty — the prior message is gone.
+        // surface is replayed empty — the prior message is gone. The empty thread
+        // carries the persistent capabilities intro note and nothing else.
         syncClaudeSheetForProject('Alpha');
         expect(pillText()).toContain('RepoA');
         const afterA = document.querySelector('#claudeChatSurface');
         expect(afterA.textContent).not.toContain('on default workspace');
-        expect(afterA.textContent.trim()).toBe('');
+        expect(afterA.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
+        expect(afterA.querySelector('#claudeChatIntro')).toBeTruthy();
 
         // Switching to RepoB replays its saved thread onto the surface.
         syncClaudeSheetForProject('Beta');

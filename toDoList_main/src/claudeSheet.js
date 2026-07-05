@@ -469,6 +469,31 @@ function replayChatHistory() {
         const bubble = appendMessageBubble(turn.role, turn.content);
         if (turn.role === 'assistant' && bubble) renderAssistantContent(bubble, turn.content);
     }
+    // An empty (per-repo) thread carries a persistent capabilities note at the
+    // top naming what this chat can do in scope. It's a transient `note` bubble
+    // that never enters chatHistory, so it's re-derived from the empty state
+    // rather than persisted.
+    if (chatHistory.length === 0) renderChatIntro();
+}
+
+// The capabilities intro note shown at the top of an empty chat thread. Names
+// the four things the Sonnet chat can do in scope as one muted sentence, reusing
+// the `.claudeMsg--note` treatment. Given a stable id so the send path can drop
+// it before the first real turn and the clear-chat reset can re-render it.
+const CHAT_INTRO_COPY =
+    'This chat drafts TODO entries, takes file attachments, reframes a task for another repo, and iterates on shipped runs — describe a change to get started.';
+
+function renderChatIntro() {
+    const bubble = appendMessageBubble('note', CHAT_INTRO_COPY);
+    if (bubble) bubble.id = 'claudeChatIntro';
+    return bubble;
+}
+
+// Remove the intro note if present, so it doesn't linger above a conversation
+// once the first real turn is sent.
+function removeChatIntro() {
+    const intro = sheetQuery('#claudeChatIntro');
+    if (intro && intro.parentNode) intro.parentNode.removeChild(intro);
 }
 
 function isTerminalStatus(status) {
@@ -578,6 +603,8 @@ function clearChatConversation() {
     deleteIterateEntry(activeChatRepo);
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
+    // The thread is empty again, so re-surface the capabilities intro note.
+    renderChatIntro();
 }
 
 // The composer file-picker button + its dropdown panel. The button leads the
@@ -1703,6 +1730,7 @@ async function sendChatTurn(deep) {
     if (!text) return;
     if (send && send.disabled) return;
 
+    removeChatIntro();
     chatHistory.push({ role: 'user', content: text });
     saveChatHistory();
     appendMessageBubble('user', text);
@@ -1861,6 +1889,7 @@ function renderAttachLayoutButton(selector) {
 // The INSPECT measurement turn is the one meant to diagnose against the diff, so
 // it must carry the active iterate entry id when a session is in progress.
 async function sendInspectTurn(content) {
+    removeChatIntro();
     chatHistory.push({ role: 'user', content: content });
     saveChatHistory();
     appendMessageBubble('user', content);
