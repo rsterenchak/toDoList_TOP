@@ -196,7 +196,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7bf2df71-9af9-4915-a0be-debf435490d7 -->
 
-- [ ] **[MEDIUM]** Match the Agent view header to the approved mockup — identity, status, and queue counts
+- [x] **[MEDIUM]** Match the Agent view header to the approved mockup — identity, status, and queue counts — Completed: 2026-07-05
   - Type: feature
   - Description: The shipped Agent view header drifted from the approved mockup: `paint()` renders the generic project header (the project name plus an "Agent queue" chip) instead of the dedicated Agent identity the design specified. Bring it in line — replace the project-name + chip with a bolt-icon "Agent" identity block, a lightweight Working/Idle status pill, and a "N flagged · N running · N shipped today" counts subline, keeping the existing Run button. The master-pause control from the mockup is intentionally deferred (nothing auto-dispatches yet).
   - Behavior:
