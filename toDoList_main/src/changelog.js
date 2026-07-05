@@ -9,17 +9,11 @@ export const changelog = [
         fixed: [
             "The Agent board now reliably settles dispatched runs to Shipped or Stuck, catching up runs that finished while the tab was closed instead of leaving cards stuck as queued.",
             "Agent mockup cards now reveal the exact copy-ready prompt to paste into Claude, with its own Copy button, instead of showing a separate raw context bundle.",
+            "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
         ],
         added: [
             "A Run button in the Agent tab starts a triage sweep for the current project, and answering an agent's question now auto-starts one so the follow-up loop runs hands-off.",
             "Agent tasks that need a mockup now have a launcher: tap to copy a ready-to-paste prompt into Claude, then paste the finished entry back to queue it for dispatch.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-04',
-        fixed: [
-            "The expanded TODO.md viewer card now resizes when a todo description opens or closes, so its panel no longer overruns and overlaps neighboring rows.",
         ],
     },
 ];

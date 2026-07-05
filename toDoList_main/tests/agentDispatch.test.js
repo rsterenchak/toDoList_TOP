@@ -43,11 +43,15 @@ let dispatchResult = { ok: true, runId: 111 };
 let pollResult = { ok: true, found: false };
 let resolveResult = { ok: true, found: false };
 let runResultResult = { ok: true, result: '' };
-// TODO.md read used by the checkbox-based ship reconcile. Default { ok: false }
-// so tests that don't script a body fall through to the resolveEntryByMarker
-// fallback (the pre-checkbox behavior); tests exercising the checkbox path set
-// a `content` string here.
+// TODO.md read used by both the pre-dispatch on-main visibility check and the
+// checkbox-based ship reconcile. Default { ok: false } so tests that don't
+// script a body fall through to the resolveEntryByMarker fallback (the
+// pre-checkbox behavior); tests exercising the checkbox path set a `content`
+// string here. `readTodoResults`, when set to an array, is consumed one entry
+// per call (visibility poll first, then reconcile) so a test can script the
+// two reads independently; once drained it falls back to `readTodoResult`.
 let readTodoResult = { ok: false, reason: 'No target' };
+let readTodoResults = null;
 let injectCalls = [];
 let dispatchCalls = [];
 let pollCalls = [];
@@ -62,7 +66,13 @@ vi.mock('../src/inject.js', () => ({
     pollRunStatus: (opts) => { pollCalls.push(opts); return Promise.resolve(pollResult); },
     resolveEntryByMarker: (id) => { resolveCalls.push(id); return Promise.resolve(resolveResult); },
     fetchRunResult: () => Promise.resolve(runResultResult),
-    readTodoMdFromWorker: (target) => { readTodoCalls.push(target); return Promise.resolve(readTodoResult); },
+    readTodoMdFromWorker: (target) => {
+        readTodoCalls.push(target);
+        if (Array.isArray(readTodoResults) && readTodoResults.length) {
+            return Promise.resolve(readTodoResults.shift());
+        }
+        return Promise.resolve(readTodoResult);
+    },
     findTargetById: () => null,
 }));
 
@@ -104,6 +114,7 @@ beforeEach(() => {
     resolveResult = { ok: true, found: false };
     runResultResult = { ok: true, result: '' };
     readTodoResult = { ok: false, reason: 'No target' };
+    readTodoResults = null;
     injectCalls = [];
     dispatchCalls = [];
     pollCalls = [];
@@ -200,6 +211,9 @@ describe('AGENT view — Dispatch action', () => {
         queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
         // Keep the run unresolved so this test focuses on the kickoff.
         pollResult = { ok: true, found: false };
+        // The injected entry is visible on main, so the pre-dispatch race check
+        // passes on the first read and the run fires.
+        readTodoResult = { ok: true, content: todoBody('mint-0', false) };
         await loadBoard();
 
         document.querySelector('.agentDispatchButton').click();
@@ -230,6 +244,10 @@ describe('AGENT view — Dispatch action', () => {
         queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
         pollResult = { ok: true, found: true, status: 'completed', conclusion: 'success', runUrl: 'u', runId: 111 };
         resolveResult = { ok: true, found: true, merge_commit_sha: 'abc123', pr_number: 42, pr_url: 'https://github.com/o/r/pull/42' };
+        // First read (pre-dispatch visibility) sees the marker on main; the
+        // second read (ship reconcile) falls through so the merged-PR search
+        // decides shipped.
+        readTodoResults = [{ ok: true, content: todoBody('mint-0', false) }, { ok: false }];
         await loadBoard();
 
         document.querySelector('.agentDispatchButton').click();
@@ -248,6 +266,9 @@ describe('AGENT view — Dispatch action', () => {
         pollResult = { ok: true, found: true, status: 'completed', conclusion: 'success', runUrl: 'u', runId: 111 };
         resolveResult = { ok: true, found: false };
         runResultResult = { ok: true, result: 'Entry was ineligible; nothing to do.' };
+        // Visibility read sees the marker; reconcile read falls through so the
+        // (empty) merged-PR search yields no_change.
+        readTodoResults = [{ ok: true, content: todoBody('mint-0', false) }, { ok: false }];
         await loadBoard();
 
         document.querySelector('.agentDispatchButton').click();
@@ -262,6 +283,9 @@ describe('AGENT view — Dispatch action', () => {
         queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
         pollResult = { ok: true, found: true, status: 'completed', conclusion: 'failure', runUrl: 'u', runId: 111 };
         runResultResult = { ok: true, result: 'Tests failed after three iterations.' };
+        // Entry visible on main so the run fires; the failure path never
+        // consults the checkbox.
+        readTodoResult = { ok: true, content: todoBody('mint-0', false) };
         await loadBoard();
 
         document.querySelector('.agentDispatchButton').click();
@@ -288,6 +312,67 @@ describe('AGENT view — Dispatch action', () => {
         const err = document.querySelector('.agentDraftError');
         expect(err.hidden).toBe(false);
         expect(err.textContent).toMatch(/worker 500/);
+    });
+
+    // Regression: the dispatch-after-push race. The Worker can dispatch the run
+    // against a `main` tip that predates the inject commit, so we must confirm
+    // the entry's id marker is actually on main before firing the run.
+    it('does not dispatch and stays drafted when the entry never appears on main', async () => {
+        queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
+        // The inject succeeds, but the on-main read never surfaces the marker
+        // within the attempt budget — the entry hasn't propagated to main yet.
+        injectResult = { ok: true, id: 'e' };
+        readTodoResult = { ok: false, reason: 'not visible' };
+        await loadBoard();
+
+        const btn = document.querySelector('.agentDispatchButton');
+        vi.useFakeTimers();
+        btn.click();
+        // Drive the full ~6-attempt / 800ms backoff to exhaustion.
+        await vi.advanceTimersByTimeAsync(6 * 800 + 100);
+        vi.useRealTimers();
+        await flush();
+
+        // Inject happened, but the race guard blocked the dispatch entirely.
+        expect(injectCalls.length).toBe(1);
+        expect(dispatchCalls.length).toBe(0);
+        // No state was persisted — the row remains drafted for a retry.
+        expect(updateCalls.some((c) => c.patch.state === 'dispatched')).toBe(false);
+        // The read was retried across the attempt budget, not fatal on first miss.
+        expect(readTodoCalls.length).toBeGreaterThan(1);
+        // Button re-enabled with a non-blocking, retry-oriented error.
+        expect(btn.disabled).toBe(false);
+        const err = document.querySelector('.agentDraftError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toMatch(/not yet visible on main/i);
+    });
+
+    // Regression: a transient miss (marker not yet propagated / read error) is
+    // retried rather than treated as fatal, and the run fires once the marker
+    // shows up on main.
+    it('retries misses then dispatches once the marker appears on main', async () => {
+        queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
+        pollResult = { ok: true, found: false };
+        // First read misses (not propagated), second read surfaces the marker.
+        readTodoResults = [
+            { ok: false, reason: 'not visible yet' },
+            { ok: true, content: todoBody('mint-0', false) },
+        ];
+        await loadBoard();
+
+        const btn = document.querySelector('.agentDispatchButton');
+        vi.useFakeTimers();
+        btn.click();
+        await vi.advanceTimersByTimeAsync(2 * 800 + 100);
+        vi.useRealTimers();
+        await flush();
+
+        // Two reads: the initial miss, then the hit — after which the run fires.
+        expect(readTodoCalls.length).toBeGreaterThanOrEqual(2);
+        expect(dispatchCalls.length).toBe(1);
+        expect(dispatchCalls[0]).toMatchObject({ mode: 'entry', entryId: 'mint-0' });
+        const dispatched = updateCalls.find((c) => c.patch.state === 'dispatched');
+        expect(dispatched).toBeTruthy();
     });
 });
 

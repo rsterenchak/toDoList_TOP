@@ -179,7 +179,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bf3a6fac-2acb-4da2-8512-91b8733ed118 -->
 
-- [ ] **[HIGH]** Fix Dispatch race — confirm the injected entry is on main before dispatching the run
+- [x] **[HIGH]** Fix Dispatch race — confirm the injected entry is on main before dispatching the run — Completed: 2026-07-05
   - Type: bug
   - Description: Dispatching a drafted card can fire the run before the freshly-injected entry is visible on main, so the run checks out a stale TODO.md, can't find the entry's marker, and no-op's with a "marker not found / no unchecked tasks" no_change — even though the inject succeeded and the entry lands moments later. `dispatchDraft` (`agentView.js`) calls `dispatchRun` immediately after `injectEntry` returns ok, but GitHub's workflow_dispatch can resolve `main` to a tip that predates the inject commit (dispatch-after-push race). Fix by confirming the entry is on main before dispatching: after a successful inject, poll `readTodoMdFromWorker(target)` until the content contains the entry's `<!-- id: <entryId> -->` marker (short backoff, bounded retries), then dispatch. If the marker doesn't appear within the window, abort with a non-blocking error and leave the row `drafted` rather than firing a doomed run.
   - Behavior:
