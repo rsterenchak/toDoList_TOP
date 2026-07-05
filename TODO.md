@@ -18,3 +18,21 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/template.html`, `toDoList_main/src/conceiveView.js`, `toDoList_main/src/conceiveShapes.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5ce04d46-c874-445d-b7ba-d0fcfe44311e -->
+
+- [ ] **[MEDIUM]** Add Give-to-agent flag toggle and Not-assigned bucket to Agent tab
+  - Type: feature
+  - Description: Extend the Agent view (from the tab-swap entry) with a Not-assigned bucket — the active project's tasks not yet in the agent queue — each carrying a "Give to agent" control. Tapping it flags the task for the autonomous agent by inserting an `agent_queue` row (state `triaging`, auto true), which the triage sweep then picks up. This is what makes the board fill from a real tap; the flagged task appears in the queue-driven buckets via the realtime subscription already wired in the tab-swap entry.
+  - Behavior:
+    1. `renderAgentView` renders a Not-assigned bucket at the bottom (after Shipped): the current project's todos whose id is NOT present among the loaded `agent_queue` rows' `todo_id` values. Each row shows the task title and a "Give to agent" pill (bolt icon + label, purple outline), matching the reviewed mockup. Omitted when every task is already queued.
+    2. Tapping "Give to agent" inserts one `agent_queue` row for that task: `{ project_id: <active>, todo_id: <task id>, state: 'triaging', auto: true, context: { title, description } }` — the title/description are denormalized into `context` so the triage workflow needs no `todos` access. The button shows a brief pending state and disables while the insert is in flight.
+    3. On success, the realtime subscription (from the tab-swap entry) fires and the task moves out of Not-assigned into In progress (triaging) with no manual refresh. On failure the button re-enables and a non-blocking error is surfaced.
+    4. Double-flag guard: the button renders only for tasks not already queued, and a pre-insert existence check (or unique constraint) prevents a duplicate row if two devices flag the same task near-simultaneously.
+  - Implementation notes:
+    - Extend `agentView.js` (from the tab-swap entry) for the Not-assigned bucket and the button handler; read the project's todos from existing `listLogic.js` data (same source the Tasks view uses) and diff against the `agent_queue` rows already loaded for the board.
+    - Per the "all data-model mutations route through `listLogic.js`" convention, put the insert in a new `listLogic.js` helper (e.g. `flagTaskForAgent(todoId)`) that builds the row and writes via the shared `supabaseClient.js` (`.from('agent_queue').insert(...)`), mirroring the existing `.from('todos')` writes in `listLogic.js`. `agentView.js` calls it from the click handler; the view never writes directly.
+    - The pill reuses existing tokens (purple accent border, 10px chip radius, 36px touch target) — no new styling primitives. It is a real control here, not the inert affordance from the tab-swap entry.
+    - `auto` defaults to true (flag = grant an autonomous run), matching the schema default; a draft-only variant is out of scope.
+  - Out of scope: the triage that advances the row out of `triaging` (that's `claude-triage.yml` / `.claude/triage.md`); expanding a queued card into its thread and answering (later entry); dispatch of `drafted` rows. Verify by tapping Give-to-agent and confirming a row lands in `agent_queue` and the task hops to In progress live.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 51c1b1a6-4775-40e1-840a-73e5b1ddd5cd -->
