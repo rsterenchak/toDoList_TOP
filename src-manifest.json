@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-05T12:24:09.180Z",
-  "sha": "9a7c022d60bda4aec699c28a4b8a872d091627db",
+  "generatedAt": "2026-07-05T15:42:08.963Z",
+  "sha": "d40b9d9a00745081084141950d5a9aa1997851b0",
   "files": [
     "agentView.js",
     "auth.js",
@@ -101,11 +101,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 1463,
+      "line": 1465,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1463
+          "line": 1465
         }
       ]
     },
@@ -129,11 +129,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 145,
+      "line": 148,
       "files": [
         {
           "file": "agentView.js",
-          "line": 145
+          "line": 148
         }
       ]
     },
