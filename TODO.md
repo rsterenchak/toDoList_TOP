@@ -247,7 +247,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 92895192-017e-43e1-9bfa-80e04cff36bd -->
 
-- [ ] **[MEDIUM]** Drive the Agent status pill from the real triage-run state, not just row states
+- [x] **[MEDIUM]** Drive the Agent status pill from the real triage-run state, not just row states — Completed: 2026-07-05
   - Type: bug
   - Description: Tapping Run starts a triage sweep (a GitHub Actions workflow), but the header pill stays "IDLE" the whole time because it's computed only from `agent_queue` row states, and a sweep isn't represented by any lasting row state. Poll the actual workflow via the Worker's `active_runs` route (now extended with `workflow: "triage"`) and drive the pill from it: flip to "Working" on tap for instant feedback, confirm/track the real run through polling, and settle back to "Idle" when the run finishes — cross-device, since GitHub is the source of truth.
   - Behavior:

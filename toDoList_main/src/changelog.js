@@ -11,9 +11,7 @@ export const changelog = [
             "Agent mockup cards now reveal the exact copy-ready prompt to paste into Claude, with its own Copy button, instead of showing a separate raw context bundle.",
             "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
             "Agent view cards, inputs, and read-only blocks now show a subtle neutral border instead of a bright purple one.",
-        ],
-        added: [
-            "Stuck agent cards (failed or no-change runs) now offer Shelve + unflag to send the task back to Not-assigned and Retry to re-run it without duplicating the entry.",
+            "The Agent header now shows a Working status while a triage sweep is running — tracked from the real run and returning to Idle only when it finishes — instead of staying stuck on Idle.",
         ],
     },
 ];

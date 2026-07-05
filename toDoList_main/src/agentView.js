@@ -9,6 +9,7 @@ import {
     pollRunStatus,
     resolveEntryByMarker,
     fetchRunResult,
+    fetchActiveRuns,
     readTodoMdFromWorker,
     findTargetById,
     showInjectToast,
@@ -83,6 +84,17 @@ const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
 const ENTRY_VISIBLE_ATTEMPTS = 6;
 const ENTRY_VISIBLE_DELAY_MS = 800;
 
+// Triage-sweep tracking cadence and windows. Tapping Run fires a
+// `claude-triage.yml` sweep — a GitHub Actions workflow that isn't represented
+// by any lasting agent_queue row state — so the header pill is driven from the
+// real run via the Worker's triage-scoped `active_runs` probe instead. The poll
+// runs every SWEEP_POLL_MS; if the run hasn't registered yet the pill stays
+// optimistically "Working" up to SWEEP_GRACE_MS (registration lag), and a hard
+// SWEEP_HARD_CAP_MS ceiling force-stops the poller regardless.
+const SWEEP_POLL_MS = 5000;
+const SWEEP_GRACE_MS = 30 * 1000;
+const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
+
 // ── module state ─────────────────────────────────────────────────────
 // The rows last loaded for the active project, the project they belong to,
 // and the live realtime channel. Module-level so a re-render (project switch,
@@ -102,6 +114,18 @@ const _dispatchPollers = {};
 // batch-all-`triaging` design coalesce anything that overlaps anyway, so at worst
 // this drops a truly redundant call. Cleared once the dispatch settles.
 let _triageInFlight = false;
+// Triage-sweep tracking state that drives the header's Working/Idle pill from
+// the real claude-triage.yml run (via the Worker's triage-scoped active_runs
+// probe), not just from agent_queue row states. `_sweepActive` is what the pill
+// reads; `_sweepPoller` is the interval handle; `_sweepSeenActive` records
+// whether a poll has ever confirmed the run in flight (so registration lag is
+// distinguished from a finished run); the deadlines bound the grace window and
+// the hard cap. Cross-device, since GitHub is the source of truth.
+let _sweepActive = false;
+let _sweepPoller = null;
+let _sweepSeenActive = false;
+let _sweepGraceDeadline = 0;
+let _sweepHardDeadline = 0;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -137,12 +161,122 @@ function fireTriageSweep(projectName) {
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     if (!projectId) return Promise.resolve(null);
     _triageInFlight = true;
+    // Optimistically drive the header pill to Working the instant we dispatch,
+    // and start the poller that tracks the real claude-triage.yml run to
+    // completion (settling the pill back to Idle when GitHub reports it done).
+    startSweepTracking(false);
     return Promise.resolve()
         .then(function () { return dispatchTriage(projectId, mintEntryId()); })
         .then(
-            function (res) { _triageInFlight = false; return res; },
-            function () { _triageInFlight = false; return { ok: false }; }
+            function (res) {
+                _triageInFlight = false;
+                // If the dispatch itself failed, clear the optimistic Working
+                // state so the pill doesn't falsely report a sweep in flight.
+                if (res && res.ok === false) stopSweepTracking();
+                return res;
+            },
+            function () { _triageInFlight = false; stopSweepTracking(); return { ok: false }; }
         );
+}
+
+// ── triage-sweep tracking ────────────────────────────────────────────
+// Drive the header pill from the real claude-triage.yml run. A sweep is a
+// batch GitHub Actions workflow with no lasting agent_queue row state, so the
+// pill can't be computed from rows alone — instead we poll the Worker's
+// triage-scoped `active_runs` probe and flip the pill Working → Idle from what
+// GitHub actually reports. Cross-device: a sweep started on another device is
+// picked up by the mount-time seed (seedSweepState).
+
+// Begin (or refresh) tracking a triage sweep. Sets the pill optimistically to
+// Working immediately, (re)arms the poller, and kicks a one-shot poll so an
+// already-completed run settles at once. `alreadyConfirmed` is true only for
+// the mount-time seed, where the seed fetch has already observed the run in
+// flight — otherwise we start unconfirmed so the grace window covers the
+// registration lag before the run appears.
+function startSweepTracking(alreadyConfirmed) {
+    const now = Date.now();
+    _sweepActive = true;
+    _sweepSeenActive = !!alreadyConfirmed;
+    _sweepGraceDeadline = now + SWEEP_GRACE_MS;
+    _sweepHardDeadline = now + SWEEP_HARD_CAP_MS;
+    if (!_sweepPoller) {
+        _sweepPoller = setInterval(pollSweepOnce, SWEEP_POLL_MS);
+    }
+    refreshStatusPill();
+    pollSweepOnce();
+}
+
+// Stop tracking and settle the pill to Idle. Idempotent; refreshes the pill only
+// when it was actually showing Working, so a no-op stop (e.g. on view exit with
+// no sweep) doesn't touch the DOM.
+function stopSweepTracking() {
+    if (_sweepPoller) {
+        clearInterval(_sweepPoller);
+        _sweepPoller = null;
+    }
+    const wasActive = _sweepActive;
+    _sweepActive = false;
+    _sweepSeenActive = false;
+    if (wasActive) refreshStatusPill();
+}
+
+// One poll tick: ask the Worker whether claude-triage.yml has an in-flight run.
+// `active:true` confirms the sweep (and keeps the pill Working); `active:false`
+// after a confirmation means it finished → settle to Idle. Before any
+// confirmation, `active:false` is registration lag: stay Working until the grace
+// window elapses. A transient failure (`ok:false`) is ignored and retried. A
+// hard cap force-stops regardless so a wedged run can't pin the pill forever.
+function pollSweepOnce() {
+    if (Date.now() >= _sweepHardDeadline) {
+        stopSweepTracking();
+        return;
+    }
+    Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'triage')).then(function (res) {
+        if (!_sweepPoller && !_sweepActive) return; // torn down mid-flight
+        if (!res || res.ok === false) return; // transient — retry next tick
+        if (res.active) {
+            _sweepSeenActive = true;
+            if (!_sweepActive) { _sweepActive = true; refreshStatusPill(); }
+            return;
+        }
+        // active === false
+        if (_sweepSeenActive || Date.now() >= _sweepGraceDeadline) {
+            // Either the confirmed run has finished, or the grace window for a
+            // run that never registered has elapsed — settle to Idle.
+            stopSweepTracking();
+        }
+    });
+}
+
+// Update the header status pill in place to reflect the current Working/Idle
+// state, WITHOUT a full paint(). A full repaint here would rebuild — and reset —
+// the Run button while its click handler is mid-interaction, and would churn the
+// whole board on a purely cosmetic pill flip. No-op when the pill isn't mounted
+// (view not painted / not on the Agent tab). Uses the same predicate paint()
+// does: Working when a sweep is in flight OR any row is dispatched/running.
+function refreshStatusPill() {
+    const pill = document.getElementById('agentStatusPill');
+    if (!pill) return;
+    const rows = Array.isArray(_rows) ? _rows : [];
+    const shipInFlight = rows.some(function (r) {
+        return r && (r.state === 'dispatched' || r.state === 'running');
+    });
+    const working = _sweepActive || shipInFlight;
+    pill.className = 'agentStatusPill' + (working ? ' agentStatusPill--working' : ' agentStatusPill--idle');
+    const label = pill.querySelector('.agentStatusLabel');
+    if (label) label.textContent = working ? 'Working' : 'Idle';
+}
+
+// Mount-time seed: a one-shot triage active_runs check so a sweep already
+// running (possibly started on another device) shows Working here too and is
+// tracked to completion. Fire-and-forget; a miss or transient error leaves the
+// pill as the row states dictate.
+function seedSweepState() {
+    Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'triage')).then(function (res) {
+        if (res && res.ok !== false && res.active) {
+            startSweepTracking(true);
+        }
+    });
 }
 
 // Resolve the currently-selected project's name from the sidebar — the same
@@ -1293,17 +1427,26 @@ function paint() {
 
     // Right-side group: a lightweight Working/Idle status pill followed by the
     // Run button. The pill is an indicator, not a control — "Working" (green
-    // dot) whenever any row is in an in-flight workflow state, else muted "Idle".
+    // dot) when a triage sweep is in flight (tracked live via the Worker's
+    // triage active_runs probe) OR any row is running a ship run
+    // (dispatched/running), else muted "Idle". Triage sweeps aren't captured by
+    // any lasting row state, so `_sweepActive` — not the row counts — carries
+    // that signal.
     const controls = document.createElement('div');
     controls.className = 'agentHeaderControls';
 
-    const working = counts.running > 0;
+    const shipInFlight = rows.some(function (r) {
+        return r && (r.state === 'dispatched' || r.state === 'running');
+    });
+    const working = _sweepActive || shipInFlight;
     const statusPill = document.createElement('span');
+    statusPill.id = 'agentStatusPill';
     statusPill.className = 'agentStatusPill' + (working ? ' agentStatusPill--working' : ' agentStatusPill--idle');
     const statusDot = document.createElement('span');
     statusDot.className = 'agentStatusDot';
     statusPill.appendChild(statusDot);
     const statusLabel = document.createElement('span');
+    statusLabel.className = 'agentStatusLabel';
     statusLabel.textContent = working ? 'Working' : 'Idle';
     statusPill.appendChild(statusLabel);
     controls.appendChild(statusPill);
@@ -1415,6 +1558,9 @@ export function subscribeAgentView() {
     // Mount: load the queue and settle any dispatched/running rows that already
     // shipped on main while the tab was closed (resume-poll the rest via paint).
     refreshAgentQueue(getSelectedProjectName(), { settle: true });
+    // Seed the status pill from the real triage-run state: a one-shot check so a
+    // sweep already running (e.g. started on another device) shows Working here.
+    seedSweepState();
 }
 
 // Tear down the realtime subscription on view exit so a backgrounded board
@@ -1428,4 +1574,6 @@ export function unsubscribeAgentView() {
     // Stop every in-flight dispatch poller — a backgrounded board shouldn't keep
     // polling. A reopen re-arms them from paint() via syncDispatchPollers.
     Object.keys(_dispatchPollers).forEach(stopDispatchPoller);
+    // Stop the triage-sweep poller too; a reopen re-seeds it via seedSweepState.
+    stopSweepTracking();
 }

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -149,5 +149,38 @@ describe('dispatchTriage — worker dispatch_triage payload', () => {
         const res = await dispatchTriage('proj-2', 'corr-10');
         expect(res.ok).toBe(false);
         expect(res.reason).toBe('Server error 500');
+    });
+});
+
+describe('fetchActiveRuns — optional workflow scope', () => {
+    function lastActiveRunsBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).active_runs; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('omits the workflow field when no workflow is passed (existing callers unchanged)', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ active: false }),
+        }));
+        await fetchActiveRuns();
+        const body = lastActiveRunsBody();
+        expect(body).toBeTruthy();
+        expect(body.active_runs).toBe(true);
+        expect('workflow' in body).toBe(false);
+    });
+
+    it('includes the workflow field when passed (triage-scoped probe)', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ active: true }),
+        }));
+        const res = await fetchActiveRuns(null, 'triage');
+        const body = lastActiveRunsBody();
+        expect(body.workflow).toBe('triage');
+        expect(res.ok).toBe(true);
+        expect(res.active).toBe(true);
     });
 });

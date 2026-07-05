@@ -43,6 +43,12 @@ vi.mock('../src/supabaseClient.js', () => ({
 // (UI-irrelevant) correlation id.
 let triageResult = { ok: true, dispatched: true };
 let triageCalls = [];
+// Scriptable triage active_runs probe: the header pill is driven from this. Each
+// element is returned in turn (then the last repeats), so a test can script an
+// arc like [inactive-lag, active, inactive-done]. Calls are recorded so a test
+// can assert the probe was triage-scoped.
+let activeRunsQueue = [];
+let activeRunsCalls = [];
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'corr-1',
@@ -56,8 +62,14 @@ vi.mock('../src/inject.js', () => ({
     pollRunStatus: () => Promise.resolve({ ok: true, found: false }),
     resolveEntryByMarker: () => Promise.resolve({ ok: true, found: false }),
     fetchRunResult: () => Promise.resolve({ ok: true, result: '' }),
+    fetchActiveRuns: (target, workflow) => {
+        activeRunsCalls.push({ target, workflow });
+        const next = activeRunsQueue.length > 1 ? activeRunsQueue.shift() : activeRunsQueue[0];
+        return Promise.resolve(next || { ok: true, active: false });
+    },
     readTodoMdFromWorker: () => Promise.resolve({ ok: false, reason: 'No target' }),
     findTargetById: () => null,
+    showInjectToast: () => {},
 }));
 
 import { listLogic } from '../src/listLogic.js';
@@ -93,6 +105,8 @@ beforeEach(() => {
     updateError = null;
     triageResult = { ok: true, dispatched: true };
     triageCalls = [];
+    activeRunsQueue = [{ ok: true, active: false }];
+    activeRunsCalls = [];
     document.body.innerHTML = '';
 });
 
@@ -218,5 +232,79 @@ describe('AGENT view — auto-fire triage on answer', () => {
         const toast = document.getElementById('agentViewToast');
         expect(toast).toBeTruthy();
         expect(toast.textContent).toMatch(/triage/i);
+    });
+});
+
+describe('AGENT view — status pill driven by the real triage-run state', () => {
+    function pillState() {
+        const pill = document.getElementById('agentStatusPill');
+        if (!pill) return null;
+        const label = pill.querySelector('.agentStatusLabel');
+        return { working: pill.classList.contains('agentStatusPill--working'), label: label ? label.textContent : '' };
+    }
+
+    it('flips the pill to Working the instant Run is tapped (optimistic), not just from row states', async () => {
+        listLogic.addProject('Pill1');
+        mountDom('Pill1');
+        // A queue with no in-flight ROW state — previously this left the pill IDLE
+        // through the whole sweep. needs_words isn't dispatched/running.
+        queueRows = [{ id: '1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+        expect(pillState().label).toBe('Idle');
+
+        document.querySelector('.agentRunBtn').click();
+        await flush();
+
+        // The sweep is tracked optimistically → Working, even with no dispatched/
+        // running row and the probe reporting the run not yet registered.
+        expect(pillState()).toEqual({ working: true, label: 'Working' });
+    });
+
+    it('scopes the active_runs probe to the triage workflow', async () => {
+        listLogic.addProject('Pill2');
+        mountDom('Pill2');
+        queueRows = [{ id: '1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentRunBtn').click();
+        await flush();
+
+        expect(activeRunsCalls.length).toBeGreaterThan(0);
+        expect(activeRunsCalls.every((c) => c.workflow === 'triage')).toBe(true);
+    });
+
+    it('clears the optimistic Working state when the Run dispatch fails', async () => {
+        listLogic.addProject('Pill3');
+        mountDom('Pill3');
+        queueRows = [{ id: '1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        triageResult = { ok: false, reason: 'Server error 500' };
+        await loadBoard();
+
+        document.querySelector('.agentRunBtn').click();
+        await flush();
+
+        // A failed dispatch must not leave the pill falsely showing Working.
+        expect(pillState().label).toBe('Idle');
+    });
+
+    it('seeds the pill to Working on mount when a sweep is already running (cross-device)', async () => {
+        listLogic.addProject('Pill4');
+        mountDom('Pill4');
+        queueRows = [{ id: '1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        // The Worker reports a triage run already in flight before any tap here.
+        activeRunsQueue = [{ ok: true, active: true }];
+        await loadBoard();
+
+        expect(pillState()).toEqual({ working: true, label: 'Working' });
+    });
+
+    it('still shows Working from an in-flight ship run (dispatched/running row), no sweep needed', async () => {
+        listLogic.addProject('Pill5');
+        mountDom('Pill5');
+        queueRows = [{ id: '1', state: 'running', context: { title: 'X' } }];
+        await loadBoard();
+
+        // No triage sweep here — the pill reflects the running ship row.
+        expect(pillState()).toEqual({ working: true, label: 'Working' });
     });
 });
