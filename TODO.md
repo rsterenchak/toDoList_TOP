@@ -152,3 +152,22 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 49a99dc5-e702-409b-bc61-6a68264717d3 -->
+
+- [ ] **[MEDIUM]** Replace the needs_mockup bundle display with an expandable copy-ready prompt
+  - Type: bug
+  - Description: The `needs_mockup` card shows the raw context bundle (Region / Tokens / Change) above the Open mockup button, but that bundle is context *for* the prompt, not the prompt itself — and Open mockup copies the real (fuller) prompt silently to the clipboard, so it's ambiguous what the user is meant to paste into Claude. Collapse the two into one visible thing: Open mockup expands a read-only block containing the *actual full prompt* with a Copy button on it, so what the user sees is exactly what they paste. Remove the separate always-visible bundle block and the silent clipboard-write-plus-blank-tab behavior.
+  - Behavior:
+    1. The `needs_mockup` card shows the task title, an "Open mockup" button, and the paste-back field — but NOT the standalone Region/Tokens/Change block (that content moves into the prompt text).
+    2. Tapping "Open mockup" toggles a read-only block showing the full assembled prompt (task + description + the Region/Tokens/Change context + the mockup/entry-format instructions — the same string the handler already builds), with a "Copy" button and an "Open Claude Design" link beside it.
+    3. "Copy" writes the prompt to the clipboard (`navigator.clipboard.writeText` in a try/catch) and confirms via toast; on failure it says copy failed rather than swallowing it. The prompt block stays visible so the user can also select-and-copy manually.
+    4. "Open Claude Design" opens `https://claude.ai/new` (or the Design entry point) in a new tab — a separate, deliberate tap, so there's no focus race between the copy and the open.
+    5. The paste-back textarea + Save draft (write `draft` + `state: 'drafted'` via `setAgentRunState`) is unchanged.
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, the `needs_mockup` branch of `buildSecondary`: remove the always-on bundle `<div>`; build the prompt string (unchanged from the current handler) once and render it inside a read-only, scrollable block that toggles open on the Open mockup button. Reuse the drafted-card read-only block styling.
+    - Copy handler: `await navigator.clipboard.writeText(prompt)` in try/catch → `showInjectToast` success/failure. Keep the block visible regardless so manual select-copy works. The Open-Claude link is a plain `window.open(url, '_blank')` on its own control, decoupled from the copy.
+    - No `agent_queue`/`listLogic` change — this is display + interaction only on an existing branch.
+    - Styling in `style.css`: the toggle, the prompt block, Copy button, and link, token vars, ≥36px targets.
+  - Out of scope: in-app mockup rendering (deliberately kept in Claude — the launcher is the boundary); prefilling the Claude chat automatically (no cross-origin way to do it — copy-paste is the primitive); the Save-draft → drafted → Dispatch path (already built).
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6a22a525-8bce-4312-b1f8-b16985803acd -->
