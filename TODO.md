@@ -95,7 +95,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 75d24f4a-f68e-4c1e-a93b-efee147bbaba -->
 
-- [ ] **[MEDIUM]** Recompute the TODO.md viewer card's expanded height when a todo description opens or closes
+- [x] **[MEDIUM]** Recompute the TODO.md viewer card's expanded height when a todo description opens or closes — Completed: 2026-07-04
   - Type: bug
   - Description: When the inline TODO.md viewer card (`#todoMdViewerCard`) is expanded, `applyExpandedHeight()` in `toDoList_main/src/todoMdViewer.js` (around line 1643) computes `body.style.height` once as `mainListRect.bottom - headerRect.bottom - bottomGap`, then only recomputes on window resize or the card's own collapse/expand toggle. Toggling a todo's description open (`wireDescToggle` in `toDoList_main/src/toDoRow.js`, around line 1206) inserts a `#descSibling` row directly into `#mainList` without dispatching `mainListRendered` or calling `applyExpandedHeight()`, shifting every row below it — including the still-expanded viewer card's own header — while the card keeps its stale cached height. With many todo rows the desync is large enough to be visible: the expanded card's body extends past its actual available space and visually overlaps/collides with neighboring todo rows. Fix by recomputing the expanded height whenever a description panel opens or closes elsewhere in the list, e.g. have `wireDescToggle`'s insert/remove of `#descSibling` trigger the existing `applyExpandedHeight()` (or its `viewerResizeHandler` wrapper) so the cached height tracks the live layout instead of a one-time snapshot.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/toDoRow.js`
