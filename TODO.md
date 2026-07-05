@@ -118,7 +118,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 00dac2f7-0d17-4850-a1ae-27e51fff72a0 -->
 
-- [ ] **[MEDIUM]** Add in-app triage dispatch — a Run button and auto-fire on answer
+- [x] **[MEDIUM]** Add in-app triage dispatch — a Run button and auto-fire on answer — Completed: 2026-07-05
   - Type: feature
   - Description: Trigger the triage sweep from inside the Agent tab instead of the Actions tab. Add (1) a project-level Run button in the Agent view header that dispatches `claude-triage.yml` for the active project, and (2) auto-fire — when the user answers a `needs_words` card (which already flips the row to `triaging`), also dispatch a triage sweep, so the follow-up loop goes hands-off. Both go through a new Worker `dispatch_triage` route. Triage is a batch, read-only sweep, so fire-and-forget is fine: the board reflects verdicts live via the existing realtime subscription, with no status polling needed here.
   - Behavior:
