@@ -37,7 +37,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 51c1b1a6-4775-40e1-840a-73e5b1ddd5cd -->
 
-- [ ] **[HIGH]** Fix Agent tab crash reading card title from context object
+- [x] **[HIGH]** Fix Agent tab crash reading card title from context object — Completed: 2026-07-04
   - Type: bug
   - Description: The Agent board crashes rendering any queued task, blanking the whole tab. In `agentView.js`, `buildCard` (line ~186) derives the card title with `(row.title || row.context || '').trim()`. But `agent_queue` rows have no top-level `title` column — the title lives inside the `context` JSONB (`context.title`, written at flag time as `{ title, description }`). So `row.title` is undefined, the expression falls through to `row.context`, which supabase-js returns as an object, and `.trim()` on an object throws `TypeError: (row.title || row.context || '').trim is not a function`, aborting `paint`/`renderAgentView`. Fix by reading the title from `row.context.title` (guarding for a missing or non-object context), never calling `.trim()` on the raw context object.
   - Behavior:
