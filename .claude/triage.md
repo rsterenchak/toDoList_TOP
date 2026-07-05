@@ -12,8 +12,12 @@ deciding anything — never reason from the task title alone.
 ## Environment
 
 - `SUPABASE_URL` — REST base, e.g. `https://xxxx.supabase.co`
-- `SUPABASE_SERVICE_ROLE_KEY` — service-role key (bypasses RLS; scope every query
-  by `project_id` yourself)
+- `SUPABASE_SERVICE_ROLE_KEY` — the service_role key (bypasses RLS; scope every
+  query by `project_id` yourself). Sent on the `apikey` header ONLY, never in
+  `Authorization: Bearer` — so the same routine accepts both today's legacy
+  service_role JWT and a future `sb_secret_...` key with no edit (new secret keys
+  are rejected in the Bearer header; the gateway elevates to service_role from
+  the `apikey` header alone).
 - `PROJECT_ID` — the project whose flagged tasks to sweep
 
 The repo source is checked out in the working directory — use Read / Grep / Glob
@@ -23,8 +27,7 @@ to inspect it. Consult `CLAUDE.md` for this project's conventions before draftin
 
 ```
 curl -s "$SUPABASE_URL/rest/v1/agent_queue?project_id=eq.$PROJECT_ID&state=eq.triaging&select=id,todo_id,context,auto" \
-  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"
 ```
 
 Each row's `context` holds `{ title, description }` — the task text, denormalized
@@ -62,7 +65,6 @@ until then, `needs_words` is the safe exit.)
 ```
 curl -s -X PATCH "$SUPABASE_URL/rest/v1/agent_queue?id=eq.$ROW_ID" \
   -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
   -H "Content-Type: application/json" \
   -H "Prefer: return=minimal" \
   -d '{ ...fields... }'
