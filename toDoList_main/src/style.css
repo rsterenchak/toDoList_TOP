@@ -4110,34 +4110,91 @@ button.claudeAttachChipLabel { cursor: pointer; }
 
 .agentViewHeader {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.agentProjectName {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow-wrap: anywhere;
+/* Agent identity: a rounded bolt-icon badge + "Agent" label (mono). Replaces
+   the old project-name heading and "Agent queue" chip. */
+.agentIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.agentViewChip {
+.agentIdentityBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+}
+
+.agentIdentityLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+/* Right-side controls: the status pill sits before the Run button, pushed to
+   the end of the header row. */
+.agentHeaderControls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Working/Idle status pill — an indicator, not a control. */
+.agentStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary, var(--text-muted));
-  border: 0.5px solid var(--border, var(--accent));
   border-radius: 10px;
-  padding: 2px 8px;
+  padding: 3px 10px;
 }
 
-/* Run button: dispatches a triage sweep for the active project. Pushed to the
-   end of the header row; reuses the accent tokens and a 36px touch target. */
+.agentStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.agentStatusPill--working {
+  color: #2ea043;
+  background: rgba(46, 160, 67, 0.14);
+}
+
+.agentStatusPill--idle {
+  color: var(--text-muted);
+  background: transparent;
+  border: 0.5px solid var(--border, var(--text-muted));
+}
+
+/* Counts subline: "N flagged · N running · N shipped today", mono and muted. */
+.agentCounts {
+  margin-top: 4px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+/* Run button: dispatches a triage sweep for the active project. Reuses the
+   accent tokens and a 36px touch target. */
 .agentRunBtn {
-  margin-left: auto;
   align-self: center;
   display: inline-flex;
   align-items: center;

@@ -118,6 +118,72 @@ describe('AGENT view — empty states', () => {
     });
 });
 
+describe('AGENT view — header', () => {
+    beforeEach(() => {
+        listLogic.addProject('Delta');
+        mountDom('Delta');
+    });
+
+    it('renders the Agent identity block instead of the project name and queue chip', async () => {
+        queueRows = [];
+        await loadBoard();
+        const label = document.querySelector('.agentIdentityLabel');
+        expect(label).toBeTruthy();
+        expect(label.textContent).toBe('Agent');
+        // The bolt badge wraps the inline bolt glyph.
+        expect(document.querySelector('.agentIdentityBadge .agentGiveBolt')).toBeTruthy();
+        // The old project-name heading and "Agent queue" chip are gone.
+        expect(document.querySelector('.agentProjectName')).toBeFalsy();
+        expect(document.querySelector('.agentViewChip')).toBeFalsy();
+        expect(document.body.textContent).not.toContain('Delta');
+    });
+
+    it('shows a Working status pill when any row is in an in-flight state', async () => {
+        queueRows = [{ id: '1', state: 'running', context: { title: 'Build the thing' } }];
+        await loadBoard();
+        const pill = document.querySelector('.agentStatusPill');
+        expect(pill).toBeTruthy();
+        expect(pill.classList.contains('agentStatusPill--working')).toBe(true);
+        expect(pill.textContent).toContain('Working');
+    });
+
+    it('shows an Idle status pill when no row is in an in-flight state', async () => {
+        queueRows = [{ id: '1', state: 'shipped', context: { title: 'Shipped thing' } }];
+        await loadBoard();
+        const pill = document.querySelector('.agentStatusPill');
+        expect(pill.classList.contains('agentStatusPill--idle')).toBe(true);
+        expect(pill.textContent).toContain('Idle');
+    });
+
+    it('renders the flagged / running / shipped-today counts subline, live from the rows', async () => {
+        const todayIso = new Date().toISOString();
+        const yesterdayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        queueRows = [
+            { id: '1', state: 'triaging', context: { title: 'A' } },
+            { id: '2', state: 'running', context: { title: 'B' } },
+            { id: '3', state: 'shipped', context: { title: 'C' }, updated_at: todayIso },
+            { id: '4', state: 'shipped', context: { title: 'D' }, updated_at: yesterdayIso },
+        ];
+        await loadBoard();
+        const counts = document.querySelector('.agentCounts');
+        expect(counts).toBeTruthy();
+        // 4 flagged total, 2 in-flight (triaging + running), 1 shipped today.
+        expect(counts.textContent).toBe('4 flagged · 2 running · 1 shipped today');
+    });
+
+    it('shows zero-valued count segments even on an empty board', async () => {
+        queueRows = [];
+        await loadBoard();
+        expect(document.querySelector('.agentCounts').textContent).toBe('0 flagged · 0 running · 0 shipped today');
+    });
+
+    it('keeps the Run button in the header', async () => {
+        queueRows = [];
+        await loadBoard();
+        expect(document.querySelector('.agentRunBtn')).toBeTruthy();
+    });
+});
+
 describe('AGENT view — bucket rendering', () => {
     beforeEach(() => {
         listLogic.addProject('Gamma');
