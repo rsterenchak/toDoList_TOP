@@ -51,3 +51,10 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9cc26775-ac4b-4d83-be90-fdc888e4c6e0 -->
+
+- [ ] **[MEDIUM]** Exclude completed tasks from the Agent tab's Not-assigned bucket
+  - Type: bug
+  - Description: The Agent view's Not-assigned bucket lists finished tasks alongside open ones. `computeNotAssigned` in `agentView.js` filters items to those with a non-empty title that aren't already in `agent_queue`, but never excludes `completed` todos — so done work shows a "Give to agent" button and inflates the bucket count (currently 268). Add `&& !it.completed` to the filter predicate so only open, unqueued tasks appear; the bucket count is the filtered array's length, so it drops on its own. Completed state lives on the todo object as `completed` (from `toDo.js`'s `{tit, desc, due, pri, pos, completed}` factory).
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 38891d14-e996-4cbd-9983-d80f10b132d1 -->
