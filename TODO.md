@@ -267,7 +267,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 81ca35c6-3dc1-47d2-918e-b4b3e32da56c -->
 
-- [ ] **[HIGH]** Fix Dispatch blocking and duplicate re-injection — widen the confirm-on-main poll and reuse the entry id across attempts
+- [x] **[HIGH]** Fix Dispatch blocking and duplicate re-injection — widen the confirm-on-main poll and reuse the entry id across attempts — Completed: 2026-07-05
   - Type: bug
   - Description: Two problems in the Dispatch flow, both from the confirm-on-main poll. (1) The poll's ~5s window (6×800ms) is shorter than GitHub's write→read propagation, so a successfully-injected entry sometimes can't be read back in time and Dispatch aborts with a false "not visible on main," blocking a legitimate ship. (2) The abort happens after `injectEntry` has already appended the entry, and the Dispatch button mints a fresh marker on every tap, so retrying after an abort injects a second copy (duplicate). Fix both: widen the poll to ~15s, and make the entry id stable across attempts — persist it on abort and have the Dispatch button reuse the row's existing `entry_id` so `injectEntry` dedup-skips instead of duplicating. Pairs with the Worker `read` route now cache-busting so the poll reads fresh content.
   - Behavior:
