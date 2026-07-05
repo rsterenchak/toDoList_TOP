@@ -10,6 +10,10 @@ import { vi } from 'vitest';
 
 let queueRows = [];
 let queueError = null;
+// Flag-insert observation: each agent_queue insert pushes its row here, and
+// `insertError` lets a test force the insert to fail.
+let insertCalls = [];
+let insertError = null;
 
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
@@ -17,6 +21,10 @@ vi.mock('../src/supabaseClient.js', () => ({
             select: () => ({
                 eq: () => Promise.resolve({ data: queueRows, error: queueError }),
             }),
+            insert: (row) => {
+                insertCalls.push(row);
+                return Promise.resolve({ data: insertError ? null : [row], error: insertError });
+            },
         }),
         channel: () => ({
             on() { return this; },
@@ -58,6 +66,8 @@ beforeEach(() => {
     listLogic._reset();
     queueRows = [];
     queueError = null;
+    insertCalls = [];
+    insertError = null;
     document.body.innerHTML = '';
 });
 
@@ -165,5 +175,109 @@ describe('AGENT view — realtime lifecycle', () => {
         expect(() => unsubscribeAgentView()).not.toThrow();
         // Idempotent teardown.
         expect(() => unsubscribeAgentView()).not.toThrow();
+    });
+});
+
+// Helper: seed a project with named todos and return their ids by title.
+function seedTodos(projectName, titles) {
+    listLogic.addProject(projectName);
+    titles.forEach((t) => listLogic.addToDo(projectName, t));
+    const items = listLogic.listItems(projectName) || [];
+    const byTitle = {};
+    items.forEach((it) => { if (it && it.tit) byTitle[it.tit] = it.id; });
+    return byTitle;
+}
+
+describe('AGENT view — Not-assigned bucket', () => {
+    it('lists the project tasks not present in the queue, below the other buckets', async () => {
+        const ids = seedTodos('Epsilon', ['Write docs', 'Fix bug']);
+        mountDom('Epsilon');
+        // One task is already queued (by todo_id); the other is not.
+        queueRows = [{ id: 'q1', state: 'shipped', title: 'Fix bug', todo_id: ids['Fix bug'], pr_number: 7 }];
+        await loadBoard();
+
+        const labels = [...document.querySelectorAll('.agentBucketLabel')].map((n) => n.textContent);
+        expect(labels).toEqual(['Shipped', 'Not assigned']);
+        const cards = [...document.querySelectorAll('.agentCard--unassigned .agentCardTitle')].map((n) => n.textContent);
+        expect(cards).toEqual(['Write docs']);
+        // Each unqueued card carries a real (enabled) Give-to-agent control.
+        const btn = document.querySelector('.agentCard--unassigned .agentGiveButton');
+        expect(btn).toBeTruthy();
+        expect(btn.disabled).toBe(false);
+    });
+
+    it('omits the Not-assigned bucket when every task is already queued', async () => {
+        const ids = seedTodos('Zeta', ['Only task']);
+        mountDom('Zeta');
+        queueRows = [{ id: 'q1', state: 'triaging', title: 'Only task', todo_id: ids['Only task'] }];
+        await loadBoard();
+        expect(document.querySelector('.agentBucket--not-assigned')).toBeFalsy();
+    });
+
+    it('renders the Not-assigned bucket even when the queue is empty', async () => {
+        seedTodos('Eta', ['Lonely task']);
+        mountDom('Eta');
+        queueRows = [];
+        await loadBoard();
+        expect(document.querySelector('.agentBucket--not-assigned')).toBeTruthy();
+        // Not the no-work empty state, because there is an unqueued task.
+        expect(document.querySelector('.agentEmptyState')).toBeFalsy();
+    });
+});
+
+describe('AGENT view — Give to agent action', () => {
+    it('inserts a triaging agent_queue row denormalising the task context on tap', async () => {
+        const ids = seedTodos('Theta', ['Ship it']);
+        mountDom('Theta');
+        queueRows = [];
+        await loadBoard();
+
+        const btn = document.querySelector('.agentCard--unassigned .agentGiveButton');
+        btn.click();
+        await flush();
+
+        expect(insertCalls.length).toBe(1);
+        const row = insertCalls[0];
+        expect(row.todo_id).toBe(ids['Ship it']);
+        expect(row.state).toBe('triaging');
+        expect(row.auto).toBe(true);
+        expect(row.project_id).toBe(listLogic.getProjectId('Theta'));
+        expect(row.context.title).toBe('Ship it');
+    });
+
+    it('re-enables the button and surfaces a non-blocking error when the insert fails', async () => {
+        seedTodos('Iota', ['Risky task']);
+        mountDom('Iota');
+        queueRows = [];
+        await loadBoard();
+
+        insertError = { message: 'insert boom' };
+        const btn = document.querySelector('.agentCard--unassigned .agentGiveButton');
+        btn.click();
+        await flush();
+
+        expect(btn.disabled).toBe(false);
+        const err = document.querySelector('.agentGiveError');
+        expect(err).toBeTruthy();
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toMatch(/boom/);
+    });
+});
+
+describe('listLogic.flagTaskForAgent', () => {
+    it('returns { ok: true } and writes a well-formed row for a known task', async () => {
+        const ids = seedTodos('Kappa', ['A task']);
+        const res = await listLogic.flagTaskForAgent(ids['A task']);
+        expect(res.ok).toBe(true);
+        expect(insertCalls.length).toBe(1);
+        expect(insertCalls[0].context.description).toBe(null);
+    });
+
+    it('returns an error result for an unknown task id and writes nothing', async () => {
+        listLogic.addProject('Lambda');
+        const res = await listLogic.flagTaskForAgent('no-such-id');
+        expect(res.ok).toBe(false);
+        expect(res.error).toMatch(/not found/i);
+        expect(insertCalls.length).toBe(0);
     });
 });
