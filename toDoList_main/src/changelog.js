@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-05',
+        added: [
+            "Every Agent card except those with a run in flight now has a × to remove it — returning an unshipped task to Not-assigned or dismissing a shipped one; Stuck cards keep Retry.",
+        ],
         fixed: [
-            "Agent mockup cards now reveal the exact copy-ready prompt to paste into Claude, with its own Copy button, instead of showing a separate raw context bundle.",
             "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
             "Agent view cards, inputs, and read-only blocks now show a subtle neutral border instead of a bright purple one.",
             "The Agent header now shows a Working status while a triage sweep is running — tracked from the real run and returning to Idle only when it finishes — instead of staying stuck on Idle.",

@@ -450,7 +450,7 @@ function buildSecondary(row) {
     }
     // Stuck bucket: a genuinely failed run, or a completed run that merged
     // nothing (no_change). Both surface the row's summary via failure_reason,
-    // plus Shelve + unflag and Retry actions.
+    // plus a Retry action (removal is the header × control).
     if (state === 'failed' || state === 'no_change') {
         return buildStuckSecondary(row);
     }
@@ -553,14 +553,14 @@ function buildDraftedSecondary(row) {
 }
 
 // Secondary content for a Stuck card (`failed` / `no_change`): the run's reason
-// paragraph plus two actions — "Shelve + unflag" (delete the queue row so the
-// task drops back to Not-assigned) and "Retry" (re-dispatch the task's existing
-// entry through the run pipeline, reusing its stored entry_id so the marker is
-// dedup-skipped and no duplicate lands in TODO.md). Both go through listLogic /
-// dispatchDraft; the view never writes to Supabase directly. Each button
-// disables both while its action is in flight and re-enables with a
-// non-blocking error on failure. Retry is disabled when the row has neither an
-// entry_id nor a draft (nothing to re-dispatch).
+// paragraph plus a "Retry" action (re-dispatch the task's existing entry through
+// the run pipeline, reusing its stored entry_id so the marker is dedup-skipped
+// and no duplicate lands in TODO.md). Removal is handled by the header "×"
+// control (buildRemoveControl), which replaced the former "Shelve + unflag"
+// button. Retry goes through dispatchDraft; the view never writes to Supabase
+// directly. The button disables while its action is in flight and re-enables
+// with a non-blocking error on failure. Retry is disabled when the row has
+// neither an entry_id nor a draft (nothing to re-dispatch).
 function buildStuckSecondary(row) {
     const state = row.state;
     const wrap = document.createElement('div');
@@ -583,12 +583,6 @@ function buildStuckSecondary(row) {
     errorEl.hidden = true;
     actions.appendChild(errorEl);
 
-    const shelve = document.createElement('button');
-    shelve.type = 'button';
-    shelve.className = 'agentStuckShelve';
-    shelve.textContent = 'Shelve + unflag';
-    actions.appendChild(shelve);
-
     const draftText = (row.draft || '').trim();
     const canRetry = !!(row.entry_id || draftText);
     const retry = document.createElement('button');
@@ -600,11 +594,8 @@ function buildStuckSecondary(row) {
 
     wrap.appendChild(actions);
 
-    // Restore both buttons to their idle state and surface a non-blocking error.
+    // Restore Retry to its idle state and surface a non-blocking error.
     function fail(message) {
-        shelve.disabled = false;
-        shelve.classList.remove('is-pending');
-        shelve.textContent = 'Shelve + unflag';
         retry.disabled = !canRetry;
         retry.classList.remove('is-pending');
         retry.textContent = 'Retry';
@@ -612,32 +603,12 @@ function buildStuckSecondary(row) {
         errorEl.hidden = false;
     }
 
-    // Disable both controls before either action fires, so a shelve and a retry
-    // can't race each other on the same card.
+    // Disable Retry before the action fires.
     function beginAction() {
         errorEl.hidden = true;
         errorEl.textContent = '';
-        shelve.disabled = true;
         retry.disabled = true;
     }
-
-    shelve.addEventListener('click', function () {
-        if (shelve.disabled) return;
-        beginAction();
-        shelve.classList.add('is-pending');
-        shelve.textContent = 'Shelving…';
-        Promise.resolve(listLogic.unflagAgentTask(row.id)).then(function (res) {
-            if (res && res.ok) {
-                // The row is gone; refresh so the card leaves and the task
-                // reappears in Not-assigned even where realtime isn't observed.
-                refreshAgentQueue(getSelectedProjectName());
-                return;
-            }
-            fail(res && res.error ? res.error : 'Could not shelve. Try again.');
-        }).catch(function () {
-            fail('Could not shelve. Try again.');
-        });
-    });
 
     retry.addEventListener('click', function () {
         if (retry.disabled) return;
@@ -1203,6 +1174,11 @@ function buildCard(row) {
     head.appendChild(title);
 
     head.appendChild(buildChip(row.state));
+    // Every card except the in-flight thin states (dispatched/running) gets a
+    // compact "×" remove control next to the chip. Thin rows have a run in
+    // flight, so they're left to settle to Shipped/Stuck before they can be
+    // removed.
+    if (!thin) head.appendChild(buildRemoveControl(row));
     card.appendChild(head);
 
     if (!thin) {
@@ -1210,6 +1186,41 @@ function buildCard(row) {
         if (secondary) card.appendChild(secondary);
     }
     return card;
+}
+
+// A compact "×" remove control for a card header. Tapping it deletes the row's
+// agent_queue entry via listLogic.unflagAgentTask, then refreshes the board:
+// an unshipped task's todo reappears in Not-assigned and a shipped card is
+// simply dismissed. Delete is immediate (no confirm), matching the former
+// "Shelve + unflag" behavior it replaces. Only rendered off the in-flight thin
+// states (dispatched/running); see buildCard. On failure the button re-enables
+// so the removal can be retried.
+function buildRemoveControl(row) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentCardRemove';
+    btn.setAttribute('aria-label', 'Remove from board');
+    btn.title = 'Remove from board';
+    btn.textContent = '×';
+    btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        Promise.resolve(listLogic.unflagAgentTask(row.id)).then(function (res) {
+            if (res && res.ok) {
+                // The row is gone; refresh so the card leaves even where
+                // realtime isn't observed (e.g. offline stubs).
+                refreshAgentQueue(getSelectedProjectName());
+                return;
+            }
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+        }).catch(function () {
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+        });
+    });
+    return btn;
 }
 
 // A small inline bolt glyph for the "Give to agent" pill. Built via the DOM

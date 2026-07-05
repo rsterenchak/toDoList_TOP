@@ -4308,6 +4308,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 .agentCardTitle {
+  flex: 1 1 auto;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
@@ -4315,6 +4316,44 @@ button.claudeAttachChipLabel { cursor: pointer; }
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+/* Compact "×" remove control in a card header, next to the state chip. Small
+   and muted, warming on hover; keeps a ≥36px touch target while the negative
+   margins trim its visual bulk so it doesn't crowd the title or chip. */
+.agentCardRemove {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px -6px -2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.agentCardRemove:hover {
+  color: var(--text-warning);
+  background: var(--bg-hover);
+}
+
+.agentCardRemove:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentCardRemove:disabled,
+.agentCardRemove.is-pending {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .agentChip {
@@ -4544,7 +4583,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 /* Stuck card (failed / no_change): the run's reason paragraph above an actions
-   row with Shelve + unflag (neutral) and Retry (accent) buttons. */
+   row with a Retry (accent) button; removal is the header × control. */
 .agentStuck {
   display: flex;
   flex-direction: column;
@@ -4564,39 +4603,6 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 12px;
   line-height: 1.5;
   color: #e5534b;
-}
-
-.agentStuckShelve {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--text-secondary);
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  border-radius: 10px;
-  white-space: nowrap;
-}
-
-.agentStuckShelve:hover {
-  color: var(--text-primary);
-  border-color: var(--border-bright);
-}
-
-.agentStuckShelve:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
-}
-
-.agentStuckShelve:disabled,
-.agentStuckShelve.is-pending {
-  opacity: 0.6;
-  cursor: default;
 }
 
 .agentStuckRetry {

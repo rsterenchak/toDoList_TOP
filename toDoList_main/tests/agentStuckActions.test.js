@@ -1,12 +1,13 @@
 import { vi } from 'vitest';
 
-// The Agent view's Stuck cards (`failed` / `no_change`) carry two actions:
-// "Shelve + unflag" — delete the queue row so the task returns to Not-assigned —
-// and "Retry" — re-dispatch the task's existing entry through the run pipeline,
-// reusing the row's stored entry_id so injectEntry dedup-skips the already-present
-// marker rather than appending a duplicate TODO.md entry. These tests drive that
-// flow with a controllable fake Supabase client (delete + update observation) and
-// a fully mocked inject.js so no network is touched.
+// The Agent view's Stuck cards (`failed` / `no_change`) carry a "Retry" action —
+// re-dispatch the task's existing entry through the run pipeline, reusing the
+// row's stored entry_id so injectEntry dedup-skips the already-present marker
+// rather than appending a duplicate TODO.md entry. Removal is handled by the
+// header "×" control (shared by every non-running card), which replaced the
+// former "Shelve + unflag" button. These tests drive that flow with a
+// controllable fake Supabase client (delete + update observation) and a fully
+// mocked inject.js so no network is touched.
 
 // ── Supabase stub ────────────────────────────────────────────────────
 let queueRows = [];
@@ -163,25 +164,28 @@ describe('AGENT view — Stuck card actions', () => {
         mountDom('Stuckly');
     });
 
-    it('renders Shelve + unflag and Retry buttons under the reason paragraph', async () => {
+    it('renders a Retry button under the reason paragraph and no separate Shelve button', async () => {
         queueRows = [{ id: 'f1', state: 'failed', context: { title: 'Broke' }, failure_reason: 'Tests failed', entry_id: 'ent-1' }];
         await loadBoard();
         expect(document.querySelector('.agentFailure').textContent).toBe('Tests failed');
-        expect(document.querySelector('.agentStuckShelve')).toBeTruthy();
+        expect(document.querySelector('.agentStuckShelve')).toBeFalsy();
         expect(document.querySelector('.agentStuckRetry')).toBeTruthy();
+        // Removal is now the header × control.
+        expect(document.querySelector('.agentCardRemove')).toBeTruthy();
     });
 
     it('also renders on a no_change row', async () => {
         queueRows = [{ id: 'n1', state: 'no_change', context: { title: 'Nada' }, failure_reason: 'Nothing changed', draft: 'x' }];
         await loadBoard();
-        expect(document.querySelector('.agentStuckShelve')).toBeTruthy();
+        expect(document.querySelector('.agentStuckShelve')).toBeFalsy();
         expect(document.querySelector('.agentStuckRetry')).toBeTruthy();
+        expect(document.querySelector('.agentCardRemove')).toBeTruthy();
     });
 
-    it('Shelve + unflag deletes the row via listLogic.unflagAgentTask', async () => {
+    it('the header × deletes the row via listLogic.unflagAgentTask', async () => {
         queueRows = [{ id: 'f1', state: 'failed', context: { title: 'Broke' }, failure_reason: 'x', entry_id: 'ent-1' }];
         await loadBoard();
-        document.querySelector('.agentStuckShelve').click();
+        document.querySelector('.agentCardRemove').click();
         await flush();
         expect(deleteCalls.length).toBe(1);
         expect(deleteCalls[0].id).toBe('f1');
@@ -217,8 +221,8 @@ describe('AGENT view — Stuck card actions', () => {
         queueRows = [{ id: 'f1', state: 'failed', context: { title: 'Broke' }, failure_reason: 'x' }];
         await loadBoard();
         expect(document.querySelector('.agentStuckRetry').disabled).toBe(true);
-        // Shelve stays available — the task can always be unflagged.
-        expect(document.querySelector('.agentStuckShelve').disabled).toBe(false);
+        // The header × stays available — the task can always be removed.
+        expect(document.querySelector('.agentCardRemove').disabled).toBe(false);
     });
 
     it('Retry is enabled when only a draft (no entry_id) is present', async () => {
