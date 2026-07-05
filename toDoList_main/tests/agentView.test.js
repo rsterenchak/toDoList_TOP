@@ -231,6 +231,19 @@ describe('AGENT view — Not-assigned bucket', () => {
         expect(document.querySelector('.agentBucket--not-assigned')).toBeFalsy();
     });
 
+    it('excludes completed tasks from the Not-assigned bucket', async () => {
+        const ids = seedTodos('EtaDone', ['Open task', 'Done task']);
+        mountDom('EtaDone');
+        const items = listLogic.listItems('EtaDone') || [];
+        const doneItem = items.find((it) => it.id === ids['Done task']);
+        listLogic.setToDoCompleted('EtaDone', doneItem, true);
+        queueRows = [];
+        await loadBoard();
+
+        const cards = [...document.querySelectorAll('.agentCard--unassigned .agentCardTitle')].map((n) => n.textContent);
+        expect(cards).toEqual(['Open task']);
+    });
+
     it('renders the Not-assigned bucket even when the queue is empty', async () => {
         seedTodos('Eta', ['Lonely task']);
         mountDom('Eta');

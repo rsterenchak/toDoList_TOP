@@ -233,7 +233,7 @@ function computeNotAssigned(projectName, rows) {
         if (r && r.todo_id != null) queued.add(r.todo_id);
     });
     return items.filter(function (it) {
-        return it && typeof it.tit === 'string' && it.tit.trim() !== '' && !queued.has(it.id);
+        return it && typeof it.tit === 'string' && it.tit.trim() !== '' && !it.completed && !queued.has(it.id);
     });
 }
 
