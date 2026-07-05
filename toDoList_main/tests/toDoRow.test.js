@@ -79,3 +79,56 @@ describe('toDoRow Enter-to-commit fires a Supabase INSERT via commitBlankPlaceho
         expect(matches.length).toBe(1);
     });
 });
+
+
+// Regression: toggling a todo description open/closed inserts or removes
+// #descSibling directly into #mainList, shifting every row below it —
+// including an expanded TODO.md viewer card's header. The viewer card caches
+// its body height from a one-time snapshot (applyExpandedHeight), recomputed
+// only on window resize or its own collapse toggle, so without a nudge the
+// card's body overruns the room actually left and collides with neighboring
+// rows. wireDescToggle must call refreshViewerExpandedHeight() after the
+// insert/remove so the cached height tracks the live layout.
+describe('wireDescToggle nudges the viewer card to recompute its expanded height', () => {
+    const toDoRow = read('toDoRow.js');
+    const viewer = read('todoMdViewer.js');
+
+    function wireDescToggleBody() {
+        const startIdx = toDoRow.indexOf('function wireDescToggle');
+        expect(startIdx).toBeGreaterThan(-1);
+        // Up to (but not into) the next top-level export/function after it.
+        const endIdx = toDoRow.indexOf('export function buildToDoRow', startIdx);
+        expect(endIdx).toBeGreaterThan(-1);
+        return toDoRow.slice(startIdx, endIdx);
+    }
+
+    it('imports refreshViewerExpandedHeight from todoMdViewer.js', () => {
+        expect(toDoRow).toMatch(
+            /import\s*\{\s*refreshViewerExpandedHeight\s*\}\s*from\s*['"]\.\/todoMdViewer\.js['"]/
+        );
+    });
+
+    it('calls refreshViewerExpandedHeight() inside the descToggle click handler', () => {
+        const body = wireDescToggleBody();
+        expect(body).toMatch(/refreshViewerExpandedHeight\s*\(\s*\)/);
+    });
+
+    it('makes the recompute call after the descSibling insert and remove, so it fires for both open and close', () => {
+        const body = wireDescToggleBody();
+        const insertIdx = body.indexOf('insertBefore(descSibling');
+        const removeIdx = body.indexOf('removeChild(descNode');
+        const refreshIdx = body.indexOf('refreshViewerExpandedHeight()');
+        expect(insertIdx).toBeGreaterThan(-1);
+        expect(removeIdx).toBeGreaterThan(-1);
+        expect(refreshIdx).toBeGreaterThan(-1);
+        // The single refresh call sits after both mutation branches.
+        expect(refreshIdx).toBeGreaterThan(insertIdx);
+        expect(refreshIdx).toBeGreaterThan(removeIdx);
+    });
+
+    it('todoMdViewer.js exports refreshViewerExpandedHeight, which drives the resize handler (the applyExpandedHeight seam)', () => {
+        expect(viewer).toMatch(
+            /export\s+function\s+refreshViewerExpandedHeight\s*\(\s*\)\s*\{[\s\S]{0,200}viewerResizeHandler\s*\(\s*\)/
+        );
+    });
+});

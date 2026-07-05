@@ -163,6 +163,17 @@ function detachViewerResizeHandler() {
     }
 }
 
+// Re-run the expanded viewer card's height computation against the live
+// layout. `applyExpandedHeight()` is a per-card closure, so the module-level
+// `viewerResizeHandler` (which calls it when the card is expanded) is the
+// public seam. Row-level layout changes elsewhere in #mainList — e.g. a todo
+// description panel opening or closing, which shifts every row below it — call
+// this so the card's cached height tracks the live layout instead of a stale
+// one-time snapshot. No-op when no card is mounted or the card isn't expanded.
+export function refreshViewerExpandedHeight() {
+    if (viewerResizeHandler) viewerResizeHandler();
+}
+
 function stopViewerRunPoll() {
     if (viewerRunPollInterval) {
         clearInterval(viewerRunPollInterval);
