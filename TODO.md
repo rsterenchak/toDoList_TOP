@@ -101,7 +101,7 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/toDoRow.js`
   <!-- id: 2c00ecf9-0f60-4f4b-ac25-a7d735c91b75 -->
 
-- [ ] **[MEDIUM]** Make the Agent board reliably settle dispatched runs to a terminal state
+- [x] **[MEDIUM]** Make the Agent board reliably settle dispatched runs to a terminal state — Completed: 2026-07-05
   - Type: bug
   - Description: A dispatched run can strand a card at `dispatched`/`running` indefinitely — the client poll only lives while the Agent tab is open and doesn't resume on reload, so a run that completes while you're away never gets reconciled (the work ships, the board never catches up). The current shipped-vs-no-change check also uses the closed-PR search (`resolveEntryByMarker`), which lags GitHub's index and can miss a fresh merge. Fix both: on view mount, settle or resume-poll any `agent_queue` rows already in `dispatched`/`running`; and determine "shipped" from the entry's checkbox on main via `readTodoMdFromWorker`, the project's lag-free merge signal, rather than the PR search.
   - Behavior:
