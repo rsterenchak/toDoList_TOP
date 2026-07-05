@@ -59,7 +59,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 38891d14-e996-4cbd-9983-d80f10b132d1 -->
 
-- [ ] **[HIGH]** Wire the Agent tab's needs_words answer input to submit and re-queue
+- [x] **[HIGH]** Wire the Agent tab's needs_words answer input to submit and re-queue — Completed: 2026-07-04
   - Type: feature
   - Description: Complete the deferred answer interaction for `needs_words` cards in the Agent view. The answer textarea built in `buildSecondary` (`agentView.js`, ~line 136) is currently `disabled` — a static affordance from the board's initial build — so the user can't respond to the agent's question. Make it editable and wire submission: on send, append the user's answer to the row's `thread` and flip the row's `state` back to `triaging`, so it re-enters the queue for a re-triage that now carries the answer. The existing realtime subscription then moves the card out of Needs you into In progress on its own (the "re-checking" state).
   - Behavior:
