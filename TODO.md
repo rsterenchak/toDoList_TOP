@@ -76,7 +76,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 58b64ad2-6489-4efb-8a9d-51cf313ca9e3 -->
 
-- [ ] **[HIGH]** Add a Dispatch button to drafted Agent cards that ships the draft through the run pipeline
+- [x] **[HIGH]** Add a Dispatch button to drafted Agent cards that ships the draft through the run pipeline — Completed: 2026-07-04
   - Type: feature
   - Description: Give `drafted` cards in the Agent view an outlet. A drafted row currently shows only "Draft ready to dispatch." with no way to act on it. Add a Dispatch button that ships the agent's `draft` through the existing run pipeline: embed a fresh entry-id marker into the draft, inject it into TODO.md, dispatch `claude-run.yml` in entry mode against that id, and track the run to a terminal outcome — writing the row's `state` (dispatched → running → shipped / failed / no_change), `run_id`, and `pr_url` as it progresses. The button press is the review gate (no auto-dispatch here). Reuse the `inject.js` Worker-call chain the Runs-tab author flow already uses.
   - Behavior:
