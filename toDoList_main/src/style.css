@@ -10,6 +10,7 @@
 }
 
 /* ── VOID THEME (dark — default) ── */
+/* Defines the default dark-mode CSS custom properties consumed throughout the stylesheet. */
 
 :root {
   --bg-base:       #0e0f14;
