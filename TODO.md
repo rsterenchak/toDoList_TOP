@@ -58,3 +58,20 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 38891d14-e996-4cbd-9983-d80f10b132d1 -->
+
+- [ ] **[HIGH]** Wire the Agent tab's needs_words answer input to submit and re-queue
+  - Type: feature
+  - Description: Complete the deferred answer interaction for `needs_words` cards in the Agent view. The answer textarea built in `buildSecondary` (`agentView.js`, ~line 136) is currently `disabled` — a static affordance from the board's initial build — so the user can't respond to the agent's question. Make it editable and wire submission: on send, append the user's answer to the row's `thread` and flip the row's `state` back to `triaging`, so it re-enters the queue for a re-triage that now carries the answer. The existing realtime subscription then moves the card out of Needs you into In progress on its own (the "re-checking" state).
+  - Behavior:
+    1. In `buildSecondary` for `needs_words`, the textarea is no longer disabled and accepts input. Add a Send affordance — a button, plus Enter-without-Shift submits and Shift+Enter inserts a newline.
+    2. On submit with non-empty trimmed text: disable the input and button (pending), append `{ role: 'user', text: <answer>, ts: <ISO now> }` to the row's existing `thread`, and set `state: 'triaging'`, persisted to `agent_queue`.
+    3. On success the realtime subscription re-renders: the card leaves Needs you and appears under In progress (triaging), and the input clears. On failure, re-enable input and button and surface a non-blocking error.
+    4. Empty or whitespace-only submissions are ignored (no write).
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, `buildSecondary` (~L118–140): remove `input.disabled = true`; keep `rows = 2` and the 16px font-size (iOS focus zoom). Add the send button and a `keydown` handler on the textarea (Enter without Shift → submit + `preventDefault`; Shift+Enter → newline). `buildSecondary(row)` already receives the row, so `row.id` and `row.thread` are in scope for the handler.
+    - Per the "all data-model mutations route through `listLogic.js`" convention, add `listLogic.answerAgentTask(rowId, answerText, currentThread)` that builds `[...(currentThread || []), { role: 'user', text: answerText, ts: new Date().toISOString() }]` and writes `{ thread, state: 'triaging' }` to `agent_queue` where `id = rowId` via `supabaseClient.js` (`.from('agent_queue').update(...)`), mirroring `flagTaskForAgent`. The view calls it and never writes directly.
+    - Send-button styling in `style.css`, reusing accent/token vars, ≥36px touch target.
+  - Out of scope: auto-dispatching the re-triage when the user answers (the triage workflow is re-run manually for now; auto-dispatch is a Worker addition); the triage routine reading the thread on re-triage (a companion `.claude/triage.md` change, below). Verify by answering a needs_words card and confirming the row's `thread` gains a user message and `state` flips to `triaging` in Supabase, and the card moves to In progress live.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 58b64ad2-6489-4efb-8a9d-51cf313ca9e3 -->
