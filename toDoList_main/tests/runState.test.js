@@ -3,9 +3,13 @@ import {
     readActiveRun,
     writeActiveRun,
     clearActiveRun,
+    readActiveRedeploy,
+    writeActiveRedeploy,
+    clearActiveRedeploy,
     activeProjectNameForViewer,
     ACTIVE_RUN_CHANGE_EVENT,
     RUN_GIVE_UP_MS,
+    REDEPLOY_GIVE_UP_MS,
 } from '../src/runState.js';
 
 // runState owns the per-project active-run record shared by the TODO.md
@@ -92,6 +96,83 @@ describe('runState — per-project active-run state', () => {
             throw new Error('blocked');
         });
         expect(readActiveRun('Alpha')).toBeNull();
+        spy.mockRestore();
+    });
+});
+
+// A manual Pages redeploy and an automation run must never overlap on the same
+// project. runState carries a per-project redeploy-in-flight flag so run
+// dispatch (Run backlog / Run this entry / chat ship) can refuse while a
+// redeploy owns the project — the reverse of the deploy pill disabling while a
+// run is active. Like the run record it is keyed per project, persisted, and
+// gated by a give-up window so a never-cleared flag can't block forever.
+describe('runState — per-project redeploy flag', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        vi.restoreAllMocks();
+    });
+
+    it('round-trips a redeploy flag through write → read for the same project', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() });
+        expect(readActiveRedeploy('Alpha')).not.toBeNull();
+    });
+
+    it('keys the flag per project — a redeploy on one project does not surface for another', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() });
+        expect(readActiveRedeploy('Alpha')).not.toBeNull();
+        expect(readActiveRedeploy('Beta')).toBeNull();
+    });
+
+    it('persists under a distinct todoapp_activeRedeploy:-prefixed, project-encoded key', () => {
+        writeActiveRedeploy('Pro/ject A', { startedAt: Date.now() });
+        const key = 'todoapp_activeRedeploy:' + encodeURIComponent('Pro/ject A');
+        expect(localStorage.getItem(key)).toBeTruthy();
+        // It does NOT collide with the run record's key.
+        expect(localStorage.getItem('todoapp_activeRun:' + encodeURIComponent('Pro/ject A'))).toBeNull();
+    });
+
+    it('clearActiveRedeploy removes the project flag', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() });
+        clearActiveRedeploy('Alpha');
+        expect(readActiveRedeploy('Alpha')).toBeNull();
+    });
+
+    it('treats a flag older than the give-up window as stale: clears it and returns null', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() - (REDEPLOY_GIVE_UP_MS + 1000) });
+        const key = 'todoapp_activeRedeploy:' + encodeURIComponent('Alpha');
+        expect(localStorage.getItem(key)).toBeTruthy();
+        expect(readActiveRedeploy('Alpha')).toBeNull();
+        expect(localStorage.getItem(key)).toBeNull();
+    });
+
+    it('keeps a flag still within the give-up window', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() - (REDEPLOY_GIVE_UP_MS - 60 * 1000) });
+        expect(readActiveRedeploy('Alpha')).not.toBeNull();
+    });
+
+    it('the redeploy give-up window sits above the viewer 5-minute Pages give-up', () => {
+        expect(REDEPLOY_GIVE_UP_MS).toBeGreaterThan(5 * 60 * 1000);
+    });
+
+    it('the redeploy flag and the run record are independent slots', () => {
+        writeActiveRedeploy('Alpha', { startedAt: Date.now() });
+        // A redeploy flag must not read back as an active run, and vice versa.
+        expect(readActiveRun('Alpha')).toBeNull();
+        clearActiveRedeploy('Alpha');
+        writeActiveRun('Alpha', { correlationId: 'c', project: 'Alpha', dispatchedAt: Date.now() });
+        expect(readActiveRedeploy('Alpha')).toBeNull();
+    });
+
+    it('returns null and does not throw when localStorage is unreadable', () => {
+        const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw new Error('blocked');
+        });
+        expect(readActiveRedeploy('Alpha')).toBeNull();
         spy.mockRestore();
     });
 });

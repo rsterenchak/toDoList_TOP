@@ -980,6 +980,28 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(injectCall).toBeFalsy();
     });
 
+    it('refuses a ship while the same project has a redeploy in progress', async () => {
+        selectProject('Delta');
+        // A manual redeploy owns this project's slot — a chat ship must not
+        // dispatch a run on top of it (mutual exclusion with the viewer's Redeploy).
+        localStorage.setItem(
+            'todoapp_activeRedeploy:' + encodeURIComponent('Delta'),
+            JSON.stringify({ startedAt: Date.now() })
+        );
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        // The guard refused before injecting — no inject call fired.
+        const injectCall = fetchSpy.mock.calls.find((c) => {
+            const b = JSON.parse(c[1].body);
+            return !b.chat && !b.dispatch && !b.status && b.entry;
+        });
+        expect(injectCall).toBeFalsy();
+    });
+
     it('flips the run record to FAILED when the status poll reports a non-success conclusion', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'failure' };
         await sendMessage('draft me an entry');
