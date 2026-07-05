@@ -284,3 +284,9 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0255e845-7871-41f3-8217-7de952e3fb99 -->
+
+- [ ] **[LOW]** Add a harmless marker comment to style.css
+  - Type: feature
+  - Description: Canary/test task for the automation pipeline — add a single no-op CSS comment (e.g. `/* pipeline test marker */`) near the top of the stylesheet, right after the existing header comment on line 1 of `toDoList_main/src/style.css`. The comment must not alter any selector, rule, or computed style — it exists only to verify the inject/dispatch/build pipeline end-to-end.
+  - File: `toDoList_main/src/style.css`
+  <!-- id: 057bc041-314e-442a-aa0a-f406a33c8fa8 -->
