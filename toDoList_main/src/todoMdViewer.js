@@ -1108,16 +1108,43 @@ function buildTodoMdViewerCard(projectName, target) {
 
     // While a run is being tracked (the pill is mounted), every per-entry
     // "Run this entry" control is disabled so a second dispatch can't orphan
-    // the first run's tracking — the pill follows a single-run model. Called
-    // after each body rebuild and on every pill start / teardown.
+    // the first run's tracking — the pill follows a single-run model. The
+    // controls are ALSO greyed while a manual redeploy owns this project (a
+    // run and a redeploy are mutually exclusive), so the buttons visibly read
+    // as unavailable rather than staying enabled behind the click-time guard.
+    // Reads the shared per-project redeploy state directly so a card remounted
+    // (or its body rebuilt) mid-redeploy repaints greyed — writeActiveRedeploy/
+    // clearActiveRedeploy emit no change event. Called after each body rebuild
+    // and on every pill start / teardown.
     function syncRunEntryButtonsDisabled() {
-        const active = !!runPill;
+        const runActive = !!runPill;
+        const redeployBlocked = !!readActiveRedeploy(projectName);
         const btns = card.querySelectorAll('.todoMdViewerRunEntryBtn');
         btns.forEach(function(b) {
             if (b.classList.contains('todoMdViewerRunEntryBtn--loading')) return;
-            b.disabled = active;
-            b.classList.toggle('todoMdViewerRunEntryBtn--disabled', active);
+            b.disabled = runActive || redeployBlocked;
+            b.classList.toggle('todoMdViewerRunEntryBtn--disabled', runActive);
+            b.classList.toggle('todoMdViewerRunEntryBtn--redeployblocked', redeployBlocked);
         });
+    }
+
+    // Grey out and disable the Run backlog button while a manual redeploy owns
+    // this project, mirroring the deploy pill's run-blocked treatment in the
+    // reverse direction (a run blocks redeploy; a redeploy blocks runs). The
+    // per-entry controls fold the same block into syncRunEntryButtonsDisabled.
+    // Skips the Run backlog button while it is mid-dispatch (--loading) so an
+    // in-flight run isn't disturbed; the run pill (swapped in on a successful
+    // dispatch) is untouched since a run and a redeploy never overlap here. The
+    // click-time readActiveRedeploy guards in runBacklog/runEntry remain a
+    // backstop. Reads the shared per-project redeploy state so a card remounted
+    // mid-redeploy paints greyed too.
+    function syncRunButtonsRedeployBlocked() {
+        const blocked = !!readActiveRedeploy(projectName);
+        if (!runBacklogBtn.classList.contains('todoMdViewerRunBtn--loading')) {
+            runBacklogBtn.disabled = blocked;
+            runBacklogBtn.classList.toggle('todoMdViewerRunBtn--redeployblocked', blocked);
+        }
+        syncRunEntryButtonsDisabled();
     }
 
     function showRunSuccess() {
@@ -1328,6 +1355,11 @@ function buildTodoMdViewerCard(projectName, target) {
         pagesRebuilding = active;
         if (active) writeActiveRedeploy(projectName, { startedAt: Date.now() });
         else clearActiveRedeploy(projectName);
+        // Every redeploy transition (tap, poll-completed, poll-give-up, failure)
+        // routes through here, so this is the single chokepoint that greys the
+        // Run backlog / Run this entry controls for the redeploy's duration and
+        // un-greys them the instant it settles.
+        syncRunButtonsRedeployBlocked();
     }
 
     // Paint the pill for one of three states: 'idle' (quiet/healthy),
@@ -1738,6 +1770,12 @@ function buildTodoMdViewerCard(projectName, target) {
     // own (~30s) without waiting for a manual Sync. The mount runSync() already
     // did the first health read; this keeps it fresh from here on.
     startPagesHealthPoll();
+
+    // Paint the Run backlog / Run this entry controls greyed if this project is
+    // already mid-redeploy at mount time — writeActiveRedeploy/clearActiveRedeploy
+    // emit no change event, so a card remounted during a redeploy would otherwise
+    // render the buttons ungreyed.
+    syncRunButtonsRedeployBlocked();
 
     return card;
 }

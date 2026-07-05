@@ -240,6 +240,51 @@ describe('redeploy pill — todoMdViewer.js wiring', () => {
     });
 });
 
+describe('redeploy → run controls greyed while a redeploy owns the project', () => {
+    const main = read('todoMdViewer.js');
+
+    it('greys the Run backlog button from the shared redeploy state, skipping mid-dispatch', () => {
+        const start = main.indexOf('function syncRunButtonsRedeployBlocked');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 700);
+        // Block state is read from the shared per-project redeploy flag.
+        expect(block).toMatch(/blocked\s*=\s*!!readActiveRedeploy\(\s*projectName\s*\)/);
+        // In-flight dispatch (--loading) is left untouched so a run isn't disturbed.
+        expect(block).toMatch(/runBacklogBtn\.classList\.contains\(\s*['"]todoMdViewerRunBtn--loading['"]\s*\)/);
+        // Disabled + greyed via the dedicated redeploy-blocked class.
+        expect(block).toMatch(/runBacklogBtn\.disabled\s*=\s*blocked/);
+        expect(block).toMatch(/runBacklogBtn\.classList\.toggle\(\s*['"]todoMdViewerRunBtn--redeployblocked['"]\s*,\s*blocked\s*\)/);
+        // Per-entry controls fold the same block in.
+        expect(block).toMatch(/syncRunEntryButtonsDisabled\s*\(\s*\)/);
+    });
+
+    it('folds the redeploy block into the per-entry Run this entry controls', () => {
+        const start = main.indexOf('function syncRunEntryButtonsDisabled');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 700);
+        expect(block).toMatch(/redeployBlocked\s*=\s*!!readActiveRedeploy\(\s*projectName\s*\)/);
+        // Disabled while a run is tracked OR a redeploy owns the project.
+        expect(block).toMatch(/\.disabled\s*=\s*runActive\s*\|\|\s*redeployBlocked/);
+        expect(block).toMatch(/todoMdViewerRunEntryBtn--redeployblocked['"]\s*,\s*redeployBlocked/);
+    });
+
+    it('drives the greying from setPagesRebuilding — the single redeploy chokepoint', () => {
+        const start = main.indexOf('function setPagesRebuilding');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 600);
+        expect(block).toMatch(/syncRunButtonsRedeployBlocked\s*\(\s*\)/);
+    });
+
+    it('syncs the greying at card-mount so a remount mid-redeploy paints greyed', () => {
+        // startPagesHealthPoll runs in the mount sequence; the mount-time sync
+        // must follow it (no change event fires on write/clear of redeploy state).
+        const healthIdx = main.lastIndexOf('startPagesHealthPoll()');
+        const syncIdx = main.lastIndexOf('syncRunButtonsRedeployBlocked()');
+        expect(healthIdx).toBeGreaterThan(-1);
+        expect(syncIdx).toBeGreaterThan(healthIdx);
+    });
+});
+
 describe('redeploy pill — style.css state tokens', () => {
     const css = read('style.css');
 
@@ -266,6 +311,14 @@ describe('redeploy pill — style.css state tokens', () => {
         // class owns the progress cursor, so it can't override run-blocked.
         expect(css).not.toMatch(/\.todoMdViewerDeployPill\[disabled\]/);
         expect(css).toMatch(/\.todoMdViewerDeployPill--deploying\s*\{[\s\S]*?cursor:\s*progress/);
+    });
+
+    it('greys the Run backlog / Run this entry controls while a redeploy owns the project', () => {
+        expect(css).toMatch(/\.todoMdViewerRunBtn--redeployblocked\s*\{[\s\S]*?opacity:\s*0\.45/);
+        expect(css).toMatch(/\.todoMdViewerRunBtn--redeployblocked\s*\{[\s\S]*?cursor:\s*not-allowed/);
+        expect(css).toMatch(/\.todoMdViewerRunEntryBtn--redeployblocked\s*\{[\s\S]*?cursor:\s*not-allowed/);
+        // The per-entry class also participates in the shared dimming group.
+        expect(css).toMatch(/\.todoMdViewerRunEntryBtn--redeployblocked,/);
     });
 
     it('never hardcodes hex colors in the deploy pill rules', () => {
