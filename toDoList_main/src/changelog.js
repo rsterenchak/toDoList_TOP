@@ -9,12 +9,14 @@ export const changelog = [
         fixed: [
             "The Agent board now reliably settles dispatched runs to Shipped or Stuck, catching up runs that finished while the tab was closed instead of leaving cards stuck as queued.",
         ],
+        added: [
+            "A Run button in the Agent tab starts a triage sweep for the current project, and answering an agent's question now auto-starts one so the follow-up loop runs hands-off.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-04',
         fixed: [
-            "Starting a backlog or entry run is now blocked while a redeploy is in progress, so the two can no longer run at once and step on each other.",
             "The Agent board no longer goes blank when a flagged task is rendered; queued cards now show the task title correctly.",
             "The Agent tab's Not-assigned list no longer shows completed tasks, so only open, unqueued tasks appear with a Give-to-agent button.",
             "The expanded TODO.md viewer card now resizes when a todo description opens or closes, so its panel no longer overruns and overlaps neighboring rows.",

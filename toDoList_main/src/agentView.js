@@ -5,6 +5,7 @@ import {
     embedEntryMarker,
     injectEntry,
     dispatchRun,
+    dispatchTriage,
     pollRunStatus,
     resolveEntryByMarker,
     fetchRunResult,
@@ -80,9 +81,53 @@ let _channel = null;
 // board without tearing down an in-flight poll) and so paint() can re-arm one
 // for a dispatched/running row after a tab reopen.
 const _dispatchPollers = {};
+// Short in-flight guard shared by the header Run button and the answer-submit
+// auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
+// redundant triage sweeps in the same tick. The workflow's concurrency group and
+// batch-all-`triaging` design coalesce anything that overlaps anyway, so at worst
+// this drops a truly redundant call. Cleared once the dispatch settles.
+let _triageInFlight = false;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+// Minimal inline toast for a non-blocking notice (e.g. an auto-fired triage
+// sweep that couldn't dispatch). Appended to document.body so it survives the
+// board repaint that moves the answered card out of Needs you, and auto-removed
+// after a few seconds. Mirrors the self-contained toast pattern used elsewhere.
+function showAgentToast(message) {
+    const prior = document.getElementById('agentViewToast');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const toast = document.createElement('div');
+    toast.id = 'agentViewToast';
+    toast.className = 'agentViewToast';
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 4000);
+}
+
+// Dispatch a triage sweep for the named project, fire-and-forget. Triage is a
+// read-only batch that writes verdicts back to agent_queue, so the realtime
+// subscription surfaces results with no polling here. Guarded by the shared
+// in-flight flag; returns null when the guard or a missing project id swallows
+// the call, otherwise the dispatch result. Never throws.
+function fireTriageSweep(projectName) {
+    if (_triageInFlight) return Promise.resolve(null);
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    if (!projectId) return Promise.resolve(null);
+    _triageInFlight = true;
+    return Promise.resolve()
+        .then(function () { return dispatchTriage(projectId, mintEntryId()); })
+        .then(
+            function (res) { _triageInFlight = false; return res; },
+            function () { _triageInFlight = false; return { ok: false }; }
+        );
 }
 
 // Resolve the currently-selected project's name from the sidebar — the same
@@ -212,6 +257,15 @@ function buildSecondary(row) {
                     // refresh explicitly too so the card leaves Needs you even
                     // where realtime isn't observed (e.g. offline stubs).
                     refreshAgentQueue(getSelectedProjectName());
+                    // Hands-off follow-up: auto-fire a triage sweep now that the
+                    // row is back in triaging. The answer is already saved, so a
+                    // failed dispatch only means they may need to Run manually —
+                    // surfaced as a non-blocking toast, never blocking the send.
+                    Promise.resolve(fireTriageSweep(getSelectedProjectName())).then(function (tr) {
+                        if (tr && tr.ok === false) {
+                            showAgentToast('Answer saved, but triage didn’t start — tap Run to sweep.');
+                        }
+                    });
                     return;
                 }
                 send.disabled = false;
@@ -881,6 +935,30 @@ function paint() {
     chip.className = 'agentViewChip';
     chip.textContent = 'Agent queue';
     header.appendChild(chip);
+
+    // Run button: dispatches a triage sweep for the active project. Fire-and-
+    // forget — it shows a brief "queued" acknowledgment and neither blocks nor
+    // polls; rows update live as triage writes verdicts via realtime.
+    const runBtn = document.createElement('button');
+    runBtn.type = 'button';
+    runBtn.className = 'agentRunBtn';
+    runBtn.textContent = 'Run';
+    runBtn.setAttribute('aria-label', 'Run a triage sweep for this project');
+    runBtn.addEventListener('click', function () {
+        if (runBtn.disabled) return;
+        runBtn.disabled = true;
+        runBtn.textContent = 'Queued…';
+        Promise.resolve(fireTriageSweep(projectName)).then(function (res) {
+            runBtn.textContent = (res && res.ok === false) ? 'Try again' : 'Queued';
+            // Re-enable shortly so the user can fire again; the real guard against
+            // redundant sweeps is the module-level in-flight flag, not this button.
+            setTimeout(function () {
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run';
+            }, 1500);
+        });
+    });
+    header.appendChild(runBtn);
     view.appendChild(header);
 
     const rows = Array.isArray(_rows) ? _rows : [];
