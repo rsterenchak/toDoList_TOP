@@ -19,7 +19,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5ce04d46-c874-445d-b7ba-d0fcfe44311e -->
 
-- [ ] **[MEDIUM]** Add Give-to-agent flag toggle and Not-assigned bucket to Agent tab
+- [x] **[MEDIUM]** Add Give-to-agent flag toggle and Not-assigned bucket to Agent tab — Completed: 2026-07-04
   - Type: feature
   - Description: Extend the Agent view (from the tab-swap entry) with a Not-assigned bucket — the active project's tasks not yet in the agent queue — each carrying a "Give to agent" control. Tapping it flags the task for the autonomous agent by inserting an `agent_queue` row (state `triaging`, auto true), which the triage sweep then picks up. This is what makes the board fill from a real tap; the flagged task appears in the queue-driven buckets via the realtime subscription already wired in the tab-swap entry.
   - Behavior:

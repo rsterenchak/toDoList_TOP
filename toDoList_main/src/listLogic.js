@@ -1118,6 +1118,59 @@ export const listLogic = (function () {
         return entry.id || null;
     }
 
+    // Flag a project's todo for the autonomous agent by inserting an
+    // agent_queue row (state 'triaging', auto true) that the triage sweep then
+    // picks up. The task's title and description are denormalised into
+    // `context` so the downstream triage workflow needs no `todos` access. All
+    // agent_queue writes route through here — the Agent view's "Give to agent"
+    // control calls this and never writes to Supabase directly, matching the
+    // "all data-model mutations live in listLogic" convention. Returns a
+    // { ok, error? } result so the caller can surface a non-blocking failure
+    // and re-enable its control. The double-flag guard is layered: the view
+    // only renders the button for tasks not already queued, and a unique
+    // constraint on agent_queue(todo_id) is the cross-device backstop.
+    // @category: user-mutation-only
+    async function flagTaskForAgent(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing task id.' };
+        // Resolve the todo and its owning project from the in-memory model.
+        let item = null;
+        let projectId = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !Array.isArray(entry.items)) continue;
+            const found = entry.items.find(function (it) {
+                return it && it.id === todoId;
+            });
+            if (found) { item = found; projectId = entry.id || null; break; }
+        }
+        if (!item || !projectId) return { ok: false, error: 'Task not found.' };
+        const row = {
+            project_id: projectId,
+            todo_id: todoId,
+            state: 'triaging',
+            auto: true,
+            context: {
+                title: item.tit || '',
+                description: item.desc || null,
+            },
+        };
+        try {
+            const result = await Promise.resolve(
+                supabase.from('agent_queue').insert(row)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Insert failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Insert failed.' };
+        }
+    }
+
 
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
@@ -3071,6 +3124,7 @@ export const listLogic = (function () {
         sortCompletedToBottom,
         getProjectColor,
         getProjectId,
+        flagTaskForAgent,
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,

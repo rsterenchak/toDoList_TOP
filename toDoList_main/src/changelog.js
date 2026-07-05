@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-04',
-        changed: [
-            "The Conceive tab is now an Agent board that groups a project's autonomous-agent work into Needs you, Stuck, In progress, and Shipped buckets, updating live as states change.",
+        added: [
+            "The Agent board now lists a project's unqueued tasks in a Not assigned section, each with a Give to agent button that hands the task to the autonomous agent.",
         ],
         fixed: [
             "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",

@@ -4279,6 +4279,66 @@ button.claudeAttachChipLabel { cursor: pointer; }
   cursor: not-allowed;
 }
 
+/* Not-assigned bucket: the project's unqueued tasks, each with a live
+   "Give to agent" pill. */
+.agentBucket--not-assigned .agentBucketLabel {
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.agentCard--unassigned .agentCardHead {
+  gap: 12px;
+}
+
+.agentGiveButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentGiveButton:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentGiveButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentGiveButton:disabled,
+.agentGiveButton.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentGiveButton.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
+.agentGiveBolt {
+  flex: 0 0 auto;
+}
+
+.agentGiveError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
 /* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
 #seedTasksModalBackdrop {
   position: fixed;

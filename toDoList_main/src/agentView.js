@@ -198,6 +198,141 @@ function buildCard(row) {
     return card;
 }
 
+// A small inline bolt glyph for the "Give to agent" pill. Built via the DOM
+// (no new asset file) and inherits the pill's colour through currentColor so
+// it stays theme-correct in both dark and light modes.
+function buildBoltIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'agentGiveBolt');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M13 2 4 14h6l-1 8 9-12h-6z');
+    path.setAttribute('fill', 'currentColor');
+    svg.appendChild(path);
+    return svg;
+}
+
+// The active project's todos that are NOT yet present in the loaded
+// agent_queue rows (matched by todo_id). Blank placeholder rows (empty title)
+// are render artifacts, not real tasks, so they're excluded. Returns a fresh
+// array — the live items array is never mutated.
+function computeNotAssigned(projectName, rows) {
+    const items = listLogic.listItems(projectName);
+    if (!Array.isArray(items) || !items.length) return [];
+    const queued = new Set();
+    (rows || []).forEach(function (r) {
+        if (r && r.todo_id != null) queued.add(r.todo_id);
+    });
+    return items.filter(function (it) {
+        return it && typeof it.tit === 'string' && it.tit.trim() !== '' && !queued.has(it.id);
+    });
+}
+
+// One "Not assigned" card: the task title plus a real "Give to agent" pill.
+// Tapping the pill flags the task for the autonomous agent via listLogic
+// (agent_queue insert); the view never writes directly. The button shows a
+// brief pending state and disables while the insert is in flight; on success
+// the realtime subscription (plus an explicit refresh) moves the task into the
+// In progress bucket; on failure the button re-enables and a non-blocking
+// error is surfaced beneath it.
+function buildGiveToAgentCard(item) {
+    const card = document.createElement('div');
+    card.className = 'agentCard agentCard--unassigned';
+    card.setAttribute('data-todo-id', item.id || '');
+
+    const head = document.createElement('div');
+    head.className = 'agentCardHead';
+
+    const title = document.createElement('span');
+    title.className = 'agentCardTitle';
+    const text = (item.tit || '').trim() || 'Untitled task';
+    title.textContent = text;
+    title.title = text;
+    head.appendChild(title);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentGiveButton';
+    btn.setAttribute('aria-label', 'Give "' + text + '" to agent');
+    btn.appendChild(buildBoltIcon());
+    const btnLabel = document.createElement('span');
+    btnLabel.className = 'agentGiveButtonLabel';
+    btnLabel.textContent = 'Give to agent';
+    btn.appendChild(btnLabel);
+    head.appendChild(btn);
+    card.appendChild(head);
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'agentGiveError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    card.appendChild(errorEl);
+
+    btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        btnLabel.textContent = 'Adding…';
+        Promise.resolve(listLogic.flagTaskForAgent(item.id)).then(function (res) {
+            if (res && res.ok) {
+                // The realtime subscription re-renders as the new row lands;
+                // refresh explicitly too so the card leaves Not-assigned even
+                // where realtime isn't observed (e.g. offline stubs).
+                refreshAgentQueue(getSelectedProjectName());
+                return;
+            }
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+            btnLabel.textContent = 'Give to agent';
+            errorEl.textContent = (res && res.error) || 'Could not flag this task. Try again.';
+            errorEl.hidden = false;
+        }).catch(function () {
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+            btnLabel.textContent = 'Give to agent';
+            errorEl.textContent = 'Could not flag this task. Try again.';
+            errorEl.hidden = false;
+        });
+    });
+
+    return card;
+}
+
+// The Not-assigned bucket: a header (label + count) and one Give-to-agent card
+// per unqueued task. Rendered at the bottom of the board, below Shipped.
+function buildNotAssignedBucket(items) {
+    const section = document.createElement('div');
+    section.className = 'agentBucket agentBucket--not-assigned';
+
+    const header = document.createElement('div');
+    header.className = 'agentBucketHeader';
+
+    const label = document.createElement('span');
+    label.className = 'agentBucketLabel';
+    label.textContent = 'Not assigned';
+    header.appendChild(label);
+
+    const count = document.createElement('span');
+    count.className = 'agentBucketCount';
+    count.textContent = String(items.length);
+    header.appendChild(count);
+
+    section.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'agentBucketList';
+    items.forEach(function (item) { list.appendChild(buildGiveToAgentCard(item)); });
+    section.appendChild(list);
+
+    return section;
+}
+
 // One bucket section: a header (label + count) and its cards.
 function buildBucket(bucket, rows) {
     const section = document.createElement('div');
@@ -268,6 +403,15 @@ function paint() {
         board.appendChild(buildBucket(bucket, bucketRows));
         rendered = true;
     });
+
+    // Not-assigned bucket at the bottom: the project's tasks not yet in the
+    // queue, each with a live "Give to agent" control. Omitted when every task
+    // is already queued (or the project has no tasks).
+    const notAssigned = computeNotAssigned(projectName, rows);
+    if (notAssigned.length) {
+        board.appendChild(buildNotAssignedBucket(notAssigned));
+        rendered = true;
+    }
 
     if (!rendered) {
         const empty = document.createElement('div');
