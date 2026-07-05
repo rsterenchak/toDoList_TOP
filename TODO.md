@@ -172,7 +172,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6a22a525-8bce-4312-b1f8-b16985803acd -->
 
-- [ ] **[LOW]** Add a capabilities intro note to the empty Claude chat surface
+- [x] **[LOW]** Add a capabilities intro note to the empty Claude chat surface — Completed: 2026-07-05
   - Type: feature
   - Description: When the active repo's Claude chat thread is empty, render a persistent instructional note at the top of `#claudeChatSurface` naming what the Sonnet chat can do in scope — draft TODO entries, take file attachments, reframe a task for another repo, and iterate on shipped runs — as one muted sentence. Reuse the existing `.claudeMsg--note` treatment (centered, 0.5px dashed `--border-mid`, transparent bg, `--text-muted` 12px italic) that the transient iterate/follow-up bubbles already use; the simplest path is calling `appendMessageBubble('note', <copy>)` inside `replayChatHistory()` when `chatHistory.length === 0`. Since notes are never persisted into `chatHistory`, give the bubble an id (e.g. `claudeChatIntro`) and remove it in the send path before the first `appendMessageBubble('user', …)` so it doesn't linger above the conversation, then re-render it after the clear-chat reset near `deleteChatHistory(activeChatRepo)`. It shows on any empty thread (per-repo), has no dismiss control, and adds no new persistence — vanilla only, no new deps. Add a `.claudeMsg--intro` modifier in `style.css` only if the note needs different spacing at the top; otherwise no CSS change is required.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`

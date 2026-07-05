@@ -2957,7 +2957,10 @@ describe('Claude sheet — Clear chat control', () => {
         document.getElementById('claudeClearChat').click();
         await flush();
 
-        expect(document.querySelectorAll('.claudeMsg').length).toBe(0);
+        // The conversation bubbles are gone; only the persistent capabilities
+        // intro note remains on the now-empty thread.
+        expect(document.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
+        expect(document.getElementById('claudeChatIntro')).toBeTruthy();
         const stored = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}');
         expect(stored[DEFAULT_REPO]).toBeUndefined();
     });
@@ -2975,8 +2978,8 @@ describe('Claude sheet — Clear chat control', () => {
         document.getElementById('claudeClearChat').click();
         await flush();
 
-        // Messages gone, but the chip survives.
-        expect(document.querySelectorAll('.claudeMsg').length).toBe(0);
+        // Messages gone (only the intro note remains), but the chip survives.
+        expect(document.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
         expect(document.querySelectorAll('.claudeAttachChip').length).toBe(1);
     });
 
@@ -2996,6 +2999,89 @@ describe('Claude sheet — Clear chat control', () => {
         expect(btn.hidden).toBe(true);
         document.getElementById('claudeTabChat').click();
         expect(btn.hidden).toBe(false);
+    });
+});
+
+// The capabilities intro note: a persistent, muted note pinned to the top of an
+// empty chat thread that names what the Sonnet chat can do in scope. It shows on
+// any empty (per-repo) thread, is dropped when the first real turn is sent, and
+// re-renders after a New Chat reset.
+describe('Claude sheet — empty-thread capabilities intro note', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    let realFetch;
+
+    function makeFetch() {
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'ok' }) });
+        });
+    }
+
+    beforeEach(async () => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO]);
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+        mountClaudeSheet(document.body);
+        await flush();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('renders the intro note at the top of an empty thread on mount', () => {
+        const intro = document.getElementById('claudeChatIntro');
+        expect(intro).toBeTruthy();
+        // It reuses the muted note treatment and names the four in-scope actions.
+        expect(intro.classList.contains('claudeMsg--note')).toBe(true);
+        expect(intro.textContent).toContain('drafts TODO entries');
+        expect(intro.textContent).toContain('file attachments');
+        expect(intro.textContent).toContain('another repo');
+        expect(intro.textContent).toContain('iterates on shipped runs');
+        // It's the first (and only) bubble on the empty surface.
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.firstElementChild).toBe(intro);
+        expect(surface.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
+    });
+
+    it('is never persisted into the stored thread', () => {
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeChat') || '{}');
+        expect(stored[DEFAULT_REPO]).toBeUndefined();
+    });
+
+    it('drops the intro note once the first message is sent', async () => {
+        expect(document.getElementById('claudeChatIntro')).toBeTruthy();
+        await sendMessage('add a sparkle');
+        expect(document.getElementById('claudeChatIntro')).toBe(null);
+        expect(document.querySelector('.claudeMsg--user').textContent).toBe('add a sparkle');
+    });
+
+    it('re-renders the intro note after a New Chat reset', async () => {
+        await sendMessage('first message');
+        expect(document.getElementById('claudeChatIntro')).toBe(null);
+
+        document.getElementById('claudeClearChat').click();
+        await flush();
+
+        const intro = document.getElementById('claudeChatIntro');
+        expect(intro).toBeTruthy();
+        expect(intro.classList.contains('claudeMsg--note')).toBe(true);
     });
 });
 
@@ -3967,7 +4053,9 @@ describe('Claude sheet — chat history persisted per repo', () => {
 
         const surface = document.getElementById('claudeChatSurface');
         expect(surface.textContent).not.toContain('not mine');
-        expect(surface.querySelectorAll('.claudeMsg').length).toBe(0);
+        // No conversation bubbles, but an empty thread carries the intro note.
+        expect(surface.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
+        expect(surface.querySelector('#claudeChatIntro')).toBeTruthy();
     });
 });
 
