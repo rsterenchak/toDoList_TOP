@@ -135,7 +135,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6a45eaaa-92f8-4a04-8c7a-ada4fe6cbc36 -->
 
-- [ ] **[HIGH]** Build the needs_mockup launcher — bundle context to Claude and accept the finished entry back
+- [x] **[HIGH]** Build the needs_mockup launcher — bundle context to Claude and accept the finished entry back — Completed: 2026-07-05
   - Type: feature
   - Description: Give `needs_mockup` cards an exit. `buildSecondary`'s `needs_mockup` branch currently renders a static "Attach a mockup to continue." (~line 297), so the card is a dead-end — triage routes visual tasks here but nothing can progress them. Replace that branch with the launcher hand-off: show the bundle triage captured in `row.context` (region, tokens, change), an "Open mockup" button that copies a ready-to-paste mockup prompt and opens Claude, and a paste-back field that takes the finished TODO.md entry, writes it to the row's `draft`, and flips the row to `drafted` — where the Dispatch card (draft preview + Dispatch button) already ships it. This is a launcher, not an in-app renderer; the mockup discipline stays in the real tooling, and the round-trip is deliberately manual (there's no clean one-tap prefill/return).
   - Behavior:
