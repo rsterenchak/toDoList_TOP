@@ -14,6 +14,10 @@ let queueError = null;
 // `insertError` lets a test force the insert to fail.
 let insertCalls = [];
 let insertError = null;
+// Answer-update observation: each agent_queue update pushes { patch, id } here,
+// and `updateError` lets a test force the update to fail.
+let updateCalls = [];
+let updateError = null;
 
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
@@ -25,6 +29,12 @@ vi.mock('../src/supabaseClient.js', () => ({
                 insertCalls.push(row);
                 return Promise.resolve({ data: insertError ? null : [row], error: insertError });
             },
+            update: (patch) => ({
+                eq: (col, val) => {
+                    updateCalls.push({ patch, id: val });
+                    return Promise.resolve({ data: updateError ? null : [patch], error: updateError });
+                },
+            }),
         }),
         channel: () => ({
             on() { return this; },
@@ -68,6 +78,8 @@ beforeEach(() => {
     queueError = null;
     insertCalls = [];
     insertError = null;
+    updateCalls = [];
+    updateError = null;
     document.body.innerHTML = '';
 });
 
@@ -128,14 +140,16 @@ describe('AGENT view — bucket rendering', () => {
         expect(document.querySelectorAll('.agentBucket').length).toBe(4);
     });
 
-    it('renders the pending question and an inert (disabled) answer affordance for needs_words', async () => {
+    it('renders the pending question and a live (editable) answer control for needs_words', async () => {
         queueRows = [{ id: '1', state: 'needs_words', title: 'Add a toggle', question: 'Which label?' }];
         await loadBoard();
 
         expect(document.querySelector('.agentQuestion').textContent).toBe('Which label?');
         const input = document.querySelector('.agentAnswerInput');
         expect(input).toBeTruthy();
-        expect(input.disabled).toBe(true);
+        expect(input.disabled).toBe(false);
+        // A Send affordance is present alongside the editable textarea.
+        expect(document.querySelector('.agentAnswerSend')).toBeTruthy();
     });
 
     it('surfaces the failure reason for a stuck row', async () => {
@@ -309,5 +323,130 @@ describe('listLogic.flagTaskForAgent', () => {
         expect(res.ok).toBe(false);
         expect(res.error).toMatch(/not found/i);
         expect(insertCalls.length).toBe(0);
+    });
+});
+
+describe('AGENT view — needs_words answer action', () => {
+    it('appends the answer to the thread and re-queues the row (state -> triaging) on Send', async () => {
+        listLogic.addProject('Mu');
+        mountDom('Mu');
+        queueRows = [{
+            id: 'nw1',
+            state: 'needs_words',
+            context: { title: 'Add a toggle' },
+            question: 'Which label?',
+            thread: [{ role: 'assistant', text: 'Which label?', ts: '2026-07-05T00:00:00.000Z' }],
+        }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = '  Use "Done"  ';
+        document.querySelector('.agentAnswerSend').click();
+        await flush();
+
+        expect(updateCalls.length).toBe(1);
+        const { patch, id } = updateCalls[0];
+        expect(id).toBe('nw1');
+        expect(patch.state).toBe('triaging');
+        // Existing thread preserved, user answer appended (trimmed).
+        expect(patch.thread.length).toBe(2);
+        expect(patch.thread[0].role).toBe('assistant');
+        expect(patch.thread[1]).toMatchObject({ role: 'user', text: 'Use "Done"' });
+        expect(typeof patch.thread[1].ts).toBe('string');
+    });
+
+    it('submits on Enter without Shift and ignores Shift+Enter (newline)', async () => {
+        listLogic.addProject('Nu');
+        mountDom('Nu');
+        queueRows = [{ id: 'nw2', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = 'plain answer';
+        // Shift+Enter must NOT submit.
+        input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+        await flush();
+        expect(updateCalls.length).toBe(0);
+
+        // Enter without Shift submits.
+        input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', shiftKey: false, bubbles: true }));
+        await flush();
+        expect(updateCalls.length).toBe(1);
+        expect(updateCalls[0].patch.thread[updateCalls[0].patch.thread.length - 1].text).toBe('plain answer');
+    });
+
+    it('ignores an empty / whitespace-only submission (no write)', async () => {
+        listLogic.addProject('Xi');
+        mountDom('Xi');
+        queueRows = [{ id: 'nw3', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = '   ';
+        document.querySelector('.agentAnswerSend').click();
+        await flush();
+        expect(updateCalls.length).toBe(0);
+    });
+
+    it('re-enables the controls and surfaces a non-blocking error when the update fails', async () => {
+        listLogic.addProject('Omicron');
+        mountDom('Omicron');
+        queueRows = [{ id: 'nw4', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        updateError = { message: 'update boom' };
+        const input = document.querySelector('.agentAnswerInput');
+        const send = document.querySelector('.agentAnswerSend');
+        input.value = 'my answer';
+        send.click();
+        await flush();
+
+        expect(send.disabled).toBe(false);
+        expect(input.disabled).toBe(false);
+        const err = document.querySelector('.agentAnswerError');
+        expect(err).toBeTruthy();
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toMatch(/boom/);
+    });
+});
+
+describe('listLogic.answerAgentTask', () => {
+    it('appends a user message to the thread and writes state triaging for a valid answer', async () => {
+        const res = await listLogic.answerAgentTask('row-1', '  hi there  ', [
+            { role: 'assistant', text: 'q', ts: '2026-07-05T00:00:00.000Z' },
+        ]);
+        expect(res.ok).toBe(true);
+        expect(updateCalls.length).toBe(1);
+        expect(updateCalls[0].id).toBe('row-1');
+        expect(updateCalls[0].patch.state).toBe('triaging');
+        expect(updateCalls[0].patch.thread.length).toBe(2);
+        expect(updateCalls[0].patch.thread[1]).toMatchObject({ role: 'user', text: 'hi there' });
+    });
+
+    it('treats a missing/empty thread as an empty list and still appends one message', async () => {
+        const res = await listLogic.answerAgentTask('row-2', 'first reply');
+        expect(res.ok).toBe(true);
+        expect(updateCalls[0].patch.thread.length).toBe(1);
+        expect(updateCalls[0].patch.thread[0].text).toBe('first reply');
+    });
+
+    it('rejects a whitespace-only answer and writes nothing', async () => {
+        const res = await listLogic.answerAgentTask('row-3', '   ');
+        expect(res.ok).toBe(false);
+        expect(updateCalls.length).toBe(0);
+    });
+
+    it('rejects a missing row id and writes nothing', async () => {
+        const res = await listLogic.answerAgentTask('', 'answer');
+        expect(res.ok).toBe(false);
+        expect(res.error).toMatch(/row id/i);
+        expect(updateCalls.length).toBe(0);
+    });
+
+    it('returns an error result when the update fails', async () => {
+        updateError = { message: 'nope' };
+        const res = await listLogic.answerAgentTask('row-4', 'answer');
+        expect(res.ok).toBe(false);
+        expect(res.error).toMatch(/nope/);
     });
 });

@@ -4279,6 +4279,62 @@ button.claudeAttachChipLabel { cursor: pointer; }
   cursor: not-allowed;
 }
 
+/* needs_words answer: a Send button beneath the textarea, with a non-blocking
+   error line to its left when the write fails. */
+.agentAnswerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.agentAnswerError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentAnswerSend {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentAnswerSend:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentAnswerSend:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentAnswerSend:disabled,
+.agentAnswerSend.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentAnswerSend.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
 /* Not-assigned bucket: the project's unqueued tasks, each with a live
    "Give to agent" pill. */
 .agentBucket--not-assigned .agentBucketLabel {
