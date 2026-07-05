@@ -264,6 +264,44 @@ describe('AGENT view — bucket rendering', () => {
     });
 });
 
+describe('AGENT view — card remove (×) control', () => {
+    beforeEach(() => {
+        listLogic.addProject('Removely');
+        mountDom('Removely');
+    });
+
+    // Every card except the in-flight thin states carries a header × so an
+    // abandoned or shipped task can be removed from the board.
+    ['drafted', 'triaging', 'needs_words', 'needs_mockup', 'failed', 'no_change', 'shipped'].forEach((state) => {
+        it('renders a header × on a ' + state + ' card', async () => {
+            queueRows = [{ id: 'r-' + state, state, context: { title: state + ' task' } }];
+            await loadBoard();
+            const removeBtn = document.querySelector('.agentCardRemove');
+            expect(removeBtn).toBeTruthy();
+            expect(removeBtn.getAttribute('aria-label')).toMatch(/remove/i);
+        });
+    });
+
+    ['dispatched', 'running'].forEach((state) => {
+        it('does not render a × on an in-flight ' + state + ' (thin) card', async () => {
+            queueRows = [{ id: 'r-' + state, state, context: { title: state + ' task' } }];
+            await loadBoard();
+            expect(document.querySelector('.agentCard--thin')).toBeTruthy();
+            expect(document.querySelector('.agentCardRemove')).toBeFalsy();
+        });
+    });
+
+    it('does not add a × to a Not-assigned card (only its Give to agent button)', async () => {
+        listLogic.addToDo('Removely', 'Loose task');
+        queueRows = [];
+        await loadBoard();
+        const unassigned = document.querySelector('.agentCard--unassigned');
+        expect(unassigned).toBeTruthy();
+        expect(unassigned.querySelector('.agentCardRemove')).toBeFalsy();
+        expect(unassigned.querySelector('.agentGiveButton')).toBeTruthy();
+    });
+});
+
 describe('AGENT view — realtime lifecycle', () => {
     it('subscribe and unsubscribe never throw', () => {
         listLogic.addProject('Delta');
