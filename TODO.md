@@ -267,12 +267,6 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 81ca35c6-3dc1-47d2-918e-b4b3e32da56c -->
 
-- [ ] **[LOW]** Add a harmless marker comment to style.css
-  - Type: feature
-  - Description: Canary/test task for the automation pipeline — add a single no-op CSS comment (e.g. `/* pipeline test marker */`) near the top of the stylesheet, right after the existing header comment on line 1 of `toDoList_main/src/style.css`. The comment must not alter any selector, rule, or computed style — it exists only to verify the inject/dispatch/build pipeline end-to-end.
-  - File: `toDoList_main/src/style.css`
-  <!-- id: 4e919922-0320-4689-be17-d7531e1ab151 -->
-
 - [ ] **[LOW]** Add a second harmless marker comment to style.css
   - Type: feature
   - Description: Second canary/test task for the automation pipeline — add a single no-op CSS comment (e.g. `/* pipeline test marker 2 */`) near the top of the stylesheet, right after the existing header comment on line 1 of `toDoList_main/src/style.css`. The comment must not alter any selector, rule, or computed style — it exists only to verify the inject/dispatch/build pipeline end-to-end.
