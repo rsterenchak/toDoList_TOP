@@ -75,15 +75,18 @@ const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 const DISPATCH_POLL_MS = 5000;
 const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
 
-// Before dispatching a freshly-injected entry we confirm it's actually visible
-// on main: GitHub's workflow_dispatch can resolve `main` to a tip that predates
-// the inject commit (dispatch-after-push race), so a run fired the instant
-// inject returns can check out a stale TODO.md, miss the marker, and no-op.
-// Poll the on-main read for the entry's id marker with a short backoff — up to
-// ~15 attempts ~1s apart (a ~15s ceiling) — before firing the run. The window
-// is wider than GitHub's typical write→read propagation so a legitimate inject
-// isn't falsely aborted as "not visible on main."
-const ENTRY_VISIBLE_ATTEMPTS = 15;
+// Before dispatching a freshly-injected entry we make a best-effort confirmation
+// that it's visible on main: GitHub's workflow_dispatch can resolve `main` to a
+// tip that predates the inject commit (dispatch-after-push race), so a run fired
+// the instant inject returns can check out a stale TODO.md, miss the marker, and
+// no-op. Poll the on-main read for the entry's id marker with a short backoff —
+// up to ~8 attempts ~1s apart — as a head start, dispatching immediately once
+// the marker appears. This is NOT a gate: GitHub's write→read propagation is
+// variable and can lag past the window even though inject committed, and the
+// run's own runner-boot latency (tens of seconds) reliably exceeds propagation,
+// so if the marker doesn't surface in time we dispatch anyway rather than block
+// a legitimate run. A rare genuine race then no-changes and self-heals on Retry.
+const ENTRY_VISIBLE_ATTEMPTS = 8;
 const ENTRY_VISIBLE_DELAY_MS = 1000;
 
 // Triage-sweep tracking cadence and windows. Tapping Run fires a
@@ -847,12 +850,12 @@ async function dispatchDraft(row, draftText, existingEntryId) {
         return { ok: false, error: 'Inject failed — ' + ((injectResult && injectResult.reason) || 'error') };
     }
 
-    // Confirm the injected entry is on main before dispatching — otherwise the
-    // run can race ahead of the push and no-op against a stale TODO.md. Poll the
-    // same on-main read the reconcile path uses for the entry's id marker; a
-    // transient read error counts as a miss and is retried, never fatal, until
-    // the attempt budget is spent. If it never appears, leave the row `drafted`
-    // and surface a non-blocking error so the user can retry.
+    // Best-effort head start: poll the same on-main read the reconcile path uses
+    // for the entry's id marker, dispatching immediately once it appears so a run
+    // doesn't race ahead of the push and no-op against a stale TODO.md. A
+    // transient read error counts as a miss and is retried until the attempt
+    // budget is spent. This is a head start, not a gate — if the marker never
+    // surfaces we dispatch anyway below rather than block a legitimate run.
     const marker = '<!-- id: ' + entryId + ' -->';
     let visible = false;
     for (let i = 0; i < ENTRY_VISIBLE_ATTEMPTS; i++) {
@@ -871,13 +874,12 @@ async function dispatchDraft(row, draftText, existingEntryId) {
     }
     if (!visible) {
         // The entry was injected (marker appended) but hasn't propagated to the
-        // on-main read yet. Persist the minted id so a retry reuses it — inject
-        // dedup-skips the already-present marker instead of appending a second
-        // copy. Leave the row `drafted` so it stays actionable.
-        try {
-            await listLogic.setAgentRunState(rowId, { entry_id: entryId });
-        } catch (e) { /* non-fatal: the button re-enables regardless */ }
-        return { ok: false, error: 'Entry not yet visible on main — tap Dispatch again' };
+        // on-main read within the window. Don't block: the run's boot latency
+        // covers the remaining propagation, so dispatch anyway. A rare genuine
+        // race then no-changes and self-heals on Retry, which reuses this
+        // entry_id (persisted below alongside the dispatched state).
+        console.warn('dispatchDraft: entry ' + entryId
+            + ' not confirmed on main within the visibility window; dispatching anyway');
     }
 
     const correlationId = mintEntryId();
