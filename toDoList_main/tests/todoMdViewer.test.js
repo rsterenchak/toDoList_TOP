@@ -860,7 +860,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
         expect(main).toMatch(/function\s+syncRunEntryButtonsDisabled\s*\(/);
         const start = main.indexOf('function syncRunEntryButtonsDisabled');
         const block = main.slice(start, start + 500);
-        expect(block).toMatch(/const\s+active\s*=\s*!!runPill/);
+        expect(block).toMatch(/const\s+runActive\s*=\s*!!runPill/);
         expect(block).toMatch(/todoMdViewerRunEntryBtn/);
         // Toggled on both pill start and teardown.
         const pillStart = main.indexOf('function startRunPill');

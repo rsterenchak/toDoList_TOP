@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         changed: [
-            "On the collapsed mobile launcher, the running Run backlog pill and Sync button now shrink to icon-only spinner squares like Redeploy, so the row no longer widens while they work.",
+            "The Run backlog and Run this entry buttons now grey out while a redeploy is in progress, making it clear a run can't start until the deploy finishes.",
         ],
         fixed: [
             "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",
