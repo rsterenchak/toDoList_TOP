@@ -36,3 +36,18 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 51c1b1a6-4775-40e1-840a-73e5b1ddd5cd -->
+
+- [ ] **[HIGH]** Fix Agent tab crash reading card title from context object
+  - Type: bug
+  - Description: The Agent board crashes rendering any queued task, blanking the whole tab. In `agentView.js`, `buildCard` (line ~186) derives the card title with `(row.title || row.context || '').trim()`. But `agent_queue` rows have no top-level `title` column — the title lives inside the `context` JSONB (`context.title`, written at flag time as `{ title, description }`). So `row.title` is undefined, the expression falls through to `row.context`, which supabase-js returns as an object, and `.trim()` on an object throws `TypeError: (row.title || row.context || '').trim is not a function`, aborting `paint`/`renderAgentView`. Fix by reading the title from `row.context.title` (guarding for a missing or non-object context), never calling `.trim()` on the raw context object.
+  - Behavior:
+    1. `buildCard` derives the display title from `row.context.title` when `context` is an object, falling back to `row.title` then `'Untitled entry'`, and never calls a string method on a non-string.
+    2. The Agent board renders queued rows without throwing, across every bucket, so a task flagged via Give-to-agent appears immediately (a `triaging` row under In progress) and the Not-assigned bucket renders instead of the whole view blanking.
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, `buildCard` ~line 186. Replace `const text = (row.title || row.context || '').trim() || 'Untitled entry';` with a context-aware read, e.g. `const ctx = (row.context && typeof row.context === 'object') ? row.context : {}; const text = (ctx.title || row.title || '').trim() || 'Untitled entry';`.
+    - This is the only site with the wrong assumption. `row.question` (~L121) and `row.failure_reason` (~L149) are real top-level string columns — leave them as-is. `context.description` isn't read here.
+    - No schema or write-side change: `context: { title, description }` is the intended shape (written by the flag insert and by the triage routine); only the read was wrong.
+  - Out of scope: any change to what triage writes into `context`; the `buildSecondary` question/failure rendering, which is already correct. Verify by flagging a task and confirming the Agent tab renders the card (title from the task) with no console error.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9cc26775-ac4b-4d83-be90-fdc888e4c6e0 -->
