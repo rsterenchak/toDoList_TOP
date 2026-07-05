@@ -66,6 +66,7 @@ vi.mock('../src/inject.js', () => ({
     pollRunStatus: (opts) => { pollCalls.push(opts); return Promise.resolve(pollResult); },
     resolveEntryByMarker: (id) => { resolveCalls.push(id); return Promise.resolve(resolveResult); },
     fetchRunResult: () => Promise.resolve(runResultResult),
+    fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
     readTodoMdFromWorker: (target) => {
         readTodoCalls.push(target);
         if (Array.isArray(readTodoResults) && readTodoResults.length) {
