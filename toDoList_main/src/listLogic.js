@@ -1171,6 +1171,44 @@ export const listLogic = (function () {
         }
     }
 
+    // Answer a needs_words agent_queue row: append the user's reply to the
+    // row's `thread` and flip its `state` back to 'triaging' so the triage
+    // sweep re-picks it up with the answer in hand. All agent_queue writes
+    // route through here — the Agent view's needs_words answer control calls
+    // this and never writes to Supabase directly, matching the "all
+    // data-model mutations live in listLogic" convention. `currentThread` is
+    // the row's existing thread (may be undefined/null); the new user message
+    // is appended non-destructively. Whitespace-only answers are rejected
+    // before any write. Returns a { ok, error? } result so the caller can
+    // surface a non-blocking failure and re-enable its control.
+    // @category: user-mutation-only
+    async function answerAgentTask(rowId, answerText, currentThread) {
+        if (!rowId) return { ok: false, error: 'Missing row id.' };
+        const text = typeof answerText === 'string' ? answerText.trim() : '';
+        if (!text) return { ok: false, error: 'Empty answer.' };
+        const thread = [
+            ...(Array.isArray(currentThread) ? currentThread : []),
+            { role: 'user', text: text, ts: new Date().toISOString() },
+        ];
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('agent_queue')
+                    .update({ thread: thread, state: 'triaging' })
+                    .eq('id', rowId)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
 
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
@@ -3125,6 +3163,7 @@ export const listLogic = (function () {
         getProjectColor,
         getProjectId,
         flagTaskForAgent,
+        answerAgentTask,
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,

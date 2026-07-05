@@ -119,9 +119,11 @@ function buildSecondary(row) {
     const state = row.state;
     if (state === 'needs_words') {
         const q = (row.question || '').trim();
-        // Static, inert answer affordance — wiring lands in a later entry. The
-        // 16px font-size avoids iOS Safari's focus auto-zoom even though the
-        // control is disabled here.
+        // A live answer control: the user types a reply and sends it, which
+        // appends to the row's thread and re-queues the task (state ->
+        // triaging) for a re-triage that now carries the answer. The realtime
+        // subscription then moves the card out of Needs you on its own. The
+        // 16px font-size avoids iOS Safari's focus auto-zoom.
         const wrap = document.createElement('div');
         wrap.className = 'agentSecondary';
         if (q) {
@@ -133,10 +135,73 @@ function buildSecondary(row) {
         const input = document.createElement('textarea');
         input.className = 'agentAnswerInput';
         input.rows = 2;
-        input.disabled = true;
         input.placeholder = 'Answer to continue…';
-        input.setAttribute('aria-label', 'Answer (coming soon)');
+        input.setAttribute('aria-label', 'Answer');
         wrap.appendChild(input);
+
+        const actions = document.createElement('div');
+        actions.className = 'agentAnswerActions';
+
+        const errorEl = document.createElement('p');
+        errorEl.className = 'agentAnswerError';
+        errorEl.setAttribute('role', 'alert');
+        errorEl.hidden = true;
+        actions.appendChild(errorEl);
+
+        const send = document.createElement('button');
+        send.type = 'button';
+        send.className = 'agentAnswerSend';
+        send.textContent = 'Send';
+        actions.appendChild(send);
+        wrap.appendChild(actions);
+
+        // Submit the trimmed answer. Empty/whitespace-only input is ignored
+        // (no write). While the write is in flight the input and button are
+        // disabled; on success the board refreshes (the row leaves Needs you);
+        // on failure the controls re-enable and a non-blocking error shows.
+        function submitAnswer() {
+            if (send.disabled) return;
+            const text = (input.value || '').trim();
+            if (!text) return;
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+            send.disabled = true;
+            input.disabled = true;
+            send.classList.add('is-pending');
+            send.textContent = 'Sending…';
+            Promise.resolve(listLogic.answerAgentTask(row.id, text, row.thread)).then(function (res) {
+                if (res && res.ok) {
+                    input.value = '';
+                    // The realtime subscription re-renders as the state flips;
+                    // refresh explicitly too so the card leaves Needs you even
+                    // where realtime isn't observed (e.g. offline stubs).
+                    refreshAgentQueue(getSelectedProjectName());
+                    return;
+                }
+                send.disabled = false;
+                input.disabled = false;
+                send.classList.remove('is-pending');
+                send.textContent = 'Send';
+                errorEl.textContent = (res && res.error) || 'Could not send. Try again.';
+                errorEl.hidden = false;
+            }).catch(function () {
+                send.disabled = false;
+                input.disabled = false;
+                send.classList.remove('is-pending');
+                send.textContent = 'Send';
+                errorEl.textContent = 'Could not send. Try again.';
+                errorEl.hidden = false;
+            });
+        }
+
+        // Enter (without Shift) submits; Shift+Enter inserts a newline.
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitAnswer();
+            }
+        });
+        send.addEventListener('click', submitAnswer);
         return wrap;
     }
     if (state === 'needs_mockup') {

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-04',
+        added: [
+            "Needs-you cards on the Agent board now let you type an answer to the agent's question and send it, re-queueing the task for another pass.",
+        ],
         fixed: [
-            "The Redeploy button now turns red on its own within about half a minute when a deploy fails while the viewer is open, instead of staying neutral until you manually Sync.",
             "On the collapsed mobile launcher, tapping Redeploy now only redeploys instead of also opening the full-screen viewer sheet.",
             "Starting a backlog or entry run is now blocked while a redeploy is in progress, so the two can no longer run at once and step on each other.",
             "The Agent board no longer goes blank when a flagged task is rendered; queued cards now show the task title correctly.",
