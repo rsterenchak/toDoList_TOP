@@ -158,6 +158,23 @@ describe('AGENT view — bucket rendering', () => {
         expect(document.querySelector('.agentCardTitle').textContent).toBe('Untitled entry');
     });
 
+    it('reads the card title from context.title without throwing on the object context', async () => {
+        // agent_queue rows have no top-level `title` column — the title lives
+        // inside the `context` JSONB. Rendering must read context.title and
+        // never call a string method on the raw object (which would blank the
+        // whole board with a TypeError).
+        queueRows = [{ id: '10', state: 'triaging', context: { title: 'Flagged task', description: 'do the thing' } }];
+        await loadBoard();
+        expect(document.querySelector('.agentCardTitle').textContent).toBe('Flagged task');
+        expect(document.querySelector('.agentBoard')).toBeTruthy();
+    });
+
+    it('falls back to "Untitled entry" for an object context with no title', async () => {
+        queueRows = [{ id: '11', state: 'triaging', context: { description: 'no title here' } }];
+        await loadBoard();
+        expect(document.querySelector('.agentCardTitle').textContent).toBe('Untitled entry');
+    });
+
     it('degrades to the no-work empty state when the query returns an error', async () => {
         queueRows = [{ id: '1', state: 'shipped', title: 'x' }];
         queueError = { message: 'boom' };
