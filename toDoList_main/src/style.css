@@ -4335,6 +4335,103 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--accent-text, var(--accent));
 }
 
+/* Shipped card: the PR link reads as a subtle, monospace reference that still
+   underlines on hover to signal it's clickable. */
+.agentShippedLink {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--accent-text, var(--accent));
+}
+
+.agentShippedLink:hover,
+.agentShippedLink:focus-visible {
+  text-decoration: underline;
+}
+
+/* drafted card: the agent's draft in a read-only scrollable block above a
+   Dispatch button — the manual review gate before shipping through the run
+   pipeline. */
+.agentDraft {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentDraftBlock {
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  padding: 8px 10px;
+  /* 16px avoids iOS Safari focus auto-zoom when the block takes focus. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: 8px;
+}
+
+.agentDraftBlock:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentDraftActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.agentDraftError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentDispatchButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentDispatchButton:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentDispatchButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentDispatchButton:disabled,
+.agentDispatchButton.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentDispatchButton.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
 /* Not-assigned bucket: the project's unqueued tasks, each with a live
    "Give to agent" pill. */
 .agentBucket--not-assigned .agentBucketLabel {

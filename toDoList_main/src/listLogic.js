@@ -1210,6 +1210,49 @@ export const listLogic = (function () {
     }
 
 
+    // Persist a drafted agent_queue row's run state as it walks the dispatch
+    // pipeline (dispatched → running → shipped / failed / no_change). The Agent
+    // view's Dispatch control calls this at each transition — inject/dispatch
+    // kickoff, each poll tick, and the terminal reconcile — and never writes to
+    // Supabase directly, matching the "all data-model mutations live in
+    // listLogic" convention (mirrors flagTaskForAgent / answerAgentTask).
+    // `patch` may carry any of { state, run_id, pr_url, pr_number,
+    // failure_reason, entry_id, correlation_id }; only those keys are written,
+    // and only when present, so a mid-pipeline tick can update just `state`
+    // without clobbering the ids stored at kickoff. Returns a { ok, error? }
+    // result so the caller can surface a non-blocking failure.
+    // @category: user-mutation-only
+    async function setAgentRunState(rowId, patch) {
+        if (!rowId) return { ok: false, error: 'Missing row id.' };
+        const src = (patch && typeof patch === 'object') ? patch : {};
+        const allowed = ['state', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id'];
+        const update = {};
+        allowed.forEach(function (key) {
+            if (src[key] !== undefined) update[key] = src[key];
+        });
+        if (Object.keys(update).length === 0) {
+            return { ok: false, error: 'Nothing to update.' };
+        }
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('agent_queue')
+                    .update(update)
+                    .eq('id', rowId)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -3164,6 +3207,7 @@ export const listLogic = (function () {
         getProjectId,
         flagTaskForAgent,
         answerAgentTask,
+        setAgentRunState,
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,

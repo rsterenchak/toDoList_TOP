@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         added: [
-            "Needs-you cards on the Agent board now let you type an answer to the agent's question and send it, re-queueing the task for another pass.",
+            "Drafted cards on the Agent board now have a Dispatch button that ships the draft through the run pipeline and tracks it live to shipped, no change, or failed.",
         ],
         fixed: [
             "On the collapsed mobile launcher, tapping Redeploy now only redeploys instead of also opening the full-screen viewer sheet.",

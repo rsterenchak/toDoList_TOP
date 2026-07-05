@@ -1,5 +1,14 @@
 import { supabase } from './supabaseClient.js';
 import { listLogic } from './listLogic.js';
+import {
+    mintEntryId,
+    embedEntryMarker,
+    injectEntry,
+    dispatchRun,
+    pollRunStatus,
+    resolveEntryByMarker,
+    fetchRunResult,
+} from './inject.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
 // replaces the old Conceive incubator surface. For the currently selected
@@ -21,7 +30,7 @@ import { listLogic } from './listLogic.js';
 // render time; a full-empty state shows when the project has no rows at all.
 const BUCKETS = [
     { key: 'needs-you', label: 'Needs you', states: ['needs_words', 'needs_mockup'] },
-    { key: 'stuck', label: 'Stuck', states: ['failed'] },
+    { key: 'stuck', label: 'Stuck', states: ['failed', 'no_change'] },
     { key: 'in-progress', label: 'In progress', states: ['triaging', 'drafted', 'dispatched', 'running'] },
     { key: 'shipped', label: 'Shipped', states: ['shipped'] },
 ];
@@ -40,7 +49,21 @@ const STATE_CHIP = {
     dispatched: 'Queued',
     running: 'Running',
     shipped: 'Shipped',
+    no_change: 'No change',
 };
+
+// Workflow conclusions that positively mean the run failed. Mirrors the
+// Runs-tab FAILURE_CONCLUSIONS list: only these flip a completed run to
+// `failed`; any other completed conclusion (neutral, skipped, no conclusion)
+// keeps the row in-progress rather than asserting failure.
+const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
+
+// Dispatch-poll cadence and give-up window, matching the Runs-tab poller's
+// shape. The poll runs while the tab is open; if the tab closes mid-run the row
+// stalls at dispatched/running until reopened (paint() re-arms the poller for
+// any dispatched/running row that still carries its correlation + entry ids).
+const DISPATCH_POLL_MS = 5000;
+const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
 
 // ── module state ─────────────────────────────────────────────────────
 // The rows last loaded for the active project, the project they belong to,
@@ -50,6 +73,11 @@ const STATE_CHIP = {
 let _rows = [];
 let _loadedProjectName = null;
 let _channel = null;
+// Active dispatch-status pollers, keyed by agent_queue row id → interval handle.
+// Module-level so a poller survives re-renders (a realtime push repaints the
+// board without tearing down an in-flight poll) and so paint() can re-arm one
+// for a dispatched/running row after a tab reopen.
+const _dispatchPollers = {};
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -210,28 +238,300 @@ function buildSecondary(row) {
         p.textContent = 'Attach a mockup to continue.';
         return p;
     }
-    if (state === 'failed') {
+    // Stuck bucket: a genuinely failed run, or a completed run that merged
+    // nothing (no_change). Both surface the row's summary via failure_reason.
+    if (state === 'failed' || state === 'no_change') {
         const reason = (row.failure_reason || '').trim();
         const p = document.createElement('p');
         p.className = 'agentSecondary agentFailure';
-        p.textContent = reason || 'The run failed. Retry from the queue.';
+        p.textContent = reason || (state === 'no_change'
+            ? 'The run finished without merging any changes.'
+            : 'The run failed. Retry from the queue.');
         return p;
     }
     if (state === 'shipped') {
+        const label = row.pr_number ? ('PR #' + row.pr_number) : 'View PR';
+        // Link the merged PR when its URL is known; otherwise fall back to a
+        // static "PR #N" / "Shipped" line.
+        if (row.pr_url) {
+            const a = document.createElement('a');
+            a.className = 'agentSecondary agentSecondaryMuted agentShippedLink';
+            a.href = row.pr_url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = label;
+            return a;
+        }
         const p = document.createElement('p');
         p.className = 'agentSecondary agentSecondaryMuted';
-        const pr = row.pr_number ? ('PR #' + row.pr_number) : (row.pr_url ? 'View PR' : 'Shipped');
-        p.textContent = pr;
+        p.textContent = row.pr_number ? label : 'Shipped';
         return p;
     }
-    // In-progress non-thin states (triaging / drafted): a short status line.
-    if (state === 'triaging' || state === 'drafted') {
+    if (state === 'drafted') {
+        return buildDraftedSecondary(row);
+    }
+    // In-progress triaging: a short status line.
+    if (state === 'triaging') {
         const p = document.createElement('p');
         p.className = 'agentSecondary agentSecondaryMuted';
-        p.textContent = state === 'drafted' ? 'Draft ready to dispatch.' : 'Triaging the request…';
+        p.textContent = 'Triaging the request…';
         return p;
     }
     return null;
+}
+
+// Secondary content for a `drafted` card: the agent's draft in a read-only,
+// scrollable block plus a Dispatch button — the manual review gate. Tapping
+// Dispatch ships the draft through the run pipeline (inject → dispatch → poll)
+// via listLogic writes; the view never writes to Supabase directly. The button
+// disables during the in-flight inject/dispatch sequence; on failure it
+// re-enables and a non-blocking error is surfaced beneath it, and the row stays
+// `drafted`.
+function buildDraftedSecondary(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agentSecondary agentDraft';
+
+    const draftText = (row.draft || '').trim();
+    const block = document.createElement('pre');
+    block.className = 'agentDraftBlock';
+    block.setAttribute('tabindex', '0');
+    block.setAttribute('aria-label', 'Draft entry');
+    block.textContent = draftText || 'No draft text available.';
+    wrap.appendChild(block);
+
+    const actions = document.createElement('div');
+    actions.className = 'agentDraftActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'agentDraftError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const dispatch = document.createElement('button');
+    dispatch.type = 'button';
+    dispatch.className = 'agentDispatchButton';
+    dispatch.textContent = 'Dispatch';
+    actions.appendChild(dispatch);
+    wrap.appendChild(actions);
+
+    function fail(message) {
+        dispatch.disabled = false;
+        dispatch.classList.remove('is-pending');
+        dispatch.textContent = 'Dispatch';
+        errorEl.textContent = message || 'Could not dispatch. Try again.';
+        errorEl.hidden = false;
+    }
+
+    dispatch.addEventListener('click', function () {
+        if (dispatch.disabled) return;
+        if (!draftText) { fail('No draft to dispatch.'); return; }
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        dispatch.disabled = true;
+        dispatch.classList.add('is-pending');
+        dispatch.textContent = 'Dispatching…';
+        dispatchDraft(row, draftText).then(function (res) {
+            if (res && res.ok) {
+                // The realtime subscription (plus the explicit refresh started
+                // by dispatchDraft) moves the card into In progress; nothing to
+                // do here on success.
+                return;
+            }
+            fail(res && res.error);
+        }).catch(function () {
+            fail('Could not dispatch. Try again.');
+        });
+    });
+
+    return wrap;
+}
+
+// The dispatch target (repo/filePath) for the active project's runs. v1 ships
+// against the Worker's default target (the toDoList project), so an omitted
+// target is correct here; multi-repo resolution is a follow-on.
+function resolveDispatchTarget() {
+    return null;
+}
+
+// The state of the cached row with this id (or null when absent). Used by the
+// poller to avoid re-writing a state that hasn't actually changed on every tick.
+function currentRowState(rowId) {
+    const rows = Array.isArray(_rows) ? _rows : [];
+    const r = rows.find(function (x) { return x && x.id === rowId; });
+    return r ? r.state : null;
+}
+
+// Ship a drafted row's entry through the run pipeline: mint an id, embed the
+// marker, inject the entry into TODO.md, then dispatch claude-run.yml in entry
+// mode against that id. On success persists the ids + `dispatched` state (so the
+// realtime subscription moves the card and a reopen can resume polling) and
+// starts a status poller. Returns { ok } / { ok:false, error } so the button can
+// re-enable and surface a non-blocking failure, leaving the row `drafted`.
+async function dispatchDraft(row, draftText) {
+    const rowId = row.id;
+    const target = resolveDispatchTarget();
+    const entryId = mintEntryId();
+    const entry = embedEntryMarker(draftText, entryId);
+
+    const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });
+    if (!injectResult || !injectResult.ok) {
+        return { ok: false, error: 'Inject failed — ' + ((injectResult && injectResult.reason) || 'error') };
+    }
+
+    const correlationId = mintEntryId();
+    const dispatchResult = await dispatchRun({
+        mode: 'entry',
+        entryId: entryId,
+        correlationId: correlationId,
+        target: target,
+    });
+    if (!dispatchResult || !dispatchResult.ok) {
+        return { ok: false, error: 'Run failed — ' + ((dispatchResult && dispatchResult.reason) || 'error') };
+    }
+
+    const patch = {
+        state: 'dispatched',
+        entry_id: entryId,
+        correlation_id: correlationId,
+    };
+    if (dispatchResult.runId != null) patch.run_id = dispatchResult.runId;
+    await listLogic.setAgentRunState(rowId, patch);
+
+    startDispatchPoller(rowId, entryId, correlationId, target);
+    // Refresh so the card leaves Drafted even where realtime isn't observed.
+    refreshAgentQueue(getSelectedProjectName());
+    return { ok: true };
+}
+
+// Fetch a completed run's closing summary (the agent's verdict) to surface on a
+// no_change / failed card. Degrades to '' on any failure so the card falls back
+// to a friendly default line. The run is keyed by run id when known, else the
+// correlation id (the Worker resolves either), mirroring the Runs tab.
+async function fetchClosingSummary(runId, correlationId, target) {
+    const key = (runId != null && runId !== '') ? runId : correlationId;
+    try {
+        const res = await fetchRunResult(key, target || null);
+        if (res && res.ok && typeof res.result === 'string') return res.result.trim();
+    } catch (e) { /* degrade to no summary */ }
+    return '';
+}
+
+// Reconcile a completed-with-success run into a terminal state. A green
+// conclusion alone isn't proof of a ship — the routine can exit clean having
+// merged nothing — so resolve the entry's marker to a merged PR: a found match
+// carrying a merge commit is positive proof it shipped (→ shipped + PR link);
+// anything else is a no-change run whose closing summary we surface (→ Stuck).
+async function reconcileShipped(rowId, entryId, correlationId, runId, target) {
+    const resolved = await resolveEntryByMarker(entryId);
+    if (resolved && resolved.ok && resolved.found === true && resolved.merge_commit_sha) {
+        const patch = { state: 'shipped' };
+        if (runId != null) patch.run_id = runId;
+        const prUrl = resolved.pr_url || resolved.html_url || '';
+        if (prUrl) patch.pr_url = prUrl;
+        if (resolved.pr_number != null) patch.pr_number = resolved.pr_number;
+        await listLogic.setAgentRunState(rowId, patch);
+    } else {
+        const summary = await fetchClosingSummary(runId, correlationId, target);
+        await listLogic.setAgentRunState(rowId, {
+            state: 'no_change',
+            failure_reason: summary || 'The run finished without merging any changes.',
+            run_id: runId,
+        });
+    }
+    refreshAgentQueue(getSelectedProjectName());
+}
+
+// One poll tick for a dispatched run. Mirrors the Runs-tab poller: in-progress
+// reflects queued/running; completed reconciles success against the merged-PR
+// proof, flips only a recognized failure conclusion to failed, and leaves any
+// other completed conclusion in-progress rather than asserting failure. Past the
+// give-up window it stops watching and leaves the last-known state.
+async function pollDispatchOnce(rowId, entryId, correlationId, target, startedAt) {
+    if (Date.now() - startedAt >= DISPATCH_GIVE_UP_MS) {
+        stopDispatchPoller(rowId);
+        return;
+    }
+    const res = await pollRunStatus({ correlationId: correlationId, target: target || null });
+    if (!res || res.ok === false) return; // transient — keep polling
+    if (res.found === false) return; // run not surfaced yet — stay dispatched
+    if (res.status === 'completed') {
+        if (res.conclusion === 'success') {
+            stopDispatchPoller(rowId);
+            await reconcileShipped(rowId, entryId, correlationId, res.runId, target);
+            return;
+        }
+        if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
+            stopDispatchPoller(rowId);
+            const summary = await fetchClosingSummary(res.runId, correlationId, target);
+            await listLogic.setAgentRunState(rowId, {
+                state: 'failed',
+                failure_reason: summary || 'The run failed.',
+                run_id: res.runId,
+            });
+            refreshAgentQueue(getSelectedProjectName());
+            return;
+        }
+        // Neutral / skipped / no conclusion: not a positive failure — keep
+        // polling; the row stays in-progress.
+        return;
+    }
+    const desired = res.status === 'queued' ? 'dispatched' : 'running';
+    if (currentRowState(rowId) !== desired) {
+        await listLogic.setAgentRunState(rowId, { state: desired });
+        refreshAgentQueue(getSelectedProjectName());
+    }
+}
+
+// Start (or no-op if already running) a status poller for a dispatched row.
+// Fires an immediate tick, then on the poll cadence, until a terminal outcome
+// or the give-up window. Keyed by row id so a re-render never double-arms it.
+function startDispatchPoller(rowId, entryId, correlationId, target) {
+    if (!rowId || !entryId || !correlationId) return;
+    if (_dispatchPollers[rowId]) return;
+    const startedAt = Date.now();
+    _dispatchPollers[rowId] = setInterval(function () {
+        pollDispatchOnce(rowId, entryId, correlationId, target, startedAt);
+    }, DISPATCH_POLL_MS);
+    pollDispatchOnce(rowId, entryId, correlationId, target, startedAt);
+}
+
+// Stop and forget a row's poller. Idempotent.
+function stopDispatchPoller(rowId) {
+    if (_dispatchPollers[rowId]) {
+        clearInterval(_dispatchPollers[rowId]);
+        delete _dispatchPollers[rowId];
+    }
+}
+
+// Terminal states a dispatched row can settle into — once a row reaches one of
+// these there is nothing left to poll.
+const TERMINAL_STATES = ['shipped', 'failed', 'no_change'];
+
+// Reconcile the live poller set against the currently rendered rows: stop any
+// poller whose row has reached a terminal state (or vanished), and arm one for
+// each dispatched/running row that still carries its correlation + entry ids
+// (so a tab reopen resumes polling a run dispatched earlier). A row that reads
+// transiently as `drafted` while its dispatch write propagates does NOT stop an
+// already-running poller — only a terminal/absent row does — so the poll started
+// at dispatch time isn't torn down by a stale read a beat later. Called from
+// paint.
+function syncDispatchPollers(rows) {
+    const active = Array.isArray(rows) ? rows : [];
+    const byId = {};
+    active.forEach(function (r) { if (r && r.id) byId[r.id] = r; });
+    Object.keys(_dispatchPollers).forEach(function (rowId) {
+        const r = byId[rowId];
+        if (!r || TERMINAL_STATES.indexOf(r.state) !== -1) {
+            stopDispatchPoller(rowId);
+        }
+    });
+    active.forEach(function (r) {
+        if (!r || (r.state !== 'dispatched' && r.state !== 'running')) return;
+        if (r.correlation_id && r.entry_id) {
+            startDispatchPoller(r.id, r.entry_id, r.correlation_id, resolveDispatchTarget());
+        }
+    });
 }
 
 // One card for a single queue row: title, a state chip, and state-appropriate
@@ -462,6 +762,10 @@ function paint() {
     view.appendChild(header);
 
     const rows = Array.isArray(_rows) ? _rows : [];
+    // Keep the dispatch pollers in step with what's on the board: stop pollers
+    // for rows that have left the in-flight states and resume one for any
+    // dispatched/running row carrying its ids (e.g. after a tab reopen).
+    syncDispatchPollers(rows);
     const board = document.createElement('div');
     board.className = 'agentBoard';
     let rendered = false;
@@ -536,4 +840,7 @@ export function unsubscribeAgentView() {
         try { supabase.removeChannel(_channel); } catch (e) { /* ignore */ }
     }
     _channel = null;
+    // Stop every in-flight dispatch poller — a backgrounded board shouldn't keep
+    // polling. A reopen re-arms them from paint() via syncDispatchPollers.
+    Object.keys(_dispatchPollers).forEach(stopDispatchPoller);
 }
