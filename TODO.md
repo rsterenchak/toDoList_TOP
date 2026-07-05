@@ -246,3 +246,23 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 92895192-017e-43e1-9bfa-80e04cff36bd -->
+
+- [ ] **[MEDIUM]** Drive the Agent status pill from the real triage-run state, not just row states
+  - Type: bug
+  - Description: Tapping Run starts a triage sweep (a GitHub Actions workflow), but the header pill stays "IDLE" the whole time because it's computed only from `agent_queue` row states, and a sweep isn't represented by any lasting row state. Poll the actual workflow via the Worker's `active_runs` route (now extended with `workflow: "triage"`) and drive the pill from it: flip to "Working" on tap for instant feedback, confirm/track the real run through polling, and settle back to "Idle" when the run finishes — cross-device, since GitHub is the source of truth.
+  - Behavior:
+    1. Tapping Run optimistically sets the pill to "Working" immediately, and starts a poller that checks whether `claude-triage.yml` has an in-flight run.
+    2. The poller (every ~5s) calls the triage-scoped `active_runs`: once it sees `active: true` it marks the run confirmed; when `active` goes back to `false` after having been confirmed, the sweep is done — stop polling and return the pill to "Idle". A transient failure (`ok:false`) is ignored and retried.
+    3. Registration lag is handled: if the run hasn't appeared yet (`active:false` before ever being confirmed), the pill stays optimistically "Working" up to a ~30s grace window; past that with no run seen, it settles to "Idle". A hard ~5min cap force-stops the poller regardless.
+    4. On entering the Agent view, a one-shot triage `active_runs` check seeds the pill (and starts the poller if a sweep is already running) so a sweep started on another device shows "Working" here too.
+    5. The pill reads "Working" when a sweep is active (per the poller) OR any row is `dispatched`/`running` (a ship run in flight); otherwise "Idle". If the Run dispatch itself fails (`dispatchTriage` not-ok), the optimistic state is cleared so the pill doesn't falsely show Working.
+    6. The poller is torn down on view exit alongside the existing dispatch pollers.
+  - Implementation notes:
+    - `toDoList_main/src/inject.js`: extend `fetchActiveRuns` to `fetchActiveRuns(target, workflow)` — include `workflow` in the POST body only when passed (existing callers pass just `target`, so behavior is unchanged and it hits `claude-run.yml` as before). New caller passes `'triage'`.
+    - `toDoList_main/src/agentView.js`: import `fetchActiveRuns` from `inject.js` (add to the existing import block). Add module-level sweep state (`_sweepActive`, a poller handle, a `_sweepSeenActive` flag, grace + hard-cap deadlines) and `startSweepTracking()` / `stopSweepTracking()` helpers implementing the state machine above; the poll calls `fetchActiveRuns(resolveDispatchTarget(), 'triage')`. Call `startSweepTracking()` from the Run handler (`fireTriageSweep`, ~L130) on a successful `dispatchTriage` and `stopSweepTracking()` on failure. Add the one-shot mount check to the view-enter path (in `paint()`/`renderAgentView`), and add `stopSweepTracking()` to the existing view-exit teardown next to the dispatch-poller cleanup.
+    - Pill computation (the status-pill logic in `paint()` from the header-match entry): show "Working" when `_sweepActive === true` OR any loaded row is `dispatched`/`running`; else "Idle". Reuses the existing Working/green and Idle/muted styles — no CSS change.
+    - Depends on the Worker's `active_runs` accepting `workflow: "triage"` (deploy the Worker first, or the poll reports the ship workflow's state instead of the sweep's).
+  - Out of scope: the subline "N running" count (leave as the header-match entry defined it); a persistent server-side sweep record (this polls live GitHub state, which is enough and cross-device). Verify by tapping Run and confirming the pill flips to Working immediately, tracks the real run, and returns to Idle only once `claude-triage.yml` actually completes.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 81ca35c6-3dc1-47d2-918e-b4b3e32da56c -->
