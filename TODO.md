@@ -23,3 +23,9 @@
   - Description: Triggering a redeploy from the TODO.md viewer does not currently prevent 'Run Backlog' from being dispatched, so both can run concurrently and step on each other. Route the viewer's redeploy through the shared active-run state so that while a redeploy is active, the 'Run Backlog' control is disabled (and vice versa), matching how a single project only runs one thing at a time. Set/clear the run-state flag around the redeploy call and have the Run Backlog button read that flag to gate dispatch.
   - File: `toDoList_main/src/runState.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: a73468fa-23f2-4581-b2d7-baca19448d4d -->
+
+- [] **[MEDIUM]** Block 'Run Backlog' while a redeploy is in progress from the TODO viewer — Completed: 2026-07-04
+  - Type: bug
+  - Description: Triggering a redeploy from the TODO.md viewer does not currently prevent 'Run Backlog' from being dispatched, so both can run concurrently and step on each other. Route the viewer's redeploy through the shared active-run state so that while a redeploy is active, the 'Run Backlog' control is disabled (and vice versa), matching how a single project only runs one thing at a time. Set/clear the run-state flag around the redeploy call and have the Run Backlog button read that flag to gate dispatch.
+  - File: `toDoList_main/src/runState.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/claudeSheet.js`
+  <!-- id: 512c306b-0e61-40f6-9c3a-261d8c12a735 -->
