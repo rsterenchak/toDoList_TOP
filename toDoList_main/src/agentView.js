@@ -80,9 +80,11 @@ const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
 // the inject commit (dispatch-after-push race), so a run fired the instant
 // inject returns can check out a stale TODO.md, miss the marker, and no-op.
 // Poll the on-main read for the entry's id marker with a short backoff — up to
-// ~6 attempts ~800ms apart (a ~5s ceiling) — before firing the run.
-const ENTRY_VISIBLE_ATTEMPTS = 6;
-const ENTRY_VISIBLE_DELAY_MS = 800;
+// ~15 attempts ~1s apart (a ~15s ceiling) — before firing the run. The window
+// is wider than GitHub's typical write→read propagation so a legitimate inject
+// isn't falsely aborted as "not visible on main."
+const ENTRY_VISIBLE_ATTEMPTS = 15;
+const ENTRY_VISIBLE_DELAY_MS = 1000;
 
 // Triage-sweep tracking cadence and windows. Tapping Run fires a
 // `claude-triage.yml` sweep — a GitHub Actions workflow that isn't represented
@@ -534,7 +536,7 @@ function buildDraftedSecondary(row) {
         dispatch.disabled = true;
         dispatch.classList.add('is-pending');
         dispatch.textContent = 'Dispatching…';
-        dispatchDraft(row, draftText).then(function (res) {
+        dispatchDraft(row, draftText, row.entry_id).then(function (res) {
             if (res && res.ok) {
                 // The realtime subscription (plus the explicit refresh started
                 // by dispatchDraft) moves the card into In progress; nothing to
@@ -897,6 +899,13 @@ async function dispatchDraft(row, draftText, existingEntryId) {
         }
     }
     if (!visible) {
+        // The entry was injected (marker appended) but hasn't propagated to the
+        // on-main read yet. Persist the minted id so a retry reuses it — inject
+        // dedup-skips the already-present marker instead of appending a second
+        // copy. Leave the row `drafted` so it stays actionable.
+        try {
+            await listLogic.setAgentRunState(rowId, { entry_id: entryId });
+        } catch (e) { /* non-fatal: the button re-enables regardless */ }
         return { ok: false, error: 'Entry not yet visible on main — tap Dispatch again' };
     }
 
