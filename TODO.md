@@ -213,3 +213,18 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 50458df6-1d60-465b-93e7-7e339ed46ddc -->
+
+- [ ] **[MEDIUM]** Fix Agent view borders defaulting to purple — use --border-mid, not the undefined --border fallback
+  - Type: bug
+  - Description: Every card, input, and container in the Agent view has a bright purple border instead of the mockup's subtle hairline. Root cause: the Agent CSS declares borders as `var(--border, var(--accent))`, but `--border` is not a token in the design system, so the fallback resolves to `--accent` (#6C5DF5, purple) on every structural element. The rest of the app uses `var(--border-mid)` (#23242e) for card/modal hairlines. Replace the broken `var(--border, …)` fallbacks in the Agent CSS with `var(--border-mid)`, leaving the intentional `var(--accent)` borders on the interactive accent controls untouched.
+  - Behavior:
+    1. Agent cards, the answer/paste textareas, the draft/prompt read-only blocks, the toast, and the status-pill container render with the neutral `--border-mid` hairline — matching the mockup and the rest of the app.
+    2. Purple borders remain only on the deliberate accent controls (bolt badge, Run button, answer Send, Dispatch button, Give-to-agent pill, Open/Start-mockup button) — unchanged.
+  - Implementation notes:
+    - `toDoList_main/src/style.css`, Agent section (~L4100–4700): replace `var(--border, var(--accent))` and `var(--border, var(--text-muted))` with `var(--border-mid)` on the structural rules — the affected lines are `.agentCard` (~4295), `.agentAnswerInput` (~4384), `.agentDraftBlock` (~4484), `.agentMockupPaste` (~4653), `.agentViewToast` (~4243), the status/counts border (~4183), and `.agentMockupDesignLink` (~4601). Do NOT touch the `var(--accent)` borders on `.agentIdentityBadge`, `.agentRunBtn`, `.agentAnswerSend`, `.agentDispatchButton`, `.agentMockupCopy`, `.agentMockupOpen`, the Give-to-agent pill, or hover/focus states — those accents are intentional and match the mockup.
+    - `--border-bright` (#2d2f3d) is the app's emphasized hairline if an input wants a slightly stronger edge; default to `--border-mid` for consistency with the cards.
+    - CSS-only; the `--border-mid` token already exists in both light and dark `:root`, so no token or JS change.
+  - Out of scope: card/chip layout (already matches). Verify by opening the Agent tab and confirming cards/inputs/blocks show a subtle dark hairline, with purple only on the accent buttons and the bolt badge.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 7779c5ff-339b-4a9e-aa7e-2f3f874e6eb8 -->
