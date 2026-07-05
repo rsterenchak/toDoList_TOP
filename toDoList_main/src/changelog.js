@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-04',
-        added: [
-            "Drafted cards on the Agent board now have a Dispatch button that ships the draft through the run pipeline and tracks it live to shipped, no change, or failed.",
-        ],
         fixed: [
             "On the collapsed mobile launcher, tapping Redeploy now only redeploys instead of also opening the full-screen viewer sheet.",
             "Starting a backlog or entry run is now blocked while a redeploy is in progress, so the two can no longer run at once and step on each other.",
             "The Agent board no longer goes blank when a flagged task is rendered; queued cards now show the task title correctly.",
             "The Agent tab's Not-assigned list no longer shows completed tasks, so only open, unqueued tasks appear with a Give-to-agent button.",
+            "The expanded TODO.md viewer card now resizes when a todo description opens or closes, so its panel no longer overruns and overlaps neighboring rows.",
         ],
     },
 ];

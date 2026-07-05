@@ -41,6 +41,7 @@ import {
 import { makeInjectButton, refreshInjectButton } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
 import { applyTaskFilter } from './taskFilter.js';
+import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -1249,6 +1250,13 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             descToggle.classList.remove("open");
             switcher = 0;
         }
+
+        // Inserting/removing #descSibling shifts every row below it in
+        // #mainList, including an expanded TODO.md viewer card's header. That
+        // card caches its body height from a one-time snapshot, so nudge it to
+        // recompute against the live layout — otherwise its body overruns the
+        // room actually left and collides with neighboring rows.
+        refreshViewerExpandedHeight();
     });
 
     // Enter on the focused expand caret routes through the same click handler
