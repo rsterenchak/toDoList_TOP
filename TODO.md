@@ -214,7 +214,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 50458df6-1d60-465b-93e7-7e339ed46ddc -->
 
-- [ ] **[MEDIUM]** Fix Agent view borders defaulting to purple — use --border-mid, not the undefined --border fallback
+- [x] **[MEDIUM]** Fix Agent view borders defaulting to purple — use --border-mid, not the undefined --border fallback — Completed: 2026-07-05
   - Type: bug
   - Description: Every card, input, and container in the Agent view has a bright purple border instead of the mockup's subtle hairline. Root cause: the Agent CSS declares borders as `var(--border, var(--accent))`, but `--border` is not a token in the design system, so the fallback resolves to `--accent` (#6C5DF5, purple) on every structural element. The rest of the app uses `var(--border-mid)` (#23242e) for card/modal hairlines. Replace the broken `var(--border, …)` fallbacks in the Agent CSS with `var(--border-mid)`, leaving the intentional `var(--accent)` borders on the interactive accent controls untouched.
   - Behavior:
