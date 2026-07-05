@@ -16,3 +16,9 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-05
   <!-- id: 35480e1d-ae31-4e1a-9541-98d32082ece0 -->
+
+- [ ] **[LOW]** Add a harmless marker comment near the top of style.css
+  - Type: feature
+  - Description: Add a single-line, non-functional CSS comment inside the `:root` VOID THEME block in `toDoList_main/src/style.css`, right after the `/* ── VOID THEME (dark — default) ── */` header at line 12. The comment must not add, remove, or alter any selector, property, or value, so it has zero visual or functional effect — this is a pipeline health-check task with no user-facing change.
+  - File: `toDoList_main/src/style.css`
+  <!-- id: ffe4c7fa-8d1f-482a-bd1e-7a63e33626fb -->
