@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-05',
         fixed: [
             "The Agent board now reliably settles dispatched runs to Shipped or Stuck, catching up runs that finished while the tab was closed instead of leaving cards stuck as queued.",
+            "Agent mockup cards now reveal the exact copy-ready prompt to paste into Claude, with its own Copy button, instead of showing a separate raw context bundle.",
         ],
         added: [
             "A Run button in the Agent tab starts a triage sweep for the current project, and answering an agent's question now auto-starts one so the follow-up loop runs hands-off.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         fixed: [
-            "The Agent tab's Not-assigned list no longer shows completed tasks, so only open, unqueued tasks appear with a Give-to-agent button.",
             "The expanded TODO.md viewer card now resizes when a todo description opens or closes, so its panel no longer overruns and overlaps neighboring rows.",
         ],
     },

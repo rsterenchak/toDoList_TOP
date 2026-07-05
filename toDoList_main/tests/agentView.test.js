@@ -476,7 +476,7 @@ describe('AGENT view — needs_mockup launcher', () => {
         window.open = priorOpen;
     });
 
-    it('renders only the context-bundle fields that are present, plus launcher controls', async () => {
+    it('renders the launcher controls without a standalone context bundle, prompt hidden until opened', async () => {
         queueRows = [{
             id: 'nm1',
             state: 'needs_mockup',
@@ -484,30 +484,25 @@ describe('AGENT view — needs_mockup launcher', () => {
         }];
         await loadBoard();
 
-        const bundle = document.querySelector('.agentMockupBundle');
-        expect(bundle).toBeTruthy();
-        expect(bundle.textContent).toContain('Region:');
-        expect(bundle.textContent).toContain('Agent header');
-        expect(bundle.textContent).toContain('Change:');
-        // Tokens was absent, so no Tokens line renders.
-        expect(bundle.textContent).not.toContain('Tokens:');
+        // The always-visible Region/Tokens/Change bundle is gone — that content
+        // lives inside the prompt now.
+        expect(document.querySelector('.agentMockupBundle')).toBeFalsy();
 
-        expect(document.querySelector('.agentMockupOpen')).toBeTruthy();
+        const openBtn = document.querySelector('.agentMockupOpen');
+        expect(openBtn).toBeTruthy();
+        expect(openBtn.getAttribute('aria-expanded')).toBe('false');
+        // The prompt block is present but hidden until Open mockup is tapped.
+        const promptWrap = document.querySelector('.agentMockupPrompt');
+        expect(promptWrap).toBeTruthy();
+        expect(promptWrap.hidden).toBe(true);
+
         expect(document.querySelector('.agentMockupPaste')).toBeTruthy();
         expect(document.querySelector('.agentMockupSave')).toBeTruthy();
         // The needs_mockup card lives in the Needs you bucket.
         expect(document.querySelector('.agentBucket--needs-you')).toBeTruthy();
     });
 
-    it('omits the bundle block entirely when the context carries no fields', async () => {
-        queueRows = [{ id: 'nm2', state: 'needs_mockup', context: { title: 'No bundle yet' } }];
-        await loadBoard();
-        expect(document.querySelector('.agentMockupBundle')).toBeFalsy();
-        // The launcher controls still render.
-        expect(document.querySelector('.agentMockupOpen')).toBeTruthy();
-    });
-
-    it('Open mockup copies a prompt built from the task + bundle and opens Claude', async () => {
+    it('Open mockup toggles the prompt block, showing the full task + bundle prompt', async () => {
         queueRows = [{
             id: 'nm3',
             state: 'needs_mockup',
@@ -515,18 +510,65 @@ describe('AGENT view — needs_mockup launcher', () => {
         }];
         await loadBoard();
 
+        const openBtn = document.querySelector('.agentMockupOpen');
+        const promptWrap = document.querySelector('.agentMockupPrompt');
+        openBtn.click();
+        await flush();
+
+        // The block is now visible and shows the exact prompt to paste.
+        expect(promptWrap.hidden).toBe(false);
+        expect(openBtn.getAttribute('aria-expanded')).toBe('true');
+        const promptText = document.querySelector('.agentMockupPromptBlock').textContent;
+        expect(promptText).toContain('Task: Restyle the chip');
+        expect(promptText).toContain('Make it purple');
+        expect(promptText).toContain('- Region: Header');
+        expect(promptText).toContain('- Tokens: accent');
+        expect(promptText).toContain('- Change: recolor');
+        expect(promptText).toContain('toDoList_main/src/');
+        expect(promptText).toContain('no id marker');
+        // Opening does not touch the clipboard or open a tab on its own.
+        expect(clipboardText).toBeNull();
+        expect(openArgs).toBeNull();
+
+        // Toggling again hides it.
+        openBtn.click();
+        await flush();
+        expect(promptWrap.hidden).toBe(true);
+        expect(openBtn.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('Copy writes the prompt to the clipboard and keeps the block visible', async () => {
+        queueRows = [{
+            id: 'nm3b',
+            state: 'needs_mockup',
+            context: { title: 'Restyle the chip', region: 'Header' },
+        }];
+        await loadBoard();
+
         document.querySelector('.agentMockupOpen').click();
+        await flush();
+        document.querySelector('.agentMockupCopy').click();
         await flush();
 
         expect(clipboardText).toBeTruthy();
         expect(clipboardText).toContain('Task: Restyle the chip');
-        expect(clipboardText).toContain('Make it purple');
         expect(clipboardText).toContain('- Region: Header');
-        expect(clipboardText).toContain('- Tokens: accent');
-        expect(clipboardText).toContain('- Change: recolor');
-        expect(clipboardText).toContain('toDoList_main/src/');
-        expect(clipboardText).toContain('no id marker');
+        // Copy neither opens a tab nor collapses the prompt block.
+        expect(openArgs).toBeNull();
+        expect(document.querySelector('.agentMockupPrompt').hidden).toBe(false);
+    });
+
+    it('Open Claude Design opens claude.ai in a new tab without touching the clipboard', async () => {
+        queueRows = [{ id: 'nm3c', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupOpen').click();
+        await flush();
+        document.querySelector('.agentMockupDesignLink').click();
+        await flush();
+
         expect(openArgs).toEqual({ url: 'https://claude.ai/new', target: '_blank' });
+        expect(clipboardText).toBeNull();
     });
 
     it('omits an empty Context line but keeps the ones present in the copied prompt', async () => {
@@ -538,6 +580,8 @@ describe('AGENT view — needs_mockup launcher', () => {
         await loadBoard();
 
         document.querySelector('.agentMockupOpen').click();
+        await flush();
+        document.querySelector('.agentMockupCopy').click();
         await flush();
 
         expect(clipboardText).toContain('- Region: Sidebar');

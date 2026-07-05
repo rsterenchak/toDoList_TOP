@@ -434,54 +434,59 @@ function buildMockupPrompt(ctx) {
 }
 
 // Secondary content for a `needs_mockup` card: the launcher hand-off. Triage
-// routes visual tasks here; this surfaces the context bundle it captured
-// (Region / Tokens / Change, only the fields that are present), an "Open
-// mockup" button that copies a ready-to-paste mockup prompt and opens Claude,
+// routes visual tasks here; this surfaces an "Open mockup" button that expands
+// a read-only block showing the *actual full prompt* to paste into Claude —
+// with a Copy button and a separate "Open Claude Design" control beside it —
 // and a paste-back field that takes the finished TODO.md entry, writes it to
 // the row's `draft`, and flips the row to `drafted` — where the Dispatch card
-// already ships it. The round-trip is deliberately manual: this is a launcher,
-// not an in-app mockup renderer. The view never writes to Supabase directly
-// (the save routes through listLogic.setAgentRunState).
+// already ships it. Showing the exact prompt (rather than the raw context
+// bundle) removes the ambiguity about what to paste; copying and opening Claude
+// are separate deliberate taps so there's no focus race between them. The
+// round-trip is deliberately manual: this is a launcher, not an in-app mockup
+// renderer. The view never writes to Supabase directly (the save routes through
+// listLogic.setAgentRunState).
 function buildMockupSecondary(row) {
     const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
     const wrap = document.createElement('div');
     wrap.className = 'agentSecondary agentMockup';
 
-    // Context bundle in a read-only block, reusing the drafted-card styling.
-    // Only the fields triage actually filled are rendered.
-    const bundleFields = [
-        { label: 'Region', value: ctx.region },
-        { label: 'Tokens', value: ctx.tokens },
-        { label: 'Change', value: ctx.change },
-    ].filter(function (f) { return f.value != null && String(f.value).trim() !== ''; });
-    if (bundleFields.length) {
-        const bundle = document.createElement('div');
-        bundle.className = 'agentDraftBlock agentMockupBundle';
-        bundle.setAttribute('tabindex', '0');
-        bundle.setAttribute('aria-label', 'Mockup context bundle');
-        bundleFields.forEach(function (f) {
-            const line = document.createElement('div');
-            line.className = 'agentMockupBundleLine';
-            const key = document.createElement('span');
-            key.className = 'agentMockupBundleKey';
-            key.textContent = f.label + ': ';
-            line.appendChild(key);
-            line.appendChild(document.createTextNode(String(f.value).trim()));
-            bundle.appendChild(line);
-        });
-        wrap.appendChild(bundle);
-    }
+    // The full assembled prompt — the same string the user pastes into Claude.
+    // Built once (the context bundle is folded into it), shown verbatim in the
+    // toggled block so what the user sees is exactly what they copy.
+    const prompt = buildMockupPrompt(ctx);
 
-    // Open mockup: copy the prompt to the clipboard and open Claude in a new
-    // tab. GitHub Pages is a secure context and the click is a user gesture, so
-    // the clipboard API is available; a copy failure degrades to an error toast
-    // (the user can still paste the prompt from Claude Design manually).
+    // Open mockup: toggles the read-only prompt block open/closed. No clipboard
+    // write or tab-open here — those live on the Copy button and the Open Claude
+    // Design control inside the block, kept separate to avoid a focus race.
     const openBtn = document.createElement('button');
     openBtn.type = 'button';
     openBtn.className = 'agentMockupOpen';
     openBtn.textContent = 'Open mockup';
-    openBtn.addEventListener('click', function () {
-        const prompt = buildMockupPrompt(ctx);
+    openBtn.setAttribute('aria-expanded', 'false');
+    wrap.appendChild(openBtn);
+
+    const promptWrap = document.createElement('div');
+    promptWrap.className = 'agentMockupPrompt';
+    promptWrap.hidden = true;
+
+    const promptBlock = document.createElement('pre');
+    promptBlock.className = 'agentDraftBlock agentMockupPromptBlock';
+    promptBlock.setAttribute('tabindex', '0');
+    promptBlock.setAttribute('aria-label', 'Mockup prompt');
+    promptBlock.textContent = prompt;
+    promptWrap.appendChild(promptBlock);
+
+    const promptActions = document.createElement('div');
+    promptActions.className = 'agentMockupPromptActions';
+
+    // Copy: write the prompt to the clipboard and confirm via toast; a failure
+    // says so rather than swallowing it. The block stays visible regardless, so
+    // the user can also select-and-copy manually.
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'agentMockupCopy';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', function () {
         let copied;
         try {
             copied = navigator.clipboard.writeText(prompt);
@@ -491,11 +496,30 @@ function buildMockupSecondary(row) {
         Promise.resolve(copied).then(function () {
             showInjectToast('Mockup prompt copied — paste it into Claude or Claude Design.');
         }, function () {
-            showInjectToast('Couldn’t copy the prompt — copy it into Claude manually.', 'error');
+            showInjectToast('Couldn’t copy the prompt — select and copy it manually.', 'error');
         });
+    });
+    promptActions.appendChild(copyBtn);
+
+    // Open Claude Design: a separate, deliberate tap that opens Claude in a new
+    // tab — decoupled from Copy so there's no focus race between the two.
+    const designBtn = document.createElement('button');
+    designBtn.type = 'button';
+    designBtn.className = 'agentMockupDesignLink';
+    designBtn.textContent = 'Open Claude Design';
+    designBtn.addEventListener('click', function () {
         try { window.open('https://claude.ai/new', '_blank'); } catch (e) { /* popup blocked */ }
     });
-    wrap.appendChild(openBtn);
+    promptActions.appendChild(designBtn);
+
+    promptWrap.appendChild(promptActions);
+    wrap.appendChild(promptWrap);
+
+    openBtn.addEventListener('click', function () {
+        const open = promptWrap.hidden;
+        promptWrap.hidden = !open;
+        openBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
 
     // Paste-back field: the finished TODO.md entry. Saving writes it to the
     // row's `draft` and flips the row to `drafted`. Multi-line by nature, so
