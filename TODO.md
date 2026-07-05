@@ -229,7 +229,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7779c5ff-339b-4a9e-aa7e-2f3f874e6eb8 -->
 
-- [ ] **[MEDIUM]** Add Shelve + unflag and Retry actions to Stuck (failed / no_change) cards
+- [x] **[MEDIUM]** Add Shelve + unflag and Retry actions to Stuck (failed / no_change) cards — Completed: 2026-07-05
   - Type: feature
   - Description: Stuck cards (`failed` / `no_change`) render only the run's reason paragraph — the `buildSecondary` `failed`/`no_change` branch (~L305) has no actions, so a stuck task is a dead-end. Add the two controls from the mockup: "Shelve + unflag" (removes the task from the agent queue, returning it to Not-assigned) and "Retry" (re-dispatches the same entry through the run pipeline, reusing the existing marker so it never duplicates the TODO.md entry).
   - Behavior:
