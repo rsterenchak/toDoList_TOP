@@ -183,7 +183,12 @@ function buildCard(row) {
 
     const title = document.createElement('span');
     title.className = 'agentCardTitle';
-    const text = (row.title || row.context || '').trim() || 'Untitled entry';
+    // The title lives inside the `context` JSONB (`context.title`, written at
+    // flag time), not in a top-level column. Read it from there, guarding for a
+    // missing or non-object context, and never call a string method on the raw
+    // object (which would throw and blank the whole board).
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const text = (ctx.title || row.title || '').trim() || 'Untitled entry';
     title.textContent = text;
     title.title = text;
     head.appendChild(title);
