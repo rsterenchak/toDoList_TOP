@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         fixed: [
-            "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",
             "The Redeploy button now turns red on its own within about half a minute when a deploy fails while the viewer is open, instead of staying neutral until you manually Sync.",
             "On the collapsed mobile launcher, tapping Redeploy now only redeploys instead of also opening the full-screen viewer sheet.",
             "Starting a backlog or entry run is now blocked while a redeploy is in progress, so the two can no longer run at once and step on each other.",
             "The Agent board no longer goes blank when a flagged task is rendered; queued cards now show the task title correctly.",
+            "The Agent tab's Not-assigned list no longer shows completed tasks, so only open, unqueued tasks appear with a Give-to-agent button.",
         ],
     },
 ];
