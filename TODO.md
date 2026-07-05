@@ -195,3 +195,21 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7bf2df71-9af9-4915-a0be-debf435490d7 -->
+
+- [ ] **[MEDIUM]** Match the Agent view header to the approved mockup — identity, status, and queue counts
+  - Type: feature
+  - Description: The shipped Agent view header drifted from the approved mockup: `paint()` renders the generic project header (the project name plus an "Agent queue" chip) instead of the dedicated Agent identity the design specified. Bring it in line — replace the project-name + chip with a bolt-icon "Agent" identity block, a lightweight Working/Idle status pill, and a "N flagged · N running · N shipped today" counts subline, keeping the existing Run button. The master-pause control from the mockup is intentionally deferred (nothing auto-dispatches yet).
+  - Behavior:
+    1. The Agent view header shows, left to right: a rounded-square bolt-icon badge + "Agent" (mono), then on the right a status pill followed by the existing Run button. The redundant project name and "Agent queue" chip are removed (the project name already shows in the top project switcher/tabs).
+    2. The status pill reads "Working" with a green dot when any row is in an in-flight workflow state (`triaging` / `dispatched` / `running`), otherwise a muted "Idle". It's an indicator, not a control.
+    3. A counts subline under the header row, in mono: "N flagged · N running · N shipped today" — flagged = total queue rows for the project, running = rows in `triaging`/`dispatched`/`running`, shipped today = `shipped` rows whose `updated_at` is today. Segments show even at 0.
+    4. Everything below the header (buckets, cards, Not assigned) is unchanged.
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, the header block in `paint()` (~L1138–1149): remove the `name` (projectName) node and the `'Agent queue'` chip; build an identity element — a rounded badge containing `buildBoltIcon()` (already defined in this file for the Give-to-agent pill) plus an "Agent" label — and a right-side group holding the new status pill and the existing Run button (keep the Run wiring intact). Add the counts subline element after the header row.
+    - Counts from the loaded `_rows`, recomputed each `paint()` so realtime keeps them live: `flagged = _rows.length`; `running = _rows.filter(r => ['triaging','dispatched','running'].includes(r.state)).length`; `shippedToday = _rows.filter(r => r.state === 'shipped' && r.updated_at && new Date(r.updated_at).toDateString() === new Date().toDateString()).length`. If the board's `agent_queue` select doesn't already fetch `updated_at`, add it to that query in `listLogic.js` so the date filter works.
+    - Status pill: "Working"/green when `running > 0`, else muted "Idle".
+    - Styling in `style.css`: the identity badge + label, the status pill (green/muted variants), and the counts subline, using existing tokens (accent purple badge, success green for Working, `--text-muted` mono for counts), matching the mockup's spacing; keep ≥36px touch targets on interactive controls.
+  - Out of scope: the master-pause button from the mockup (freezes autonomous dispatch, which doesn't exist yet — ships with the auto-dispatch + rails work); card/chip restyling (`STATE_CHIP` labels and card layout already match the mockup). Verify by opening the Agent tab and confirming the header shows the Agent identity + status pill + counts instead of the project name + chip, and that the counts track the board live.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 50458df6-1d60-465b-93e7-7e339ed46ddc -->
