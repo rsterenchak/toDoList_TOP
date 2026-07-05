@@ -178,3 +178,20 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: bf3a6fac-2acb-4da2-8512-91b8733ed118 -->
+
+- [ ] **[HIGH]** Fix Dispatch race — confirm the injected entry is on main before dispatching the run
+  - Type: bug
+  - Description: Dispatching a drafted card can fire the run before the freshly-injected entry is visible on main, so the run checks out a stale TODO.md, can't find the entry's marker, and no-op's with a "marker not found / no unchecked tasks" no_change — even though the inject succeeded and the entry lands moments later. `dispatchDraft` (`agentView.js`) calls `dispatchRun` immediately after `injectEntry` returns ok, but GitHub's workflow_dispatch can resolve `main` to a tip that predates the inject commit (dispatch-after-push race). Fix by confirming the entry is on main before dispatching: after a successful inject, poll `readTodoMdFromWorker(target)` until the content contains the entry's `<!-- id: <entryId> -->` marker (short backoff, bounded retries), then dispatch. If the marker doesn't appear within the window, abort with a non-blocking error and leave the row `drafted` rather than firing a doomed run.
+  - Behavior:
+    1. In `dispatchDraft`, between the successful `injectEntry` and `dispatchRun`, poll `readTodoMdFromWorker(target)` for `<!-- id: <entryId> -->` — up to ~6 attempts with ~800ms between them (roughly a 5s ceiling).
+    2. On the first read whose content includes the marker, proceed to `dispatchRun` exactly as today.
+    3. If the marker never appears within the attempts, return `{ ok: false, error: 'Entry not yet visible on main — tap Dispatch again' }`; the button re-enables and the row stays `drafted`. No run is dispatched.
+    4. A `readTodoMdFromWorker` call that errors (transient) counts as a miss and is retried, not treated as fatal, until the attempt budget is spent.
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, `dispatchDraft` (~L600): import `readTodoMdFromWorker` from `inject.js` (add to the existing import block alongside `injectEntry` / `dispatchRun`). After the `if (!injectResult.ok) return …` guard, insert a bounded poll loop — e.g. `let visible = false; for (let i = 0; i < 6; i++) { const r = await readTodoMdFromWorker(target); if (r && r.ok !== false && typeof r.content === 'string' && r.content.includes('<!-- id: ' + entryId + ' -->')) { visible = true; break; } await new Promise(function (res) { setTimeout(res, 800); }); }` then `if (!visible) return { ok: false, error: 'Entry not yet visible on main — tap Dispatch again' };` — before minting the correlation id and dispatching.
+    - Reuses the same on-main read the reconcile path already uses (`readTodoMdFromWorker` checkbox check), so it's the project's established "is it really on main" signal, not the lagging PR/search index.
+    - No `agent_queue` / schema / Worker change — client-only, inserted between two existing steps.
+  - Out of scope: dispatching against the inject commit's exact SHA (the bulletproof version — needs the Worker's dispatch route to accept a ref plus `injectEntry` surfacing the commit sha; a follow-on only if the read-confirm proves insufficient); the serialize-by-file rails. Verify by dispatching a drafted card and confirming the run only fires once the entry is present on main, and that it ships instead of no-change'ing.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 7bf2df71-9af9-4915-a0be-debf435490d7 -->
