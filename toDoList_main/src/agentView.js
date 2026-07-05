@@ -11,6 +11,7 @@ import {
     fetchRunResult,
     readTodoMdFromWorker,
     findTargetById,
+    showInjectToast,
 } from './inject.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -295,10 +296,7 @@ function buildSecondary(row) {
         return wrap;
     }
     if (state === 'needs_mockup') {
-        const p = document.createElement('p');
-        p.className = 'agentSecondary agentSecondaryMuted';
-        p.textContent = 'Attach a mockup to continue.';
-        return p;
+        return buildMockupSecondary(row);
     }
     // Stuck bucket: a genuinely failed run, or a completed run that merged
     // nothing (no_change). Both surface the row's summary via failure_reason.
@@ -403,6 +401,159 @@ function buildDraftedSecondary(row) {
             fail(res && res.error);
         }).catch(function () {
             fail('Could not dispatch. Try again.');
+        });
+    });
+
+    return wrap;
+}
+
+// Build the ready-to-paste mockup prompt from the task + captured context
+// bundle. Any Context line whose field is empty is omitted; when no bundle
+// field is present the whole Context block is dropped rather than leaving a
+// bare "Context:" header. The trailing format instruction pins the entry shape
+// the user should paste back (matching the routine's TODO.md conventions).
+function buildMockupPrompt(ctx) {
+    const c = (ctx && typeof ctx === 'object') ? ctx : {};
+    const val = function (v) { return (v == null) ? '' : String(v).trim(); };
+    const title = val(c.title);
+    const description = val(c.description);
+
+    const contextLines = [];
+    if (val(c.region)) contextLines.push('- Region: ' + val(c.region));
+    if (val(c.tokens)) contextLines.push('- Tokens: ' + val(c.tokens));
+    if (val(c.change)) contextLines.push('- Change: ' + val(c.change));
+    const contextBlock = contextLines.length ? ('\n\nContext:\n' + contextLines.join('\n')) : '';
+
+    return "I'm working on my toDoList_TOP PWA and need mockups for a UI change, then a finished TODO.md entry.\n\n"
+        + 'Task: ' + title + '\n' + description
+        + contextBlock
+        + '\n\nShow me 2-3 mockup options (A/B/C), let me pick one, then produce a single TODO.md entry '
+        + 'in this format: `- [ ] **[PRIORITY]** <title>` with `- Type:` / `- Description:` / `- File:` / '
+        + '`- Completed:` sub-bullets, priority in literal brackets, full repo-relative paths under '
+        + '`toDoList_main/src/`, no id marker.';
+}
+
+// Secondary content for a `needs_mockup` card: the launcher hand-off. Triage
+// routes visual tasks here; this surfaces the context bundle it captured
+// (Region / Tokens / Change, only the fields that are present), an "Open
+// mockup" button that copies a ready-to-paste mockup prompt and opens Claude,
+// and a paste-back field that takes the finished TODO.md entry, writes it to
+// the row's `draft`, and flips the row to `drafted` — where the Dispatch card
+// already ships it. The round-trip is deliberately manual: this is a launcher,
+// not an in-app mockup renderer. The view never writes to Supabase directly
+// (the save routes through listLogic.setAgentRunState).
+function buildMockupSecondary(row) {
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const wrap = document.createElement('div');
+    wrap.className = 'agentSecondary agentMockup';
+
+    // Context bundle in a read-only block, reusing the drafted-card styling.
+    // Only the fields triage actually filled are rendered.
+    const bundleFields = [
+        { label: 'Region', value: ctx.region },
+        { label: 'Tokens', value: ctx.tokens },
+        { label: 'Change', value: ctx.change },
+    ].filter(function (f) { return f.value != null && String(f.value).trim() !== ''; });
+    if (bundleFields.length) {
+        const bundle = document.createElement('div');
+        bundle.className = 'agentDraftBlock agentMockupBundle';
+        bundle.setAttribute('tabindex', '0');
+        bundle.setAttribute('aria-label', 'Mockup context bundle');
+        bundleFields.forEach(function (f) {
+            const line = document.createElement('div');
+            line.className = 'agentMockupBundleLine';
+            const key = document.createElement('span');
+            key.className = 'agentMockupBundleKey';
+            key.textContent = f.label + ': ';
+            line.appendChild(key);
+            line.appendChild(document.createTextNode(String(f.value).trim()));
+            bundle.appendChild(line);
+        });
+        wrap.appendChild(bundle);
+    }
+
+    // Open mockup: copy the prompt to the clipboard and open Claude in a new
+    // tab. GitHub Pages is a secure context and the click is a user gesture, so
+    // the clipboard API is available; a copy failure degrades to an error toast
+    // (the user can still paste the prompt from Claude Design manually).
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'agentMockupOpen';
+    openBtn.textContent = 'Open mockup';
+    openBtn.addEventListener('click', function () {
+        const prompt = buildMockupPrompt(ctx);
+        let copied;
+        try {
+            copied = navigator.clipboard.writeText(prompt);
+        } catch (e) {
+            copied = Promise.reject(e);
+        }
+        Promise.resolve(copied).then(function () {
+            showInjectToast('Mockup prompt copied — paste it into Claude or Claude Design.');
+        }, function () {
+            showInjectToast('Couldn’t copy the prompt — copy it into Claude manually.', 'error');
+        });
+        try { window.open('https://claude.ai/new', '_blank'); } catch (e) { /* popup blocked */ }
+    });
+    wrap.appendChild(openBtn);
+
+    // Paste-back field: the finished TODO.md entry. Saving writes it to the
+    // row's `draft` and flips the row to `drafted`. Multi-line by nature, so
+    // Enter inserts newlines (no Enter-to-submit). 16px avoids iOS focus zoom.
+    const input = document.createElement('textarea');
+    input.className = 'agentMockupPaste';
+    input.rows = 4;
+    input.placeholder = 'Paste the finished TODO.md entry…';
+    input.setAttribute('aria-label', 'Finished entry');
+    wrap.appendChild(input);
+
+    const actions = document.createElement('div');
+    actions.className = 'agentMockupActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'agentMockupError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'agentMockupSave';
+    save.textContent = 'Save draft';
+    actions.appendChild(save);
+    wrap.appendChild(actions);
+
+    function fail(message) {
+        save.disabled = false;
+        input.disabled = false;
+        save.classList.remove('is-pending');
+        save.textContent = 'Save draft';
+        errorEl.textContent = message || 'Could not save. Try again.';
+        errorEl.hidden = false;
+    }
+
+    // Save the pasted entry: empty/whitespace-only input is ignored (no write).
+    // While the write is in flight the input and button are disabled; on success
+    // the board refreshes (the realtime subscription moves the card to In
+    // progress / drafted); on failure the controls re-enable and an error shows.
+    save.addEventListener('click', function () {
+        if (save.disabled) return;
+        const text = (input.value || '').trim();
+        if (!text) return;
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        save.disabled = true;
+        input.disabled = true;
+        save.classList.add('is-pending');
+        save.textContent = 'Saving…';
+        Promise.resolve(listLogic.setAgentRunState(row.id, { draft: text, state: 'drafted' })).then(function (res) {
+            if (res && res.ok) {
+                refreshAgentQueue(getSelectedProjectName());
+                return;
+            }
+            fail(res && res.error);
+        }).catch(function () {
+            fail('Could not save. Try again.');
         });
     });
 

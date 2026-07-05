@@ -4486,6 +4486,133 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--accent-text, var(--accent));
 }
 
+/* needs_mockup launcher: the captured context bundle, an Open-mockup button
+   that copies a ready-to-paste prompt and opens Claude, and a paste-back field
+   that stashes the finished entry as the row's draft. */
+.agentMockup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Context bundle reuses the drafted-card block styling; each field is a
+   labelled line with a de-emphasised key. */
+.agentMockupBundle {
+  font-size: 13px;
+}
+
+.agentMockupBundleLine {
+  margin: 0 0 4px;
+}
+
+.agentMockupBundleLine:last-child {
+  margin-bottom: 0;
+}
+
+.agentMockupBundleKey {
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.agentMockupOpen {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentMockupOpen:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentMockupOpen:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentMockupPaste {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  /* 16px avoids iOS Safari focus auto-zoom. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.4;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: 8px;
+}
+
+.agentMockupPaste:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.agentMockupActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.agentMockupError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentMockupSave {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentMockupSave:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentMockupSave:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentMockupSave:disabled,
+.agentMockupSave.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentMockupSave.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
 /* Not-assigned bucket: the project's unqueued tasks, each with a live
    "Give to agent" pill. */
 .agentBucket--not-assigned .agentBucketLabel {
