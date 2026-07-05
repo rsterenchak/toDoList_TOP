@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         changed: [
-            "Hovering the Run backlog or Run this entry buttons while a redeploy is in progress now shows a not-allowed cursor, reinforcing that a run can't start until the deploy finishes.",
+            "The Conceive tab is now an Agent board that groups a project's autonomous-agent work into Needs you, Stuck, In progress, and Shipped buckets, updating live as states change.",
         ],
         fixed: [
             "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",

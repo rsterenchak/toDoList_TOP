@@ -12,7 +12,7 @@ function read(relative) {
 // Pins the contract for keyboard navigation gating on the Projects view.
 // The legacy todo arrow-nav handler and the cross-pane ArrowLeft/ArrowRight
 // shortcut both branch off #mainBar's data-view attribute and must bail
-// when the active view is not 'projects', so other views (e.g. Conceive)
+// when the active view is not 'projects', so other views (e.g. Agent)
 // keep native caret movement instead of having focus yanked into the
 // hidden #mainList.
 describe('view-aware arrow-key navigation — Projects gating', () => {

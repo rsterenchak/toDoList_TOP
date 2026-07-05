@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the contract for the ArrowDown / ArrowUp boundary between the
-// view-switcher pills (PROJECTS / CONCEIVE) and the visible main pane below
+// view-switcher pills (PROJECTS / AGENT) and the visible main pane below
 // them. Mirrors the sidebarToggle ↔ first-project-row pattern so keyboard
 // users can flow vertically out of the header chrome into the rendered
 // items without grabbing the mouse:
@@ -86,7 +86,7 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         // worst silently no-ops — leaving the rendered items unreachable
         // from the view pills.
         expect(main).toMatch(/viewPillProjects\.addEventListener\(\s*['"]keydown['"]/);
-        expect(main).toMatch(/viewPillConceive\.addEventListener\(\s*['"]keydown['"]/);
+        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]keydown['"]/);
     });
 
     it('the pill drop-in handler bails on ArrowDown only and ignores modifier-key chords', () => {
@@ -116,7 +116,7 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         // Without stopPropagation, the document-level todo arrow-nav
         // handler would also fire and clobber the focus we just placed
         // (e.g., jumping to a stale .todo-active row or to committed
-        // rows even in CONCEIVE view where mainList is hidden).
+        // rows even in AGENT view where mainList is hidden).
         expect(body).toMatch(/stopPropagation\(\s*\)/);
         expect(body).toMatch(/preventDefault\(\s*\)/);
     });
@@ -126,7 +126,7 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         // Resolving the target via getActiveView() means the pill ArrowDown
         // lands on whichever surface is currently visible — placeholder
         // input in PROJECTS. A view-agnostic mainList target would drop
-        // focus on a hidden node when CONCEIVE is the active view.
+        // focus on a hidden node when AGENT is the active view.
         // The handler delegates to a helper that consults getActiveView().
         // Search both the immediate body and the surrounding source for
         // the active-view-aware target selection (the helper is module-

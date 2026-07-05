@@ -2679,14 +2679,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* MAIN BAR */
 #mainBar {
   display: grid;
-  /* Single 1fr track for the scrollable todo list. The Conceive view
+  /* Single 1fr track for the scrollable todo list. The Agent view
      declares grid-row: 1 / -1 so it overlays
      the same area when active. The view-switch pill bar lives in the
      top nav, and the title bar that previously sat above the list has
      been retired in favor of the sidebar's project rows + the EXPAND
      ALL overlay anchored to the add-task row below. The `auto` track at the
      top holds the status filter pill row (#taskFilterBar); the 1fr track
-     below is the scrollable list. The Conceive overlay still spans
+     below is the scrollable list. The Agent overlay still spans
      1 / -1 so it covers both tracks when active. */
   grid-template-rows: auto 1fr;
   /* A single `minmax(0, 1fr)` column pins the task pane to its container
@@ -2707,7 +2707,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* ── STATUS FILTER PILLS (ALL / Active / Ideas) ──
    Row of toggle pills above the task list that filter visible rows by their
    workflow status. Sits in #mainBar's top auto track (grid-row 1), above the
-   compose row inside #mainList. Covered by the Conceive overlay. */
+   compose row inside #mainList. Covered by the Agent overlay. */
 #taskFilterBar {
   grid-row: 1;
   display: flex;
@@ -2914,13 +2914,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
-/* ── CONCEIVE VIEW ──
-   The per-project lifecycle surface: the selected project's name + lifecycle
-   chip, followed by its ordered stages as collapsible sections. An empty
-   state shows when no project is selected. renderConceiveView() fills
-   #conceiveView at runtime. Hidden by default; #mainBar's data-view attribute
-   toggles visibility, the same hook the project view uses. */
-#conceiveView {
+/* ── AGENT VIEW ──
+   The per-project agent-queue board: the selected project's name + an
+   "Agent queue" chip, followed by grouped buckets (Needs you, Stuck, In
+   progress, Shipped). An empty state shows when no project is selected or the
+   project has no queued work. renderAgentView() fills #agentView at runtime.
+   Hidden by default; #mainBar's data-view attribute toggles visibility, the
+   same hook the project view uses. */
+#agentView {
   grid-row: 1 / -1;
   grid-column: 1;
   display: none;
@@ -2934,14 +2935,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
   min-width: 0;
 }
 
-#mainBar[data-view="conceive"] #conceiveView {
+#mainBar[data-view="agent"] #agentView {
   display: flex;
 }
 
-#mainBar[data-view="conceive"] #mainList,
-#mainBar[data-view="conceive"] #mobileProjHeader,
-#mainBar[data-view="conceive"] #taskFilterBar,
-#mainBar[data-view="conceive"] #bulkDescActions {
+#mainBar[data-view="agent"] #mainList,
+#mainBar[data-view="agent"] #mobileProjHeader,
+#mainBar[data-view="agent"] #taskFilterBar,
+#mainBar[data-view="agent"] #bulkDescActions {
   display: none;
 }
 
@@ -2950,7 +2951,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
    published src-manifest.json renders as a collapsible folder/file tree; each
    file row carries an "Explain with Sonnet" action. renderStructureView() fills
    #structureView at runtime. Hidden by default; #mainBar's data-view attribute
-   toggles visibility, the same hook the project and Conceive views use. */
+   toggles visibility, the same hook the project and Agent views use. */
 #structureView {
   grid-row: 1 / -1;
   grid-column: 1;
@@ -4098,629 +4099,184 @@ button.claudeAttachChipLabel { cursor: pointer; }
   transition: background 0.4s ease;
 }
 
-.conceiveEmptyState {
+.agentEmptyState {
   margin: auto;
   max-width: 340px;
   text-align: center;
-  font-family: inherit;
+  color: var(--text-secondary, var(--text-muted));
   font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-muted);
+  line-height: 1.6;
 }
 
-.conceiveLifecycleChip {
-  flex: 0 0 auto;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: #9D93EE;
-  background: rgba(108, 93, 245, 0.18);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-
-/* One-time Iterative | Spec shape chooser, shown above the stages only while
-   the project is pristine (no stage written yet). A segmented control reflects
-   the current shape; the muted hint below explains the one-time nature. */
-.conceiveShapeChooser {
+.agentViewHeader {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 4px 0 12px;
-}
-
-.conceiveShapeSegment {
-  display: inline-flex;
-  align-self: flex-start;
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.conceiveShapeOption {
-  font-family: inherit;
-  /* 16px to avoid iOS Safari auto-zoom; this is a tappable control, not input,
-     but keeping it large stays consistent with the touch-target convention. */
-  font-size: 16px;
-  font-weight: 600;
-  padding: 7px 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary, var(--text-muted));
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.conceiveShapeOption + .conceiveShapeOption {
-  border-left: 1px solid var(--border-subtle, var(--border-mid));
-}
-
-.conceiveShapeOption:hover { background: var(--bg-hover); }
-
-.conceiveShapeOption:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: -2px;
-}
-
-.conceiveShapeOption.active {
-  background: rgba(108, 93, 245, 0.18);
-  color: var(--accent-text, #9D93EE);
-  cursor: default;
-}
-
-.conceiveShapeHint {
-  margin: 0;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-secondary, var(--text-muted));
-}
-
-/* Editor surface */
-.conceiveEditorHeader {
-  display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.conceiveEditorTitleRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Read-only project name heading for the selected project. Renaming
-   happens in the sidebar, so this is plain text, not an input. */
-.conceiveProjectName {
-  flex: 0 1 auto;
-  min-width: 0;
+.agentProjectName {
   margin: 0;
-  font-family: inherit;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.conceiveStages {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.conceiveStage {
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: 12px;
-  background: var(--bg-elevated, transparent);
-  overflow: hidden;
-}
-
-.conceiveStageHeader {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: transparent;
-  border: none;
-  padding: 12px 14px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.conceiveStageHeader:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: -2px;
-}
-
-.conceiveStageDot {
-  flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid var(--text-muted);
-  border-radius: 50%;
-  background: transparent;
-}
-
-.conceiveStageDot.filled {
-  background: #6C5DF5;
-  border-color: #6C5DF5;
-}
-
-.conceiveStageLabel {
-  flex: 1 1 auto;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* Persistent, display-only guidance prompt under a stage label. Muted
-   secondary text, sized below the label, sitting between the header and the
-   body field. Always visible — not a placeholder. */
-.conceiveStageHint {
-  margin: 0;
-  padding: 0 14px 10px 30px;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-secondary, var(--text-muted));
-}
-
-/* Collapsed by default; the editor adds .expanded to reveal the body. */
-.conceiveStageBody {
-  display: none;
-  padding: 0 14px 14px;
-}
-
-.conceiveStage.expanded .conceiveStageBody {
-  display: block;
-}
-
-.conceiveStageInput {
-  width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
-  min-height: 96px;
-  font-family: inherit;
-  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  background: var(--bg-base);
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-
-.conceiveStageInput:focus-visible {
-  outline: none;
-  border-color: #6C5DF5;
-}
-
-/* Build-plan stage header row: the collapsible toggle button (flex:1) plus the
-   "Generate tasks" action pinned to the right. */
-.conceiveStageHeaderRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.conceiveStageHeaderRow .conceiveStageHeader {
-  flex: 1 1 auto;
-  width: auto;
-}
-
-.conceiveGenerateTasksBtn {
-  flex: 0 0 auto;
-  margin-right: 12px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
-}
-
-.conceiveGenerateTasksBtn:hover { background: var(--accent-text); border-color: var(--accent-text); }
-.conceiveGenerateTasksBtn:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-.conceiveGenerateTasksBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* "Suggest plan" action: a quieter, outlined sibling to "Generate tasks" — it
-   drafts the Build-plan body from the upstream stages rather than committing
-   anything, so it reads as secondary. */
-.conceiveSuggestPlanBtn {
-  flex: 0 0 auto;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--accent);
-  background: transparent;
-  color: var(--accent-text);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
-}
-
-.conceiveSuggestPlanBtn:hover { background: var(--bg-hover); }
-.conceiveSuggestPlanBtn:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-.conceiveSuggestPlanBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Inline status area under the Build-plan body: hosts the overwrite-confirm,
-   the draft error, and the post-draft Undo/Regenerate footer. */
-.conceiveSuggestStatus:empty { display: none; }
-.conceiveSuggestStatus {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin: 8px 0 2px;
-  font-size: 13px;
-}
-
-.conceiveSuggestConfirm,
-.conceiveSuggestFooter {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.conceiveSuggestConfirmMsg,
-.conceiveSuggestNote {
-  color: var(--text-muted);
-}
-
-.conceiveSuggestError {
-  color: var(--text-danger);
-}
-
-.conceiveSuggestLink {
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--accent-text);
-  cursor: pointer;
-  text-decoration: underline;
-}
-.conceiveSuggestLink:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-
-/* ── ITERATIVE DIRECTION BOARD ──────────────────────────────────────
-   The board renderer for Iterative projects: a one-line North star, three
-   stacked lanes (Now / Next / Later), and a quick-capture input. Lanes stack
-   vertically at every breakpoint — this is a direction board, not a kanban
-   column layout. */
-.conceiveBoard {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* One-line North star: a single editable sentence under the header. */
-.conceiveNorthStar {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.conceiveNorthStarLabel {
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-secondary, var(--text-muted));
-}
-
-.conceiveNorthStarInput {
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
-  font-size: 16px;
-  line-height: 1.4;
-  color: var(--text-primary);
-  background: var(--bg-base);
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-
-.conceiveNorthStarInput:focus-visible {
-  outline: none;
-  border-color: #6C5DF5;
-}
-
-.conceiveLane {
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: 12px;
-  background: var(--bg-elevated, transparent);
-  padding: 12px 14px;
-}
-
-/* The Now lane is the actionable focus — accent its border. */
-.conceiveLane--now {
-  border-color: var(--accent);
-}
-
-.conceiveLaneHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.conceiveLaneLabel {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-primary);
-}
-
-.conceiveLaneActions {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Quiet neutral toggle to swap a lane's cards for its raw stage-body editor. */
-.conceiveLaneEditBtn {
-  flex: 0 0 auto;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-subtle, var(--border-mid));
-  background: transparent;
-  color: var(--text-secondary, var(--text-muted));
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.conceiveLaneEditBtn:hover { background: var(--bg-hover); }
-.conceiveLaneEditBtn:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-
-.conceiveLaneCards {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.conceiveLaneEmpty {
-  margin: 10px 0 2px;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.conceiveCard {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-elevated, var(--bg-base));
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-radius: 8px;
-  padding: 9px 11px;
-}
-
-.conceiveCardText {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.4;
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 
-/* Later cards read as the coolest tier — muted text on the elevated surface. */
-.conceiveLane--later .conceiveCardText,
-.conceiveLane[data-lane="Later"] .conceiveCardText {
+.agentViewChip {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-secondary, var(--text-muted));
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: 10px;
+  padding: 2px 8px;
 }
 
-/* Promote chip: the neutral dark-chip vocabulary, distinct from the accent
-   Generate-tasks button. */
-.conceiveCardPromoteBtn {
-  flex: 0 0 auto;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 9px;
-  border-radius: var(--radius-sm);
-  border: 0.5px solid var(--border-subtle, var(--border-mid));
-  background: var(--bg-base);
-  color: var(--text-secondary, var(--text-muted));
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.conceiveCardPromoteBtn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-.conceiveCardPromoteBtn:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: 2px;
-}
-
-.conceiveLaneEditor {
-  margin-top: 10px;
-}
-
-/* Quick-capture: appends to Later on Enter. */
-.conceiveQuickCapture {
-  display: flex;
-}
-
-.conceiveQuickCaptureInput {
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-  /* 16px+ to avoid iOS Safari auto-zoom on focus (CLAUDE.md). */
-  font-size: 16px;
-  line-height: 1.4;
-  color: var(--text-primary);
-  background: var(--bg-base);
-  border: 1px dashed var(--border-subtle, var(--border-mid));
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-
-.conceiveQuickCaptureInput:focus-visible {
-  outline: none;
-  border-color: #6C5DF5;
-  border-style: solid;
-}
-
-/* AUTO-LOGGED "SHIPPED" SECTION — pinned at the bottom of the board, collapsed
-   by default. A mono header row (label + count + chevron) toggles a newest-first
-   list of run records, each with a verdict-colored left border and an inline
-   summary panel that expands on tap. Display-only (no edit/promote/delete). */
-.conceiveShipped {
+.agentBoard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle, var(--border-mid));
+  gap: 20px;
 }
 
-.conceiveShippedHeader {
+.agentBucket {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agentBucketHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-secondary, var(--text-muted));
 }
 
-.conceiveShippedChevron {
-  flex: 0 0 auto;
-  font-size: 10px;
-}
-
-.conceiveShippedLabel {
-  flex: 0 0 auto;
-}
-
-.conceiveShippedCount {
-  flex: 0 0 auto;
-  font-weight: normal;
-  color: var(--text-muted, var(--text-secondary));
-}
-
-.conceiveShippedList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* A record row: the whole row is the accordion tap target. A full-side left
-   border carries the verdict color, so border-radius is squared on that edge. */
-.conceiveShippedRow {
-  border: 1px solid var(--border-subtle, var(--border-mid));
-  border-left-width: 3px;
-  border-radius: 8px;
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  background: var(--bg-elevated, transparent);
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.conceiveShippedRow:focus-visible {
-  outline: none;
-  border-color: #6C5DF5;
-}
-
-.conceiveShippedRow--shipped {
-  border-left-color: var(--type-feature);
-}
-
-.conceiveShippedRow--nochange {
-  border-left-color: var(--text-warning);
-}
-
-.conceiveShippedRowHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.conceiveShippedRowTitle {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.agentBucketLabel {
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.conceiveShippedRowDate {
-  flex: 0 0 auto;
+.agentBucketCount {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
-  color: var(--text-muted, var(--text-secondary));
+  color: var(--text-secondary, var(--text-muted));
+  background: var(--bg-hover);
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  padding: 1px 6px;
 }
 
-.conceiveShippedSummary {
-  margin-top: 8px;
+.agentBucketList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: var(--radius-md, 10px);
+}
+
+.agentCard--thin {
+  padding: 8px 12px;
+}
+
+.agentCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agentCardTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.agentChip {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--text-muted));
+  background: var(--bg-hover);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.agentChip--needs_words,
+.agentChip--needs_mockup {
+  color: var(--accent-text, var(--accent));
+  background: rgba(108, 93, 245, 0.14);
+}
+
+.agentChip--failed {
+  color: #e5534b;
+  background: rgba(229, 83, 75, 0.14);
+}
+
+.agentChip--shipped {
+  color: #2ea043;
+  background: rgba(46, 160, 67, 0.14);
+}
+
+.agentSecondary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.agentSecondaryMuted {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
+}
+
+.agentQuestion {
+  margin: 0 0 8px;
+  font-size: 13px;
   line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.agentFailure {
+  color: #e5534b;
   white-space: pre-wrap;
-  color: var(--text-secondary, var(--text-muted));
+}
+
+.agentAnswerInput {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  /* 16px avoids iOS Safari focus auto-zoom even though the control is inert here. */
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: 8px;
+}
+
+.agentAnswerInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* GENERATE TASKS (SEED TASKS) REVIEW MODAL */
@@ -8074,7 +7630,7 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* The view-switch pill cluster duplicates the destinations offered
-     by the persistent bottom tab bar (Projects · Conceive) and
+     by the persistent bottom tab bar (Projects · Agent) and
      would otherwise clip into the iOS status bar / Dynamic Island on
      the collapsed mobile nav. Hide it entirely on mobile — the bottom
      tab bar is the sole navigator at this breakpoint. */
@@ -13242,7 +12798,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* ══════════════════════════════════════════
    Persistent bottom tab bar (mobile only)
    ──────────────────────────────────────────
-   Two destinations — Projects · Conceive — pinned to the
+   Two destinations — Projects · Agent — pinned to the
    bottom of the viewport at ≤1023px. Hidden on desktop. The bar shares
    --mobile-tab-h with the bottom sheet so the IDLE nub, PEEK strip, and
    swipe-zone all stack directly above the tabs without per-element

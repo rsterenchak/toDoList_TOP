@@ -1,5 +1,5 @@
-// Shape-aware Conceive helpers shared by the Conceive view (conceiveView.js)
-// and the "Generate tasks" modal (seedTasksModal.js).
+// Shape-aware lifecycle-stage helpers shared by the "Generate tasks" modal
+// (seedTasksModal.js) and the Structure view.
 //
 // Each project has a lifecycle SHAPE that determines which stage is the
 // actionable "task source" — the stage Generate tasks decomposes and Suggest
