@@ -7216,8 +7216,12 @@ body.row-dragging * { cursor: grabbing !important; }
 /* Greyed while a manual redeploy owns this project — a redeploy and a run are
    mutually exclusive, so the button reads as unavailable (dimmed + not-allowed)
    rather than in-progress until the redeploy settles. Mirrors the deploy pill's
-   --runblocked treatment in the reverse direction; placed after the [disabled]
-   rule so its not-allowed cursor beats that rule's progress cursor. */
+   --runblocked treatment in the reverse direction. The button is disabled while
+   blocked, so the [disabled] variant carries the redeploy qualifier too: it ties
+   the generic .todoMdViewerRunBtn[disabled] progress rule on specificity and,
+   coming later in source order, wins — a plain single-class selector would lose
+   to that attribute+class rule and the not-allowed cursor would never apply. */
+.todoMdViewerRunBtn--redeployblocked[disabled],
 .todoMdViewerRunBtn--redeployblocked {
   opacity: 0.45;
   cursor: not-allowed;
@@ -7300,7 +7304,12 @@ body.row-dragging * { cursor: grabbing !important; }
   cursor: progress;
 }
 /* Greyed while a manual redeploy owns this project (see Run backlog above) —
-   not-allowed cursor to read as unavailable rather than merely disabled. */
+   not-allowed cursor to read as unavailable rather than merely disabled. The
+   control is disabled while blocked, so the :disabled variant carries the
+   redeploy qualifier: it ties the shared :disabled default-cursor rule above on
+   specificity and, later in source order, wins — a plain single-class selector
+   would lose to that pseudo-class+class rule and stay on the default cursor. */
+.todoMdViewerRunEntryBtn--redeployblocked:disabled,
 .todoMdViewerRunEntryBtn--redeployblocked {
   cursor: not-allowed;
 }
