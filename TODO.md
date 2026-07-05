@@ -266,3 +266,21 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 81ca35c6-3dc1-47d2-918e-b4b3e32da56c -->
+
+- [ ] **[HIGH]** Fix Dispatch blocking and duplicate re-injection — widen the confirm-on-main poll and reuse the entry id across attempts
+  - Type: bug
+  - Description: Two problems in the Dispatch flow, both from the confirm-on-main poll. (1) The poll's ~5s window (6×800ms) is shorter than GitHub's write→read propagation, so a successfully-injected entry sometimes can't be read back in time and Dispatch aborts with a false "not visible on main," blocking a legitimate ship. (2) The abort happens after `injectEntry` has already appended the entry, and the Dispatch button mints a fresh marker on every tap, so retrying after an abort injects a second copy (duplicate). Fix both: widen the poll to ~15s, and make the entry id stable across attempts — persist it on abort and have the Dispatch button reuse the row's existing `entry_id` so `injectEntry` dedup-skips instead of duplicating. Pairs with the Worker `read` route now cache-busting so the poll reads fresh content.
+  - Behavior:
+    1. The confirm-on-main poll in `dispatchDraft` runs up to ~15 attempts at ~1s (≈15s) instead of ~5s; it still breaks and dispatches immediately on the first read that sees the marker.
+    2. The Dispatch button reuses the row's `entry_id` when present: a first dispatch of a never-dispatched row mints a fresh id; any later attempt (after an abort, or via Retry) reuses the stored id, so inject dedup-skips the already-present marker and never appends a duplicate.
+    3. If the poll still times out, `dispatchDraft` persists the minted `entry_id` to the row (state stays `drafted`) before returning the "tap Dispatch again" error — so the retry reuses that id and confirms quickly once propagation completes.
+    4. No change on the happy path (inject → confirm → dispatch → poll to terminal).
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, `dispatchDraft`: widen the confirm-on-main loop (from the race-fix entry) from ~6×800ms to ~15×1000ms; keep the `readTodoMdFromWorker` marker check, the early break on success, and the abort path otherwise unchanged.
+    - `dispatchDraft` already accepts `existingEntryId` (from the Retry entry) via `const entryId = existingEntryId || mintEntryId();`. In the poll-timeout branch, before returning the error, `await listLogic.setAgentRunState(rowId, { entry_id: entryId })` (leave `state: 'drafted'`) so the id is remembered.
+    - The Dispatch button handler: change its call to `dispatchDraft(row, draftText, row.entry_id)` (was `dispatchDraft(row, draftText)`). A fresh drafted row has `entry_id == null`, so it still mints; a row with a stored id reuses it.
+    - Client-only; depends on the Worker `read` route cache-bust being deployed.
+  - Out of scope: dispatching against the inject commit SHA (workflow_dispatch's `ref` accepts only a branch/tag, not a SHA). Verify by dispatching a drafted card (it proceeds without the false "not visible"), and by allowing an abort then re-dispatching and confirming TODO.md gains no duplicate entry.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0255e845-7871-41f3-8217-7de952e3fb99 -->
