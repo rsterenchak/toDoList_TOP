@@ -117,3 +117,20 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 00dac2f7-0d17-4850-a1ae-27e51fff72a0 -->
+
+- [ ] **[MEDIUM]** Add in-app triage dispatch — a Run button and auto-fire on answer
+  - Type: feature
+  - Description: Trigger the triage sweep from inside the Agent tab instead of the Actions tab. Add (1) a project-level Run button in the Agent view header that dispatches `claude-triage.yml` for the active project, and (2) auto-fire — when the user answers a `needs_words` card (which already flips the row to `triaging`), also dispatch a triage sweep, so the follow-up loop goes hands-off. Both go through a new Worker `dispatch_triage` route. Triage is a batch, read-only sweep, so fire-and-forget is fine: the board reflects verdicts live via the existing realtime subscription, with no status polling needed here.
+  - Behavior:
+    1. The Agent header shows a Run button (beside the AGENT QUEUE chip). Tapping it dispatches a triage sweep for the active project's id and shows a brief "queued" acknowledgment; it neither blocks nor polls — rows update live as triage writes verdicts.
+    2. In the answer submit handler (from the answer-wiring entry), after the row flips to `triaging` and persists, also dispatch a triage sweep for the project. If the dispatch call fails, the answer is still saved (row is in `triaging`); surface a non-blocking notice that they may need to Run manually.
+    3. Both triggers are guarded by a short in-flight flag so rapid answers or double-taps don't fire redundant sweeps in the same tick; the workflow's concurrency group and batch-all-`triaging` design coalesce anything that overlaps, so at worst it's one extra sweep.
+  - Implementation notes:
+    - `toDoList_main/src/inject.js`: add `export async function dispatchTriage(projectId, correlationId)` that POSTs `{ dispatch_triage: true, project_id: projectId, correlation_id: correlationId }` via `postToWorker`, mirroring `dispatchRun` — returns `{ ok, ... }` / `{ ok: false, reason }` via `describeError`. Mint the correlation id with `mintEntryId()` (optional; used only for the run-name).
+    - `toDoList_main/src/agentView.js`: render the Run button in the header (reuse token/button classes) wired to `dispatchTriage(listLogic.getProjectId(projectName))`; in the existing answer submit handler, call `dispatchTriage(...)` after the successful `answerAgentTask` write. Guard both with a short in-flight flag.
+    - Depends on the Worker `dispatch_triage` route being deployed first (dispatches `claude-triage.yml` with `project_id`). Do not inject this entry until that route is live.
+    - Run button styling in `style.css`, token vars, ≥36px touch target.
+  - Out of scope: a "triage running" spinner or triage status polling (fire-and-forget for now — the realtime subscription surfaces results; an active-runs-for-triage probe is a later nice-to-have); auto-dispatch of drafted/ship runs (that's the auto-ship step, which needs the serialize + diff rails first). Verify by tapping Run with a flagged task present and seeing a run fire and the verdict appear live, and by answering a needs_words card and confirming a sweep auto-fires.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6a45eaaa-92f8-4a04-8c7a-ada4fe6cbc36 -->
