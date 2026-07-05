@@ -4134,6 +4134,60 @@ button.claudeAttachChipLabel { cursor: pointer; }
   padding: 2px 8px;
 }
 
+/* Run button: dispatches a triage sweep for the active project. Pushed to the
+   end of the header row; reuses the accent tokens and a 36px touch target. */
+.agentRunBtn {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentRunBtn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentRunBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentRunBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Non-blocking toast for the auto-fired triage notice. Anchored bottom-center,
+   above the compose surfaces, and auto-removed by its timer. */
+.agentViewToast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: min(90vw, 420px);
+  padding: 10px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--surface, var(--bg-elevated, #222));
+  border: 0.5px solid var(--border, var(--accent));
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
 .agentBoard {
   display: flex;
   flex-direction: column;

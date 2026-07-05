@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -22,6 +22,13 @@ function lastChatBody() {
 function lastRewriteBody() {
     const call = fetchSpy.mock.calls.find((c) => {
         try { return JSON.parse(c[1].body).rewrite; } catch (e) { return false; }
+    });
+    return call ? JSON.parse(call[1].body) : null;
+}
+
+function lastTriageBody() {
+    const call = fetchSpy.mock.calls.find((c) => {
+        try { return JSON.parse(c[1].body).dispatch_triage; } catch (e) { return false; }
     });
     return call ? JSON.parse(call[1].body) : null;
 }
@@ -114,5 +121,33 @@ describe('rewriteTodoMd — worker rewrite payload', () => {
         const res = await rewriteTodoMd(target, 'clear_all');
         expect(res.ok).toBe(false);
         expect(res.reason).toBe('403 Forbidden');
+    });
+});
+
+// dispatchTriage POSTs the Worker's `{ dispatch_triage: true, project_id,
+// correlation_id }` branch through the same transport every other helper uses,
+// so the triage sweep fires for the named project. Fire-and-forget: the caller
+// polls nothing, so the result is just the spread Worker payload on success.
+describe('dispatchTriage — worker dispatch_triage payload', () => {
+    it('POSTs { dispatch_triage, project_id, correlation_id } and spreads the payload', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        const res = await dispatchTriage('proj-1', 'corr-9');
+        const body = lastTriageBody();
+        expect(body).toBeTruthy();
+        expect(body.dispatch_triage).toBe(true);
+        expect(body.project_id).toBe('proj-1');
+        expect(body.correlation_id).toBe('corr-9');
+        expect(res.ok).toBe(true);
+        expect(res.dispatched).toBe(true);
+    });
+
+    it('funnels a transport failure through describeError', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+        const res = await dispatchTriage('proj-2', 'corr-10');
+        expect(res.ok).toBe(false);
+        expect(res.reason).toBe('Server error 500');
     });
 });
