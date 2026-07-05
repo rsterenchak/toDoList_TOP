@@ -1216,16 +1216,18 @@ export const listLogic = (function () {
     // kickoff, each poll tick, and the terminal reconcile — and never writes to
     // Supabase directly, matching the "all data-model mutations live in
     // listLogic" convention (mirrors flagTaskForAgent / answerAgentTask).
-    // `patch` may carry any of { state, run_id, pr_url, pr_number,
+    // `patch` may carry any of { state, draft, run_id, pr_url, pr_number,
     // failure_reason, entry_id, correlation_id }; only those keys are written,
     // and only when present, so a mid-pipeline tick can update just `state`
-    // without clobbering the ids stored at kickoff. Returns a { ok, error? }
-    // result so the caller can surface a non-blocking failure.
+    // without clobbering the ids stored at kickoff. `draft` lets the
+    // needs_mockup launcher stash the pasted-back entry as it flips the row to
+    // `drafted`. Returns a { ok, error? } result so the caller can surface a
+    // non-blocking failure.
     // @category: user-mutation-only
     async function setAgentRunState(rowId, patch) {
         if (!rowId) return { ok: false, error: 'Missing row id.' };
         const src = (patch && typeof patch === 'object') ? patch : {};
-        const allowed = ['state', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id'];
+        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id'];
         const update = {};
         allowed.forEach(function (key) {
             if (src[key] !== undefined) update[key] = src[key];

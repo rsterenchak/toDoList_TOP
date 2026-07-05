@@ -450,3 +450,142 @@ describe('listLogic.answerAgentTask', () => {
         expect(res.error).toMatch(/nope/);
     });
 });
+
+describe('AGENT view — needs_mockup launcher', () => {
+    let clipboardText;
+    let openArgs;
+    let priorClipboard;
+    let priorOpen;
+
+    beforeEach(() => {
+        clipboardText = null;
+        openArgs = null;
+        priorClipboard = navigator.clipboard;
+        priorOpen = window.open;
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: (t) => { clipboardText = t; return Promise.resolve(); } },
+        });
+        window.open = (url, target) => { openArgs = { url, target }; return null; };
+        listLogic.addProject('Mocky');
+        mountDom('Mocky');
+    });
+
+    afterEach(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: priorClipboard });
+        window.open = priorOpen;
+    });
+
+    it('renders only the context-bundle fields that are present, plus launcher controls', async () => {
+        queueRows = [{
+            id: 'nm1',
+            state: 'needs_mockup',
+            context: { title: 'Restyle the chip', region: 'Agent header', change: 'Move the Run button left' },
+        }];
+        await loadBoard();
+
+        const bundle = document.querySelector('.agentMockupBundle');
+        expect(bundle).toBeTruthy();
+        expect(bundle.textContent).toContain('Region:');
+        expect(bundle.textContent).toContain('Agent header');
+        expect(bundle.textContent).toContain('Change:');
+        // Tokens was absent, so no Tokens line renders.
+        expect(bundle.textContent).not.toContain('Tokens:');
+
+        expect(document.querySelector('.agentMockupOpen')).toBeTruthy();
+        expect(document.querySelector('.agentMockupPaste')).toBeTruthy();
+        expect(document.querySelector('.agentMockupSave')).toBeTruthy();
+        // The needs_mockup card lives in the Needs you bucket.
+        expect(document.querySelector('.agentBucket--needs-you')).toBeTruthy();
+    });
+
+    it('omits the bundle block entirely when the context carries no fields', async () => {
+        queueRows = [{ id: 'nm2', state: 'needs_mockup', context: { title: 'No bundle yet' } }];
+        await loadBoard();
+        expect(document.querySelector('.agentMockupBundle')).toBeFalsy();
+        // The launcher controls still render.
+        expect(document.querySelector('.agentMockupOpen')).toBeTruthy();
+    });
+
+    it('Open mockup copies a prompt built from the task + bundle and opens Claude', async () => {
+        queueRows = [{
+            id: 'nm3',
+            state: 'needs_mockup',
+            context: { title: 'Restyle the chip', description: 'Make it purple', region: 'Header', tokens: 'accent', change: 'recolor' },
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupOpen').click();
+        await flush();
+
+        expect(clipboardText).toBeTruthy();
+        expect(clipboardText).toContain('Task: Restyle the chip');
+        expect(clipboardText).toContain('Make it purple');
+        expect(clipboardText).toContain('- Region: Header');
+        expect(clipboardText).toContain('- Tokens: accent');
+        expect(clipboardText).toContain('- Change: recolor');
+        expect(clipboardText).toContain('toDoList_main/src/');
+        expect(clipboardText).toContain('no id marker');
+        expect(openArgs).toEqual({ url: 'https://claude.ai/new', target: '_blank' });
+    });
+
+    it('omits an empty Context line but keeps the ones present in the copied prompt', async () => {
+        queueRows = [{
+            id: 'nm4',
+            state: 'needs_mockup',
+            context: { title: 'T', region: 'Sidebar' },
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupOpen').click();
+        await flush();
+
+        expect(clipboardText).toContain('- Region: Sidebar');
+        expect(clipboardText).not.toContain('- Tokens:');
+        expect(clipboardText).not.toContain('- Change:');
+    });
+
+    it('Save draft writes the pasted entry to draft and flips the row to drafted', async () => {
+        queueRows = [{ id: 'nm5', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentMockupPaste');
+        input.value = '  - [ ] **[HIGH]** Do the thing  ';
+        document.querySelector('.agentMockupSave').click();
+        await flush();
+
+        expect(updateCalls.length).toBe(1);
+        expect(updateCalls[0].id).toBe('nm5');
+        expect(updateCalls[0].patch.state).toBe('drafted');
+        // Trimmed, and the draft key survives the setAgentRunState allow-list.
+        expect(updateCalls[0].patch.draft).toBe('- [ ] **[HIGH]** Do the thing');
+    });
+
+    it('ignores an empty / whitespace-only paste (no write)', async () => {
+        queueRows = [{ id: 'nm6', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupPaste').value = '   ';
+        document.querySelector('.agentMockupSave').click();
+        await flush();
+        expect(updateCalls.length).toBe(0);
+    });
+
+    it('re-enables the controls and surfaces an error when the save fails', async () => {
+        queueRows = [{ id: 'nm7', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        updateError = { message: 'save boom' };
+        const input = document.querySelector('.agentMockupPaste');
+        const save = document.querySelector('.agentMockupSave');
+        input.value = '- [ ] entry';
+        save.click();
+        await flush();
+
+        expect(save.disabled).toBe(false);
+        expect(input.disabled).toBe(false);
+        const err = document.querySelector('.agentMockupError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toMatch(/boom/);
+    });
+});

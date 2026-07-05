@@ -135,6 +135,20 @@ describe('listLogic.setAgentRunState', () => {
         });
     });
 
+    it('writes the draft key so the needs_mockup launcher can stash a pasted entry', async () => {
+        const res = await listLogic.setAgentRunState('row-m', {
+            draft: '- [ ] **[HIGH]** Do the thing',
+            state: 'drafted',
+        });
+        expect(res.ok).toBe(true);
+        expect(updateCalls.length).toBe(1);
+        expect(updateCalls[0].id).toBe('row-m');
+        expect(updateCalls[0].patch).toEqual({
+            draft: '- [ ] **[HIGH]** Do the thing',
+            state: 'drafted',
+        });
+    });
+
     it('rejects a missing row id and writes nothing', async () => {
         const res = await listLogic.setAgentRunState('', { state: 'running' });
         expect(res.ok).toBe(false);
