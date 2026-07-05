@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-05',
-        added: [
-            "Every Agent card except those with a run in flight now has a × to remove it — returning an unshipped task to Not-assigned or dismissing a shipped one; Stuck cards keep Retry.",
-        ],
         fixed: [
             "Dispatching an Agent draft now waits for the entry to appear on main before starting the run, so a run no longer races ahead of the injected entry and settles as No change.",
             "Agent view cards, inputs, and read-only blocks now show a subtle neutral border instead of a bright purple one.",
             "The Agent header now shows a Working status while a triage sweep is running — tracked from the real run and returning to Idle only when it finishes — instead of staying stuck on Idle.",
             "Dispatching an Agent draft now waits longer for the entry to reach main and reuses the same entry across retries, so a valid dispatch is no longer falsely blocked and retrying never adds a duplicate task.",
+            "Dispatching an Agent draft no longer stalls when the injected entry is slow to appear on main — the run starts anyway and self-heals on retry if it ever races.",
         ],
     },
 ];

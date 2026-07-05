@@ -315,43 +315,45 @@ describe('AGENT view — Dispatch action', () => {
         expect(err.textContent).toMatch(/worker 500/);
     });
 
-    // Regression: the dispatch-after-push race. The Worker can dispatch the run
-    // against a `main` tip that predates the inject commit, so we must confirm
-    // the entry's id marker is actually on main before firing the run.
-    it('does not dispatch and stays drafted when the entry never appears on main', async () => {
+    // Regression: the confirm-on-main poll is a best-effort head start, NOT a
+    // gate. GitHub's write→read propagation can lag past the window even though
+    // inject committed, and the run's own boot latency covers propagation — so
+    // when the marker never surfaces we dispatch anyway rather than block a
+    // legitimate run.
+    it('dispatches anyway when the entry never appears on main within the window', async () => {
         queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
         // The inject succeeds, but the on-main read never surfaces the marker
         // within the attempt budget — the entry hasn't propagated to main yet.
         injectResult = { ok: true, id: 'e' };
         readTodoResult = { ok: false, reason: 'not visible' };
+        pollResult = { ok: true, found: false };
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         await loadBoard();
 
         const btn = document.querySelector('.agentDispatchButton');
         vi.useFakeTimers();
         btn.click();
-        // Drive the full ~15-attempt / 1000ms backoff to exhaustion.
-        await vi.advanceTimersByTimeAsync(15 * 1000 + 100);
+        // Drive the full ~8-attempt / 1000ms backoff to exhaustion.
+        await vi.advanceTimersByTimeAsync(8 * 1000 + 100);
         vi.useRealTimers();
         await flush();
 
-        // Inject happened, but the race guard blocked the dispatch entirely.
-        expect(injectCalls.length).toBe(1);
-        expect(dispatchCalls.length).toBe(0);
-        // The row stays drafted (never dispatched) for a retry…
-        expect(updateCalls.some((c) => c.patch.state === 'dispatched')).toBe(false);
-        // …but the minted entry_id is persisted so a retry reuses it and inject
-        // dedup-skips instead of appending a duplicate entry.
-        const persisted = updateCalls.find((c) => c.patch.entry_id === 'mint-0');
-        expect(persisted).toBeTruthy();
-        expect(persisted.id).toBe('d1');
-        expect(persisted.patch.state).toBeUndefined();
         // The read was retried across the attempt budget, not fatal on first miss.
         expect(readTodoCalls.length).toBeGreaterThan(1);
-        // Button re-enabled with a non-blocking, retry-oriented error.
-        expect(btn.disabled).toBe(false);
+        // Inject happened AND the run fired despite the missed confirmation.
+        expect(injectCalls.length).toBe(1);
+        expect(dispatchCalls.length).toBe(1);
+        expect(dispatchCalls[0]).toMatchObject({ mode: 'entry', entryId: 'mint-0' });
+        // The row moves to dispatched, carrying the entry_id (so Retry reuses it).
+        const dispatched = updateCalls.find((c) => c.patch.state === 'dispatched');
+        expect(dispatched).toBeTruthy();
+        expect(dispatched.id).toBe('d1');
+        expect(dispatched.patch.entry_id).toBe('mint-0');
+        // A console.warn flagged the unconfirmed dispatch; no blocking error shown.
+        expect(warnSpy).toHaveBeenCalled();
         const err = document.querySelector('.agentDraftError');
-        expect(err.hidden).toBe(false);
-        expect(err.textContent).toMatch(/not yet visible on main/i);
+        expect(err.hidden).toBe(true);
+        warnSpy.mockRestore();
     });
 
     // Regression: a transient miss (marker not yet propagated / read error) is
