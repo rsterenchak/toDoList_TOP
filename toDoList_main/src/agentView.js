@@ -8,6 +8,8 @@ import {
     pollRunStatus,
     resolveEntryByMarker,
     fetchRunResult,
+    readTodoMdFromWorker,
+    findTargetById,
 } from './inject.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -116,7 +118,12 @@ function fetchQueueRows(projectId) {
 // Re-scope and reload the queue for the given project, then repaint. Only the
 // most recent load for the still-selected project is applied, so a stale
 // in-flight fetch from a since-abandoned project can't clobber the board.
-function refreshAgentQueue(projectName) {
+// `options.settle` runs the mount-time reconcile pass (settleInFlightRows) after
+// the repaint — set only on view mount and project switch, NOT on the realtime
+// pushes / post-action refreshes that also call through here, so TODO.md is read
+// once per mount rather than on every board repaint.
+function refreshAgentQueue(projectName, options) {
+    const settle = !!(options && options.settle);
     _loadedProjectName = projectName;
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     if (!projectId) {
@@ -128,6 +135,7 @@ function refreshAgentQueue(projectName) {
         if (getSelectedProjectName() === _loadedProjectName) {
             _rows = Array.isArray(rows) ? rows : [];
             paint();
+            if (settle) settleInFlightRows(_rows);
         }
     });
 }
@@ -417,20 +425,97 @@ async function fetchClosingSummary(runId, correlationId, target) {
     return '';
 }
 
-// Reconcile a completed-with-success run into a terminal state. A green
-// conclusion alone isn't proof of a ship — the routine can exit clean having
-// merged nothing — so resolve the entry's marker to a merged PR: a found match
-// carrying a merge commit is positive proof it shipped (→ shipped + PR link);
-// anything else is a no-change run whose closing summary we surface (→ Stuck).
+// The read target (repo/filePath) for the active project's TODO.md. Mirrors the
+// TODO.md viewer's resolution — the project's configured inject target — so the
+// checkbox read hits the same repo the runs land in. Returns null when the
+// project has no routing, which degrades the checkbox settle to poll-only.
+function resolveReadTarget() {
+    const projectName = getSelectedProjectName();
+    if (!projectName) return null;
+    const targetId = listLogic.getProjectTargetId(projectName);
+    return targetId ? findTargetById(targetId) : null;
+}
+
+// The entry's checkbox state within a TODO.md body, keyed off its id marker:
+// 'checked' when the task line is `- [x]`, 'unchecked' when `- [ ]`, or null
+// when the marker isn't present. Mirrors the block walk extractEntryBlock (and
+// the Worker's fetchEntryFromTodoMd) use: find the marker line, walk back to the
+// nearest preceding checkbox line, and read its box.
+function entryCheckboxState(content, entryId) {
+    if (typeof content !== 'string' || !entryId) return null;
+    const lines = content.split('\n');
+    const checkboxRe = /^\s*- \[[ xX]\]/;
+    let markerIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].indexOf('<!-- id: ' + entryId) !== -1) { markerIdx = i; break; }
+    }
+    if (markerIdx === -1) return null;
+    let start = markerIdx;
+    while (start >= 0 && !checkboxRe.test(lines[start])) start--;
+    if (start < 0) return null;
+    return /^\s*- \[[xX]\]/.test(lines[start]) ? 'checked' : 'unchecked';
+}
+
+// Whether a completed dispatched run actually shipped. The primary, lag-free
+// signal is the entry's checkbox on main: the routine marks its TODO.md entry
+// `- [x]` in the same merge that lands the change, so a checked box is positive
+// proof it shipped where GitHub's closed-PR index (resolveEntryByMarker) still
+// lags a fresh merge. Only when TODO.md can't be read — or its marker is gone —
+// do we fall back to the merged-PR marker search, so a transient read failure
+// never mislabels a real ship as no_change.
+async function didEntryShip(entryId) {
+    try {
+        const read = await readTodoMdFromWorker(resolveReadTarget());
+        if (read && read.ok !== false && typeof read.content === 'string') {
+            const box = entryCheckboxState(read.content, entryId);
+            if (box === 'checked') return true;
+            if (box === 'unchecked') return false;
+        }
+    } catch (e) { /* fall through to the PR-marker search */ }
+    try {
+        const resolved = await resolveEntryByMarker(entryId);
+        return !!(resolved && resolved.ok && resolved.found === true && resolved.merge_commit_sha);
+    } catch (e) {
+        return false;
+    }
+}
+
+// Best-effort PR link for a shipped entry. Resolving the marker to a closed PR
+// lags GitHub's index, so this is only for the Shipped card's link — never gate
+// the shipped transition on it; the link fills in on a later poll if it's not
+// ready yet. Returns { pr_url, pr_number } with empty/undefined fields on miss.
+async function bestEffortPrLink(entryId) {
+    try {
+        const resolved = await resolveEntryByMarker(entryId);
+        if (resolved && resolved.ok && resolved.found === true) {
+            return {
+                pr_url: resolved.pr_url || resolved.html_url || '',
+                pr_number: resolved.pr_number != null ? resolved.pr_number : undefined,
+            };
+        }
+    } catch (e) { /* link fills in on a later poll */ }
+    return { pr_url: '', pr_number: undefined };
+}
+
+// Persist a row to `shipped`, attaching the run id and a best-effort PR link.
+// The link is resolved without blocking the ship: a missing link still ships.
+async function settleShipped(rowId, entryId, runId) {
+    const patch = { state: 'shipped' };
+    if (runId != null) patch.run_id = runId;
+    const link = await bestEffortPrLink(entryId);
+    if (link.pr_url) patch.pr_url = link.pr_url;
+    if (link.pr_number != null) patch.pr_number = link.pr_number;
+    await listLogic.setAgentRunState(rowId, patch);
+}
+
+// Reconcile a completed run into a terminal state. A green conclusion alone
+// isn't proof of a ship — the routine can exit clean having merged nothing — so
+// consult the entry's checkbox on main (didEntryShip): checked → shipped + a
+// best-effort PR link; still unchecked → a no-change run whose closing summary
+// we surface (→ Stuck).
 async function reconcileShipped(rowId, entryId, correlationId, runId, target) {
-    const resolved = await resolveEntryByMarker(entryId);
-    if (resolved && resolved.ok && resolved.found === true && resolved.merge_commit_sha) {
-        const patch = { state: 'shipped' };
-        if (runId != null) patch.run_id = runId;
-        const prUrl = resolved.pr_url || resolved.html_url || '';
-        if (prUrl) patch.pr_url = prUrl;
-        if (resolved.pr_number != null) patch.pr_number = resolved.pr_number;
-        await listLogic.setAgentRunState(rowId, patch);
+    if (await didEntryShip(entryId)) {
+        await settleShipped(rowId, entryId, runId);
     } else {
         const summary = await fetchClosingSummary(runId, correlationId, target);
         await listLogic.setAgentRunState(rowId, {
@@ -532,6 +617,43 @@ function syncDispatchPollers(rows) {
             startDispatchPoller(r.id, r.entry_id, r.correlation_id, resolveDispatchTarget());
         }
     });
+}
+
+// Mount-time reconcile: settle any dispatched/running row whose entry is already
+// checked off on main. A run that completed while the tab was closed — possibly
+// after ageing out of the status window, so its poller can never observe the
+// completion — still settles to shipped here from the lag-free checkbox signal,
+// with no poll required. Rows still unchecked are left to their pollers (armed
+// by syncDispatchPollers in paint), since an unchecked in-flight row may simply
+// still be running — only a *completed* poll may flip it to no_change. Reads
+// TODO.md once for the whole batch, and no-ops entirely when nothing is
+// in-flight, so it's cheap on the common (nothing-dispatched) mount.
+async function settleInFlightRows(rows) {
+    const inFlight = (Array.isArray(rows) ? rows : []).filter(function (r) {
+        return r && (r.state === 'dispatched' || r.state === 'running') && r.entry_id;
+    });
+    if (!inFlight.length) return;
+
+    let content = null;
+    try {
+        const read = await readTodoMdFromWorker(resolveReadTarget());
+        if (read && read.ok !== false && typeof read.content === 'string') content = read.content;
+    } catch (e) { /* no read → leave every row to its poller */ }
+    if (content == null) return;
+
+    let settledAny = false;
+    for (let i = 0; i < inFlight.length; i++) {
+        const r = inFlight[i];
+        // A poller may have settled this row in the interim — never re-settle a
+        // row that's already reached a terminal state.
+        if (TERMINAL_STATES.indexOf(currentRowState(r.id)) !== -1) continue;
+        if (entryCheckboxState(content, r.entry_id) === 'checked') {
+            stopDispatchPoller(r.id);
+            await settleShipped(r.id, r.entry_id, r.run_id);
+            settledAny = true;
+        }
+    }
+    if (settledAny) refreshAgentQueue(getSelectedProjectName());
 }
 
 // One card for a single queue row: title, a state chip, and state-appropriate
@@ -806,7 +928,9 @@ export function renderAgentView() {
     const projectName = getSelectedProjectName();
     if (projectName !== _loadedProjectName) {
         _rows = [];
-        refreshAgentQueue(projectName);
+        // Project switch: settle any dispatched/running rows against main once
+        // the new project's queue loads (a run may have shipped while away).
+        refreshAgentQueue(projectName, { settle: true });
         return;
     }
     paint();
@@ -829,7 +953,9 @@ export function subscribeAgentView() {
             _channel = null;
         }
     }
-    refreshAgentQueue(getSelectedProjectName());
+    // Mount: load the queue and settle any dispatched/running rows that already
+    // shipped on main while the tab was closed (resume-poll the rest via paint).
+    refreshAgentQueue(getSelectedProjectName(), { settle: true });
 }
 
 // Tear down the realtime subscription on view exit so a backgrounded board

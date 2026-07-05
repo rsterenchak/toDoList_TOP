@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-05',
+        fixed: [
+            "The Agent board now reliably settles dispatched runs to Shipped or Stuck, catching up runs that finished while the tab was closed instead of leaving cards stuck as queued.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-04',
         fixed: [
-            "On the collapsed mobile launcher, tapping Redeploy now only redeploys instead of also opening the full-screen viewer sheet.",
             "Starting a backlog or entry run is now blocked while a redeploy is in progress, so the two can no longer run at once and step on each other.",
             "The Agent board no longer goes blank when a flagged task is rendered; queued cards now show the task title correctly.",
             "The Agent tab's Not-assigned list no longer shows completed tasks, so only open, unqueued tasks appear with a Give-to-agent button.",

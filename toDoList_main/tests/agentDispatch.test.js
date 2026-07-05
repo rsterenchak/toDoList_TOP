@@ -43,10 +43,16 @@ let dispatchResult = { ok: true, runId: 111 };
 let pollResult = { ok: true, found: false };
 let resolveResult = { ok: true, found: false };
 let runResultResult = { ok: true, result: '' };
+// TODO.md read used by the checkbox-based ship reconcile. Default { ok: false }
+// so tests that don't script a body fall through to the resolveEntryByMarker
+// fallback (the pre-checkbox behavior); tests exercising the checkbox path set
+// a `content` string here.
+let readTodoResult = { ok: false, reason: 'No target' };
 let injectCalls = [];
 let dispatchCalls = [];
 let pollCalls = [];
 let resolveCalls = [];
+let readTodoCalls = [];
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'mint-' + (mintCounter++),
@@ -56,6 +62,8 @@ vi.mock('../src/inject.js', () => ({
     pollRunStatus: (opts) => { pollCalls.push(opts); return Promise.resolve(pollResult); },
     resolveEntryByMarker: (id) => { resolveCalls.push(id); return Promise.resolve(resolveResult); },
     fetchRunResult: () => Promise.resolve(runResultResult),
+    readTodoMdFromWorker: (target) => { readTodoCalls.push(target); return Promise.resolve(readTodoResult); },
+    findTargetById: () => null,
 }));
 
 import { listLogic } from '../src/listLogic.js';
@@ -95,10 +103,12 @@ beforeEach(() => {
     pollResult = { ok: true, found: false };
     resolveResult = { ok: true, found: false };
     runResultResult = { ok: true, result: '' };
+    readTodoResult = { ok: false, reason: 'No target' };
     injectCalls = [];
     dispatchCalls = [];
     pollCalls = [];
     resolveCalls = [];
+    readTodoCalls = [];
     document.body.innerHTML = '';
 });
 
@@ -279,5 +289,113 @@ describe('AGENT view — Stuck bucket includes no_change', () => {
         expect(document.querySelector('.agentFailure').textContent).toBe('No change was needed.');
         // The chip reads "No change".
         expect(document.querySelector('.agentChip').textContent).toBe('No change');
+    });
+});
+
+// A TODO.md body carrying one entry with the given id marker and checkbox state.
+function todoBody(entryId, checked) {
+    return [
+        '# TODO LIST',
+        '',
+        (checked ? '- [x]' : '- [ ]') + ' **[MEDIUM]** Ship a thing',
+        '  - Type: feature',
+        '  - Description: do the thing',
+        '  <!-- id: ' + entryId + ' -->',
+        '',
+    ].join('\n');
+}
+
+describe('AGENT view — checkbox is the ship signal on poll completion', () => {
+    beforeEach(() => {
+        listLogic.addProject('Boxly');
+        mountDom('Boxly');
+    });
+
+    it('ships from a checked box on main even when the PR search still misses the merge', async () => {
+        queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
+        pollResult = { ok: true, found: true, status: 'completed', conclusion: 'success', runId: 111 };
+        // The lagging closed-PR index hasn't surfaced the merge yet…
+        resolveResult = { ok: true, found: false };
+        // …but the entry's box is already checked on main (the dispatch mints
+        // entry id 'mint-0'), so the completed poll still settles it to shipped.
+        readTodoResult = { ok: true, content: todoBody('mint-0', true) };
+        await loadBoard();
+
+        document.querySelector('.agentDispatchButton').click();
+        await flush();
+
+        const shipped = updateCalls.find((c) => c.patch.state === 'shipped');
+        expect(shipped).toBeTruthy();
+        expect(shipped.id).toBe('d1');
+        // No spurious no_change transition despite the empty PR-search result.
+        expect(updateCalls.some((c) => c.patch.state === 'no_change')).toBe(false);
+    });
+
+    it('settles no_change from an unchecked box on main', async () => {
+        queueRows = [{ id: 'd1', state: 'drafted', context: { title: 'Ship it' }, draft: 'My entry' }];
+        pollResult = { ok: true, found: true, status: 'completed', conclusion: 'success', runId: 111 };
+        readTodoResult = { ok: true, content: todoBody('mint-0', false) };
+        runResultResult = { ok: true, result: 'Nothing to change.' };
+        await loadBoard();
+
+        document.querySelector('.agentDispatchButton').click();
+        await flush();
+
+        const noChange = updateCalls.find((c) => c.patch.state === 'no_change');
+        expect(noChange).toBeTruthy();
+        expect(noChange.patch.failure_reason).toBe('Nothing to change.');
+        expect(updateCalls.some((c) => c.patch.state === 'shipped')).toBe(false);
+    });
+});
+
+describe('AGENT view — mount-time settle of in-flight rows', () => {
+    beforeEach(() => {
+        listLogic.addProject('Resumely');
+        mountDom('Resumely');
+    });
+
+    it('settles a dispatched row to shipped when its box is checked on main, with no completed poll', async () => {
+        // A run dispatched earlier; the poll never surfaces a completion (it aged
+        // out of the status window while the tab was closed).
+        queueRows = [{
+            id: 'r1', state: 'dispatched', context: { title: 'Away run' },
+            entry_id: 'ent-away', correlation_id: 'corr-away',
+        }];
+        pollResult = { ok: true, found: false };
+        readTodoResult = { ok: true, content: todoBody('ent-away', true) };
+
+        await loadBoard();
+        await flush();
+
+        const shipped = updateCalls.find((c) => c.patch.state === 'shipped');
+        expect(shipped).toBeTruthy();
+        expect(shipped.id).toBe('r1');
+        // The read hit the worker exactly for this mount settle.
+        expect(readTodoCalls.length).toBeGreaterThan(0);
+    });
+
+    it('leaves a dispatched row alone at mount when its box is still unchecked', async () => {
+        queueRows = [{
+            id: 'r1', state: 'dispatched', context: { title: 'Still running' },
+            entry_id: 'ent-run', correlation_id: 'corr-run',
+        }];
+        pollResult = { ok: true, found: false };
+        readTodoResult = { ok: true, content: todoBody('ent-run', false) };
+
+        await loadBoard();
+        await flush();
+
+        // An unchecked in-flight row may simply still be running — never settle
+        // it to shipped or no_change from the mount pass.
+        expect(updateCalls.some((c) => c.patch.state === 'shipped')).toBe(false);
+        expect(updateCalls.some((c) => c.patch.state === 'no_change')).toBe(false);
+    });
+
+    it('does not read TODO.md at mount when no row is in-flight', async () => {
+        queueRows = [{ id: 's1', state: 'shipped', context: { title: 'Done' }, pr_number: 5 }];
+        await loadBoard();
+        await flush();
+
+        expect(readTodoCalls.length).toBe(0);
     });
 });
