@@ -4180,7 +4180,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .agentStatusPill--idle {
   color: var(--text-muted);
   background: transparent;
-  border: 0.5px solid var(--border, var(--text-muted));
+  border: 0.5px solid var(--border-mid);
 }
 
 /* Counts subline: "N flagged · N running · N shipped today", mono and muted. */
@@ -4240,7 +4240,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   line-height: 1.5;
   color: var(--text-primary);
   background: var(--surface, var(--bg-elevated, #222));
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
   border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
@@ -4292,7 +4292,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   gap: 8px;
   padding: 12px 14px;
   background: var(--bg-surface);
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
   border-radius: var(--radius-md, 10px);
 }
 
@@ -4381,7 +4381,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   padding: 8px 10px;
   color: var(--text-primary);
   background: var(--bg-base);
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
   border-radius: 8px;
 }
 
@@ -4481,7 +4481,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   word-break: break-word;
   color: var(--text-primary);
   background: var(--bg-base);
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
   border-radius: 8px;
 }
 
@@ -4598,7 +4598,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .agentMockupDesignLink {
   color: var(--text-primary);
   background: transparent;
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
 }
 
 .agentMockupDesignLink:hover {
@@ -4650,7 +4650,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   padding: 8px 10px;
   color: var(--text-primary);
   background: var(--bg-base);
-  border: 0.5px solid var(--border, var(--accent));
+  border: 0.5px solid var(--border-mid);
   border-radius: 8px;
 }
 
