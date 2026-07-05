@@ -31,7 +31,7 @@ to inspect it. Consult `CLAUDE.md` for this project's conventions before draftin
 ## Step 1 — read the flagged tasks
 
 ```
-curl -s "$SUPABASE_URL/rest/v1/agent_queue?project_id=eq.$PROJECT_ID&state=eq.triaging&select=id,todo_id,context,auto" \
+curl -s "$SUPABASE_URL/rest/v1/agent_queue?project_id=eq.$PROJECT_ID&state=eq.triaging&select=id,todo_id,context,auto,thread" \
   -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
   -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
 ```
@@ -39,6 +39,14 @@ curl -s "$SUPABASE_URL/rest/v1/agent_queue?project_id=eq.$PROJECT_ID&state=eq.tr
 Each row's `context` holds `{ title, description }` — the task text, denormalized
 at flag time, so you don't need the `todos` table. If the list is empty, write no
 verdicts and go straight to the closing summary.
+
+Each row's `thread` is the conversation so far. It's empty on a first triage. If
+it already contains a `role:'user'` message, this row is a RE-TRIAGE: you asked a
+question earlier (`needs_words`), the user answered, and it re-queued. In that
+case READ the user's answer and factor it in — resolve the task with the new
+information (draft it, route it to a mockup, or clear it), and do NOT just repeat
+your earlier question. Only ask again if the answer genuinely opened a new gap,
+and make the follow-up a different, more specific question.
 
 ## Step 2 — classify each task
 
@@ -77,8 +85,12 @@ curl -s -X PATCH "$SUPABASE_URL/rest/v1/agent_queue?id=eq.$ROW_ID" \
   -d '{ ...fields... }'
 ```
 
-The row is currently `triaging` with an empty `thread`, so set fields directly
-(no append needed). Use an ISO timestamp for `ts`.
+Set the fields directly. For `thread`, send the COMPLETE array: the messages
+already on the row (from your Step 1 read) with your new `{"role":"agent",...}`
+message appended after them. On a first triage the existing thread is empty, so
+it's just your one message; on a re-triage you MUST preserve the earlier agent
+question and the user's answer and append after them — never overwrite the
+history. Use an ISO timestamp for `ts`.
 
 - `needs_words`:
   `{"state":"needs_words","question":"<the question>","thread":[{"role":"agent","text":"<the question>","ts":"<now>"}]}`
