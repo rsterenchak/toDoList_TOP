@@ -75,7 +75,7 @@ import { wireStatusLabelDelegation } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import { renderConceiveView } from './conceiveView.js';
+import { renderAgentView, subscribeAgentView, unsubscribeAgentView } from './agentView.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -179,7 +179,7 @@ function component() {
     // where the attribute is unset; if any later code path checks the
     // attribute during that window, the mobile tab bar's .active class
     // and the data-view attribute can drift out of sync, leaving
-    // #mobileProjHeader hidden by the [data-view="conceive"]
+    // #mobileProjHeader hidden by the [data-view="agent"]
     // rules even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
@@ -936,7 +936,7 @@ function component() {
     base.appendChild(bottomSheet);
 
     // ── Persistent bottom tab bar (mobile only) ──
-    // Two destinations — Projects, Conceive — pinned to the
+    // Two destinations — Projects, Agent — pinned to the
     // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
@@ -988,13 +988,17 @@ function component() {
         '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
         '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
         '</svg>';
-    // Conceive — a lightbulb glyph signalling the "incubate an idea" intent,
+    // Agent — a robot glyph signalling the autonomous-agent work queue,
     // built from path primitives like the others (no icon library).
-    const ICON_CONCEIVE =
+    const ICON_AGENT =
         '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M9 18 L15 18"/>' +
-        '<path d="M10 21 L14 21"/>' +
-        '<path d="M12 3 C8.5 3 6 5.5 6 9 C6 11.4 7.4 13 8.6 14.2 C9.3 14.9 9.5 15.4 9.5 16 L14.5 16 C14.5 15.4 14.7 14.9 15.4 14.2 C16.6 13 18 11.4 18 9 C18 5.5 15.5 3 12 3 Z"/>' +
+        '<rect x="5" y="8" width="14" height="10" rx="2"/>' +
+        '<path d="M12 4 L12 8"/>' +
+        '<circle cx="12" cy="3" r="1"/>' +
+        '<path d="M9 12 L9 13"/>' +
+        '<path d="M15 12 L15 13"/>' +
+        '<path d="M2 12 L2 14"/>' +
+        '<path d="M22 12 L22 14"/>' +
         '</svg>';
 
     // Structure — a layered-stack / sitemap glyph signalling the "map of the
@@ -1008,14 +1012,14 @@ function component() {
         '</svg>';
 
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Tasks View');
-    const mobileTabConceive = buildMobileTab('conceive', 'Conceive', ICON_CONCEIVE);
+    const mobileTabAgent = buildMobileTab('agent', 'Agent', ICON_AGENT);
     const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
     mobileTabProjects.id = 'mobileTabProjects';
-    mobileTabConceive.id = 'mobileTabConceive';
+    mobileTabAgent.id = 'mobileTabAgent';
     mobileTabStructure.id = 'mobileTabStructure';
 
     mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabConceive);
+    mobileTabBar.appendChild(mobileTabAgent);
     mobileTabBar.appendChild(mobileTabStructure);
     base.appendChild(mobileTabBar);
 
@@ -1840,10 +1844,10 @@ function component() {
         activateProjectPicker();
     });
 
-    // ── top-level view switcher (Projects / Conceive) ──
+    // ── top-level view switcher (Projects / Agent) ──
     // Pill bar in the top nav (anchored immediately right of the
-    // hamburger) toggles between the project view and the Conceive
-    // incubator. The active view is persisted in
+    // hamburger) toggles between the project view and the Agent
+    // queue board. The active view is persisted in
     // localStorage under `todoapp_active_view` and restored on load;
     // the pill click handlers below route through applyActiveView so
     // the same code path runs for user clicks, initial restore, and
@@ -1866,13 +1870,13 @@ function component() {
     viewPillProjects.setAttribute('aria-pressed', 'false');
     viewPillProjects.textContent = 'Task View';
 
-    const viewPillConceive = document.createElement('button');
-    viewPillConceive.id = 'viewPillConceive';
-    viewPillConceive.type = 'button';
-    viewPillConceive.className = 'viewPill';
-    viewPillConceive.setAttribute('role', 'tab');
-    viewPillConceive.setAttribute('aria-pressed', 'false');
-    viewPillConceive.textContent = 'CONCEIVE';
+    const viewPillAgent = document.createElement('button');
+    viewPillAgent.id = 'viewPillAgent';
+    viewPillAgent.type = 'button';
+    viewPillAgent.className = 'viewPill';
+    viewPillAgent.setAttribute('role', 'tab');
+    viewPillAgent.setAttribute('aria-pressed', 'false');
+    viewPillAgent.textContent = 'AGENT';
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -1883,14 +1887,14 @@ function component() {
     viewPillStructure.textContent = 'STRUCTURE';
 
     viewSwitcher.appendChild(viewPillProjects);
-    viewSwitcher.appendChild(viewPillConceive);
+    viewSwitcher.appendChild(viewPillAgent);
     viewSwitcher.appendChild(viewPillStructure);
 
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
     });
-    viewPillConceive.addEventListener('click', function() {
-        applyActiveView('conceive');
+    viewPillAgent.addEventListener('click', function() {
+        applyActiveView('agent');
     });
     viewPillStructure.addEventListener('click', function() {
         applyActiveView('structure');
@@ -1920,15 +1924,15 @@ function component() {
         target.focus();
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
-    viewPillConceive.addEventListener('keydown', dropFocusIntoMainView);
+    viewPillAgent.addEventListener('keydown', dropFocusIntoMainView);
 
-    // ── Conceive view shell ──
-    // Empty container the conceiveView module owns at runtime — renderConceiveView()
-    // fills it with either the concept index or the single-concept editor. Toggled
+    // ── Agent view shell ──
+    // Empty container the agentView module owns at runtime — renderAgentView()
+    // fills it with the project's agent-queue buckets (or an empty state). Toggled
     // via #mainBar's data-view attribute like the projects surface, so
     // neither view re-renders the other on switch.
-    const conceiveView = document.createElement('div');
-    conceiveView.id = 'conceiveView';
+    const agentView = document.createElement('div');
+    agentView.id = 'agentView';
 
     // Empty container the structureView module owns at runtime —
     // renderStructureView() fills it with the selected project's repo label and
@@ -1945,7 +1949,7 @@ function component() {
     desktopViewSubBand.appendChild(viewSwitcher);
     const taskFilterBar = buildTaskFilterBar();
 
-    main2.appendChild(conceiveView);
+    main2.appendChild(agentView);
     main2.appendChild(structureView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
@@ -3725,17 +3729,17 @@ function component() {
                     // Clicking a project normally means the user wants the
                     // project view active — switch back from TODAY if
                     // needed before resolving the selection. The one
-                    // exception is CONCEIVE: it's a second lens on the SAME
-                    // selected project, so a click there keeps Conceive
+                    // exception is AGENT: it's a second lens on the SAME
+                    // selected project, so a click there keeps Agent
                     // active and just re-renders it for the newly selected
                     // project (handled below once the selection resolves).
-                    const stayOnConceive = getActiveView() === 'conceive';
-                    // STRUCTURE, like CONCEIVE, is a second lens on the SAME
+                    const stayOnAgent = getActiveView() === 'agent';
+                    // STRUCTURE, like AGENT, is a second lens on the SAME
                     // selected project — a click here keeps it active and just
                     // re-renders the tab against the newly selected project's
                     // repo (handled below once the selection resolves).
                     const stayOnStructure = getActiveView() === 'structure';
-                    if (!stayOnConceive && !stayOnStructure) {
+                    if (!stayOnAgent && !stayOnStructure) {
                         applyActiveView('projects');
                     }
 
@@ -3773,12 +3777,12 @@ function component() {
                         // auto-close it for projects with no repo configured.
                         syncClaudeSheetForProject(innerValue);
 
-                        // When Conceive or Structure is the active view, the
+                        // When Agent or Structure is the active view, the
                         // click didn't switch away from it — re-render it so it
-                        // reflects the newly selected project (Conceive's stage
-                        // editor; Structure's resolved repo + map).
-                        if (stayOnConceive) {
-                            renderConceiveView();
+                        // reflects the newly selected project (Agent's queue
+                        // board; Structure's resolved repo + map).
+                        if (stayOnAgent) {
+                            renderAgentView();
                         } else if (stayOnStructure) {
                             renderStructureView();
                         }
@@ -4977,8 +4981,8 @@ function restoreFromStorage(opts) {
     }
     focusBlankToDoInputIfDesktop();
 
-    // Honour the persisted top-level view (Projects or Conceive); a
-    // legacy stored 'inbox'/'today' value falls back to Projects.
+    // Honour the persisted top-level view (Projects or Agent); a
+    // legacy stored 'inbox'/'today'/'conceive' value falls back to Projects.
     applyActiveView(getActiveView());
 
     // First-run welcome tour — fires once when the just-seeded sample
@@ -5017,7 +5021,7 @@ function firstFocusableInActiveMainView() {
     return null;
 }
 
-// Apply the top-level Projects / Conceive view. Module-scope so both the
+// Apply the top-level Projects / Agent view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
 // localStorage, flips #mainBar's data-view attribute (the CSS show/hide
@@ -5027,12 +5031,12 @@ function firstFocusableInActiveMainView() {
 function applyActiveView(view) {
     // Leaving Tasks View: snapshot the live layout for the Structure block canvas
     // while the app's regions are still on screen (another view hides them).
-    if (getActiveView() === 'projects' && (view === 'conceive' || view === 'structure')) {
+    if (getActiveView() === 'projects' && (view === 'agent' || view === 'structure')) {
         captureStructureSnapshot();
     }
 
     let safe = 'projects';
-    if (view === 'conceive') safe = 'conceive';
+    if (view === 'agent') safe = 'agent';
     else if (view === 'structure') safe = 'structure';
     setActiveView(safe);
 
@@ -5049,10 +5053,10 @@ function applyActiveView(view) {
         pillProjects.classList.toggle('active', safe === 'projects');
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
     }
-    const pillConceive = document.getElementById('viewPillConceive');
-    if (pillConceive) {
-        pillConceive.classList.toggle('active', safe === 'conceive');
-        pillConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
+    const pillAgent = document.getElementById('viewPillAgent');
+    if (pillAgent) {
+        pillAgent.classList.toggle('active', safe === 'agent');
+        pillAgent.setAttribute('aria-pressed', safe === 'agent' ? 'true' : 'false');
     }
     const pillStructure = document.getElementById('viewPillStructure');
     if (pillStructure) {
@@ -5064,27 +5068,34 @@ function applyActiveView(view) {
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
-    const tabConceive = document.getElementById('mobileTabConceive');
+    const tabAgent = document.getElementById('mobileTabAgent');
     const tabStructure = document.getElementById('mobileTabStructure');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
     }
-    if (tabConceive) {
-        tabConceive.classList.toggle('active', safe === 'conceive');
-        tabConceive.setAttribute('aria-pressed', safe === 'conceive' ? 'true' : 'false');
+    if (tabAgent) {
+        tabAgent.classList.toggle('active', safe === 'agent');
+        tabAgent.setAttribute('aria-pressed', safe === 'agent' ? 'true' : 'false');
     }
     if (tabStructure) {
         tabStructure.classList.toggle('active', safe === 'structure');
         tabStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
     }
 
-    if (safe === 'conceive') {
+    if (safe === 'agent') {
         // The sidebar selection persists across the switch but is hidden
-        // while CONCEIVE owns the main panel, so the lingering
-        // .selectedProject has no visual effect.
-        renderConceiveView();
-    } else if (safe === 'structure') {
+        // while AGENT owns the main panel, so the lingering
+        // .selectedProject has no visual effect. Opening the view paints the
+        // cached rows and opens the realtime subscription (which refreshes).
+        renderAgentView();
+        subscribeAgentView();
+    } else {
+        // Leaving the Agent view (to Projects or Structure) tears down its
+        // realtime channel so a backgrounded board holds no open socket.
+        unsubscribeAgentView();
+    }
+    if (safe === 'structure') {
         // The Structure view maps the selected project's linked repo, so it
         // renders fresh on each switch (resolving the repo from the selection).
         renderStructureView();

@@ -210,12 +210,12 @@ describe('desktop header consolidation', () => {
         // The restyle is CSS-only; the click handlers and the active-class
         // toggle in applyActiveView are untouched, so a tab tap still flips
         // which tab is active (and thus which one paints the underline).
-        expect(main).toMatch(/viewPillConceive\.addEventListener\(\s*['"]click['"][\s\S]{0,120}applyActiveView\(\s*['"]conceive['"]/);
+        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]click['"][\s\S]{0,120}applyActiveView\(\s*['"]agent['"]/);
         const fnIdx = main.indexOf('function applyActiveView(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = main.slice(fnIdx, fnIdx + 1400);
         expect(fn).toMatch(/pillProjects\.classList\.toggle\(\s*['"]active['"]/);
-        expect(fn).toMatch(/pillConceive\.classList\.toggle\(\s*['"]active['"]/);
+        expect(fn).toMatch(/pillAgent\.classList\.toggle\(\s*['"]active['"]/);
     });
 
     it('(regression) the mobile bottom tab bar keeps its own pill styling, untouched by the desktop restyle', () => {

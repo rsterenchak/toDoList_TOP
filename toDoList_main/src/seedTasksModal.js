@@ -48,7 +48,8 @@ const MAX_ENTRY_TASKS = 10;
 // cache — in which case the caller passes null and the Worker falls back to
 // its default repo (the prior behavior). inject_targets repos are validated
 // against the Worker's allowlist at save time, so a resolved repo is always
-// allowlisted. Shared by both Conceive tools (imported into conceiveView.js).
+// allowlisted. Shared by the Generate tasks / Suggest plan tools and the
+// Structure view.
 export function resolveProjectRepo(projectName) {
     const targetId = listLogic.getProjectTargetId(projectName);
     if (!targetId) return null;

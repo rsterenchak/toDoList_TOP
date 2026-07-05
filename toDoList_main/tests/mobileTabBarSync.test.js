@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the sync between #mainBar's data-view attribute (the CSS routing
-// hook that hides #mobileProjHeader on the Conceive view) and
+// hook that hides #mobileProjHeader on the Agent view) and
 // the active mobile tab. Two guarantees:
 //   1. #mainBar is created with data-view="projects" at the DOM build
 //      site — never sits in the DOM without an attribute value, so no
@@ -71,7 +71,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
                 /mobileTabProjects[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
-                /mobileTabConceive[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
+                /mobileTabAgent[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
         });
 
@@ -129,10 +129,10 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         // writes a non-projects value), or moves the write inside an
         // `if (viewKey !== 'projects')` guard so the projects case never
         // re-asserts the attribute. The header CSS rules key off
-        // `data-view="conceive"` — if 'projects' is never written back on
+        // `data-view="agent"` — if 'projects' is never written back on
         // the return trip, the attribute stays stuck on the last
         // non-Projects value and #mobileProjHeader stays hidden by the
-        // [data-view="conceive"] rule even when the Projects tab is active.
+        // [data-view="agent"] rule even when the Projects tab is active.
         function extractApplyActiveView() {
             const idx = main.indexOf('function applyActiveView');
             expect(idx).toBeGreaterThan(-1);
@@ -167,9 +167,9 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(secondArg).toMatch(/^[A-Za-z_$][A-Za-z0-9_$]*$/);
         });
 
-        it('maps view === "conceive" to the same normalized value', () => {
+        it('maps view === "agent" to the same normalized value', () => {
             expect(body).toMatch(
-                /view\s*===\s*['"]conceive['"]\s*\)\s*safe\s*=\s*['"]conceive['"]/
+                /view\s*===\s*['"]agent['"]\s*\)\s*safe\s*=\s*['"]agent['"]/
             );
         });
 
@@ -184,25 +184,25 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
         it('writes data-view before the view-specific render branches', () => {
             // The attribute must be set before any branch that depends
-            // on view-specific work (the conceive render, etc.) so a
+            // on view-specific work (the agent render, etc.) so a
             // thrown exception in those branches still leaves the CSS
             // routing attribute in a consistent state.
             const dataViewWriteIdx = body.search(
                 /setAttribute\(\s*['"]data-view['"]/
             );
-            const conceiveBranchIdx = body.search(
-                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]conceive['"]\s*\)/
+            const agentBranchIdx = body.search(
+                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]agent['"]\s*\)/
             );
             expect(dataViewWriteIdx).toBeGreaterThan(-1);
-            expect(conceiveBranchIdx).toBeGreaterThan(-1);
-            expect(dataViewWriteIdx).toBeLessThan(conceiveBranchIdx);
+            expect(agentBranchIdx).toBeGreaterThan(-1);
+            expect(dataViewWriteIdx).toBeLessThan(agentBranchIdx);
         });
 
         it('produces the correct data-view attribute for every view on round-trip (runtime)', () => {
             // Source patterns above pin the shape; this test pins the
             // BEHAVIOR by lifting the normalization-and-write slice from
             // applyActiveView and executing it against a real DOM. The
-            // round-trip — initial → conceive → projects, with a legacy
+            // round-trip — initial → agent → projects, with a legacy
             // 'inbox' value falling back to projects — must each leave
             // data-view correctly synced. Extracting just the data-view
             // slice avoids depending on the rest of main.js (pill/tab
@@ -237,8 +237,8 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
             const mainBar = document.getElementById('mainBar');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            applyActiveView('conceive');
-            expect(mainBar.getAttribute('data-view')).toBe('conceive');
+            applyActiveView('agent');
+            expect(mainBar.getAttribute('data-view')).toBe('agent');
             applyActiveView('projects');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
             // A legacy 'inbox' value is no longer a live view — it falls
@@ -316,9 +316,9 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(btn.querySelector('.mobileTabLabel').textContent).toBe('Tasks View');
 
             // Without a displayLabel the visible text falls back to label.
-            const fallback = buildMobileTab('conceive', 'Conceive', '<svg></svg>');
-            expect(fallback.querySelector('.mobileTabLabel').textContent).toBe('Conceive');
-            expect(fallback.getAttribute('aria-label')).toBe('Conceive');
+            const fallback = buildMobileTab('agent', 'Agent', '<svg></svg>');
+            expect(fallback.querySelector('.mobileTabLabel').textContent).toBe('Agent');
+            expect(fallback.getAttribute('aria-label')).toBe('Agent');
         });
     });
 });

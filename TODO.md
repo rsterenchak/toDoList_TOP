@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Replace Conceive tab with Agent queue board
+- [x] **[MEDIUM]** Replace Conceive tab with Agent queue board
   - Type: feature
   - Description: Replace the Conceive view entirely with a new Agent view that renders the autonomous-agent work queue. Remove the Now/Next/Later board and all Conceive code; the Agent tab reads the `agent_queue` Supabase table scoped to the active project and renders it as grouped buckets — Needs you, Stuck, In progress, Shipped — matching the reviewed mockups, with a live realtime subscription so state changes stream in. This entry is the shell plus read/render only; flagging tasks and the follow-up interactions land in later entries.
   - Behavior:

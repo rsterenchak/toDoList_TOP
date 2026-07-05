@@ -63,20 +63,21 @@ export function hasSidebarWidthPref() {
     }
 }
 
-// ── active top-level view (projects vs. conceive) ──
+// ── active top-level view (projects vs. agent) ──
 // The main panel hosts two top-level views: the project view and the
-// Conceive incubator. The pill bar in the top nav switches between them;
+// Agent queue board. The pill bar in the top nav switches between them;
 // this pref restores the active view across reloads. Default is 'projects'
 // so first-time users (or anyone whose storage was cleared) land on the
 // project list; any stored value other than the known tokens also falls
 // back to 'projects' so a stale or hand-edited pref (including a legacy
-// 'inbox'/'today' value from the retired Inbox view, or a legacy 'calendar'
-// value from the retired Calendar view) can't desync the renderer.
+// 'inbox'/'today' value from the retired Inbox view, a legacy 'calendar'
+// value from the retired Calendar view, or a legacy 'conceive' value from
+// the retired Conceive incubator) can't desync the renderer.
 export function getActiveView() {
     try {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';
-        if (v === 'conceive') return 'conceive';
+        if (v === 'agent') return 'agent';
         if (v === 'structure') return 'structure';
         return 'projects';
     } catch (e) {
@@ -87,7 +88,7 @@ export function getActiveView() {
 export function setActiveView(view) {
     try {
         let stored = 'projects';
-        if (view === 'conceive') stored = 'conceive';
+        if (view === 'agent') stored = 'agent';
         else if (view === 'structure') stored = 'structure';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }

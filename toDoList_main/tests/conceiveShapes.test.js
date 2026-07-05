@@ -25,7 +25,6 @@ import {
     ITERATIVE_ACTIONABLE_LABEL,
     SPEC_ACTIONABLE_LABEL,
 } from '../src/conceiveShapes.js';
-import { renderConceiveView } from '../src/conceiveView.js';
 import { openSeedTasksModal } from '../src/seedTasksModal.js';
 import { chatWithWorker } from '../src/inject.js';
 
@@ -63,23 +62,6 @@ function legacyIterativeEntry(name) {
             return { id: name + '-st-' + i, label: label, body: '' };
         }),
     };
-}
-
-function mountDom(projectName) {
-    document.body.innerHTML =
-        '<div class="selectedProject"><input id="projInput" value="' + projectName + '"></div>' +
-        '<div id="conceiveView"></div>';
-}
-
-// The label of the lane/section that owns the Generate-tasks / Suggest-plan
-// actions — works for both the board (lanes) and the stage renderer (sections).
-function actionableLabelInDom() {
-    const btn = document.querySelector('.conceiveGenerateTasksBtn');
-    if (!btn) return null;
-    const lane = btn.closest('.conceiveLane');
-    if (lane) return lane.querySelector('.conceiveLaneLabel').textContent;
-    const section = btn.closest('.conceiveStage');
-    return section ? section.querySelector('.conceiveStageLabel').textContent : null;
 }
 
 beforeEach(() => {
@@ -142,48 +124,6 @@ describe('listLogic — new projects default to the Iterative board shape', () =
         listLogic.replaceAllProjects([legacyIterativeEntry('OldIter')]);
         expect(listLogic.getProjectStages('OldIter').map((s) => s.label)).toEqual(LEGACY_ITERATIVE);
         expect(listLogic.getProjectLifecycle('OldIter')).toBe('iterative');
-    });
-});
-
-describe('Conceive view — actionable stage is shape-aware', () => {
-    it('puts the Generate-tasks / Suggest-plan actions on the "Now" lane for an Iterative board project', () => {
-        listLogic.addProject('Iter');
-        mountDom('Iter');
-        renderConceiveView();
-
-        expect(actionableLabelInDom()).toBe('Now');
-        expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
-    });
-
-    it('puts the actions on "Next up" for a legacy Iterative project (stage renderer)', () => {
-        listLogic.replaceAllProjects([legacyIterativeEntry('OldIter')]);
-        mountDom('OldIter');
-        renderConceiveView();
-
-        expect(actionableLabelInDom()).toBe('Next up');
-        expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
-    });
-
-    it('puts the actions on "Build plan" for a Spec project', () => {
-        listLogic.replaceAllProjects([specEntry('Spec')]);
-        mountDom('Spec');
-        renderConceiveView();
-
-        expect(actionableLabelInDom()).toBe('Build plan');
-        expect(document.querySelector('.conceiveSuggestPlanBtn')).toBeTruthy();
-    });
-});
-
-describe('Conceive view — Iterative board structure', () => {
-    it('renders a North star input, the three lanes, and a quick-capture input', () => {
-        listLogic.addProject('Iter');
-        mountDom('Iter');
-        renderConceiveView();
-
-        expect(document.querySelector('.conceiveNorthStarInput')).toBeTruthy();
-        const laneLabels = [...document.querySelectorAll('.conceiveLaneLabel')].map((n) => n.textContent);
-        expect(laneLabels).toEqual(['Now', 'Next', 'Later']);
-        expect(document.querySelector('.conceiveQuickCaptureInput')).toBeTruthy();
     });
 });
 

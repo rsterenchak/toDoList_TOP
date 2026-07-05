@@ -247,9 +247,8 @@ const LEGACY_ITERATIVE_MARKER = 'Next up';
 // Iterative (or unset/defaulted to it — never Spec/SDLC), the stages carry the
 // legacy 'Next up' marker and NOT already 'Now' (so board projects are skipped),
 // and the project is pristine — every stage body empty after trimming. The
-// auto-managed Shipped stage is excluded from the emptiness check, matching
-// conceiveView.isProjectPristine, so a populated Shipped log never blocks the
-// migration. Pristine by construction means swapping the labels strands no user
+// auto-managed Shipped stage is excluded from the emptiness check, so a
+// populated Shipped log never blocks the migration. Pristine by construction means swapping the labels strands no user
 // content, so the reseed is lossless.
 function isLegacyIterativePristine(entry) {
     if (!entry || typeof entry !== 'object') return false;
@@ -1107,6 +1106,16 @@ export const listLogic = (function () {
         const entry = allProjects[projectName];
         if (!entry) return null;
         return entry.color || null;
+    }
+
+    // Read-only accessor for a project's stable id (the Supabase row id). Used
+    // by views that query per-project child tables (e.g. the Agent queue board
+    // scopes agent_queue by project_id). Returns null for an unknown project or
+    // one that has no id yet.
+    function getProjectId(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return null;
+        return entry.id || null;
     }
 
 
@@ -3061,6 +3070,7 @@ export const listLogic = (function () {
         reorderToDo,
         sortCompletedToBottom,
         getProjectColor,
+        getProjectId,
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,
