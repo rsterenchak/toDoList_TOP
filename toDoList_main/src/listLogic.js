@@ -1210,6 +1210,36 @@ export const listLogic = (function () {
     }
 
 
+    // Remove an agent_queue row entirely — the "Shelve + unflag" action on a
+    // Stuck (failed / no_change) card. Deleting the row drops the task from the
+    // queue, so it reappears in the Not-assigned bucket (its todo_id is no
+    // longer among the loaded rows). All agent_queue writes route through here —
+    // the Agent view calls this and never touches Supabase directly, matching
+    // the "all data-model mutations live in listLogic" convention (mirrors
+    // flagTaskForAgent / setAgentRunState). Returns a { ok, error? } result so
+    // the caller can surface a non-blocking failure and re-enable its control.
+    // @category: user-mutation-only
+    async function unflagAgentTask(rowId) {
+        if (!rowId) return { ok: false, error: 'Missing row id.' };
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('agent_queue')
+                    .delete()
+                    .eq('id', rowId)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Delete failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Delete failed.' };
+        }
+    }
+
     // Persist a drafted agent_queue row's run state as it walks the dispatch
     // pipeline (dispatched → running → shipped / failed / no_change). The Agent
     // view's Dispatch control calls this at each transition — inject/dispatch
@@ -3210,6 +3240,7 @@ export const listLogic = (function () {
         flagTaskForAgent,
         answerAgentTask,
         setAgentRunState,
+        unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,
