@@ -321,6 +321,24 @@ describe('redeploy pill — style.css state tokens', () => {
         expect(css).toMatch(/\.todoMdViewerRunEntryBtn--redeployblocked,/);
     });
 
+    it('carries the disabled qualifier on the redeploy-blocked cursor so not-allowed beats the generic disabled cursor', () => {
+        // Both controls are disabled while redeploy owns the project, so the
+        // generic .todoMdViewerRunBtn[disabled] (progress) and
+        // .todoMdViewerRunEntryBtn:disabled (default) rules — each an
+        // attribute/pseudo+class selector — out-specify a plain single-class
+        // --redeployblocked rule. A qualified variant carrying the disabled
+        // hook ties on specificity and, later in source order, wins so the
+        // not-allowed cursor actually applies on hover.
+        expect(css).toMatch(/\.todoMdViewerRunBtn--redeployblocked\[disabled\][\s\S]{0,120}cursor:\s*not-allowed/);
+        expect(css).toMatch(/\.todoMdViewerRunEntryBtn--redeployblocked:disabled[\s\S]{0,120}cursor:\s*not-allowed/);
+        // The qualified variant must sit AFTER the generic disabled cursor rule
+        // it needs to override — source order breaks the specificity tie.
+        expect(css.indexOf('.todoMdViewerRunBtn[disabled]'))
+            .toBeLessThan(css.indexOf('.todoMdViewerRunBtn--redeployblocked[disabled]'));
+        expect(css.indexOf('.todoMdViewerRunEntryBtn:disabled'))
+            .toBeLessThan(css.indexOf('.todoMdViewerRunEntryBtn--redeployblocked:disabled'));
+    });
+
     it('never hardcodes hex colors in the deploy pill rules', () => {
         const ruleStart = css.indexOf('.todoMdViewerDeployPill {');
         const ruleEnd = css.indexOf('.todoMdViewerDeployPillSpinner {');

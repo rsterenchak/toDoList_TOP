@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-04',
         changed: [
-            "The Run backlog and Run this entry buttons now grey out while a redeploy is in progress, making it clear a run can't start until the deploy finishes.",
+            "Hovering the Run backlog or Run this entry buttons while a redeploy is in progress now shows a not-allowed cursor, reinforcing that a run can't start until the deploy finishes.",
         ],
         fixed: [
             "Tapping Redeploy now keeps the button showing \"Deploying\" until the new publish actually finishes, instead of briefly settling to idle before the redeploy registers.",
