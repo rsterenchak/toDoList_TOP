@@ -69,6 +69,15 @@ const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 const DISPATCH_POLL_MS = 5000;
 const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
 
+// Before dispatching a freshly-injected entry we confirm it's actually visible
+// on main: GitHub's workflow_dispatch can resolve `main` to a tip that predates
+// the inject commit (dispatch-after-push race), so a run fired the instant
+// inject returns can check out a stale TODO.md, miss the marker, and no-op.
+// Poll the on-main read for the entry's id marker with a short backoff — up to
+// ~6 attempts ~800ms apart (a ~5s ceiling) — before firing the run.
+const ENTRY_VISIBLE_ATTEMPTS = 6;
+const ENTRY_VISIBLE_DELAY_MS = 800;
+
 // ── module state ─────────────────────────────────────────────────────
 // The rows last loaded for the active project, the project they belong to,
 // and the live realtime channel. Module-level so a re-render (project switch,
@@ -614,6 +623,32 @@ async function dispatchDraft(row, draftText) {
     const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });
     if (!injectResult || !injectResult.ok) {
         return { ok: false, error: 'Inject failed — ' + ((injectResult && injectResult.reason) || 'error') };
+    }
+
+    // Confirm the injected entry is on main before dispatching — otherwise the
+    // run can race ahead of the push and no-op against a stale TODO.md. Poll the
+    // same on-main read the reconcile path uses for the entry's id marker; a
+    // transient read error counts as a miss and is retried, never fatal, until
+    // the attempt budget is spent. If it never appears, leave the row `drafted`
+    // and surface a non-blocking error so the user can retry.
+    const marker = '<!-- id: ' + entryId + ' -->';
+    let visible = false;
+    for (let i = 0; i < ENTRY_VISIBLE_ATTEMPTS; i++) {
+        let read = null;
+        try {
+            read = await readTodoMdFromWorker(target);
+        } catch (e) { read = null; }
+        if (read && read.ok !== false && typeof read.content === 'string'
+            && read.content.indexOf(marker) !== -1) {
+            visible = true;
+            break;
+        }
+        if (i < ENTRY_VISIBLE_ATTEMPTS - 1) {
+            await new Promise(function (res) { setTimeout(res, ENTRY_VISIBLE_DELAY_MS); });
+        }
+    }
+    if (!visible) {
+        return { ok: false, error: 'Entry not yet visible on main — tap Dispatch again' };
     }
 
     const correlationId = mintEntryId();
