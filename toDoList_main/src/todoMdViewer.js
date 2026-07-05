@@ -6,6 +6,9 @@ import {
     readActiveRun,
     writeActiveRun,
     clearActiveRun,
+    readActiveRedeploy,
+    writeActiveRedeploy,
+    clearActiveRedeploy,
     activeProjectNameForViewer,
     ACTIVE_RUN_CHANGE_EVENT,
 } from './runState.js';
@@ -1316,6 +1319,17 @@ function buildTodoMdViewerCard(projectName, target) {
     // refresh stands down so it can't stomp the optimistic "Deploying" state.
     let pagesRebuilding = false;
 
+    // Set the local rebuild flag AND mirror it into the shared per-project
+    // redeploy state, so a run dispatch (Run backlog / Run this entry / chat
+    // ship) is gated for the whole time a redeploy owns this project — the
+    // reverse of the deploy pill disabling while a run is active. The two stay
+    // in lockstep because every rebuild-flag transition routes through here.
+    function setPagesRebuilding(active) {
+        pagesRebuilding = active;
+        if (active) writeActiveRedeploy(projectName, { startedAt: Date.now() });
+        else clearActiveRedeploy(projectName);
+    }
+
     // Paint the pill for one of three states: 'idle' (quiet/healthy),
     // 'failure' (red), or 'deploying' (amber spinner). The label always reads
     // "Redeploy" except while deploying, and the pill is disabled mid-deploy so
@@ -1423,7 +1437,7 @@ function buildTodoMdViewerCard(projectName, target) {
         viewerPagesPollInterval = setInterval(async function() {
             if (Date.now() - startedAt >= PAGES_GIVE_UP_MS) {
                 stopViewerPagesPoll();
-                pagesRebuilding = false;
+                setPagesRebuilding(false);
                 refreshPagesStatus();
                 return;
             }
@@ -1438,7 +1452,7 @@ function buildTodoMdViewerCard(projectName, target) {
             }
             if (res.status === 'completed') {
                 stopViewerPagesPoll();
-                pagesRebuilding = false;
+                setPagesRebuilding(false);
                 applyPagesStatus(res);
             }
             // Otherwise a publish is still in flight — hold the Deploying state.
@@ -1461,12 +1475,12 @@ function buildTodoMdViewerCard(projectName, target) {
     async function requestPagesRedeploy() {
         if (pagesRebuilding) return;
         if (!target || !target.repo) return;
-        pagesRebuilding = true;
+        setPagesRebuilding(true);
         renderDeployPill('deploying');
         const res = await requestPagesRebuild(target);
         if (!res || res.ok === false) {
             showInjectToast('Redeploy failed — ' + ((res && res.reason) || 'unknown error'), 'error');
-            pagesRebuilding = false;
+            setPagesRebuilding(false);
             refreshPagesStatus();
             return;
         }
@@ -1492,6 +1506,12 @@ function buildTodoMdViewerCard(projectName, target) {
         // already has a fresh active run (started here or shipped from chat).
         if (readActiveRun(projectName)) {
             showInjectToast('A run is already in progress for this project');
+            return;
+        }
+        // Mutual exclusion with a manual redeploy: a merged run kicks off its
+        // own deploy, so the two must never overlap on the same project.
+        if (readActiveRedeploy(projectName)) {
+            showInjectToast('A redeploy is in progress for this project');
             return;
         }
         runBacklogBtn.disabled = true;
@@ -1544,6 +1564,11 @@ function buildTodoMdViewerCard(projectName, target) {
         // project already has a fresh active run (here or shipped from chat).
         if (readActiveRun(projectName)) {
             showInjectToast('A run is already in progress for this project');
+            return;
+        }
+        // Mutual exclusion with a manual redeploy on this project (see runBacklog).
+        if (readActiveRedeploy(projectName)) {
+            showInjectToast('A redeploy is in progress for this project');
             return;
         }
         if (btn) {

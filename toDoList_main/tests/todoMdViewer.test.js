@@ -481,7 +481,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
     it('disables the button while a dispatch is in flight to block double-clicks', () => {
         const start = main.indexOf('async function runBacklog');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 2000);
+        const block = main.slice(start, start + 2400);
         expect(block).toMatch(/runBacklogBtn\.disabled\s*=\s*true/);
         expect(block).toMatch(/todoMdViewerRunBtn--loading/);
         expect(block).toMatch(/finally[\s\S]{0,160}runBacklogBtn\.disabled\s*=\s*false/);
@@ -702,6 +702,54 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
         expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}dispatchedAt:\s*Date\.now\(\)/);
     });
 
+    it('sources the redeploy-flag helpers from runState so run dispatch can gate on a redeploy', () => {
+        expect(main).toMatch(
+            /import\s*\{[\s\S]*?readActiveRedeploy[\s\S]*?writeActiveRedeploy[\s\S]*?clearActiveRedeploy[\s\S]*?\}\s*from\s*['"]\.\/runState\.js['"]/
+        );
+    });
+
+    it('mirrors the local rebuild flag into the shared redeploy state via setPagesRebuilding', () => {
+        // Every rebuild-flag transition routes through one helper so the shared
+        // per-project redeploy flag stays in lockstep with pagesRebuilding.
+        const start = main.indexOf('function setPagesRebuilding');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 300);
+        expect(block).toMatch(/pagesRebuilding\s*=\s*active/);
+        expect(block).toMatch(/writeActiveRedeploy\(\s*projectName\s*,/);
+        expect(block).toMatch(/clearActiveRedeploy\(\s*projectName\s*\)/);
+        // The raw true-assignment was replaced by the helper (the only bare
+        // `pagesRebuilding =` left is its `let ... = false` declaration).
+        expect(main).not.toMatch(/pagesRebuilding\s*=\s*true/);
+        expect((main.match(/pagesRebuilding\s*=\s*false/g) || []).length).toBe(1);
+    });
+
+    it('sets the shared redeploy flag when a redeploy starts and clears it when it settles', () => {
+        // requestPagesRedeploy flips it on at tap time.
+        const redeploy = main.indexOf('async function requestPagesRedeploy');
+        expect(redeploy).toBeGreaterThan(-1);
+        expect(main.slice(redeploy, redeploy + 600)).toMatch(/setPagesRebuilding\(\s*true\s*\)/);
+        // The poll clears it on both terminal paths (completed settle + give-up).
+        const poll = main.indexOf('function startPagesPoll');
+        const pollBlock = main.slice(poll, poll + 1200);
+        expect((pollBlock.match(/setPagesRebuilding\(\s*false\s*\)/g) || []).length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('blocks Run backlog dispatch while a redeploy is in progress for this project', () => {
+        const start = main.indexOf('async function runBacklog');
+        const block = main.slice(start, start + 800);
+        expect(block).toMatch(/if\s*\(\s*readActiveRedeploy\(\s*projectName\s*\)\s*\)\s*\{/);
+        expect(block).toMatch(/A redeploy is in progress for this project/);
+        // The redeploy gate sits before the button is disabled / the dispatch fires.
+        expect(block.indexOf('readActiveRedeploy')).toBeLessThan(block.indexOf('runBacklogBtn.disabled = true'));
+    });
+
+    it('blocks Run this entry dispatch while a redeploy is in progress for this project', () => {
+        const start = main.indexOf('async function runEntry');
+        const block = main.slice(start, start + 800);
+        expect(block).toMatch(/if\s*\(\s*readActiveRedeploy\(\s*projectName\s*\)\s*\)\s*\{/);
+        expect(block).toMatch(/A redeploy is in progress for this project/);
+    });
+
     it('re-attaches the pill on mount from this project key (runState scopes it per project)', () => {
         // Fires on every card mount (project switch AND full page reload). The
         // key is project-scoped, so runs on other projects never surface here.
@@ -787,7 +835,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
 
     it('hands a successful dispatch to the shared header pill via startRunPill', () => {
         const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 2000);
+        const block = main.slice(start, start + 2400);
         expect(block).toMatch(/dispatchedId\s*=\s*correlationId/);
         expect(block).toMatch(/if\s*\(\s*dispatchedId\s*\)\s*startRunPill\s*\(\s*dispatchedId\s*\)/);
     });

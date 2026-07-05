@@ -39,6 +39,7 @@ import {
     readActiveRun,
     writeActiveRun,
     clearActiveRun,
+    readActiveRedeploy,
     activeProjectNameForViewer,
 } from './runState.js';
 import { listLogic } from './listLogic.js';
@@ -1973,6 +1974,13 @@ async function shipDraftedEntry(entryText, card) {
     const project = activeProjectNameForViewer();
     if (readActiveRun(project)) {
         showInjectToast('A run is already in progress for this project');
+        return;
+    }
+    // Mutual exclusion with a manual redeploy on this project: the viewer's
+    // Redeploy owns the same per-project slot while a publish is in flight, so
+    // a chat ship must not dispatch a run on top of it.
+    if (readActiveRedeploy(project)) {
+        showInjectToast('A redeploy is in progress for this project');
         return;
     }
 
