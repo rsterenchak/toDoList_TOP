@@ -228,3 +228,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7779c5ff-339b-4a9e-aa7e-2f3f874e6eb8 -->
+
+- [ ] **[MEDIUM]** Add Shelve + unflag and Retry actions to Stuck (failed / no_change) cards
+  - Type: feature
+  - Description: Stuck cards (`failed` / `no_change`) render only the run's reason paragraph — the `buildSecondary` `failed`/`no_change` branch (~L305) has no actions, so a stuck task is a dead-end. Add the two controls from the mockup: "Shelve + unflag" (removes the task from the agent queue, returning it to Not-assigned) and "Retry" (re-dispatches the same entry through the run pipeline, reusing the existing marker so it never duplicates the TODO.md entry).
+  - Behavior:
+    1. A `failed` or `no_change` card shows, below the reason, a "Shelve + unflag" button and a "Retry" button.
+    2. Shelve + unflag deletes the `agent_queue` row for that task; the realtime subscription removes the card and the task reappears in Not-assigned (its todo id is no longer in the queue). No confirmation needed.
+    3. Retry re-dispatches the task's existing entry: it reuses the row's stored `entry_id` (not a fresh one), so `injectEntry` dedup-skips the already-present marker and the run re-targets the same TODO.md entry — no duplicate append. The row goes back through the dispatch flow (confirm-on-main → dispatch entry mode → poll), moving to In progress and settling at shipped / failed / no_change as usual.
+    4. Both buttons disable while their action is in flight; on failure they re-enable and show a non-blocking error. Retry is disabled if the row has neither an `entry_id` nor a `draft`.
+  - Implementation notes:
+    - `toDoList_main/src/agentView.js`, the `failed`/`no_change` branch of `buildSecondary` (~L305): keep the reason paragraph, then append an actions row with the two buttons, mirroring the Answer/Dispatch button patterns already in this file for pending/error handling and reusing the `agentAnswerActions`/`agentDraftActions` styling.
+    - Shelve + unflag: add `listLogic.unflagAgentTask(row.id)` — deletes the row via `supabaseClient` (`.from('agent_queue').delete().eq('id', rowId)`), mirroring `flagTaskForAgent` / `setAgentRunState`. The view calls it, then `refreshAgentQueue(getSelectedProjectName())` on success.
+    - Retry: let `dispatchDraft` accept the existing entry id — change its signature to `dispatchDraft(row, draftText, existingEntryId)` with `const entryId = existingEntryId || mintEntryId();` (mint only when none is passed). The Retry handler calls `dispatchDraft(row, (row.draft || '').trim(), row.entry_id)`. This keeps the race-fix confirm-on-main and the poller intact, and because the existing marker is already in TODO.md, `injectEntry` dedup-skips instead of appending a second copy.
+    - Button styling in `style.css` reuses the existing action-button treatment; ≥36px touch targets. No schema change (`unflagAgentTask` deletes an existing row; `entry_id` is already persisted by the dispatch flow).
+  - Out of scope: a context-preserving "shelved" state (this unflag deletes the row — re-flagging re-triages fresh); correct-and-retry with an added note (blind re-dispatch for now — the two-red cap and thread-based correction are a follow-on); removing the entry from TODO.md on shelve (shelve manages the queue row only). Verify by shelving a stuck card (it leaves, the task returns to Not-assigned) and retrying one (it re-dispatches the same entry with no duplicate in TODO.md).
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 92895192-017e-43e1-9bfa-80e04cff36bd -->
