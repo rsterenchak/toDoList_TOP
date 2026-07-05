@@ -153,7 +153,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 49a99dc5-e702-409b-bc61-6a68264717d3 -->
 
-- [ ] **[MEDIUM]** Replace the needs_mockup bundle display with an expandable copy-ready prompt
+- [x] **[MEDIUM]** Replace the needs_mockup bundle display with an expandable copy-ready prompt — Completed: 2026-07-05
   - Type: bug
   - Description: The `needs_mockup` card shows the raw context bundle (Region / Tokens / Change) above the Open mockup button, but that bundle is context *for* the prompt, not the prompt itself — and Open mockup copies the real (fuller) prompt silently to the clipboard, so it's ambiguous what the user is meant to paste into Claude. Collapse the two into one visible thing: Open mockup expands a read-only block containing the *actual full prompt* with a Copy button on it, so what the user sees is exactly what they paste. Remove the separate always-visible bundle block and the silent clipboard-write-plus-blank-tab behavior.
   - Behavior:

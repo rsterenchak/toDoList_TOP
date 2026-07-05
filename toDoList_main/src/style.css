@@ -4486,31 +4486,73 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--accent-text, var(--accent));
 }
 
-/* needs_mockup launcher: the captured context bundle, an Open-mockup button
-   that copies a ready-to-paste prompt and opens Claude, and a paste-back field
-   that stashes the finished entry as the row's draft. */
+/* needs_mockup launcher: an Open-mockup button that expands the full,
+   copy-ready prompt (with Copy + Open Claude Design controls), and a paste-back
+   field that stashes the finished entry as the row's draft. */
 .agentMockup {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Context bundle reuses the drafted-card block styling; each field is a
-   labelled line with a de-emphasised key. */
-.agentMockupBundle {
+/* The toggled prompt block + its Copy / Open Claude Design controls. The block
+   reuses the drafted-card styling so the read-only prompt reads consistently. */
+.agentMockupPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentMockupPromptBlock {
+  max-height: 220px;
+}
+
+.agentMockupPromptActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agentMockupCopy,
+.agentMockupDesignLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
   font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 10px;
+  white-space: nowrap;
 }
 
-.agentMockupBundleLine {
-  margin: 0 0 4px;
+.agentMockupCopy {
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
 }
 
-.agentMockupBundleLine:last-child {
-  margin-bottom: 0;
+.agentMockupCopy:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
-.agentMockupBundleKey {
-  color: var(--text-secondary, var(--text-muted));
+.agentMockupDesignLink {
+  color: var(--text-primary);
+  background: transparent;
+  border: 0.5px solid var(--border, var(--accent));
+}
+
+.agentMockupDesignLink:hover {
+  border-color: var(--accent);
+  color: var(--accent-text, var(--accent));
+}
+
+.agentMockupCopy:focus-visible,
+.agentMockupDesignLink:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 .agentMockupOpen {
