@@ -72,7 +72,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { wireStatusLabelDelegation } from './todoStatus.js';
-import { buildTaskFilterBar, applyTaskFilter } from './taskFilter.js';
+import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import { renderAgentView, subscribeAgentView, unsubscribeAgentView } from './agentView.js';
@@ -1917,7 +1917,13 @@ function component() {
         if (e.key !== 'ArrowDown') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const target = firstFocusableInActiveMainView();
+        // In PROJECTS view the status/sort filter bar sits directly between the
+        // pills and the list, so ArrowDown lands there first — a second
+        // ArrowDown (handled on the bar's controls) drops into the list. The
+        // bar is display:none outside PROJECTS, so firstFocusableInTaskFilterBar
+        // returns null in Agent/Structure and focus falls straight into the
+        // pane, preserving those views' behaviour.
+        const target = firstFocusableInTaskFilterBar() || firstFocusableInActiveMainView();
         if (!target) return;
         e.preventDefault();
         e.stopPropagation();
@@ -1960,6 +1966,34 @@ function component() {
     main2.appendChild(taskFilterBar);
     main2.appendChild(mainList);
     applyTaskFilter();
+
+    // Arrow-key nav for the status/sort filter bar, making it a two-way stop
+    // between #viewSwitcher and the todo list. A focused control inside the bar
+    // (the desktop cycle pill, a mobile status segment, or the Sort trigger)
+    // escapes up to the active view pill on ArrowUp and drops into the todo
+    // list on ArrowDown — reusing the same list-only target the pill drop-in
+    // and intra-list ArrowUp already agree on. Delegated on the bar so the Sort
+    // trigger appended later is covered too. Gated to PROJECTS (the only view
+    // where the bar is visible), and stopPropagation keeps the document-level
+    // todo arrow handler from also firing and clobbering the focus we place.
+    taskFilterBar.addEventListener('keydown', function (e) {
+        const isUp = e.key === 'ArrowUp';
+        const isDown = e.key === 'ArrowDown';
+        if (!isUp && !isDown) return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        if (getActiveView() !== 'projects') return;
+        const control = e.target && e.target.closest &&
+            e.target.closest('.taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile');
+        if (!control) return;
+        const target = isUp
+            ? document.querySelector('#viewSwitcher .viewPill.active')
+            : firstFocusableInActiveMainView();
+        if (!target) return;
+        e.preventDefault();
+        e.stopPropagation();
+        target.focus();
+    });
 
     // ── mobile drawer close (X) button ──
     // Adds an explicit dismiss affordance to the sidebar drawer at the
@@ -3337,11 +3371,17 @@ function component() {
                 }
             }
             if (onPlaceholderInput || isEmptyStateInput) {
-                const pill = document.querySelector('#viewSwitcher .viewPill.active');
-                if (pill) {
+                // Land on the status/sort filter bar first (it sits between the
+                // list and the view switcher); only a second ArrowUp from there
+                // reaches the active view pill. The filter bar is display:none
+                // outside PROJECTS, so firstFocusableInTaskFilterBar returns
+                // null and we fall straight back to the pill.
+                const target = firstFocusableInTaskFilterBar() ||
+                    document.querySelector('#viewSwitcher .viewPill.active');
+                if (target) {
                     e.preventDefault();
                     e.stopPropagation();
-                    pill.focus();
+                    target.focus();
                     return;
                 }
             }

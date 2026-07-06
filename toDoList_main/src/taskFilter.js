@@ -162,6 +162,32 @@ export function buildTaskFilterBar() {
 }
 
 
+// Return the first visible, focusable control inside #taskFilterBar so the
+// arrow-key nav chain can land a stop on the status/sort bar between the view
+// switcher and the todo list. The bar holds a desktop cycle pill, a mobile
+// three-segment control, and the mobile Sort trigger; desktop and mobile
+// controls are CSS-hidden complements of each other, so getClientRects()
+// (empty for display:none and any display:none ancestor — including the whole
+// bar in Agent/Structure views) selects only the on-screen one, the same
+// visibility test popoverArrowNav uses. Returns null when nothing is on screen
+// (e.g. the bar is hidden outside the Projects view), so callers fall through
+// to their previous target.
+export function firstFocusableInTaskFilterBar() {
+    const bar = document.getElementById('taskFilterBar');
+    if (!bar) return null;
+    const candidates = bar.querySelectorAll(
+        '.taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile'
+    );
+    for (let i = 0; i < candidates.length; i++) {
+        const el = candidates[i];
+        if (!el.disabled && el.getClientRects().length > 0 && el.tabIndex !== -1) {
+            return el;
+        }
+    }
+    return null;
+}
+
+
 // Build the mobile three-segment filter control: one segment per FILTERS entry,
 // each carrying its normal-case label and a live count. CSS hides it on desktop
 // (the cycle pill owns that breakpoint) and reveals it on mobile. Tapping a
