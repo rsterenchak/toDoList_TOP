@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-05T15:54:18.869Z",
-  "sha": "2a65fccfc287e817b3c1673b9e06458eb2e0d07c",
+  "generatedAt": "2026-07-06T01:41:13.657Z",
+  "sha": "eb97319ca64943156258967f17ba11285c82c798",
   "files": [
     "agentView.js",
     "auth.js",
@@ -113,11 +113,11 @@
       "selector": "#agentView",
       "label": "Agent View",
       "file": "main.js",
-      "line": 1935,
+      "line": 1941,
       "files": [
         {
           "file": "main.js",
-          "line": 1935
+          "line": 1941
         },
         {
           "file": "style.css",
@@ -373,11 +373,11 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 1990,
+      "line": 2024,
       "files": [
         {
           "file": "main.js",
-          "line": 1990
+          "line": 2024
         },
         {
           "file": "style.css",
@@ -1769,11 +1769,11 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 2699,
+      "line": 2733,
       "files": [
         {
           "file": "main.js",
-          "line": 2699
+          "line": 2733
         },
         {
           "file": "style.css",
@@ -1785,11 +1785,11 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 2704,
+      "line": 2738,
       "files": [
         {
           "file": "main.js",
-          "line": 2704
+          "line": 2738
         },
         {
           "file": "style.css",
@@ -1801,11 +1801,11 @@
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
       "file": "main.js",
-      "line": 2701,
+      "line": 2735,
       "files": [
         {
           "file": "main.js",
-          "line": 2701
+          "line": 2735
         },
         {
           "file": "style.css",
@@ -1817,11 +1817,11 @@
       "selector": "#drawerSettingsBtn",
       "label": "Drawer Settings Btn",
       "file": "main.js",
-      "line": 2567,
+      "line": 2601,
       "files": [
         {
           "file": "main.js",
-          "line": 2567
+          "line": 2601
         },
         {
           "file": "style.css",
@@ -1833,11 +1833,11 @@
       "selector": "#drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 2585,
+      "line": 2619,
       "files": [
         {
           "file": "main.js",
-          "line": 2585
+          "line": 2619
         }
       ]
     },
@@ -1845,11 +1845,11 @@
       "selector": "#drawerSettingsBtnWrap",
       "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
-      "line": 2695,
+      "line": 2729,
       "files": [
         {
           "file": "main.js",
-          "line": 2695
+          "line": 2729
         },
         {
           "file": "style.css",
@@ -3233,11 +3233,11 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 1971,
+      "line": 2005,
       "files": [
         {
           "file": "main.js",
-          "line": 1971
+          "line": 2005
         },
         {
           "file": "style.css",
@@ -3301,11 +3301,11 @@
       "selector": "#mobileUpdatePill",
       "label": "Mobile Update Pill",
       "file": "main.js",
-      "line": 2625,
+      "line": 2659,
       "files": [
         {
           "file": "main.js",
-          "line": 2625
+          "line": 2659
         },
         {
           "file": "style.css",
@@ -3485,11 +3485,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 3523,
+      "line": 3563,
       "files": [
         {
           "file": "main.js",
-          "line": 3523
+          "line": 3563
         },
         {
           "file": "style.css",
@@ -3517,11 +3517,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 3531,
+      "line": 3571,
       "files": [
         {
           "file": "main.js",
-          "line": 3531
+          "line": 3571
         },
         {
           "file": "style.css",
@@ -3777,11 +3777,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "main.js",
-      "line": 2790,
+      "line": 2824,
       "files": [
         {
           "file": "main.js",
-          "line": 2790
+          "line": 2824
         }
       ]
     },
@@ -3789,11 +3789,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "main.js",
-      "line": 2913,
+      "line": 2947,
       "files": [
         {
           "file": "main.js",
-          "line": 2913
+          "line": 2947
         }
       ]
     },
@@ -3801,11 +3801,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "main.js",
-      "line": 2773,
+      "line": 2807,
       "files": [
         {
           "file": "main.js",
-          "line": 2773
+          "line": 2807
         }
       ]
     },
@@ -3813,11 +3813,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "main.js",
-      "line": 2882,
+      "line": 2916,
       "files": [
         {
           "file": "main.js",
-          "line": 2882
+          "line": 2916
         }
       ]
     },
@@ -3825,11 +3825,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "main.js",
-      "line": 2848,
+      "line": 2882,
       "files": [
         {
           "file": "main.js",
-          "line": 2848
+          "line": 2882
         }
       ]
     },
@@ -3853,11 +3853,11 @@
       "selector": "#settingsModal",
       "label": "Settings Modal",
       "file": "main.js",
-      "line": 2738,
+      "line": 2772,
       "files": [
         {
           "file": "main.js",
-          "line": 2738
+          "line": 2772
         },
         {
           "file": "style.css",
@@ -3869,11 +3869,11 @@
       "selector": "#settingsModalBackdrop",
       "label": "Settings Modal Backdrop",
       "file": "main.js",
-      "line": 2735,
+      "line": 2769,
       "files": [
         {
           "file": "main.js",
-          "line": 2735
+          "line": 2769
         },
         {
           "file": "style.css",
@@ -3885,11 +3885,11 @@
       "selector": "#settingsModalBody",
       "label": "Settings Modal Body",
       "file": "main.js",
-      "line": 2760,
+      "line": 2794,
       "files": [
         {
           "file": "main.js",
-          "line": 2760
+          "line": 2794
         },
         {
           "file": "style.css",
@@ -3901,11 +3901,11 @@
       "selector": "#settingsModalClose",
       "label": "Settings Modal Close",
       "file": "main.js",
-      "line": 2751,
+      "line": 2785,
       "files": [
         {
           "file": "main.js",
-          "line": 2751
+          "line": 2785
         },
         {
           "file": "style.css",
@@ -3917,11 +3917,11 @@
       "selector": "#settingsModalHeader",
       "label": "Settings Modal Header",
       "file": "main.js",
-      "line": 2744,
+      "line": 2778,
       "files": [
         {
           "file": "main.js",
-          "line": 2744
+          "line": 2778
         },
         {
           "file": "style.css",
@@ -3933,11 +3933,11 @@
       "selector": "#settingsModalTitle",
       "label": "Settings Modal Title",
       "file": "main.js",
-      "line": 2747,
+      "line": 2781,
       "files": [
         {
           "file": "main.js",
-          "line": 2747
+          "line": 2781
         },
         {
           "file": "style.css",
@@ -3965,11 +3965,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "main.js",
-      "line": 2763,
+      "line": 2797,
       "files": [
         {
           "file": "main.js",
-          "line": 2763
+          "line": 2797
         }
       ]
     },
@@ -4277,11 +4277,11 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1943,
+      "line": 1949,
       "files": [
         {
           "file": "main.js",
-          "line": 1943
+          "line": 1949
         },
         {
           "file": "style.css",
@@ -4309,11 +4309,11 @@
       "selector": "#taskFilterEmpty",
       "label": "Task Filter Empty",
       "file": "taskFilter.js",
-      "line": 337,
+      "line": 363,
       "files": [
         {
           "file": "taskFilter.js",
-          "line": 337
+          "line": 363
         }
       ]
     },
@@ -4321,11 +4321,11 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 2008,
+      "line": 2042,
       "files": [
         {
           "file": "main.js",
-          "line": 2008
+          "line": 2042
         },
         {
           "file": "style.css",
@@ -4337,11 +4337,11 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 2045,
+      "line": 2079,
       "files": [
         {
           "file": "main.js",
-          "line": 2045
+          "line": 2079
         },
         {
           "file": "style.css",
@@ -4353,11 +4353,11 @@
       "selector": "#taskSortMenu",
       "label": "Task Sort Menu",
       "file": "main.js",
-      "line": 2149,
+      "line": 2183,
       "files": [
         {
           "file": "main.js",
-          "line": 2149
+          "line": 2183
         },
         {
           "file": "style.css",
@@ -4369,11 +4369,11 @@
       "selector": "#taskSortSheet",
       "label": "Task Sort Sheet",
       "file": "main.js",
-      "line": 2234,
+      "line": 2268,
       "files": [
         {
           "file": "main.js",
-          "line": 2234
+          "line": 2268
         },
         {
           "file": "style.css",
@@ -4385,11 +4385,11 @@
       "selector": "#taskSortSheetBackdrop",
       "label": "Task Sort Sheet Backdrop",
       "file": "main.js",
-      "line": 2231,
+      "line": 2265,
       "files": [
         {
           "file": "main.js",
-          "line": 2231
+          "line": 2265
         },
         {
           "file": "style.css",
@@ -4401,11 +4401,11 @@
       "selector": "#taskSortSheetTitle",
       "label": "Task Sort Sheet Title",
       "file": "main.js",
-      "line": 2246,
+      "line": 2280,
       "files": [
         {
           "file": "main.js",
-          "line": 2246
+          "line": 2280
         }
       ]
     },
