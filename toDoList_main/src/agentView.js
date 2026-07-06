@@ -13,6 +13,7 @@ import {
     readTodoMdFromWorker,
     findTargetById,
     showInjectToast,
+    isInjectConfigured,
 } from './inject.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -1541,6 +1542,105 @@ function paint() {
         return;
     }
     view.appendChild(board);
+}
+
+// ── AGENT-TAB AVAILABILITY GATE ──
+// A project with no routed repo can't draft, dispatch, or ship agent work —
+// there's nowhere to inject the TODO.md entry. So the two AGENT tab entry points
+// (desktop pill #viewPillAgent, mobile tab #mobileTabAgent) present as
+// visible-but-inert on such a project, mirroring the Claude-assistant gate in
+// claudeSheet.js (`claudeUnavailable`). A single `agentUnavailable` body flag —
+// toggled from the same project-switch hook points that call
+// syncClaudeSheetForProject — drives the dimmed CSS on both entry points, flips
+// their aria-disabled, and swaps in an explanatory title. The flag clears the
+// moment a repo-backed project becomes active. The gate is the SAME one the
+// sidebar thunderbolt uses: inject configured globally AND this project carries a
+// routed inject target.
+export const AGENT_UNAVAILABLE_MSG =
+    'Agent unavailable here — no repo configured for this project';
+
+function applyAgentAvailability(hasRepo) {
+    document.body.classList.toggle('agentUnavailable', !hasRepo);
+    const controls = [
+        document.getElementById('viewPillAgent'),
+        document.getElementById('mobileTabAgent'),
+    ];
+    for (let i = 0; i < controls.length; i++) {
+        const el = controls[i];
+        if (!el) continue;
+        if (!hasRepo) {
+            el.setAttribute('aria-disabled', 'true');
+            if (el.dataset.prevTitle === undefined) {
+                el.dataset.prevTitle = el.getAttribute('title') || '';
+            }
+            el.setAttribute('title', AGENT_UNAVAILABLE_MSG);
+        } else {
+            el.removeAttribute('aria-disabled');
+            if (el.dataset.prevTitle !== undefined) {
+                if (el.dataset.prevTitle) el.setAttribute('title', el.dataset.prevTitle);
+                else el.removeAttribute('title');
+                delete el.dataset.prevTitle;
+            }
+        }
+    }
+}
+
+// Recompute the AGENT tab's availability for the given project and apply it to
+// both entry points. Called from main.js's project-switch hooks alongside
+// syncClaudeSheetForProject so both gates derive from one source of truth and
+// clear together. Returns hasRepo so the caller can bail off a now-dead board.
+export function syncAgentAvailabilityForProject(projectName) {
+    const hasRepo = isInjectConfigured()
+        && !!listLogic.getProjectTargetId(projectName);
+    applyAgentAvailability(hasRepo);
+    return hasRepo;
+}
+
+// True while the AGENT tab is gated off for the active project. Both entry-point
+// click handlers consult this to turn a tap into a no-op-plus-tooltip.
+export function isAgentUnavailable() {
+    return document.body.classList.contains('agentUnavailable');
+}
+
+// A transient tooltip anchored to a dimmed AGENT entry point, shown when the user
+// taps it while the tab is unavailable — the touch-equivalent of the desktop
+// `title` hover (there's no hover on touch). A single tap surfaces the reason and
+// auto-dismisses. Positioned via computed fixed coords just below the anchor (the
+// pill sits in the top header, the tab in the bottom bar; both are horizontally
+// centered on their control). Re-tapping replaces the current bubble rather than
+// stacking. The inline styles are dynamic by nature (anchor-relative coords).
+let agentUnavailableTooltipEl = null;
+let agentUnavailableTooltipTimer = null;
+
+function hideAgentUnavailableTooltip() {
+    if (agentUnavailableTooltipTimer) {
+        clearTimeout(agentUnavailableTooltipTimer);
+        agentUnavailableTooltipTimer = null;
+    }
+    if (agentUnavailableTooltipEl && agentUnavailableTooltipEl.parentNode) {
+        agentUnavailableTooltipEl.parentNode.removeChild(agentUnavailableTooltipEl);
+    }
+    agentUnavailableTooltipEl = null;
+}
+
+export function showAgentUnavailableTooltip(anchorEl) {
+    hideAgentUnavailableTooltip();
+    const tip = document.createElement('div');
+    tip.className = 'agentUnavailableTooltip';
+    tip.setAttribute('role', 'status');
+    tip.textContent = AGENT_UNAVAILABLE_MSG;
+    document.body.appendChild(tip);
+    if (anchorEl && typeof anchorEl.getBoundingClientRect === 'function') {
+        const rect = anchorEl.getBoundingClientRect();
+        tip.style.position = 'fixed';
+        // Center on the anchor, clamped into the viewport, and drop below it.
+        let left = rect.left + rect.width / 2 - 110;
+        left = Math.max(8, Math.min(left, window.innerWidth - 228));
+        tip.style.left = left + 'px';
+        tip.style.top = (rect.bottom + 8) + 'px';
+    }
+    agentUnavailableTooltipEl = tip;
+    agentUnavailableTooltipTimer = setTimeout(hideAgentUnavailableTooltip, 3200);
 }
 
 // Render the AGENT view for the currently selected project. Safe to call

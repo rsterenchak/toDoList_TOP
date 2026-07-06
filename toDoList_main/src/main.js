@@ -76,7 +76,14 @@ import { wireStatusLabelDelegation } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
-import { renderAgentView, subscribeAgentView, unsubscribeAgentView } from './agentView.js';
+import {
+    renderAgentView,
+    subscribeAgentView,
+    unsubscribeAgentView,
+    syncAgentAvailabilityForProject,
+    isAgentUnavailable,
+    showAgentUnavailableTooltip,
+} from './agentView.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -979,6 +986,13 @@ function component() {
         btn.appendChild(icon);
         btn.appendChild(text);
         btn.addEventListener('click', function() {
+            // The AGENT tab is gated off on projects with no routed repo — a tap
+            // there is a no-op that surfaces the reason instead of opening a dead
+            // board (mirrors the desktop pill guard and the Claude launcher).
+            if (viewKey === 'agent' && isAgentUnavailable()) {
+                showAgentUnavailableTooltip(btn);
+                return;
+            }
             applyActiveView(viewKey);
         });
         return btn;
@@ -1903,6 +1917,13 @@ function component() {
         applyActiveView('projects');
     });
     viewPillAgent.addEventListener('click', function() {
+        // On a project with no routed repo the AGENT tab is unavailable, not
+        // merely idle: opening it is a no-op that explains why instead, since
+        // there is nowhere to inject the agent's TODO.md entry.
+        if (isAgentUnavailable()) {
+            showAgentUnavailableTooltip(viewPillAgent);
+            return;
+        }
         applyActiveView('agent');
     });
     viewPillStructure.addEventListener('click', function() {
@@ -3825,13 +3846,23 @@ function component() {
                         // Auto-open the Claude sheet for repo-backed projects,
                         // auto-close it for projects with no repo configured.
                         syncClaudeSheetForProject(innerValue);
+                        // Gate the AGENT tab off in lockstep — same repo test,
+                        // one shared body flag as the Claude gate.
+                        const agentAvailable = syncAgentAvailabilityForProject(innerValue);
 
                         // When Agent or Structure is the active view, the
                         // click didn't switch away from it — re-render it so it
                         // reflects the newly selected project (Agent's queue
-                        // board; Structure's resolved repo + map).
+                        // board; Structure's resolved repo + map). If the newly
+                        // selected project has no repo while AGENT is active, the
+                        // board is now dead — fall back to PROJECTS rather than
+                        // leave it on screen.
                         if (stayOnAgent) {
-                            renderAgentView();
+                            if (!agentAvailable) {
+                                applyActiveView('projects');
+                            } else {
+                                renderAgentView();
+                            }
                         } else if (stayOnStructure) {
                             renderStructureView();
                         }
@@ -4942,6 +4973,9 @@ function restoreFromStorage(opts) {
                 // Auto-open the Claude sheet for repo-backed projects,
                 // auto-close it for projects with no repo configured.
                 syncClaudeSheetForProject(name);
+                // Gate the AGENT tab off in lockstep (this handler already
+                // switched to PROJECTS above, so no dead-board fallback needed).
+                syncAgentAvailabilityForProject(name);
 
                 return;
             }
