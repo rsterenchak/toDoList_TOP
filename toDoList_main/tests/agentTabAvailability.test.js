@@ -5,7 +5,6 @@ import { vi } from 'vitest';
 import {
     syncAgentAvailabilityForProject,
     isAgentUnavailable,
-    showAgentUnavailableTooltip,
     AGENT_UNAVAILABLE_MSG,
 } from '../src/agentView.js';
 import { initInjectConfig } from '../src/inject.js';
@@ -46,19 +45,19 @@ function seedProject(name, targetId) {
 }
 
 // Mount the two AGENT entry points the gate drives: the desktop pill and the
-// mobile bottom-bar tab. Each carries an original `title` so the restore path
-// (put the prev title back, not the unavailable message) is observable.
+// mobile bottom-bar tab. Each carries an original `title` so we can confirm the
+// gate no longer swaps it out (the tab stays a normal, tappable control).
 function mountEntryPoints() {
     document.body.innerHTML =
         '<button id="viewPillAgent" title="Agent">AGENT</button>' +
         '<button id="mobileTabAgent" title="Agent">Agent</button>';
 }
 
-// A project with no routed repo can't draft, dispatch, or ship agent work, so
-// both AGENT tab entry points present as visible-but-inert: one `agentUnavailable`
-// body flag drives the dimmed CSS, flips aria-disabled, and makes a tap a
-// no-op-plus-tooltip. The flag clears the moment a repo-backed project is active.
-describe('syncAgentAvailabilityForProject — gate the AGENT tab off with no repo', () => {
+// A project with no routed repo can't draft, dispatch, or ship agent work. The
+// AGENT tab stays fully tappable, but a single `agentUnavailable` body flag drives
+// a small "no-repo" marker on both entry points and the in-view unavailable
+// message. The flag clears the moment a repo-backed project is active.
+describe('syncAgentAvailabilityForProject — flag the AGENT tab as no-repo', () => {
     beforeEach(() => {
         localStorage.clear();
         document.body.innerHTML = '';
@@ -99,62 +98,35 @@ describe('syncAgentAvailabilityForProject — gate the AGENT tab off with no rep
         expect(isAgentUnavailable()).toBe(true);
     });
 
-    it('marks both entry points aria-disabled with an explanatory title', () => {
+    it('leaves both entry points tappable — no aria-disabled, title untouched', () => {
         setInjectConfigured(true);
         seedProject('NoRepo', null);
 
         syncAgentAvailabilityForProject('NoRepo');
         const pill = document.getElementById('viewPillAgent');
         const tab = document.getElementById('mobileTabAgent');
-        expect(pill.getAttribute('aria-disabled')).toBe('true');
-        expect(pill.getAttribute('title')).toBe(AGENT_UNAVAILABLE_MSG);
-        expect(tab.getAttribute('aria-disabled')).toBe('true');
-        expect(tab.getAttribute('title')).toBe(AGENT_UNAVAILABLE_MSG);
-    });
-
-    it('restores both entry points when a repo is routed', () => {
-        setInjectConfigured(true);
-        seedProject('NoRepo', null);
-        seedProject('Repo', 'tgt-1');
-
-        syncAgentAvailabilityForProject('NoRepo');
-        syncAgentAvailabilityForProject('Repo');
-        const pill = document.getElementById('viewPillAgent');
-        const tab = document.getElementById('mobileTabAgent');
+        // The tab now opens a real (unavailable-message) view, so it must not be
+        // marked disabled, and its title stays whatever it was.
         expect(pill.hasAttribute('aria-disabled')).toBe(false);
         expect(pill.getAttribute('title')).toBe('Agent');
         expect(tab.hasAttribute('aria-disabled')).toBe(false);
         expect(tab.getAttribute('title')).toBe('Agent');
     });
-
-    it('shows a tooltip with the explanatory message anchored to the tapped control', () => {
-        setInjectConfigured(true);
-        seedProject('NoRepo', null);
-        syncAgentAvailabilityForProject('NoRepo');
-
-        showAgentUnavailableTooltip(document.getElementById('viewPillAgent'));
-        const tip = document.querySelector('.agentUnavailableTooltip');
-        expect(tip).not.toBeNull();
-        expect(tip.textContent).toBe(AGENT_UNAVAILABLE_MSG);
-
-        // Re-tapping replaces the bubble rather than stacking a second one.
-        showAgentUnavailableTooltip(document.getElementById('mobileTabAgent'));
-        expect(document.querySelectorAll('.agentUnavailableTooltip').length).toBe(1);
-    });
 });
 
-// Static wiring guard: agentView exports the gate, and main.js routes project
-// switches through it and guards both AGENT entry-point clicks with it.
+// Static wiring guard: agentView exports the gate, main.js routes project switches
+// through it, both AGENT entry-point clicks navigate unconditionally (no gate
+// early-return), and both carry the no-repo marker; paint() renders the message.
 describe('AGENT tab availability wiring', () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const srcDir = resolve(here, '../src');
     const read = (rel) => readFileSync(resolve(srcDir, rel), 'utf8');
 
-    it('agentView.js exports the gate helpers', () => {
+    it('agentView.js exports the gate helpers and no longer exports the tooltip', () => {
         const av = read('agentView.js');
         expect(av).toMatch(/export\s+function\s+syncAgentAvailabilityForProject\s*\(/);
         expect(av).toMatch(/export\s+function\s+isAgentUnavailable\s*\(/);
-        expect(av).toMatch(/export\s+function\s+showAgentUnavailableTooltip\s*\(/);
+        expect(av).not.toMatch(/showAgentUnavailableTooltip/);
     });
 
     it('main.js imports and calls syncAgentAvailabilityForProject at both switch hooks', () => {
@@ -162,13 +134,22 @@ describe('AGENT tab availability wiring', () => {
         expect(main)
             .toMatch(/import\s*\{[^}]*syncAgentAvailabilityForProject[^}]*\}\s*from\s*['"]\.\/agentView\.js['"]/);
         const calls = main.match(/syncAgentAvailabilityForProject\(/g) || [];
-        // two click-handler call sites (the import reference has no paren)
         expect(calls.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('main.js gates both AGENT entry points through isAgentUnavailable', () => {
+    it('main.js AGENT entry points navigate unconditionally and carry the no-repo marker', () => {
         const main = read('main.js');
-        expect(main).toMatch(/isAgentUnavailable\(\)/);
-        expect(main).toMatch(/showAgentUnavailableTooltip\(/);
+        // The old gate helpers are gone from main.js entirely.
+        expect(main).not.toMatch(/isAgentUnavailable/);
+        expect(main).not.toMatch(/showAgentUnavailableTooltip/);
+        // Both entry points get a real <span> marker toggled by CSS.
+        const markers = main.match(/agentNoRepoMarker/g) || [];
+        expect(markers.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('agentView paint() renders the unavailable message when the tab is gated', () => {
+        const av = read('agentView.js');
+        expect(av).toMatch(/if\s*\(\s*isAgentUnavailable\(\)\s*\)/);
+        expect(av).toMatch(/AGENT_UNAVAILABLE_MSG/);
     });
 });

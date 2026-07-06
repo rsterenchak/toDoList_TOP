@@ -10,12 +10,14 @@ export const changelog = [
             "The Claude assistant is now dimmed and disabled on projects with no repo configured, so it can't be opened against the wrong repo.",
             "The AGENT tab is now dimmed and disabled on projects with no repo configured, so it can't open a board that has nowhere to run.",
         ],
+        changed: [
+            "On projects with no repo configured, the AGENT tab is now tappable and opens an in-view 'no repo configured' message instead of being disabled.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-05',
         fixed: [
-            "The Agent header now shows a Working status while a triage sweep is running — tracked from the real run and returning to Idle only when it finishes — instead of staying stuck on Idle.",
             "Dispatching an Agent draft now waits longer for the entry to reach main and reuses the same entry across retries, so a valid dispatch is no longer falsely blocked and retrying never adds a duplicate task.",
             "Dispatching an Agent draft no longer stalls when the injected entry is slow to appear on main — the run starts anyway and self-heals on retry if it ever races.",
         ],
