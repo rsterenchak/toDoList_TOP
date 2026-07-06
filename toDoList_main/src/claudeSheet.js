@@ -299,7 +299,91 @@ export function syncClaudeSheetForProject(projectName) {
     const collapsed = !hasRepo;
     document.body.classList.toggle('chatPaneCollapsed', collapsed);
     setChatPaneCollapsed(collapsed);
+    applyClaudeAvailability(hasRepo);
     autoSwapWorkspaceForProject(projectName);
+}
+
+// The single source of truth for "the assistant is unusable on this project"
+// (no inject target routed). Rides one body class — `claudeUnavailable` — so the
+// mobile `✦` launcher and the desktop `‹` expand tab share one flag and their
+// dimmed/inert CSS states clear automatically on the next project switch once a
+// repo is routed. Distinct from `chatPaneCollapsed`, which the user can also set
+// manually on a repo-backed project (a manual collapse leaves the expand tab
+// live). Also flips `aria-disabled` on both entry points and swaps in an
+// explanatory `title` (restoring the original on re-enable) so the state is
+// exposed to assistive tech and to desktop hover.
+export const CLAUDE_UNAVAILABLE_MSG =
+    'Claude unavailable here — no repo configured for this project';
+
+function applyClaudeAvailability(hasRepo) {
+    document.body.classList.toggle('claudeUnavailable', !hasRepo);
+    const controls = [
+        document.getElementById('claudeLauncher'),
+        document.getElementById('chatExpandButton'),
+    ];
+    for (let i = 0; i < controls.length; i++) {
+        const el = controls[i];
+        if (!el) continue;
+        if (!hasRepo) {
+            el.setAttribute('aria-disabled', 'true');
+            if (el.dataset.prevTitle === undefined) {
+                el.dataset.prevTitle = el.getAttribute('title') || '';
+            }
+            el.setAttribute('title', CLAUDE_UNAVAILABLE_MSG);
+        } else {
+            el.removeAttribute('aria-disabled');
+            if (el.dataset.prevTitle !== undefined) {
+                if (el.dataset.prevTitle) el.setAttribute('title', el.dataset.prevTitle);
+                else el.removeAttribute('title');
+                delete el.dataset.prevTitle;
+            }
+        }
+    }
+}
+
+// True while the assistant is gated off for the active project. Both entry-point
+// click handlers consult this to turn a tap into a no-op-plus-tooltip.
+export function isClaudeUnavailable() {
+    return document.body.classList.contains('claudeUnavailable');
+}
+
+// A transient tooltip anchored to a dimmed entry point, shown when the user taps
+// it while the assistant is unavailable. This is the touch-equivalent of the
+// desktop `title` hover (there's no hover on touch): a single tap surfaces the
+// reason and auto-dismisses. Positioned to the LEFT of the anchor (both the
+// bottom-right launcher and the right-edge expand tab hug the viewport's right
+// side) via computed fixed coords — the only inline styles here, dynamic by
+// nature. Re-tapping replaces the current bubble rather than stacking.
+let unavailableTooltipEl = null;
+let unavailableTooltipTimer = null;
+
+function hideClaudeUnavailableTooltip() {
+    if (unavailableTooltipTimer) {
+        clearTimeout(unavailableTooltipTimer);
+        unavailableTooltipTimer = null;
+    }
+    if (unavailableTooltipEl && unavailableTooltipEl.parentNode) {
+        unavailableTooltipEl.parentNode.removeChild(unavailableTooltipEl);
+    }
+    unavailableTooltipEl = null;
+}
+
+export function showClaudeUnavailableTooltip(anchorEl) {
+    hideClaudeUnavailableTooltip();
+    const tip = document.createElement('div');
+    tip.className = 'claudeUnavailableTooltip';
+    tip.setAttribute('role', 'status');
+    tip.textContent = CLAUDE_UNAVAILABLE_MSG;
+    document.body.appendChild(tip);
+    if (anchorEl && typeof anchorEl.getBoundingClientRect === 'function') {
+        const rect = anchorEl.getBoundingClientRect();
+        tip.style.position = 'fixed';
+        tip.style.right = Math.max(8, window.innerWidth - rect.left + 8) + 'px';
+        tip.style.top = (rect.top + rect.height / 2) + 'px';
+        tip.style.transform = 'translateY(-50%)';
+    }
+    unavailableTooltipEl = tip;
+    unavailableTooltipTimer = setTimeout(hideClaudeUnavailableTooltip, 3200);
 }
 
 // On a project switch, re-point the chat workspace at the project's configured
@@ -536,6 +620,12 @@ function buildLauncher() {
     btn.textContent = '✦';
     btn.addEventListener('click', function(event) {
         event.stopPropagation();
+        // Gated off on a project with no routed repo: the tap is a no-op that
+        // surfaces the reason instead of opening a sheet against the wrong repo.
+        if (isClaudeUnavailable()) {
+            showClaudeUnavailableTooltip(btn);
+            return;
+        }
         toggleClaudeSheet();
     });
     return btn;

@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-05',
-        added: [
-            "Arrow keys now stop on the status and sort filter bar between the todo list and the view switcher, instead of skipping over it.",
+        date: '2026-07-06',
+        fixed: [
+            "The Claude assistant is now dimmed and disabled on projects with no repo configured, so it can't be opened against the wrong repo.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-05',
         fixed: [
             "Agent view cards, inputs, and read-only blocks now show a subtle neutral border instead of a bright purple one.",
             "The Agent header now shows a Working status while a triage sweep is running — tracked from the real run and returning to Idle only when it finishes — instead of staying stuck on Idle.",
