@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Add the status/sort filter bar as an arrow-key stop between the todo list and the view switcher
+- [x] **[MEDIUM]** Add the status/sort filter bar as an arrow-key stop between the todo list and the view switcher — Completed: 2026-07-05
   - Type: feature
   - Description: The arrow-key nav chain currently skips `#taskFilterBar` (the status ALL/Active/Ideas cycle pill or mobile segmented control, plus the Sort trigger `#taskSortBtn`/`#taskSortBtnMobile`) even though it sits in the DOM directly between `#viewSwitcher` and `#mainList` (`main2.appendChild(taskFilterBar)` then `main2.appendChild(mainList)` in `toDoList_main/src/main.js` around line 1960). Today, ArrowUp from the blank-placeholder `#toDoInput`/`#emptyStateInput` jumps straight to `#viewSwitcher .viewPill.active` (the escape branch at `toDoList_main/src/main.js` ~line 3331-3348), and ArrowDown from a view pill jumps straight into the list via `dropFocusIntoMainView` (~line 1916) / `firstFocusableInActiveMainView()` (~line 5004) — both skip the filter bar entirely. Robert wants an extra stop: ArrowUp from the top of the todo list should land on the status/sort bar first, and only a second ArrowUp from there reaches the view pill; ArrowDown from the view pill should land on the status/sort bar first, and only a second ArrowDown from there reaches the todo list.
   - Implementation notes:
