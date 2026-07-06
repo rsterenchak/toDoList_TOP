@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-06T01:41:13.657Z",
-  "sha": "eb97319ca64943156258967f17ba11285c82c798",
+  "generatedAt": "2026-07-06T15:43:07.751Z",
+  "sha": "163737a75d04c72ae7fee793a2a63ffc8789c40c",
   "files": [
     "agentView.js",
     "auth.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "style.css",
-          "line": 5852
+          "line": 5890
         }
       ]
     },
@@ -73,11 +73,11 @@
       "selector": "#addProj",
       "label": "Add Proj",
       "file": "main.js",
-      "line": 194,
+      "line": 195,
       "files": [
         {
           "file": "main.js",
-          "line": 194
+          "line": 195
         },
         {
           "file": "style.css",
@@ -113,15 +113,15 @@
       "selector": "#agentView",
       "label": "Agent View",
       "file": "main.js",
-      "line": 1941,
+      "line": 1950,
       "files": [
         {
           "file": "main.js",
-          "line": 1941
+          "line": 1950
         },
         {
           "file": "style.css",
-          "line": 2922
+          "line": 2960
         }
       ]
     },
@@ -173,7 +173,7 @@
         },
         {
           "file": "style.css",
-          "line": 11334
+          "line": 11387
         }
       ]
     },
@@ -277,15 +277,15 @@
       "selector": "#bottomSheet",
       "label": "Bottom Sheet",
       "file": "main.js",
-      "line": 530,
+      "line": 539,
       "files": [
         {
           "file": "main.js",
-          "line": 530
+          "line": 539
         },
         {
           "file": "style.css",
-          "line": 12637
+          "line": 12690
         }
       ]
     },
@@ -293,15 +293,15 @@
       "selector": "#bottomSheetBackdrop",
       "label": "Bottom Sheet Backdrop",
       "file": "main.js",
-      "line": 535,
+      "line": 544,
       "files": [
         {
           "file": "main.js",
-          "line": 535
+          "line": 544
         },
         {
           "file": "style.css",
-          "line": 12669
+          "line": 12722
         }
       ]
     },
@@ -309,15 +309,15 @@
       "selector": "#bottomSheetExpanded",
       "label": "Bottom Sheet Expanded",
       "file": "main.js",
-      "line": 616,
+      "line": 625,
       "files": [
         {
           "file": "main.js",
-          "line": 616
+          "line": 625
         },
         {
           "file": "style.css",
-          "line": 12849
+          "line": 12902
         }
       ]
     },
@@ -325,15 +325,15 @@
       "selector": "#bottomSheetMusicPlayerTarget",
       "label": "Bottom Sheet Music Player Target",
       "file": "main.js",
-      "line": 783,
+      "line": 792,
       "files": [
         {
           "file": "main.js",
-          "line": 783
+          "line": 792
         },
         {
           "file": "style.css",
-          "line": 13050
+          "line": 13103
         }
       ]
     },
@@ -341,15 +341,15 @@
       "selector": "#bottomSheetNub",
       "label": "Bottom Sheet Nub",
       "file": "main.js",
-      "line": 541,
+      "line": 550,
       "files": [
         {
           "file": "main.js",
-          "line": 541
+          "line": 550
         },
         {
           "file": "style.css",
-          "line": 12686
+          "line": 12739
         }
       ]
     },
@@ -357,15 +357,15 @@
       "selector": "#bottomSheetPeek",
       "label": "Bottom Sheet Peek",
       "file": "main.js",
-      "line": 554,
+      "line": 563,
       "files": [
         {
           "file": "main.js",
-          "line": 554
+          "line": 563
         },
         {
           "file": "style.css",
-          "line": 12744
+          "line": 12797
         }
       ]
     },
@@ -373,15 +373,15 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 2024,
+      "line": 2033,
       "files": [
         {
           "file": "main.js",
-          "line": 2024
+          "line": 2033
         },
         {
           "file": "style.css",
-          "line": 2946
+          "line": 2984
         }
       ]
     },
@@ -389,11 +389,11 @@
       "selector": "#changelogDot",
       "label": "Changelog Dot",
       "file": "main.js",
-      "line": 1559,
+      "line": 1568,
       "files": [
         {
           "file": "main.js",
-          "line": 1559
+          "line": 1568
         },
         {
           "file": "style.css",
@@ -413,7 +413,7 @@
         },
         {
           "file": "style.css",
-          "line": 7054
+          "line": 7092
         }
       ]
     },
@@ -429,7 +429,7 @@
         },
         {
           "file": "style.css",
-          "line": 7040
+          "line": 7078
         }
       ]
     },
@@ -445,7 +445,7 @@
         },
         {
           "file": "style.css",
-          "line": 7073
+          "line": 7111
         }
       ]
     },
@@ -593,15 +593,15 @@
       "selector": "#chatCollapseButton",
       "label": "Chat Collapse Button",
       "file": "main.js",
-      "line": 475,
+      "line": 476,
       "files": [
         {
           "file": "main.js",
-          "line": 475
+          "line": 476
         },
         {
           "file": "style.css",
-          "line": 10548
+          "line": 10586
         }
       ]
     },
@@ -609,15 +609,15 @@
       "selector": "#chatExpandButton",
       "label": "Chat Expand Button",
       "file": "main.js",
-      "line": 480,
+      "line": 481,
       "files": [
         {
           "file": "main.js",
-          "line": 480
+          "line": 481
         },
         {
           "file": "style.css",
-          "line": 10549
+          "line": 10587
         }
       ]
     },
@@ -633,7 +633,7 @@
         },
         {
           "file": "style.css",
-          "line": 5650
+          "line": 5688
         }
       ]
     },
@@ -641,11 +641,11 @@
       "selector": "#claudeAttachChips",
       "label": "Claude Attach Chips",
       "file": "claudeSheet.js",
-      "line": 784,
+      "line": 874,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 784
+          "line": 874
         }
       ]
     },
@@ -653,11 +653,11 @@
       "selector": "#claudeAttachIntro",
       "label": "Claude Attach Intro",
       "file": "claudeSheet.js",
-      "line": 1405,
+      "line": 1495,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1405
+          "line": 1495
         }
       ]
     },
@@ -665,11 +665,11 @@
       "selector": "#claudeAttachList",
       "label": "Claude Attach List",
       "file": "claudeSheet.js",
-      "line": 656,
+      "line": 746,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 656
+          "line": 746
         }
       ]
     },
@@ -677,11 +677,11 @@
       "selector": "#claudeAttachNotice",
       "label": "Claude Attach Notice",
       "file": "claudeSheet.js",
-      "line": 691,
+      "line": 781,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 691
+          "line": 781
         }
       ]
     },
@@ -689,17 +689,105 @@
       "selector": "#claudeAttachPanel",
       "label": "Claude Attach Panel",
       "file": "claudeSheet.js",
-      "line": 638,
+      "line": 728,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 638
+          "line": 728
         }
       ]
     },
     {
       "selector": "#claudeAttachPathAdd",
       "label": "Claude Attach Path Add",
+      "file": "claudeSheet.js",
+      "line": 764,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 764
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathInput",
+      "label": "Claude Attach Path Input",
+      "file": "claudeSheet.js",
+      "line": 759,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 759
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathRow",
+      "label": "Claude Attach Path Row",
+      "file": "claudeSheet.js",
+      "line": 755,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 755
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachSearch",
+      "label": "Claude Attach Search",
+      "file": "claudeSheet.js",
+      "line": 741,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 741
+        }
+      ]
+    },
+    {
+      "selector": "#claudeChatIntro",
+      "label": "Claude Chat Intro",
+      "file": "claudeSheet.js",
+      "line": 572,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 572
+        }
+      ]
+    },
+    {
+      "selector": "#claudeChatSurface",
+      "label": "Claude Chat Surface",
+      "file": "claudeSheet.js",
+      "line": 869,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 869
+        }
+      ]
+    },
+    {
+      "selector": "#claudeChatView",
+      "label": "Claude Chat View",
+      "file": "claudeSheet.js",
+      "line": 864,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 864
+        },
+        {
+          "file": "style.css",
+          "line": 1825
+        }
+      ]
+    },
+    {
+      "selector": "#claudeClearChat",
+      "label": "Claude Clear Chat",
       "file": "claudeSheet.js",
       "line": 674,
       "files": [
@@ -710,102 +798,14 @@
       ]
     },
     {
-      "selector": "#claudeAttachPathInput",
-      "label": "Claude Attach Path Input",
-      "file": "claudeSheet.js",
-      "line": 669,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 669
-        }
-      ]
-    },
-    {
-      "selector": "#claudeAttachPathRow",
-      "label": "Claude Attach Path Row",
-      "file": "claudeSheet.js",
-      "line": 665,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 665
-        }
-      ]
-    },
-    {
-      "selector": "#claudeAttachSearch",
-      "label": "Claude Attach Search",
-      "file": "claudeSheet.js",
-      "line": 651,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 651
-        }
-      ]
-    },
-    {
-      "selector": "#claudeChatIntro",
-      "label": "Claude Chat Intro",
-      "file": "claudeSheet.js",
-      "line": 488,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 488
-        }
-      ]
-    },
-    {
-      "selector": "#claudeChatSurface",
-      "label": "Claude Chat Surface",
-      "file": "claudeSheet.js",
-      "line": 779,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 779
-        }
-      ]
-    },
-    {
-      "selector": "#claudeChatView",
-      "label": "Claude Chat View",
-      "file": "claudeSheet.js",
-      "line": 774,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 774
-        },
-        {
-          "file": "style.css",
-          "line": 1787
-        }
-      ]
-    },
-    {
-      "selector": "#claudeClearChat",
-      "label": "Claude Clear Chat",
-      "file": "claudeSheet.js",
-      "line": 584,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 584
-        }
-      ]
-    },
-    {
       "selector": "#claudeComposer",
       "label": "Claude Composer",
       "file": "claudeSheet.js",
-      "line": 788,
+      "line": 878,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 788
+          "line": 878
         }
       ]
     },
@@ -813,11 +813,11 @@
       "selector": "#claudeComposerAttach",
       "label": "Claude Composer Attach",
       "file": "claudeSheet.js",
-      "line": 623,
+      "line": 713,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 623
+          "line": 713
         }
       ]
     },
@@ -825,15 +825,15 @@
       "selector": "#claudeComposerInput",
       "label": "Claude Composer Input",
       "file": "claudeSheet.js",
-      "line": 791,
+      "line": 881,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 791
+          "line": 881
         },
         {
           "file": "style.css",
-          "line": 1861
+          "line": 1899
         }
       ]
     },
@@ -841,11 +841,11 @@
       "selector": "#claudeComposerMic",
       "label": "Claude Composer Mic",
       "file": "claudeSheet.js",
-      "line": 949,
+      "line": 1039,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 949
+          "line": 1039
         }
       ]
     },
@@ -853,11 +853,11 @@
       "selector": "#claudeComposerModeMenu",
       "label": "Claude Composer Mode Menu",
       "file": "claudeSheet.js",
-      "line": 827,
+      "line": 917,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 827
+          "line": 917
         }
       ]
     },
@@ -865,15 +865,15 @@
       "selector": "#claudeComposerSend",
       "label": "Claude Composer Send",
       "file": "claudeSheet.js",
-      "line": 802,
+      "line": 892,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 802
+          "line": 892
         },
         {
           "file": "style.css",
-          "line": 1964
+          "line": 2002
         }
       ]
     },
@@ -881,11 +881,11 @@
       "selector": "#claudeComposerSendCaret",
       "label": "Claude Composer Send Caret",
       "file": "claudeSheet.js",
-      "line": 815,
+      "line": 905,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 815
+          "line": 905
         }
       ]
     },
@@ -893,11 +893,11 @@
       "selector": "#claudeComposerSendSplit",
       "label": "Claude Composer Send Split",
       "file": "claudeSheet.js",
-      "line": 861,
+      "line": 951,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 861
+          "line": 951
         }
       ]
     },
@@ -905,11 +905,11 @@
       "selector": "#claudeLauncher",
       "label": "Claude Launcher",
       "file": "claudeSheet.js",
-      "line": 530,
+      "line": 614,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 530
+          "line": 614
         },
         {
           "file": "style.css",
@@ -921,11 +921,11 @@
       "selector": "#claudeRunsClear",
       "label": "Claude Runs Clear",
       "file": "claudeSheet.js",
-      "line": 2209,
+      "line": 2299,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2209
+          "line": 2299
         }
       ]
     },
@@ -933,11 +933,11 @@
       "selector": "#claudeRunsEmpty",
       "label": "Claude Runs Empty",
       "file": "claudeSheet.js",
-      "line": 2185,
+      "line": 2275,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2185
+          "line": 2275
         }
       ]
     },
@@ -945,11 +945,11 @@
       "selector": "#claudeRunsList",
       "label": "Claude Runs List",
       "file": "claudeSheet.js",
-      "line": 2130,
+      "line": 2220,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2130
+          "line": 2220
         }
       ]
     },
@@ -957,11 +957,11 @@
       "selector": "#claudeRunsNew",
       "label": "Claude Runs New",
       "file": "claudeSheet.js",
-      "line": 2134,
+      "line": 2224,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2134
+          "line": 2224
         }
       ]
     },
@@ -969,11 +969,11 @@
       "selector": "#claudeRunsView",
       "label": "Claude Runs View",
       "file": "claudeSheet.js",
-      "line": 2099,
+      "line": 2189,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2099
+          "line": 2189
         }
       ]
     },
@@ -981,11 +981,11 @@
       "selector": "#claudeScrollDown",
       "label": "Claude Scroll Down",
       "file": "claudeSheet.js",
-      "line": 901,
+      "line": 991,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 901
+          "line": 991
         }
       ]
     },
@@ -993,15 +993,15 @@
       "selector": "#claudeSheet",
       "label": "Claude Sheet",
       "file": "claudeSheet.js",
-      "line": 2904,
+      "line": 2994,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2904
+          "line": 2994
         },
         {
           "file": "style.css",
-          "line": 1674
+          "line": 1712
         }
       ]
     },
@@ -1009,15 +1009,15 @@
       "selector": "#claudeSheetBackdrop",
       "label": "Claude Sheet Backdrop",
       "file": "claudeSheet.js",
-      "line": 3059,
+      "line": 3149,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3059
+          "line": 3149
         },
         {
           "file": "style.css",
-          "line": 1673
+          "line": 1711
         }
       ]
     },
@@ -1025,15 +1025,15 @@
       "selector": "#claudeSheetBody",
       "label": "Claude Sheet Body",
       "file": "claudeSheet.js",
-      "line": 2964,
+      "line": 3054,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2964
+          "line": 3054
         },
         {
           "file": "style.css",
-          "line": 10397
+          "line": 10435
         }
       ]
     },
@@ -1041,15 +1041,15 @@
       "selector": "#claudeSheetClose",
       "label": "Claude Sheet Close",
       "file": "claudeSheet.js",
-      "line": 2923,
+      "line": 3013,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2923
+          "line": 3013
         },
         {
           "file": "style.css",
-          "line": 1701
+          "line": 1739
         }
       ]
     },
@@ -1057,11 +1057,11 @@
       "selector": "#claudeSheetCloseRow",
       "label": "Claude Sheet Close Row",
       "file": "claudeSheet.js",
-      "line": 2932,
+      "line": 3022,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2932
+          "line": 3022
         }
       ]
     },
@@ -1069,15 +1069,15 @@
       "selector": "#claudeSheetHandle",
       "label": "Claude Sheet Handle",
       "file": "claudeSheet.js",
-      "line": 2914,
+      "line": 3004,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2914
+          "line": 3004
         },
         {
           "file": "style.css",
-          "line": 1695
+          "line": 1733
         }
       ]
     },
@@ -1085,15 +1085,15 @@
       "selector": "#claudeSheetTabs",
       "label": "Claude Sheet Tabs",
       "file": "claudeSheet.js",
-      "line": 2937,
+      "line": 3027,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2937
+          "line": 3027
         },
         {
           "file": "style.css",
-          "line": 1727
+          "line": 1765
         }
       ]
     },
@@ -1101,11 +1101,11 @@
       "selector": "#claudeUpdateNudge",
       "label": "Claude Update Nudge",
       "file": "claudeSheet.js",
-      "line": 2107,
+      "line": 2197,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2107
+          "line": 2197
         }
       ]
     },
@@ -1113,11 +1113,11 @@
       "selector": "#claudeUpdateReload",
       "label": "Claude Update Reload",
       "file": "claudeSheet.js",
-      "line": 2114,
+      "line": 2204,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2114
+          "line": 2204
         }
       ]
     },
@@ -1125,11 +1125,11 @@
       "selector": "#claudeWorkspacePill",
       "label": "Claude Workspace Pill",
       "file": "claudeSheet.js",
-      "line": 568,
+      "line": 658,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 568
+          "line": 658
         }
       ]
     },
@@ -1145,7 +1145,7 @@
         },
         {
           "file": "style.css",
-          "line": 6291
+          "line": 6329
         }
       ]
     },
@@ -1197,7 +1197,7 @@
         },
         {
           "file": "style.css",
-          "line": 5468
+          "line": 5506
         }
       ]
     },
@@ -1213,7 +1213,7 @@
         },
         {
           "file": "style.css",
-          "line": 6881
+          "line": 6919
         }
       ]
     },
@@ -1229,7 +1229,7 @@
         },
         {
           "file": "style.css",
-          "line": 6867
+          "line": 6905
         }
       ]
     },
@@ -1669,7 +1669,7 @@
         },
         {
           "file": "style.css",
-          "line": 6780
+          "line": 6818
         }
       ]
     },
@@ -1685,7 +1685,7 @@
         },
         {
           "file": "style.css",
-          "line": 5235
+          "line": 5273
         }
       ]
     },
@@ -1729,7 +1729,7 @@
         },
         {
           "file": "style.css",
-          "line": 6267
+          "line": 6305
         }
       ]
     },
@@ -1737,15 +1737,15 @@
       "selector": "#desktopChatPane",
       "label": "Desktop Chat Pane",
       "file": "main.js",
-      "line": 464,
+      "line": 465,
       "files": [
         {
           "file": "main.js",
-          "line": 464
+          "line": 465
         },
         {
           "file": "style.css",
-          "line": 10248
+          "line": 10286
         }
       ]
     },
@@ -1753,11 +1753,11 @@
       "selector": "#desktopViewSubBand",
       "label": "Desktop View Sub Band",
       "file": "main.js",
-      "line": 461,
+      "line": 462,
       "files": [
         {
           "file": "main.js",
-          "line": 461
+          "line": 462
         },
         {
           "file": "style.css",
@@ -1769,21 +1769,81 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 2733,
+      "line": 2742,
       "files": [
         {
           "file": "main.js",
-          "line": 2733
+          "line": 2742
         },
         {
           "file": "style.css",
-          "line": 8260
+          "line": 8298
         }
       ]
     },
     {
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
+      "file": "main.js",
+      "line": 2747,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2747
+        },
+        {
+          "file": "style.css",
+          "line": 9281
+        }
+      ]
+    },
+    {
+      "selector": "#drawerFooterVersion",
+      "label": "Drawer Footer Version",
+      "file": "main.js",
+      "line": 2744,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2744
+        },
+        {
+          "file": "style.css",
+          "line": 9280
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtn",
+      "label": "Drawer Settings Btn",
+      "file": "main.js",
+      "line": 2610,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2610
+        },
+        {
+          "file": "style.css",
+          "line": 9198
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnUpdateDot",
+      "label": "Drawer Settings Btn Update Dot",
+      "file": "main.js",
+      "line": 2628,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2628
+        }
+      ]
+    },
+    {
+      "selector": "#drawerSettingsBtnWrap",
+      "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
       "line": 2738,
       "files": [
@@ -1793,67 +1853,7 @@
         },
         {
           "file": "style.css",
-          "line": 9243
-        }
-      ]
-    },
-    {
-      "selector": "#drawerFooterVersion",
-      "label": "Drawer Footer Version",
-      "file": "main.js",
-      "line": 2735,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2735
-        },
-        {
-          "file": "style.css",
-          "line": 9242
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtn",
-      "label": "Drawer Settings Btn",
-      "file": "main.js",
-      "line": 2601,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2601
-        },
-        {
-          "file": "style.css",
-          "line": 9160
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtnUpdateDot",
-      "label": "Drawer Settings Btn Update Dot",
-      "file": "main.js",
-      "line": 2619,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2619
-        }
-      ]
-    },
-    {
-      "selector": "#drawerSettingsBtnWrap",
-      "label": "Drawer Settings Btn Wrap",
-      "file": "main.js",
-      "line": 2729,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2729
-        },
-        {
-          "file": "style.css",
-          "line": 9153
+          "line": 9191
         }
       ]
     },
@@ -1869,7 +1869,7 @@
         },
         {
           "file": "style.css",
-          "line": 1664
+          "line": 1702
         }
       ]
     },
@@ -1889,7 +1889,7 @@
         },
         {
           "file": "style.css",
-          "line": 5872
+          "line": 5910
         }
       ]
     },
@@ -1905,7 +1905,7 @@
         },
         {
           "file": "style.css",
-          "line": 5288
+          "line": 5326
         }
       ]
     },
@@ -1921,7 +1921,7 @@
         },
         {
           "file": "style.css",
-          "line": 5342
+          "line": 5380
         }
       ]
     },
@@ -1937,7 +1937,7 @@
         },
         {
           "file": "style.css",
-          "line": 5409
+          "line": 5447
         }
       ]
     },
@@ -1957,15 +1957,15 @@
       "selector": "#focusModeToggle",
       "label": "Focus Mode Toggle",
       "file": "main.js",
-      "line": 332,
+      "line": 333,
       "files": [
         {
           "file": "main.js",
-          "line": 332
+          "line": 333
         },
         {
           "file": "style.css",
-          "line": 12086
+          "line": 12139
         }
       ]
     },
@@ -1973,11 +1973,11 @@
       "selector": "#footBar",
       "label": "Foot Bar",
       "file": "main.js",
-      "line": 172,
+      "line": 173,
       "files": [
         {
           "file": "main.js",
-          "line": 172
+          "line": 173
         },
         {
           "file": "style.css",
@@ -1989,11 +1989,11 @@
       "selector": "#footCounts",
       "label": "Foot Counts",
       "file": "main.js",
-      "line": 1577,
+      "line": 1586,
       "files": [
         {
           "file": "main.js",
-          "line": 1577
+          "line": 1586
         },
         {
           "file": "style.css",
@@ -2005,11 +2005,11 @@
       "selector": "#footDone",
       "label": "Foot Done",
       "file": "main.js",
-      "line": 1579,
+      "line": 1588,
       "files": [
         {
           "file": "main.js",
-          "line": 1579
+          "line": 1588
         },
         {
           "file": "style.css",
@@ -2021,11 +2021,11 @@
       "selector": "#footOpen",
       "label": "Foot Open",
       "file": "main.js",
-      "line": 1578,
+      "line": 1587,
       "files": [
         {
           "file": "main.js",
-          "line": 1578
+          "line": 1587
         },
         {
           "file": "style.css",
@@ -2037,11 +2037,11 @@
       "selector": "#footVersion",
       "label": "Foot Version",
       "file": "main.js",
-      "line": 1548,
+      "line": 1557,
       "files": [
         {
           "file": "main.js",
-          "line": 1548
+          "line": 1557
         },
         {
           "file": "style.css",
@@ -2053,11 +2053,11 @@
       "selector": "#footVersionLabel",
       "label": "Foot Version Label",
       "file": "main.js",
-      "line": 1555,
+      "line": 1564,
       "files": [
         {
           "file": "main.js",
-          "line": 1555
+          "line": 1564
         },
         {
           "file": "style.css",
@@ -2217,7 +2217,7 @@
         },
         {
           "file": "style.css",
-          "line": 11092
+          "line": 11145
         }
       ]
     },
@@ -2233,7 +2233,7 @@
         },
         {
           "file": "style.css",
-          "line": 11116
+          "line": 11169
         }
       ]
     },
@@ -2249,7 +2249,7 @@
         },
         {
           "file": "style.css",
-          "line": 11102
+          "line": 11155
         }
       ]
     },
@@ -2265,7 +2265,7 @@
         },
         {
           "file": "style.css",
-          "line": 11120
+          "line": 11173
         }
       ]
     },
@@ -2281,7 +2281,7 @@
         },
         {
           "file": "style.css",
-          "line": 11128
+          "line": 11181
         }
       ]
     },
@@ -2297,7 +2297,7 @@
         },
         {
           "file": "style.css",
-          "line": 11606
+          "line": 11659
         }
       ]
     },
@@ -2313,7 +2313,7 @@
         },
         {
           "file": "style.css",
-          "line": 14185
+          "line": 14238
         }
       ]
     },
@@ -2353,7 +2353,7 @@
         },
         {
           "file": "style.css",
-          "line": 14279
+          "line": 14332
         }
       ]
     },
@@ -2417,7 +2417,7 @@
         },
         {
           "file": "style.css",
-          "line": 14023
+          "line": 14076
         }
       ]
     },
@@ -2433,7 +2433,7 @@
         },
         {
           "file": "style.css",
-          "line": 13880
+          "line": 13933
         }
       ]
     },
@@ -2449,7 +2449,7 @@
         },
         {
           "file": "style.css",
-          "line": 13967
+          "line": 14020
         }
       ]
     },
@@ -2477,7 +2477,7 @@
         },
         {
           "file": "style.css",
-          "line": 13922
+          "line": 13975
         }
       ]
     },
@@ -2493,7 +2493,7 @@
         },
         {
           "file": "style.css",
-          "line": 13903
+          "line": 13956
         }
       ]
     },
@@ -2509,7 +2509,7 @@
         },
         {
           "file": "style.css",
-          "line": 13890
+          "line": 13943
         }
       ]
     },
@@ -2537,7 +2537,7 @@
         },
         {
           "file": "style.css",
-          "line": 13911
+          "line": 13964
         }
       ]
     },
@@ -2553,7 +2553,7 @@
         },
         {
           "file": "style.css",
-          "line": 13936
+          "line": 13989
         }
       ]
     },
@@ -2581,7 +2581,7 @@
         },
         {
           "file": "style.css",
-          "line": 13918
+          "line": 13971
         }
       ]
     },
@@ -2597,7 +2597,7 @@
         },
         {
           "file": "style.css",
-          "line": 13981
+          "line": 14034
         }
       ]
     },
@@ -2613,7 +2613,7 @@
         },
         {
           "file": "style.css",
-          "line": 14265
+          "line": 14318
         }
       ]
     },
@@ -2629,7 +2629,7 @@
         },
         {
           "file": "style.css",
-          "line": 14193
+          "line": 14246
         }
       ]
     },
@@ -2645,7 +2645,7 @@
         },
         {
           "file": "style.css",
-          "line": 14237
+          "line": 14290
         }
       ]
     },
@@ -2673,7 +2673,7 @@
         },
         {
           "file": "style.css",
-          "line": 14224
+          "line": 14277
         }
       ]
     },
@@ -2689,7 +2689,7 @@
         },
         {
           "file": "style.css",
-          "line": 14213
+          "line": 14266
         }
       ]
     },
@@ -2705,7 +2705,7 @@
         },
         {
           "file": "style.css",
-          "line": 14202
+          "line": 14255
         }
       ]
     },
@@ -2733,7 +2733,7 @@
         },
         {
           "file": "style.css",
-          "line": 14220
+          "line": 14273
         }
       ]
     },
@@ -2749,7 +2749,7 @@
         },
         {
           "file": "style.css",
-          "line": 14125
+          "line": 14178
         }
       ]
     },
@@ -2801,7 +2801,7 @@
         },
         {
           "file": "style.css",
-          "line": 14344
+          "line": 14397
         }
       ]
     },
@@ -2817,7 +2817,7 @@
         },
         {
           "file": "style.css",
-          "line": 13980
+          "line": 14033
         }
       ]
     },
@@ -2833,7 +2833,7 @@
         },
         {
           "file": "style.css",
-          "line": 11607
+          "line": 11660
         }
       ]
     },
@@ -2841,15 +2841,15 @@
       "selector": "#mainBar",
       "label": "Main Bar",
       "file": "main.js",
-      "line": 175,
+      "line": 176,
       "files": [
         {
           "file": "main.js",
-          "line": 175
+          "line": 176
         },
         {
           "file": "style.css",
-          "line": 2681
+          "line": 2719
         }
       ]
     },
@@ -2857,15 +2857,15 @@
       "selector": "#mainList",
       "label": "Main List",
       "file": "main.js",
-      "line": 203,
+      "line": 204,
       "files": [
         {
           "file": "main.js",
-          "line": 203
+          "line": 204
         },
         {
           "file": "style.css",
-          "line": 1785
+          "line": 1823
         }
       ]
     },
@@ -2873,11 +2873,11 @@
       "selector": "#mainSec",
       "label": "Main Sec",
       "file": "main.js",
-      "line": 171,
+      "line": 172,
       "files": [
         {
           "file": "main.js",
-          "line": 171
+          "line": 172
         },
         {
           "file": "style.css",
@@ -2889,15 +2889,15 @@
       "selector": "#mainSplit",
       "label": "Main Split",
       "file": "main.js",
-      "line": 451,
+      "line": 452,
       "files": [
         {
           "file": "main.js",
-          "line": 451
+          "line": 452
         },
         {
           "file": "style.css",
-          "line": 10234
+          "line": 10272
         }
       ]
     },
@@ -2925,7 +2925,7 @@
         },
         {
           "file": "style.css",
-          "line": 6561
+          "line": 6599
         }
       ]
     },
@@ -2941,7 +2941,7 @@
         },
         {
           "file": "style.css",
-          "line": 6633
+          "line": 6671
         }
       ]
     },
@@ -2957,7 +2957,7 @@
         },
         {
           "file": "style.css",
-          "line": 1662
+          "line": 1700
         }
       ]
     },
@@ -2973,7 +2973,7 @@
         },
         {
           "file": "style.css",
-          "line": 6607
+          "line": 6645
         }
       ]
     },
@@ -2989,7 +2989,7 @@
         },
         {
           "file": "style.css",
-          "line": 6595
+          "line": 6633
         }
       ]
     },
@@ -3005,7 +3005,7 @@
         },
         {
           "file": "style.css",
-          "line": 6640
+          "line": 6678
         }
       ]
     },
@@ -3021,7 +3021,7 @@
         },
         {
           "file": "style.css",
-          "line": 6577
+          "line": 6615
         }
       ]
     },
@@ -3037,7 +3037,7 @@
         },
         {
           "file": "style.css",
-          "line": 6584
+          "line": 6622
         }
       ]
     },
@@ -3053,7 +3053,7 @@
         },
         {
           "file": "style.css",
-          "line": 8635
+          "line": 8673
         }
       ]
     },
@@ -3073,11 +3073,11 @@
       "selector": "#mobileProjChevron",
       "label": "Mobile Proj Chevron",
       "file": "main.js",
-      "line": 1671,
+      "line": 1680,
       "files": [
         {
           "file": "main.js",
-          "line": 1671
+          "line": 1680
         }
       ]
     },
@@ -3085,15 +3085,15 @@
       "selector": "#mobileProjCounts",
       "label": "Mobile Proj Counts",
       "file": "main.js",
-      "line": 1651,
+      "line": 1660,
       "files": [
         {
           "file": "main.js",
-          "line": 1651
+          "line": 1660
         },
         {
           "file": "style.css",
-          "line": 8950
+          "line": 8988
         }
       ]
     },
@@ -3101,15 +3101,15 @@
       "selector": "#mobileProjHeader",
       "label": "Mobile Proj Header",
       "file": "main.js",
-      "line": 1644,
+      "line": 1653,
       "files": [
         {
           "file": "main.js",
-          "line": 1644
+          "line": 1653
         },
         {
           "file": "style.css",
-          "line": 2944
+          "line": 2982
         }
       ]
     },
@@ -3117,15 +3117,15 @@
       "selector": "#mobileProjLabel",
       "label": "Mobile Proj Label",
       "file": "main.js",
-      "line": 1645,
+      "line": 1654,
       "files": [
         {
           "file": "main.js",
-          "line": 1645
+          "line": 1654
         },
         {
           "file": "style.css",
-          "line": 8846
+          "line": 8884
         }
       ]
     },
@@ -3133,15 +3133,15 @@
       "selector": "#mobileProjName",
       "label": "Mobile Proj Name",
       "file": "main.js",
-      "line": 1648,
+      "line": 1657,
       "files": [
         {
           "file": "main.js",
-          "line": 1648
+          "line": 1657
         },
         {
           "file": "style.css",
-          "line": 8873
+          "line": 8911
         }
       ]
     },
@@ -3149,11 +3149,11 @@
       "selector": "#mobileProjNext",
       "label": "Mobile Proj Next",
       "file": "main.js",
-      "line": 1649,
+      "line": 1658,
       "files": [
         {
           "file": "main.js",
-          "line": 1649
+          "line": 1658
         }
       ]
     },
@@ -3161,15 +3161,15 @@
       "selector": "#mobileProjPill",
       "label": "Mobile Proj Pill",
       "file": "main.js",
-      "line": 1687,
+      "line": 1696,
       "files": [
         {
           "file": "main.js",
-          "line": 1687
+          "line": 1696
         },
         {
           "file": "style.css",
-          "line": 9869
+          "line": 9907
         }
       ]
     },
@@ -3177,11 +3177,11 @@
       "selector": "#mobileProjPrev",
       "label": "Mobile Proj Prev",
       "file": "main.js",
-      "line": 1647,
+      "line": 1656,
       "files": [
         {
           "file": "main.js",
-          "line": 1647
+          "line": 1656
         }
       ]
     },
@@ -3189,11 +3189,11 @@
       "selector": "#mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 1699,
+      "line": 1708,
       "files": [
         {
           "file": "main.js",
-          "line": 1699
+          "line": 1708
         }
       ]
     },
@@ -3201,15 +3201,15 @@
       "selector": "#mobileProjStats",
       "label": "Mobile Proj Stats",
       "file": "main.js",
-      "line": 1650,
+      "line": 1659,
       "files": [
         {
           "file": "main.js",
-          "line": 1650
+          "line": 1659
         },
         {
           "file": "style.css",
-          "line": 8942
+          "line": 8980
         }
       ]
     },
@@ -3217,15 +3217,15 @@
       "selector": "#mobileProjTitleRow",
       "label": "Mobile Proj Title Row",
       "file": "main.js",
-      "line": 1646,
+      "line": 1655,
       "files": [
         {
           "file": "main.js",
-          "line": 1646
+          "line": 1655
         },
         {
           "file": "style.css",
-          "line": 8862
+          "line": 8900
         }
       ]
     },
@@ -3233,15 +3233,15 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 2005,
+      "line": 2014,
       "files": [
         {
           "file": "main.js",
-          "line": 2005
+          "line": 2014
         },
         {
           "file": "style.css",
-          "line": 8126
+          "line": 8164
         }
       ]
     },
@@ -3249,11 +3249,11 @@
       "selector": "#mobileTabAgent",
       "label": "Mobile Tab Agent",
       "file": "main.js",
-      "line": 1018,
+      "line": 1027,
       "files": [
         {
           "file": "main.js",
-          "line": 1018
+          "line": 1027
         }
       ]
     },
@@ -3261,15 +3261,15 @@
       "selector": "#mobileTabBar",
       "label": "Mobile Tab Bar",
       "file": "main.js",
-      "line": 948,
+      "line": 957,
       "files": [
         {
           "file": "main.js",
-          "line": 948
+          "line": 957
         },
         {
           "file": "style.css",
-          "line": 8179
+          "line": 8217
         }
       ]
     },
@@ -3277,11 +3277,11 @@
       "selector": "#mobileTabProjects",
       "label": "Mobile Tab Projects",
       "file": "main.js",
-      "line": 1017,
+      "line": 1026,
       "files": [
         {
           "file": "main.js",
-          "line": 1017
+          "line": 1026
         }
       ]
     },
@@ -3289,11 +3289,11 @@
       "selector": "#mobileTabStructure",
       "label": "Mobile Tab Structure",
       "file": "main.js",
-      "line": 1019,
+      "line": 1028,
       "files": [
         {
           "file": "main.js",
-          "line": 1019
+          "line": 1028
         }
       ]
     },
@@ -3301,15 +3301,15 @@
       "selector": "#mobileUpdatePill",
       "label": "Mobile Update Pill",
       "file": "main.js",
-      "line": 2659,
+      "line": 2668,
       "files": [
         {
           "file": "main.js",
-          "line": 2659
+          "line": 2668
         },
         {
           "file": "style.css",
-          "line": 13407
+          "line": 13460
         }
       ]
     },
@@ -3337,7 +3337,7 @@
         },
         {
           "file": "style.css",
-          "line": 12184
+          "line": 12237
         }
       ]
     },
@@ -3353,7 +3353,7 @@
         },
         {
           "file": "style.css",
-          "line": 12116
+          "line": 12169
         }
       ]
     },
@@ -3361,15 +3361,15 @@
       "selector": "#musicToggle",
       "label": "Music Toggle",
       "file": "main.js",
-      "line": 282,
+      "line": 283,
       "files": [
         {
           "file": "main.js",
-          "line": 282
+          "line": 283
         },
         {
           "file": "style.css",
-          "line": 11981
+          "line": 12034
         }
       ]
     },
@@ -3377,11 +3377,11 @@
       "selector": "#navBar",
       "label": "Nav Bar",
       "file": "main.js",
-      "line": 170,
+      "line": 171,
       "files": [
         {
           "file": "main.js",
-          "line": 170
+          "line": 171
         },
         {
           "file": "style.css",
@@ -3409,11 +3409,11 @@
       "selector": "#outerContainer",
       "label": "Outer Container",
       "file": "main.js",
-      "line": 169,
+      "line": 170,
       "files": [
         {
           "file": "main.js",
-          "line": 169
+          "line": 170
         },
         {
           "file": "style.css",
@@ -3445,7 +3445,7 @@
         },
         {
           "file": "style.css",
-          "line": 11812
+          "line": 11865
         }
       ]
     },
@@ -3453,15 +3453,15 @@
       "selector": "#pomodoroToggle",
       "label": "Pomodoro Toggle",
       "file": "main.js",
-      "line": 246,
+      "line": 247,
       "files": [
         {
           "file": "main.js",
-          "line": 246
+          "line": 247
         },
         {
           "file": "style.css",
-          "line": 10794
+          "line": 10847
         }
       ]
     },
@@ -3469,11 +3469,11 @@
       "selector": "#projButton",
       "label": "Proj Button",
       "file": "main.js",
-      "line": 195,
+      "line": 196,
       "files": [
         {
           "file": "main.js",
-          "line": 195
+          "line": 196
         },
         {
           "file": "style.css",
@@ -3485,11 +3485,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 3563,
+      "line": 3572,
       "files": [
         {
           "file": "main.js",
-          "line": 3563
+          "line": 3572
         },
         {
           "file": "style.css",
@@ -3517,11 +3517,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 3571,
+      "line": 3580,
       "files": [
         {
           "file": "main.js",
-          "line": 3571
+          "line": 3580
         },
         {
           "file": "style.css",
@@ -3549,11 +3549,11 @@
       "selector": "#projectPickerDropdown",
       "label": "Project Picker Dropdown",
       "file": "main.js",
-      "line": 1732,
+      "line": 1741,
       "files": [
         {
           "file": "main.js",
-          "line": 1732
+          "line": 1741
         },
         {
           "file": "style.css",
@@ -3585,7 +3585,7 @@
         },
         {
           "file": "style.css",
-          "line": 9045
+          "line": 9083
         }
       ]
     },
@@ -3637,7 +3637,7 @@
         },
         {
           "file": "style.css",
-          "line": 4891
+          "line": 4929
         }
       ]
     },
@@ -3665,7 +3665,7 @@
         },
         {
           "file": "style.css",
-          "line": 1660
+          "line": 1698
         }
       ]
     },
@@ -3681,7 +3681,7 @@
         },
         {
           "file": "style.css",
-          "line": 4940
+          "line": 4978
         }
       ]
     },
@@ -3709,7 +3709,7 @@
         },
         {
           "file": "style.css",
-          "line": 4925
+          "line": 4963
         }
       ]
     },
@@ -3725,7 +3725,7 @@
         },
         {
           "file": "style.css",
-          "line": 5061
+          "line": 5099
         }
       ]
     },
@@ -3741,7 +3741,7 @@
         },
         {
           "file": "style.css",
-          "line": 4909
+          "line": 4947
         }
       ]
     },
@@ -3757,7 +3757,7 @@
         },
         {
           "file": "style.css",
-          "line": 4918
+          "line": 4956
         }
       ]
     },
@@ -3777,11 +3777,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "main.js",
-      "line": 2824,
+      "line": 2833,
       "files": [
         {
           "file": "main.js",
-          "line": 2824
+          "line": 2833
         }
       ]
     },
@@ -3789,11 +3789,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "main.js",
-      "line": 2947,
+      "line": 2956,
       "files": [
         {
           "file": "main.js",
-          "line": 2947
+          "line": 2956
         }
       ]
     },
@@ -3801,11 +3801,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "main.js",
-      "line": 2807,
+      "line": 2816,
       "files": [
         {
           "file": "main.js",
-          "line": 2807
+          "line": 2816
         }
       ]
     },
@@ -3813,11 +3813,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "main.js",
-      "line": 2916,
+      "line": 2925,
       "files": [
         {
           "file": "main.js",
-          "line": 2916
+          "line": 2925
         }
       ]
     },
@@ -3825,11 +3825,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "main.js",
-      "line": 2882,
+      "line": 2891,
       "files": [
         {
           "file": "main.js",
-          "line": 2882
+          "line": 2891
         }
       ]
     },
@@ -3845,93 +3845,13 @@
         },
         {
           "file": "style.css",
-          "line": 1666
+          "line": 1704
         }
       ]
     },
     {
       "selector": "#settingsModal",
       "label": "Settings Modal",
-      "file": "main.js",
-      "line": 2772,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2772
-        },
-        {
-          "file": "style.css",
-          "line": 9147
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalBackdrop",
-      "label": "Settings Modal Backdrop",
-      "file": "main.js",
-      "line": 2769,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2769
-        },
-        {
-          "file": "style.css",
-          "line": 9527
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalBody",
-      "label": "Settings Modal Body",
-      "file": "main.js",
-      "line": 2794,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2794
-        },
-        {
-          "file": "style.css",
-          "line": 9588
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalClose",
-      "label": "Settings Modal Close",
-      "file": "main.js",
-      "line": 2785,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2785
-        },
-        {
-          "file": "style.css",
-          "line": 9575
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalHeader",
-      "label": "Settings Modal Header",
-      "file": "main.js",
-      "line": 2778,
-      "files": [
-        {
-          "file": "main.js",
-          "line": 2778
-        },
-        {
-          "file": "style.css",
-          "line": 9558
-        }
-      ]
-    },
-    {
-      "selector": "#settingsModalTitle",
-      "label": "Settings Modal Title",
       "file": "main.js",
       "line": 2781,
       "files": [
@@ -3941,7 +3861,87 @@
         },
         {
           "file": "style.css",
-          "line": 9566
+          "line": 9185
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBackdrop",
+      "label": "Settings Modal Backdrop",
+      "file": "main.js",
+      "line": 2778,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2778
+        },
+        {
+          "file": "style.css",
+          "line": 9565
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalBody",
+      "label": "Settings Modal Body",
+      "file": "main.js",
+      "line": 2803,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2803
+        },
+        {
+          "file": "style.css",
+          "line": 9626
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalClose",
+      "label": "Settings Modal Close",
+      "file": "main.js",
+      "line": 2794,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2794
+        },
+        {
+          "file": "style.css",
+          "line": 9613
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalHeader",
+      "label": "Settings Modal Header",
+      "file": "main.js",
+      "line": 2787,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2787
+        },
+        {
+          "file": "style.css",
+          "line": 9596
+        }
+      ]
+    },
+    {
+      "selector": "#settingsModalTitle",
+      "label": "Settings Modal Title",
+      "file": "main.js",
+      "line": 2790,
+      "files": [
+        {
+          "file": "main.js",
+          "line": 2790
+        },
+        {
+          "file": "style.css",
+          "line": 9604
         }
       ]
     },
@@ -3949,15 +3949,15 @@
       "selector": "#settingsToggle",
       "label": "Settings Toggle",
       "file": "main.js",
-      "line": 357,
+      "line": 358,
       "files": [
         {
           "file": "main.js",
-          "line": 357
+          "line": 358
         },
         {
           "file": "style.css",
-          "line": 10792
+          "line": 10845
         }
       ]
     },
@@ -3965,11 +3965,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "main.js",
-      "line": 2797,
+      "line": 2806,
       "files": [
         {
           "file": "main.js",
-          "line": 2797
+          "line": 2806
         }
       ]
     },
@@ -3977,11 +3977,11 @@
       "selector": "#sideBar",
       "label": "Side Bar",
       "file": "main.js",
-      "line": 174,
+      "line": 175,
       "files": [
         {
           "file": "main.js",
-          "line": 174
+          "line": 175
         },
         {
           "file": "style.css",
@@ -3993,11 +3993,11 @@
       "selector": "#sideMa",
       "label": "Side Ma",
       "file": "main.js",
-      "line": 192,
+      "line": 193,
       "files": [
         {
           "file": "main.js",
-          "line": 192
+          "line": 193
         },
         {
           "file": "style.css",
@@ -4009,11 +4009,11 @@
       "selector": "#sideTit",
       "label": "Side Tit",
       "file": "main.js",
-      "line": 191,
+      "line": 192,
       "files": [
         {
           "file": "main.js",
-          "line": 191
+          "line": 192
         },
         {
           "file": "style.css",
@@ -4025,11 +4025,11 @@
       "selector": "#sidebarBottom",
       "label": "Sidebar Bottom",
       "file": "main.js",
-      "line": 1615,
+      "line": 1624,
       "files": [
         {
           "file": "main.js",
-          "line": 1615
+          "line": 1624
         },
         {
           "file": "style.css",
@@ -4041,15 +4041,15 @@
       "selector": "#sidebarOverlay",
       "label": "Sidebar Overlay",
       "file": "main.js",
-      "line": 219,
+      "line": 220,
       "files": [
         {
           "file": "main.js",
-          "line": 219
+          "line": 220
         },
         {
           "file": "style.css",
-          "line": 8082
+          "line": 8120
         }
       ]
     },
@@ -4057,11 +4057,11 @@
       "selector": "#sidebarToggle",
       "label": "Sidebar Toggle",
       "file": "main.js",
-      "line": 214,
+      "line": 215,
       "files": [
         {
           "file": "main.js",
-          "line": 214
+          "line": 215
         },
         {
           "file": "style.css",
@@ -4073,11 +4073,11 @@
       "selector": "#sidebarTop",
       "label": "Sidebar Top",
       "file": "main.js",
-      "line": 1614,
+      "line": 1623,
       "files": [
         {
           "file": "main.js",
-          "line": 1614
+          "line": 1623
         },
         {
           "file": "style.css",
@@ -4097,7 +4097,7 @@
         },
         {
           "file": "style.css",
-          "line": 5961
+          "line": 5999
         }
       ]
     },
@@ -4125,7 +4125,7 @@
         },
         {
           "file": "style.css",
-          "line": 6685
+          "line": 6723
         }
       ]
     },
@@ -4141,7 +4141,7 @@
         },
         {
           "file": "style.css",
-          "line": 1663
+          "line": 1701
         }
       ]
     },
@@ -4157,7 +4157,7 @@
         },
         {
           "file": "style.css",
-          "line": 6745
+          "line": 6783
         }
       ]
     },
@@ -4173,7 +4173,7 @@
         },
         {
           "file": "style.css",
-          "line": 6732
+          "line": 6770
         }
       ]
     },
@@ -4189,7 +4189,7 @@
         },
         {
           "file": "style.css",
-          "line": 6701
+          "line": 6739
         }
       ]
     },
@@ -4205,7 +4205,7 @@
         },
         {
           "file": "style.css",
-          "line": 6722
+          "line": 6760
         }
       ]
     },
@@ -4221,7 +4221,7 @@
         },
         {
           "file": "style.css",
-          "line": 6713
+          "line": 6751
         }
       ]
     },
@@ -4237,7 +4237,7 @@
         },
         {
           "file": "style.css",
-          "line": 6709
+          "line": 6747
         }
       ]
     },
@@ -4253,7 +4253,7 @@
         },
         {
           "file": "style.css",
-          "line": 5235
+          "line": 5273
         }
       ]
     },
@@ -4269,7 +4269,7 @@
         },
         {
           "file": "style.css",
-          "line": 6314
+          "line": 6352
         }
       ]
     },
@@ -4277,15 +4277,15 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1949,
+      "line": 1958,
       "files": [
         {
           "file": "main.js",
-          "line": 1949
+          "line": 1958
         },
         {
           "file": "style.css",
-          "line": 2954
+          "line": 2992
         }
       ]
     },
@@ -4301,7 +4301,7 @@
         },
         {
           "file": "style.css",
-          "line": 2689
+          "line": 2727
         }
       ]
     },
@@ -4321,15 +4321,15 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 2042,
+      "line": 2051,
       "files": [
         {
           "file": "main.js",
-          "line": 2042
+          "line": 2051
         },
         {
           "file": "style.css",
-          "line": 5154
+          "line": 5192
         }
       ]
     },
@@ -4337,15 +4337,15 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 2079,
+      "line": 2088,
       "files": [
         {
           "file": "main.js",
-          "line": 2079
+          "line": 2088
         },
         {
           "file": "style.css",
-          "line": 5155
+          "line": 5193
         }
       ]
     },
@@ -4353,15 +4353,15 @@
       "selector": "#taskSortMenu",
       "label": "Task Sort Menu",
       "file": "main.js",
-      "line": 2183,
+      "line": 2192,
       "files": [
         {
           "file": "main.js",
-          "line": 2183
+          "line": 2192
         },
         {
           "file": "style.css",
-          "line": 10861
+          "line": 10914
         }
       ]
     },
@@ -4369,15 +4369,15 @@
       "selector": "#taskSortSheet",
       "label": "Task Sort Sheet",
       "file": "main.js",
-      "line": 2268,
+      "line": 2277,
       "files": [
         {
           "file": "main.js",
-          "line": 2268
+          "line": 2277
         },
         {
           "file": "style.css",
-          "line": 6973
+          "line": 7011
         }
       ]
     },
@@ -4385,15 +4385,15 @@
       "selector": "#taskSortSheetBackdrop",
       "label": "Task Sort Sheet Backdrop",
       "file": "main.js",
-      "line": 2265,
+      "line": 2274,
       "files": [
         {
           "file": "main.js",
-          "line": 2265
+          "line": 2274
         },
         {
           "file": "style.css",
-          "line": 6959
+          "line": 6997
         }
       ]
     },
@@ -4401,11 +4401,11 @@
       "selector": "#taskSortSheetTitle",
       "label": "Task Sort Sheet Title",
       "file": "main.js",
-      "line": 2280,
+      "line": 2289,
       "files": [
         {
           "file": "main.js",
-          "line": 2280
+          "line": 2289
         }
       ]
     },
@@ -4453,7 +4453,7 @@
         },
         {
           "file": "style.css",
-          "line": 5679
+          "line": 5717
         }
       ]
     },
@@ -4481,7 +4481,7 @@
         },
         {
           "file": "style.css",
-          "line": 5471
+          "line": 5509
         }
       ]
     },
@@ -4497,7 +4497,7 @@
         },
         {
           "file": "style.css",
-          "line": 7096
+          "line": 7134
         }
       ]
     },
@@ -4513,7 +4513,7 @@
         },
         {
           "file": "style.css",
-          "line": 7082
+          "line": 7120
         }
       ]
     },
@@ -4541,7 +4541,7 @@
         },
         {
           "file": "style.css",
-          "line": 7670
+          "line": 7708
         }
       ]
     },
@@ -4557,7 +4557,7 @@
         },
         {
           "file": "style.css",
-          "line": 7656
+          "line": 7694
         }
       ]
     },
@@ -4601,11 +4601,11 @@
       "selector": "#viewPillAgent",
       "label": "View Pill Agent",
       "file": "main.js",
-      "line": 1874,
+      "line": 1883,
       "files": [
         {
           "file": "main.js",
-          "line": 1874
+          "line": 1883
         }
       ]
     },
@@ -4613,11 +4613,11 @@
       "selector": "#viewPillProjects",
       "label": "View Pill Projects",
       "file": "main.js",
-      "line": 1866,
+      "line": 1875,
       "files": [
         {
           "file": "main.js",
-          "line": 1866
+          "line": 1875
         }
       ]
     },
@@ -4625,11 +4625,11 @@
       "selector": "#viewPillStructure",
       "label": "View Pill Structure",
       "file": "main.js",
-      "line": 1882,
+      "line": 1891,
       "files": [
         {
           "file": "main.js",
-          "line": 1882
+          "line": 1891
         }
       ]
     },
@@ -4637,15 +4637,15 @@
       "selector": "#viewSwitcher",
       "label": "View Switcher",
       "file": "main.js",
-      "line": 1861,
+      "line": 1870,
       "files": [
         {
           "file": "main.js",
-          "line": 1861
+          "line": 1870
         },
         {
           "file": "style.css",
-          "line": 2877
+          "line": 2915
         }
       ]
     },
