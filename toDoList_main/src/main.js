@@ -51,6 +51,7 @@ import {
 } from './modals.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { syncClaudeSheetForProject } from './claudeSheet.js';
+import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
@@ -486,7 +487,15 @@ function component() {
         setChatPaneCollapsed(collapsed);
     }
     chatCollapseBtn.addEventListener('click', function() { applyChatPaneCollapsed(true); });
-    chatExpandBtn.addEventListener('click', function() { applyChatPaneCollapsed(false); });
+    chatExpandBtn.addEventListener('click', function() {
+        // On a project with no routed repo the pane is unavailable, not merely
+        // collapsed: re-opening it is a no-op that explains why instead.
+        if (isClaudeUnavailable()) {
+            showClaudeUnavailableTooltip(chatExpandBtn);
+            return;
+        }
+        applyChatPaneCollapsed(false);
+    });
     // Seed the body class from the persisted pref before first paint so a
     // collapsed pane doesn't flash open on reload.
     document.body.classList.toggle('chatPaneCollapsed', isChatPaneCollapsed());

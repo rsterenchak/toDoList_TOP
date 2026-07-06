@@ -5,6 +5,9 @@ import { vi } from 'vitest';
 import {
     mountClaudeSheet,
     syncClaudeSheetForProject,
+    isClaudeUnavailable,
+    isClaudeSheetOpen,
+    CLAUDE_UNAVAILABLE_MSG,
 } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
@@ -129,6 +132,99 @@ describe('syncClaudeSheetForProject — auto-expand/collapse chat pane on projec
     });
 });
 
+// A project with no routed repo must present the assistant's entry points as
+// visible-but-inert: one `claudeUnavailable` body flag drives the dimmed CSS on
+// the launcher and expand tab, flips their aria-disabled, and makes a tap a
+// no-op-plus-tooltip instead of opening a chat against the wrong repo. The flag
+// clears the moment a repo-backed project becomes active.
+describe('syncClaudeSheetForProject — gate the assistant off with no repo', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.innerHTML = '';
+        document.body.className = '';
+        listLogic._reset();
+        mountClaudeSheet(document.body);
+    });
+
+    it('sets the claudeUnavailable flag when the project has no repo', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+
+        syncClaudeSheetForProject('NoRepo');
+        expect(document.body.classList.contains('claudeUnavailable')).toBe(true);
+        expect(isClaudeUnavailable()).toBe(true);
+    });
+
+    it('clears the flag when a repo-backed project becomes active', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+        seedProject('Repo', 'tgt-1');
+
+        syncClaudeSheetForProject('NoRepo');
+        expect(isClaudeUnavailable()).toBe(true);
+
+        syncClaudeSheetForProject('Repo');
+        expect(document.body.classList.contains('claudeUnavailable')).toBe(false);
+        expect(isClaudeUnavailable()).toBe(false);
+    });
+
+    it('treats unconfigured inject as unavailable even with a target', () => {
+        setInjectConfigured(false);
+        seedProject('Repo', 'tgt-1');
+
+        syncClaudeSheetForProject('Repo');
+        expect(isClaudeUnavailable()).toBe(true);
+    });
+
+    it('marks the launcher aria-disabled with an explanatory title when unavailable', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+
+        syncClaudeSheetForProject('NoRepo');
+        const launcher = document.getElementById('claudeLauncher');
+        expect(launcher.getAttribute('aria-disabled')).toBe('true');
+        expect(launcher.getAttribute('title')).toBe(CLAUDE_UNAVAILABLE_MSG);
+    });
+
+    it('restores the launcher when a repo is routed', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+        seedProject('Repo', 'tgt-1');
+
+        syncClaudeSheetForProject('NoRepo');
+        syncClaudeSheetForProject('Repo');
+        const launcher = document.getElementById('claudeLauncher');
+        expect(launcher.hasAttribute('aria-disabled')).toBe(false);
+        // Original launcher title is restored, not the unavailable message.
+        expect(launcher.getAttribute('title')).toBe('Claude');
+    });
+
+    it('tapping the launcher while unavailable is a no-op that shows a tooltip', () => {
+        setInjectConfigured(true);
+        seedProject('NoRepo', null);
+
+        syncClaudeSheetForProject('NoRepo');
+        const launcher = document.getElementById('claudeLauncher');
+        launcher.click();
+
+        expect(isClaudeSheetOpen()).toBe(false);
+        const tip = document.querySelector('.claudeUnavailableTooltip');
+        expect(tip).not.toBeNull();
+        expect(tip.textContent).toBe(CLAUDE_UNAVAILABLE_MSG);
+    });
+
+    it('tapping the launcher opens the sheet once a repo is routed', () => {
+        setInjectConfigured(true);
+        seedProject('Repo', 'tgt-1');
+
+        syncClaudeSheetForProject('Repo');
+        const launcher = document.getElementById('claudeLauncher');
+        launcher.click();
+
+        expect(isClaudeSheetOpen()).toBe(true);
+    });
+});
+
 // Static wiring guard: the helper is exported, and main.js routes project
 // switches through it. Both projChild click handlers (component + restore) must
 // call it so sidebar, dropdown, and prev/next navigation all auto-sync.
@@ -149,5 +245,13 @@ describe('project-switch auto-sync wiring', () => {
         const calls = main.match(/syncClaudeSheetForProject\(/g) || [];
         // two click-handler call sites (the import reference has no paren)
         expect(calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('main.js gates the chat expand tab through isClaudeUnavailable', () => {
+        const main = read('main.js');
+        expect(main)
+            .toMatch(/import\s*\{[^}]*isClaudeUnavailable[^}]*\}\s*from\s*['"]\.\/claudeSheet\.js['"]/);
+        expect(main).toMatch(/isClaudeUnavailable\(\)/);
+        expect(main).toMatch(/showClaudeUnavailableTooltip\(/);
     });
 });

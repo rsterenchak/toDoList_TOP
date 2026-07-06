@@ -1654,6 +1654,44 @@ body {
   border-color: var(--accent-text);
 }
 
+/* Unavailable — the active project has no routed repo. Present the launcher as
+   visible-but-inert, mirroring the dimmed .injectBtn--unconfigured call-to-fix
+   state: dim border, muted text, no lift-shadow, default cursor, and no
+   hover-brighten (the click handler no-ops and surfaces a tooltip instead).
+   Driven by the single `claudeUnavailable` body flag set on project switch. */
+body.claudeUnavailable #claudeLauncher {
+  border-color: var(--accent-dim);
+  color: var(--text-secondary);
+  opacity: 0.85;
+  box-shadow: none;
+  cursor: default;
+}
+body.claudeUnavailable #claudeLauncher:hover {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border-color: var(--accent-dim);
+  transform: none;
+}
+
+/* The touch-equivalent of the desktop hover title: a small bubble surfaced when
+   a dimmed entry point is tapped while the assistant is unavailable. Positioned
+   via computed fixed coords in JS (left of the anchor); non-interactive. */
+.claudeUnavailableTooltip {
+  position: fixed;
+  z-index: 95;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--accent-dim);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 body:has(#confirmModalBackdrop) #claudeLauncher,
 body:has(#changelogModalBackdrop) #claudeLauncher,
 body:has(#descEditorModalBackdrop) #claudeLauncher,
@@ -10611,6 +10649,21 @@ body.row-dragging * { cursor: grabbing !important; }
   body.chatPaneCollapsed #chatExpandButton:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
+  }
+
+  /* Unavailable — no routed repo. The expand tab stays visible (the pane is
+     always collapsed in this state) but reads as inert: dimmed, default cursor,
+     and no hover-brighten, matching the launcher's dimmed treatment. The click
+     handler no-ops and surfaces the reason. */
+  body.claudeUnavailable #chatExpandButton {
+    border-color: var(--accent-dim);
+    color: var(--text-secondary);
+    opacity: 0.85;
+    cursor: default;
+  }
+  body.claudeUnavailable #chatExpandButton:hover {
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
   }
 }
 
