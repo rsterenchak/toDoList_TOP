@@ -210,7 +210,9 @@ describe('desktop header consolidation', () => {
         // The restyle is CSS-only; the click handlers and the active-class
         // toggle in applyActiveView are untouched, so a tab tap still flips
         // which tab is active (and thus which one paints the underline).
-        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]click['"][\s\S]{0,120}applyActiveView\(\s*['"]agent['"]/);
+        // The AGENT pill routes to applyActiveView('agent') after an
+        // unavailable-repo guard, so the window is wider than the bare wiring.
+        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]click['"][\s\S]{0,600}applyActiveView\(\s*['"]agent['"]/);
         const fnIdx = main.indexOf('function applyActiveView(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = main.slice(fnIdx, fnIdx + 1400);

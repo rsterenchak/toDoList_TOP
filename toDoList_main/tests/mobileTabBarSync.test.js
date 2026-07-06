@@ -99,8 +99,11 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             const builderIdx = main.indexOf('function buildMobileTab');
             expect(builderIdx).toBeGreaterThan(-1);
             const builderBody = main.slice(builderIdx, builderIdx + 1500);
+            // The click handler routes to applyActiveView(viewKey) after an
+            // AGENT-tab unavailable-repo guard, so the window is wider than the
+            // bare wiring it used to hold.
             expect(builderBody).toMatch(
-                /addEventListener\(\s*['"]click['"][\s\S]{0,200}applyActiveView\(\s*viewKey\s*\)/
+                /addEventListener\(\s*['"]click['"][\s\S]{0,600}applyActiveView\(\s*viewKey\s*\)/
             );
         });
     });

@@ -2953,6 +2953,42 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
+/* AGENT tab unavailable — the active project has no routed repo, so the tab is
+   present but inert (visible, not hidden), mirroring the dimmed Claude-launcher
+   treatment: dim border, muted text, default cursor, no hover-brighten (the
+   click handler no-ops and surfaces a tooltip instead). Driven by the single
+   `agentUnavailable` body flag set on project switch. */
+body.agentUnavailable #viewPillAgent {
+  border-color: var(--accent-dim);
+  color: var(--text-secondary);
+  opacity: 0.85;
+  cursor: default;
+}
+body.agentUnavailable #viewPillAgent:hover {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: var(--accent-dim);
+}
+
+/* The touch-equivalent of the desktop hover title: a small bubble surfaced when
+   the dimmed AGENT tab is tapped while it's unavailable. Positioned via computed
+   fixed coords in JS (below the anchor); non-interactive. */
+.agentUnavailableTooltip {
+  position: fixed;
+  z-index: 95;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--accent-dim);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 /* ── AGENT VIEW ──
    The per-project agent-queue board: the selected project's name + an
    "Agent queue" chip, followed by grouped buckets (Needs you, Stuck, In
@@ -13594,6 +13630,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     font-weight: 700;
   }
   .mobileTab.active::before { background: var(--accent); }
+
+  /* AGENT tab unavailable on mobile — the active project has no routed repo, so
+     the bottom-bar tab is present but inert: dimmed and default cursor, matching
+     the desktop pill and Claude-launcher treatment. The click handler no-ops and
+     surfaces the reason. */
+  body.agentUnavailable #mobileTabAgent {
+    color: var(--text-secondary);
+    opacity: 0.85;
+    cursor: default;
+  }
 
   .mobileTab:focus-visible {
     outline: 2px solid var(--accent);

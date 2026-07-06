@@ -98,7 +98,10 @@ describe('Projects / Agent view switcher', () => {
 
         it('wires both pill buttons to applyActiveView', () => {
             expect(main).toMatch(/viewPillProjects\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]projects['"]/);
-            expect(main).toMatch(/viewPillAgent\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]agent['"]/);
+            // The AGENT pill routes to applyActiveView('agent') after an
+            // unavailable-repo guard, so the window is wider than the plain
+            // Projects pill's.
+            expect(main).toMatch(/viewPillAgent\.addEventListener\('click'[\s\S]{0,600}applyActiveView\(\s*['"]agent['"]/);
         });
 
         it('appends pills in PROJECTS, AGENT order', () => {
