@@ -81,8 +81,6 @@ import {
     subscribeAgentView,
     unsubscribeAgentView,
     syncAgentAvailabilityForProject,
-    isAgentUnavailable,
-    showAgentUnavailableTooltip,
 } from './agentView.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
@@ -986,13 +984,9 @@ function component() {
         btn.appendChild(icon);
         btn.appendChild(text);
         btn.addEventListener('click', function() {
-            // The AGENT tab is gated off on projects with no routed repo — a tap
-            // there is a no-op that surfaces the reason instead of opening a dead
-            // board (mirrors the desktop pill guard and the Claude launcher).
-            if (viewKey === 'agent' && isAgentUnavailable()) {
-                showAgentUnavailableTooltip(btn);
-                return;
-            }
+            // The AGENT tab always navigates now, even on projects with no routed
+            // repo — the view itself renders an in-place "unavailable" message
+            // instead of a dead board, so there's no early-return no-op here.
             applyActiveView(viewKey);
         });
         return btn;
@@ -1040,6 +1034,15 @@ function component() {
     mobileTabProjects.id = 'mobileTabProjects';
     mobileTabAgent.id = 'mobileTabAgent';
     mobileTabStructure.id = 'mobileTabStructure';
+
+    // Small hollow "no-repo" marker shown on the AGENT tab only while
+    // body.agentUnavailable is set (CSS toggles its display). The tab stays fully
+    // tappable — the marker signals the project has no routed repo, and tapping
+    // opens the in-view unavailable message rather than a live board.
+    const mobileTabAgentMarker = document.createElement('span');
+    mobileTabAgentMarker.className = 'agentNoRepoMarker';
+    mobileTabAgentMarker.setAttribute('aria-hidden', 'true');
+    mobileTabAgent.appendChild(mobileTabAgentMarker);
 
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabAgent);
@@ -1900,6 +1903,13 @@ function component() {
     viewPillAgent.setAttribute('role', 'tab');
     viewPillAgent.setAttribute('aria-pressed', 'false');
     viewPillAgent.textContent = 'AGENT';
+    // Same hollow "no-repo" marker as the mobile tab, shown only while
+    // body.agentUnavailable is set. A real <span> (not a pseudo-element) because
+    // the pill's ::after is already the active-underline bar.
+    const viewPillAgentMarker = document.createElement('span');
+    viewPillAgentMarker.className = 'agentNoRepoMarker';
+    viewPillAgentMarker.setAttribute('aria-hidden', 'true');
+    viewPillAgent.appendChild(viewPillAgentMarker);
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -1917,13 +1927,9 @@ function component() {
         applyActiveView('projects');
     });
     viewPillAgent.addEventListener('click', function() {
-        // On a project with no routed repo the AGENT tab is unavailable, not
-        // merely idle: opening it is a no-op that explains why instead, since
-        // there is nowhere to inject the agent's TODO.md entry.
-        if (isAgentUnavailable()) {
-            showAgentUnavailableTooltip(viewPillAgent);
-            return;
-        }
+        // The AGENT tab always opens now — on a project with no routed repo the
+        // view renders an in-place "unavailable" message rather than a dead board,
+        // so there's no reason to intercept the tap.
         applyActiveView('agent');
     });
     viewPillStructure.addEventListener('click', function() {

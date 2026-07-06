@@ -2953,40 +2953,25 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
-/* AGENT tab unavailable — the active project has no routed repo, so the tab is
-   present but inert (visible, not hidden), mirroring the dimmed Claude-launcher
-   treatment: dim border, muted text, default cursor, no hover-brighten (the
-   click handler no-ops and surfaces a tooltip instead). Driven by the single
-   `agentUnavailable` body flag set on project switch. */
-body.agentUnavailable #viewPillAgent {
-  border-color: var(--accent-dim);
-  color: var(--text-secondary);
-  opacity: 0.85;
-  cursor: default;
+/* AGENT tab "no-repo" marker — the active project has no routed repo, so the tab
+   stays fully tappable (it opens an in-view unavailable message) but carries a
+   small hollow ring signalling the state. A real <span> appended to the pill and
+   the mobile tab, hidden by default and revealed only while the single
+   `agentUnavailable` body flag is set. On the desktop pill it sits inline after
+   the "AGENT" label. */
+.agentNoRepoMarker {
+  display: none;
 }
-body.agentUnavailable #viewPillAgent:hover {
-  color: var(--text-secondary);
+body.agentUnavailable #viewPillAgent .agentNoRepoMarker {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
   background: transparent;
-  border-color: var(--accent-dim);
-}
-
-/* The touch-equivalent of the desktop hover title: a small bubble surfaced when
-   the dimmed AGENT tab is tapped while it's unavailable. Positioned via computed
-   fixed coords in JS (below the anchor); non-interactive. */
-.agentUnavailableTooltip {
-  position: fixed;
-  z-index: 95;
-  max-width: 220px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  border: 0.5px solid var(--accent-dim);
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
+  vertical-align: middle;
+  opacity: 0.85;
 }
 
 /* ── AGENT VIEW ──
@@ -13631,14 +13616,22 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
   .mobileTab.active::before { background: var(--accent); }
 
-  /* AGENT tab unavailable on mobile — the active project has no routed repo, so
-     the bottom-bar tab is present but inert: dimmed and default cursor, matching
-     the desktop pill and Claude-launcher treatment. The click handler no-ops and
-     surfaces the reason. */
-  body.agentUnavailable #mobileTabAgent {
-    color: var(--text-secondary);
+  /* AGENT tab "no-repo" marker on mobile — the active project has no routed repo,
+     so the bottom-bar tab stays tappable (it opens the in-view unavailable
+     message) but shows the same small hollow ring as the desktop pill. The tab is
+     a vertical icon/label stack, so the marker is pinned to the top-right corner
+     rather than placed inline. */
+  body.agentUnavailable #mobileTabAgent .agentNoRepoMarker {
+    display: block;
+    position: absolute;
+    top: 6px;
+    right: 22%;
+    width: 6px;
+    height: 6px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
     opacity: 0.85;
-    cursor: default;
   }
 
   .mobileTab:focus-visible {
