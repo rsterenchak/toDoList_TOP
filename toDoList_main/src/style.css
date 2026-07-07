@@ -3137,10 +3137,12 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
 .structureTreeLoading,
 .structureNoManifest,
 .structureNoUiMap,
-/* Structure empty states share the AGENT no-repo view's centered column layout
-   (see `.agentEmptyState`) so the two read identically — a repo-less project
-   shows a centered link-off glyph above the guiding message. */
-.structureEmptyGlyph {
+/* Structure and AGENT no-repo empty states share the centered column layout
+   (see `.agentEmptyState`) so the two read identically — a non-configured tab
+   shows a centered link-off glyph above the guiding message. Both glyph classes
+   share this rule so the two can't drift. */
+.structureEmptyGlyph,
+.agentEmptyGlyph {
   color: var(--text-muted);
   display: inline-flex;
 }

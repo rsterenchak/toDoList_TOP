@@ -1244,6 +1244,35 @@ function buildBoltIcon() {
     return svg;
 }
 
+// A larger link-off glyph for the no-routed-repo empty state, mirroring the
+// STRUCTURE tab's no-linked-repo glyph exactly so the two non-configured views
+// read identically. DOM-built like buildBoltIcon() — no new asset, no icon
+// library — and theme-correct via currentColor (muted through .agentEmptyGlyph).
+function buildLinkOffIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '40');
+    svg.setAttribute('height', '40');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.6');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    [
+        ['path', { d: 'M9 17H7A5 5 0 0 1 7 7h2' }],
+        ['path', { d: 'M15 7h2a5 5 0 0 1 4 8' }],
+        ['line', { x1: '8', y1: '12', x2: '12', y2: '12' }],
+        ['line', { x1: '2', y1: '2', x2: '22', y2: '22' }],
+    ].forEach(function (spec) {
+        const el = document.createElementNS(ns, spec[0]);
+        Object.keys(spec[1]).forEach(function (k) { el.setAttribute(k, spec[1][k]); });
+        svg.appendChild(el);
+    });
+    return svg;
+}
+
 // Header count segments derived from the loaded queue rows. flagged = every
 // queue row for the project; running = rows in an in-flight workflow state;
 // shippedToday = shipped rows whose `updated_at` falls on today's local date.
@@ -1433,7 +1462,17 @@ function paint() {
     if (isAgentUnavailable()) {
         const empty = document.createElement('div');
         empty.className = 'agentEmptyState';
-        empty.textContent = AGENT_UNAVAILABLE_MSG;
+        // Centered link-off glyph above the message, matching the STRUCTURE tab's
+        // no-linked-repo empty state so both non-configured views read identically.
+        // Scoped to this branch only — the other agent empty states stay text-only.
+        const glyph = document.createElement('span');
+        glyph.className = 'agentEmptyGlyph';
+        glyph.setAttribute('aria-hidden', 'true');
+        glyph.appendChild(buildLinkOffIcon());
+        empty.appendChild(glyph);
+        const msg = document.createElement('span');
+        msg.textContent = AGENT_UNAVAILABLE_MSG;
+        empty.appendChild(msg);
         view.appendChild(empty);
         return;
     }

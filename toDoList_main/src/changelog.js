@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-07',
         added: [
             "On projects with no linked repo, the STRUCTURE tab now shows a small no-repo marker and opens to a centered link-off glyph above the guiding message.",
+            "The AGENT tab's no-repo view now shows a centered link-off glyph above its message, matching the STRUCTURE tab.",
         ],
     },
     {
@@ -19,13 +20,6 @@ export const changelog = [
         ],
         changed: [
             "On projects with no repo configured, the AGENT tab is now tappable and opens an in-view 'no repo configured' message instead of being disabled.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-05',
-        fixed: [
-            "Dispatching an Agent draft no longer stalls when the injected entry is slow to appear on main — the run starts anyway and self-heals on retry if it ever races.",
         ],
     },
 ];
