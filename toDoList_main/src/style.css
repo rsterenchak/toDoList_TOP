@@ -2953,16 +2953,18 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border-color: #6C5DF5;
 }
 
-/* AGENT tab "no-repo" marker — the active project has no routed repo, so the tab
-   stays fully tappable (it opens an in-view unavailable message) but carries a
-   small hollow ring signalling the state. A real <span> appended to the pill and
-   the mobile tab, hidden by default and revealed only while the single
+/* AGENT / STRUCTURE tab "no-repo" marker — the active project has no routed
+   repo, so the tab stays fully tappable (AGENT opens an in-view unavailable
+   message; STRUCTURE opens the unlinked-repo empty state) but carries a small
+   hollow ring signalling the state. A real <span> appended to each pill and
+   mobile tab, hidden by default and revealed only while the single
    `agentUnavailable` body flag is set. On the desktop pill it sits inline after
-   the "AGENT" label. */
+   the label. */
 .agentNoRepoMarker {
   display: none;
 }
-body.agentUnavailable #viewPillAgent .agentNoRepoMarker {
+body.agentUnavailable #viewPillAgent .agentNoRepoMarker,
+body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   display: inline-block;
   width: 6px;
   height: 6px;
@@ -3135,10 +3137,12 @@ body.agentUnavailable #viewPillAgent .agentNoRepoMarker {
 .structureTreeLoading,
 .structureNoManifest,
 .structureNoUiMap,
-.structureEmptyState {
+/* Structure empty states share the AGENT no-repo view's centered column layout
+   (see `.agentEmptyState`) so the two read identically — a repo-less project
+   shows a centered link-off glyph above the guiding message. */
+.structureEmptyGlyph {
   color: var(--text-muted);
-  font-size: 13px;
-  padding: 12px 4px;
+  display: inline-flex;
 }
 
 /* Live filter box — narrows whichever lens is showing. Styled like the chat
@@ -4159,13 +4163,18 @@ body.agentUnavailable #viewPillAgent .agentNoRepoMarker {
   transition: background 0.4s ease;
 }
 
-.agentEmptyState {
+.agentEmptyState,
+.structureEmptyState {
   margin: auto;
   max-width: 340px;
   text-align: center;
   color: var(--text-secondary, var(--text-muted));
   font-size: 14px;
   line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .agentViewHeader {
@@ -13621,7 +13630,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      message) but shows the same small hollow ring as the desktop pill. The tab is
      a vertical icon/label stack, so the marker is pinned to the top-right corner
      rather than placed inline. */
-  body.agentUnavailable #mobileTabAgent .agentNoRepoMarker {
+  body.agentUnavailable #mobileTabAgent .agentNoRepoMarker,
+  body.agentUnavailable #mobileTabStructure .agentNoRepoMarker {
     display: block;
     position: absolute;
     top: 6px;
