@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-07',
+        added: [
+            "On projects with no linked repo, the STRUCTURE tab now shows a small no-repo marker and opens to a centered link-off glyph above the guiding message.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-06',
         fixed: [
             "The Claude assistant is now dimmed and disabled on projects with no repo configured, so it can't be opened against the wrong repo.",
@@ -18,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-05',
         fixed: [
-            "Dispatching an Agent draft now waits longer for the entry to reach main and reuses the same entry across retries, so a valid dispatch is no longer falsely blocked and retrying never adds a duplicate task.",
             "Dispatching an Agent draft no longer stalls when the injected entry is slow to appear on main — the run starts anyway and self-heals on retry if it ever races.",
         ],
     },

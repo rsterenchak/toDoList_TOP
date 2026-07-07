@@ -225,6 +225,8 @@ describe('renderStructureView — project-derived repo', () => {
         // No header / repo label is rendered in the empty state.
         expect(document.querySelector('.structureRepoName')).toBeFalsy();
         expect(document.querySelector('.structureLensToggle')).toBeFalsy();
+        // The no-repo glyph is scoped to the unlinked-repo branch only.
+        expect(document.querySelector('.structureEmptyGlyph')).toBeFalsy();
     });
 
     it('guides the user to link a repo when the selected project has none', async () => {
@@ -237,6 +239,12 @@ describe('renderStructureView — project-derived repo', () => {
         expect(empty.textContent).toContain('Unlinked');
         expect(empty.textContent).toMatch(/link one in its inject target/i);
         expect(document.querySelector('.structureLensToggle')).toBeFalsy();
+        // A centered link-off glyph sits above the message, mirroring the AGENT
+        // no-repo view. It's aria-hidden and contributes no text.
+        const glyph = empty.querySelector('.structureEmptyGlyph');
+        expect(glyph).toBeTruthy();
+        expect(glyph.getAttribute('aria-hidden')).toBe('true');
+        expect(glyph.querySelector('svg')).toBeTruthy();
     });
 
     it('does NOT reframe the chat workspace on render or project switch', async () => {

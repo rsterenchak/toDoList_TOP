@@ -1044,6 +1044,14 @@ function component() {
     mobileTabAgentMarker.setAttribute('aria-hidden', 'true');
     mobileTabAgent.appendChild(mobileTabAgentMarker);
 
+    // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
+    // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
+    // empty state) but carries the marker while body.agentUnavailable is set.
+    const mobileTabStructureMarker = document.createElement('span');
+    mobileTabStructureMarker.className = 'agentNoRepoMarker';
+    mobileTabStructureMarker.setAttribute('aria-hidden', 'true');
+    mobileTabStructure.appendChild(mobileTabStructureMarker);
+
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabAgent);
     mobileTabBar.appendChild(mobileTabStructure);
@@ -1918,6 +1926,12 @@ function component() {
     viewPillStructure.setAttribute('role', 'tab');
     viewPillStructure.setAttribute('aria-pressed', 'false');
     viewPillStructure.textContent = 'STRUCTURE';
+    // Same hollow "no-repo" marker as the AGENT pill, shown only while
+    // body.agentUnavailable is set — a repo-less project can't be mapped.
+    const viewPillStructureMarker = document.createElement('span');
+    viewPillStructureMarker.className = 'agentNoRepoMarker';
+    viewPillStructureMarker.setAttribute('aria-hidden', 'true');
+    viewPillStructure.appendChild(viewPillStructureMarker);
 
     viewSwitcher.appendChild(viewPillProjects);
     viewSwitcher.appendChild(viewPillAgent);

@@ -2393,11 +2393,36 @@ function getSelectedProjectName() {
     return input ? (input.value || '').trim() : '';
 }
 
+// An unlinked-repo (link-off) glyph, DOM-built inline like agentView's icons —
+// no icon library, no new deps. Shown centered above the message only in the
+// no-linked-repo empty state, mirroring the AGENT no-repo view.
+const LINK_OFF_GLYPH =
+    '<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M9 17H7A5 5 0 0 1 7 7h2"/>' +
+    '<path d="M15 7h2a5 5 0 0 1 4 8"/>' +
+    '<line x1="8" y1="12" x2="12" y2="12"/>' +
+    '<line x1="2" y1="2" x2="22" y2="22"/>' +
+    '</svg>';
+
 // A gentle full-view notice (no project selected / project not linked to a repo).
-function appendEmptyState(view, text) {
+// Pass `glyphMarkup` to render a centered glyph above the message; without it the
+// block is text-only. The block shares `.agentEmptyState`'s centered column
+// layout so the two views read identically.
+function appendEmptyState(view, text, glyphMarkup) {
     const empty = document.createElement('div');
     empty.className = 'structureEmptyState';
-    empty.textContent = text;
+    if (glyphMarkup) {
+        const glyph = document.createElement('span');
+        glyph.className = 'structureEmptyGlyph';
+        glyph.setAttribute('aria-hidden', 'true');
+        glyph.innerHTML = glyphMarkup;
+        empty.appendChild(glyph);
+        const msg = document.createElement('span');
+        msg.textContent = text;
+        empty.appendChild(msg);
+    } else {
+        empty.textContent = text;
+    }
     view.appendChild(empty);
 }
 
@@ -2486,7 +2511,8 @@ export function renderStructureView() {
         selectedHandle = null;
         appendEmptyState(
             view,
-            projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.'
+            projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.',
+            LINK_OFF_GLYPH
         );
         return;
     }
