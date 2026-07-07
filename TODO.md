@@ -42,3 +42,10 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f1def747-add4-4eaf-a7bb-c1cf25978418 -->
+
+- [ ] **[LOW]** Add empty-state image to agent tab's non-configured view
+  - Type: feature
+  - Description: The structured tab's non-configured/empty state shows an image above its messaging text; the agent tab's equivalent non-configured state currently has no image. Reuse the same existing SVG asset and placement pattern in the agent tab's empty state so both tabs look visually consistent. Likely code is in `structureView.js` (existing empty-state markup/image reference) and `agentView.js` (needs the same image element added above its messaging).
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a45cdbac-1e65-451f-a92c-7b9007fb1867 -->
