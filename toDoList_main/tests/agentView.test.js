@@ -118,6 +118,44 @@ describe('AGENT view — empty states', () => {
     });
 });
 
+// The no-routed-repo (unavailable) empty state mirrors the STRUCTURE tab's
+// no-linked-repo view: a centered link-off glyph above the guiding message.
+describe('AGENT view — no-repo empty state glyph', () => {
+    afterEach(() => {
+        document.body.classList.remove('agentUnavailable');
+    });
+
+    it('renders a centered link-off glyph above the unavailable message', async () => {
+        listLogic.addProject('NoRepoTab');
+        mountDom('NoRepoTab');
+        // The gate flag drives the paint() unavailable branch.
+        document.body.classList.add('agentUnavailable');
+        await loadBoard();
+
+        const empty = document.querySelector('.agentEmptyState');
+        expect(empty).toBeTruthy();
+        expect(empty.textContent).toMatch(/no repo configured/i);
+        expect(document.querySelector('.agentBoard')).toBeFalsy();
+
+        // A centered, aria-hidden link-off glyph sits above the message,
+        // mirroring the STRUCTURE tab's no-linked-repo empty state.
+        const glyph = empty.querySelector('.agentEmptyGlyph');
+        expect(glyph).toBeTruthy();
+        expect(glyph.getAttribute('aria-hidden')).toBe('true');
+        expect(glyph.querySelector('svg')).toBeTruthy();
+    });
+
+    it('keeps the other agent empty states text-only (no glyph)', async () => {
+        listLogic.addProject('PlainTab');
+        mountDom('PlainTab');
+        queueRows = [];
+        await loadBoard();
+        const empty = document.querySelector('.agentEmptyState');
+        expect(empty).toBeTruthy();
+        expect(empty.querySelector('.agentEmptyGlyph')).toBeFalsy();
+    });
+});
+
 describe('AGENT view — header', () => {
     beforeEach(() => {
         listLogic.addProject('Delta');
