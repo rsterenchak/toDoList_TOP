@@ -4609,6 +4609,59 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   flex: 0 0 auto;
 }
 
+/* Copy/paste-to-Claude hand-off: a tucked row of two compact buttons below the
+   answer actions for pasting the task into claude.ai on your own plan. The "plan"
+   tag on the left pushes the buttons right and marks this as the external,
+   fire-and-forget path — distinct from the API-backed Discuss-in-chat above. */
+.agentPasteHandoff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.agentPasteTag {
+  flex: 0 0 auto;
+  margin-right: auto;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--accent-dim);
+  border-radius: 6px;
+}
+
+.agentPasteCopy,
+.agentPasteOpen {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.agentPasteCopy:hover,
+.agentPasteOpen:hover {
+  border-color: var(--accent);
+  color: var(--accent-text, var(--accent));
+}
+
+.agentPasteCopy:focus-visible,
+.agentPasteOpen:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 /* Collapsed hand-off state: "Continue in chat →" on the left and "answer with
    words" on the right, replacing the textarea + Send once the task has been
    handed off to chat this session. */

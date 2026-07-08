@@ -727,6 +727,106 @@ describe('AGENT view — needs_words "answer with words" re-open', () => {
     });
 });
 
+describe('AGENT view — needs_words copy/paste-to-Claude hand-off', () => {
+    let clipboardText;
+    let openArgs;
+    let priorClipboard;
+    let priorOpen;
+
+    beforeEach(() => {
+        clipboardText = null;
+        openArgs = null;
+        priorClipboard = navigator.clipboard;
+        priorOpen = window.open;
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: (t) => { clipboardText = t; return Promise.resolve(); } },
+        });
+        window.open = (url, target) => { openArgs = { url, target }; return null; };
+    });
+
+    afterEach(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: priorClipboard });
+        window.open = priorOpen;
+    });
+
+    it('renders Copy context + Open Claude below the answer actions without removing Send or Discuss', async () => {
+        listLogic.addProject('Paste1');
+        mountDom('Paste1');
+        queueRows = [{ id: 'pc1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const copy = document.querySelector('.agentPasteCopy');
+        const open = document.querySelector('.agentPasteOpen');
+        expect(copy).toBeTruthy();
+        expect(copy.textContent).toMatch(/Copy context/);
+        expect(open).toBeTruthy();
+        expect(open.textContent).toMatch(/Open Claude/);
+        // The in-app answer path stays intact alongside it.
+        expect(document.querySelector('.agentAnswerSend')).toBeTruthy();
+        expect(document.querySelector('.agentDiscussLink')).toBeTruthy();
+        // A muted "plan" tag distinguishes it from the API-backed Discuss-in-chat.
+        expect(document.querySelector('.agentPasteTag')).toBeTruthy();
+    });
+
+    it('Copy context writes the discuss seed to the clipboard without a write, re-triage, or hand-off', async () => {
+        listLogic.addProject('Paste2');
+        mountDom('Paste2');
+        queueRows = [{
+            id: 'pc2',
+            state: 'needs_words',
+            context: { title: 'Add a toggle', description: 'a small switch' },
+            question: 'Which label?',
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentPasteCopy').click();
+        await flush();
+
+        expect(clipboardText).toBeTruthy();
+        expect(clipboardText).toMatch(/Add a toggle/);
+        expect(clipboardText).toMatch(/a small switch/);
+        expect(clipboardText).toMatch(/Which label\?/);
+        // Fire-and-forget: no clipboard/tab race, and the card is untouched.
+        expect(openArgs).toBeNull();
+        expect(updateCalls.length).toBe(0);
+        expect(insertCalls.length).toBe(0);
+        expect(chatMock.seedCalls.length).toBe(0);
+        // The card stays put — not collapsed into the handed-off re-entry.
+        expect(document.querySelector('.agentAnswerInput')).toBeTruthy();
+        expect(document.querySelector('.agentContinueChat')).toBeNull();
+    });
+
+    it('Open Claude opens claude.ai in a new tab without touching the clipboard', async () => {
+        listLogic.addProject('Paste3');
+        mountDom('Paste3');
+        queueRows = [{ id: 'pc3', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentPasteOpen').click();
+        await flush();
+
+        expect(openArgs).toEqual({ url: 'https://claude.ai/new', target: '_blank' });
+        expect(clipboardText).toBeNull();
+        expect(updateCalls.length).toBe(0);
+        expect(chatMock.seedCalls.length).toBe(0);
+    });
+
+    it('does not render the paste row on a handed-off (collapsed) card', async () => {
+        listLogic.addProject('Paste4');
+        mountDom('Paste4');
+        queueRows = [{ id: 'pc4', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+
+        expect(document.querySelector('.agentContinueChat')).toBeTruthy();
+        expect(document.querySelector('.agentPasteCopy')).toBeNull();
+        expect(document.querySelector('.agentPasteOpen')).toBeNull();
+    });
+});
+
 describe('listLogic.answerAgentTask', () => {
     it('appends a user message to the thread and writes state triaging for a valid answer', async () => {
         const res = await listLogic.answerAgentTask('row-1', '  hi there  ', [
