@@ -15,6 +15,7 @@ import {
     showInjectToast,
     isInjectConfigured,
 } from './inject.js';
+import { openChatWithSeed } from './claudeSheet.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
 // replaces the old Conceive incubator surface. For the currently selected
@@ -114,6 +115,12 @@ let _channel = null;
 // board without tearing down an in-flight poll) and so paint() can re-arm one
 // for a dispatched/running row after a tab reopen.
 const _dispatchPollers = {};
+// Row ids that have been handed off to the Claude chat via a needs_words card's
+// "Discuss in chat" link. Module-level (mirroring _dispatchPollers) so the
+// collapsed "Continue in chat" state survives realtime pushes and refreshAgentQueue
+// re-renders within the session — buildSecondary/paint consult it on every render.
+// Session-scoped only; resets on reload (acceptable per the task scope).
+const _handedOffRows = new Set();
 // Short in-flight guard shared by the header Run button and the answer-submit
 // auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
 // redundant triage sweeps in the same tick. The workflow's concurrency group and
@@ -354,6 +361,11 @@ function buildChip(state) {
 function buildSecondary(row) {
     const state = row.state;
     if (state === 'needs_words') {
+        // Already handed off to chat this session: collapse the answer control to
+        // a single re-entry that re-opens the same seeded conversation.
+        if (_handedOffRows.has(row.id)) {
+            return buildHandedOffSecondary(row);
+        }
         const q = (row.question || '').trim();
         // A live answer control: the user types a reply and sends it, which
         // appends to the row's thread and re-queues the task (state ->
@@ -383,6 +395,13 @@ function buildSecondary(row) {
         errorEl.setAttribute('role', 'alert');
         errorEl.hidden = true;
         actions.appendChild(errorEl);
+
+        // A lightweight hand-off to the in-app Claude chat, sitting left of Send.
+        // For tasks that need real back-and-forth, re-firing a full triage sweep
+        // per answer is too heavy; this instead seeds a chat with the task context
+        // and leaves the conversation to the user. It never writes to the data
+        // model and never re-triages (no answerAgentTask / fireTriageSweep).
+        actions.appendChild(buildDiscussLink(row));
 
         const send = document.createElement('button');
         send.type = 'button';
@@ -1224,6 +1243,89 @@ function buildRemoveControl(row) {
         });
     });
     return btn;
+}
+
+// Assemble the chat seed for a needs_words hand-off: the task title and
+// description (from the row's `context`) plus triage's pending question, framed
+// as an opening turn. The user still sends it — this only pre-fills the composer.
+function buildDiscussSeed(row) {
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const val = function (v) { return (v == null) ? '' : String(v).trim(); };
+    const title = val(ctx.title) || val(row.title);
+    const description = val(ctx.description);
+    const question = val(row.question);
+
+    const lines = ["I'd like to discuss this task and work out the details together."];
+    if (title) { lines.push('', 'Task: ' + title); }
+    if (description) { lines.push(description); }
+    if (question) { lines.push('', 'The agent asked: ' + question); }
+    return lines.join('\n');
+}
+
+// The "Discuss in chat" hand-off link for a needs_words card. Tapping it seeds
+// the Claude chat with the task context (openChatWithSeed) and marks the row as
+// handed off so its answer control collapses to a re-entry — WITHOUT touching the
+// data model or re-triaging. Repaints from the cache (no refetch) so the collapse
+// is immediate.
+function buildDiscussLink(row) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentDiscussLink';
+    btn.appendChild(buildMessagesIcon());
+    const label = document.createElement('span');
+    label.textContent = 'Discuss in chat';
+    btn.appendChild(label);
+    btn.addEventListener('click', function () {
+        openChatWithSeed(buildDiscussSeed(row));
+        _handedOffRows.add(row.id);
+        paint();
+    });
+    return btn;
+}
+
+// The collapsed secondary shown once a needs_words card has been handed off to
+// chat this session: a single "Continue in chat →" re-entry that re-opens the
+// same seeded conversation. No textarea/Send — the back-and-forth now lives in
+// the chat, not the card.
+function buildHandedOffSecondary(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agentSecondary agentHandedOff';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentContinueChat';
+    btn.textContent = 'Continue in chat →';
+    btn.addEventListener('click', function () {
+        openChatWithSeed(buildDiscussSeed(row));
+    });
+    wrap.appendChild(btn);
+    return wrap;
+}
+
+// A small inline "messages" glyph for the Discuss-in-chat link. DOM-built like
+// buildBoltIcon()/buildLinkOffIcon() — no new asset, no icon library — and
+// theme-correct via currentColor so it tracks the link's accent colour.
+function buildMessagesIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'agentDiscussIcon');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.6');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    [
+        ['path', { d: 'M21 14l-3 -3h-7a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1h9a1 1 0 0 1 1 1v10' }],
+        ['path', { d: 'M14 15v2a1 1 0 0 1 -1 1h-7l-3 3v-10a1 1 0 0 1 1 -1h2' }],
+    ].forEach(function (spec) {
+        const el = document.createElementNS(ns, spec[0]);
+        Object.keys(spec[1]).forEach(function (k) { el.setAttribute(k, spec[1][k]); });
+        svg.appendChild(el);
+    });
+    return svg;
 }
 
 // A small inline bolt glyph for the "Give to agent" pill. Built via the DOM

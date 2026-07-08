@@ -4556,6 +4556,67 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   color: var(--accent-text, var(--accent));
 }
 
+/* "Discuss in chat" hand-off: an accent text-link sitting left of Send in the
+   needs_words answer row. No fill/border so it reads as a link, not a second
+   button competing with Send. */
+.agentDiscussLink {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: none;
+  border: 0;
+  white-space: nowrap;
+}
+
+.agentDiscussLink:hover {
+  text-decoration: underline;
+}
+
+.agentDiscussLink:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentDiscussIcon {
+  flex: 0 0 auto;
+}
+
+/* Collapsed hand-off state: a single "Continue in chat →" re-entry replacing the
+   textarea + Send once the task has been handed off to chat this session. */
+.agentContinueChat {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: none;
+  border: 0;
+  white-space: nowrap;
+}
+
+.agentContinueChat:hover {
+  text-decoration: underline;
+}
+
+.agentContinueChat:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 /* Shipped card: the PR link reads as a subtle, monospace reference that still
    underlines on hover to signal it's clickable. */
 .agentShippedLink {
