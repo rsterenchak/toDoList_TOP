@@ -50,7 +50,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a45cdbac-1e65-451f-a92c-7b9007fb1867 -->
 
-- [ ] **[HIGH]** Fix agent tab staying disabled after switching from a non-configured to a configured project
+- [x] **[HIGH]** Fix agent tab staying disabled after switching from a non-configured to a configured project — Completed: 2026-07-07
   - Type: bug
   - Description: When the active project has no repo configured, the agent tab is correctly disabled; but switching to a project that IS repo-configured leaves the agent tab disabled instead of re-enabling it. Only a full page refresh restores the working state, which means the enabled/disabled state is computed on load but not re-evaluated on project switch. The fix should re-run the agent-tab availability check whenever the active project changes so the tab enables/disables live. Likely code is the project-switch handler in `toDoList_main/src/main.js` and the enable/disable logic in `toDoList_main/src/agentView.js`.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/agentView.js`
