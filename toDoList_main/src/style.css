@@ -4248,6 +4248,25 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   background: rgba(46, 160, 67, 0.14);
 }
 
+/* Breathing pulse on the Working dot so a running sweep reads as alive.
+   Scoped to the working pill so the idle dot stays static, and gated behind
+   prefers-reduced-motion so opted-out users get the static dot. */
+@keyframes agentDotBreathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .agentStatusPill--working .agentStatusDot {
+    animation: agentDotBreathe 1.8s ease-in-out infinite;
+  }
+}
+
 .agentStatusPill--idle {
   color: var(--text-muted);
   background: transparent;

@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             "Agent cards waiting on your input now offer a “Discuss in chat” hand-off that opens the Claude chat pre-filled with the task's details, then collapse to a “Continue in chat” re-entry.",
             "A card handed off to chat now keeps an “answer with words” option that reopens its inline answer box, so you can switch between chatting and answering without losing the conversation.",
+            "The agent board's Working status dot now gently pulses while a sweep is running, so an active run reads differently from an idle one.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-07',
         added: [
-            "On projects with no linked repo, the STRUCTURE tab now shows a small no-repo marker and opens to a centered link-off glyph above the guiding message.",
             "The AGENT tab's no-repo view now shows a centered link-off glyph above its message, matching the STRUCTURE tab.",
         ],
         fixed: [
