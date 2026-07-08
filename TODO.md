@@ -66,7 +66,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 37d5695a-36b6-4827-892f-af764d8f1b7e -->
 
-- [ ] **[MEDIUM]** Add "answer with words" to re-open the needs_words answer box after a chat hand-off
+- [x] **[MEDIUM]** Add "answer with words" to re-open the needs_words answer box after a chat hand-off — Completed: 2026-07-08
   - Type: feature
   - Description: A needs_words card handed off to chat currently collapses to a one-way "Continue in chat →" re-entry (`buildHandedOffSecondary` in `agentView.js`), with no path back to the answer box — but the words and chat options should both stay open. Add an "answer with words" control beside "Continue in chat →" that restores the original needs_words answer control. On tap it calls `_handedOffRows.delete(row.id)` then `paint()`, so the card re-renders and `buildSecondary` returns the full question + textarea + Discuss-in-chat link + Send again (the row was never re-triaged and the data model was never touched, so nothing else needs undoing). The chat session is unaffected — "Continue in chat →" and the restored "Discuss in chat" link both stay one tap away. Same on desktop and mobile.
   - Behavior: In the collapsed handed-off secondary, render two controls on one row (variant A): "Continue in chat →" (existing `.agentContinueChat`) on the left, a muted "answer with words" link on the right (a small edit/pencil glyph DOM-built like `buildMessagesIcon`, or text-only). "answer with words" removes the row from `_handedOffRows` and repaints from cache — no refetch — flipping the card back to the answer box; tapping "Discuss in chat" from that restored view re-collapses it as before. Both directions are one tap, and re-opening words never discards the chat.
