@@ -121,7 +121,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a823bbb9-78b7-4ba5-a2a4-8c830651d5f1 -->
 
-- [ ] **[MEDIUM]** Add a copy/paste-to-Claude hand-off to needs_words cards
+- [x] **[MEDIUM]** Add a copy/paste-to-Claude hand-off to needs_words cards — Completed: 2026-07-08
   - Type: feature
   - Description: needs_words cards can go to the in-app chat (Discuss in chat, API) but have no external hand-off — pasting the task into claude.ai on your plan. Add one (layout B): below the `[Discuss in chat | Send]` actions in the `needs_words` branch of `buildSecondary` (`agentView.js`), a tucked row of two compact buttons — "Copy context" and "Open Claude" — mirroring the needs_mockup card's `.agentMockupCopy` / `.agentMockupDesignLink` vocabulary. "Copy context" writes `buildDiscussSeed(row)` (the same task + question assembly the in-app hand-off uses) to the clipboard and confirms via the existing toast; "Open Claude" does `window.open('https://claude.ai/new', '_blank')`. Keep the two decoupled (separate taps, no combined action) so there's no clipboard/tab focus race, exactly like the needs_mockup pair. Optionally a small muted "plan" tag on the row to distinguish it from the API-backed Discuss-in-chat. Same on desktop and mobile.
   - Out of scope: Copying does NOT touch the data model, re-triage, or mark the row handed-off (`_handedOffRows`) — unlike Discuss-in-chat, the card stays put with Send and answer-with-words fully available, since this is a fire-and-forget external paste. No Worker change, no `agent_queue` schema change. New styling goes in `style.css` (the two-button row + button classes), never inline.

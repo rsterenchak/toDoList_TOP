@@ -480,6 +480,13 @@ function buildSecondary(row) {
             }
         });
         send.addEventListener('click', submitAnswer);
+
+        // A tucked, fire-and-forget external hand-off below the answer actions:
+        // copy the task context to paste into claude.ai, or open Claude in a new
+        // tab. Decoupled from the in-app Discuss-in-chat / Send path above, which
+        // stays fully usable — this never touches the data model, re-triages, or
+        // marks the row handed off.
+        wrap.appendChild(buildPasteToClaudeRow(row));
         return wrap;
     }
     if (state === 'needs_mockup') {
@@ -1778,6 +1785,56 @@ function buildDiscussSeed(row) {
     if (description) { lines.push(description); }
     if (question) { lines.push('', 'The agent asked: ' + question); }
     return lines.join('\n');
+}
+
+// The copy/paste-to-Claude hand-off for a needs_words card: a tucked row of two
+// compact buttons beneath the answer actions. "Copy context" writes the same
+// task + question seed the in-app Discuss-in-chat uses to the clipboard, and
+// "Open Claude" opens claude.ai in a new tab — mirroring the needs_mockup card's
+// Copy / Open Claude Design pair. The two are deliberately decoupled (separate
+// taps, no combined action) so there's no clipboard/tab-focus race between them.
+// This is fire-and-forget: unlike Discuss-in-chat it never touches the data
+// model, re-triages, or marks the row handed off, so Send and answer-with-words
+// stay available. The muted "plan" tag distinguishes it from the API-backed
+// Discuss-in-chat above.
+function buildPasteToClaudeRow(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agentPasteHandoff';
+
+    const tag = document.createElement('span');
+    tag.className = 'agentPasteTag';
+    tag.textContent = 'plan';
+    wrap.appendChild(tag);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'agentPasteCopy';
+    copyBtn.textContent = 'Copy context';
+    copyBtn.addEventListener('click', function () {
+        let copied;
+        try {
+            copied = navigator.clipboard.writeText(buildDiscussSeed(row));
+        } catch (e) {
+            copied = Promise.reject(e);
+        }
+        Promise.resolve(copied).then(function () {
+            showInjectToast('Task context copied — paste it into Claude.');
+        }, function () {
+            showInjectToast('Couldn’t copy the task context — try again.', 'error');
+        });
+    });
+    wrap.appendChild(copyBtn);
+
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'agentPasteOpen';
+    openBtn.textContent = 'Open Claude';
+    openBtn.addEventListener('click', function () {
+        try { window.open('https://claude.ai/new', '_blank'); } catch (e) { /* popup blocked */ }
+    });
+    wrap.appendChild(openBtn);
+
+    return wrap;
 }
 
 // The "Discuss in chat" hand-off link for a needs_words card. Tapping it seeds
