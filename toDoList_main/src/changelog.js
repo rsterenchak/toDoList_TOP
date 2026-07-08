@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-08',
         added: [
             "Agent cards waiting on your input now offer a “Discuss in chat” hand-off that opens the Claude chat pre-filled with the task's details, then collapse to a “Continue in chat” re-entry.",
+            "A card handed off to chat now keeps an “answer with words” option that reopens its inline answer box, so you can switch between chatting and answering without losing the conversation.",
         ],
     },
     {
@@ -19,13 +20,6 @@ export const changelog = [
         ],
         fixed: [
             "The AGENT tab now updates its availability the instant you switch projects, so moving onto a repo-backed project no longer leaves it stuck on the no-repo state until a reload.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-06',
-        fixed: [
-            "The AGENT tab is now dimmed and disabled on projects with no repo configured, so it can't open a board that has nowhere to run.",
         ],
     },
 ];

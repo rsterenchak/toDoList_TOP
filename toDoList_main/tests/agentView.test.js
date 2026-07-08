@@ -10,6 +10,9 @@ import { vi } from 'vitest';
 
 let queueRows = [];
 let queueError = null;
+// Fetch observation: each agent_queue select().eq() bumps this so tests can
+// assert a repaint came from cache (no refetch) rather than a re-query.
+let queueFetches = 0;
 // Flag-insert observation: each agent_queue insert pushes its row here, and
 // `insertError` lets a test force the insert to fail.
 let insertCalls = [];
@@ -23,7 +26,10 @@ vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
         from: () => ({
             select: () => ({
-                eq: () => Promise.resolve({ data: queueRows, error: queueError }),
+                eq: () => {
+                    queueFetches += 1;
+                    return Promise.resolve({ data: queueRows, error: queueError });
+                },
             }),
             insert: (row) => {
                 insertCalls.push(row);
@@ -84,6 +90,7 @@ beforeEach(() => {
     listLogic._reset();
     queueRows = [];
     queueError = null;
+    queueFetches = 0;
     insertCalls = [];
     insertError = null;
     updateCalls = [];
@@ -650,6 +657,73 @@ describe('AGENT view — needs_words "Discuss in chat" hand-off', () => {
         await flush();
         expect(document.querySelector('.agentAnswerInput')).toBeNull();
         expect(document.querySelector('.agentContinueChat')).toBeTruthy();
+    });
+});
+
+describe('AGENT view — needs_words "answer with words" re-open', () => {
+    it('renders "answer with words" beside "Continue in chat" on a handed-off card', async () => {
+        listLogic.addProject('Aww1');
+        mountDom('Aww1');
+        queueRows = [{ id: 'aww1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+
+        const reopen = document.querySelector('.agentAnswerWithWords');
+        expect(reopen).toBeTruthy();
+        expect(reopen.textContent).toMatch(/answer with words/);
+        // Both re-entries share the collapsed row.
+        expect(document.querySelector('.agentContinueChat')).toBeTruthy();
+    });
+
+    it('restores the answer box (question + textarea + Send + Discuss link) without a write or refetch', async () => {
+        listLogic.addProject('Aww2');
+        mountDom('Aww2');
+        queueRows = [{ id: 'aww2', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+        expect(document.querySelector('.agentAnswerInput')).toBeNull();
+        const fetchesBefore = queueFetches;
+
+        document.querySelector('.agentAnswerWithWords').click();
+        await flush();
+
+        // Full answer control is back.
+        expect(document.querySelector('.agentAnswerInput')).toBeTruthy();
+        expect(document.querySelector('.agentAnswerSend')).toBeTruthy();
+        expect(document.querySelector('.agentDiscussLink')).toBeTruthy();
+        expect(document.querySelector('.agentQuestion').textContent).toMatch(/Q\?/);
+        // The collapsed re-entries are gone.
+        expect(document.querySelector('.agentContinueChat')).toBeNull();
+        expect(document.querySelector('.agentAnswerWithWords')).toBeNull();
+        // Repaint from cache — no refetch — and no data-model write.
+        expect(queueFetches).toBe(fetchesBefore);
+        expect(updateCalls.length).toBe(0);
+        expect(insertCalls.length).toBe(0);
+    });
+
+    it('lets the restored Discuss-in-chat link re-collapse the card, and does not discard the chat', async () => {
+        listLogic.addProject('Aww3');
+        mountDom('Aww3');
+        queueRows = [{ id: 'aww3', state: 'needs_words', context: { title: 'Task R' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+        document.querySelector('.agentAnswerWithWords').click();
+        await flush();
+
+        // Re-collapsing from the restored view works exactly as the first hand-off.
+        chatMock.seedCalls.length = 0;
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+        expect(document.querySelector('.agentContinueChat')).toBeTruthy();
+        expect(document.querySelector('.agentAnswerInput')).toBeNull();
+        expect(chatMock.seedCalls.length).toBe(1);
+        expect(chatMock.seedCalls[0]).toMatch(/Task R/);
     });
 });
 
