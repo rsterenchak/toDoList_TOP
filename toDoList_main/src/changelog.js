@@ -7,9 +7,9 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-08',
         added: [
-            "The agent board's Working status dot now gently pulses while a sweep is running, so an active run reads differently from an idle one.",
             "Visual-task mockup cards can now generate A/B/C design previews inside the app and render them inline, with the manual Claude hand-off kept as a fallback.",
             "You can now tap “use this” on a generated mockup preview to turn that design straight into a finished task, ready to dispatch.",
+            "Shipped cards on the agent board now carry a Revert button to roll a shipped change back.",
         ],
         changed: [
             "The mockup hand-off prompt for a visual task now includes the target region's real markup and CSS, so mockups start from the actual UI instead of a summary.",
