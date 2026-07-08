@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-08T11:01:22.206Z",
-  "sha": "d5f0dfa8847e2dda41b8689bb6c3b755bc4246fa",
+  "generatedAt": "2026-07-08T11:17:19.635Z",
+  "sha": "f0957524f024619bf260585be5c416baf054d772",
   "files": [
     "agentView.js",
     "auth.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "style.css",
-          "line": 6218
+          "line": 6230
         }
       ]
     },
@@ -101,11 +101,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 2075,
+      "line": 2187,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2075
+          "line": 2187
         }
       ]
     },
@@ -129,11 +129,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 157,
+      "line": 170,
       "files": [
         {
           "file": "agentView.js",
-          "line": 157
+          "line": 170
         }
       ]
     },
@@ -173,7 +173,7 @@
         },
         {
           "file": "style.css",
-          "line": 11715
+          "line": 11727
         }
       ]
     },
@@ -285,7 +285,7 @@
         },
         {
           "file": "style.css",
-          "line": 13018
+          "line": 13030
         }
       ]
     },
@@ -301,7 +301,7 @@
         },
         {
           "file": "style.css",
-          "line": 13050
+          "line": 13062
         }
       ]
     },
@@ -317,7 +317,7 @@
         },
         {
           "file": "style.css",
-          "line": 13230
+          "line": 13242
         }
       ]
     },
@@ -333,7 +333,7 @@
         },
         {
           "file": "style.css",
-          "line": 13431
+          "line": 13443
         }
       ]
     },
@@ -349,7 +349,7 @@
         },
         {
           "file": "style.css",
-          "line": 13067
+          "line": 13079
         }
       ]
     },
@@ -365,7 +365,7 @@
         },
         {
           "file": "style.css",
-          "line": 13125
+          "line": 13137
         }
       ]
     },
@@ -413,7 +413,7 @@
         },
         {
           "file": "style.css",
-          "line": 7420
+          "line": 7432
         }
       ]
     },
@@ -429,7 +429,7 @@
         },
         {
           "file": "style.css",
-          "line": 7406
+          "line": 7418
         }
       ]
     },
@@ -445,7 +445,7 @@
         },
         {
           "file": "style.css",
-          "line": 7439
+          "line": 7451
         }
       ]
     },
@@ -601,7 +601,7 @@
         },
         {
           "file": "style.css",
-          "line": 10914
+          "line": 10926
         }
       ]
     },
@@ -617,7 +617,7 @@
         },
         {
           "file": "style.css",
-          "line": 10915
+          "line": 10927
         }
       ]
     },
@@ -633,7 +633,7 @@
         },
         {
           "file": "style.css",
-          "line": 6016
+          "line": 6028
         }
       ]
     },
@@ -1033,7 +1033,7 @@
         },
         {
           "file": "style.css",
-          "line": 10763
+          "line": 10775
         }
       ]
     },
@@ -1145,7 +1145,7 @@
         },
         {
           "file": "style.css",
-          "line": 6657
+          "line": 6669
         }
       ]
     },
@@ -1197,7 +1197,7 @@
         },
         {
           "file": "style.css",
-          "line": 5834
+          "line": 5846
         }
       ]
     },
@@ -1213,7 +1213,7 @@
         },
         {
           "file": "style.css",
-          "line": 7247
+          "line": 7259
         }
       ]
     },
@@ -1229,7 +1229,7 @@
         },
         {
           "file": "style.css",
-          "line": 7233
+          "line": 7245
         }
       ]
     },
@@ -1669,7 +1669,7 @@
         },
         {
           "file": "style.css",
-          "line": 7146
+          "line": 7158
         }
       ]
     },
@@ -1685,7 +1685,7 @@
         },
         {
           "file": "style.css",
-          "line": 5601
+          "line": 5613
         }
       ]
     },
@@ -1729,7 +1729,7 @@
         },
         {
           "file": "style.css",
-          "line": 6633
+          "line": 6645
         }
       ]
     },
@@ -1745,7 +1745,7 @@
         },
         {
           "file": "style.css",
-          "line": 10614
+          "line": 10626
         }
       ]
     },
@@ -1777,7 +1777,7 @@
         },
         {
           "file": "style.css",
-          "line": 8626
+          "line": 8638
         }
       ]
     },
@@ -1793,7 +1793,7 @@
         },
         {
           "file": "style.css",
-          "line": 9609
+          "line": 9621
         }
       ]
     },
@@ -1809,7 +1809,7 @@
         },
         {
           "file": "style.css",
-          "line": 9608
+          "line": 9620
         }
       ]
     },
@@ -1825,7 +1825,7 @@
         },
         {
           "file": "style.css",
-          "line": 9526
+          "line": 9538
         }
       ]
     },
@@ -1853,7 +1853,7 @@
         },
         {
           "file": "style.css",
-          "line": 9519
+          "line": 9531
         }
       ]
     },
@@ -1889,7 +1889,7 @@
         },
         {
           "file": "style.css",
-          "line": 6238
+          "line": 6250
         }
       ]
     },
@@ -1905,7 +1905,7 @@
         },
         {
           "file": "style.css",
-          "line": 5654
+          "line": 5666
         }
       ]
     },
@@ -1921,7 +1921,7 @@
         },
         {
           "file": "style.css",
-          "line": 5708
+          "line": 5720
         }
       ]
     },
@@ -1937,7 +1937,7 @@
         },
         {
           "file": "style.css",
-          "line": 5775
+          "line": 5787
         }
       ]
     },
@@ -1965,7 +1965,7 @@
         },
         {
           "file": "style.css",
-          "line": 12467
+          "line": 12479
         }
       ]
     },
@@ -2217,7 +2217,7 @@
         },
         {
           "file": "style.css",
-          "line": 11473
+          "line": 11485
         }
       ]
     },
@@ -2233,7 +2233,7 @@
         },
         {
           "file": "style.css",
-          "line": 11497
+          "line": 11509
         }
       ]
     },
@@ -2249,7 +2249,7 @@
         },
         {
           "file": "style.css",
-          "line": 11483
+          "line": 11495
         }
       ]
     },
@@ -2265,7 +2265,7 @@
         },
         {
           "file": "style.css",
-          "line": 11501
+          "line": 11513
         }
       ]
     },
@@ -2281,7 +2281,7 @@
         },
         {
           "file": "style.css",
-          "line": 11509
+          "line": 11521
         }
       ]
     },
@@ -2297,7 +2297,7 @@
         },
         {
           "file": "style.css",
-          "line": 11987
+          "line": 11999
         }
       ]
     },
@@ -2313,7 +2313,7 @@
         },
         {
           "file": "style.css",
-          "line": 14585
+          "line": 14597
         }
       ]
     },
@@ -2353,7 +2353,7 @@
         },
         {
           "file": "style.css",
-          "line": 14679
+          "line": 14691
         }
       ]
     },
@@ -2417,7 +2417,7 @@
         },
         {
           "file": "style.css",
-          "line": 14423
+          "line": 14435
         }
       ]
     },
@@ -2433,7 +2433,7 @@
         },
         {
           "file": "style.css",
-          "line": 14280
+          "line": 14292
         }
       ]
     },
@@ -2449,7 +2449,7 @@
         },
         {
           "file": "style.css",
-          "line": 14367
+          "line": 14379
         }
       ]
     },
@@ -2477,7 +2477,7 @@
         },
         {
           "file": "style.css",
-          "line": 14322
+          "line": 14334
         }
       ]
     },
@@ -2493,7 +2493,7 @@
         },
         {
           "file": "style.css",
-          "line": 14303
+          "line": 14315
         }
       ]
     },
@@ -2509,7 +2509,7 @@
         },
         {
           "file": "style.css",
-          "line": 14290
+          "line": 14302
         }
       ]
     },
@@ -2537,7 +2537,7 @@
         },
         {
           "file": "style.css",
-          "line": 14311
+          "line": 14323
         }
       ]
     },
@@ -2553,7 +2553,7 @@
         },
         {
           "file": "style.css",
-          "line": 14336
+          "line": 14348
         }
       ]
     },
@@ -2581,7 +2581,7 @@
         },
         {
           "file": "style.css",
-          "line": 14318
+          "line": 14330
         }
       ]
     },
@@ -2597,7 +2597,7 @@
         },
         {
           "file": "style.css",
-          "line": 14381
+          "line": 14393
         }
       ]
     },
@@ -2613,7 +2613,7 @@
         },
         {
           "file": "style.css",
-          "line": 14665
+          "line": 14677
         }
       ]
     },
@@ -2629,7 +2629,7 @@
         },
         {
           "file": "style.css",
-          "line": 14593
+          "line": 14605
         }
       ]
     },
@@ -2645,7 +2645,7 @@
         },
         {
           "file": "style.css",
-          "line": 14637
+          "line": 14649
         }
       ]
     },
@@ -2673,7 +2673,7 @@
         },
         {
           "file": "style.css",
-          "line": 14624
+          "line": 14636
         }
       ]
     },
@@ -2689,7 +2689,7 @@
         },
         {
           "file": "style.css",
-          "line": 14613
+          "line": 14625
         }
       ]
     },
@@ -2705,7 +2705,7 @@
         },
         {
           "file": "style.css",
-          "line": 14602
+          "line": 14614
         }
       ]
     },
@@ -2733,7 +2733,7 @@
         },
         {
           "file": "style.css",
-          "line": 14620
+          "line": 14632
         }
       ]
     },
@@ -2749,7 +2749,7 @@
         },
         {
           "file": "style.css",
-          "line": 14525
+          "line": 14537
         }
       ]
     },
@@ -2801,7 +2801,7 @@
         },
         {
           "file": "style.css",
-          "line": 14744
+          "line": 14756
         }
       ]
     },
@@ -2817,7 +2817,7 @@
         },
         {
           "file": "style.css",
-          "line": 14380
+          "line": 14392
         }
       ]
     },
@@ -2833,7 +2833,7 @@
         },
         {
           "file": "style.css",
-          "line": 11988
+          "line": 12000
         }
       ]
     },
@@ -2897,7 +2897,7 @@
         },
         {
           "file": "style.css",
-          "line": 10600
+          "line": 10612
         }
       ]
     },
@@ -2925,7 +2925,7 @@
         },
         {
           "file": "style.css",
-          "line": 6927
+          "line": 6939
         }
       ]
     },
@@ -2941,7 +2941,7 @@
         },
         {
           "file": "style.css",
-          "line": 6999
+          "line": 7011
         }
       ]
     },
@@ -2973,7 +2973,7 @@
         },
         {
           "file": "style.css",
-          "line": 6973
+          "line": 6985
         }
       ]
     },
@@ -2989,7 +2989,7 @@
         },
         {
           "file": "style.css",
-          "line": 6961
+          "line": 6973
         }
       ]
     },
@@ -3005,7 +3005,7 @@
         },
         {
           "file": "style.css",
-          "line": 7006
+          "line": 7018
         }
       ]
     },
@@ -3021,7 +3021,7 @@
         },
         {
           "file": "style.css",
-          "line": 6943
+          "line": 6955
         }
       ]
     },
@@ -3037,7 +3037,7 @@
         },
         {
           "file": "style.css",
-          "line": 6950
+          "line": 6962
         }
       ]
     },
@@ -3053,7 +3053,7 @@
         },
         {
           "file": "style.css",
-          "line": 9001
+          "line": 9013
         }
       ]
     },
@@ -3093,7 +3093,7 @@
         },
         {
           "file": "style.css",
-          "line": 9316
+          "line": 9328
         }
       ]
     },
@@ -3125,7 +3125,7 @@
         },
         {
           "file": "style.css",
-          "line": 9212
+          "line": 9224
         }
       ]
     },
@@ -3141,7 +3141,7 @@
         },
         {
           "file": "style.css",
-          "line": 9239
+          "line": 9251
         }
       ]
     },
@@ -3169,7 +3169,7 @@
         },
         {
           "file": "style.css",
-          "line": 10235
+          "line": 10247
         }
       ]
     },
@@ -3209,7 +3209,7 @@
         },
         {
           "file": "style.css",
-          "line": 9308
+          "line": 9320
         }
       ]
     },
@@ -3225,7 +3225,7 @@
         },
         {
           "file": "style.css",
-          "line": 9228
+          "line": 9240
         }
       ]
     },
@@ -3241,7 +3241,7 @@
         },
         {
           "file": "style.css",
-          "line": 8492
+          "line": 8504
         }
       ]
     },
@@ -3257,7 +3257,7 @@
         },
         {
           "file": "style.css",
-          "line": 13931
+          "line": 13943
         }
       ]
     },
@@ -3273,7 +3273,7 @@
         },
         {
           "file": "style.css",
-          "line": 8545
+          "line": 8557
         }
       ]
     },
@@ -3301,7 +3301,7 @@
         },
         {
           "file": "style.css",
-          "line": 13932
+          "line": 13944
         }
       ]
     },
@@ -3317,7 +3317,7 @@
         },
         {
           "file": "style.css",
-          "line": 13788
+          "line": 13800
         }
       ]
     },
@@ -3345,7 +3345,7 @@
         },
         {
           "file": "style.css",
-          "line": 12565
+          "line": 12577
         }
       ]
     },
@@ -3361,7 +3361,7 @@
         },
         {
           "file": "style.css",
-          "line": 12497
+          "line": 12509
         }
       ]
     },
@@ -3377,7 +3377,7 @@
         },
         {
           "file": "style.css",
-          "line": 12362
+          "line": 12374
         }
       ]
     },
@@ -3453,7 +3453,7 @@
         },
         {
           "file": "style.css",
-          "line": 12193
+          "line": 12205
         }
       ]
     },
@@ -3469,7 +3469,7 @@
         },
         {
           "file": "style.css",
-          "line": 11175
+          "line": 11187
         }
       ]
     },
@@ -3593,7 +3593,7 @@
         },
         {
           "file": "style.css",
-          "line": 9411
+          "line": 9423
         }
       ]
     },
@@ -3645,7 +3645,7 @@
         },
         {
           "file": "style.css",
-          "line": 5257
+          "line": 5269
         }
       ]
     },
@@ -3689,7 +3689,7 @@
         },
         {
           "file": "style.css",
-          "line": 5306
+          "line": 5318
         }
       ]
     },
@@ -3717,7 +3717,7 @@
         },
         {
           "file": "style.css",
-          "line": 5291
+          "line": 5303
         }
       ]
     },
@@ -3733,7 +3733,7 @@
         },
         {
           "file": "style.css",
-          "line": 5427
+          "line": 5439
         }
       ]
     },
@@ -3749,7 +3749,7 @@
         },
         {
           "file": "style.css",
-          "line": 5275
+          "line": 5287
         }
       ]
     },
@@ -3765,7 +3765,7 @@
         },
         {
           "file": "style.css",
-          "line": 5284
+          "line": 5296
         }
       ]
     },
@@ -3869,7 +3869,7 @@
         },
         {
           "file": "style.css",
-          "line": 9513
+          "line": 9525
         }
       ]
     },
@@ -3885,7 +3885,7 @@
         },
         {
           "file": "style.css",
-          "line": 9893
+          "line": 9905
         }
       ]
     },
@@ -3901,7 +3901,7 @@
         },
         {
           "file": "style.css",
-          "line": 9954
+          "line": 9966
         }
       ]
     },
@@ -3917,7 +3917,7 @@
         },
         {
           "file": "style.css",
-          "line": 9941
+          "line": 9953
         }
       ]
     },
@@ -3933,7 +3933,7 @@
         },
         {
           "file": "style.css",
-          "line": 9924
+          "line": 9936
         }
       ]
     },
@@ -3949,7 +3949,7 @@
         },
         {
           "file": "style.css",
-          "line": 9932
+          "line": 9944
         }
       ]
     },
@@ -3965,7 +3965,7 @@
         },
         {
           "file": "style.css",
-          "line": 11173
+          "line": 11185
         }
       ]
     },
@@ -4057,7 +4057,7 @@
         },
         {
           "file": "style.css",
-          "line": 8448
+          "line": 8460
         }
       ]
     },
@@ -4105,7 +4105,7 @@
         },
         {
           "file": "style.css",
-          "line": 6327
+          "line": 6339
         }
       ]
     },
@@ -4133,7 +4133,7 @@
         },
         {
           "file": "style.css",
-          "line": 7051
+          "line": 7063
         }
       ]
     },
@@ -4165,7 +4165,7 @@
         },
         {
           "file": "style.css",
-          "line": 7111
+          "line": 7123
         }
       ]
     },
@@ -4181,7 +4181,7 @@
         },
         {
           "file": "style.css",
-          "line": 7098
+          "line": 7110
         }
       ]
     },
@@ -4197,7 +4197,7 @@
         },
         {
           "file": "style.css",
-          "line": 7067
+          "line": 7079
         }
       ]
     },
@@ -4213,7 +4213,7 @@
         },
         {
           "file": "style.css",
-          "line": 7088
+          "line": 7100
         }
       ]
     },
@@ -4229,7 +4229,7 @@
         },
         {
           "file": "style.css",
-          "line": 7079
+          "line": 7091
         }
       ]
     },
@@ -4245,7 +4245,7 @@
         },
         {
           "file": "style.css",
-          "line": 7075
+          "line": 7087
         }
       ]
     },
@@ -4261,7 +4261,7 @@
         },
         {
           "file": "style.css",
-          "line": 5601
+          "line": 5613
         }
       ]
     },
@@ -4277,7 +4277,7 @@
         },
         {
           "file": "style.css",
-          "line": 6680
+          "line": 6692
         }
       ]
     },
@@ -4337,7 +4337,7 @@
         },
         {
           "file": "style.css",
-          "line": 5520
+          "line": 5532
         }
       ]
     },
@@ -4353,7 +4353,7 @@
         },
         {
           "file": "style.css",
-          "line": 5521
+          "line": 5533
         }
       ]
     },
@@ -4369,7 +4369,7 @@
         },
         {
           "file": "style.css",
-          "line": 11242
+          "line": 11254
         }
       ]
     },
@@ -4385,7 +4385,7 @@
         },
         {
           "file": "style.css",
-          "line": 7339
+          "line": 7351
         }
       ]
     },
@@ -4401,7 +4401,7 @@
         },
         {
           "file": "style.css",
-          "line": 7325
+          "line": 7337
         }
       ]
     },
@@ -4461,7 +4461,7 @@
         },
         {
           "file": "style.css",
-          "line": 6045
+          "line": 6057
         }
       ]
     },
@@ -4489,7 +4489,7 @@
         },
         {
           "file": "style.css",
-          "line": 5837
+          "line": 5849
         }
       ]
     },
@@ -4505,7 +4505,7 @@
         },
         {
           "file": "style.css",
-          "line": 7462
+          "line": 7474
         }
       ]
     },
@@ -4521,7 +4521,7 @@
         },
         {
           "file": "style.css",
-          "line": 7448
+          "line": 7460
         }
       ]
     },
@@ -4549,7 +4549,7 @@
         },
         {
           "file": "style.css",
-          "line": 8036
+          "line": 8048
         }
       ]
     },
@@ -4565,7 +4565,7 @@
         },
         {
           "file": "style.css",
-          "line": 8022
+          "line": 8034
         }
       ]
     },
