@@ -360,6 +360,33 @@ describe('todo.md viewer — body collapse toggle', () => {
         expect(css).toMatch(/\.todoMdViewerCard\.collapsed\s+\.todoMdViewerBody\s*\{[\s\S]{0,80}display:\s*none/);
     });
 
+    it('never keys the ⋯ overflow control\'s visibility off the collapsed class (collapse must not toggle it)', () => {
+        // Regression: a `.todoMdViewerCard.collapsed .todoMdViewerOverflowWrap
+        // { display: none }` rule made the collapse chevron show/hide the ⋯
+        // overflow button along with the card body on mobile. The overflow
+        // control belongs to the viewer sheet and must stay put regardless of
+        // collapse, so no rule — in any media block — may hide the wrap based
+        // on the collapsed class. Brace-match every rule whose selector pairs
+        // `.todoMdViewerCard.collapsed` with the overflow wrap and assert none
+        // sets display:none.
+        const anchor = '.todoMdViewerCard.collapsed';
+        let idx = 0;
+        while ((idx = css.indexOf(anchor, idx)) !== -1) {
+            const braceStart = css.indexOf('{', idx);
+            const selectorText = css.slice(idx, braceStart);
+            idx = braceStart + 1;
+            if (!/todoMdViewerOverflowWrap/.test(selectorText)) continue;
+            let depth = 1;
+            let end = css.length;
+            for (let i = braceStart + 1; i < css.length; i++) {
+                if (css[i] === '{') depth++;
+                else if (css[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+            }
+            const block = css.slice(braceStart + 1, end);
+            expect(block).not.toMatch(/display:\s*none/);
+        }
+    });
+
     it('renders the collapse button as a neutral 36×36 chip in dark mode (#15161d fill, faint purple border, #8b8c99 icon)', () => {
         // Bar restyle: the expand toggle is normalized to the same quiet
         // neutral chip as Sync so only the amber Run backlog pill carries

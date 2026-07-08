@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-08',
         added: [
-            "You can now tap “use this” on a generated mockup preview to turn that design straight into a finished task, ready to dispatch.",
             "Shipped cards on the agent board now carry a Revert button to roll a shipped change back.",
             "Agent cards that need more detail now offer “Copy context” and “Open Claude” buttons to work the task out in claude.ai on your own plan.",
         ],
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "The “Generate mockups” button on a visual-task card now reliably renders the A/B/C previews instead of sometimes showing nothing.",
+            "Collapsing a TODO.md viewer card on mobile no longer hides its ⋯ more-actions button — the button now stays put whether the card is collapsed or expanded.",
         ],
     },
 ];
