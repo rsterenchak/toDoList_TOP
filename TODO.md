@@ -129,11 +129,11 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d55c4ac7-09fe-47c4-a484-3779cd2f0320 -->
 
-- [x] **[MEDIUM]** Hide the TODO.md viewer's ⋯ overflow button whenever the card is collapsed on mobile
+- [ ] **[MEDIUM]** Hide the TODO.md viewer's ⋯ overflow button whenever the card is collapsed on mobile
   - Type: bug
   - Description: In the TODO.md viewer card, the “⋯” overflow button (`.todoMdViewerOverflowBtn`, inside `.todoMdViewerOverflowWrap`) blinks in and out as the card's collapse chevron (`.todoMdViewerCollapseBtn`) is tapped — the chevron flips the `.collapsed` class on `.todoMdViewerCard`, and CSS hides the ⋯ only while the card is collapsed. That hide rule (currently at `style.css:8377`) is scoped to `@media (max-width: 700px)`, but the app treats everything below 1024px as mobile (`isMobileViewport()` in `toDoList_main/src/viewport.js` → `innerWidth < 1024`, and `MOBILE_BREAKPOINT = 1023` in `toDoList_main/src/coachmark.js` plus the `max-width: 1023px` breakpoints used throughout `style.css`). So in the 701–1023px band the ⋯ stays visible on the collapsed strip, which is the “showing on/off” inconsistency reported.
   - Implementation notes: Widen the rule's breakpoint from `max-width: 700px` to `max-width: 1023px` so the ⋯ is hidden whenever the viewer card is collapsed across the entire mobile range and only appears when the card is expanded. One-line CSS scope change — no DOM edits, no JS. The overflow wrap's base `display: inline-flex` (`style.css:7993`) already restores it on expand, so nothing else is needed.
   - Out of scope: the ⇅ sort trigger on the filter row (`#taskSortBtnMobile`) — a separate control that doesn't react to collapse; leave it untouched. Also leave desktop (≥1024px) collapsed-state behavior unchanged.
   - File: `toDoList_main/src/style.css`
-  - Completed: 2026-07-08
+  - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e695c17d-92c5-45aa-a2c1-0b5dc0fab7e2 -->
