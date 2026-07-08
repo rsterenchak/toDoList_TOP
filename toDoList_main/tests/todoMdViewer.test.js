@@ -326,6 +326,34 @@ describe('todo.md viewer — expand/collapse toggle', () => {
         // the JS-computed inline height and the body would never fill.
         expect(css).toMatch(/\.todoMdViewerCard--expanded\s+\.todoMdViewerBody\s*\{[\s\S]{0,120}max-height:\s*none/);
     });
+
+    it('hides the collapsed card\'s ⋯ overflow wrap across the full mobile range (max-width:1023px, not 700px)', () => {
+        // Regression: the hide rule was scoped to @media (max-width: 700px)
+        // while the app treats <1024px as mobile (isMobileViewport()), so on
+        // the 701–1023px band the ⋯ blinked back onto the collapsed strip.
+        // The rule must live inside a max-width:1023px media block, never a
+        // 700px one. Find the breakpoint of every @media block that carries
+        // the collapse-hide rule by brace-matching each block.
+        const selector = '.todoMdViewerCard.collapsed .todoMdViewerOverflowWrap';
+        const containing = [];
+        const mediaRe = /@media \(max-width: (\d+)px\)/g;
+        let m;
+        while ((m = mediaRe.exec(css)) !== null) {
+            let depth = 0;
+            let end = css.length;
+            for (let i = css.indexOf('{', m.index); i < css.length; i++) {
+                if (css[i] === '{') depth++;
+                else if (css[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+            }
+            const block = css.slice(m.index, end);
+            const at = block.indexOf(selector);
+            if (at !== -1 && /display:\s*none/.test(block.slice(at))) {
+                containing.push(Number(m[1]));
+            }
+        }
+        expect(containing).toContain(1023);
+        expect(containing).not.toContain(700);
+    });
 });
 
 describe('todo.md viewer — body collapse toggle', () => {
