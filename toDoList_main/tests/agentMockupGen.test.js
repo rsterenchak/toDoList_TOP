@@ -89,7 +89,12 @@ async function loadBoard() {
     await flush();
 }
 
-const ABC = '{"A":"<p>Alpha</p>","B":"<p>Bravo</p>","C":"<p>Charlie</p>"}';
+// The reply contract is marker-delimited RAW HTML — each variant document
+// preceded by a ===VARIANT X=== sentinel line — not JSON.
+function sentinel(a, b, c) {
+    return '===VARIANT A===\n' + a + '\n===VARIANT B===\n' + b + '\n===VARIANT C===\n' + c;
+}
+const ABC = sentinel('<p>Alpha</p>', '<p>Bravo</p>', '<p>Charlie</p>');
 
 beforeEach(() => {
     listLogic._reset();
@@ -136,7 +141,7 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         document.querySelector('.agentMockupGenerate').click();
         await flush();
 
-        // The chat Worker was called once with the grounded, JSON-shaped prompt.
+        // The chat Worker was called once with the grounded, marker-delimited prompt.
         expect(chatCalls.length).toBe(1);
         const content = chatCalls[0].messages[0].content;
         expect(content).toContain('Task: Restyle the chip');
@@ -145,7 +150,10 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         expect(content).toContain('- Tokens: accent');
         expect(content).toContain('- Change: recolor');
         expect(content).toContain('Do NOT write a TODO.md entry');
-        expect(content).toContain('{"A":');
+        expect(content).toContain('===VARIANT A===');
+        expect(content).toContain('RAW HTML');
+        // The brittle JSON contract is gone.
+        expect(content).not.toContain('{"A":');
 
         // Three preview iframes, sandboxed with scripts OFF (empty sandbox).
         const frames = document.querySelectorAll('.agentMockupFrame');
@@ -166,7 +174,11 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
     });
 
     it('injects the app style into an existing <head> when the variant is a full document', async () => {
-        chatReply = '{"A":"<!doctype html><html><head><title>x</title></head><body><b>A</b></body></html>","B":"<p>B</p>","C":"<p>C</p>"}';
+        chatReply = sentinel(
+            '<!doctype html><html><head><title>x</title></head><body><b>A</b></body></html>',
+            '<p>B</p>',
+            '<p>C</p>',
+        );
         queueRows = [{ id: 'g2b', state: 'needs_mockup', context: { title: 'T' } }];
         await loadBoard();
 
@@ -181,15 +193,46 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         expect(doc.indexOf('<style>')).toBeGreaterThan(doc.indexOf('<head>'));
     });
 
-    it('parses a reply wrapped in a ```json code fence', async () => {
-        chatReply = '```json\n' + ABC + '\n```';
+    it('parses a reply whose variant documents are each wrapped in a ```html code fence', async () => {
+        chatReply = sentinel(
+            '```html\n<p>Alpha</p>\n```',
+            '```html\n<p>Bravo</p>\n```',
+            '```html\n<p>Charlie</p>\n```',
+        );
         queueRows = [{ id: 'g3', state: 'needs_mockup', context: { title: 'T' } }];
         await loadBoard();
 
         document.querySelector('.agentMockupGenerate').click();
         await flush();
 
-        expect(document.querySelectorAll('.agentMockupFrame').length).toBe(3);
+        const frames = document.querySelectorAll('.agentMockupFrame');
+        expect(frames.length).toBe(3);
+        // The fence markers are peeled, not carried into the preview.
+        expect(frames[0].getAttribute('srcdoc')).toContain('<p>Alpha</p>');
+        expect(frames[0].getAttribute('srcdoc')).not.toContain('```');
+        expect(document.querySelector('.agentMockupGenError').hidden).toBe(true);
+    });
+
+    it('parses full HTML documents with unescaped quotes and newlines — the case JSON could not survive', async () => {
+        // Real variant documents carry class="…"/style="…" attributes and many
+        // newlines; as JSON string values these would need escaping and almost
+        // always break JSON.parse. As marker-delimited raw HTML they parse fine.
+        const docA = '<!doctype html>\n<html>\n<head><style>\n.chip { color: var(--accent); }\n</style></head>\n'
+            + '<body>\n<span class="chip" style="border: 1px solid var(--accent)">Alpha</span>\n</body>\n</html>';
+        const docB = '<div class="b">\n<p style="margin: 0">Bravo said "hi"</p>\n</div>';
+        const docC = '<div class="c">\n<p>Charlie</p>\n</div>';
+        chatReply = 'Here are the three mockups:\n\n' + sentinel(docA, docB, docC);
+        queueRows = [{ id: 'g3b', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+
+        const frames = document.querySelectorAll('.agentMockupFrame');
+        expect(frames.length).toBe(3);
+        expect(frames[0].getAttribute('srcdoc')).toContain('class="chip"');
+        expect(frames[1].getAttribute('srcdoc')).toContain('Bravo said "hi"');
+        expect(frames[2].getAttribute('srcdoc')).toContain('Charlie');
         expect(document.querySelector('.agentMockupGenError').hidden).toBe(true);
     });
 
@@ -201,7 +244,7 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         await flush();
         expect(document.querySelector('.agentMockupFrame').getAttribute('srcdoc')).toContain('Alpha');
 
-        chatReply = '{"A":"<p>Zed</p>","B":"<p>Yak</p>","C":"<p>Xen</p>"}';
+        chatReply = sentinel('<p>Zed</p>', '<p>Yak</p>', '<p>Xen</p>');
         document.querySelector('.agentMockupGenerate').click();
         await flush();
 

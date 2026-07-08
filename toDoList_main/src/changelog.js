@@ -7,13 +7,15 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-08',
         added: [
-            "Agent cards waiting on your input now offer a “Discuss in chat” hand-off that opens the Claude chat pre-filled with the task's details, then collapse to a “Continue in chat” re-entry.",
             "A card handed off to chat now keeps an “answer with words” option that reopens its inline answer box, so you can switch between chatting and answering without losing the conversation.",
             "The agent board's Working status dot now gently pulses while a sweep is running, so an active run reads differently from an idle one.",
             "Visual-task mockup cards can now generate A/B/C design previews inside the app and render them inline, with the manual Claude hand-off kept as a fallback.",
         ],
         changed: [
             "The mockup hand-off prompt for a visual task now includes the target region's real markup and CSS, so mockups start from the actual UI instead of a summary.",
+        ],
+        fixed: [
+            "The “Generate mockups” button on a visual-task card now reliably renders the A/B/C previews instead of sometimes showing nothing.",
         ],
     },
 ];
