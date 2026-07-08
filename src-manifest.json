@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-08T13:56:20.307Z",
-  "sha": "3bca7d916125b701fcdeecd62b83b0e9fca18d5f",
+  "generatedAt": "2026-07-08T14:21:24.069Z",
+  "sha": "c5ca080716edb001047cfaf25dba81fc1b514f55",
   "files": [
     "agentView.js",
     "auth.js",
@@ -1777,7 +1777,7 @@
         },
         {
           "file": "style.css",
-          "line": 8681
+          "line": 8691
         }
       ]
     },
@@ -1793,7 +1793,7 @@
         },
         {
           "file": "style.css",
-          "line": 9664
+          "line": 9674
         }
       ]
     },
@@ -1809,7 +1809,7 @@
         },
         {
           "file": "style.css",
-          "line": 9663
+          "line": 9673
         }
       ]
     },
@@ -1825,7 +1825,7 @@
         },
         {
           "file": "style.css",
-          "line": 9581
+          "line": 9591
         }
       ]
     },
@@ -1853,7 +1853,7 @@
         },
         {
           "file": "style.css",
-          "line": 9574
+          "line": 9584
         }
       ]
     },
@@ -3053,7 +3053,7 @@
         },
         {
           "file": "style.css",
-          "line": 9056
+          "line": 9066
         }
       ]
     },
@@ -3093,7 +3093,7 @@
         },
         {
           "file": "style.css",
-          "line": 9371
+          "line": 9381
         }
       ]
     },
@@ -3125,7 +3125,7 @@
         },
         {
           "file": "style.css",
-          "line": 9267
+          "line": 9277
         }
       ]
     },
@@ -3141,7 +3141,7 @@
         },
         {
           "file": "style.css",
-          "line": 9294
+          "line": 9304
         }
       ]
     },
@@ -3209,7 +3209,7 @@
         },
         {
           "file": "style.css",
-          "line": 9363
+          "line": 9373
         }
       ]
     },
@@ -3225,7 +3225,7 @@
         },
         {
           "file": "style.css",
-          "line": 9283
+          "line": 9293
         }
       ]
     },
@@ -3241,7 +3241,7 @@
         },
         {
           "file": "style.css",
-          "line": 8547
+          "line": 8557
         }
       ]
     },
@@ -3273,7 +3273,7 @@
         },
         {
           "file": "style.css",
-          "line": 8600
+          "line": 8610
         }
       ]
     },
@@ -3593,7 +3593,7 @@
         },
         {
           "file": "style.css",
-          "line": 9466
+          "line": 9476
         }
       ]
     },
@@ -3869,7 +3869,7 @@
         },
         {
           "file": "style.css",
-          "line": 9568
+          "line": 9578
         }
       ]
     },
@@ -4057,7 +4057,7 @@
         },
         {
           "file": "style.css",
-          "line": 8503
+          "line": 8513
         }
       ]
     },
