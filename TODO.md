@@ -56,3 +56,12 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fab0f6eb-ca7d-4dcc-9264-ad99ad65afba -->
+
+- [ ] **[MEDIUM]** Add a "Discuss in chat" hand-off to needs_words agent cards
+  - Type: feature
+  - Description: When triage returns `needs_words`, the only path forward on the card is the inline Send box, which re-fires a full `claude-triage.yml` sweep per answer — too heavy for tasks that need real back-and-forth. Add a lightweight "discuss in chat" affordance to the `needs_words` branch of `buildSecondary` in `agentView.js` (variant C: an accent text-link with a `ti-messages` glyph, left of the existing Send button) that hands the task to the in-app Claude chat instead of re-triaging. It must NOT call `answerAgentTask` or `fireTriageSweep`. Behaves identically on desktop and mobile.
+  - Behavior: Tapping "discuss in chat" opens the Claude sheet on the Chat tab — on mobile, open the sheet if closed (`openClaudeSheet`); on desktop the docked pane is always mounted, so expand it — with the chat workspace pointed at this project's repo (`activeChatRepo` / the `#claudeWorkspacePill` state, already re-pointed on project switch), and seeds `#claudeComposerInput` with the task context: title + description from the row's `context`, plus triage's `question`. Send is left to the user (no auto-send). Once a card has been handed off, its secondary collapses — the textarea + Send are replaced by a single `Continue in chat →` re-entry that re-opens the same seeded chat. Track handed-off row ids in a module-level Set in `agentView.js` (mirroring `_dispatchPollers`) that `buildSecondary` / `paint()` consult, so the collapsed state survives the board's realtime + `refreshAgentQueue` re-renders within the session.
+  - Out of scope: The return path (saving a finished entry from chat back to the row and flipping it to `drafted`) — that's a separate follow-up and the only piece that touches the data model, so this entry writes nothing through `listLogic.js` and stays UI-only. Persisting the collapsed/handed-off state across reloads (the Set resets on reload — acceptable for now). Any change to triage, `triage.md`, the Worker, or the `agent_queue` schema (none needed). New styling goes in `style.css` as classes/tokens, never inline (per CLAUDE.md).
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 37d5695a-36b6-4827-892f-af764d8f1b7e -->
