@@ -14,6 +14,7 @@ import {
     findTargetById,
     showInjectToast,
     isInjectConfigured,
+    chatWithWorker,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
 
@@ -693,22 +694,281 @@ function buildMockupPrompt(ctx) {
         + '`toDoList_main/src/`, no id marker.';
 }
 
-// Secondary content for a `needs_mockup` card: the launcher hand-off. Triage
-// routes visual tasks here; this surfaces an "Open mockup" button that expands
-// a read-only block showing the *actual full prompt* to paste into Claude —
-// with a Copy button and a separate "Open Claude Design" control beside it —
-// and a paste-back field that takes the finished TODO.md entry, writes it to
-// the row's `draft`, and flips the row to `drafted` — where the Dispatch card
-// already ships it. Showing the exact prompt (rather than the raw context
-// bundle) removes the ambiguity about what to paste; copying and opening Claude
-// are separate deliberate taps so there's no focus race between them. The
-// round-trip is deliberately manual: this is a launcher, not an in-app mockup
-// renderer. The view never writes to Supabase directly (the save routes through
-// listLogic.setAgentRunState).
+// The machine-parseable sibling of buildMockupPrompt: same grounded context
+// (region/tokens/change/markup/css) but asking for three self-contained HTML
+// documents — variants A/B/C — returned as a single JSON object and nothing
+// else, so the reply can be parsed and rendered as live previews right on the
+// card. Deliberately carries NO TODO.md-entry instruction: the finished entry
+// stays with the fallback hand-off (buildMockupPrompt), so a Generate call is
+// mockups-only.
+function buildMockupGenPrompt(ctx) {
+    const c = (ctx && typeof ctx === 'object') ? ctx : {};
+    const val = function (v) { return (v == null) ? '' : String(v).trim(); };
+    const title = val(c.title);
+    const description = val(c.description);
+
+    const contextLines = [];
+    if (val(c.region)) contextLines.push('- Region: ' + val(c.region));
+    if (val(c.tokens)) contextLines.push('- Tokens: ' + val(c.tokens));
+    if (val(c.change)) contextLines.push('- Change: ' + val(c.change));
+    const contextBlock = contextLines.length ? ('\n\nContext:\n' + contextLines.join('\n')) : '';
+
+    const markup = val(c.markup);
+    const css = val(c.css);
+    const markupBlock = markup ? ('\n\nCurrent markup:\n```\n' + markup + '\n```') : '';
+    const cssBlock = css ? ('\n\nCurrent CSS:\n```css\n' + css + '\n```') : '';
+
+    return 'I need three UI mockup variants (A, B, C) for a change to my toDoList_TOP PWA, '
+        + 'to preview inline. Do NOT write a TODO.md entry — mockups only.\n\n'
+        + 'Task: ' + title + '\n' + description
+        + contextBlock
+        + markupBlock
+        + cssBlock
+        + '\n\nProduce three distinct, self-contained HTML documents — one per variant — that '
+        + 'render the proposed change. Each must be a complete standalone document styled with an '
+        + 'inline <style> block, using the app CSS variables (var(--accent), var(--bg-base), '
+        + 'var(--text-primary), etc.) so it matches the real theme; no external assets and no scripts.'
+        + '\n\nReturn ONLY a single JSON object, no prose and no code fences, of exactly this shape:\n'
+        + '{"A":"<full html document>","B":"<full html document>","C":"<full html document>"}';
+}
+
+// Parse a mockup-generation reply into { A, B, C } HTML strings, defensively.
+// Handles the model wrapping its JSON in ```json / ```html fences or bracketing
+// it with prose, and returns null on anything unparseable or lacking at least
+// one variant string — the caller surfaces that as a non-blocking error and
+// leaves the fallback hand-off usable. Never throws.
+function parseMockupVariants(reply) {
+    if (!reply || typeof reply !== 'string') return null;
+    let text = reply.trim();
+    // Strip a wrapping markdown code fence (```json … ``` / ```html … ```).
+    const fence = text.match(/^```(?:json|html)?\s*([\s\S]*?)\s*```$/i);
+    if (fence) text = fence[1].trim();
+    // If prose brackets the object, slice to the outermost {...} span.
+    if (text.charAt(0) !== '{') {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start === -1 || end === -1 || end <= start) return null;
+        text = text.slice(start, end + 1);
+    }
+    let obj;
+    try { obj = JSON.parse(text); } catch (e) { return null; }
+    if (!obj || typeof obj !== 'object') return null;
+    const out = {};
+    let any = false;
+    ['A', 'B', 'C'].forEach(function (k) {
+        const v = obj[k];
+        if (typeof v === 'string' && v.trim()) { out[k] = v; any = true; }
+    });
+    return any ? out : null;
+}
+
+// The app's Void design tokens (the dark-theme :root defaults from style.css),
+// injected into every preview iframe so a variant's HTML renders against the
+// real cascade rather than an approximation. Kept in sync with style.css by
+// token name; buildPreviewCss() overrides any token whose live computed value
+// is readable at render time, so an active light theme is honored too.
+const PREVIEW_TOKENS = [
+    ['--bg-base', '#0e0f14'],
+    ['--bg-elevated', '#14151b'],
+    ['--bg-raised', '#1c1e27'],
+    ['--bg-surface', '#191a22'],
+    ['--bg-row', '#1b1c25'],
+    ['--bg-hover', '#1f2130'],
+    ['--bg-active', '#1a1c29'],
+    ['--border-dim', '#1d1e26'],
+    ['--border-mid', '#23242e'],
+    ['--border-bright', '#2d2f3d'],
+    ['--accent', '#8b7bff'],
+    ['--accent-dim', 'rgba(139, 123, 255, 0.12)'],
+    ['--accent-text', '#8b7bff'],
+    ['--accent-glow', 'rgba(139, 123, 255, 0.55)'],
+    ['--text-primary', '#e6e7ee'],
+    ['--text-secondary', '#8a8d9c'],
+    ['--text-muted', '#5a5d6b'],
+    ['--text-danger', '#e06a7a'],
+    ['--text-warning', '#d9b86a'],
+    ['--text-urgent', '#e06a7a'],
+    ['--type-feature', '#9ad0a8'],
+    ['--type-bug', '#e48a96'],
+    ['--type-modify', '#d9b88a'],
+    ['--radius-sm', '4px'],
+    ['--radius-md', '6px'],
+];
+
+// Build the <style> body injected into each preview document: the resolved
+// Void tokens on :root plus a base reset and the app font stack, so a variant
+// inherits the real theme + typography. Reads live token values off the root
+// element when available (honoring the active theme), falling back to the dark
+// defaults when they can't be read (e.g. under a headless test).
+function buildPreviewCss() {
+    let live = null;
+    try { live = window.getComputedStyle(document.documentElement); } catch (e) { live = null; }
+    const decls = PREVIEW_TOKENS.map(function (pair) {
+        let value = pair[1];
+        if (live) {
+            const v = live.getPropertyValue(pair[0]);
+            if (v && v.trim()) value = v.trim();
+        }
+        return '  ' + pair[0] + ': ' + value + ';';
+    }).join('\n');
+    return ':root {\n' + decls + '\n}\n'
+        + 'html, body { margin: 0; }\n'
+        + 'body { padding: 12px; background: var(--bg-base); color: var(--text-primary);'
+        + " font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,"
+        + ' Helvetica, Arial, sans-serif; }\n'
+        + "code, pre, kbd { font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace; }";
+}
+
+// Inject the preview <style> into a variant's HTML so it renders against the
+// app cascade. Splices into an existing <head> when the variant is a full
+// document, opens one inside a bare <html>, or wraps a fragment in a minimal
+// document — so both full documents and fragments preview correctly.
+function injectPreviewStyle(html) {
+    const styleTag = '<style>' + buildPreviewCss() + '</style>';
+    const h = String(html == null ? '' : html);
+    if (/<head[^>]*>/i.test(h)) {
+        return h.replace(/<head[^>]*>/i, function (m) { return m + styleTag; });
+    }
+    if (/<html[^>]*>/i.test(h)) {
+        return h.replace(/<html[^>]*>/i, function (m) { return m + '<head>' + styleTag + '</head>'; });
+    }
+    return '<!doctype html><html><head>' + styleTag + '</head><body>' + h + '</body></html>';
+}
+
+// The repo to point a mockup-generation chat turn at: the active project's
+// linked inject target repo (the same routing the inject/run path uses), or
+// null when the project has no target — in which case the Worker falls back to
+// its default repo. Mirrors resolveProjectRepo without pulling that module's
+// import graph into this view.
+function mockupChatRepo(projectName) {
+    const targetId = listLogic.getProjectTargetId(projectName);
+    if (!targetId) return null;
+    const target = findTargetById(targetId);
+    return target && target.repo ? target.repo : null;
+}
+
+// Render the A/B/C variants into the previews container as stacked tiles, each
+// a sandboxed <iframe> (scripts OFF via an empty `sandbox`, so pure-CSS motion
+// still runs) whose srcdoc is the variant HTML with the app cascade injected.
+// Replaces any prior tiles.
+function renderMockupPreviews(container, variants) {
+    container.textContent = '';
+    ['A', 'B', 'C'].forEach(function (k) {
+        if (!variants[k]) return;
+        const tile = document.createElement('div');
+        tile.className = 'agentMockupTile';
+
+        const label = document.createElement('span');
+        label.className = 'agentMockupTileLabel';
+        label.textContent = 'Option ' + k;
+        tile.appendChild(label);
+
+        const frame = document.createElement('iframe');
+        frame.className = 'agentMockupFrame';
+        // Empty sandbox = maximum restriction: scripts, forms, and same-origin
+        // are all off. Pure-CSS animation is unaffected.
+        frame.setAttribute('sandbox', '');
+        frame.setAttribute('title', 'Mockup option ' + k);
+        frame.setAttribute('loading', 'lazy');
+        frame.srcdoc = injectPreviewStyle(variants[k]);
+        tile.appendChild(frame);
+
+        container.appendChild(tile);
+    });
+}
+
+// Secondary content for a `needs_mockup` card. Two paths stacked top-to-bottom:
+//
+//   1. In-app A/B/C generation — a Generate / Regenerate control that calls the
+//      chat Worker with a machine-parseable prompt, parses the reply, and
+//      renders the three variants as sandboxed preview iframes right on the
+//      card. This is the primary path.
+//   2. A tucked "Not quite right?" fallback — the original manual hand-off,
+//      unchanged: an "Open mockup" button that expands a read-only block showing
+//      the *actual full prompt* to paste into Claude, with a Copy button and a
+//      separate "Open Claude Design" control, plus a paste-back field that takes
+//      the finished TODO.md entry, writes it to the row's `draft`, and flips the
+//      row to `drafted` — where the Dispatch card already ships it.
+//
+// The view never writes to Supabase directly (the save routes through
+// listLogic.setAgentRunState) and generation reuses the existing chat proxy
+// (no Worker change). The finished-entry step stays with the fallback: the
+// previews are view-only until the "use this" follow-up lands.
 function buildMockupSecondary(row) {
     const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
     const wrap = document.createElement('div');
     wrap.className = 'agentSecondary agentMockup';
+
+    // ── In-app A/B/C generation ──
+    // Generate calls the chat Worker with buildMockupGenPrompt, parses the reply
+    // into three variants, and renders them as sandboxed preview iframes.
+    // Regenerate re-runs and replaces the tiles. A generation or parse failure
+    // shows a non-blocking error and leaves the fallback hand-off fully usable.
+    const gen = document.createElement('div');
+    gen.className = 'agentMockupGen';
+
+    const previews = document.createElement('div');
+    previews.className = 'agentMockupPreviews';
+
+    const genError = document.createElement('p');
+    genError.className = 'agentMockupGenError';
+    genError.setAttribute('role', 'alert');
+    genError.hidden = true;
+
+    const genBtn = document.createElement('button');
+    genBtn.type = 'button';
+    genBtn.className = 'agentMockupGenerate';
+    genBtn.textContent = 'Generate mockups';
+
+    function genFail(message) {
+        genBtn.disabled = false;
+        genBtn.classList.remove('is-pending');
+        genBtn.textContent = previews.childNodes.length ? 'Regenerate' : 'Generate mockups';
+        genError.textContent = message || 'Couldn’t generate mockups. Try again.';
+        genError.hidden = false;
+    }
+
+    genBtn.addEventListener('click', function () {
+        if (genBtn.disabled) return;
+        genError.hidden = true;
+        genError.textContent = '';
+        genBtn.disabled = true;
+        genBtn.classList.add('is-pending');
+        genBtn.textContent = 'Generating…';
+        const repo = mockupChatRepo(getSelectedProjectName());
+        Promise.resolve().then(function () {
+            return chatWithWorker([{ role: 'user', content: buildMockupGenPrompt(ctx) }], null, null, repo);
+        }).then(function (res) {
+            const reply = (res && typeof res.reply === 'string') ? res.reply : '';
+            const variants = parseMockupVariants(reply);
+            if (!variants) {
+                genFail('Couldn’t read the mockups from the reply — try Regenerate, or use the fallback below.');
+                return;
+            }
+            renderMockupPreviews(previews, variants);
+            genBtn.disabled = false;
+            genBtn.classList.remove('is-pending');
+            genBtn.textContent = 'Regenerate';
+        }).catch(function () {
+            genFail('Couldn’t generate mockups — try again, or use the fallback below.');
+        });
+    });
+
+    gen.appendChild(genBtn);
+    gen.appendChild(genError);
+    gen.appendChild(previews);
+    wrap.appendChild(gen);
+
+    // ── Fallback hand-off ──
+    // The full manual path, tucked beneath the previews as a collapsible
+    // "Not quite right?" section. Nothing here changed — it just no longer sits
+    // at the top of the card.
+    const fallback = document.createElement('details');
+    fallback.className = 'agentMockupFallback';
+    const fallbackSummary = document.createElement('summary');
+    fallbackSummary.className = 'agentMockupFallbackSummary';
+    fallbackSummary.textContent = 'Not quite right? Hand off to Claude';
+    fallback.appendChild(fallbackSummary);
 
     // The full assembled prompt — the same string the user pastes into Claude.
     // Built once (the context bundle is folded into it), shown verbatim in the
@@ -723,7 +983,7 @@ function buildMockupSecondary(row) {
     openBtn.className = 'agentMockupOpen';
     openBtn.textContent = 'Open mockup';
     openBtn.setAttribute('aria-expanded', 'false');
-    wrap.appendChild(openBtn);
+    fallback.appendChild(openBtn);
 
     const promptWrap = document.createElement('div');
     promptWrap.className = 'agentMockupPrompt';
@@ -773,7 +1033,7 @@ function buildMockupSecondary(row) {
     promptActions.appendChild(designBtn);
 
     promptWrap.appendChild(promptActions);
-    wrap.appendChild(promptWrap);
+    fallback.appendChild(promptWrap);
 
     openBtn.addEventListener('click', function () {
         const open = promptWrap.hidden;
@@ -789,7 +1049,7 @@ function buildMockupSecondary(row) {
     input.rows = 4;
     input.placeholder = 'Paste the finished TODO.md entry…';
     input.setAttribute('aria-label', 'Finished entry');
-    wrap.appendChild(input);
+    fallback.appendChild(input);
 
     const actions = document.createElement('div');
     actions.className = 'agentMockupActions';
@@ -805,7 +1065,7 @@ function buildMockupSecondary(row) {
     save.className = 'agentMockupSave';
     save.textContent = 'Save draft';
     actions.appendChild(save);
-    wrap.appendChild(actions);
+    fallback.appendChild(actions);
 
     function fail(message) {
         save.disabled = false;
@@ -841,6 +1101,7 @@ function buildMockupSecondary(row) {
         });
     });
 
+    wrap.appendChild(fallback);
     return wrap;
 }
 
