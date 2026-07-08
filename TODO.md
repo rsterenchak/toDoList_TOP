@@ -137,3 +137,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e695c17d-92c5-45aa-a2c1-0b5dc0fab7e2 -->
+
+- [ ] **[MEDIUM]** Stop the collapse button from toggling the sort button on mobile todoMdViewer cards
+  - Type: bug
+  - Description: On mobile, tapping a card's collapse button unexpectedly shows/hides the sort button along with the card body, because the sort control is inside the region the collapse toggle affects. The sort button should only ever appear on the todoMdViewer sheet and should not be shown/hidden by the per-card collapse action. Fix by decoupling the sort button's visibility from the collapse toggle — either move it out of the collapsible region or guard its visibility so collapse no longer touches it. Likely code is the collapse handler and sort-button markup in `toDoList_main/src/todoMdViewer.js`, with any related mobile rules in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5a305f13-40a7-48c7-aec9-5c26cbb2986f -->
