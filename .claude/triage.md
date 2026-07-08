@@ -63,7 +63,11 @@ files) enough to root-cause it, then assign exactly ONE verdict:
   modified), layout, spacing, color, placement, copy, an animation, or a bug
   whose fix is visual. These route to the mockup step, not to a draft. If you can
   identify the target region and the tokens in play, put them in `context` (see
-  below) so the mockup step starts warm.
+  below) so the mockup step starts warm. Also read the target region's actual
+  current source and add it to `context` as `markup` (the element's markup or
+  DOM-build snippet) and `css` (the CSS rule(s) matching the selector) — raw
+  source slices, not summaries — so the mockup step is grounded in the real UI
+  from the first message rather than reconstructed from the `tokens` summary.
 - **`drafted`** — the task is workable, non-visual, and clear enough to specify.
   Produce a full TODO.md entry (format below) and put it in `draft`, plus the
   declared file paths in `file_paths`.
@@ -95,8 +99,8 @@ history. Use an ISO timestamp for `ts`.
 - `needs_words`:
   `{"state":"needs_words","question":"<the question>","thread":[{"role":"agent","text":"<the question>","ts":"<now>"}]}`
 - `needs_mockup`:
-  `{"state":"needs_mockup","context":{"title":"...","description":"...","region":"<css selector>","tokens":"<e.g. --accent #6C5DF5 · radius 10px>","change":"<what changes>"},"thread":[{"role":"agent","text":"Visual change — parked for a mockup.","ts":"<now>"}]}`
-  (preserve the existing `title`/`description` in `context`; add the visual fields)
+  `{"state":"needs_mockup","context":{"title":"...","description":"...","region":"<css selector>","tokens":"<e.g. --accent #6C5DF5 · radius 10px>","change":"<what changes>","markup":"<raw markup / DOM-build snippet for the region>","css":"<raw CSS rule(s) matching the selector>"},"thread":[{"role":"agent","text":"Visual change — parked for a mockup.","ts":"<now>"}]}`
+  (preserve the existing `title`/`description` in `context`; add the visual fields, including the raw `markup`/`css` source slices)
 - `drafted`:
   `{"state":"drafted","draft":"<full TODO.md entry>","file_paths":["toDoList_main/src/...","..."],"thread":[{"role":"agent","text":"Drafted — ready to dispatch.","ts":"<now>"}]}`
 

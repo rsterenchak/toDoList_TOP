@@ -906,6 +906,48 @@ describe('AGENT view — needs_mockup launcher', () => {
         expect(clipboardText).not.toContain('- Change:');
     });
 
+    it('folds raw markup and CSS into fenced blocks when present in the context', async () => {
+        queueRows = [{
+            id: 'nm4b',
+            state: 'needs_mockup',
+            context: {
+                title: 'T',
+                region: '.chip',
+                markup: '<span class="chip">Hi</span>',
+                css: '.chip { color: var(--accent); }',
+            },
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupOpen').click();
+        await flush();
+        document.querySelector('.agentMockupCopy').click();
+        await flush();
+
+        expect(clipboardText).toContain('Current markup:');
+        expect(clipboardText).toContain('<span class="chip">Hi</span>');
+        expect(clipboardText).toContain('Current CSS:');
+        expect(clipboardText).toContain('.chip { color: var(--accent); }');
+        expect(clipboardText).toContain('```css');
+    });
+
+    it('omits the markup and CSS blocks entirely on older rows that lack them', async () => {
+        queueRows = [{
+            id: 'nm4c',
+            state: 'needs_mockup',
+            context: { title: 'T', region: 'Sidebar' },
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupOpen').click();
+        await flush();
+        document.querySelector('.agentMockupCopy').click();
+        await flush();
+
+        expect(clipboardText).not.toContain('Current markup:');
+        expect(clipboardText).not.toContain('Current CSS:');
+    });
+
     it('Save draft writes the pasted entry to draft and flips the row to drafted', async () => {
         queueRows = [{ id: 'nm5', state: 'needs_mockup', context: { title: 'T' } }];
         await loadBoard();

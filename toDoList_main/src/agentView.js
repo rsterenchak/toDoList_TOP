@@ -673,9 +673,20 @@ function buildMockupPrompt(ctx) {
     if (val(c.change)) contextLines.push('- Change: ' + val(c.change));
     const contextBlock = contextLines.length ? ('\n\nContext:\n' + contextLines.join('\n')) : '';
 
+    // Raw source slices of the target region, added by triage so the mockup is
+    // grounded in the real UI from the first message rather than reconstructed
+    // from the hand-summarized `tokens`. Fenced verbatim; omitted (conditional,
+    // like the Context lines) on older rows that predate these fields.
+    const markup = val(c.markup);
+    const css = val(c.css);
+    const markupBlock = markup ? ('\n\nCurrent markup:\n```\n' + markup + '\n```') : '';
+    const cssBlock = css ? ('\n\nCurrent CSS:\n```css\n' + css + '\n```') : '';
+
     return "I'm working on my toDoList_TOP PWA and need mockups for a UI change, then a finished TODO.md entry.\n\n"
         + 'Task: ' + title + '\n' + description
         + contextBlock
+        + markupBlock
+        + cssBlock
         + '\n\nShow me 2-3 mockup options (A/B/C), let me pick one, then produce a single TODO.md entry '
         + 'in this format: `- [ ] **[PRIORITY]** <title>` with `- Type:` / `- Description:` / `- File:` / '
         + '`- Completed:` sub-bullets, priority in literal brackets, full repo-relative paths under '
