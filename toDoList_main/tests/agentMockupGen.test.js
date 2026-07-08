@@ -110,7 +110,21 @@ beforeEach(() => {
 
 afterEach(() => {
     unsubscribeAgentView();
+    vi.restoreAllMocks();
 });
+
+// Generate the previews, then return the rendered "use this" buttons.
+async function generateAndGetUseButtons() {
+    document.querySelector('.agentMockupGenerate').click();
+    await flush();
+    return Array.from(document.querySelectorAll('.agentMockupUse'));
+}
+
+const FINISHED_ENTRY =
+    '- [ ] **[MEDIUM]** Recolor the chip\n'
+    + '  - Type: feature\n'
+    + '  - Description: Make the chip use the accent token.\n'
+    + '  - File: toDoList_main/src/style.css';
 
 describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
     it('renders the Generate control and the tucked fallback hand-off beneath it', async () => {
@@ -299,5 +313,130 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         // The chat turn carries no iterate seed and no attachments.
         expect(chatCalls[0].entryId).toBeNull();
         expect(chatCalls[0].attach).toBeNull();
+    });
+});
+
+describe('AGENT view — needs_mockup "use this" → drafted', () => {
+    it('renders a "use this" control on each preview tile', async () => {
+        queueRows = [{ id: 'u1', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        expect(useBtns.length).toBe(3);
+        useBtns.forEach((b) => {
+            expect(b.textContent).toBe('use this');
+            expect(b.disabled).toBe(false);
+        });
+    });
+
+    it('marks the tile selected and disables every "use this" while the entry is generated', async () => {
+        queueRows = [{ id: 'u2', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        // The second chat call (the entry) resolves asynchronously; assert the
+        // synchronous pending state before flushing.
+        chatReply = FINISHED_ENTRY;
+        useBtns[1].click();
+
+        const tiles = document.querySelectorAll('.agentMockupTile');
+        expect(tiles[1].classList.contains('is-selected')).toBe(true);
+        expect(tiles[0].classList.contains('is-selected')).toBe(false);
+        expect(useBtns[1].textContent).toBe('Creating entry…');
+        useBtns.forEach((b) => { expect(b.disabled).toBe(true); });
+    });
+
+    it('generates the finished entry from the chosen variant and flips the row to drafted', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState');
+        queueRows = [{
+            id: 'u3',
+            state: 'needs_mockup',
+            context: { title: 'Recolor the chip', description: 'Accent it', region: 'Header', tokens: 'accent', change: 'recolor' },
+        }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        chatReply = FINISHED_ENTRY;
+        useBtns[1].click();
+        await flush();
+
+        // A second chat call carried the entry prompt for the chosen variant B.
+        expect(chatCalls.length).toBe(2);
+        const content = chatCalls[1].messages[0].content;
+        expect(content).toContain('Task: Recolor the chip');
+        expect(content).toContain('- Region: Header');
+        expect(content).toContain('Chosen mockup (variant B)');
+        expect(content).toContain('<p>Bravo</p>');
+        expect(content).toContain('Return ONLY the finished entry');
+        // The turn carries no seed/attachments and targets the (null) repo.
+        expect(chatCalls[1].entryId).toBeNull();
+        expect(chatCalls[1].attach).toBeNull();
+        expect(chatCalls[1].repo).toBeNull();
+
+        // The reply was written to the row as its draft, flipping it to drafted.
+        expect(spy).toHaveBeenCalledWith('u3', { draft: FINISHED_ENTRY, state: 'drafted' });
+    });
+
+    it('strips a wrapping code fence from the entry reply before saving', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState');
+        queueRows = [{ id: 'u4', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        chatReply = '```\n' + FINISHED_ENTRY + '\n```';
+        useBtns[0].click();
+        await flush();
+
+        expect(spy).toHaveBeenCalledWith('u4', { draft: FINISHED_ENTRY, state: 'drafted' });
+    });
+
+    it('shows a non-blocking error and re-enables the tiles when the reply is empty', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState');
+        queueRows = [{ id: 'u5', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        chatReply = '   ';
+        useBtns[0].click();
+        await flush();
+
+        // No write attempted on an empty reply.
+        expect(spy).not.toHaveBeenCalled();
+        const err = document.querySelector('.agentMockupUseError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent.length).toBeGreaterThan(0);
+        // The tiles re-enable and the selection ring clears so the user can retry.
+        document.querySelectorAll('.agentMockupUse').forEach((b) => { expect(b.disabled).toBe(false); });
+        expect(document.querySelector('.agentMockupTile.is-selected')).toBeNull();
+    });
+
+    it('shows a non-blocking error and re-enables when the chat call rejects', async () => {
+        queueRows = [{ id: 'u6', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        chatReject = 'network boom';
+        useBtns[0].click();
+        await flush();
+
+        const err = document.querySelector('.agentMockupUseError');
+        expect(err.hidden).toBe(false);
+        document.querySelectorAll('.agentMockupUse').forEach((b) => { expect(b.disabled).toBe(false); });
+    });
+
+    it('surfaces a save failure and re-enables the tiles', async () => {
+        vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: false, error: 'save boom' });
+        queueRows = [{ id: 'u7', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        const useBtns = await generateAndGetUseButtons();
+        chatReply = FINISHED_ENTRY;
+        useBtns[0].click();
+        await flush();
+
+        const err = document.querySelector('.agentMockupUseError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toContain('save boom');
+        document.querySelectorAll('.agentMockupUse').forEach((b) => { expect(b.disabled).toBe(false); });
     });
 });

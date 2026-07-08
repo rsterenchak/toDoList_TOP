@@ -5091,6 +5091,64 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   background: var(--bg-base);
 }
 
+/* "use this": pick a variant, generate its finished entry, flip the row to
+   drafted. The chosen tile gets an accent selection ring on its frame. */
+.agentMockupTile.is-selected .agentMockupFrame {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentMockupUseRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentMockupUse {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.agentMockupUse:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentMockupUse:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentMockupUse:disabled,
+.agentMockupUse.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentMockupUse.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
+.agentMockupUseError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e5534b;
+}
+
 /* Fallback hand-off: the manual Claude round-trip, tucked under a collapsible
    "Not quite right?" summary beneath the previews. */
 .agentMockupFallback {

@@ -769,6 +769,55 @@ function parseMockupVariants(reply) {
     return any ? out : null;
 }
 
+// Build the prompt that turns a chosen A/B/C variant into a finished TODO.md
+// entry. Carries the same grounded context buildMockupGenPrompt uses
+// (title/description/region/tokens/change/markup/css) plus the selected
+// variant's HTML, and asks for ONLY the finished entry in the exact shape the
+// fallback prompt pins — so the reply can be written straight to the row's
+// draft after a single fence strip.
+function buildMockupEntryPrompt(ctx, key, html) {
+    const c = (ctx && typeof ctx === 'object') ? ctx : {};
+    const val = function (v) { return (v == null) ? '' : String(v).trim(); };
+    const title = val(c.title);
+    const description = val(c.description);
+
+    const contextLines = [];
+    if (val(c.region)) contextLines.push('- Region: ' + val(c.region));
+    if (val(c.tokens)) contextLines.push('- Tokens: ' + val(c.tokens));
+    if (val(c.change)) contextLines.push('- Change: ' + val(c.change));
+    const contextBlock = contextLines.length ? ('\n\nContext:\n' + contextLines.join('\n')) : '';
+
+    const markup = val(c.markup);
+    const css = val(c.css);
+    const markupBlock = markup ? ('\n\nCurrent markup:\n```\n' + markup + '\n```') : '';
+    const cssBlock = css ? ('\n\nCurrent CSS:\n```css\n' + css + '\n```') : '';
+
+    const variantHtml = String(html == null ? '' : html);
+    const variantBlock = '\n\nChosen mockup (variant ' + String(key) + '):\n```html\n' + variantHtml + '\n```';
+
+    return "I picked a mockup for a UI change to my toDoList_TOP PWA. Turn it into a single "
+        + 'finished TODO.md entry — nothing else.\n\n'
+        + 'Task: ' + title + '\n' + description
+        + contextBlock
+        + markupBlock
+        + cssBlock
+        + variantBlock
+        + '\n\nReturn ONLY the finished entry in exactly this format: '
+        + '`- [ ] **[PRIORITY]** <title>` with `- Type:` / `- Description:` / `- File:` / '
+        + '`- Completed:` sub-bullets, priority in literal brackets, full repo-relative paths under '
+        + '`toDoList_main/src/`, no id marker. No prose, no explanation, no code fences.';
+}
+
+// Strip a single wrapping ```…``` (or ```markdown …```) code fence from a reply
+// and trim, so a fenced entry pastes cleanly into the row's draft. A reply with
+// no fence is returned trimmed as-is. Never throws.
+function stripEntryFence(reply) {
+    let s = String(reply == null ? '' : reply).trim();
+    const fence = s.match(/^```[a-zA-Z]*\s*\n?([\s\S]*?)\n?```$/);
+    if (fence) s = fence[1].trim();
+    return s;
+}
+
 // The app's Void design tokens (the dark-theme :root defaults from style.css),
 // injected into every preview iframe so a variant's HTML renders against the
 // real cascade rather than an approximation. Kept in sync with style.css by
@@ -858,8 +907,15 @@ function mockupChatRepo(projectName) {
 // a sandboxed <iframe> (scripts OFF via an empty `sandbox`, so pure-CSS motion
 // still runs) whose srcdoc is the variant HTML with the app cascade injected.
 // Replaces any prior tiles.
-function renderMockupPreviews(container, variants) {
+//
+// When `row` is supplied, each tile also carries a "use this" control: tapping
+// it turns that variant into a finished TODO.md entry (buildMockupEntryPrompt →
+// chat Worker) and writes it to the row's draft, flipping the row to `drafted`
+// at the existing Dispatch gate. The row is omitted only by view-only callers
+// (older/test call sites), keeping the tiles inert there.
+function renderMockupPreviews(container, variants, row) {
     container.textContent = '';
+    const useButtons = [];
     ['A', 'B', 'C'].forEach(function (k) {
         if (!variants[k]) return;
         const tile = document.createElement('div');
@@ -880,6 +936,76 @@ function renderMockupPreviews(container, variants) {
         frame.srcdoc = injectPreviewStyle(variants[k]);
         tile.appendChild(frame);
 
+        if (row) {
+            const useRow = document.createElement('div');
+            useRow.className = 'agentMockupUseRow';
+
+            const useErr = document.createElement('p');
+            useErr.className = 'agentMockupUseError';
+            useErr.setAttribute('role', 'alert');
+            useErr.hidden = true;
+
+            const useBtn = document.createElement('button');
+            useBtn.type = 'button';
+            useBtn.className = 'agentMockupUse';
+            useBtn.textContent = 'use this';
+            useButtons.push(useBtn);
+
+            function useFail(message) {
+                tile.classList.remove('is-selected');
+                useButtons.forEach(function (b) { b.disabled = false; });
+                useBtn.classList.remove('is-pending');
+                useBtn.textContent = 'use this';
+                useErr.textContent = message || 'Couldn’t create the entry. Try again.';
+                useErr.hidden = false;
+            }
+
+            useBtn.addEventListener('click', function () {
+                if (useBtn.disabled) return;
+                useErr.hidden = true;
+                useErr.textContent = '';
+                // Enter pending: ring this tile, disable every "use this" while
+                // the entry is generated.
+                container.querySelectorAll('.agentMockupTile.is-selected').forEach(function (t) {
+                    t.classList.remove('is-selected');
+                });
+                tile.classList.add('is-selected');
+                useButtons.forEach(function (b) { b.disabled = true; });
+                useBtn.classList.add('is-pending');
+                useBtn.textContent = 'Creating entry…';
+
+                const repo = mockupChatRepo(getSelectedProjectName());
+                Promise.resolve().then(function () {
+                    return chatWithWorker(
+                        [{ role: 'user', content: buildMockupEntryPrompt(row.context, k, variants[k]) }],
+                        null, null, repo,
+                    );
+                }).then(function (res) {
+                    const draft = stripEntryFence((res && typeof res.reply === 'string') ? res.reply : '');
+                    if (!draft) {
+                        useFail('The reply was empty — try again.');
+                        return null;
+                    }
+                    return Promise.resolve(listLogic.setAgentRunState(row.id, { draft: draft, state: 'drafted' }))
+                        .then(function (saved) {
+                            if (saved && saved.ok) {
+                                // Realtime moves the card to In progress; force a
+                                // refresh so the drafted row lands promptly.
+                                refreshAgentQueue(getSelectedProjectName());
+                                return;
+                            }
+                            useFail(saved && saved.error);
+                        });
+                }).catch(function () {
+                    useFail('Couldn’t create the entry. Try again.');
+                });
+            });
+
+            useRow.appendChild(useBtn);
+            useRow.appendChild(useErr);
+            tile.appendChild(useRow);
+        }
+
         container.appendChild(tile);
     });
 }
@@ -899,8 +1025,9 @@ function renderMockupPreviews(container, variants) {
 //
 // The view never writes to Supabase directly (the save routes through
 // listLogic.setAgentRunState) and generation reuses the existing chat proxy
-// (no Worker change). The finished-entry step stays with the fallback: the
-// previews are view-only until the "use this" follow-up lands.
+// (no Worker change). Each preview tile also carries a "use this" control that
+// turns the chosen variant into the finished entry and flips the row to
+// `drafted`; the fallback paste-back stays as the manual escape hatch.
 function buildMockupSecondary(row) {
     const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
     const wrap = document.createElement('div');
@@ -952,7 +1079,7 @@ function buildMockupSecondary(row) {
                 genFail('Couldn’t read the mockups from the reply — try Regenerate, or use the fallback below.');
                 return;
             }
-            renderMockupPreviews(previews, variants);
+            renderMockupPreviews(previews, variants, row);
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');
             genBtn.textContent = 'Regenerate';
