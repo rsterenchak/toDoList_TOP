@@ -128,10 +128,3 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d55c4ac7-09fe-47c4-a484-3779cd2f0320 -->
-
-- [ ] **[MEDIUM]** Scope the claude-triage.yml concurrency group by project_id so cross-project sweeps stop cancelling each other's queued run
-  - Type: bug
-  - Description: `.github/workflows/claude-triage.yml` uses a single global concurrency group (`group: claude-triage`, .github/workflows/claude-triage.yml:36) shared across every project's triage dispatch, instead of scoping it per project. GitHub Actions only keeps the currently-running job plus ONE pending (queued) job per concurrency group — a third dispatch for the same group cancels the still-queued second one rather than queuing behind it. Because `fireTriageSweep` (toDoList_main/src/agentView.js:186) and `dispatchTriage` (toDoList_main/src/inject.js:374) fire-and-forget a dispatch per project with no cross-device/cross-project coordination, a burst of dispatches from different projects (e.g. one project's sweep already running while a second and then a third project each flag a task and dispatch around the same time) silently cancels the second project's queued run before it ever executes Step 1 of `.claude/triage.md`, leaving its flagged rows stuck in `triaging` state indefinitely with no error surfaced anywhere (the dispatch call itself still resolves `ok:true`). This is the likely cause of entries "sometimes" not being picked up for triage. Fix by including the project id in the concurrency group, e.g. `group: claude-triage-${{ inputs.project_id }}`, so each project gets its own single-sweep-at-a-time lane and different projects' dispatches never compete for the same queued slot.
-  - File: `.github/workflows/claude-triage.yml`
-  - Out of scope: no changes to `.claude/triage.md`'s routine logic, the Worker's dispatch/status routes, or the client-side `_triageInFlight` guard in agentView.js — this is a one-line concurrency-group scoping fix in the workflow file.
-  <!-- id: 7fe215f8-f3d1-41dd-b66a-d5c27371a382 -->
