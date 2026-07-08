@@ -5006,6 +5006,121 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   color: var(--accent-text, var(--accent));
 }
 
+/* ── In-app A/B/C mockup generation ── */
+/* Generate / Regenerate + the stacked preview tiles. */
+.agentMockupGen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentMockupGenerate {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentMockupGenerate:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentMockupGenerate:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentMockupGenerate:disabled,
+.agentMockupGenerate.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentMockupGenerate.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
+.agentMockupGenError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentMockupPreviews {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agentMockupPreviews:empty {
+  display: none;
+}
+
+.agentMockupTile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agentMockupTileLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary, var(--text-muted));
+}
+
+.agentMockupFrame {
+  width: 100%;
+  height: 180px;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--bg-base);
+}
+
+/* Fallback hand-off: the manual Claude round-trip, tucked under a collapsible
+   "Not quite right?" summary beneath the previews. */
+.agentMockupFallback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agentMockupFallbackSummary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, var(--text-muted));
+  list-style: none;
+  user-select: none;
+}
+
+.agentMockupFallbackSummary::-webkit-details-marker {
+  display: none;
+}
+
+.agentMockupFallbackSummary:hover {
+  color: var(--accent-text, var(--accent));
+}
+
+.agentMockupFallbackSummary:focus-visible {
+  outline: none;
+  color: var(--accent-text, var(--accent));
+}
+
 /* Not-assigned bucket: the project's unqueued tasks, each with a live
    "Give to agent" pill. */
 .agentBucket--not-assigned .agentBucketLabel {
