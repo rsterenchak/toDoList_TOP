@@ -75,7 +75,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0ce70ca7-494d-4433-9391-c1b516d0db25 -->
 
-- [ ] **[LOW]** Add a breathing opacity-pulse animation to the agent Working status dot
+- [x] **[LOW]** Add a breathing opacity-pulse animation to the agent Working status dot
   - Type: feature
   - Description: The agent board header's Working status dot (`.agentStatusDot` inside `#agentStatusPill`) sits static, so a running sweep looks identical to an idle one. Add a subtle "breathing" effect so the 7px green dot cycles its opacity (roughly 1 → 0.25 → 1, ease-in-out, ~1.8s, infinite) but only while the pill is in the working state — scope it via `.agentStatusPill--working .agentStatusDot` so the idle pill stays unchanged, and define a new `@keyframes agentDotBreathe` alongside the existing pill styles (`style.css` ~4239-4249). Gate the animation behind `@media (prefers-reduced-motion: no-preference)` (or set `animation: none` under `prefers-reduced-motion: reduce`) so it falls back to the static dot for anyone who's opted out of motion. CSS-only — the dot markup already exists (`agentView.js` ~1668-1677), so no JS change is needed.
   - File: `toDoList_main/src/style.css`
