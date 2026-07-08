@@ -81,3 +81,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2eb3f6bd-a0b7-4bbf-a8c6-b03c10fbbe46 -->
+
+- [ ] **[MEDIUM]** Ground the needs_mockup hand-off prompt with the region's real markup and CSS
+  - Type: feature
+  - Description: The prompt `buildMockupPrompt` assembles for a needs_mockup card (`agentView.js`) currently carries only `region`, `tokens`, and `change` from the row's `context` — and `tokens` is a hand-summarized string, so whoever generates the mockup still has to reconstruct the real UI from a description. Ground it: when triage assigns `needs_mockup`, have it also read the target region's actual current source — the element's markup / DOM-build snippet and the real CSS rule(s) matching the selector — and add them to `context` as new `markup` and `css` fields (raw source slices, not summaries), using the checkout it already has. Then extend `buildMockupPrompt` to fold `c.markup` and `c.css` into the assembled prompt as clearly-labeled fenced `current markup` / `current CSS` blocks (following the existing conditional-field pattern, so older rows without them are unaffected), making the copied prompt grounded from the first message. Update the `needs_mockup` verdict guidance and its JSON example in `.claude/triage.md` (~line 62-66 and ~98) to populate the two new fields alongside the existing ones. Scope is only the copied hand-off prompt — the in-app A/B/C render surface is a separate follow-up.
+  - File: `.claude/triage.md`, `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: eadf5ba7-d2cf-4f7b-a658-07276602655f -->
