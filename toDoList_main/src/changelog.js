@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-08',
+        added: [
+            "Agent cards waiting on your input now offer a “Discuss in chat” hand-off that opens the Claude chat pre-filled with the task's details, then collapse to a “Continue in chat” re-entry.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-07',
         added: [
             "On projects with no linked repo, the STRUCTURE tab now shows a small no-repo marker and opens to a centered link-off glyph above the guiding message.",
@@ -18,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-06',
         fixed: [
-            "The Claude assistant is now dimmed and disabled on projects with no repo configured, so it can't be opened against the wrong repo.",
             "The AGENT tab is now dimmed and disabled on projects with no repo configured, so it can't open a board that has nowhere to run.",
         ],
     },

@@ -44,6 +44,14 @@ vi.mock('../src/supabaseClient.js', () => ({
     },
 }));
 
+// The needs_words "Discuss in chat" hand-off calls openChatWithSeed from
+// claudeSheet.js. Stub it so the tests can observe the seed text without pulling
+// the real chat surface into jsdom.
+const chatMock = vi.hoisted(() => ({ seedCalls: [] }));
+vi.mock('../src/claudeSheet.js', () => ({
+    openChatWithSeed: (text) => { chatMock.seedCalls.push(text); },
+}));
+
 import { listLogic } from '../src/listLogic.js';
 import {
     renderAgentView,
@@ -80,6 +88,7 @@ beforeEach(() => {
     insertError = null;
     updateCalls = [];
     updateError = null;
+    chatMock.seedCalls.length = 0;
     document.body.innerHTML = '';
 });
 
@@ -549,6 +558,98 @@ describe('AGENT view — needs_words answer action', () => {
         expect(err).toBeTruthy();
         expect(err.hidden).toBe(false);
         expect(err.textContent).toMatch(/boom/);
+    });
+});
+
+describe('AGENT view — needs_words "Discuss in chat" hand-off', () => {
+    it('renders a Discuss-in-chat link alongside Send on a needs_words card', async () => {
+        listLogic.addProject('Disc1');
+        mountDom('Disc1');
+        queueRows = [{ id: 'dc1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const link = document.querySelector('.agentDiscussLink');
+        expect(link).toBeTruthy();
+        expect(link.textContent).toMatch(/Discuss in chat/);
+        // It sits in the same actions row as Send, not replacing it.
+        expect(document.querySelector('.agentAnswerSend')).toBeTruthy();
+    });
+
+    it('seeds the chat with title + description + question and does NOT re-triage or write', async () => {
+        listLogic.addProject('Disc2');
+        mountDom('Disc2');
+        queueRows = [{
+            id: 'dc2',
+            state: 'needs_words',
+            context: { title: 'Add a toggle', description: 'a small switch' },
+            question: 'Which label?',
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+
+        // Chat was seeded once with all three pieces of context.
+        expect(chatMock.seedCalls.length).toBe(1);
+        const seed = chatMock.seedCalls[0];
+        expect(seed).toMatch(/Add a toggle/);
+        expect(seed).toMatch(/a small switch/);
+        expect(seed).toMatch(/Which label\?/);
+        // No data-model write and no triage sweep — this is UI-only.
+        expect(updateCalls.length).toBe(0);
+        expect(insertCalls.length).toBe(0);
+    });
+
+    it('collapses the answer control to a "Continue in chat" re-entry after hand-off', async () => {
+        listLogic.addProject('Disc3');
+        mountDom('Disc3');
+        queueRows = [{ id: 'dc3', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        expect(document.querySelector('.agentAnswerInput')).toBeTruthy();
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+
+        // Textarea + Send are gone; a single re-entry replaces them.
+        expect(document.querySelector('.agentAnswerInput')).toBeNull();
+        expect(document.querySelector('.agentAnswerSend')).toBeNull();
+        const reentry = document.querySelector('.agentContinueChat');
+        expect(reentry).toBeTruthy();
+        expect(reentry.textContent).toMatch(/Continue in chat/);
+    });
+
+    it('re-opens the same seeded chat from the "Continue in chat" re-entry without a write', async () => {
+        listLogic.addProject('Disc4');
+        mountDom('Disc4');
+        queueRows = [{ id: 'dc4', state: 'needs_words', context: { title: 'Task Z' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+        chatMock.seedCalls.length = 0;
+
+        document.querySelector('.agentContinueChat').click();
+        await flush();
+        expect(chatMock.seedCalls.length).toBe(1);
+        expect(chatMock.seedCalls[0]).toMatch(/Task Z/);
+        expect(updateCalls.length).toBe(0);
+    });
+
+    it('keeps the collapsed state across a board refresh (module-level handed-off set)', async () => {
+        listLogic.addProject('Disc5');
+        mountDom('Disc5');
+        queueRows = [{ id: 'dc5', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+        expect(document.querySelector('.agentContinueChat')).toBeTruthy();
+
+        // A realtime-style refetch/re-render must not resurrect the answer control.
+        subscribeAgentView();
+        await flush();
+        expect(document.querySelector('.agentAnswerInput')).toBeNull();
+        expect(document.querySelector('.agentContinueChat')).toBeTruthy();
     });
 });
 

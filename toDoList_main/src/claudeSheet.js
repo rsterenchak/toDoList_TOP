@@ -278,6 +278,35 @@ export function insertReference(label, selector) {
     try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* defensive */ }
 }
 
+// Hand a task off from the AGENT board's needs_words card into the chat: reveal
+// the Chat tab and seed the composer with the task context, leaving the send to
+// the user (no auto-send). On mobile the slide-up sheet must be open for the
+// composer to be visible (open it if it isn't); on desktop the docked pane is
+// always mounted but may be user-collapsed, so un-collapse it. The workspace is
+// already framed on the active project's repo by the project-switch auto-swap
+// (autoSwapWorkspaceForProject), so this does NOT re-point it — a needs_words
+// card only exists on a repo-backed project. Unlike insertReference (which
+// appends a reference), this REPLACES the composer contents so a re-entry always
+// lands on the same seeded prompt. A blank seed is ignored.
+export function openChatWithSeed(seedText) {
+    const seed = String(seedText == null ? '' : seedText);
+    if (!seed.trim()) return;
+    if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else {
+        document.body.classList.remove('chatPaneCollapsed');
+        setChatPaneCollapsed(false);
+    }
+    setActiveTab('chat');
+    const input = sheetQuery('#claudeComposerInput');
+    if (!input) return;
+    input.value = seed;
+    try { input.focus(); } catch (e) { /* defensive */ }
+    try { input.selectionStart = input.selectionEnd = input.value.length; } catch (e) { /* defensive */ }
+    // Nudge the composer's auto-grow listener so it resizes to the new content.
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* defensive */ }
+}
+
 // Auto-expand / auto-collapse the Claude chat pane when the active project
 // changes. A project "has a repo configured" by the SAME gate the sidebar
 // project-row thunderbolt (⚡) uses — inject is configured globally AND this
