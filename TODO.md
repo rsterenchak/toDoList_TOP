@@ -97,3 +97,10 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e2dc9f4d-e634-49ed-980e-f37120ef8a1b -->
+
+- [ ] **[HIGH]** Fix "Generate mockups" producing no previews — replace the brittle JSON reply contract with sentinel-delimited HTML
+  - Type: bug
+  - Description: The in-app mockup Generate button (`buildMockupSecondary` in `agentView.js`) fires and calls the chat Worker, but no previews ever render: `buildMockupGenPrompt` asks the model to return all three variants as a single JSON object `{"A":"<full html>","B":...,"C":...}`, and embedding full HTML documents as JSON string values is fragile — every `class="…"` / `style="…"` and every newline needs escaping, so the reply is almost always invalid JSON, `parseMockupVariants`' `JSON.parse` throws → returns null → the button shows "Couldn't read the mockups from the reply" and reverts. Replace the contract with raw HTML delimited by unambiguous sentinel markers instead of JSON: have `buildMockupGenPrompt` ask for the three complete standalone documents each preceded by a marker line (e.g. `===VARIANT A===`, `===VARIANT B===`, `===VARIANT C===`) as raw HTML with no JSON and no escaping, and rewrite `parseMockupVariants` to split on those markers (regex, tolerating surrounding prose or ```html fences) and return `{A,B,C}` — still never throwing, still returning null if it can't recover at least one variant so the fallback hand-off stays usable. Everything downstream (`renderMockupPreviews`, `injectPreviewStyle`, the sandboxed iframes) is unchanged.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: f5bf1b83-aac9-4bb4-97dc-b605a844a0a4 -->
