@@ -15,8 +15,10 @@ import {
     showInjectToast,
     isInjectConfigured,
     chatWithWorker,
+    revertEntry,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
+import { showConfirmModal } from './modals.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
 // replaces the old Conceive incubator surface. For the currently selected
@@ -122,6 +124,17 @@ const _dispatchPollers = {};
 // re-renders within the session — buildSecondary/paint consult it on every render.
 // Session-scoped only; resets on reload (acceptable per the task scope).
 const _handedOffRows = new Set();
+// Entries whose shipped change has been rolled back (merged revert) this session,
+// keyed by entry_id — a Shipped card for such an entry hides its Revert control so
+// it can never be triggered again. This is the double-revert guard: a second merged
+// revert of the same PR re-applies the original change. `_pendingRevertPrUrls` tracks
+// entries whose revert PR opened but didn't auto-merge, so the control switches to
+// opening that PR rather than POSTing a duplicate revert. Both mirror the Runs-tab
+// (`rec.reverted`/`rec.revertPrUrl`) and the TODO.md viewer; module-scoped so they
+// survive realtime pushes and refreshAgentQueue re-renders. Session-scoped only;
+// resets on reload, exactly like the viewer's guard.
+const _revertedEntries = new Set();
+const _pendingRevertPrUrls = new Map();
 // Short in-flight guard shared by the header Run button and the answer-submit
 // auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
 // redundant triage sweeps in the same tick. The workflow's concurrency group and
@@ -479,22 +492,7 @@ function buildSecondary(row) {
         return buildStuckSecondary(row);
     }
     if (state === 'shipped') {
-        const label = row.pr_number ? ('PR #' + row.pr_number) : 'View PR';
-        // Link the merged PR when its URL is known; otherwise fall back to a
-        // static "PR #N" / "Shipped" line.
-        if (row.pr_url) {
-            const a = document.createElement('a');
-            a.className = 'agentSecondary agentSecondaryMuted agentShippedLink';
-            a.href = row.pr_url;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            a.textContent = label;
-            return a;
-        }
-        const p = document.createElement('p');
-        p.className = 'agentSecondary agentSecondaryMuted';
-        p.textContent = row.pr_number ? label : 'Shipped';
-        return p;
+        return buildShippedSecondary(row);
     }
     if (state === 'drafted') {
         return buildDraftedSecondary(row);
@@ -507,6 +505,120 @@ function buildSecondary(row) {
         return p;
     }
     return null;
+}
+
+// Secondary content for a `shipped` card: the merged-PR label/link plus a Revert
+// control (mockup Option A — the two sit in one row). The PR label links the
+// merged PR when its URL is known, else falls back to a static "PR #N" / "Shipped"
+// line. The Revert control rolls the shipped change back through the Worker
+// `revert` route; it's hidden once this entry's change has already been reverted
+// this session (the double-revert guard — a second merged revert re-applies the
+// original change) and needs the row's `entry_id` to act at all.
+function buildShippedSecondary(row) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'agentShippedRow';
+
+    const label = row.pr_number ? ('PR #' + row.pr_number) : 'View PR';
+    if (row.pr_url) {
+        const a = document.createElement('a');
+        a.className = 'agentSecondary agentSecondaryMuted agentShippedLink';
+        a.href = row.pr_url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = label;
+        rowEl.appendChild(a);
+    } else {
+        const p = document.createElement('p');
+        p.className = 'agentSecondary agentSecondaryMuted';
+        p.textContent = row.pr_number ? label : 'Shipped';
+        rowEl.appendChild(p);
+    }
+
+    // A shipped change can be rolled back. Rendered only when the row carries an
+    // entry_id (the revert call needs it) and this entry hasn't already been
+    // reverted this session.
+    if (row.entry_id && !_revertedEntries.has(row.entry_id)) {
+        rowEl.appendChild(buildAgentRevertControl(row));
+    }
+    return rowEl;
+}
+
+// Build the per-card Revert control shown on a Shipped card, mirroring
+// buildRevertControl in the Runs tab. When this entry already carries a revert PR
+// that didn't auto-merge (_pendingRevertPrUrls), the control opens that existing PR
+// rather than POSTing a fresh revert — a second merged revert of the same PR would
+// re-apply the original change, so we never create a duplicate revert PR.
+function buildAgentRevertControl(row) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeRunRevertBtn';
+    const pendingPr = _pendingRevertPrUrls.has(row.entry_id);
+    btn.setAttribute('aria-label', pendingPr ? 'Open the revert pull request' : 'Revert this change');
+    btn.title = pendingPr ? 'Open the revert pull request' : 'Revert this change';
+    // Quiet counter-clockwise / undo arrow — the same glyph the other Revert
+    // surfaces use so all three read identically.
+    btn.innerHTML =
+        '<svg class="claudeRunRevertIcon" width="14" height="14" viewBox="0 0 24 24" ' +
+        'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+        '<polyline points="1 4 1 10 7 10"></polyline>' +
+        '<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
+    btn.addEventListener('click', function (event) {
+        // Stop propagation so a click never also opens the card (Shipped cards
+        // aren't clickable today, but this keeps the control inert to any future
+        // card-level handler).
+        event.stopPropagation();
+        const pendingUrl = _pendingRevertPrUrls.get(row.entry_id);
+        if (pendingUrl) {
+            try { window.open(pendingUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
+            return;
+        }
+        confirmAndRevertAgentRun(row, btn);
+    });
+    return btn;
+}
+
+// Confirm the rollback, then ship it. The confirm names the card and states a new
+// build will deploy; Cancel does nothing.
+function confirmAndRevertAgentRun(row, btn) {
+    const title = (row.context && row.context.title) || row.title || 'this change';
+    showConfirmModal({
+        message: 'Revert “' + title + '”? This ships a rollback — a new build will deploy.',
+        confirmLabel: 'Revert',
+        onConfirm: function () { performAgentRevert(row, btn); },
+    });
+}
+
+// Roll a shipped card's change back through the Worker `revert` route, mirroring
+// performRevertRun in the Runs tab and performRevert in the TODO.md viewer. The
+// revert targets the same dispatch target the run shipped to (resolveDispatchTarget,
+// null in v1 → the Worker's default repo). On a merged rollback the entry is marked
+// reverted so the control disappears; on a revert PR that didn't auto-merge the PR
+// URL is remembered so the control switches to opening it; on failure the control
+// re-enables so it can retry.
+async function performAgentRevert(row, btn) {
+    btn.disabled = true;
+    btn.classList.add('claudeRunRevertBtn--loading');
+    const target = resolveDispatchTarget();
+    const res = await revertEntry(row.entry_id, target);
+    if (res && res.ok && res.merged === true) {
+        showInjectToast('Reverted — new build shipping');
+        _revertedEntries.add(row.entry_id);
+        refreshAgentQueue(getSelectedProjectName());
+        return;
+    }
+    if (res && res.ok && res.merged === false) {
+        if (res.revert_pr_url) _pendingRevertPrUrls.set(row.entry_id, res.revert_pr_url);
+        showInjectToast(res.reason
+            ? ('Revert needs attention: ' + res.reason)
+            : 'Revert PR opened — finish it in GitHub');
+        refreshAgentQueue(getSelectedProjectName());
+        return;
+    }
+    // ok === false → surface the error and restore the control so it can retry.
+    showInjectToast((res && res.reason) ? ('Revert failed: ' + res.reason) : 'Revert failed');
+    btn.disabled = false;
+    btn.classList.remove('claudeRunRevertBtn--loading');
 }
 
 // Secondary content for a `drafted` card: the agent's draft in a read-only,

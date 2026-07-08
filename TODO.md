@@ -114,7 +114,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 961fe898-0855-4103-a832-2a9dc1fb29ee -->
 
-- [ ] **[MEDIUM]** Add a Revert button to Shipped cards in the Agent tab
+- [x] **[MEDIUM]** Add a Revert button to Shipped cards in the Agent tab — Completed: 2026-07-08
   - Type: feature
   - Description: In `agentView.js`'s `buildSecondary()`, `state === 'shipped'` branch, add a `.claudeRunRevertBtn` icon button (mirroring `buildRevertControl` in `claudeSheet.js`) alongside the existing `.agentShippedLink`/PR-label element in the same row, per mockup Option A. Read `entry_id` and `pr_url`/`pr_number` off the `agent_queue` row for the revert call (via `revertEntry` in `inject.js`); since the queue row lacks the Runs-tab's localStorage fields (`revertPrUrl`, `reverted`), persist reverted/pending-revert-PR state either as a new `agent_queue` column (e.g. `revert_pr_url`, `reverted`) or in a local map keyed by `entry_id`, and use it to guard against double-revert and to switch the button into "open revert PR" mode once one exists, exactly as `confirmAndRevertRun`/`performRevertRun` do today. Clicking the button must stop propagation (so it doesn't trigger card-open), show a confirm step before reverting, and disable/spin while in flight; wire the click handler to `confirmAndRevertRun`/`performRevertRun`/`revertEntry` from `inject.js`, reusing them rather than duplicating revert logic.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`

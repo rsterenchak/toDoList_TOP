@@ -4681,6 +4681,18 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
 
 /* Shipped card: the PR link reads as a subtle, monospace reference that still
    underlines on hover to signal it's clickable. */
+/* Shipped card footer: the merged-PR label/link and the Revert control share one
+   row, the label pushed left and the control pinned right (mockup Option A). */
+.agentShippedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentShippedRow .agentSecondary {
+  margin-right: auto;
+}
+
 .agentShippedLink {
   display: inline-block;
   text-decoration: none;
