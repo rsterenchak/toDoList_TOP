@@ -10,6 +10,9 @@ export const changelog = [
             "On projects with no linked repo, the STRUCTURE tab now shows a small no-repo marker and opens to a centered link-off glyph above the guiding message.",
             "The AGENT tab's no-repo view now shows a centered link-off glyph above its message, matching the STRUCTURE tab.",
         ],
+        fixed: [
+            "The AGENT tab now updates its availability the instant you switch projects, so moving onto a repo-backed project no longer leaves it stuck on the no-repo state until a reload.",
+        ],
     },
     {
         version: '1.1',
@@ -17,9 +20,6 @@ export const changelog = [
         fixed: [
             "The Claude assistant is now dimmed and disabled on projects with no repo configured, so it can't be opened against the wrong repo.",
             "The AGENT tab is now dimmed and disabled on projects with no repo configured, so it can't open a board that has nowhere to run.",
-        ],
-        changed: [
-            "On projects with no repo configured, the AGENT tab is now tappable and opens an in-view 'no repo configured' message instead of being disabled.",
         ],
     },
 ];

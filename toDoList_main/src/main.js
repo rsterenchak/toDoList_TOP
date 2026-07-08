@@ -4286,6 +4286,10 @@ function component() {
         // mutation (todo add/complete) that also bumps the counts.
         if (activeName !== projRunSpinnerLastProject) {
             projRunSpinnerLastProject = activeName;
+            // Recompute the AGENT tab's no-repo gate here too, so it stays live
+            // on non-click active-project changes (cold boot, create/rename,
+            // delete-reselect, re-hydrate) that don't route through a click.
+            syncAgentAvailabilityForProject(activeName);
             // Clear any stale spin immediately — the new project may have no
             // routed repo or no in-flight run — then re-poll for the truth.
             mobileProjRunSpinner.classList.remove('mobileProjRunSpinner--active');

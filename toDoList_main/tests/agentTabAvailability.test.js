@@ -137,6 +137,26 @@ describe('AGENT tab availability wiring', () => {
         expect(calls.length).toBeGreaterThanOrEqual(2);
     });
 
+    it('main.js recomputes availability on every active-project change, not just click hooks', () => {
+        const main = read('main.js');
+        // The single active-project-change writer (the footer MutationObserver's
+        // updateMobileProjHeader, gated on a genuine change) must re-run the
+        // availability gate so non-click switches — cold boot, project
+        // create/rename, delete-reselect, Supabase re-hydrate — keep the AGENT
+        // tab live. Without this the gate only updated on #projChild clicks and
+        // could stay stale on the previous project until a full reload.
+        const start = main.indexOf('function updateMobileProjHeader');
+        expect(start).toBeGreaterThan(-1);
+        const body = main.slice(start, start + 2600);
+        // The call lives inside the genuine-change guard, alongside the run
+        // spinner's own repo re-resolution.
+        expect(body).toMatch(/activeName\s*!==\s*projRunSpinnerLastProject/);
+        expect(body).toMatch(/syncAgentAvailabilityForProject\s*\(/);
+        // Total call sites: two click hooks + this active-change chokepoint.
+        const calls = main.match(/syncAgentAvailabilityForProject\(/g) || [];
+        expect(calls.length).toBeGreaterThanOrEqual(3);
+    });
+
     it('main.js AGENT entry points navigate unconditionally and carry the no-repo marker', () => {
         const main = read('main.js');
         // The old gate helpers are gone from main.js entirely.
