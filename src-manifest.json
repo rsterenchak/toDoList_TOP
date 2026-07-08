@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-08T10:07:14.698Z",
-  "sha": "033b6c6781362fbc28b720d5023ff6c059e5034c",
+  "generatedAt": "2026-07-08T10:46:44.923Z",
+  "sha": "13012efe5fe61112bea47bbf3f1b5cbc18391bf3",
   "files": [
     "agentView.js",
     "auth.js",
@@ -101,11 +101,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 1941,
+      "line": 1948,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1941
+          "line": 1948
         }
       ]
     },
