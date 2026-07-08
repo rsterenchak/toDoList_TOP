@@ -728,37 +728,44 @@ function buildMockupGenPrompt(ctx) {
         + 'render the proposed change. Each must be a complete standalone document styled with an '
         + 'inline <style> block, using the app CSS variables (var(--accent), var(--bg-base), '
         + 'var(--text-primary), etc.) so it matches the real theme; no external assets and no scripts.'
-        + '\n\nReturn ONLY a single JSON object, no prose and no code fences, of exactly this shape:\n'
-        + '{"A":"<full html document>","B":"<full html document>","C":"<full html document>"}';
+        + '\n\nReturn the three complete documents as RAW HTML — no JSON, no escaping, no code '
+        + 'fences. Precede each document with its own marker line, alone on its own line, exactly:\n'
+        + '===VARIANT A===\n<full html document for A>\n===VARIANT B===\n<full html document for B>\n'
+        + '===VARIANT C===\n<full html document for C>\n'
+        + 'Output nothing before ===VARIANT A=== and nothing after the C document.';
 }
 
 // Parse a mockup-generation reply into { A, B, C } HTML strings, defensively.
-// Handles the model wrapping its JSON in ```json / ```html fences or bracketing
-// it with prose, and returns null on anything unparseable or lacking at least
-// one variant string — the caller surfaces that as a non-blocking error and
+// The reply is raw HTML — each variant document preceded by a sentinel marker
+// line (===VARIANT A=== / B / C) — NOT JSON: embedding full HTML documents as
+// JSON string values proved too fragile (every quote and newline needs
+// escaping), so the contract is marker-delimited raw HTML with no escaping.
+// Splits on the markers (tolerating surrounding prose or a ```html fence around
+// each document) and returns { A, B, C }. Returns null if it can't recover at
+// least one variant — the caller surfaces that as a non-blocking error and
 // leaves the fallback hand-off usable. Never throws.
 function parseMockupVariants(reply) {
     if (!reply || typeof reply !== 'string') return null;
-    let text = reply.trim();
-    // Strip a wrapping markdown code fence (```json … ``` / ```html … ```).
-    const fence = text.match(/^```(?:json|html)?\s*([\s\S]*?)\s*```$/i);
-    if (fence) text = fence[1].trim();
-    // If prose brackets the object, slice to the outermost {...} span.
-    if (text.charAt(0) !== '{') {
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}');
-        if (start === -1 || end === -1 || end <= start) return null;
-        text = text.slice(start, end + 1);
+    const text = reply;
+    // Locate every "===VARIANT X===" marker, tolerating spacing and case.
+    const markerRe = /={2,}\s*VARIANT\s+([ABC])\s*={2,}/gi;
+    const markers = [];
+    let m;
+    while ((m = markerRe.exec(text)) !== null) {
+        markers.push({ key: m[1].toUpperCase(), start: m.index, contentStart: markerRe.lastIndex });
     }
-    let obj;
-    try { obj = JSON.parse(text); } catch (e) { return null; }
-    if (!obj || typeof obj !== 'object') return null;
+    if (!markers.length) return null;
     const out = {};
     let any = false;
-    ['A', 'B', 'C'].forEach(function (k) {
-        const v = obj[k];
-        if (typeof v === 'string' && v.trim()) { out[k] = v; any = true; }
-    });
+    for (let i = 0; i < markers.length; i++) {
+        const end = (i + 1 < markers.length) ? markers[i + 1].start : text.length;
+        let slice = text.slice(markers[i].contentStart, end).trim();
+        // Peel a ```html … ``` (or bare ```) fence wrapping the document.
+        const fence = slice.match(/^```[a-zA-Z]*\s*\n?([\s\S]*?)\n?```$/);
+        if (fence) slice = fence[1].trim();
+        // First writer wins if a marker somehow repeats.
+        if (slice && !out[markers[i].key]) { out[markers[i].key] = slice; any = true; }
+    }
     return any ? out : null;
 }
 
