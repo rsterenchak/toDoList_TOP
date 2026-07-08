@@ -4590,8 +4590,16 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   flex: 0 0 auto;
 }
 
-/* Collapsed hand-off state: a single "Continue in chat →" re-entry replacing the
-   textarea + Send once the task has been handed off to chat this session. */
+/* Collapsed hand-off state: "Continue in chat →" on the left and "answer with
+   words" on the right, replacing the textarea + Send once the task has been
+   handed off to chat this session. */
+.agentHandedOff {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .agentContinueChat {
   display: inline-flex;
   align-items: center;
@@ -4615,6 +4623,41 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   outline: none;
   border-radius: 6px;
   box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* "answer with words" toggle: a muted link that restores the needs_words answer
+   box. Reads quieter than "Continue in chat →" so the chat re-entry stays the
+   primary affordance. */
+.agentAnswerWithWords {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  white-space: nowrap;
+}
+
+.agentAnswerWithWords:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.agentAnswerWithWords:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentAnswerWithWordsIcon {
+  flex: 0 0 auto;
 }
 
 /* Shipped card: the PR link reads as a subtle, monospace reference that still

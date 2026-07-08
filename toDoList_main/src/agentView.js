@@ -1284,12 +1284,14 @@ function buildDiscussLink(row) {
 }
 
 // The collapsed secondary shown once a needs_words card has been handed off to
-// chat this session: a single "Continue in chat →" re-entry that re-opens the
-// same seeded conversation. No textarea/Send — the back-and-forth now lives in
-// the chat, not the card.
+// chat this session: a "Continue in chat →" re-entry that re-opens the same
+// seeded conversation, plus an "answer with words" toggle that restores the
+// answer box. Both paths stay one tap away — the chat session is untouched
+// either way, and re-opening words never discards it.
 function buildHandedOffSecondary(row) {
     const wrap = document.createElement('div');
     wrap.className = 'agentSecondary agentHandedOff';
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'agentContinueChat';
@@ -1298,7 +1300,56 @@ function buildHandedOffSecondary(row) {
         openChatWithSeed(buildDiscussSeed(row));
     });
     wrap.appendChild(btn);
+
+    wrap.appendChild(buildAnswerWithWordsLink(row));
     return wrap;
+}
+
+// The "answer with words" toggle on a handed-off card. Removes the row from
+// _handedOffRows and repaints from the cache (no refetch) so buildSecondary
+// returns the full question + textarea + Discuss-in-chat link + Send again. The
+// row was never re-triaged and the data model was never touched, so nothing else
+// needs undoing; the chat session is unaffected.
+function buildAnswerWithWordsLink(row) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentAnswerWithWords';
+    btn.appendChild(buildPencilIcon());
+    const label = document.createElement('span');
+    label.textContent = 'answer with words';
+    btn.appendChild(label);
+    btn.addEventListener('click', function () {
+        _handedOffRows.delete(row.id);
+        paint();
+    });
+    return btn;
+}
+
+// A small inline pencil/edit glyph for the "answer with words" toggle. DOM-built
+// like buildMessagesIcon() — no new asset, no icon library — and theme-correct
+// via currentColor so it tracks the muted link colour.
+function buildPencilIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'agentAnswerWithWordsIcon');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.6');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    [
+        ['path', { d: 'M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 0 -2.12l-1.88 -1.88a1.5 1.5 0 0 0 -2.12 0l-10.5 10.5v4z' }],
+        ['path', { d: 'M13.5 6.5l4 4' }],
+    ].forEach(function (spec) {
+        const el = document.createElementNS(ns, spec[0]);
+        Object.keys(spec[1]).forEach(function (k) { el.setAttribute(k, spec[1][k]); });
+        svg.appendChild(el);
+    });
+    return svg;
 }
 
 // A small inline "messages" glyph for the Discuss-in-chat link. DOM-built like
