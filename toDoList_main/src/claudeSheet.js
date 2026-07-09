@@ -217,7 +217,17 @@ function setActiveTab(tab) {
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
-    if (tab === 'runs') renderUpdateNudge();
+    if (tab === 'runs') {
+        // Rehydrate run records from localStorage on every switch to Runs, not
+        // just at sheet mount, so records written by another tab/window or by a
+        // run dispatched in a prior session become visible without a full reload.
+        // resumeRunPollers() then attaches a live poller to any freshly-appeared
+        // QUEUED/RUNNING record so it doesn't sit stale until the next reload.
+        loadRunRecords();
+        renderRunsList();
+        resumeRunPollers();
+        renderUpdateNudge();
+    }
 }
 
 export function openClaudeSheet() {
