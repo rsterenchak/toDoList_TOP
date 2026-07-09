@@ -135,6 +135,15 @@ const _handedOffRows = new Set();
 // resets on reload, exactly like the viewer's guard.
 const _revertedEntries = new Set();
 const _pendingRevertPrUrls = new Map();
+// Generated A/B/C mockup variants, keyed by agent_queue row id → the parsed
+// { A, B, C } variant object. Mockup previews are otherwise transient DOM state
+// on the needs_mockup card, so a realtime push repaint (paint() rebuilds the
+// whole board from _rows for ANY row change in the project) would wipe the
+// just-generated previews out from under the user. Caching here (mirroring
+// _handedOffRows/_dispatchPollers/_revertedEntries) lets buildMockupSecondary
+// repaint them immediately instead of an empty "Generate mockups" button.
+// Session-scoped only; resets on reload.
+const _mockupVariants = new Map();
 // Short in-flight guard shared by the header Run button and the answer-submit
 // auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
 // redundant triage sweeps in the same tick. The workflow's concurrency group and
@@ -1245,6 +1254,16 @@ function buildMockupSecondary(row) {
     genBtn.className = 'agentMockupGenerate';
     genBtn.textContent = 'Generate mockups';
 
+    // Previously-generated variants survive a realtime repaint: repaint them
+    // immediately from the module-level cache and offer a Regenerate rather than
+    // a bare "Generate mockups" button, so a background board change doesn't wipe
+    // the user's mockups.
+    const cachedVariants = _mockupVariants.get(row.id);
+    if (cachedVariants) {
+        renderMockupPreviews(previews, cachedVariants, row);
+        genBtn.textContent = 'Regenerate';
+    }
+
     function genFail(message) {
         genBtn.disabled = false;
         genBtn.classList.remove('is-pending');
@@ -1270,6 +1289,8 @@ function buildMockupSecondary(row) {
                 genFail('Couldn’t read the mockups from the reply — try Regenerate, or use the fallback below.');
                 return;
             }
+            // Cache the parsed variants so a realtime repaint restores them.
+            _mockupVariants.set(row.id, variants);
             renderMockupPreviews(previews, variants, row);
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');

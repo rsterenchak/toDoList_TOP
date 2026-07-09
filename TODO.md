@@ -186,7 +186,7 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/listLogic.js`
   <!-- id: 2e0762ae-3793-4a7e-92d0-9e28f03ca599 -->
 
-- [ ] **[MEDIUM]** Fix generated in-app mockup previews disappearing on a realtime board repaint
+- [x] **[MEDIUM]** Fix generated in-app mockup previews disappearing on a realtime board repaint — Completed: 2026-07-09
   - Type: bug
   - Description: In agentView.js, `buildMockupSecondary` (~line 1222) renders A/B/C mockup previews into a local `previews` DOM node purely as transient state — the parsed variants from `renderMockupPreviews` (~line 1273) are never stored in `_rows` or any module-level cache. `paint()` (~line 2252) calls `clear(view)` and rebuilds the whole board from `_rows` on every `refreshAgentQueue` call, including ones triggered by the realtime subscription (~line 2463) for ANY row change in the project — not just the card the user is looking at. So generating mockups, then having any other queued task change state (e.g. a background triage sweep, another card dispatching), wipes the just-generated previews out from under the user. Fix by caching generated variants in a module-level `Map` keyed by `row.id` (mirroring the existing `_handedOffRows`/`_dispatchPollers`/`_revertedEntries` pattern already used in this file to survive realtime repaints), populated where `parseMockupVariants` succeeds, and consulted at the top of `buildMockupSecondary` to repaint cached previews immediately instead of an empty "Generate mockups" button.
   - File: `toDoList_main/src/agentView.js`

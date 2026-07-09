@@ -69,6 +69,7 @@ import { listLogic } from '../src/listLogic.js';
 import {
     subscribeAgentView,
     unsubscribeAgentView,
+    renderAgentView,
 } from '../src/agentView.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -267,6 +268,31 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         expect(frames.length).toBe(3);
         expect(frames[0].getAttribute('srcdoc')).toContain('Zed');
         expect(frames[0].getAttribute('srcdoc')).not.toContain('Alpha');
+    });
+
+    it('keeps generated previews after a realtime board repaint instead of wiping them', async () => {
+        queueRows = [{ id: 'g4b', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+        expect(document.querySelectorAll('.agentMockupFrame').length).toBe(3);
+
+        // A realtime push (any row change in the project) rebuilds the whole
+        // board from _rows — regression: this used to wipe the transient
+        // previews. They must survive from the module-level cache.
+        renderAgentView();
+        await flush();
+
+        const frames = document.querySelectorAll('.agentMockupFrame');
+        expect(frames.length).toBe(3);
+        expect(frames[0].getAttribute('srcdoc')).toContain('Alpha');
+        expect(frames[1].getAttribute('srcdoc')).toContain('Bravo');
+        expect(frames[2].getAttribute('srcdoc')).toContain('Charlie');
+        // No second chat call — the previews were restored from cache, not
+        // regenerated — and the control offers a Regenerate.
+        expect(chatCalls.length).toBe(1);
+        expect(document.querySelector('.agentMockupGenerate').textContent).toBe('Regenerate');
     });
 
     it('shows a non-blocking error and keeps the fallback usable when the reply is unparseable', async () => {
