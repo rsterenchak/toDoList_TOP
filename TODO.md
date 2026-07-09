@@ -172,3 +172,10 @@
   - File: `toDoList_main/src/main.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b8c2d7e0-4172-41c9-80e2-ca15d1ef5ce6 -->
+
+- [ ] **[MEDIUM]** Add keyboard arrow navigation to the project right-click/long-press context menu
+  - Type: feature
+  - Description: `#projContextMenu` (`toDoList_main/src/projectMenu.js`) currently has no `role=menu`, no `tabindex` on its items, and no arrow-key handling, so it can't be navigated via keyboard once opened. Add `role="menu"` to the container and `role="menuitem"` with roving `tabindex` to each item, implement Up/Down arrow movement between items (wrapping at the ends), Enter/Space to activate the focused item, and Escape to close — consistent with the existing close affordances (select option, click outside, Escape, right-click elsewhere) already required for context menus per project conventions.
+  - File: `toDoList_main/src/projectMenu.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 460d23ab-83cd-411c-b94b-7666bde04174 -->
