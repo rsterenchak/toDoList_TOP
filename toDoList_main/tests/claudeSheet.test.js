@@ -1025,6 +1025,23 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(rows[0].querySelector('.claudeRunBadge').textContent).toBe('Shipped');
     });
 
+    it('rehydrates run records from localStorage when switching to the Runs tab (not just on mount)', () => {
+        // Mount happened against an empty store (beforeEach), so the Runs list
+        // starts empty. Simulate another tab/window (or a prior session) writing
+        // a record to the shared key after this sheet mounted.
+        expect(document.querySelectorAll('.claudeRunRow').length).toBe(0);
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e-cross', correlationId: 'c-cross', title: 'Cross-tab task', status: 'SHIPPED', dispatchedAt: Date.now() },
+        ]));
+        // Switching to Runs must reload from localStorage and re-render, so the
+        // record appears without a full page reload.
+        document.getElementById('claudeTabRuns').click();
+        const rows = document.querySelectorAll('.claudeRunRow');
+        expect(rows.length).toBe(1);
+        expect(rows[0].querySelector('.claudeRunTitle').textContent).toBe('Cross-tab task');
+        expect(rows[0].querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+    });
+
     it('marks a non-terminal record with no correlation id as unconfirmed on mount (never asserts FAILED)', () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { entryId: 'e1', title: 'No correlation id', status: 'RUNNING', dispatchedAt: Date.now() },

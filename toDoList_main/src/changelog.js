@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-07-09',
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
+            "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-08',
-        added: [
-            "Agent cards that need more detail now offer “Copy context” and “Open Claude” buttons to work the task out in claude.ai on your own plan.",
-        ],
         changed: [
             "The mockup hand-off prompt for a visual task now includes the target region's real markup and CSS, so mockups start from the actual UI instead of a summary.",
         ],
