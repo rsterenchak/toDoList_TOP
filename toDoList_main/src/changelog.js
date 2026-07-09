@@ -9,14 +9,12 @@ export const changelog = [
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
             "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
+            "Agent mockup hand-off prompts for a project linked to another repo now name that repo and its own file paths instead of always referring to the toDoList app.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-08',
-        changed: [
-            "The mockup hand-off prompt for a visual task now includes the target region's real markup and CSS, so mockups start from the actual UI instead of a summary.",
-        ],
         fixed: [
             "The “Generate mockups” button on a visual-task card now reliably renders the A/B/C previews instead of sometimes showing nothing.",
             "Collapsing a TODO.md viewer card on mobile no longer hides its ⋯ more-actions button — the button now stays put whether the card is collapsed or expanded.",
