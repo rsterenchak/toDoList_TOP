@@ -67,6 +67,51 @@ function onProjContextKeydown(event) {
     if (event.key === 'Escape') hideProjectContextMenu();
 }
 
+// Collect the menu's interactive items (Edit, each color swatch, Delete) in DOM
+// order — the flat ring the roving tabindex + arrow keys walk over.
+function getProjContextItems(menu) {
+    return Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]'));
+}
+
+// Move focus to the item at `index`, keeping exactly one item in the tab order
+// (roving tabindex): the focused item is tabindex 0, every other is -1.
+function focusProjContextItem(items, index) {
+    items.forEach(function(item, i) {
+        item.setAttribute('tabindex', i === index ? '0' : '-1');
+    });
+    if (items[index]) items[index].focus();
+}
+
+// Up/Down move focus between menu items with wraparound; Enter/Space activate
+// the focused item. Escape is handled by the document-level onProjContextKeydown
+// so it closes the menu from anywhere. Attached to the menu element itself, so
+// it only fires while focus is inside the menu and is torn down with the node.
+function onProjContextMenuKeydown(event) {
+    const menu = document.getElementById('projContextMenu');
+    if (!menu) return;
+    const items = getProjContextItems(menu);
+    if (!items.length) return;
+    const current = items.indexOf(document.activeElement);
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        const next = current < 0 ? 0 : (current + 1) % items.length;
+        focusProjContextItem(items, next);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prev = current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length;
+        focusProjContextItem(items, prev);
+    } else if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+        if (current >= 0) {
+            // Neutralize native activation (buttons fire click on Enter/Space)
+            // so the manual click() below is the single, uniform activation for
+            // both the div items and the swatch buttons.
+            event.preventDefault();
+            items[current].click();
+        }
+    }
+}
+
 // Build the inline color-picker strip that sits between Edit and Delete in
 // the project context menu. Single click on any swatch assigns the color
 // and closes the menu — matching how Edit and Delete already behave.
@@ -78,6 +123,8 @@ function buildColorPicker(currentColorKey, onSelect) {
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'projContextColorSwatch reset';
+    resetBtn.setAttribute('role', 'menuitem');
+    resetBtn.setAttribute('tabindex', '-1');
     resetBtn.setAttribute('aria-label', 'Reset to theme accent');
     if (!currentColorKey) resetBtn.classList.add('active');
     resetBtn.addEventListener('click', function() {
@@ -90,6 +137,8 @@ function buildColorPicker(currentColorKey, onSelect) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'projContextColorSwatch';
+        btn.setAttribute('role', 'menuitem');
+        btn.setAttribute('tabindex', '-1');
         btn.style.setProperty('--swatch-color', PROJECT_COLOR_HEX[key]);
         btn.setAttribute('aria-label', 'Set project color: ' + key);
         if (currentColorKey === key) btn.classList.add('active');
@@ -110,11 +159,15 @@ export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
 
     const menu = document.createElement('div');
     menu.id = 'projContextMenu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Project actions');
     menu.style.left = x + 'px';
     menu.style.top  = y + 'px';
 
     const editOpt = document.createElement('div');
     editOpt.className = 'projContextMenuItem';
+    editOpt.setAttribute('role', 'menuitem');
+    editOpt.setAttribute('tabindex', '-1');
     editOpt.textContent = 'Edit';
     editOpt.addEventListener('click', function() {
         hideProjectContextMenu();
@@ -123,6 +176,8 @@ export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
 
     const delOpt = document.createElement('div');
     delOpt.className = 'projContextMenuItem danger';
+    delOpt.setAttribute('role', 'menuitem');
+    delOpt.setAttribute('tabindex', '-1');
     delOpt.textContent = 'Delete';
     delOpt.addEventListener('click', function() {
         hideProjectContextMenu();
@@ -147,4 +202,10 @@ export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
     document.addEventListener('keydown',    onProjContextKeydown,      true);
     window.addEventListener('resize', hideProjectContextMenu);
     window.addEventListener('scroll', hideProjectContextMenu, true);
+
+    // Roving-tabindex keyboard nav across the menu items (Up/Down + Enter/Space).
+    // The listener lives on the menu node, so it's removed automatically when the
+    // menu is torn down. Focus the first item so arrow keys work immediately.
+    menu.addEventListener('keydown', onProjContextMenuKeydown);
+    focusProjContextItem(getProjContextItems(menu), 0);
 }
