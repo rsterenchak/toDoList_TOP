@@ -797,8 +797,10 @@ body {
   transition: background 0.12s ease, color 0.12s ease;
 }
 .projContextMenuItem:hover { background: var(--bg-hover); color: var(--text-primary); }
+.projContextMenuItem:focus { outline: none; background: var(--bg-hover); color: var(--text-primary); }
 .projContextMenuItem.danger { color: var(--text-danger); }
-.projContextMenuItem.danger:hover { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
+.projContextMenuItem.danger:hover,
+.projContextMenuItem.danger:focus { background: rgba(224, 85, 85, 0.12); color: var(--text-danger); }
 
 /* PROJECT COLOR PICKER — inline swatch strip sitting inside the context
    menu between Edit and Delete. Six filled circular swatches plus a

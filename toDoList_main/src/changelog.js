@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-09',
         added: [
-            "Left and right arrow keys now move focus between the status filter and the Sort control.",
             "Left and right arrow keys now move focus across the Task, Agent, and Structure view tabs, wrapping around at either end.",
+            "The project right-click menu is now fully keyboard-navigable: arrow keys move between items, Enter or Space activates, and Escape closes.",
         ],
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
