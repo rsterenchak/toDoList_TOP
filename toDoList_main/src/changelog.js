@@ -8,18 +8,12 @@ export const changelog = [
         date: '2026-07-09',
         added: [
             "Left and right arrow keys now move focus between the status filter and the Sort control.",
+            "Left and right arrow keys now move focus across the Task, Agent, and Structure view tabs, wrapping around at either end.",
         ],
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
             "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
             "Agent mockup hand-off prompts for a project linked to another repo now name that repo and its own file paths instead of always referring to the toDoList app.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-08',
-        fixed: [
-            "Collapsing a TODO.md viewer card on mobile no longer hides its ⋯ more-actions button — the button now stays put whether the card is collapsed or expanded.",
         ],
     },
 ];

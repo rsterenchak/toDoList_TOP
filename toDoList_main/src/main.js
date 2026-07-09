@@ -420,8 +420,17 @@ function component() {
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
-        const nextBtn = order[nextIdx];
+        let nextBtn = order[nextIdx];
         if (!nextBtn) return;
+        // The view switcher is one internally-navigable group in this chain, not
+        // a fixed tab stop: entering it from either neighbour lands on the pill
+        // that currently owns the roving tabindex (the active view's pill), and
+        // the switcher's own ArrowLeft/Right handler then cycles among the three
+        // pills with wraparound. Fall back to the Projects pill if the roving
+        // marker is somehow absent.
+        if (nextBtn === viewPillProjects) {
+            nextBtn = document.querySelector('#viewSwitcher .viewPill[tabindex="0"]') || viewPillProjects;
+        }
         e.preventDefault();
         e.stopPropagation();
         nextBtn.focus();
@@ -1981,6 +1990,52 @@ function component() {
     }
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
     viewPillAgent.addEventListener('keydown', dropFocusIntoMainView);
+
+    // Roving-tabindex ArrowLeft/ArrowRight navigation across the three view
+    // pills. The switcher is an ARIA tablist, so exactly one pill is in the Tab
+    // order at a time (tabindex 0) while the others are tabindex -1; ArrowLeft /
+    // ArrowRight move focus among them and hand the roving 0 to the newly-focused
+    // pill. Movement wraps: ArrowRight on the last pill (STRUCTURE) lands on the
+    // first (Task View) and ArrowLeft on the first lands on the last. The active
+    // pill's tabindex is kept in sync by applyActiveView; the baseline below just
+    // seeds the pre-restore state (PROJECTS is the default view).
+    //
+    // This takes priority over the header-wide nav ArrowLeft/Right walk: the
+    // handler stopPropagation()s so neither the document-level cross-pane
+    // handler (which would yank focus into the task pane in Projects view) nor
+    // any ancestor listener also fires. Enter/Space activation is left to native
+    // <button> behaviour, so the click handlers above keep switching views on
+    // those keys. The nav walk still enters the switcher as one group via
+    // viewSwitcherEntryPill(), so from the header chrome the switcher reads as a
+    // single, internally-navigable stop rather than one fixed tab stop.
+    const viewSwitcherPills = [viewPillProjects, viewPillAgent, viewPillStructure];
+    viewPillProjects.setAttribute('tabindex', '0');
+    viewPillAgent.setAttribute('tabindex', '-1');
+    viewPillStructure.setAttribute('tabindex', '-1');
+    function focusViewPillAt(index) {
+        const pill = viewSwitcherPills[index];
+        if (!pill) return;
+        viewSwitcherPills.forEach(function(p) {
+            p.setAttribute('tabindex', p === pill ? '0' : '-1');
+        });
+        pill.focus();
+    }
+    function viewSwitcherArrowNav(e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        const idx = viewSwitcherPills.indexOf(e.target);
+        if (idx === -1) return;
+        const len = viewSwitcherPills.length;
+        const delta = e.key === 'ArrowRight' ? 1 : -1;
+        const nextIdx = (idx + delta + len) % len;
+        e.preventDefault();
+        e.stopPropagation();
+        focusViewPillAt(nextIdx);
+    }
+    viewPillProjects.addEventListener('keydown', viewSwitcherArrowNav);
+    viewPillAgent.addEventListener('keydown', viewSwitcherArrowNav);
+    viewPillStructure.addEventListener('keydown', viewSwitcherArrowNav);
 
     // ── Agent view shell ──
     // Empty container the agentView module owns at runtime — renderAgentView()
@@ -5186,16 +5241,19 @@ function applyActiveView(view) {
     if (pillProjects) {
         pillProjects.classList.toggle('active', safe === 'projects');
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
+        pillProjects.setAttribute('tabindex', safe === 'projects' ? '0' : '-1');
     }
     const pillAgent = document.getElementById('viewPillAgent');
     if (pillAgent) {
         pillAgent.classList.toggle('active', safe === 'agent');
         pillAgent.setAttribute('aria-pressed', safe === 'agent' ? 'true' : 'false');
+        pillAgent.setAttribute('tabindex', safe === 'agent' ? '0' : '-1');
     }
     const pillStructure = document.getElementById('viewPillStructure');
     if (pillStructure) {
         pillStructure.classList.toggle('active', safe === 'structure');
         pillStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
+        pillStructure.setAttribute('tabindex', safe === 'structure' ? '0' : '-1');
     }
 
     // Mirror the active state on the mobile bottom tab bar so the same
