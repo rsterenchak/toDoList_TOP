@@ -125,9 +125,11 @@ describe('rewriteTodoMd — worker rewrite payload', () => {
 });
 
 // dispatchTriage POSTs the Worker's `{ dispatch_triage: true, project_id,
-// correlation_id }` branch through the same transport every other helper uses,
-// so the triage sweep fires for the named project. Fire-and-forget: the caller
-// polls nothing, so the result is just the spread Worker payload on success.
+// correlation_id, repo, filePath }` branch through the same transport every
+// other helper uses, so the triage sweep fires for the named project against its
+// linked repo (or the Worker default when no target is passed). Fire-and-forget:
+// the caller polls nothing, so the result is just the spread Worker payload on
+// success.
 describe('dispatchTriage — worker dispatch_triage payload', () => {
     it('POSTs { dispatch_triage, project_id, correlation_id } and spreads the payload', async () => {
         fetchSpy.mockImplementationOnce(() => Promise.resolve({
@@ -142,6 +144,30 @@ describe('dispatchTriage — worker dispatch_triage payload', () => {
         expect(body.correlation_id).toBe('corr-9');
         expect(res.ok).toBe(true);
         expect(res.dispatched).toBe(true);
+    });
+
+    it('routes to the passed target repo/filePath so triage runs against the project repo', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        await dispatchTriage('proj-1', 'corr-9', { repo: 'owner/other', file_path: 'docs/TODO.md' });
+        const body = lastTriageBody();
+        expect(body).toBeTruthy();
+        expect(body.repo).toBe('owner/other');
+        expect(body.filePath).toBe('docs/TODO.md');
+    });
+
+    it('omits repo/filePath when no target is passed so the Worker default applies', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        await dispatchTriage('proj-1', 'corr-9');
+        const body = lastTriageBody();
+        expect(body).toBeTruthy();
+        expect(body.repo).toBeUndefined();
+        expect(body.filePath).toBeUndefined();
     });
 
     it('funnels a transport failure through describeError', async () => {

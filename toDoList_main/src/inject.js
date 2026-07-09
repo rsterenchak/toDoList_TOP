@@ -363,20 +363,24 @@ export async function dispatchRun(options) {
 
 // Fire the triage sweep for one project through the same Worker the dispatch
 // and status flows already use (same URL + Bearer secret). POSTs
-// `{ dispatch_triage: true, project_id, correlation_id }` so the Worker
-// dispatches claude-triage.yml scoped to the project. Triage is a batch,
-// read-only sweep, so this is fire-and-forget — the Agent board reflects the
-// verdicts live via the agent_queue realtime subscription and there is nothing
-// to poll here. The correlation_id is optional (used only for the run name) and
-// carries no UI meaning. The Worker payload is spread onto `{ ok: true }` on
-// success; on any failure it returns `{ ok: false, reason }` via describeError,
-// matching dispatchRun's error vocabulary.
-export async function dispatchTriage(projectId, correlationId) {
+// `{ dispatch_triage: true, project_id, correlation_id, repo, filePath }` so the
+// Worker dispatches claude-triage.yml against the project's linked repo (or its
+// default when `target` is null). Triage is a batch, read-only sweep, so this is
+// fire-and-forget — the Agent board reflects the verdicts live via the
+// agent_queue realtime subscription and there is nothing to poll here. The
+// correlation_id is optional (used only for the run name) and carries no UI
+// meaning; `project_id` scopes the Supabase sweep and is orthogonal to the repo.
+// The Worker payload is spread onto `{ ok: true }` on success; on any failure it
+// returns `{ ok: false, reason }` via describeError, matching dispatchRun's
+// error vocabulary.
+export async function dispatchTriage(projectId, correlationId, target) {
     try {
         const res = await postToWorker({
             dispatch_triage: true,
             project_id: projectId,
             correlation_id: correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
