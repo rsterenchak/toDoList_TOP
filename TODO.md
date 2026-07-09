@@ -166,7 +166,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 39e6aaea-9d9f-4e37-bae1-fd2a6c2ff7a9 -->
 
-- [ ] **[MEDIUM]** Add wrapping Left/Right arrow-key navigation to the Task/Agent/Structure view switcher
+- [x] **[MEDIUM]** Add wrapping Left/Right arrow-key navigation to the Task/Agent/Structure view switcher — Completed: 2026-07-09
   - Type: feature
   - Description: The `#viewSwitcher` tab row (`viewPillProjects` / `viewPillAgent` / `viewPillStructure`, `main.js` ~lines 1894-1938) has `role=tab` but no arrow-key handling today, so it can't be navigated like a real tablist. Implement roving-tabindex Left/Right arrow navigation across the three pills with wraparound (Right on Structure goes to Task, Left on Task goes to Structure), and Enter/Space to activate the focused pill. This must take priority over the existing header-wide Left/Right focus chain, which currently treats `viewPillProjects` as a single stop (`main.js` ~lines 405-427) — update that chain so it treats the view switcher as one internally-navigable group rather than a single tab stop.
   - File: `toDoList_main/src/main.js`
