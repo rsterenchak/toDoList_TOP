@@ -153,6 +153,11 @@ let _sweepPoller = null;
 let _sweepSeenActive = false;
 let _sweepGraceDeadline = 0;
 let _sweepHardDeadline = 0;
+// The project whose sweep is being tracked, captured when tracking starts. A
+// sweep is scoped to one project's agent_queue rows, and the user may switch
+// projects while it runs, so the post-finish reconcile targets THIS project's
+// rows rather than whatever board is on screen when the sweep settles.
+let _sweepProjectName = null;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -224,6 +229,7 @@ function startSweepTracking(alreadyConfirmed) {
     const now = Date.now();
     _sweepActive = true;
     _sweepSeenActive = !!alreadyConfirmed;
+    _sweepProjectName = getSelectedProjectName();
     _sweepGraceDeadline = now + SWEEP_GRACE_MS;
     _sweepHardDeadline = now + SWEEP_HARD_CAP_MS;
     if (!_sweepPoller) {
@@ -255,7 +261,7 @@ function stopSweepTracking() {
 // hard cap force-stops regardless so a wedged run can't pin the pill forever.
 function pollSweepOnce() {
     if (Date.now() >= _sweepHardDeadline) {
-        stopSweepTracking();
+        finishSweep();
         return;
     }
     Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'triage')).then(function (res) {
@@ -270,9 +276,60 @@ function pollSweepOnce() {
         if (_sweepSeenActive || Date.now() >= _sweepGraceDeadline) {
             // Either the confirmed run has finished, or the grace window for a
             // run that never registered has elapsed — settle to Idle.
-            stopSweepTracking();
+            finishSweep();
         }
     });
+}
+
+// A tracked sweep has reached a terminal point — the probe confirmed its run
+// finished, the grace window for a never-registered run elapsed, or the hard cap
+// force-stopped a wedged run. Settle the pill to Idle, then reconcile any row the
+// sweep left stuck at 'triaging'. Only reconcile when a sweep was genuinely being
+// tracked (`wasActive`), so a stray poll while idle is a pure no-op. This is
+// deliberately NOT folded into stopSweepTracking(): that also fires on plain
+// teardown (view exit, or a dispatch that never launched a run), where the sweep
+// may still be running and its rows must be left untouched.
+function finishSweep() {
+    const projectName = _sweepProjectName;
+    const wasActive = _sweepActive;
+    stopSweepTracking();
+    if (wasActive) reconcileStuckTriaging(projectName);
+}
+
+// Reconcile rows a finished triage sweep left behind. A flagged todo's
+// agent_queue row is set to 'triaging' at flag time (and again on re-triage after
+// an answer), before any run exists, and nothing ever revisits that row from the
+// client: dispatchTriage is fire-and-forget and the sweep poller only drives the
+// header pill. So if claude-triage.yml errors, times out, or exhausts its turns
+// before writing a verdict for a given row, that row is left at 'triaging'
+// indefinitely — sitting silently in the In-progress bucket with the pill back at
+// Idle and no way to tell the sweep failed. Once the tracked run is confirmed
+// finished, flip each still-'triaging' row for the swept project to a visible
+// 'failed' state (surfaced in the Stuck bucket) with an explanatory reason, so
+// the user can remove it and flag the task again rather than stall unseen. This
+// mirrors the settleInFlightRows / pollDispatchOnce reconcile pattern used for
+// in-flight ship rows. The queue is read fresh (not the possibly-stale render
+// cache) so a row the sweep DID resolve is never clobbered, and the board
+// repaints only when the swept project is still the one on screen.
+async function reconcileStuckTriaging(projectName) {
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    if (!projectId) return;
+    const rows = await fetchQueueRows(projectId);
+    const stuck = (Array.isArray(rows) ? rows : []).filter(function (r) {
+        return r && r.state === 'triaging';
+    });
+    if (!stuck.length) return;
+    let changedAny = false;
+    for (let i = 0; i < stuck.length; i++) {
+        const res = await listLogic.setAgentRunState(stuck[i].id, {
+            state: 'failed',
+            failure_reason: 'The triage sweep didn’t finish for this task. Remove it and flag the task again to retry.',
+        });
+        if (res && res.ok) changedAny = true;
+    }
+    if (changedAny && getSelectedProjectName() === projectName) {
+        refreshAgentQueue(projectName);
+    }
 }
 
 // Update the header status pill in place to reflect the current Working/Idle
