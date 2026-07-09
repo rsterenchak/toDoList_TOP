@@ -4734,6 +4734,54 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   flex: 0 0 auto;
 }
 
+/* Hairline separating a post-triage card's state content from its appended
+   hand-to-chat / hand-to-Claude block (buildPostTriageHandoff). The card's own
+   column gap sets the space above; the small margin below lifts it off the
+   Discuss-in-chat link. */
+.divider {
+  height: 0;
+  border-top: 0.5px solid var(--border-mid);
+  margin: 0 0 4px;
+}
+
+/* Compact icon-only hand-off row on the thin in-flight cards
+   (dispatched/running): a 💬 chat hand-off and a 📎 copy-for-Claude button. The
+   buttons stay quiet and small so they don't compete with the card's status
+   chip, warming to the accent on hover like the other paste controls. */
+.thinActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thinActions .iconBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+}
+
+.thinActions .iconBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent-text, var(--accent));
+  background: var(--bg-hover);
+}
+
+.thinActions .iconBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
 /* Shipped card: the PR link reads as a subtle, monospace reference that still
    underlines on hover to signal it's clickable. */
 /* Shipped card footer: the merged-PR label/link and the Revert control share one

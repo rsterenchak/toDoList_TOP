@@ -827,6 +827,150 @@ describe('AGENT view — needs_words copy/paste-to-Claude hand-off', () => {
     });
 });
 
+describe('AGENT view — post-triage hand-off block', () => {
+    ['drafted', 'shipped', 'failed', 'no_change', 'triaging'].forEach((state) => {
+        it('appends a divider + Discuss-in-chat link + Copy/Open-Claude row on a ' + state + ' card', async () => {
+            listLogic.addProject('PT-' + state);
+            mountDom('PT-' + state);
+            queueRows = [{ id: 'pt-' + state, state, context: { title: 'A task' } }];
+            await loadBoard();
+
+            const card = document.querySelector('.agentCard');
+            expect(card).toBeTruthy();
+            expect(card.querySelector('.divider')).toBeTruthy();
+            expect(card.querySelector('.agentDiscussLink')).toBeTruthy();
+            expect(card.querySelector('.agentPasteHandoff')).toBeTruthy();
+            expect(card.querySelector('.agentPasteCopy')).toBeTruthy();
+            expect(card.querySelector('.agentPasteOpen')).toBeTruthy();
+        });
+    });
+
+    it('does not append the block to a needs_mockup card', async () => {
+        listLogic.addProject('PTmock');
+        mountDom('PTmock');
+        queueRows = [{ id: 'ptm', state: 'needs_mockup', context: { title: 'M' } }];
+        await loadBoard();
+        const card = document.querySelector('.agentCard');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.divider')).toBeNull();
+    });
+
+    it('does not add a second divider to a needs_words card (its hand-off is inline)', async () => {
+        listLogic.addProject('PTwords');
+        mountDom('PTwords');
+        queueRows = [{ id: 'ptw', state: 'needs_words', context: { title: 'W' }, question: 'Q?' }];
+        await loadBoard();
+        const card = document.querySelector('.agentCard');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.divider')).toBeNull();
+    });
+
+    it('seeds the chat from a post-triage Discuss link WITHOUT collapsing the card or re-triaging', async () => {
+        listLogic.addProject('PTseed');
+        mountDom('PTseed');
+        queueRows = [{
+            id: 'pts',
+            state: 'drafted',
+            context: { title: 'Ship it', description: 'the details' },
+        }];
+        await loadBoard();
+
+        document.querySelector('.agentDiscussLink').click();
+        await flush();
+
+        expect(chatMock.seedCalls.length).toBe(1);
+        expect(chatMock.seedCalls[0]).toMatch(/Ship it/);
+        expect(chatMock.seedCalls[0]).toMatch(/the details/);
+        // No collapse (there is no answer box on a drafted card) and no write.
+        expect(document.querySelector('.agentContinueChat')).toBeNull();
+        expect(document.querySelector('.divider')).toBeTruthy();
+        expect(updateCalls.length).toBe(0);
+        expect(insertCalls.length).toBe(0);
+    });
+});
+
+describe('AGENT view — thin in-flight card hand-off', () => {
+    let clipboardText;
+    let openArgs;
+    let priorClipboard;
+    let priorOpen;
+
+    beforeEach(() => {
+        clipboardText = null;
+        openArgs = null;
+        priorClipboard = navigator.clipboard;
+        priorOpen = window.open;
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: (t) => { clipboardText = t; return Promise.resolve(); } },
+        });
+        window.open = (url, target) => { openArgs = { url, target }; return null; };
+    });
+
+    afterEach(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: priorClipboard });
+        window.open = priorOpen;
+    });
+
+    ['dispatched', 'running'].forEach((state) => {
+        it('renders a compact 💬 / 📎 icon row on a thin ' + state + ' card', async () => {
+            listLogic.addProject('Thin-' + state);
+            mountDom('Thin-' + state);
+            queueRows = [{ id: 'thin-' + state, state, context: { title: 'In flight' } }];
+            await loadBoard();
+
+            const card = document.querySelector('.agentCard--thin');
+            expect(card).toBeTruthy();
+            const actions = card.querySelector('.thinActions');
+            expect(actions).toBeTruthy();
+            expect(actions.querySelectorAll('.iconBtn').length).toBe(2);
+            // The thin layout stays thin — no full secondary block.
+            expect(card.querySelector('.agentPasteHandoff')).toBeNull();
+            expect(card.querySelector('.divider')).toBeNull();
+        });
+    });
+
+    it('💬 seeds the chat with the task context and does not write', async () => {
+        listLogic.addProject('ThinChat');
+        mountDom('ThinChat');
+        queueRows = [{
+            id: 'tc',
+            state: 'running',
+            context: { title: 'Building', description: 'in progress' },
+        }];
+        await loadBoard();
+
+        const buttons = document.querySelectorAll('.thinActions .iconBtn');
+        buttons[0].click();
+        await flush();
+
+        expect(chatMock.seedCalls.length).toBe(1);
+        expect(chatMock.seedCalls[0]).toMatch(/Building/);
+        expect(updateCalls.length).toBe(0);
+        expect(clipboardText).toBeNull();
+    });
+
+    it('📎 copies the task context to the clipboard without seeding chat or writing', async () => {
+        listLogic.addProject('ThinCopy');
+        mountDom('ThinCopy');
+        queueRows = [{
+            id: 'tcp',
+            state: 'dispatched',
+            context: { title: 'Dispatching', description: 'soon' },
+        }];
+        await loadBoard();
+
+        const buttons = document.querySelectorAll('.thinActions .iconBtn');
+        buttons[1].click();
+        await flush();
+
+        expect(clipboardText).toBeTruthy();
+        expect(clipboardText).toMatch(/Dispatching/);
+        expect(chatMock.seedCalls.length).toBe(0);
+        expect(updateCalls.length).toBe(0);
+    });
+});
+
 describe('listLogic.answerAgentTask', () => {
     it('appends a user message to the thread and writes state triaging for a valid answer', async () => {
         const res = await listLogic.answerAgentTask('row-1', '  hi there  ', [
