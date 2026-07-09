@@ -49,6 +49,12 @@ const BUCKETS = [
 // cards (queued/running work is low-signal until it needs you or ships).
 const THIN_STATES = ['dispatched', 'running'];
 
+// The non-thin post-triage states that get the hand-to-chat / hand-to-Claude
+// block appended below their state content (buildPostTriageHandoff). needs_words
+// is excluded — it renders the hand-off inline within its answer control — and so
+// is needs_mockup, which has its own Copy/Open-Claude mockup flow.
+const POST_TRIAGE_HANDOFF_STATES = ['drafted', 'shipped', 'failed', 'no_change', 'triaging'];
+
 // The in-flight workflow states that drive the header's Working/Idle pill and
 // the "N running" count: a row in any of these is actively moving through the
 // pipeline (being triaged, queued for dispatch, or executing a run).
@@ -1831,6 +1837,16 @@ function buildCard(row) {
     if (!thin) {
         const secondary = buildSecondary(row);
         if (secondary) card.appendChild(secondary);
+        // Append the hand-to-chat / hand-to-Claude block below the state content
+        // on the post-triage states, so a drafted/shipped/failed/no_change/
+        // triaging card can be discussed or handed off without re-triaging.
+        if (POST_TRIAGE_HANDOFF_STATES.indexOf(row.state) !== -1) {
+            card.appendChild(buildPostTriageHandoff(row));
+        }
+    } else {
+        // Thin in-flight cards (dispatched/running) skip the full secondary but
+        // still get a compact icon-only hand-off row.
+        card.appendChild(buildThinActions(row));
     }
     return card;
 }
@@ -1887,6 +1903,24 @@ function buildDiscussSeed(row) {
     return lines.join('\n');
 }
 
+// Copy the task's discuss seed to the clipboard for pasting into claude.ai,
+// surfacing a non-blocking toast either way. Shared by the needs_words "Copy
+// context" button and the thin in-flight cards' compact 📎 affordance; a rejected
+// or unavailable clipboard falls into the error toast rather than throwing.
+function copyTaskContextForClaude(row) {
+    let copied;
+    try {
+        copied = navigator.clipboard.writeText(buildDiscussSeed(row));
+    } catch (e) {
+        copied = Promise.reject(e);
+    }
+    return Promise.resolve(copied).then(function () {
+        showInjectToast('Task context copied — paste it into Claude.');
+    }, function () {
+        showInjectToast('Couldn’t copy the task context — try again.', 'error');
+    });
+}
+
 // The copy/paste-to-Claude hand-off for a needs_words card: a tucked row of two
 // compact buttons beneath the answer actions. "Copy context" writes the same
 // task + question seed the in-app Discuss-in-chat uses to the clipboard, and
@@ -1911,17 +1945,7 @@ function buildPasteToClaudeRow(row) {
     copyBtn.className = 'agentPasteCopy';
     copyBtn.textContent = 'Copy context';
     copyBtn.addEventListener('click', function () {
-        let copied;
-        try {
-            copied = navigator.clipboard.writeText(buildDiscussSeed(row));
-        } catch (e) {
-            copied = Promise.reject(e);
-        }
-        Promise.resolve(copied).then(function () {
-            showInjectToast('Task context copied — paste it into Claude.');
-        }, function () {
-            showInjectToast('Couldn’t copy the task context — try again.', 'error');
-        });
+        copyTaskContextForClaude(row);
     });
     wrap.appendChild(copyBtn);
 
@@ -1937,12 +1961,17 @@ function buildPasteToClaudeRow(row) {
     return wrap;
 }
 
-// The "Discuss in chat" hand-off link for a needs_words card. Tapping it seeds
-// the Claude chat with the task context (openChatWithSeed) and marks the row as
-// handed off so its answer control collapses to a re-entry — WITHOUT touching the
-// data model or re-triaging. Repaints from the cache (no refetch) so the collapse
-// is immediate.
-function buildDiscussLink(row) {
+// The "Discuss in chat" hand-off link. Tapping it seeds the Claude chat with the
+// task context (openChatWithSeed) — WITHOUT touching the data model or
+// re-triaging. On a needs_words card it also marks the row handed off so its
+// answer control collapses to a re-entry, repainting from the cache (no refetch)
+// so the collapse is immediate. The post-triage states (drafted/shipped/failed/
+// no_change/triaging) reuse this link with `{ markHandoff: false }` — they have no
+// answer box to collapse, so seeding the chat is the whole effect and the
+// handed-off set (consulted only for needs_words) must stay untouched, otherwise
+// a queue row that later becomes needs_words would render pre-collapsed.
+function buildDiscussLink(row, opts) {
+    const markHandoff = !opts || opts.markHandoff !== false;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'agentDiscussLink';
@@ -1952,8 +1981,10 @@ function buildDiscussLink(row) {
     btn.appendChild(label);
     btn.addEventListener('click', function () {
         openChatWithSeed(buildDiscussSeed(row));
-        _handedOffRows.add(row.id);
-        paint();
+        if (markHandoff) {
+            _handedOffRows.add(row.id);
+            paint();
+        }
     });
     return btn;
 }
@@ -1998,6 +2029,60 @@ function buildAnswerWithWordsLink(row) {
         paint();
     });
     return btn;
+}
+
+// The post-triage hand-off block appended below a non-thin card's state content
+// on the drafted/shipped/failed/no_change/triaging states (see
+// POST_TRIAGE_HANDOFF_STATES). Matches the mockup's Option A layout — a hairline
+// divider, then the Discuss-in-chat link, then the Copy/Open-Claude paste row —
+// reusing the same needs_words hand-off pieces so a user can iterate on any
+// post-triage card without re-triaging. The Discuss link opts out of the
+// handed-off collapse (there's no answer box on these states).
+function buildPostTriageHandoff(row) {
+    const wrap = document.createElement('div');
+    const divider = document.createElement('div');
+    divider.className = 'divider';
+    wrap.appendChild(divider);
+    wrap.appendChild(buildDiscussLink(row, { markHandoff: false }));
+    wrap.appendChild(buildPasteToClaudeRow(row));
+    return wrap;
+}
+
+// The compact icon-only hand-off row for the thin in-flight cards
+// (dispatched/running), which skip buildSecondary entirely. Rather than promoting
+// them off the thin layout, it offers a 💬 chat hand-off (openChatWithSeed) and a
+// 📎 copy-for-Claude button (copyTaskContextForClaude) — the same handlers the
+// full cards use. Clicks stop propagation so they never reach a future card-level
+// handler.
+function buildThinActions(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'thinActions';
+
+    const chat = document.createElement('button');
+    chat.type = 'button';
+    chat.className = 'iconBtn';
+    chat.setAttribute('aria-label', 'Discuss in chat');
+    chat.title = 'Discuss in chat';
+    chat.textContent = '💬';
+    chat.addEventListener('click', function (event) {
+        event.stopPropagation();
+        openChatWithSeed(buildDiscussSeed(row));
+    });
+    wrap.appendChild(chat);
+
+    const paste = document.createElement('button');
+    paste.type = 'button';
+    paste.className = 'iconBtn';
+    paste.setAttribute('aria-label', 'Copy task context for Claude');
+    paste.title = 'Copy task context for Claude';
+    paste.textContent = '📎';
+    paste.addEventListener('click', function (event) {
+        event.stopPropagation();
+        copyTaskContextForClaude(row);
+    });
+    wrap.appendChild(paste);
+
+    return wrap;
 }
 
 // A small inline pencil/edit glyph for the "answer with words" toggle. DOM-built
