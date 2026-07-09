@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { buildTaskFilterBar, firstFocusableInTaskFilterBar } from '../src/taskFilter.js';
+import { buildTaskFilterBar, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from '../src/taskFilter.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -73,6 +73,106 @@ describe('firstFocusableInTaskFilterBar — visible-control resolution', () => {
     });
 });
 
+describe('taskFilterArrowTarget — Left/Right roving between filter and Sort', () => {
+    // jsdom does no layout, so getClientRects() is empty by default (=> hidden).
+    // Stub it per element to model the on-screen breakpoint controls.
+    function show(el) {
+        el.getClientRects = () => [{ width: 40, height: 20 }];
+    }
+
+    // The desktop Sort trigger (#taskSortBtn) is created in main.js, not by
+    // buildTaskFilterBar, so add stand-ins with the ids the helper resolves.
+    function addSortBtn(id) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = id;
+        document.body.appendChild(btn);
+        return btn;
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('desktop: ArrowRight moves from the cycle pill to the Sort trigger', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        const pill = bar.querySelector('.taskCyclePill');
+        const sort = addSortBtn('taskSortBtn');
+        show(pill);
+        show(sort);
+        expect(taskFilterArrowTarget(pill, 'ArrowRight')).toBe(sort);
+    });
+
+    it('desktop: ArrowLeft moves from the Sort trigger back to the cycle pill', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        const pill = bar.querySelector('.taskCyclePill');
+        const sort = addSortBtn('taskSortBtn');
+        show(pill);
+        show(sort);
+        expect(taskFilterArrowTarget(sort, 'ArrowLeft')).toBe(pill);
+    });
+
+    it('clamps at both ends — ArrowLeft on the pill and ArrowRight on Sort return null', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        const pill = bar.querySelector('.taskCyclePill');
+        const sort = addSortBtn('taskSortBtn');
+        show(pill);
+        show(sort);
+        expect(taskFilterArrowTarget(pill, 'ArrowLeft')).toBeNull();
+        expect(taskFilterArrowTarget(sort, 'ArrowRight')).toBeNull();
+    });
+
+    it('mobile: arrows rove across the visible segments and into the mobile Sort trigger', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        // Cycle pill hidden (default empty rects); segments + mobile sort visible.
+        const segs = bar.querySelectorAll('.taskFilterSeg');
+        segs.forEach(show);
+        const mobileSort = addSortBtn('taskSortBtnMobile');
+        show(mobileSort);
+        expect(taskFilterArrowTarget(segs[0], 'ArrowRight')).toBe(segs[1]);
+        expect(taskFilterArrowTarget(segs[2], 'ArrowRight')).toBe(mobileSort);
+        expect(taskFilterArrowTarget(mobileSort, 'ArrowLeft')).toBe(segs[2]);
+    });
+
+    it('ignores non-horizontal keys', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        const pill = bar.querySelector('.taskCyclePill');
+        const sort = addSortBtn('taskSortBtn');
+        show(pill);
+        show(sort);
+        expect(taskFilterArrowTarget(pill, 'ArrowUp')).toBeNull();
+        expect(taskFilterArrowTarget(pill, 'Enter')).toBeNull();
+        expect(taskFilterArrowTarget(pill, ' ')).toBeNull();
+    });
+
+    it('returns null when only one control is on screen (nothing to move to)', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        const pill = bar.querySelector('.taskCyclePill');
+        show(pill);
+        // No visible Sort trigger => no partner.
+        expect(taskFilterArrowTarget(pill, 'ArrowRight')).toBeNull();
+    });
+
+    it('returns null when the focused element is not a filter/sort control', () => {
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        show(bar.querySelector('.taskCyclePill'));
+        show(addSortBtn('taskSortBtn'));
+        const stray = document.createElement('button');
+        document.body.appendChild(stray);
+        expect(taskFilterArrowTarget(stray, 'ArrowRight')).toBeNull();
+    });
+});
+
 describe('filter-bar arrow-key wiring in main.js', () => {
     const main = read('main.js');
 
@@ -96,6 +196,35 @@ describe('filter-bar arrow-key wiring in main.js', () => {
         expect(main).toMatch(
             /import\s*\{[^}]*firstFocusableInTaskFilterBar[^}]*\}\s*from\s*['"]\.\/taskFilter\.js['"]/
         );
+    });
+
+    it('imports the Left/Right target resolver from taskFilter.js', () => {
+        expect(main).toMatch(
+            /import\s*\{[^}]*taskFilterArrowTarget[^}]*\}\s*from\s*['"]\.\/taskFilter\.js['"]/
+        );
+    });
+
+    it('wires a Left/Right keydown handler on main2 that delegates to taskFilterArrowTarget', () => {
+        // The desktop Sort trigger sits in the #bulkDescActions sibling, so the
+        // horizontal handler lives on main2 (their shared parent), not the bar.
+        const body = extractFn("main2.addEventListener('keydown'");
+        expect(body).toMatch(/ArrowLeft/);
+        expect(body).toMatch(/ArrowRight/);
+        expect(body).toMatch(/ctrlKey/);
+        expect(body).toMatch(/metaKey/);
+        expect(body).toMatch(/altKey/);
+        expect(body).toMatch(/shiftKey/);
+        expect(body).toMatch(/getActiveView\(\s*\)\s*!==\s*['"]projects['"]/);
+        expect(body).toMatch(/isAnyModalOrPopoverOpen\(\s*\)/);
+        // Only acts when a real filter/sort control is focused.
+        expect(body).toMatch(/taskCyclePill/);
+        expect(body).toMatch(/taskFilterSeg/);
+        expect(body).toMatch(/taskSortBtn/);
+        expect(body).toMatch(/taskFilterArrowTarget/);
+        // preventDefault + stopPropagation so the document todo-arrow handler
+        // can't also fire and clobber the placed focus.
+        expect(body).toMatch(/preventDefault\(\s*\)/);
+        expect(body).toMatch(/stopPropagation\(\s*\)/);
     });
 
     it('the pill drop-in (ArrowDown) tries the filter bar before falling into the list', () => {

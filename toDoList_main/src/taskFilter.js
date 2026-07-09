@@ -162,6 +162,16 @@ export function buildTaskFilterBar() {
 }
 
 
+// Is this control on-screen and focusable? getClientRects() is empty for a
+// display:none element (and any display:none ancestor — including the whole bar
+// in Agent/Structure views), so it doubles as the visibility test; a disabled
+// or tabindex=-1 control is skipped. Shared by the arrow-key helpers below so
+// the CSS-hidden breakpoint complement never becomes a focus stop.
+function isOnScreenFocusable(el) {
+    return !!el && !el.disabled && el.getClientRects().length > 0 && el.tabIndex !== -1;
+}
+
+
 // Return the first visible, focusable control inside #taskFilterBar so the
 // arrow-key nav chain can land a stop on the status/sort bar between the view
 // switcher and the todo list. The bar holds a desktop cycle pill, a mobile
@@ -179,12 +189,57 @@ export function firstFocusableInTaskFilterBar() {
         '.taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile'
     );
     for (let i = 0; i < candidates.length; i++) {
-        const el = candidates[i];
-        if (!el.disabled && el.getClientRects().length > 0 && el.tabIndex !== -1) {
-            return el;
-        }
+        if (isOnScreenFocusable(candidates[i])) return candidates[i];
     }
     return null;
+}
+
+
+// Ordered, on-screen filter/sort controls for Left/Right roving focus. The bar
+// pairs a status filter with a Sort trigger; the horizontal arrows walk between
+// them left-to-right. Desktop resolves to [cycle pill, #taskSortBtn]; mobile to
+// [segment…, #taskSortBtnMobile]. The desktop Sort trigger lives in the sibling
+// #bulkDescActions overlay (not inside the bar), so it is looked up by id here
+// rather than queried within the bar. Only on-screen, focusable controls are
+// included, so the CSS-hidden breakpoint complement is never an arrow stop.
+function taskFilterArrowOrder() {
+    const order = [];
+    const bar = document.getElementById('taskFilterBar');
+    if (bar) {
+        const pill = bar.querySelector('.taskCyclePill');
+        if (isOnScreenFocusable(pill)) {
+            order.push(pill);
+        } else {
+            bar.querySelectorAll('.taskFilterSeg').forEach(function (seg) {
+                if (isOnScreenFocusable(seg)) order.push(seg);
+            });
+        }
+    }
+    const desktopSort = document.getElementById('taskSortBtn');
+    const mobileSort = document.getElementById('taskSortBtnMobile');
+    if (isOnScreenFocusable(desktopSort)) order.push(desktopSort);
+    else if (isOnScreenFocusable(mobileSort)) order.push(mobileSort);
+    return order;
+}
+
+
+// Resolve where a Left/Right keystroke on a focused filter/sort control should
+// send focus, or null when it should be left to the browser. Movement is
+// clamped at both ends (no wrap): ArrowRight past the last control and ArrowLeft
+// before the first return null so the keystroke passes through unchanged — this
+// mirrors the header roving-focus pattern. Only ArrowLeft/ArrowRight are
+// handled, so Enter/Space (activate) and the vertical ArrowUp/ArrowDown stops
+// are untouched. Returns null unless the bar exposes at least two on-screen
+// controls and the focused control is one of them.
+export function taskFilterArrowTarget(focusedEl, key) {
+    if (key !== 'ArrowLeft' && key !== 'ArrowRight') return null;
+    const order = taskFilterArrowOrder();
+    if (order.length < 2) return null;
+    const idx = order.indexOf(focusedEl);
+    if (idx === -1) return null;
+    const nextIdx = key === 'ArrowRight' ? idx + 1 : idx - 1;
+    if (nextIdx < 0 || nextIdx >= order.length) return null;
+    return order[nextIdx];
 }
 
 
