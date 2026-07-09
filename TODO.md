@@ -192,3 +192,10 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9eb9442f-80a9-408d-aaf9-210ef29ecf19 -->
+
+- [ ] **[MEDIUM]** Add hand-to-chat/hand-to-claude affordance to every post-triage agent card state
+  - Type: feature
+  - Description: Currently only needs_words cards render the 'Discuss in chat' link and 'Copy context / Open Claude' paste pair via buildSecondary. Extend this hand-off to drafted, shipped, failed, no_change, and triaging states by appending buildDiscussLink and buildPasteToClaudeRow (with buildDiscussSeed for seed text) below each state's existing secondary content, separated by a divider, matching Option A's layout (draft/PR/failure content first, then divider, then discuss link, then paste row). For the thin dispatched/running rows, which currently skip buildSecondary entirely in buildCard's THIN_STATES check, add a compact icon-only affordance (💬 and 📎 icon buttons in a .thinActions row) rather than promoting them off the thin layout, wired to the same openChatWithSeed/paste-to-claude handlers. Reuse existing tokens (--accent, --accent-text, --accent-dim, --text-secondary, --border-mid, --bg-hover) and existing class names (.agentDiscussLink, .agentPasteHandoff, .agentPasteTag, .agentPasteCopy, .agentPasteOpen) rather than introducing new ones, and add new CSS only for .divider and the thin-row .iconBtn/.thinActions affordance.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1da788bf-f992-40df-8e52-ecef95d7f8af -->
