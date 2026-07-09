@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-09',
         added: [
-            "Left and right arrow keys now move focus across the Task, Agent, and Structure view tabs, wrapping around at either end.",
             "The project right-click menu is now fully keyboard-navigable: arrow keys move between items, Enter or Space activates, and Escape closes.",
         ],
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
             "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
             "Agent mockup hand-off prompts for a project linked to another repo now name that repo and its own file paths instead of always referring to the toDoList app.",
+            "Agent tasks left stuck when a triage sweep fails or times out now surface as failed so you can flag them again, instead of sitting silently in progress.",
         ],
     },
 ];

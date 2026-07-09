@@ -308,3 +308,56 @@ describe('AGENT view — status pill driven by the real triage-run state', () =>
         expect(pillState()).toEqual({ working: true, label: 'Working' });
     });
 });
+
+describe('AGENT view — recover rows stuck at triaging after a finished sweep', () => {
+    // A flagged row is set to 'triaging' before any run exists; if the sweep
+    // errors, times out, or exhausts its turns before writing that row's verdict,
+    // the row is left at 'triaging' with nothing to revisit it. Once the tracked
+    // run is confirmed finished, any still-'triaging' row must flip to a visible
+    // 'failed' state rather than sit silently in the In-progress bucket.
+    const failedFor = (id) =>
+        updateCalls.find((c) => c.id === id && c.patch && c.patch.state === 'failed');
+
+    it('flips a still-triaging row to failed once the tracked sweep finishes', async () => {
+        listLogic.addProject('Recover');
+        mountDom('Recover');
+        queueRows = [{ id: 'stuck1', state: 'triaging', context: { title: 'Stuck task' } }];
+        // Seed arc: the run is in flight on mount (confirmed), then the next probe
+        // reports it finished — driving the sweep to its terminal reconcile.
+        activeRunsQueue = [{ ok: true, active: true }, { ok: true, active: false }];
+        await loadBoard();
+        await flush(12);
+
+        const patch = failedFor('stuck1');
+        expect(patch).toBeTruthy();
+        expect(patch.patch.state).toBe('failed');
+        expect((patch.patch.failure_reason || '')).toMatch(/triage sweep/i);
+    });
+
+    it('does not touch a row the sweep resolved to another state', async () => {
+        listLogic.addProject('Resolved');
+        mountDom('Resolved');
+        // By the time the sweep finishes the row has moved on (a verdict landed):
+        // it is no longer 'triaging', so the reconcile must leave it alone.
+        queueRows = [{ id: 'ok1', state: 'needs_words', context: { title: 'Answered' }, question: 'Q?' }];
+        activeRunsQueue = [{ ok: true, active: true }, { ok: true, active: false }];
+        await loadBoard();
+        await flush(12);
+
+        expect(failedFor('ok1')).toBeFalsy();
+        expect(updateCalls.every((c) => !(c.patch && c.patch.state === 'failed'))).toBe(true);
+    });
+
+    it('leaves a triaging row alone while the sweep is still running', async () => {
+        listLogic.addProject('Running');
+        mountDom('Running');
+        queueRows = [{ id: 'busy1', state: 'triaging', context: { title: 'In flight' } }];
+        // The probe keeps reporting the run active — the sweep never finishes, so
+        // no reconcile fires and the row stays triaging.
+        activeRunsQueue = [{ ok: true, active: true }];
+        await loadBoard();
+        await flush(12);
+
+        expect(failedFor('busy1')).toBeFalsy();
+    });
+});
