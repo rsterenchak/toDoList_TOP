@@ -158,3 +158,10 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7f74ed29-e524-4551-a57e-be8d64aac1b2 -->
+
+- [ ] **[MEDIUM]** Add Left/Right arrow-key focus movement between the filter pill and Sort trigger
+  - Type: feature
+  - Description: The desktop filter bar (`#taskFilterBar`) has a single cycle pill (All → Active → Ideas) and a separate Sort trigger, but neither is keyboard-navigable via arrow keys. Add Left/Right arrow handling so focus moves between the filter pill and the Sort trigger when either has focus, without altering their existing click-to-cycle / click-to-open behavior. Enter/Space must still activate whichever control has focus. Likely implemented in `toDoList_main/src/taskFilter.js`.
+  - File: `toDoList_main/src/taskFilter.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 39e6aaea-9d9f-4e37-bae1-fd2a6c2ff7a9 -->
