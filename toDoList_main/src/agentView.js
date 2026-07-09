@@ -193,7 +193,7 @@ function fireTriageSweep(projectName) {
     // completion (settling the pill back to Idle when GitHub reports it done).
     startSweepTracking(false);
     return Promise.resolve()
-        .then(function () { return dispatchTriage(projectId, mintEntryId()); })
+        .then(function () { return dispatchTriage(projectId, mintEntryId(), resolveDispatchTarget()); })
         .then(
             function (res) {
                 _triageInFlight = false;
@@ -1358,11 +1358,16 @@ function buildMockupSecondary(row) {
     return wrap;
 }
 
-// The dispatch target (repo/filePath) for the active project's runs. v1 ships
-// against the Worker's default target (the toDoList project), so an omitted
-// target is correct here; multi-repo resolution is a follow-on.
+// The dispatch target (repo/filePath) for the active project's runs: the active
+// project's linked inject target (the same routing the inject/run path uses), or
+// null when the project has no target — in which case the Worker falls back to
+// its default repo. Mirrors resolveReadTarget so triage, dispatch, poller
+// resume, and revert all route to the project's linked repo.
 function resolveDispatchTarget() {
-    return null;
+    const projectName = getSelectedProjectName();
+    if (!projectName) return null;
+    const targetId = listLogic.getProjectTargetId(projectName);
+    return targetId ? findTargetById(targetId) : null;
 }
 
 // The state of the cached row with this id (or null when absent). Used by the

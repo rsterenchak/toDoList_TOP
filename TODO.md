@@ -136,7 +136,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5a305f13-40a7-48c7-aec9-5c26cbb2986f -->
 
-- [ ] **[HIGH]** Route AGENT-tab triage + dispatch to the active project's linked repo instead of the Worker default
+- [x] **[HIGH]** Route AGENT-tab triage + dispatch to the active project's linked repo instead of the Worker default — Completed: 2026-07-09
   - Type: bug
   - Description: On the AGENT tab, `resolveDispatchTarget()` in `toDoList_main/src/agentView.js` is a hardcoded `return null;` stub, so every repo-bearing agent call resolves to the Worker's default repo (toDoList_TOP) regardless of the selected project's linked target. Separately, `dispatchTriage()` in `toDoList_main/src/inject.js` posts `{ dispatch_triage, project_id, correlation_id }` with no `repo`, unlike `dispatchRun`/`fetchActiveRuns` which send `repo`/`filePath`. Result: triage (and the other agent calls) always run against the toDoList PWA, so a linked project's flagged tasks get classified against the wrong source. The Worker's `dispatch_triage` route already honors a client `repo` (it builds the dispatch URL from `resolveTarget(body)`), so this is a client-only fix.
   - Behavior: Selecting a project whose inject target is repo X and running triage must dispatch `claude-triage.yml` in repo X, not toDoList_TOP. The header pill's triage active-run probes, dispatch-draft ship, run-status poller resume, and revert must all target repo X. Projects with no linked target keep falling back to the Worker default (unchanged).

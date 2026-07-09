@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-09',
+        fixed: [
+            "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-08',
         added: [
-            "Shipped cards on the agent board now carry a Revert button to roll a shipped change back.",
             "Agent cards that need more detail now offer “Copy context” and “Open Claude” buttons to work the task out in claude.ai on your own plan.",
         ],
         changed: [
