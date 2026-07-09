@@ -151,3 +151,10 @@
   - Implementation notes: In `setActiveTab`, when `tab === 'runs'`, call `loadRunRecords()` followed by `renderRunsList()` before the existing `renderUpdateNudge()` call, and also call `resumeRunPollers()` so any newly-appeared QUEUED/RUNNING record picks up a live poller instead of sitting stale until the next reload.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 04b76aff-a92b-4217-848d-eaac4b842fa6 -->
+
+- [ ] **[HIGH]** Fix agent mockup hand-off prompts hardcoding the repo as toDoList_TOP for linked repos
+  - Type: bug
+  - Description: The agent's "Hand off to Claude" and mockup prompts always introduce the work as "toDoList_TOP PWA" and pin file paths "under `toDoList_main/src/`" regardless of which repo the flagged entry belongs to, so when the active project is a linked repo (e.g. matchingGame-test) the pasted prompt mislabels the repo and points at a source tree that doesn't exist there. Root cause: the three prompt builders — `buildMockupPrompt` (the fallback clipboard hand-off), `buildMockupGenPrompt` (inline Generate), and `buildMockupEntryPrompt` (chosen-variant → entry) — embed the literal string `toDoList_TOP` and the `toDoList_main/src/` prefix instead of deriving them from the active project's linked inject target. The repo is already resolvable in this module via `mockupChatRepo(getSelectedProjectName())` → `target.repo` (the same `owner/name` the Generate/entry Worker calls already pass as `repo`, and that inject/run routes to); thread that value into all three builders so the prompt names the correct repo, and drop the hardcoded `toDoList_main/src/` pin in favor of neutral "repo-relative paths" wording (the inject target carries `repo` + `file_path` but no source root, and the entry step already knows each repo's layout). The fallback `buildMockupPrompt` call (~L1229) currently receives no repo argument, so its call site needs the resolved repo passed in too; keep the current toDoList_TOP wording only as the fallback when the project has no linked target.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 7f74ed29-e524-4551-a57e-be8d64aac1b2 -->
