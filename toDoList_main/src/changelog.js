@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-09',
+        added: [
+            "Left and right arrow keys now move focus between the status filter and the Sort control.",
+        ],
         fixed: [
             "Agent-tab triage and dispatch now run against the selected project's linked repo instead of always using the default project.",
             "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
@@ -16,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-08',
         fixed: [
-            "The “Generate mockups” button on a visual-task card now reliably renders the A/B/C previews instead of sometimes showing nothing.",
             "Collapsing a TODO.md viewer card on mobile no longer hides its ⋯ more-actions button — the button now stays put whether the card is collapsed or expanded.",
         ],
     },

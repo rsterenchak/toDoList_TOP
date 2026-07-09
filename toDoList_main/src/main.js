@@ -73,7 +73,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { wireStatusLabelDelegation } from './todoStatus.js';
-import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar } from './taskFilter.js';
+import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
@@ -2039,6 +2039,33 @@ function component() {
         const target = isUp
             ? document.querySelector('#viewSwitcher .viewPill.active')
             : firstFocusableInActiveMainView();
+        if (!target) return;
+        e.preventDefault();
+        e.stopPropagation();
+        target.focus();
+    });
+
+    // Left/Right roving focus between the status filter control and the Sort
+    // trigger. Unlike the ArrowUp/Down stop above (scoped to #taskFilterBar),
+    // the desktop Sort trigger (#taskSortBtn) lives in the sibling
+    // #bulkDescActions overlay, so this listener sits on their shared parent
+    // (main2) to reach a focused control on either side. Gated exactly like the
+    // vertical handler — modifier-free, PROJECTS view only, no open
+    // modal/popover — and only acts when a real filter/sort control is focused,
+    // so Left/Right in the new-task input is left alone. Only the two horizontal
+    // arrows are intercepted, so Enter/Space (activate) and the click-to-cycle /
+    // click-to-open behaviours are untouched; preventDefault/stopPropagation
+    // fire only on a real move so the document todo-arrow handler can't clobber
+    // the focus we place. taskFilterArrowTarget clamps at both ends (no wrap).
+    main2.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+        if (isAnyModalOrPopoverOpen()) return;
+        if (getActiveView() !== 'projects') return;
+        const control = e.target && e.target.closest &&
+            e.target.closest('.taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile');
+        if (!control) return;
+        const target = taskFilterArrowTarget(control, e.key);
         if (!target) return;
         e.preventDefault();
         e.stopPropagation();
