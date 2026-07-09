@@ -145,7 +145,7 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/inject.js`, `toDoList_main/tests/inject.test.js`
   <!-- id: c1b79283-955f-4063-ba4d-ea8d9aeed774 -->
 
-- [ ] **[MEDIUM]** Refresh Runs-tab run records from localStorage on every tab switch, not just on sheet mount
+- [x] **[MEDIUM]** Refresh Runs-tab run records from localStorage on every tab switch, not just on sheet mount — Completed: 2026-07-09
   - Type: bug
   - Description: `setActiveTab('runs')` in `toDoList_main/src/claudeSheet.js` only calls `renderUpdateNudge()` when switching to the Runs tab — it never calls `loadRunRecords()` or `renderRunsList()`. Those two only run once, at sheet mount (`toDoList_main/src/claudeSheet.js` around the `loadRunRecords(); renderRunsList(); resumeRunPollers();` block near the end of the mount function). So the in-memory `runRecords` array is populated from the `todoapp_claudeRuns` localStorage key exactly once per page load; any change written to that key afterward by a source other than this tab's own pollers (e.g. another open tab/window, or a run dispatched in a different session before this reload) is invisible in the Runs tab until a full page reload, which matches the reported symptom of the tab not always rehydrating right away.
   - Implementation notes: In `setActiveTab`, when `tab === 'runs'`, call `loadRunRecords()` followed by `renderRunsList()` before the existing `renderUpdateNudge()` call, and also call `resumeRunPollers()` so any newly-appeared QUEUED/RUNNING record picks up a live poller instead of sitting stale until the next reload.
