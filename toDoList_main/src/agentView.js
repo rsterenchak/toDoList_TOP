@@ -776,12 +776,28 @@ function buildStuckSecondary(row) {
     return wrap;
 }
 
+// How a mockup prompt names the repo it targets. The three prompt builders no
+// longer hardcode `toDoList_TOP` / `toDoList_main/src/`: given the active
+// project's linked inject-target repo (owner/name, from mockupChatRepo) they
+// name that repo and use neutral "repo-relative paths" wording, so a prompt for
+// a linked repo (e.g. matchingGame-test) points at the right source tree. When
+// no target is routed (repo null/empty), they fall back to the original
+// toDoList_TOP PWA wording and its `toDoList_main/src/` path pin.
+function mockupRepoLabel(repo) {
+    const slug = (repo == null) ? '' : String(repo).trim();
+    return slug ? ('`' + slug + '` repo') : 'toDoList_TOP PWA';
+}
+function mockupPathHint(repo) {
+    const slug = (repo == null) ? '' : String(repo).trim();
+    return slug ? 'full repo-relative paths' : 'full repo-relative paths under `toDoList_main/src/`';
+}
+
 // Build the ready-to-paste mockup prompt from the task + captured context
 // bundle. Any Context line whose field is empty is omitted; when no bundle
 // field is present the whole Context block is dropped rather than leaving a
 // bare "Context:" header. The trailing format instruction pins the entry shape
 // the user should paste back (matching the routine's TODO.md conventions).
-function buildMockupPrompt(ctx) {
+function buildMockupPrompt(ctx, repo) {
     const c = (ctx && typeof ctx === 'object') ? ctx : {};
     const val = function (v) { return (v == null) ? '' : String(v).trim(); };
     const title = val(c.title);
@@ -802,15 +818,14 @@ function buildMockupPrompt(ctx) {
     const markupBlock = markup ? ('\n\nCurrent markup:\n```\n' + markup + '\n```') : '';
     const cssBlock = css ? ('\n\nCurrent CSS:\n```css\n' + css + '\n```') : '';
 
-    return "I'm working on my toDoList_TOP PWA and need mockups for a UI change, then a finished TODO.md entry.\n\n"
+    return "I'm working on my " + mockupRepoLabel(repo) + ' and need mockups for a UI change, then a finished TODO.md entry.\n\n'
         + 'Task: ' + title + '\n' + description
         + contextBlock
         + markupBlock
         + cssBlock
         + '\n\nShow me 2-3 mockup options (A/B/C), let me pick one, then produce a single TODO.md entry '
         + 'in this format: `- [ ] **[PRIORITY]** <title>` with `- Type:` / `- Description:` / `- File:` / '
-        + '`- Completed:` sub-bullets, priority in literal brackets, full repo-relative paths under '
-        + '`toDoList_main/src/`, no id marker.';
+        + '`- Completed:` sub-bullets, priority in literal brackets, ' + mockupPathHint(repo) + ', no id marker.';
 }
 
 // The machine-parseable sibling of buildMockupPrompt: same grounded context
@@ -820,7 +835,7 @@ function buildMockupPrompt(ctx) {
 // card. Deliberately carries NO TODO.md-entry instruction: the finished entry
 // stays with the fallback hand-off (buildMockupPrompt), so a Generate call is
 // mockups-only.
-function buildMockupGenPrompt(ctx) {
+function buildMockupGenPrompt(ctx, repo) {
     const c = (ctx && typeof ctx === 'object') ? ctx : {};
     const val = function (v) { return (v == null) ? '' : String(v).trim(); };
     const title = val(c.title);
@@ -837,7 +852,7 @@ function buildMockupGenPrompt(ctx) {
     const markupBlock = markup ? ('\n\nCurrent markup:\n```\n' + markup + '\n```') : '';
     const cssBlock = css ? ('\n\nCurrent CSS:\n```css\n' + css + '\n```') : '';
 
-    return 'I need three UI mockup variants (A, B, C) for a change to my toDoList_TOP PWA, '
+    return 'I need three UI mockup variants (A, B, C) for a change to my ' + mockupRepoLabel(repo) + ', '
         + 'to preview inline. Do NOT write a TODO.md entry — mockups only.\n\n'
         + 'Task: ' + title + '\n' + description
         + contextBlock
@@ -894,7 +909,7 @@ function parseMockupVariants(reply) {
 // variant's HTML, and asks for ONLY the finished entry in the exact shape the
 // fallback prompt pins — so the reply can be written straight to the row's
 // draft after a single fence strip.
-function buildMockupEntryPrompt(ctx, key, html) {
+function buildMockupEntryPrompt(ctx, key, html, repo) {
     const c = (ctx && typeof ctx === 'object') ? ctx : {};
     const val = function (v) { return (v == null) ? '' : String(v).trim(); };
     const title = val(c.title);
@@ -914,7 +929,7 @@ function buildMockupEntryPrompt(ctx, key, html) {
     const variantHtml = String(html == null ? '' : html);
     const variantBlock = '\n\nChosen mockup (variant ' + String(key) + '):\n```html\n' + variantHtml + '\n```';
 
-    return "I picked a mockup for a UI change to my toDoList_TOP PWA. Turn it into a single "
+    return 'I picked a mockup for a UI change to my ' + mockupRepoLabel(repo) + '. Turn it into a single '
         + 'finished TODO.md entry — nothing else.\n\n'
         + 'Task: ' + title + '\n' + description
         + contextBlock
@@ -923,8 +938,8 @@ function buildMockupEntryPrompt(ctx, key, html) {
         + variantBlock
         + '\n\nReturn ONLY the finished entry in exactly this format: '
         + '`- [ ] **[PRIORITY]** <title>` with `- Type:` / `- Description:` / `- File:` / '
-        + '`- Completed:` sub-bullets, priority in literal brackets, full repo-relative paths under '
-        + '`toDoList_main/src/`, no id marker. No prose, no explanation, no code fences.';
+        + '`- Completed:` sub-bullets, priority in literal brackets, ' + mockupPathHint(repo)
+        + ', no id marker. No prose, no explanation, no code fences.';
 }
 
 // Strip a single wrapping ```…``` (or ```markdown …```) code fence from a reply
@@ -1096,7 +1111,7 @@ function renderMockupPreviews(container, variants, row) {
                 const repo = mockupChatRepo(getSelectedProjectName());
                 Promise.resolve().then(function () {
                     return chatWithWorker(
-                        [{ role: 'user', content: buildMockupEntryPrompt(row.context, k, variants[k]) }],
+                        [{ role: 'user', content: buildMockupEntryPrompt(row.context, k, variants[k], repo) }],
                         null, null, repo,
                     );
                 }).then(function (res) {
@@ -1190,7 +1205,7 @@ function buildMockupSecondary(row) {
         genBtn.textContent = 'Generating…';
         const repo = mockupChatRepo(getSelectedProjectName());
         Promise.resolve().then(function () {
-            return chatWithWorker([{ role: 'user', content: buildMockupGenPrompt(ctx) }], null, null, repo);
+            return chatWithWorker([{ role: 'user', content: buildMockupGenPrompt(ctx, repo) }], null, null, repo);
         }).then(function (res) {
             const reply = (res && typeof res.reply === 'string') ? res.reply : '';
             const variants = parseMockupVariants(reply);
@@ -1225,8 +1240,10 @@ function buildMockupSecondary(row) {
 
     // The full assembled prompt — the same string the user pastes into Claude.
     // Built once (the context bundle is folded into it), shown verbatim in the
-    // toggled block so what the user sees is exactly what they copy.
-    const prompt = buildMockupPrompt(ctx);
+    // toggled block so what the user sees is exactly what they copy. Grounded at
+    // the active project's linked repo so a linked repo isn't mislabeled as
+    // toDoList_TOP.
+    const prompt = buildMockupPrompt(ctx, mockupChatRepo(getSelectedProjectName()));
 
     // Open mockup: toggles the read-only prompt block open/closed. No clipboard
     // write or tab-open here — those live on the Copy button and the Open Claude

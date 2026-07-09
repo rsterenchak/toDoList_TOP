@@ -314,6 +314,39 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         expect(chatCalls[0].entryId).toBeNull();
         expect(chatCalls[0].attach).toBeNull();
     });
+
+    it('names the linked repo (not toDoList_TOP) and drops the toDoList_main/src pin when a repo is routed', async () => {
+        // Route Mocky at a non-toDoList_TOP linked repo.
+        listLogic.setProjectTargetId('Mocky', 't-mg');
+        targetById = { repo: 'rsterenchak/matchingGame-test', file_path: 'TODO.md' };
+
+        queueRows = [{ id: 'g8', state: 'needs_mockup', context: { title: 'T', description: 'd' } }];
+        await loadBoard();
+
+        // Fallback hand-off prompt is grounded at the linked repo, not toDoList_TOP.
+        const fallbackPrompt = document.querySelector('.agentMockupPrompt').textContent;
+        expect(fallbackPrompt).toContain('`rsterenchak/matchingGame-test` repo');
+        expect(fallbackPrompt).not.toContain('toDoList_TOP PWA');
+        expect(fallbackPrompt).not.toContain('toDoList_main/src/');
+
+        // Generate prompt names the linked repo too.
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+        expect(chatCalls[0].repo).toBe('rsterenchak/matchingGame-test');
+        const genPrompt = chatCalls[0].messages[0].content;
+        expect(genPrompt).toContain('`rsterenchak/matchingGame-test` repo');
+        expect(genPrompt).not.toContain('toDoList_TOP PWA');
+
+        // The chosen-variant entry prompt is grounded at the linked repo, with no
+        // hardcoded toDoList_main/src/ path pin.
+        chatReply = FINISHED_ENTRY;
+        document.querySelectorAll('.agentMockupUse')[0].click();
+        await flush();
+        const entryPrompt = chatCalls[1].messages[0].content;
+        expect(entryPrompt).toContain('`rsterenchak/matchingGame-test` repo');
+        expect(entryPrompt).not.toContain('toDoList_TOP PWA');
+        expect(entryPrompt).not.toContain('toDoList_main/src/');
+    });
 });
 
 describe('AGENT view — needs_mockup "use this" → drafted', () => {
