@@ -9,17 +9,11 @@ export const changelog = [
         added: [
             "The Structure tab now offers a SQL lens for schema repos — a table and column outline with types, constraint chips, and foreign-key links.",
             "Agent board section headers now fold and reopen with a caret, remembering each section's open or collapsed state between visits.",
+            "Todo rows now show a status dot on the description glyph — amber once an entry is injected, turning green once its run has shipped.",
         ],
         fixed: [
             "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
             "A todo handed off from the Agent board to chat now settles to shipped, failed, or no-change once its run finishes, instead of staying stuck on \"Needs words\".",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-09',
-        fixed: [
-            "The Run backlog, Run this entry, and Redeploy buttons in the TODO viewer now share a single hover style so they highlight identically.",
         ],
     },
 ];

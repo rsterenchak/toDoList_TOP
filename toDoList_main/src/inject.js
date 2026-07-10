@@ -160,6 +160,51 @@ export function embedEntryMarker(text, id) {
     return String(text || '').replace(/\s+$/, '') + '\n  <!-- id: ' + id + ' -->';
 }
 
+// ── TODO-ROW RUN-STATUS CORRELATION ──
+// The run records the Claude sheet persists are the source of truth for whether
+// an injected entry has actually shipped a run. The description-status dot on a
+// todo row correlates `item.entryId` against those records. This key mirrors
+// RUNS_KEY in claudeSheet.js (the documented-stable `todoapp_` key); it is kept
+// here so the row layer can read run status without importing claudeSheet.js —
+// that would form a toDoRow → claudeSheet → modals → toDoRow import cycle.
+export const CLAUDE_RUNS_KEY = 'todoapp_claudeRuns';
+
+// Document event fired whenever an injected entry's run status may have changed:
+// a fresh inject stamps `injectedAt` (pending edge), and a run reconciling to
+// SHIPPED promotes it (shipped edge). Row-level dot listeners re-evaluate on this
+// event so the dot updates live without a full reload. The inject button
+// dispatches the pending edge; claudeSheet's run-record persistence dispatches
+// the shipped edge.
+export const TODO_RUN_STATUS_EVENT = 'todoapp:todoRunStatusChange';
+
+// True when some run record for `entryId` has reached the terminal SHIPPED
+// status. Reads the run records directly (the array shape claudeSheet.js writes:
+// `[{ entryId, status, ... }]`) and tolerates missing / malformed storage by
+// returning false.
+export function hasShippedRunForEntry(entryId) {
+    if (!entryId) return false;
+    try {
+        const raw = localStorage.getItem(CLAUDE_RUNS_KEY);
+        if (!raw) return false;
+        const records = JSON.parse(raw);
+        if (!Array.isArray(records)) return false;
+        return records.some(function(rec) {
+            return rec && rec.entryId === entryId && rec.status === 'SHIPPED';
+        });
+    } catch (e) {
+        return false;
+    }
+}
+
+// Dispatch TODO_RUN_STATUS_EVENT so row-level status dots re-evaluate. Safe in
+// non-DOM environments (no-op when `document` is absent).
+export function emitTodoRunStatusChange() {
+    if (typeof document === 'undefined') return;
+    try {
+        document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));
+    } catch (e) { /* CustomEvent unsupported */ }
+}
+
 async function injectDescription(item, target) {
     if (!item || !item.desc) return { ok: false, reason: 'No description' };
     try {
@@ -669,6 +714,9 @@ export function makeInjectButton(item, options) {
             if (result.ok) {
                 showInjectToast('Injected to TODO.md');
                 refreshInjectButton(btn, item);
+                // injectDescription just stamped item.injectedAt — surface the
+                // amber pending dot on this row's description indicator now.
+                emitTodoRunStatusChange();
                 if (typeof opts.onInjected === 'function') opts.onInjected(item);
             } else {
                 showInjectToast('Inject failed — ' + result.reason, 'error');

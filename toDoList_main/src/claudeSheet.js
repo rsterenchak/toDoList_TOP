@@ -34,6 +34,7 @@ import {
     loadInjectTargets,
     isInjectConfigured,
     showInjectToast,
+    emitTodoRunStatusChange,
 } from './inject.js';
 import {
     readActiveRun,
@@ -499,6 +500,10 @@ function saveRunRecords() {
     try {
         localStorage.setItem(RUNS_KEY, JSON.stringify(runRecords));
     } catch (e) { /* private mode */ }
+    // A run record just changed (created, reconciled to SHIPPED, etc.). Notify
+    // the todo rows so any description-status dot correlating to this entry
+    // re-evaluates live — the shipped edge that flips a pending amber dot green.
+    emitTodoRunStatusChange();
 }
 
 // ── CHAT HISTORY (localStorage-backed, per-repo) ──

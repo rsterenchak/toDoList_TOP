@@ -263,7 +263,7 @@
   - Completed: 2025-06-10 (PR #142)
   <!-- id: 9ec4e407-e65a-4e3f-ae42-5fb2ba6e2ccd -->
 
-- [ ] **[MEDIUM]** Add shipped/pending status dot overlay on the description indicator glyph
+- [x] **[MEDIUM]** Add shipped/pending status dot overlay on the description indicator glyph — Completed: 2026-07-10
   - Type: feature
   - Description: A todo row currently has no way to show, at a glance, whether its injected entry has actually shipped a run — the inject button only shows a permanent "Injected" checkmark with no pending/shipped distinction. Add a small badge dot overlaid on the bottom-right corner of `#descIndicator` in `toDoList_main/src/toDoRow.js` buildToDoRow(): render a green dot (`.dot`) when the item's `entryId` correlates to a run in `todoapp_claudeRuns` with terminal status SHIPPED, an amber dot (`.dot--pending`) when `item.injectedAt` is set but no SHIPPED run record exists yet for `item.entryId`, and no dot when the item has never been injected. The correlation lookup should read `todoapp_claudeRuns` (keyed as in `claudeSheet.js`) matched against `item.entryId`, re-evaluated whenever runs update (e.g. via the same reconcile path claudeSheet.js uses) so the dot updates live without a full reload. The dot must only render when `#toDoChild[data-has-desc="true"]` already shows `#descIndicator`, must inherit the existing opacity rules (0.9 normal, 0.45 when `.completed`), and must not interfere with the inject button's own separate state glyph in `toDoList_main/src/inject.js`.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
