@@ -220,3 +220,22 @@
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/toDo.js`
   - Completed: 2026-07-10
   <!-- id: b00dd410-9642-454e-ac74-7e38b3900334 -->
+
+- [ ] **[MEDIUM]** Add SQL table-outline lens to the Structure tab
+  - Type: feature
+  - Description: The Structure tab's second-slot lens toggle currently supports only `ui` (live DOM map) and `types` (C# class/member outline); `resolveSecondLens` at structureView.js:211 coerces any other manifest `lens` value — including `"sql"` — to `"ui"`, so a SQL repo's published manifest renders as an empty UI lens with "no UI surface." Add a third second-slot lens that renders the `tables` payload the sql-mode manifest generator emits, so pointing the Structure tab at a schema/migrations repo shows a Code | SQL toggle and a table → column outline. This is client render work only — no generator change is needed, since the manifest already carries everything: `tables: [{ name, kind:"table", file, line, columns: [{ name, kind:"column"|"constraint", signature, line, ref }] }]`.
+  - Behavior:
+    1. The second-slot toggle reads "SQL" (not "UI") when the manifest declares `lens:"sql"`; the slot stays adaptive per repo exactly like Types, so a repo is one of {UI, Types, SQL}.
+    2. The tree renders as file-group headers (one per `.sql` file) → collapsible table rows (table glyph, name, a muted "N cols" count) → column rows, mirroring the Types lens's file-group structure, collapse affordance, and fold persistence.
+    3. Column rows use the approved "structured" layout: the column name, then the type (first token of `signature` after the name), then small constraint chips parsed from `signature` (PK for `PRIMARY KEY`, plus `NOT NULL`, `UNIQUE`, `DEFAULT <val>`), and — when `ref` is set — a distinct accent FK pill reading `→ <ref>` (e.g. `→ projects(id)`).
+    4. `kind:"constraint"` rows (table-level `CHECK` / composite `PRIMARY KEY` / etc.) render as a chip-row: a keyword chip parsed from `signature` (CHECK / PRIMARY KEY / UNIQUE / FOREIGN KEY), the constraint name, and the expression tail.
+    5. Selecting a table or column row drives the existing action toolbar unchanged from the Types lens — Copy name copies the table/column name; View on GitHub uses the row's `line` via the existing blob-URL helper; Reference in chat works for table/column rows.
+  - Implementation notes:
+    - `claudeSheet.js` `loadManifest`: read `data.tables` into the manifest object alongside the existing `lens`/`types` reads (~claudeSheet.js:1268), using the same shape-guard style.
+    - `structureView.js`: (a) `resolveSecondLens` (~:211) — normalize `"sql"` instead of coercing to `"ui"`, and set a `currentTables` from `result.tables` parallel to `currentTypes`; (b) `renderSecondLens` dispatch (~:1780) — route `currentLens === "sql"` to a new `renderSqlLens`; (c) `relabelSecondLensSegment` (~:2439) — map `sql → "SQL"`; (d) add a collapsed-file fold set for SQL parallel to `collapsedTypeFiles`, wired through the existing hydrate/persist helpers (~:172–196); (e) add the `sql` case to the filter placeholder (~:2212).
+    - Write `renderSqlLens` standalone, modeled on `renderTypesLens` (grep for it) — reuse the existing tree-row, file-group, and selection/action-toolbar plumbing; only the column-row template is new. Derive type + chips by splitting `signature` on whitespace after the leading name token and matching constraint keywords; do not add structured fields to the manifest.
+    - All new column-row styling (type token, constraint chips, FK pill, constraint row) goes in `style.css` as classes — no inline style writes in the view file — using the Void tokens: accent `#8b7bff` / accent-dim `rgba(139,123,255,0.12)` for the FK pill, `#1c1e27` bg / `#23242e` border for chips, amber `#d9b86a` for the constraint keyword. Reuse `.structureFileRow` and the existing tree-row classes where possible.
+  - Out of scope: Generalizing `renderTypesLens` and `renderSqlLens` into one shared outline renderer (deferred — writing `renderSqlLens` standalone avoids regressing the working Types lens; a later DRY-refactor entry can unify them). Any ER/relationship-graph view. Any change to the sql-mode manifest generator in `gen-src-manifest.js` — the `tables` payload is already sufficient.
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e45344d4-b9b9-431b-ad74-2ab64d748de4 -->
