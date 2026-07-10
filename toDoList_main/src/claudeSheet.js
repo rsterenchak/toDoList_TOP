@@ -1266,6 +1266,10 @@ export async function loadManifest(repo) {
                 // that predate them, where structureView defaults to the UI lens.
                 lens: isObj && typeof data.lens === 'string' ? data.lens : undefined,
                 types: isObj && Array.isArray(data.types) ? data.types : undefined,
+                // The sql-mode manifest's table outline: one entry per table
+                // carrying its columns/constraints. Surfaced for the Structure
+                // tab's adaptive SQL lens; left undefined for non-sql manifests.
+                tables: isObj && Array.isArray(data.tables) ? data.tables : undefined,
             };
         }
     } catch (e) {

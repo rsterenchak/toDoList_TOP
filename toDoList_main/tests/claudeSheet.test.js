@@ -4183,23 +4183,38 @@ describe('loadManifest lens/types passthrough', () => {
         expect(result.types).toEqual(types);
     });
 
-    it('leaves lens/types undefined for an older lens-less (web) manifest', async () => {
+    it('surfaces lens and tables from a sql-lens manifest', async () => {
+        const repo = 'rsterenchak/sql-schema-repo';
+        const tables = [{
+            name: 'projects', kind: 'table', file: 'schema.sql', line: 1,
+            columns: [{ name: 'id', kind: 'column', signature: 'id integer PRIMARY KEY', line: 2 }],
+        }];
+        mockManifest(repo, { files: ['schema.sql'], lens: 'sql', tables: tables });
+        const result = await loadManifest(repo);
+        expect(result.ok).toBe(true);
+        expect(result.lens).toBe('sql');
+        expect(result.tables).toEqual(tables);
+    });
+
+    it('leaves lens/types/tables undefined for an older lens-less (web) manifest', async () => {
         const repo = 'rsterenchak/web-no-lens-repo';
         mockManifest(repo, { files: ['index.js'], hasDom: true });
         const result = await loadManifest(repo);
         expect(result.ok).toBe(true);
         expect(result.lens).toBeUndefined();
         expect(result.types).toBeUndefined();
+        expect(result.tables).toBeUndefined();
         // Existing consumers are unaffected.
         expect(result.files).toEqual(['index.js']);
         expect(result.hasDom).toBe(true);
     });
 
-    it('ignores malformed lens/types (wrong types) rather than passing them through', async () => {
+    it('ignores malformed lens/types/tables (wrong types) rather than passing them through', async () => {
         const repo = 'rsterenchak/malformed-lens-repo';
-        mockManifest(repo, { files: ['a.js'], lens: 123, types: 'nope' });
+        mockManifest(repo, { files: ['a.js'], lens: 123, types: 'nope', tables: 'nope' });
         const result = await loadManifest(repo);
         expect(result.lens).toBeUndefined();
         expect(result.types).toBeUndefined();
+        expect(result.tables).toBeUndefined();
     });
 });

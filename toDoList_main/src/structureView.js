@@ -86,6 +86,12 @@ let openRegions = new Set();
 // so its persisted key is `<repo>:types`. Reset on repo switch alongside the others.
 let collapsedTypeFiles = new Set();
 
+// Defining `.sql` files the user has COLLAPSED in the SQL lens's file-grouped
+// table outline, keyed by the table's `file`. Mirrors `collapsedTypeFiles` (a
+// distinct slot so its persisted key is `<repo>:sql`), reset on repo switch
+// alongside the others.
+let collapsedSqlFiles = new Set();
+
 // The build-time UI index for the selected repo, surfaced from its manifest:
 //   • regionsIndex — selector → region record { selector, label, file, line,
 //     files } — powers "Find in code" (live selector or published row → owner
@@ -108,14 +114,19 @@ let lensToggleGroup = null;
 
 // The active repo's manifest-declared second lens and its type outline:
 //   • currentLens — which lens fills the toggle's second (non-Code) slot for this
-//     repo: 'ui' (web repos, the default for back-compat) or 'types' (a manifest
-//     that declares `"lens":"types"`, e.g. the C# scanner's class/member outline).
+//     repo: 'ui' (web repos, the default for back-compat), 'types' (a manifest
+//     that declares `"lens":"types"`, e.g. the C# scanner's class/member outline),
+//     or 'sql' (a manifest that declares `"lens":"sql"`, the table/column outline).
 //   • currentTypes — the manifest's `types` array (classes/interfaces/structs/
 //     enums/records, each with a `members` list) the Types lens renders. Empty
 //     for a UI repo or a manifest with no `types`.
 // Both are refreshed from the manifest in ensureRegionsLoaded, alongside srcRoot/sha.
+//   • currentTables — the manifest's `tables` array (each with a `columns`
+//     list of column/constraint rows) the SQL lens renders. Empty for a UI or
+//     Types repo or a manifest with no `tables`.
 let currentLens = 'ui';
 let currentTypes = [];
+let currentTables = [];
 
 // Filter box state. The input lives in the view's persistent header region (not
 // in the tree container `clear()` empties on each lens render), so it survives a
@@ -176,6 +187,8 @@ function hydrateActiveLensState(repo, lens) {
         openFolders = new Set(keys);
     } else if (lens === 'types') {
         collapsedTypeFiles = new Set(keys);
+    } else if (lens === 'sql') {
+        collapsedSqlFiles = new Set(keys);
     } else if (liveUiForRepo(repo)) {
         openRegions = new Set(keys);
     } else {
@@ -191,6 +204,7 @@ function persistActiveLensState(repo, lens) {
     let keys;
     if (lens === 'code') keys = Array.from(openFolders);
     else if (lens === 'types') keys = Array.from(collapsedTypeFiles);
+    else if (lens === 'sql') keys = Array.from(collapsedSqlFiles);
     else if (liveUiForRepo(repo)) keys = Array.from(openRegions);
     else keys = Array.from(collapsedPublishedFiles);
     setStructureTreeState(repo, lens, keys);
@@ -205,11 +219,16 @@ function ensureRegionsLoaded(repo) {
         currentSrcRoot = (result && result.srcRoot) || null;
         currentSha = (result && typeof result.sha === 'string' && result.sha) ? result.sha : null;
         // The second lens is adaptive: a manifest that declares `"lens":"types"`
-        // gets the Types outline; anything else (web repos, pre-field manifests)
-        // keeps the UI lens. Any non-'types' value coerces to 'ui' so an unknown
-        // future lens id can't desync the toggle or the active-lens normalization.
-        currentLens = (result && result.lens === 'types') ? 'types' : 'ui';
+        // gets the Types outline, `"lens":"sql"` gets the table/column outline;
+        // anything else (web repos, pre-field manifests) keeps the UI lens. Any
+        // other value coerces to 'ui' so an unknown future lens id can't desync
+        // the toggle or the active-lens normalization.
+        const declaredLens = result && result.lens;
+        currentLens = declaredLens === 'types' ? 'types'
+            : declaredLens === 'sql' ? 'sql'
+            : 'ui';
         currentTypes = (result && Array.isArray(result.types)) ? result.types : [];
+        currentTables = (result && Array.isArray(result.tables)) ? result.tables : [];
         const idx = new Map();
         if (result && Array.isArray(result.regions)) {
             result.regions.forEach(function (r) {
@@ -1750,6 +1769,337 @@ function renderTypesLens(repo, treeEl) {
     });
 }
 
+// ── SQL LENS ──────────────────────────────────────────────────────────────────
+// The sql-mode manifest's `tables` outline: `.sql` files → tables → columns and
+// table-level constraints. Modeled on the Types lens (file groups + tree rows +
+// the shared selection toolbar); only the column-row template is new. Type and
+// constraint chips are derived from each row's `signature` at render time — the
+// manifest carries no structured fields, so nothing here depends on the
+// generator.
+
+// A small hollow table glyph (DOM-built inline SVG, no icon library) shown left
+// of a table row's name, mirroring how the UI/Types rows carry their own marks.
+function buildSqlTableGlyph() {
+    const span = document.createElement('span');
+    span.className = 'structureSqlTableGlyph';
+    span.setAttribute('aria-hidden', 'true');
+    span.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="3" y="4" width="18" height="16" rx="2"/>' +
+        '<path d="M3 9h18"/><path d="M9 9v11"/></svg>';
+    return span;
+}
+
+// A small pill/chip carrying `text`, styled by `cls` (a modifier over the shared
+// `.structureSqlChip` base). Used for column constraint chips (PK / NOT NULL /
+// UNIQUE / DEFAULT), the accent FK pill, and constraint-row keyword chips.
+function buildSqlChip(text, cls) {
+    const chip = document.createElement('span');
+    chip.className = 'structureSqlChip' + (cls ? ' ' + cls : '');
+    chip.textContent = text;
+    return chip;
+}
+
+// Split a column `signature` into its type token and remaining constraint source.
+// The signature reads `<name> <type> <constraints…>`, so the leading name token
+// is dropped (when it matches `name`), the next token is the type, and whatever
+// follows is the raw constraint source the chips are parsed from.
+function parseColumnSignature(name, signature) {
+    const tokens = String(signature || '').trim().split(/\s+/).filter(Boolean);
+    let rest = tokens;
+    if (tokens.length && name && tokens[0].toLowerCase() === String(name).toLowerCase()) {
+        rest = tokens.slice(1);
+    }
+    const type = rest.length ? rest[0] : '';
+    const constraintSrc = rest.slice(1).join(' ');
+    return { type: type, constraintSrc: constraintSrc };
+}
+
+// Constraint chips parsed from a column's post-type source, in a stable order:
+// PK (PRIMARY KEY), NOT NULL, UNIQUE, DEFAULT <val>. Case-insensitive; absent
+// keywords are simply omitted.
+function columnConstraintChips(constraintSrc) {
+    const src = String(constraintSrc || '');
+    const upper = src.toUpperCase();
+    const chips = [];
+    if (upper.indexOf('PRIMARY KEY') !== -1) chips.push('PK');
+    if (/\bNOT\s+NULL\b/.test(upper)) chips.push('NOT NULL');
+    if (/\bUNIQUE\b/.test(upper)) chips.push('UNIQUE');
+    const def = src.match(/\bDEFAULT\s+(\S+)/i);
+    if (def) chips.push('DEFAULT ' + def[1]);
+    return chips;
+}
+
+// The constraint keyword a table-level constraint's `signature` opens with, as
+// { keyword, tail }. FOREIGN KEY / PRIMARY KEY are checked before their bare
+// KEY-less siblings so the two-word forms win. Returns null when no keyword is
+// recognized (the whole signature becomes the tail).
+function parseConstraintSignature(signature) {
+    const sig = String(signature || '').trim();
+    const upper = sig.toUpperCase();
+    const keywords = ['FOREIGN KEY', 'PRIMARY KEY', 'UNIQUE', 'CHECK'];
+    for (let i = 0; i < keywords.length; i++) {
+        const kw = keywords[i];
+        const at = upper.indexOf(kw);
+        if (at !== -1) {
+            return { keyword: kw, tail: sig.slice(at + kw.length).trim() };
+        }
+    }
+    return { keyword: '', tail: sig };
+}
+
+// One column row in the SQL lens: the column name, its type token, constraint
+// chips, and — when `col.ref` is set — an accent FK pill reading `→ <ref>`.
+// Selecting it drives the shared toolbar exactly like a Types row (Copy name /
+// Reference / Find / GitHub). Table-level constraint rows (kind:"constraint")
+// render as a chip-row instead: a keyword chip, the constraint name, and the
+// expression tail.
+function buildSqlColumnRow(repo, table, col, depth) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureRegionWrap';
+
+    const row = document.createElement('div');
+    row.className = 'structureRegionRow';
+    row.style.setProperty('--structure-depth', String(depth));
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-pressed', 'false');
+
+    const isConstraint = col && col.kind === 'constraint';
+    row.dataset.handleKind = isConstraint ? 'sql-constraint' : 'sql-column';
+    row.dataset.handleValue = (col && col.name) || '';
+
+    const caret = document.createElement('span');
+    caret.className = 'structureRegionCaret structureRegionCaret--leaf';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '';
+    row.appendChild(caret);
+
+    // The label the filter matches on (and the toolbar's Reference label) is the
+    // row's name; the type/chips/FK pill sit beside it as non-matching detail.
+    const label = document.createElement('span');
+    label.className = 'structureRegionLabel structureSqlColName';
+    label.textContent = (col && col.name) || '';
+    row.appendChild(label);
+
+    if (isConstraint) {
+        row.classList.add('structureSqlConstraintRow');
+        const parsed = parseConstraintSignature(col && col.signature);
+        if (parsed.keyword) {
+            row.insertBefore(buildSqlChip(parsed.keyword, 'structureSqlChip--kw'), label);
+        }
+        if (parsed.tail) {
+            const tail = document.createElement('span');
+            tail.className = 'structureSqlConstraintTail';
+            tail.textContent = parsed.tail;
+            row.appendChild(tail);
+        }
+    } else {
+        const parsed = parseColumnSignature(col && col.name, col && col.signature);
+        if (parsed.type) {
+            const type = document.createElement('span');
+            type.className = 'structureSqlColType';
+            type.textContent = parsed.type;
+            row.appendChild(type);
+        }
+        columnConstraintChips(parsed.constraintSrc).forEach(function (text) {
+            row.appendChild(buildSqlChip(text, 'structureSqlChip--constraint'));
+        });
+        if (col && col.ref) {
+            row.appendChild(buildSqlChip('→ ' + col.ref, 'structureSqlFkPill'));
+        }
+    }
+
+    const select = function () {
+        selectHandle({
+            kind: row.dataset.handleKind,
+            label: (col && col.name) || '',
+            value: (col && col.name) || '',
+            copyLabel: 'Copy name',
+            repo: repo,
+            file: table && table.file,
+            line: col && col.line,
+        }, row);
+    };
+    row.addEventListener('click', select);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            select();
+        }
+    });
+
+    // A leaf row: an empty children wrap keeps the filter/collapse plumbing (which
+    // walks `.structureRegionChildren`) uniform with the type/region rows.
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureRegionChildren';
+    childWrap.hidden = true;
+
+    wrap.appendChild(row);
+    wrap.appendChild(childWrap);
+    return wrap;
+}
+
+// One table row in the SQL lens: a table glyph, the table name, and a muted
+// "N cols" count. Its columns/constraints nest as collapsible children (depth+1)
+// so the filter's ancestor-reveal surfaces a table when one of its columns
+// matches. Selecting the row drives the shared toolbar (Copy name / Reference /
+// Find / GitHub) against the table.
+function buildSqlTableRow(repo, table) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureRegionWrap';
+
+    const columns = Array.isArray(table.columns) ? table.columns : [];
+    const hasChildren = columns.length > 0;
+    const colCount = columns.filter(function (c) { return !c || c.kind !== 'constraint'; }).length;
+
+    const row = document.createElement('div');
+    row.className = 'structureRegionRow structureSqlTableRow';
+    row.style.setProperty('--structure-depth', '1');
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-pressed', 'false');
+    row.dataset.handleKind = 'sql-table';
+    row.dataset.handleValue = table.name || '';
+
+    const caret = document.createElement('span');
+    caret.className = 'structureRegionCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = hasChildren ? '▸' : '';
+    if (!hasChildren) caret.classList.add('structureRegionCaret--leaf');
+    row.appendChild(caret);
+
+    row.appendChild(buildSqlTableGlyph());
+
+    const label = document.createElement('span');
+    label.className = 'structureRegionLabel structureSqlTableName';
+    label.textContent = table.name || '';
+    row.appendChild(label);
+
+    const count = document.createElement('span');
+    count.className = 'structureSqlColCount';
+    count.textContent = colCount + (colCount === 1 ? ' col' : ' cols');
+    row.appendChild(count);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureRegionChildren';
+    childWrap.hidden = !hasChildren;
+    if (hasChildren) {
+        row.classList.add('expanded');
+        caret.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const nowOpen = childWrap.hidden;
+            childWrap.hidden = !nowOpen;
+            row.classList.toggle('expanded', nowOpen);
+        });
+        columns.forEach(function (col) {
+            childWrap.appendChild(buildSqlColumnRow(repo, table, col, 2));
+        });
+    }
+
+    const select = function () {
+        selectHandle({
+            kind: 'sql-table',
+            label: table.name || '',
+            value: table.name || '',
+            copyLabel: 'Copy name',
+            repo: repo,
+            file: table.file,
+            line: table.line,
+        }, row);
+    };
+    row.addEventListener('click', select);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            select();
+        }
+    });
+
+    wrap.appendChild(row);
+    wrap.appendChild(childWrap);
+    return wrap;
+}
+
+// A collapsible `.sql` file header for the SQL lens: every table defined in
+// `file` nests beneath it. Mirrors buildTypeFileGroup — defaults to expanded,
+// persists the fold choice in `collapsedSqlFiles` under the `<repo>:sql` key,
+// and reuses the Code lens's folder-row styling.
+function buildSqlFileGroup(repo, file, fileTables) {
+    const expanded = !collapsedSqlFiles.has(file);
+
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'structureFolderRow';
+    head.style.setProperty('--structure-depth', '0');
+    head.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+    const caret = document.createElement('span');
+    caret.className = 'structureFolderCaret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▸';
+    head.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'structureFolderName';
+    label.textContent = file;
+    head.appendChild(label);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'structureFolderChildren';
+    if (!expanded) childWrap.hidden = true;
+
+    fileTables.forEach(function (table) {
+        childWrap.appendChild(buildSqlTableRow(repo, table));
+    });
+
+    head.addEventListener('click', function () {
+        const nowOpen = childWrap.hidden;
+        if (nowOpen) collapsedSqlFiles.delete(file);
+        else collapsedSqlFiles.add(file);
+        head.classList.toggle('expanded', nowOpen);
+        head.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+        childWrap.hidden = !nowOpen;
+        persistActiveLensState(repo, lens);
+    });
+    if (expanded) head.classList.add('expanded');
+
+    const group = document.createElement('div');
+    group.className = 'structurePublishedFileGroup';
+    group.appendChild(head);
+    group.appendChild(childWrap);
+    return group;
+}
+
+// Render the SQL lens: the manifest's `tables` grouped by defining `.sql` file
+// under collapsible headers, each table expanding into its column/constraint
+// outline. Files alphabetical; tables within a file by line. Empty → the
+// structure empty notice.
+function renderSqlLens(repo, treeEl) {
+    clear(treeEl);
+    if (!currentTables.length) {
+        appendUiNotice(treeEl, 'No tables found in this repo’s schema.');
+        return;
+    }
+
+    const byFile = new Map();
+    currentTables.forEach(function (table) {
+        const file = (table && table.file) || '(unknown file)';
+        if (!byFile.has(file)) byFile.set(file, []);
+        byFile.get(file).push(table);
+    });
+
+    Array.from(byFile.keys()).sort().forEach(function (file) {
+        const fileTables = byFile.get(file).slice().sort(function (a, b) {
+            const la = typeof a.line === 'number' ? a.line : 0;
+            const lb = typeof b.line === 'number' ? b.line : 0;
+            return la - lb;
+        });
+        treeEl.appendChild(buildSqlFileGroup(repo, file, fileTables));
+    });
+}
+
 // Render the toggle's second slot — adaptive between the UI lens and the Types
 // lens by the active repo's manifest. The manifest's `lens` isn't known until it
 // loads, so this resolves it first, then normalizes the active lens to this
@@ -1779,6 +2129,8 @@ function renderSecondLens(repo, treeEl) {
         clear(treeEl);
         if (currentLens === 'types') {
             renderTypesLens(repo, treeEl);
+        } else if (currentLens === 'sql') {
+            renderSqlLens(repo, treeEl);
         } else {
             renderGuestUiLens(repo, result, treeEl);
         }
@@ -2211,6 +2563,7 @@ function updateFilterPlaceholder() {
     let placeholder = 'Filter handles…';
     if (lens === 'code') placeholder = 'Filter files…';
     else if (lens === 'types') placeholder = 'Filter types…';
+    else if (lens === 'sql') placeholder = 'Filter tables…';
     filterInputEl.placeholder = placeholder;
 }
 
@@ -2436,8 +2789,12 @@ function relabelSecondLensSegment() {
         return b.dataset && b.dataset.lens !== 'code';
     });
     if (!seg) return;
-    seg.dataset.lens = currentLens === 'types' ? 'types' : 'ui';
-    seg.textContent = currentLens === 'types' ? 'Types' : 'UI';
+    seg.dataset.lens = currentLens === 'types' ? 'types'
+        : currentLens === 'sql' ? 'sql'
+        : 'ui';
+    seg.textContent = currentLens === 'types' ? 'Types'
+        : currentLens === 'sql' ? 'SQL'
+        : 'UI';
 }
 
 // Build the Code / second-slot segmented control. The second slot's identity is
@@ -2529,6 +2886,7 @@ export function renderStructureView() {
         collapsedPublishedFiles = new Set();
         openRegions = new Set();
         collapsedTypeFiles = new Set();
+        collapsedSqlFiles = new Set();
         hydrateActiveLensState(repo, lens);
         // The selection is repo-scoped — drop it so a stale handle from the prior
         // repo can't survive into the new one's toolbar.
