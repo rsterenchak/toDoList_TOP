@@ -248,3 +248,10 @@
   - Out of scope: changing what "Discuss in chat" seeds, or the Copy-context/Open-Claude paste hand-off (buildPasteToClaudeRow), which is explicitly fire-and-forget and should stay untouched.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: 315666c5-a2ac-4f6e-91f2-b0029102e3e5 -->
+
+- [ ] **[LOW]** Add harmless test comment to verify redeploy pipeline
+  - Type: feature
+  - Description: This is a placeholder entry with no functional change, meant only to exercise the inject → dispatch → build → deploy pipeline end-to-end. Add a single-line comment (e.g. noting the file's purpose or a timestamp/marker) near the top of `toDoList_main/src/runState.js`. No behavior, styling, or logic should change; the PR should be trivially safe to auto-merge.
+  - File: `toDoList_main/src/runState.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5eb39350-00a2-44bb-a9d3-37bdc429a304 -->
