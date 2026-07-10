@@ -199,3 +199,10 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1da788bf-f992-40df-8e52-ecef95d7f8af -->
+
+- [ ] **[LOW]** Unify hover backgrounds across TODO.md viewer header chips to a flat transparent style
+  - Type: bug
+  - Description: The Sync chip, idle Run-backlog pill, and idle Redeploy pill in the #todoMdViewerCard header bar are meant to read as sibling chips but have inconsistent hover treatments: Sync and Run-idle brighten background #15161d → #1c1d27 plus color/border, while Redeploy-idle only changes color/border-color with no background (transparent throughout). Per chosen mockup Option B, remove the background-brighten from `.todoMdViewerSyncBtn:hover` and `.todoMdViewerRunBtn--idle:hover` so all three chips share the same flat/transparent base (background: transparent) and the same hover behavior (color var(--text-secondary) → var(--text-primary), border-color var(--border-bright) → var(--accent)). Base (non-hover) states for Sync and Run-idle should also drop their #15161d fill to transparent so all three match at rest, not just on hover.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 1c11173e-2818-47b0-b73b-1759ad809361 -->
