@@ -126,7 +126,7 @@ Because the full PWA update lifecycle depends on real browser behavior (especial
 ## Quickstart - Add existing repo (copy raw cmd & fill-in)
 
 NAME=test-console     # repo name
-SHAPE=console         # repo-only | console | desktop | maui | web-build | web-served
+SHAPE=console         # repo-only | console | desktop | maui | sql | web-build | web-served
 
 cd /workspaces
 if gh repo view rsterenchak/$NAME >/dev/null 2>&1; then [ -d "$NAME/.git" ] || gh repo clone rsterenchak/$NAME "$NAME"; else gh repo create rsterenchak/$NAME --private --clone "$NAME"; fi
@@ -136,6 +136,7 @@ case "$SHAPE" in
   console)    dotnet new console ;;
   desktop)    dotnet new winforms ;;
   maui)       dotnet new maui ;;            # needs: dotnet workload install maui
+  sql)        mkdir -p migrations; printf 'CREATE TABLE example (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    name TEXT NOT NULL\n);\n' > schema.sql ;;
   web-build)  printf '{"name":"web","scripts":{"build":"vite build","test":"vitest run --passWithNoTests"},"devDependencies":{"vite":"^5","vitest":"^2"}}' > package.json; echo 'export default {}' > vite.config.js; printf '<!doctype html><script type="module" src="/src/main.js"></script>' > index.html; mkdir -p src; echo 'console.log(1)' > src/main.js ;;
   web-served) printf '<!doctype html><h1>served</h1>' > index.html; mkdir -p src; echo 'console.log(1)' > src/app.js ;;
 esac
@@ -160,36 +161,37 @@ Quick reference for wiring a new or existing repo into the routine that reads `T
 
 1. **Scaffold the pipeline files.** From your `claude-routine-template` checkout, run `./onboard.sh <path-to-repo>`. It detects the **shape** and always drops in `.claude/routine.md`, `.claude/routine-base.md`, `.github/workflows/claude-run.yml`, `CLAUDE.md`, and an initial `TODO.md`. What else lands — and whether the repo deploys — depends on the shape:
 
-   | Shape | Detected from | Extra files | Deploys? |
+   | Shape | Detected from | Extra files | Publishes (manifest / deploy) |
    |---|---|---|---|
-   | `web-build` | bundler config + build script | `test.yml` (npm), `deploy.yml`, `scripts/gen-src-manifest.*` | Pages (`gh-pages`) |
-   | `web-served` | no build; root `index.html`/`src/` | `test.yml` (npm), `manifest.yml`, `scripts/gen-src-manifest.*` | Pages (`main`) |
-   | `console` | `.csproj`/`.sln`, cross-platform | `test.yml` (dotnet, ubuntu) | no |
-   | `desktop` | WinForms/WPF (`net*-windows`, `UseWindowsForms`/`UseWPF`) | `test.yml` (dotnet, **windows**) | no |
-   | `maui` | `UseMaui` or an `-android` TFM | `test.yml` (MAUI Android) | no |
+   | `web-build` | bundler config + build script | `test.yml` (npm), `deploy.yml`, `gen-src-manifest.*` | Pages `gh-pages` — Code + UI lens |
+   | `web-served` | no build; root `index.html`/`src/` | `test.yml` (npm), `manifest.yml`, `gen-src-manifest.*` | Pages `main` — Code + UI lens |
+   | `console` | `.csproj`/`.sln`, cross-platform | `test.yml` (dotnet, ubuntu), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
+   | `desktop` | WinForms/WPF (`net*-windows`, `UseWindowsForms`/`UseWPF`) | `test.yml` (dotnet, **windows**), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
+   | `maui` | `UseMaui` or an `-android` TFM | `test.yml` (MAUI Android), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
+   | `sql` | `.sql` files, no `package.json` | `manifest.yml`, `gen-src-manifest.js` (no test workflow) | Pages `main`, manifest only — Code + SQL lens |
    | `repo-only` | no package.json, no `.csproj`, no web entry | — (universal files only) | no |
 
    Review and commit directly to `main`.
 
 2. **Install the Claude GitHub app** on the new repo: https://github.com/apps/claude — grant access to just this repo.
 
-3. **Add the `CLAUDE_CODE_OAUTH_TOKEN` secret.** Settings → Secrets and variables → Actions → New repository secret. Name it `CLAUDE_CODE_OAUTH_TOKEN`; the value is your **Claude Code OAuth token** (Pro/Max auth). This is what `claude-run.yml` uses to authenticate Claude — it is **not** a PAT. (onboard's `gh` path can set this.)
+3. **Add the `CLAUDE_CODE_OAUTH_TOKEN` secret.** Settings → Secrets and variables → Actions → New repository secret. Name it `CLAUDE_CODE_OAUTH_TOKEN`; the value is your **Claude Code OAuth token** (Pro/Max auth). This is what `claude-run.yml` uses to authenticate Claude — it is **not** a PAT. (onboard's `gh` path can set this.) Triage-enabled repos also need `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the legacy service_role JWT) for `claude-triage.yml`.
 
 4. **Grant the worker's PAT access to the repo.** Separate credential from Step 3: add this repo to your fine-grained PAT's access list — https://github.com/settings/personal-access-tokens — with **Contents: write + Actions: read+write**. The PAT is what the worker uses to inject and dispatch; missing it 403s at inject time. (This is a PAT *access-list* entry, not a repo secret.)
 
-5. **Set workflow permissions.** Settings → Actions → General → Workflow permissions → **"Read and write permissions"**, *and* tick **"Allow GitHub Actions to create and approve pull requests."** Both matter: new repos default to read-only (web `deploy.yml` 403s on `gh-pages` push without write), and the approve-PRs toggle is what lets `claude-run.yml` auto-merge — it merges as the built-in `github.token`. (onboard's `gh` path sets both.)
+5. **Set workflow permissions.** Settings → Actions → General → Workflow permissions → **"Read and write permissions"**, *and* tick **"Allow GitHub Actions to create and approve pull requests."** Both matter: new repos default to read-only (web `deploy.yml` 403s on `gh-pages` push, and the root-committing `manifest.yml` — used by `web-served`/`.NET`/`sql` — 403s committing to `main`, without write), and the approve-PRs toggle is what lets `claude-run.yml` auto-merge — it merges as the built-in `github.token`. (onboard's `gh` path sets both.)
 
-6. **Configure Pages — web shapes only.** Settings → Pages → Source: "Deploy from a branch". `web-build` → branch `gh-pages`, folder `/ (root)`; `web-served` → branch `main`, folder `/ (root)`. **Skip this for `console`/`desktop`/`maui`/`repo-only`** — they don't deploy and have no `gh-pages` branch. (onboard's `gh` path sets this for web shapes.)
+6. **Configure Pages — every shape except `repo-only`.** Settings → Pages → Source: "Deploy from a branch". `web-build` → branch `gh-pages`, folder `/ (root)`. Every other manifest-publishing shape — `web-served`, `console`, `desktop`, `maui`, `sql` — → branch `main`, folder `/ (root)`, which serves the committed `src-manifest.json` directly (no build). **Skip only for `repo-only`** — it has no manifest. (onboard's `gh` path sets this for you.)
 
-7. **Register the repo with the worker.** Add an entry to `ALLOWED_TARGETS` in `todo-injector-worker/src`. The full entry is `{ repo: "owner/repo", filePath: "TODO.md", srcPrefix: "<src dir>" }` — `srcPrefix` is `"src/"` for web shapes, empty (`""`) for .NET and repo-only. Then `wrangler deploy` from the worker's directory — the allowlist won't take effect until the new worker is live. (onboard prints the exact line in its output.)
+7. **Register the repo with the worker.** Add an entry to `ALLOWED_TARGETS` in `todo-injector-worker/src`. The full entry is `{ repo: "owner/repo", filePath: "TODO.md", srcPrefix: "<src dir>" }` — `srcPrefix` is `"src/"` for web shapes, the project subfolder for .NET (blank if at repo root), `""` for a `sql` repo whose `.sql` sit at the root, and `""` for repo-only. It must match the `MANIFEST_SRC_ROOT` the manifest workflow was filled with. Then `wrangler deploy` from the worker's directory — the allowlist won't take effect until the new worker is live. (onboard prints the exact line in its output.)
 
-8. **Add the repo as an inject target in the PWA**, then smoke-test by injecting a trivial entry (e.g. "Add a comment to README.md saying 'Pipeline verified'"). The PR should open and the **right CI workflow** should run (`desktop` on windows, `maui` installing the Android workload, the rest on ubuntu; `repo-only` has no CI). On merge: `repo-only` auto-merges with no check; the others merge once their build/test passes.
+8. **Add the repo as an inject target in the PWA**, then smoke-test by injecting a trivial entry (e.g. "Add a comment to README.md saying 'Pipeline verified'"). The PR should open and the **right CI workflow** should run (`desktop` on windows, `maui` installing the Android workload, the rest on ubuntu; `sql` and `repo-only` have no CI). On merge: `sql` and `repo-only` auto-merge with no check; the others merge once their build/test passes.
 
 ### Gotchas that bit on first runs
 
 * **The OAuth secret and the PAT are two different credentials.** `CLAUDE_CODE_OAUTH_TOKEN` (Step 3) authenticates Claude inside the run; the PAT access-list entry (Step 4) lets the worker reach the repo to inject/dispatch. Setting one does not cover the other.
-* **Workflow permissions, the approve-PRs toggle, and Pages are repo *settings*, not files** — they don't come from `onboard.sh` unless `gh` is authenticated when you run it. A forgotten "Allow GitHub Actions to create and approve pull requests" toggle is the usual cause of "the PR opens but won't auto-merge"; a forgotten "Read and write permissions" or Pages source causes 403s on web `deploy.yml`.
-* **Pages and `deploy.yml` only exist for web shapes.** A `console`/`desktop`/`maui`/`repo-only` repo has no `gh-pages` branch and no deploy workflow — don't go looking for them.
+* **Workflow permissions, the approve-PRs toggle, and Pages are repo *settings*, not files** — they don't come from `onboard.sh` unless `gh` is authenticated when you run it. A forgotten "Allow GitHub Actions to create and approve pull requests" toggle is the usual cause of "the PR opens but won't auto-merge"; a forgotten "Read and write permissions" or Pages source causes 403s.
+* **`deploy.yml` + `gh-pages` are `web-build` only — but most shapes still publish a manifest to Pages.** `web-served`, `console`, `desktop`, `maui`, and `sql` all commit `src-manifest.json` to `main` and serve it via Pages `main`/root (no build, no `gh-pages` branch). Only `repo-only` has no manifest at all — so "no `deploy.yml`" doesn't mean "no Pages."
 * **Worker `ALLOWED_TARGETS` is hardcoded** and requires `wrangler deploy` to take effect. Adding the repo in the PWA without updating + deploying the worker first will fail at inject time.
 * **Direct commits to `main` for routine/config changes** — don't route them through the pipeline. The pipeline ships backlog entries, not its own scaffolding.
 
