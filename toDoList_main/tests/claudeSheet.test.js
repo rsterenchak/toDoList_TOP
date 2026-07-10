@@ -13,6 +13,7 @@ import {
     splitRenderableBlocks,
     renderAssistantContent,
     insertReference,
+    openChatWithSeed,
     setChatWorkspaceRepo,
     getActiveChatRepo,
     getAttachRepos,
@@ -916,6 +917,85 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    // A run shipped from a chat session that was handed off from a needs_words
+    // Agent-board card (via openChatWithSeed with a row id) must settle that row
+    // to `shipped` at the terminal outcome — otherwise the card stays parked at
+    // "Needs words" forever even after the work merges. The row link rides the
+    // persisted run record, and the terminal setRunRecordStatus fires the settle.
+    it('settles the originating Agent-board row to shipped when a hand-off run ships', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        openChatWithSeed('Discuss this task', 'row-abc');
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        // The run record carries the hand-off row id.
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].agentRowId).toBe('row-abc');
+        // The row was settled through listLogic (the only agent_queue mutation path).
+        const call = spy.mock.calls.find((c) => c[0] === 'row-abc');
+        expect(call).toBeTruthy();
+        expect(call[1].state).toBe('shipped');
+        expect(call[1].entry_id).toBeTruthy();
+        expect(call[1].correlation_id).toBeTruthy();
+        spy.mockRestore();
+    });
+
+    it('settles the originating Agent-board row to failed when a hand-off run fails', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
+        statusJson = { found: true, status: 'completed', conclusion: 'failure' };
+        openChatWithSeed('Discuss this task', 'row-xyz');
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Failed');
+        const call = spy.mock.calls.find((c) => c[0] === 'row-xyz');
+        expect(call).toBeTruthy();
+        expect(call[1].state).toBe('failed');
+        spy.mockRestore();
+    });
+
+    it('does not settle any row for a ship with no hand-off', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        expect(spy).not.toHaveBeenCalled();
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].agentRowId).toBe(null);
+        spy.mockRestore();
+    });
+
+    it('a fresh unlinked seed clears a prior hand-off link so a later ship is not misattributed', async () => {
+        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        // Hand off row-abc, then seed a fresh unlinked conversation (no row id):
+        // the link must drop so the subsequent ship settles nothing.
+        openChatWithSeed('Discuss this task', 'row-abc');
+        openChatWithSeed('A different, unlinked question');
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        expect(spy.mock.calls.find((c) => c[0] === 'row-abc')).toBeFalsy();
+        spy.mockRestore();
     });
 
     // The chat ship path drives the SAME per-project active-run state the

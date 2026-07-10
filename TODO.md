@@ -240,7 +240,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e45344d4-b9b9-431b-ad74-2ab64d748de4 -->
 
-- [ ] **[MEDIUM]** Link a hand-off card's chat-shipped run back to its Agent-board row
+- [x] **[MEDIUM]** Link a hand-off card's chat-shipped run back to its Agent-board row — Completed: 2026-07-10
   - Type: bug
   - Description: Tapping "Discuss in chat" on a `needs_words` Agent-board card (buildDiscussLink in toDoList_main/src/agentView.js:1973) only seeds the Claude chat composer and marks the row in the in-memory `_handedOffRows` set — per its own comment it deliberately never touches the data model. If the user then ships a run from that chat session (shipDraftedEntry in toDoList_main/src/claudeSheet.js:2127, which injects+dispatches and tracks the run only in the local `runRecords`/Runs-tab list), nothing ever calls `listLogic.setAgentRunState` on the originating agent_queue row, so it never enters the dispatched/running/shipped pipeline that agentView.js's `reconcileShipped`/`settleShipped` (toDoList_main/src/agentView.js:1646-1699) drive for board-dispatched rows. The row is stuck showing `needs_words` ('Needs words') forever even after the work has shipped and merged.
   - Expected behavior: when a run dispatched from a hand-off chat session reaches a terminal outcome, the originating Agent-board card should transition the same way a board-dispatched card does (shipped/failed/no_change), not stay parked at Needs words.

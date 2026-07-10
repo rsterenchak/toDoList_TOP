@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
+            "A todo handed off from the Agent board to chat now settles to shipped, failed, or no-change once its run finishes, instead of staying stuck on \"Needs words\".",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-09',
         fixed: [
-            "Generated in-app mockup previews no longer disappear when the agent board refreshes in the background.",
             "The Sync, Run-backlog, and Redeploy chips in the TODO viewer header now share one flat, transparent hover style so they read as matching siblings.",
             "The Run backlog, Run this entry, and Redeploy buttons in the TODO viewer now share a single hover style so they highlight identically.",
         ],

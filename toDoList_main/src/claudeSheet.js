@@ -107,6 +107,17 @@ let chatHistory = [];
 // (todoapp_claudeIterateEntry) in lockstep with chatHistory, so a reload or a
 // workspace swap resumes that repo's iterate session, mirroring chatHistory.
 let activeIterateEntry = null;
+// The agent_queue row id a chat session was handed off from (via
+// openChatWithSeed with a row id — e.g. tapping "Discuss in chat" on a
+// needs_words Agent-board card), or null when the current session isn't a
+// hand-off. In-memory session state (not persisted per repo like
+// activeIterateEntry): once a run ships from this session, the id is copied onto
+// the persisted run record, which is what survives a reload. Set on every seed
+// (to the row id, or null when the seed carries none), and cleared on "+ New
+// Chat", a workspace swap, and a NOCHANGE follow-up — mirroring the
+// activeIterateEntry lifecycle so a stale link never rides a later, unrelated
+// ship.
+let activeHandoffRow = null;
 // Repo-relative source paths attached to the CURRENT conversation. Sent as
 // `attach_files` on every turn (per-conversation accumulation), so the model
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
@@ -298,9 +309,14 @@ export function insertReference(label, selector) {
 // card only exists on a repo-backed project. Unlike insertReference (which
 // appends a reference), this REPLACES the composer contents so a re-entry always
 // lands on the same seeded prompt. A blank seed is ignored.
-export function openChatWithSeed(seedText) {
+export function openChatWithSeed(seedText, handoffRowId) {
     const seed = String(seedText == null ? '' : seedText);
     if (!seed.trim()) return;
+    // Record (or clear) the originating Agent-board row this seed hands off from.
+    // A seed with a row id links the session so a ship from it settles that row;
+    // a seed without one is a fresh, unlinked hand-off and must drop any prior
+    // link so it can't be misattributed to an earlier row.
+    activeHandoffRow = handoffRowId != null ? handoffRowId : null;
     if (window.innerWidth <= MOBILE_MAX_WIDTH) {
         if (!isClaudeSheetOpen()) openClaudeSheet();
     } else {
@@ -452,6 +468,9 @@ function autoSwapWorkspaceForProject(projectName) {
     setActiveChatRepo(repo);
     chatHistory = loadChatHistory(repo);
     activeIterateEntry = loadIterateEntry(repo);
+    // A workspace swap starts fresh on the incoming repo, so any hand-off link
+    // from the outgoing repo's session must not ride a later ship on the new one.
+    activeHandoffRow = null;
     clearAttachments();
     replayChatHistory();
     renderWorkspacePill();
@@ -730,6 +749,9 @@ function clearChatConversation() {
     deleteChatHistory(activeChatRepo);
     activeIterateEntry = null;
     deleteIterateEntry(activeChatRepo);
+    // A fresh chat is no longer the hand-off session, so a subsequent ship must
+    // not settle the row the wiped conversation was handed off from.
+    activeHandoffRow = null;
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
     // The thread is empty again, so re-surface the capabilities intro note.
@@ -1675,6 +1697,8 @@ export function setChatWorkspaceRepo(repo) {
     deleteChatHistory(repo);
     activeIterateEntry = null;
     deleteIterateEntry(repo);
+    // Reframing on a new repo starts a fresh session, so drop any hand-off link.
+    activeHandoffRow = null;
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
 
@@ -2187,6 +2211,11 @@ async function shipDraftedEntry(entryText, card) {
         // The project this run belongs to, so the poller can free that
         // project's run guard at terminal even when its viewer isn't mounted.
         project: project,
+        // The Agent-board row this run was handed off from (via "Discuss in
+        // chat" on a needs_words card), or null. Persisted on the record so the
+        // terminal transition in setRunRecordStatus can settle that row — even
+        // after a reload, when the resumed poller drives the reconcile.
+        agentRowId: activeHandoffRow,
     };
     runRecords.unshift(record);
     saveRunRecords();
@@ -2667,6 +2696,9 @@ async function startFollowUpFromRun(rec) {
     // accidentally send entry_id (which would 404 with "nothing to iterate on").
     activeIterateEntry = null;
     saveIterateEntry();
+    // This is a fresh author conversation, not the original hand-off session, so
+    // drop any hand-off link too.
+    activeHandoffRow = null;
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
     clearAttachments();
@@ -2719,6 +2751,34 @@ function extractEntryBlock(content, entryId) {
     return lines.slice(start, end).join('\n').replace(/\s+$/, '');
 }
 
+// The board queue state a terminal run status maps to, so a chat-shipped run
+// leaves the originating Agent-board card in the same terminal state a
+// board-dispatched card reaches (see agentView.js's reconcileShipped).
+const HANDOFF_TERMINAL_STATE = {
+    SHIPPED: 'shipped',
+    FAILED: 'failed',
+    NOCHANGE: 'no_change',
+};
+
+// Transition a hand-off run's originating Agent-board row when the run reaches a
+// terminal outcome. A no-op for runs not handed off from a board card
+// (record.agentRowId is null) or non-terminal statuses. The data-model write
+// goes through listLogic (all agent_queue mutations do); it persists to the
+// board and the card settles on the next board render/realtime tick. Fire-and-
+// forget — a failed settle must never break run-status bookkeeping.
+function settleHandoffRow(record, status) {
+    if (!record || !record.agentRowId) return;
+    const state = HANDOFF_TERMINAL_STATE[status];
+    if (!state) return;
+    const patch = { state: state };
+    if (record.entryId) patch.entry_id = record.entryId;
+    if (record.correlationId) patch.correlation_id = record.correlationId;
+    try {
+        Promise.resolve(listLogic.setAgentRunState(record.agentRowId, patch))
+            .catch(function () { /* non-blocking: board settles on next render */ });
+    } catch (e) { /* defensive: setAgentRunState missing/throwing synchronously */ }
+}
+
 function setRunRecordStatus(correlationId, status) {
     let changed = false;
     for (let i = 0; i < runRecords.length; i++) {
@@ -2726,6 +2786,11 @@ function setRunRecordStatus(correlationId, status) {
             runRecords[i].status !== status) {
             runRecords[i].status = status;
             changed = true;
+            // A run handed off from an Agent-board card just reached a new
+            // status. When it's terminal, settle the originating row the same
+            // way a board-dispatched card settles, so a card handed off to chat
+            // doesn't stay parked at "Needs words" after its work ships/fails.
+            settleHandoffRow(runRecords[i], status);
         }
     }
     if (changed) {
@@ -3318,6 +3383,10 @@ export function mountClaudeSheet(parent) {
     // resumes with the diff intact rather than silently dropping to no-diff turns.
     chatHistory = loadChatHistory(activeChatRepo);
     activeIterateEntry = loadIterateEntry(activeChatRepo);
+    // A fresh mount (reload / PWA relaunch) has no in-flight hand-off — the link
+    // is in-memory session state, and once a run ships it rides the persisted run
+    // record instead, so a reload mid-hand-off simply drops the (pre-ship) link.
+    activeHandoffRow = null;
     replayChatHistory();
 
     // Hydrate run records from localStorage, render them into the Runs tab,

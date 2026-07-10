@@ -1980,7 +1980,11 @@ function buildDiscussLink(row, opts) {
     label.textContent = 'Discuss in chat';
     btn.appendChild(label);
     btn.addEventListener('click', function () {
-        openChatWithSeed(buildDiscussSeed(row));
+        // Link the chat session to this row ONLY when it's a real needs_words
+        // hand-off (markHandoff). Post-triage discuss links reuse this control
+        // with markHandoff:false — they're fire-and-forget, so they must not
+        // link the row (passing no id also clears any prior hand-off link).
+        openChatWithSeed(buildDiscussSeed(row), markHandoff ? row.id : undefined);
         if (markHandoff) {
             _handedOffRows.add(row.id);
             paint();
@@ -2003,7 +2007,9 @@ function buildHandedOffSecondary(row) {
     btn.className = 'agentContinueChat';
     btn.textContent = 'Continue in chat →';
     btn.addEventListener('click', function () {
-        openChatWithSeed(buildDiscussSeed(row));
+        // Re-entry to the same needs_words hand-off: re-link the row so a ship
+        // from the resumed session still settles it.
+        openChatWithSeed(buildDiscussSeed(row), row.id);
     });
     wrap.appendChild(btn);
 
