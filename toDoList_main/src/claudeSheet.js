@@ -44,6 +44,7 @@ import {
     activeProjectNameForViewer,
 } from './runState.js';
 import { listLogic } from './listLogic.js';
+import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
@@ -172,6 +173,18 @@ let srcManifestCache = {};
 let micRecognition = null;
 let micRecording = false;
 let micBaseValue = '';
+// Launcher long-press voice-to-todo — a SECOND, independent speech-recognition
+// session, distinct from the composer dictation above. A ~500ms long-press on
+// the launcher FAB starts it; releasing (or a natural recognition end) commits
+// exactly one todo into the currently-selected project without ever opening the
+// chat sheet. `launcherVoiceRecognition` holds the live instance,
+// `launcherVoiceRecording` the active flag, `launcherVoiceTranscript` the latest
+// transcript, and `launcherVoiceCommitted` guards against committing twice when
+// release and the engine's own `onend` both fire for one gesture.
+let launcherVoiceRecognition = null;
+let launcherVoiceRecording = false;
+let launcherVoiceTranscript = '';
+let launcherVoiceCommitted = false;
 // Run records, newest-first: [{ entryId, correlationId, title, status,
 // dispatchedAt }]. Mirrored to localStorage so they survive a reload.
 let runRecords = [];
@@ -681,8 +694,95 @@ function buildLauncher() {
     btn.setAttribute('aria-expanded', 'false');
     btn.title = 'Claude';
     btn.textContent = '✦';
+
+    // Long-press (~500ms) starts a dedicated voice-to-todo capture that drops one
+    // item into the currently-selected project and never opens the sheet; a short
+    // tap keeps today's tap-to-open behavior. Mirrors the touch long-press pattern
+    // in projectRow.js / projectPicker.js (500ms timer, 10px movement-cancel),
+    // extended to mouse so desktop press-and-hold behaves the same. `lpFired`
+    // marks that the long-press already handled the gesture so the trailing click
+    // is swallowed rather than toggling the sheet open.
+    let lpTimer  = null;
+    let lpStartX = 0;
+    let lpStartY = 0;
+    let lpFired  = false;
+
+    function clearLpTimer() {
+        if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+    }
+
+    function beginPress(x, y) {
+        lpStartX = x;
+        lpStartY = y;
+        lpFired  = false;
+        clearLpTimer();
+        lpTimer = setTimeout(function() {
+            lpTimer = null;
+            lpFired = true;
+            // Same gate the tap path honors: on a repo-less project the voice
+            // capture is a no-op that surfaces the reason instead of recording.
+            if (isClaudeUnavailable()) {
+                showClaudeUnavailableTooltip(btn);
+                return;
+            }
+            startLauncherVoiceTodo();
+        }, 500);
+    }
+
+    function moveCancel(x, y) {
+        if (!lpTimer) return;
+        if (Math.abs(x - lpStartX) > 10 || Math.abs(y - lpStartY) > 10) {
+            clearLpTimer();
+        }
+    }
+
+    function endPress() {
+        clearLpTimer();
+        if (lpFired) stopLauncherVoiceTodo();
+    }
+
+    btn.addEventListener('touchstart', function(event) {
+        if (event.touches.length !== 1) return;
+        const t = event.touches[0];
+        beginPress(t.clientX, t.clientY);
+    }, { passive: true });
+    btn.addEventListener('touchmove', function(event) {
+        const t = event.touches[0];
+        if (t) moveCancel(t.clientX, t.clientY);
+    }, { passive: true });
+    btn.addEventListener('touchend', function(event) {
+        endPress();
+        if (lpFired) {
+            // The long-press already handled the gesture — suppress the emulated
+            // click (sheet open) the browser fires after touchend on release.
+            event.preventDefault();
+        }
+    });
+    btn.addEventListener('touchcancel', endPress);
+
+    // Desktop press-and-hold, mirroring the touch timing.
+    btn.addEventListener('mousedown', function(event) {
+        if (event.button !== 0) return;
+        beginPress(event.clientX, event.clientY);
+    });
+    btn.addEventListener('mousemove', function(event) {
+        moveCancel(event.clientX, event.clientY);
+    });
+    btn.addEventListener('mouseup', endPress);
+    // Leaving the button mid-hold ends the gesture like a release, so a hold that
+    // drifts off the FAB can't leave recognition running.
+    btn.addEventListener('mouseleave', endPress);
+
     btn.addEventListener('click', function(event) {
         event.stopPropagation();
+        // A completed long-press already acted (voice capture) — swallow the
+        // trailing click so it doesn't also open the sheet. beginPress resets
+        // lpFired at the start of the next gesture, so this stale flag is safe.
+        if (lpFired) {
+            event.preventDefault();
+            lpFired = false;
+            return;
+        }
         // Gated off on a project with no routed repo: the tap is a no-op that
         // surfaces the reason instead of opening a sheet against the wrong repo.
         if (isClaudeUnavailable()) {
@@ -1228,6 +1328,150 @@ function stopMicRecording() {
     }
     const btn = micButtonEl();
     if (btn && btn.classList.contains('micButton--recording')) setMicState('idle');
+}
+
+// ── LAUNCHER LONG-PRESS VOICE-TO-TODO ──
+// A dedicated voice capture bound to a long-press on the launcher FAB, separate
+// from the composer dictation above. It never touches the chat composer: the
+// final transcript becomes one new todo in the currently-selected project.
+
+// Reflect the launcher's voice-capture state by reusing the composer mic's
+// existing recording / denied visual classes on #claudeLauncher, rather than
+// inventing a new treatment. Idle restores the launcher's base aria-label.
+function setLauncherVoiceState(state) {
+    const btn = document.getElementById('claudeLauncher');
+    if (!btn) return;
+    btn.classList.remove('micButton--recording', 'micButton--denied');
+    if (state === 'recording') {
+        btn.classList.add('micButton--recording');
+        btn.setAttribute('aria-label', 'Listening — release to add a todo');
+    } else if (state === 'denied') {
+        btn.classList.add('micButton--denied');
+        btn.setAttribute('aria-label', 'Open Claude assistant');
+    } else {
+        btn.setAttribute('aria-label', 'Open Claude assistant');
+    }
+}
+
+// Take the captured transcript and drop it into the selected project as one
+// todo, then re-render that project's list so the row appears without a reload.
+// Guarded so the release path and the engine's own `onend` can't both commit.
+function commitLauncherVoiceTodo() {
+    if (launcherVoiceCommitted) return;
+    launcherVoiceCommitted = true;
+    const transcript = (launcherVoiceTranscript || '').trim();
+    launcherVoiceTranscript = '';
+    if (!transcript) return;
+    const project = activeProjectNameForViewer();
+    if (!project) return;
+    listLogic.addToDo(project, transcript);
+    // Mirror seedTasksModal's post-add render dance: clear #mainList and render
+    // the project from data so the new row shows immediately. addToDo persists
+    // through saveToStorage; this only refreshes the DOM.
+    const mainList = document.getElementById('mainList');
+    if (!mainList) return;
+    while (mainList.firstChild) mainList.removeChild(mainList.firstChild);
+    const items = listLogic.listItems(project);
+    const hasRealItems = items && items.some(function(i) { return i.tit !== ''; });
+    if (hasRealItems) addToDos_restore(items, project);
+    else if (items) addAllToDo_DOM(items, project);
+}
+
+// Spin up an independent recognition instance for the launcher capture. Mirrors
+// startMicRecording's iOS PWA handling: retry once with a fresh instance before
+// falling back to the denied state.
+function startLauncherVoiceTodo() {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) { setLauncherVoiceState('denied'); return; }
+
+    launcherVoiceTranscript = '';
+    launcherVoiceCommitted = false;
+
+    const begin = function() {
+        const recognition = new Ctor();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+        recognition.onresult = function(event) {
+            let transcript = '';
+            const results = event && event.results ? event.results : [];
+            for (let i = 0; i < results.length; i++) {
+                const alt = results[i] && results[i][0];
+                if (alt && alt.transcript) transcript += alt.transcript;
+            }
+            launcherVoiceTranscript = transcript;
+        };
+        recognition.onerror = function(event) {
+            const code = event && event.error;
+            if (code === 'not-allowed' || code === 'permission-denied' ||
+                code === 'service-not-allowed') {
+                launcherVoiceRecognition = null;
+                launcherVoiceRecording = false;
+                setLauncherVoiceState('denied');
+            }
+        };
+        // A natural end (the speaker paused) commits whatever was captured, so a
+        // long-press that outlasts the utterance still lands the todo.
+        recognition.onend = function() {
+            launcherVoiceRecognition = null;
+            if (launcherVoiceRecording) {
+                launcherVoiceRecording = false;
+                commitLauncherVoiceTodo();
+                setLauncherVoiceState('idle');
+            }
+        };
+        return recognition;
+    };
+
+    try {
+        launcherVoiceRecognition = begin();
+        launcherVoiceRecognition.start();
+    } catch (e) {
+        try {
+            launcherVoiceRecognition = begin();
+            launcherVoiceRecognition.start();
+        } catch (e2) {
+            launcherVoiceRecognition = null;
+            launcherVoiceRecording = false;
+            setLauncherVoiceState('denied');
+            return;
+        }
+    }
+    launcherVoiceRecording = true;
+    setLauncherVoiceState('recording');
+}
+
+// Release path: stop the recognition and commit the captured transcript. Safe to
+// call when nothing is recording (the denied/unsupported paths never set the
+// recording flag, so release is a no-op there).
+function stopLauncherVoiceTodo() {
+    if (!launcherVoiceRecording && !launcherVoiceRecognition) return;
+    const wasRecording = launcherVoiceRecording;
+    launcherVoiceRecording = false;
+    if (launcherVoiceRecognition) {
+        // stop() may fire `onend`, but recording is already false so it won't
+        // double-commit; commitLauncherVoiceTodo's guard covers it regardless.
+        try { launcherVoiceRecognition.stop(); } catch (e) { /* already stopped */ }
+        launcherVoiceRecognition = null;
+    }
+    if (wasRecording) {
+        commitLauncherVoiceTodo();
+        const btn = document.getElementById('claudeLauncher');
+        if (btn && btn.classList.contains('micButton--recording')) setLauncherVoiceState('idle');
+    }
+}
+
+// Abort an in-flight launcher capture WITHOUT committing — used by a fresh mount
+// so a dangling recognition from the previous sheet can't land a stray todo
+// after the old DOM is replaced.
+function abortLauncherVoiceTodo() {
+    launcherVoiceCommitted = true;
+    launcherVoiceRecording = false;
+    launcherVoiceTranscript = '';
+    if (launcherVoiceRecognition) {
+        try { launcherVoiceRecognition.stop(); } catch (e) { /* already stopped */ }
+        launcherVoiceRecognition = null;
+    }
 }
 
 // ── FILE ATTACHMENTS ──
@@ -3252,8 +3496,11 @@ function attachSwipeToClose(target) {
 export function mountClaudeSheet(parent) {
     if (!parent) return;
     // A fresh mount starts with no active dictation — stop any recognition the
-    // previous sheet left running before the old DOM is replaced.
+    // previous sheet left running before the old DOM is replaced. The launcher
+    // capture is aborted (not committed) so a dangling hold can't land a stray
+    // todo into the new mount.
     stopMicRecording();
+    abortLauncherVoiceTodo();
     // Hydrate the persistent send-mode default before building the composer so the
     // split button paints the saved Fast/Deep choice on first render.
     loadChatMode();
