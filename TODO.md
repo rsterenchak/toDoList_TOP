@@ -221,7 +221,7 @@
   - Completed: 2026-07-10
   <!-- id: b00dd410-9642-454e-ac74-7e38b3900334 -->
 
-- [ ] **[MEDIUM]** Add SQL table-outline lens to the Structure tab
+- [x] **[MEDIUM]** Add SQL table-outline lens to the Structure tab — Completed: 2026-07-10
   - Type: feature
   - Description: The Structure tab's second-slot lens toggle currently supports only `ui` (live DOM map) and `types` (C# class/member outline); `resolveSecondLens` at structureView.js:211 coerces any other manifest `lens` value — including `"sql"` — to `"ui"`, so a SQL repo's published manifest renders as an empty UI lens with "no UI surface." Add a third second-slot lens that renders the `tables` payload the sql-mode manifest generator emits, so pointing the Structure tab at a schema/migrations repo shows a Code | SQL toggle and a table → column outline. This is client render work only — no generator change is needed, since the manifest already carries everything: `tables: [{ name, kind:"table", file, line, columns: [{ name, kind:"column"|"constraint", signature, line, ref }] }]`.
   - Behavior:

@@ -1861,6 +1861,218 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
     });
 });
 
+describe('renderStructureView — adaptive second lens (SQL for a schema repo)', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    // A sql-mode manifest: empty srcRoot (repo-root-relative file paths), lens
+    // 'sql', and a tables array of tables each carrying a columns list that mixes
+    // kind:"column" and kind:"constraint" rows.
+    function sqlManifest() {
+        return {
+            ok: true,
+            files: ['db/schema.sql'],
+            hasDom: false,
+            lens: 'sql',
+            srcRoot: '',
+            tables: [
+                {
+                    name: 'projects', kind: 'table', file: 'db/schema.sql', line: 3,
+                    columns: [
+                        { name: 'id', kind: 'column', signature: 'id integer PRIMARY KEY NOT NULL', line: 4 },
+                        { name: 'title', kind: 'column', signature: 'title text NOT NULL', line: 5 },
+                    ],
+                },
+                {
+                    name: 'todos', kind: 'table', file: 'db/schema.sql', line: 12,
+                    columns: [
+                        { name: 'id', kind: 'column', signature: 'id integer PRIMARY KEY', line: 13 },
+                        { name: 'project_id', kind: 'column', signature: 'project_id integer NOT NULL', line: 14, ref: 'projects(id)' },
+                        { name: 'status', kind: 'column', signature: "status text DEFAULT 'open'", line: 15 },
+                        { name: 'chk_status', kind: 'constraint', signature: "CHECK (status IN ('open','done'))", line: 16 },
+                    ],
+                },
+            ],
+        };
+    }
+
+    beforeEach(async () => {
+        try { localStorage.removeItem(STRUCTURE_TREE_KEY); } catch (e) { /* ignore */ }
+        state.runningRepo = 'rsterenchak/toDoList_TOP';
+        // Persisted choice is the second slot ('ui'); a sql repo must still land on
+        // its SQL outline via the active-lens normalization.
+        setStructureLens('ui');
+        state.projectRepos['__neutral__'] = 'rsterenchak/__neutral__';
+        mountDom('__neutral__');
+        renderStructureView();
+        await flush();
+    });
+
+    async function renderSqlRepo() {
+        state.manifests[OTHER] = sqlManifest();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+    }
+
+    const tableNames = () =>
+        Array.from(document.querySelectorAll('.structureSqlTableName')).map((n) => n.textContent);
+    const rowByHandle = (kind, value) =>
+        Array.from(document.querySelectorAll('.structureRegionRow')).find(
+            (r) => r.dataset.handleKind === kind && r.dataset.handleValue === value
+        );
+
+    it('relabels the second toggle segment to SQL and renders the table/column outline', async () => {
+        await renderSqlRepo();
+
+        const btns = Array.from(document.querySelectorAll('.structureLensBtn'));
+        expect(btns.map((b) => b.textContent)).toEqual(['SQL', 'Code']);
+        const second = btns.find((b) => b.dataset.lens === 'sql');
+        expect(second).toBeTruthy();
+        expect(second.getAttribute('aria-selected')).toBe('true');
+
+        // One collapsible file-group header per defining .sql file.
+        const headers = Array.from(document.querySelectorAll('.structureFolderName')).map((n) => n.textContent);
+        expect(headers).toContain('db/schema.sql');
+
+        // Table rows carry a glyph, name, and a "N cols" count (constraints excluded).
+        expect(tableNames()).toEqual(['projects', 'todos']);
+        expect(document.querySelectorAll('.structureSqlTableGlyph').length).toBe(2);
+        const todosRow = rowByHandle('sql-table', 'todos');
+        expect(todosRow.querySelector('.structureSqlColCount').textContent).toBe('3 cols');
+        const projRow = rowByHandle('sql-table', 'projects');
+        expect(projRow.querySelector('.structureSqlColCount').textContent).toBe('2 cols');
+    });
+
+    it('renders a column row with a type token, constraint chips, and an accent FK pill', async () => {
+        await renderSqlRepo();
+
+        // projects.id → type "integer" plus PK and NOT NULL chips.
+        const idRow = rowByHandle('sql-column', 'id');
+        expect(idRow.querySelector('.structureSqlColType').textContent).toBe('integer');
+        const idChips = Array.from(idRow.querySelectorAll('.structureSqlChip--constraint')).map((c) => c.textContent);
+        expect(idChips).toEqual(['PK', 'NOT NULL']);
+        expect(idRow.querySelector('.structureSqlFkPill')).toBeFalsy();
+
+        // todos.project_id → an accent FK pill reading "→ projects(id)".
+        const fkRow = rowByHandle('sql-column', 'project_id');
+        const pill = fkRow.querySelector('.structureSqlFkPill');
+        expect(pill).toBeTruthy();
+        expect(pill.textContent).toBe('→ projects(id)');
+
+        // todos.status → a DEFAULT chip that carries the default value.
+        const statusRow = rowByHandle('sql-column', 'status');
+        const statusChips = Array.from(statusRow.querySelectorAll('.structureSqlChip--constraint')).map((c) => c.textContent);
+        expect(statusChips).toEqual(["DEFAULT 'open'"]);
+    });
+
+    it('renders a table-level constraint row as a keyword chip, name, and expression tail', async () => {
+        await renderSqlRepo();
+
+        const row = rowByHandle('sql-constraint', 'chk_status');
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.structureSqlChip--kw').textContent).toBe('CHECK');
+        expect(row.querySelector('.structureSqlColName').textContent).toBe('chk_status');
+        expect(row.querySelector('.structureSqlConstraintTail').textContent).toBe("(status IN ('open','done'))");
+    });
+
+    it('a table row exposes Reference/Copy and a GitHub deep link; a column row carries its own line', async () => {
+        await renderSqlRepo();
+
+        const toolbar = document.querySelector('.structureActionToolbar');
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(true);
+        const tableRow = rowByHandle('sql-table', 'projects');
+        tableRow.click();
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(false);
+
+        // Empty srcRoot → repo-root-relative blob path at the table's line.
+        const gh = toolbar.querySelector('.structureGithubLink');
+        expect(gh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/db/schema.sql#L3');
+
+        // Reference reframes onto the repo and hands off name; Copy is "Copy name".
+        toolbar.querySelector('.structureReferenceBtn').click();
+        expect(setChatWorkspaceRepo).toHaveBeenCalledWith(OTHER);
+        expect(insertReference).toHaveBeenCalledWith('projects', 'projects');
+        expect(toolbar.querySelector('.structureCopyBtn').textContent).toBe('Copy name');
+
+        // A column row selects with its own line.
+        const colRow = rowByHandle('sql-column', 'project_id');
+        colRow.click();
+        const cGh = toolbar.querySelector('.structureGithubLink');
+        expect(cGh.getAttribute('href')).toBe('https://github.com/' + OTHER + '/blob/main/db/schema.sql#L14');
+    });
+
+    it('switching to Code and back keeps the second slot on SQL', async () => {
+        await renderSqlRepo();
+        expect(document.querySelector('.structureSqlTableName')).toBeTruthy();
+
+        const codeBtn = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'code');
+        codeBtn.click();
+        await flush();
+        expect(document.querySelector('.structureSqlTableName')).toBeFalsy();
+
+        const second = Array.from(document.querySelectorAll('.structureLensBtn')).find((b) => b.dataset.lens === 'sql');
+        second.click();
+        await flush();
+        expect(document.querySelector('.structureSqlTableName')).toBeTruthy();
+    });
+
+    it('shows the empty notice when a sql manifest has no tables', async () => {
+        state.manifests[OTHER] = { ok: true, files: [], hasDom: false, lens: 'sql', srcRoot: '', tables: [] };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        const notice = document.querySelector('.structureNoUiMap');
+        expect(notice).toBeTruthy();
+        expect(notice.textContent).toMatch(/no tables found/i);
+    });
+
+    it('filtering by a column name reveals its table and file group, hiding non-matches', async () => {
+        await renderSqlRepo();
+
+        const input = document.querySelector('.structureFilterInput');
+        input.value = 'project_id';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        await flush();
+
+        const colRow = rowByHandle('sql-column', 'project_id');
+        const colWrap = colRow.closest('.structureRegionWrap');
+        expect(colWrap.classList.contains('structureFilterHidden')).toBe(false);
+
+        // The containing table wrap and file group stay revealed.
+        const tableWrap = colWrap.parentElement.closest('.structureRegionWrap');
+        expect(tableWrap.classList.contains('structureFilterHidden')).toBe(false);
+        const group = colWrap.closest('.structurePublishedFileGroup');
+        expect(group.classList.contains('structureFilterHidden')).toBe(false);
+
+        // The non-matching sibling table (projects) is hidden.
+        const projWrap = rowByHandle('sql-table', 'projects').closest('.structureRegionWrap');
+        expect(projWrap.classList.contains('structureFilterHidden')).toBe(true);
+    });
+
+    it('persists a collapsed sql file group under the repo:sql key across a reload cycle', async () => {
+        await renderSqlRepo();
+
+        let header = document.querySelector('.structureFolderRow');
+        expect(header.nextSibling.hidden).toBe(false); // expanded by default
+        header.click(); // collapse
+        expect(header.nextSibling.hidden).toBe(true);
+        expect(getStructureTreeState(OTHER, 'sql')).toContain('db/schema.sql');
+
+        // Reload: park on the running repo, then back to the sql repo.
+        mountDom('My Project');
+        renderStructureView();
+        await flush();
+        state.manifests[OTHER] = sqlManifest();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+
+        header = document.querySelector('.structureFolderRow');
+        expect(header.getAttribute('aria-expanded')).toBe('false');
+        expect(header.nextSibling.hidden).toBe(true);
+    });
+});
+
 describe('renderStructureView — collapse / expand all toolbar pill', () => {
     const TOP = 'rsterenchak/toDoList_TOP';
     const OTHER = 'rsterenchak/matchingGame-test';

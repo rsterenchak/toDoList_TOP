@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-10',
+        added: [
+            "The Structure tab now offers a SQL lens for schema repos — a table and column outline with types, constraint chips, and foreign-key links.",
+        ],
         fixed: [
             "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
         ],
@@ -14,7 +17,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-09',
         fixed: [
-            "Agent tasks left stuck when a triage sweep fails or times out now surface as failed so you can flag them again, instead of sitting silently in progress.",
             "Generated in-app mockup previews no longer disappear when the agent board refreshes in the background.",
             "The Sync, Run-backlog, and Redeploy chips in the TODO viewer header now share one flat, transparent hover style so they read as matching siblings.",
             "The Run backlog, Run this entry, and Redeploy buttons in the TODO viewer now share a single hover style so they highlight identically.",
