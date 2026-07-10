@@ -214,9 +214,9 @@
   - Completed: 2026-07-09
   <!-- id: 182566fa-3008-40c8-a819-9bacec956fea -->
 
-- [ ] **[MEDIUM]** Fix "that's all for this project" ghost showing in non-repo projects that still have todos
+- [x] **[MEDIUM]** Fix "that's all for this project" ghost showing in non-repo projects that still have todos
   - Type: bug
   - Description: The "that's all for this project" end-of-list ghost currently appears in non-repo-linked projects (those without a TODO.md viewer bar) even when the project still has todo items, because its visibility is gated on the absence of the viewer bar rather than on the actual item count. Gate the ghost strictly on the selected project having zero todo items, independent of whether the TODO.md viewer bar is present. Verify against both repo-linked and non-repo-linked projects: it should render only when the item count is truly 0 and stay hidden as soon as one or more items exist.
   - File: `toDoList_main/src/emptyState.js`, `toDoList_main/src/toDo.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-10
   <!-- id: b00dd410-9642-454e-ac74-7e38b3900334 -->
