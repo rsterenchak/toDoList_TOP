@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-10',
+        fixed: [
+            "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-09',
         fixed: [
-            "Agent mockup hand-off prompts for a project linked to another repo now name that repo and its own file paths instead of always referring to the toDoList app.",
             "Agent tasks left stuck when a triage sweep fails or times out now surface as failed so you can flag them again, instead of sitting silently in progress.",
             "Generated in-app mockup previews no longer disappear when the agent board refreshes in the background.",
             "The Sync, Run-backlog, and Redeploy chips in the TODO viewer header now share one flat, transparent hover style so they read as matching siblings.",

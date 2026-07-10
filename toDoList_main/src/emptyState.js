@@ -61,6 +61,23 @@ function ensureMainListGhostSpacer(mainListDiv) {
 const MIN_GHOST_SPACE = 160;
 
 
+// Count the selected project's committed todo items in #mainList: every
+// #toDoChild whose #toDoInput carries a non-blank value. The trailing blank
+// placeholder row (empty input) is excluded, matching how updateEmptyState
+// decides open/done counts. Completed rows still carry their text, so they
+// count as items — a project with only completed todos is not "empty".
+function countCommittedTodoItems(mainListDiv) {
+    const rows = mainListDiv.querySelectorAll('#toDoChild');
+    let count = 0;
+    rows.forEach(function (row) {
+        const input = row.querySelector('#toDoInput');
+        const val = input ? input.value.trim() : '';
+        if (val) count++;
+    });
+    return count;
+}
+
+
 // Mobile-only: size — or collapse — the ghost spacer based on how much vertical
 // room the visible task list leaves beneath it. On a project whose rows already
 // fill or overflow the #mainList scroll viewport, the spacer collapses to zero
@@ -91,6 +108,19 @@ export function sizeMainListGhostSpacer(mainListDiv) {
     if (!spacerPainted) return;
 
     if (mainListDiv.classList.contains('emptyStatePresent')) return;
+
+    // Gate the "that's all for this project" ghost strictly on the selected
+    // project having zero committed todo items — never on the surrounding
+    // layout. The old leftover-height-only heuristic let the ghost expand
+    // whenever a project's list was short, which on non-repo projects (no tall
+    // TODO.md viewer card to fill the column) surfaced the ghost even when the
+    // project still had items. As soon as one or more items exist, collapse the
+    // ghost regardless of how much room is left below the list.
+    if (countCommittedTodoItems(mainListDiv) > 0) {
+        spacer.classList.add('viewGhostSpacer--collapsed');
+        spacer.style.height = '';
+        return;
+    }
 
     // Exclude the spacer's own height from the measurement so revealing or
     // collapsing it can't feed back into the next reading and flip-flop:
