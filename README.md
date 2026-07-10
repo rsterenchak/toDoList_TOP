@@ -6,6 +6,107 @@ Offline-first task management as an installable Progressive Web App — projects
 
 ---
 
+## Onboarding a repo into the routine
+
+The routine reads a repo's `TODO.md`, opens a PR implementing each entry, and auto-merges it. `onboard.sh` (in the **`claude-routine-template`** repo) scaffolds a repo into it — it's shape-aware, and if your `gh` CLI is authenticated it also sets most of the GitHub settings for you. The rest is a handful of one-time credentials.
+
+**Already-wired repo** — nothing to set up: open the PWA, switch the workspace picker to the repo, and inject an entry (or paste into `TODO.md` on `main`). The next run opens the PR and merges it.
+
+### New repo — the fast path
+
+**0. Preconditions.** onboard runs your *local* `onboard.sh` for detection and fetches the scaffold fresh from `claude-routine-template` **main**, so both have to be current:
+
+```bash
+grep -c 'SHAPE="sql"' onboard.sh   # local script up to date? want >= 1
+curl -fsI https://raw.githubusercontent.com/rsterenchak/claude-routine-template/main/scripts/gen-src-manifest.js   # template pushed? want 200
+```
+
+**1. Scaffold.** Fill `NAME`/`SHAPE` and paste. The `( set -e … )` subshell stops at the first real error instead of cascading into misleading noise:
+
+```bash
+NAME=SQL_shape_test    # exact repo name
+SHAPE=sql              # repo-only | console | desktop | maui | sql | web-build | web-served
+
+( set -e
+cd /workspaces
+
+# clone if it exists, else create. NOTE: --clone is a BOOLEAN flag — no trailing
+# dir arg (the trailing "$NAME" was the "accepts at most 1 arg(s)" bug).
+if gh repo view "rsterenchak/$NAME" >/dev/null 2>&1; then
+  [ -d "$NAME/.git" ] || gh repo clone "rsterenchak/$NAME"
+else
+  gh repo create "rsterenchak/$NAME" --private --clone
+fi
+[ -d "$NAME/.git" ] || { echo "!! $NAME dir not created — read the gh error above."; exit 1; }
+cd "$NAME"
+
+case "$SHAPE" in                       # seed a minimal fixture for the shape
+  repo-only)  : ;;
+  console)    dotnet new console ;;
+  desktop)    dotnet new winforms ;;
+  maui)       dotnet new maui ;;       # needs: dotnet workload install maui
+  sql)        mkdir -p migrations; [ -e schema.sql ] || printf 'CREATE TABLE example (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    name TEXT NOT NULL\n);\n' > schema.sql ;;
+  web-build)  printf '{"name":"web","scripts":{"build":"vite build","test":"vitest run --passWithNoTests"},"devDependencies":{"vite":"^5","vitest":"^2"}}' > package.json; echo 'export default {}' > vite.config.js; printf '<!doctype html><script type="module" src="/src/main.js"></script>' > index.html; mkdir -p src; echo 'console.log(1)' > src/main.js ;;
+  web-served) printf '<!doctype html><h1>served</h1>' > index.html; mkdir -p src; echo 'console.log(1)' > src/app.js ;;
+esac
+[ -e README.md ] || echo "# $NAME ($SHAPE)" > README.md
+
+git add -A && git commit -q -m fixture 2>/dev/null || true
+git branch -M main
+git push -u origin main                # 403 in a Codespace? see "Codespace push auth" below, then re-run
+
+cd /workspaces/claude-routine-template && ./onboard.sh "../$NAME"
+)
+```
+
+This clones or creates the repo, seeds a fixture for the shape, and runs onboard. If `gh` is authenticated, onboard also sets read-write workflow permissions, the Pages source, and offers to add your secrets — so steps 3–4 may already be done for you.
+
+**2. Confirm the files reached `main`.** The one step that bites: onboard's own `git push` can 403 silently in a Codespace, leaving the scaffold local-only. Check what's actually on `main`:
+
+```bash
+gh api repos/rsterenchak/<repo>/contents --jq '.[].path'   # want manifest.yml, scripts/, claude-run.yml…
+```
+
+Only your original files? onboard's push didn't land — see **Troubleshooting → Codespace push auth**, then `git add -A && git commit -m scaffold && git push`.
+
+**3. Grant access** (per repo, quick):
+- Install the Claude GitHub app on the repo — https://github.com/apps/claude
+- Add the repo to your worker PAT (**Contents: write, Actions: read + write**) — https://github.com/settings/personal-access-tokens
+
+**4. Settings** — onboard's `gh` path sets these; do them by hand only if it didn't:
+- **Actions → General → Workflow permissions:** "Read and write" *and* tick "Allow GitHub Actions to create and approve pull requests."
+- **Pages → Deploy from a branch:** `web-build` → `gh-pages` / root; every other manifest shape (`web-served`, `console`, `desktop`, `maui`, `sql`, `doc`) → `main` / root; `repo-only` → skip.
+- **Secrets:** `CLAUDE_CODE_OAUTH_TOKEN` (always); `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the legacy service_role JWT) if the repo runs triage.
+
+**5. Register with the worker.** Add the line onboard printed to `ALLOWED_TARGETS` in `todo-injector-worker/src`, then `wrangler deploy` — the allowlist only takes effect once the worker redeploys. `srcPrefix` is `"src/"` for web, the project subfolder for .NET, and `""` for `sql` / `doc` / `repo-only`.
+
+**6. Verify + smoke-test.**
+
+```bash
+curl -fsI https://rsterenchak.github.io/<repo>/src-manifest.json   # want 200 (every shape but repo-only)
+```
+
+Inject a trivial entry in the PWA — the PR should open and merge (`sql` / `doc` / `repo-only` auto-merge with no CI; the code shapes merge once tests pass).
+
+### Shape reference
+
+`onboard.sh` detects the shape and scaffolds the matching files; override at the prompt if it guesses wrong.
+
+| Shape | Detected from | Publishes | Structure lens |
+|---|---|---|---|
+| `web-build` | bundler config + build script | Pages `gh-pages` (built output) | Code + UI |
+| `web-served` | no build; root `index.html` / `src/` | Pages `main` | Code + UI |
+| `console` | `.csproj` / `.sln`, cross-platform | Pages `main` (manifest only) | Code + Types |
+| `desktop` | WinForms / WPF (`net*-windows`) | Pages `main` (manifest only) | Code + Types |
+| `maui` | `UseMaui` or an `-android` TFM | Pages `main` (manifest only) | Code + Types |
+| `sql` | `.sql` files, no `package.json` | Pages `main` (manifest only) | Code + SQL |
+| `doc` | a `docs/` dir or ≥ 2 `.md` files, no code | Pages `main` (manifest only) | Code |
+| `repo-only` | none of the above | — | — |
+
+CI on push: `desktop` on Windows, `maui` builds the Android head, the other code shapes on ubuntu; `sql` / `doc` / `repo-only` have none.
+
+---
+
 ## Overview
 
 A personal, offline-first task manager built as an installable PWA. Projects and tasks live in **Supabase** (Postgres) with realtime sync across devices, the app installs to the home screen and works offline, and an **in-app Claude assistant** can draft backlog entries that flow through an automated pipeline which opens and auto-merges its own pull requests.
@@ -123,129 +224,6 @@ Because the full PWA update lifecycle depends on real browser behavior (especial
 
 ---
 
-## Quickstart — add an existing repo (fill NAME/SHAPE, paste the whole block)
-
-Wrapped in a `( set -e … )` subshell so it **stops at the first real error** instead of cascading into misleading `not a git repository` / `target is not a directory` noise. That noise means the repo dir was never created — read the line *above* it. Mind hyphens vs underscores in `NAME`: a typo silently creates a *different, empty* repo.
-
-```bash
-NAME=SQL_shape_test    # exact repo name
-SHAPE=sql              # repo-only | console | desktop | maui | sql | web-build | web-served
-
-( set -e
-cd /workspaces
-
-# clone if it exists, else create. NOTE: --clone is a BOOLEAN flag — no trailing
-# dir arg (the trailing "$NAME" was the "accepts at most 1 arg(s)" bug).
-if gh repo view "rsterenchak/$NAME" >/dev/null 2>&1; then
-  [ -d "$NAME/.git" ] || gh repo clone "rsterenchak/$NAME"
-else
-  gh repo create "rsterenchak/$NAME" --private --clone
-fi
-[ -d "$NAME/.git" ] || { echo "!! $NAME dir not created — read the gh error above."; exit 1; }
-cd "$NAME"
-
-case "$SHAPE" in                       # seed a minimal fixture for the shape
-  repo-only)  : ;;
-  console)    dotnet new console ;;
-  desktop)    dotnet new winforms ;;
-  maui)       dotnet new maui ;;       # needs: dotnet workload install maui
-  sql)        mkdir -p migrations; [ -e schema.sql ] || printf 'CREATE TABLE example (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    name TEXT NOT NULL\n);\n' > schema.sql ;;
-  web-build)  printf '{"name":"web","scripts":{"build":"vite build","test":"vitest run --passWithNoTests"},"devDependencies":{"vite":"^5","vitest":"^2"}}' > package.json; echo 'export default {}' > vite.config.js; printf '<!doctype html><script type="module" src="/src/main.js"></script>' > index.html; mkdir -p src; echo 'console.log(1)' > src/main.js ;;
-  web-served) printf '<!doctype html><h1>served</h1>' > index.html; mkdir -p src; echo 'console.log(1)' > src/app.js ;;
-esac
-[ -e README.md ] || echo "# $NAME ($SHAPE)" > README.md
-
-git add -A && git commit -q -m fixture 2>/dev/null || true
-git branch -M main
-git push -u origin main                # 403 in a Codespace? see "Codespace push auth" below, then re-run
-
-cd /workspaces/claude-routine-template && ./onboard.sh "../$NAME"
-)
-```
-
-> **Before this works, two things must both be current:** your **local** `onboard.sh` must be the version you expect (onboard reads its own local file for shape detection), *and* the template files must be pushed to `claude-routine-template` **main** (onboard fetches the scaffold — generator, `manifest-sql.yml`, routine docs — fresh from main at runtime). Quick check from the template dir: `grep -c 'SHAPE="sql"' onboard.sh` (want ≥1) and `curl -fsI https://raw.githubusercontent.com/rsterenchak/claude-routine-template/main/.github/workflows/manifest-sql.yml` (want `200`).
-
-
-## Claude run pipeline — adding repos
-
-Quick reference for wiring a new or existing repo into the routine that reads `TODO.md`, opens a PR, and auto-merges. `onboard.sh` is **shape-aware** — it detects the kind of project and scaffolds the matching files — so the file set and the deploy/Pages steps below depend on the shape.
-
-### Existing repo (already wired)
-
-1. Open the PWA, switch the workspace picker to the target repo.
-2. Inject a TODO entry (or paste directly into `TODO.md` on `main`).
-3. The next run picks it up — watch for the PR to open and auto-merge.
-
-### New repo (first-time setup)
-
-`onboard.sh` (in the **`claude-routine-template`** repo) does most of this; the rest is GitHub / Cloudflare / PWA settings it can't reach from a script. Order matters mainly for Step 1 (scaffold first) and Step 7 before Step 8 (register the worker before injecting from the PWA). If your `gh` CLI is authenticated, onboard offers to auto-configure Steps 3, 5, and 6 for you.
-
-1. **Scaffold the pipeline files.** From your `claude-routine-template` checkout, run `./onboard.sh <path-to-repo>`. It detects the **shape** and always drops in `.claude/routine.md`, `.claude/routine-base.md`, `.github/workflows/claude-run.yml`, `CLAUDE.md`, and an initial `TODO.md`. What else lands — and whether the repo deploys — depends on the shape:
-
-   | Shape | Detected from | Extra files | Publishes (manifest / deploy) |
-   |---|---|---|---|
-   | `web-build` | bundler config + build script | `test.yml` (npm), `deploy.yml`, `gen-src-manifest.*` | Pages `gh-pages` — Code + UI lens |
-   | `web-served` | no build; root `index.html`/`src/` | `test.yml` (npm), `manifest.yml`, `gen-src-manifest.*` | Pages `main` — Code + UI lens |
-   | `console` | `.csproj`/`.sln`, cross-platform | `test.yml` (dotnet, ubuntu), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
-   | `desktop` | WinForms/WPF (`net*-windows`, `UseWindowsForms`/`UseWPF`) | `test.yml` (dotnet, **windows**), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
-   | `maui` | `UseMaui` or an `-android` TFM | `test.yml` (MAUI Android), `manifest.yml`, `gen-src-manifest.js` | Pages `main`, manifest only — Code + Types lens |
-   | `sql` | `.sql` files, no `package.json` | `manifest.yml`, `gen-src-manifest.js` (no test workflow) | Pages `main`, manifest only — Code + SQL lens |
-   | `repo-only` | no package.json, no `.csproj`, no web entry | — (universal files only) | no |
-
-   Review the diff, then **confirm the files actually reached `main`** — this is the step that bites. onboard writes the files locally and does its *own* commit + push, but in a Codespace that push can 403 on the pinned token and fail **silently** (its push is guarded with `2>/dev/null`), leaving the files uncommitted locally with nothing on GitHub. Re-running onboard then skips them as "already exists" while pushing nothing — a no-op loop. Verify what's actually on `main`:
-
-   ```bash
-   gh api repos/<owner>/<repo>/contents --jq '.[].path'   # want manifest.yml, scripts/, claude-run.yml…
-   ```
-
-   If it shows only your original files, onboard's push didn't land. Fix auth (**Codespace push auth**, below), then commit + push yourself. Note: a bare `git push` reporting *"Everything up-to-date"* means the files were never **committed** (onboard failed before its commit step, not just its push) — so stage them:
-
-   ```bash
-   cd <repo> && git add -A && git commit -m "Scaffold Claude routine pipeline" && git push origin main
-   ```
-
-2. **Install the Claude GitHub app** on the new repo: https://github.com/apps/claude — grant access to just this repo.
-
-3. **Add the `CLAUDE_CODE_OAUTH_TOKEN` secret.** Settings → Secrets and variables → Actions → New repository secret. Name it `CLAUDE_CODE_OAUTH_TOKEN`; the value is your **Claude Code OAuth token** (Pro/Max auth). This is what `claude-run.yml` uses to authenticate Claude — it is **not** a PAT. (onboard's `gh` path can set this.) Triage-enabled repos also need `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the legacy service_role JWT) for `claude-triage.yml`.
-
-4. **Grant the worker's PAT access to the repo.** Separate credential from Step 3: add this repo to your fine-grained PAT's access list — https://github.com/settings/personal-access-tokens — with **Contents: write + Actions: read+write**. The PAT is what the worker uses to inject and dispatch; missing it 403s at inject time. (This is a PAT *access-list* entry, not a repo secret.)
-
-5. **Set workflow permissions.** Settings → Actions → General → Workflow permissions → **"Read and write permissions"**, *and* tick **"Allow GitHub Actions to create and approve pull requests."** Both matter: new repos default to read-only (web `deploy.yml` 403s on `gh-pages` push, and the root-committing `manifest.yml` — used by `web-served`/`.NET`/`sql` — 403s committing to `main`, without write), and the approve-PRs toggle is what lets `claude-run.yml` auto-merge — it merges as the built-in `github.token`. (onboard's `gh` path sets both.)
-
-6. **Configure Pages — every shape except `repo-only`.** Settings → Pages → Source: "Deploy from a branch". `web-build` → branch `gh-pages`, folder `/ (root)`. Every other manifest-publishing shape — `web-served`, `console`, `desktop`, `maui`, `sql` — → branch `main`, folder `/ (root)`, which serves the committed `src-manifest.json` directly (no build). **Skip only for `repo-only`** — it has no manifest. (onboard's `gh` path sets this for you.)
-
-7. **Register the repo with the worker.** Add an entry to `ALLOWED_TARGETS` in `todo-injector-worker/src`. The full entry is `{ repo: "owner/repo", filePath: "TODO.md", srcPrefix: "<src dir>" }` — `srcPrefix` is `"src/"` for web shapes, the project subfolder for .NET (blank if at repo root), `""` for a `sql` repo whose `.sql` sit at the root, and `""` for repo-only. It must match the `MANIFEST_SRC_ROOT` the manifest workflow was filled with. Then `wrangler deploy` from the worker's directory — the allowlist won't take effect until the new worker is live. (onboard prints the exact line in its output.)
-
-8. **Add the repo as an inject target in the PWA**, then smoke-test by injecting a trivial entry (e.g. "Add a comment to README.md saying 'Pipeline verified'"). The PR should open and the **right CI workflow** should run (`desktop` on windows, `maui` installing the Android workload, the rest on ubuntu; `sql` and `repo-only` have no CI). On merge: `sql` and `repo-only` auto-merge with no check; the others merge once their build/test passes.
-
-9. **Verify the manifest published** (every shape except `repo-only`). Once the files are on `main`, the manifest workflow runs and commits `src-manifest.json` to root; Pages then serves it:
-
-   ```bash
-   gh run list --repo <owner>/<repo> --limit 3                    # the manifest run — want green
-   curl -fsI https://<owner>.github.io/<repo>/src-manifest.json   # want 200
-   ```
-
-   Reading the result: a **404 whose body is ~9KB of HTML with a GitHub CSP header** is the Pages 404 *page* — Pages *is* serving, the manifest just isn't committed yet (workflow hasn't run, or failed). A **red run** is almost always Step 5 — the commit-back to `main` 403s without read-write permissions. A **green run that still 404s** just needs a minute for Pages to redeploy. A **404 with no HTML body** means Pages isn't enabled (Step 6).
-
-### Gotchas that bit on first runs
-
-* **Codespace push auth (the recurring 403).** A Codespace's pinned `GITHUB_TOKEN` is scoped to the repo it *launched* from, not your target — so `git push` (and onboard's internal push) 403 with `Permission … denied`. Fix it, and **verify before pushing**:
-  ```bash
-  unset GITHUB_TOKEN && gh auth status     # "not logged in"? run: gh auth login  (GitHub.com → HTTPS → browser)
-  gh auth setup-git
-  git -C <repo> ls-remote origin >/dev/null && echo "AUTH OK"   # proves write access BEFORE you push
-  ```
-  Make it stick across new terminals: `echo 'unset GITHUB_TOKEN' >> ~/.bashrc`. (Sibling gotcha: `git config --local --unset commit.gpgsign` if commits fail on GPG signing.)
-* **onboard can write files without landing them on `main`.** Its commit + push is guarded with `2>/dev/null`, so a push 403 is swallowed — the scaffold ends up written locally but never on GitHub, and re-running skips it as "already exists" while pushing nothing (a no-op loop). *Never trust onboard's exit* — confirm the files are on `main` with the `gh api … contents` check in Step 1.
-* **Chained one-liners hide the real failure.** A `cmd; cmd; cmd` fixture line barrels past its first error, so you see a cascade of downstream noise (`cd: No such file`, `not a git repository`, `target is not a directory`) instead of the root cause. When debugging, run steps individually — or use the `( set -e … )` subshell in the Quickstart, which halts at the actual failure and tells you why.
-* **The OAuth secret and the PAT are two different credentials.** `CLAUDE_CODE_OAUTH_TOKEN` (Step 3) authenticates Claude inside the run; the PAT access-list entry (Step 4) lets the worker reach the repo to inject/dispatch. Setting one does not cover the other.
-* **Workflow permissions, the approve-PRs toggle, and Pages are repo *settings*, not files** — they don't come from `onboard.sh` unless `gh` is authenticated when you run it. A forgotten "Allow GitHub Actions to create and approve pull requests" toggle is the usual cause of "the PR opens but won't auto-merge"; a forgotten "Read and write permissions" or Pages source causes 403s.
-* **`deploy.yml` + `gh-pages` are `web-build` only — but most shapes still publish a manifest to Pages.** `web-served`, `console`, `desktop`, `maui`, and `sql` all commit `src-manifest.json` to `main` and serve it via Pages `main`/root (no build, no `gh-pages` branch). Only `repo-only` has no manifest at all — so "no `deploy.yml`" doesn't mean "no Pages."
-* **Worker `ALLOWED_TARGETS` is hardcoded** and requires `wrangler deploy` to take effect. Adding the repo in the PWA without updating + deploying the worker first will fail at inject time.
-* **Direct commits to `main` for routine/config changes** — don't route them through the pipeline. The pipeline ships backlog entries, not its own scaffolding.
-
----
-
 ## PWA updates
 
 The app installs as a Progressive Web App. The service worker (built by `workbox-webpack-plugin`'s `InjectManifest` and emitted as `dist/sw.js`) precaches the app shell, so installed clients load instantly and work offline. When a new build is deployed, installed clients need to discover the update, fetch it, and reload — this section documents that flow so future contributors know the contract.
@@ -279,6 +257,34 @@ For each platform, the validation step is: deploy a known version bump, open the
 ### Asset filename hashing
 
 `webpack.config.js` currently emits bundles as `[name]bundle.js` with no content hash. Content hashing is **not required** for update discovery: Workbox's `InjectManifest` tracks asset revisions independently in the precache manifest baked into `sw.js`, so every new build produces a new `sw.js` whose precache list invalidates the old caches regardless of filename. Hashing would improve long-term HTTP caching for unchanged assets across deploys, but until that becomes a measurable problem, the simpler unhashed filenames are kept.
+
+---
+
+## Troubleshooting
+
+**Codespace push auth (the recurring 403).** A Codespace's pinned `GITHUB_TOKEN` is scoped to the repo it *launched* from, not your target — so `git push` (and onboard's internal push) 403 with `Permission … denied`. Fix it, then verify before pushing:
+
+```bash
+unset GITHUB_TOKEN && gh auth status   # "not logged in"? run: gh auth login  (GitHub.com → HTTPS → browser)
+gh auth setup-git
+git -C <repo> ls-remote origin >/dev/null && echo "AUTH OK"   # proves write access BEFORE you push
+```
+
+Make it stick across new terminals: `echo 'unset GITHUB_TOKEN' >> ~/.bashrc`. (Sibling: `git config --local --unset commit.gpgsign` if commits fail on GPG signing.)
+
+**onboard wrote files but nothing's on `main`.** Its push is guarded with `2>/dev/null`, so a 403 is swallowed — the scaffold is local-only, and re-running skips it as "already exists" while pushing nothing (a no-op loop). Never trust onboard's exit; confirm with `gh api repos/<owner>/<repo>/contents`. A bare `git push` reporting *"Everything up-to-date"* means the files were never **committed** — stage them: `git add -A && git commit -m scaffold && git push`.
+
+**Cascading `not a git repository` / `target is not a directory`.** A chained `cmd; cmd; cmd` line barrels past its first error, so you see downstream noise instead of the root cause (the repo dir was never created — read the line *above* the cascade). Run steps individually, or use the `( set -e … )` subshell, which halts at the real failure and says why.
+
+**Manifest 404s.** `curl -fsI https://<owner>.github.io/<repo>/src-manifest.json` — read the 404 body: **~9KB of HTML with a GitHub CSP header** means Pages is serving but the manifest isn't committed yet (workflow hasn't run, or failed); **no HTML body** means Pages isn't enabled (step 4). Then check `gh run list --repo <owner>/<repo>` — a **red run** is almost always missing read-write permissions (the commit-back to `main` 403s); a **green run** just needs a minute for Pages to redeploy.
+
+**PR opens but won't auto-merge.** The "Allow GitHub Actions to create and approve pull requests" toggle is off (step 4).
+
+**Inject 403s.** Either the worker PAT lacks access to the repo (step 3), or you updated `ALLOWED_TARGETS` without running `wrangler deploy` (step 5).
+
+**OAuth token vs. PAT — two different credentials.** `CLAUDE_CODE_OAUTH_TOKEN` (step 4) authenticates Claude *inside* the run; the PAT access-list entry (step 3) lets the worker *reach* the repo. Setting one does not cover the other.
+
+**Routine or config changes go straight to `main`** — don't route them through the pipeline. It ships backlog entries, not its own scaffolding.
 
 ---
 
