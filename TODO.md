@@ -256,7 +256,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5eb39350-00a2-44bb-a9d3-37bdc429a304 -->
 
-- [ ] **[MEDIUM]** Add fold/open caret toggle to agent bucket headers
+- [x] **[MEDIUM]** Add fold/open caret toggle to agent bucket headers — Completed: 2026-07-10
   - Type: feature
   - Description: Add a caret button to `.agentBucketHeader` in `buildBucket()` and `buildNotAssignedBucket()` (toDoList_main/src/agentView.js), placed before the label (order: -1), that toggles a `.collapsed` class on the parent `.agentBucket` to show/hide its `.agentBucketList`. Mirror the existing `#descToggle` caret-rotate pattern (toDoList_main/src/style.css:6824-6845): 24x24 hit area, `▾` pseudo-element rotating to -90deg when collapsed, color var(--text-secondary) → var(--text-primary) on hover with var(--bg-hover) background, 0.2s ease transition. The whole `.agentBucketHeader` is clickable/hoverable (cursor pointer, hover background), and the caret must be keyboard-accessible (role="button", tabindex="0", aria-label reflecting expand/collapse state, and Enter/Space toggling). Persist each bucket's collapsed state per bucket key in localStorage under `todoapp_agentBucketCollapsed` (an object keyed by bucket.key) so state survives reload; all buckets default open except "Shipped," which defaults collapsed on first load.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`

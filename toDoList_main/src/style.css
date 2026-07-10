@@ -4429,6 +4429,48 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: background 0.2s ease;
+}
+.agentBucketHeader:hover {
+  background: var(--bg-hover);
+}
+
+/* Fold/open caret on each bucket header. Mirrors #descToggle: a 24×24 hit area
+   with a ▾ pseudo-element that rotates to -90deg when the bucket is collapsed,
+   and a secondary → primary text color shift with a hover background. Sits
+   before the label via order:-1. */
+.agentBucketCaret {
+  order: -1;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.2s ease, color 0.2s ease;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.agentBucketCaret::after {
+  content: '▾';
+  display: block;
+  transition: transform 0.2s ease;
+}
+.agentBucketCaret:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.agentBucket.collapsed .agentBucketCaret::after {
+  transform: rotate(-90deg);
+}
+.agentBucket.collapsed .agentBucketList {
+  display: none;
 }
 
 .agentBucketLabel {
