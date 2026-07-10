@@ -207,9 +207,9 @@
   - Completed:
   <!-- id: 1c11173e-2818-47b0-b73b-1759ad809361 -->
 
-- [ ] **[LOW]** Unify hover styling across TODO.md viewer's Run backlog, Run entry, and Redeploy buttons
+- [x] **[LOW]** Unify hover styling across TODO.md viewer's Run backlog, Run entry, and Redeploy buttons
   - Type: bug
   - Description: In the TODO.md viewer header the Run backlog, run-entry, and Redeploy buttons have slightly different hover states after a recent change (differing background fill, border, and text color), when they should be identical. Unify all of them to the Option A treatment: on hover, background `#15151e`, a 1px `#6C5DF5` border, and text lightening to `#e8e8f0`, using the existing theme CSS variables rather than hardcoded values, and honoring both dark and light themes. Consolidate to a single shared hover rule so the three buttons can't drift again. Likely a shared button hover class in `style.css`, with the button markup in `todoMdViewer.js`.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-09
   <!-- id: 182566fa-3008-40c8-a819-9bacec956fea -->

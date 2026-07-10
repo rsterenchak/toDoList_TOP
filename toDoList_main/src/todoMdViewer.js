@@ -411,7 +411,7 @@ export function buildViewerRenderedBody(text, options) {
             if (onRunEntry && tok.indent === 0 && tok.entryId && !tok.checked) {
                 const runBtn = document.createElement('button');
                 runBtn.type = 'button';
-                runBtn.className = 'todoMdViewerRunEntryBtn';
+                runBtn.className = 'todoMdViewerRunEntryBtn todoMdViewerActionBtn';
                 runBtn.dataset.entryId = tok.entryId;
                 runBtn.setAttribute('aria-label', 'Run this entry');
                 runBtn.title = 'Run the automation routine for this entry';
@@ -539,7 +539,7 @@ function buildTodoMdViewerCard(projectName, target) {
 
     const runBacklogBtn = document.createElement('button');
     runBacklogBtn.type = 'button';
-    runBacklogBtn.className = 'todoMdViewerRunBtn';
+    runBacklogBtn.className = 'todoMdViewerRunBtn todoMdViewerActionBtn';
     runBacklogBtn.setAttribute('aria-label', 'Run backlog automation');
     runBacklogBtn.title = 'Trigger the automation routine in backlog mode';
     runBacklogBtn.innerHTML =
@@ -556,7 +556,7 @@ function buildTodoMdViewerCard(projectName, target) {
     // (fetchPagesStatus / requestPagesRebuild) lives further down the closure.
     const deployPill = document.createElement('button');
     deployPill.type = 'button';
-    deployPill.className = 'todoMdViewerDeployPill todoMdViewerDeployPill--idle';
+    deployPill.className = 'todoMdViewerDeployPill todoMdViewerActionBtn todoMdViewerDeployPill--idle';
     deployPill.setAttribute('aria-live', 'polite');
 
     const syncBtn = document.createElement('button');
@@ -1378,7 +1378,7 @@ function buildTodoMdViewerCard(projectName, target) {
     // "Redeploy" except while deploying, and the pill is disabled mid-deploy so
     // a second publish can't be queued on top of the first.
     function renderDeployPill(state) {
-        deployPill.className = 'todoMdViewerDeployPill todoMdViewerDeployPill--' + state;
+        deployPill.className = 'todoMdViewerDeployPill todoMdViewerActionBtn todoMdViewerDeployPill--' + state;
         deployPill.innerHTML = '';
         const icon = document.createElement('span');
         icon.setAttribute('aria-hidden', 'true');

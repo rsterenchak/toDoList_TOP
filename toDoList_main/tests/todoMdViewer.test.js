@@ -487,7 +487,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
     });
 
     it('builds a Run backlog button with the todoMdViewerRunBtn class and a play-glyph label', () => {
-        expect(main).toMatch(/runBacklogBtn\.className\s*=\s*['"]todoMdViewerRunBtn['"]/);
+        expect(main).toMatch(/runBacklogBtn\.className\s*=\s*['"]todoMdViewerRunBtn todoMdViewerActionBtn['"]/);
         expect(main).toMatch(/Run backlog/);
     });
 

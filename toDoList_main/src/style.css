@@ -7829,10 +7829,18 @@ body.row-dragging * { cursor: grabbing !important; }
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
-.todoMdViewerRunBtn:hover {
-  background: rgba(217, 184, 106, 0.16);
-  color: #ffcf86;
-  border-color: rgba(217, 184, 106, 0.75);
+/* Single shared hover rule for the viewer's three action controls — Run
+   backlog, Run this entry, and Redeploy. Adding the `todoMdViewerActionBtn`
+   marker class to all three (see todoMdViewer.js) means their hover affordance
+   lives in exactly one place and can never drift apart again. Uses theme tokens
+   only, so it recolors for free in both dark and light. The deploy pill's
+   failure / deploying / runblocked states keep their own look: deploying and
+   runblocked set the `disabled` attribute (gated out by :not(:disabled)), and
+   the failure hover rule further down wins on source order. */
+.todoMdViewerActionBtn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 .todoMdViewerRunBtn:focus-visible {
   outline: 2px solid var(--accent);
@@ -7880,10 +7888,6 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-secondary);
   border-color: var(--border-bright);
 }
-.todoMdViewerRunBtn--idle:hover {
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
 :root[data-theme="light"] .todoMdViewerRunBtn--idle {
   background: transparent;
   color: var(--text-secondary);
@@ -7913,11 +7917,7 @@ body.row-dragging * { cursor: grabbing !important; }
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
-.todoMdViewerRunEntryBtn:hover:not(:disabled) {
-  background: var(--accent-dim);
-  color: var(--text-primary);
-  border-color: #6C5DF5;
-}
+/* Hover lives in the shared .todoMdViewerActionBtn:hover rule above. */
 .todoMdViewerRunEntryBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -8299,17 +8299,17 @@ body.row-dragging * { cursor: grabbing !important; }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-/* Idle / healthy — quiet neutral chip, brightening to the accent on hover. */
-.todoMdViewerDeployPill--idle:hover {
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
+/* Idle / healthy hover lives in the shared .todoMdViewerActionBtn:hover rule. */
 /* Failed publish — loud danger red so a stale live site is unmissable. */
 .todoMdViewerDeployPill--failure {
   color: var(--text-danger);
   border-color: var(--text-danger);
 }
+/* Stay red on hover — override the shared action-button hover so a failed
+   publish never softens into the neutral idle affordance (background included,
+   since the shared rule sets one). */
 .todoMdViewerDeployPill--failure:hover {
+  background: transparent;
   color: var(--text-danger);
   border-color: var(--text-danger);
 }
