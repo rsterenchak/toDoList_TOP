@@ -1,5 +1,7 @@
 // Per-project active-run state for the in-app automation pipeline.
 //
+// Redeploy pipeline check: harmless marker comment (no behavior change).
+//
 // At most one automation run (backlog or entry mode) is tracked per project at
 // a time. Both surfaces that can launch a run — the TODO.md viewer's header
 // "Running" pill and the Claude sheet's chat ship path — share this module so
