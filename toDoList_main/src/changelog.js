@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-10',
         added: [
             "The Structure tab now offers a SQL lens for schema repos — a table and column outline with types, constraint chips, and foreign-key links.",
+            "Agent board section headers now fold and reopen with a caret, remembering each section's open or collapsed state between visits.",
         ],
         fixed: [
             "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-09',
         fixed: [
-            "The Sync, Run-backlog, and Redeploy chips in the TODO viewer header now share one flat, transparent hover style so they read as matching siblings.",
             "The Run backlog, Run this entry, and Redeploy buttons in the TODO viewer now share a single hover style so they highlight identically.",
         ],
     },

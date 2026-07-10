@@ -2300,26 +2300,107 @@ function buildGiveToAgentCard(item) {
     return card;
 }
 
+// ── bucket fold/open state ───────────────────────────────────────────
+// Each bucket header carries a caret that folds/opens its card list. The
+// collapsed flag is persisted per bucket key so the layout survives a reload.
+const BUCKET_COLLAPSE_KEY = 'todoapp_agentBucketCollapsed';
+
+// Read the persisted collapsed-state map ({ [bucketKey]: boolean }). Defensive:
+// a missing key, malformed JSON, or a non-object value all yield an empty map so
+// the per-key defaults apply. Never throws.
+function readBucketCollapseState() {
+    try {
+        const raw = localStorage.getItem(BUCKET_COLLAPSE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// Whether a bucket should render collapsed. A stored boolean for the key wins;
+// absent any stored value (first load), every bucket defaults open except
+// Shipped, which defaults collapsed.
+function isBucketCollapsed(key) {
+    const state = readBucketCollapseState();
+    if (Object.prototype.hasOwnProperty.call(state, key)) return !!state[key];
+    return key === 'shipped';
+}
+
+// Persist one bucket's collapsed flag, merging into the stored map so the other
+// buckets' saved states are preserved. Never throws (storage may be unavailable).
+function setBucketCollapsed(key, collapsed) {
+    try {
+        const state = readBucketCollapseState();
+        state[key] = !!collapsed;
+        localStorage.setItem(BUCKET_COLLAPSE_KEY, JSON.stringify(state));
+    } catch (e) {
+        /* storage unavailable — the fold just won't persist this session */
+    }
+}
+
+// Build a bucket header (caret + label + count) and wire its fold/open toggle.
+// The caret sits before the label (order:-1 via CSS) and toggles a `.collapsed`
+// class on `section`, which hides the section's `.agentBucketList`. The whole
+// header is clickable; the caret is an ARIA button (role/tabindex) that also
+// toggles on Enter/Space, with an aria-label reflecting the expand/collapse
+// state. The persisted (or default) collapsed state is applied to `section` up
+// front so the board paints in the saved layout.
+function buildBucketHeader(section, key, labelText, countText) {
+    const header = document.createElement('div');
+    header.className = 'agentBucketHeader';
+
+    const caret = document.createElement('span');
+    caret.className = 'agentBucketCaret';
+    caret.setAttribute('role', 'button');
+    caret.setAttribute('tabindex', '0');
+    header.appendChild(caret);
+
+    const label = document.createElement('span');
+    label.className = 'agentBucketLabel';
+    label.textContent = labelText;
+    header.appendChild(label);
+
+    const count = document.createElement('span');
+    count.className = 'agentBucketCount';
+    count.textContent = countText;
+    header.appendChild(count);
+
+    let collapsed = isBucketCollapsed(key);
+
+    function apply() {
+        section.classList.toggle('collapsed', collapsed);
+        caret.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        caret.setAttribute('aria-label', (collapsed ? 'Expand ' : 'Collapse ') + labelText + ' section');
+    }
+    apply();
+
+    function toggle() {
+        collapsed = !collapsed;
+        setBucketCollapsed(key, collapsed);
+        apply();
+    }
+
+    // The whole header toggles on click (a click on the caret bubbles up here,
+    // so it toggles once); the caret handles keyboard activation itself.
+    header.addEventListener('click', toggle);
+    caret.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            toggle();
+        }
+    });
+
+    return header;
+}
+
 // The Not-assigned bucket: a header (label + count) and one Give-to-agent card
 // per unqueued task. Rendered at the bottom of the board, below Shipped.
 function buildNotAssignedBucket(items) {
     const section = document.createElement('div');
     section.className = 'agentBucket agentBucket--not-assigned';
-
-    const header = document.createElement('div');
-    header.className = 'agentBucketHeader';
-
-    const label = document.createElement('span');
-    label.className = 'agentBucketLabel';
-    label.textContent = 'Not assigned';
-    header.appendChild(label);
-
-    const count = document.createElement('span');
-    count.className = 'agentBucketCount';
-    count.textContent = String(items.length);
-    header.appendChild(count);
-
-    section.appendChild(header);
+    section.appendChild(buildBucketHeader(section, 'not-assigned', 'Not assigned', String(items.length)));
 
     const list = document.createElement('div');
     list.className = 'agentBucketList';
@@ -2333,21 +2414,7 @@ function buildNotAssignedBucket(items) {
 function buildBucket(bucket, rows) {
     const section = document.createElement('div');
     section.className = 'agentBucket agentBucket--' + bucket.key;
-
-    const header = document.createElement('div');
-    header.className = 'agentBucketHeader';
-
-    const label = document.createElement('span');
-    label.className = 'agentBucketLabel';
-    label.textContent = bucket.label;
-    header.appendChild(label);
-
-    const count = document.createElement('span');
-    count.className = 'agentBucketCount';
-    count.textContent = String(rows.length);
-    header.appendChild(count);
-
-    section.appendChild(header);
+    section.appendChild(buildBucketHeader(section, bucket.key, bucket.label, String(rows.length)));
 
     const list = document.createElement('div');
     list.className = 'agentBucketList';
