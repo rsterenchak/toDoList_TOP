@@ -7715,9 +7715,9 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 36px;
   height: 36px;
   padding: 0;
-  background: #15161d;
-  color: #8b8c99;
-  border: 1px solid rgba(157, 147, 238, 0.25);
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-bright);
   border-radius: 10px;
   font: inherit;
   cursor: pointer;
@@ -7727,9 +7727,8 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: none;
 }
 .todoMdViewerSyncBtn:hover {
-  background: #1c1d27;
-  color: #cfd0da;
-  border-color: rgba(157, 147, 238, 0.45);
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 .todoMdViewerSyncBtn:focus-visible {
   outline: 2px solid var(--accent);
@@ -7877,14 +7876,13 @@ body.row-dragging * { cursor: grabbing !important; }
    clickable, keeps its pill shape / height / label / play glyph — only colors
    change. Placed after the base + light rules so it wins by source order. */
 .todoMdViewerRunBtn--idle {
-  background: #15161d;
-  color: #8b8c99;
-  border-color: rgba(157, 147, 238, 0.25);
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-bright);
 }
 .todoMdViewerRunBtn--idle:hover {
-  background: #1c1d27;
-  color: #cfd0da;
-  border-color: rgba(157, 147, 238, 0.45);
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 :root[data-theme="light"] .todoMdViewerRunBtn--idle {
   background: transparent;

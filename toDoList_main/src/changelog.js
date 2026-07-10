@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-09',
-        added: [
-            "Agent cards in every state now offer a Discuss-in-chat link and a copy-for-Claude hand-off, with compact icon buttons on in-progress cards.",
-        ],
         fixed: [
             "The Runs tab now refreshes its run list each time you open it, so runs started in another tab or an earlier session appear without a full page reload.",
             "Agent mockup hand-off prompts for a project linked to another repo now name that repo and its own file paths instead of always referring to the toDoList app.",
             "Agent tasks left stuck when a triage sweep fails or times out now surface as failed so you can flag them again, instead of sitting silently in progress.",
             "Generated in-app mockup previews no longer disappear when the agent board refreshes in the background.",
+            "The Sync, Run-backlog, and Redeploy chips in the TODO viewer header now share one flat, transparent hover style so they read as matching siblings.",
         ],
     },
 ];
