@@ -38,7 +38,12 @@ import {
     markChainingActive,
     isChainingActive,
 } from './mobileTaskCreate.js';
-import { makeInjectButton, refreshInjectButton } from './inject.js';
+import {
+    makeInjectButton,
+    refreshInjectButton,
+    hasShippedRunForEntry,
+    TODO_RUN_STATUS_EVENT,
+} from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
 import { applyTaskFilter } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
@@ -138,6 +143,55 @@ function updateDescIndicator(toDoChild, item) {
     } else {
         toDoChild.removeAttribute('data-has-desc');
     }
+}
+
+
+// Overlay a small run-status badge dot on the bottom-right of `#descIndicator`:
+//   • green (`.dot`)            — a SHIPPED run record correlates to item.entryId
+//   • amber (`.dot.dot--pending`) — the description was injected (item.injectedAt)
+//                                   but no SHIPPED run exists for it yet
+//   • no dot                    — the entry has never been injected
+// The dot lives INSIDE `#descIndicator`, so it inherits the indicator's
+// `data-has-desc` visibility gating and its 0.9 / 0.45 opacity rules for free,
+// and it never touches the inject button's own separate state glyph. Idempotent:
+// reuses the existing dot element so live refreshes don't thrash the DOM.
+function applyDescStatusDot(descIndicator, item) {
+    if (!descIndicator) return;
+    const existing = descIndicator.querySelector('.dot');
+    if (!item || !item.injectedAt) {
+        if (existing) existing.remove();
+        return;
+    }
+    const shipped = hasShippedRunForEntry(item.entryId);
+    const dot = existing || document.createElement('span');
+    dot.className = 'dot' + (shipped ? '' : ' dot--pending');
+    dot.setAttribute('aria-hidden', 'true');
+    if (!existing) descIndicator.appendChild(dot);
+}
+
+
+// Re-evaluate every rendered row's description-status dot in one pass, resolving
+// each live `#descIndicator` back to its row's `__item`. Called on the
+// run-status event so dots flip pending → shipped without a full re-render.
+export function refreshDescStatusDots() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('#descIndicator').forEach(function(indicator) {
+        const row = indicator.closest('#toDoChild');
+        if (row && row.__item) applyDescStatusDot(indicator, row.__item);
+    });
+}
+
+// A single delegated document listener drives the live refresh when an inject
+// stamps a pending entry or a run reconciles to SHIPPED. Attached lazily on the
+// first row build (idempotent) rather than at module eval: like every other
+// inject.js import in this file, the run-status exports are only dereferenced at
+// call time, so importing this module never touches them — matching the
+// lazy-access contract the wider row layer already relies on.
+let runStatusListenerAttached = false;
+function ensureRunStatusDotListener() {
+    if (runStatusListenerAttached || typeof document === 'undefined') return;
+    runStatusListenerAttached = true;
+    document.addEventListener(TODO_RUN_STATUS_EVENT, refreshDescStatusDots);
 }
 
 
@@ -1546,6 +1600,11 @@ export function buildToDoRow(item, toDoName) {
     // to wait until wireCheckbox runs so the checkbox is already in place;
     // inserting before toDoInput puts the indicator just past the checkbox.
     toDoChild.insertBefore(descIndicator, toDoInput);
+    // Overlay the run-status dot (shipped / pending / none) on the indicator,
+    // and make sure the live-refresh listener is attached so the dot updates as
+    // runs reconcile without a full re-render.
+    ensureRunStatusDotListener();
+    applyDescStatusDot(descIndicator, item);
 
     // Workflow-status badge — committed rows only. Sits right after the
     // checkbox, ahead of the title, and is itself the tap target for the
