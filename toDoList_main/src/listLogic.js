@@ -1290,6 +1290,50 @@ export const listLogic = (function () {
     }
 
 
+    // Stamp an injected entry's id onto the source todo so its row's run-status
+    // glyph lights. The Agent board's dispatch path injects a drafted entry into
+    // the routed TODO.md but tracks state only on the agent_queue row; without
+    // writing the entry id back to the originating task — matched by the agent
+    // row's `todo_id`, which equals the item's `id` — the task row's
+    // #descIndicator glyph never shows, because it resolves purely from
+    // `item.entryId` against the shared TODO.md marker cache. Mirrors the inject
+    // button's injectDescription stamp: sets `entryId` + `injectedAt`, saves, and
+    // mirrors the change to Supabase (entry_id rides in toTodoRowPayload) so the
+    // id survives a reload and reaches other devices. Scans every project for the
+    // matching id since the caller (agentView) has only the id, not the project.
+    // No-op (returns { ok:false }) when an id is missing or the todo isn't found.
+    // @category: user-mutation-only
+    function stampTodoEntryId(todoId, entryId) {
+        if (!todoId || !entryId) return { ok: false, error: 'Missing id.' };
+        let found = null;
+        let foundProject = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) { found = hit; foundProject = names[i]; break; }
+        }
+        if (!found) return { ok: false, error: 'Todo not found.' };
+
+        found.entryId = entryId;
+        found.injectedAt = Date.now();
+        saveToStorage();
+
+        if (found.id && found.tit && found.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    found,
+                    allProjects[foundProject].id || null
+                ),
+            });
+        }
+        return { ok: true };
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -3283,6 +3327,7 @@ export const listLogic = (function () {
         flagTaskForAgent,
         answerAgentTask,
         setAgentRunState,
+        stampTodoEntryId,
         unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,

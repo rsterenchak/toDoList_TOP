@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-11',
-        changed: [
-            "The project header now uses a dense left-aligned layout: the name, dropdown, and open/done counts stack on the left with the ‹ › project switcher beside them, and the desktop pill shows a compact open/total count badge.",
-        ],
         fixed: [
             "The voice mic button no longer lingers on a todo after you add it.",
             "Tapping the voice listening overlay now adds the dictated todo, and the mic keeps listening until you tap instead of ending on a pause.",
             "The shipped-run status dot on a todo now turns green reliably and shows the same state on every device, reading whether the run merged from the shared TODO.md instead of local run history.",
             "A task's pending status icon now clears when its entry is removed from TODO.md, instead of staying stuck forever.",
+            "Todos handed to the Agent tab now show the run-status dot on their task row — amber once dispatched, green once the run ships — matching tasks injected directly.",
         ],
     },
 ];

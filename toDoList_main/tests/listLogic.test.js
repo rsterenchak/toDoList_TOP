@@ -232,6 +232,49 @@ describe('listLogic — todos', () => {
 });
 
 
+// ── AGENT-FLOW ENTRY STAMP ───────────────────────────────────────────
+// Regression: a task routed through the Agent tab (triage → draft → dispatch)
+// used to never get its injected entry id written back to the source todo, so
+// the task row's run-status glyph (which resolves purely from `item.entryId`)
+// never lit even after the run shipped. stampTodoEntryId is the write-back the
+// agent dispatch path calls, matched by the agent_queue row's `todo_id`.
+describe('listLogic — stampTodoEntryId (agent-flow run-status glyph)', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Groceries');
+    });
+
+    it('stamps entryId and injectedAt onto the todo matched by id', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        expect(milk.entryId).toBeUndefined();
+
+        const res = listLogic.stampTodoEntryId(milk.id, 'entry-abc');
+
+        expect(res.ok).toBe(true);
+        expect(milk.entryId).toBe('entry-abc');
+        expect(typeof milk.injectedAt).toBe('number');
+    });
+
+    it('persists the stamped entryId to localStorage so it survives a reload', () => {
+        listLogic.addToDo('Groceries', 'Bread');
+        const bread = listLogic.listItems('Groceries').find(i => i.tit === 'Bread');
+
+        listLogic.stampTodoEntryId(bread.id, 'entry-xyz');
+
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        const persisted = parsed.Groceries.items.find(i => i.id === bread.id);
+        expect(persisted.entryId).toBe('entry-xyz');
+    });
+
+    it('is a safe no-op when the todo id is unknown or ids are missing', () => {
+        expect(listLogic.stampTodoEntryId('no-such-id', 'entry-1').ok).toBe(false);
+        expect(listLogic.stampTodoEntryId(null, 'entry-1').ok).toBe(false);
+        expect(listLogic.stampTodoEntryId('some-id', null).ok).toBe(false);
+    });
+});
+
+
 // ── COMPLETED-SORT INVARIANT ─────────────────────────────────────────
 describe('listLogic — completed sorting', () => {
     beforeEach(() => {
