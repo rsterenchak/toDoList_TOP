@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-11',
+        added: [
+            "The \"Add a task\" row now has a mic button that dictates a new todo by voice, with a listening overlay and the transcript left in for you to review before adding.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-10',
         added: [
-            "The Structure tab now offers a SQL lens for schema repos — a table and column outline with types, constraint chips, and foreign-key links.",
             "Agent board section headers now fold and reopen with a caret, remembering each section's open or collapsed state between visits.",
             "Todo rows now show a status dot on the description glyph — amber once an entry is injected, turning green once its run has shipped.",
         ],

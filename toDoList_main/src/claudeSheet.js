@@ -44,6 +44,7 @@ import {
     activeProjectNameForViewer,
 } from './runState.js';
 import { listLogic } from './listLogic.js';
+import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
@@ -164,14 +165,6 @@ let selectedAttachRepo = DEFAULT_ATTACH_REPO;
 // free-text mode); `files` is its path list (empty when not ok). Cached for the
 // module's lifetime so re-selecting a repo never re-fetches.
 let srcManifestCache = {};
-// Voice dictation (browser-native speech recognition). `micRecognition` holds
-// the live recognition instance while recording, null otherwise; `micRecording`
-// tracks the button's recording state; `micBaseValue` is the composer text
-// captured when recording started, so each transcript update is appended onto
-// what the user had already typed rather than clobbering it.
-let micRecognition = null;
-let micRecording = false;
-let micBaseValue = '';
 // Run records, newest-first: [{ entryId, correlationId, title, status,
 // dispatchedAt }]. Mirrored to localStorage so they survive a reload.
 let runRecords = [];
@@ -261,7 +254,7 @@ export function closeClaudeSheet() {
     if (!sheetEl) return;
     // Don't leave a dictation running in the background if the sheet is
     // dismissed mid-recording.
-    stopMicRecording();
+    stopDictation();
     sheetEl.classList.remove('open');
     sheetEl.setAttribute('aria-hidden', 'true');
     if (backdropEl) backdropEl.classList.remove('open');
@@ -1085,149 +1078,15 @@ function buildChatView() {
 // Browser-native speech recognition turns the mic button into an alternative
 // way to type into the composer. Transcribed text lands in the same input the
 // user types into; from there it sends through the ordinary send path — there
-// is no separate voice routing and no auto-send.
-
-// The platform's SpeechRecognition constructor, or null if unsupported. Read
-// live (not cached at module load) so the feature follows whatever `window`
-// exposes — Chrome/Android ship `SpeechRecognition`, Safari/iOS the
-// `webkit`-prefixed variant.
-function getSpeechRecognitionCtor() {
-    if (typeof window === 'undefined') return null;
-    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
-}
-
-// The mic button, or null when speech recognition is unavailable (so the caller
-// simply omits it from the composer). Idle by default; toggles recording state
-// classes as dictation starts and stops.
+// is no separate voice routing and no auto-send. The recognition engine, the
+// single-session lifecycle, and the iOS first-grant retry all live in the
+// shared voiceInput.js module (also consumed by the add-task placeholder row);
+// this composer just mounts a button pointed at #claudeComposerInput.
 function buildMicButton() {
-    if (!getSpeechRecognitionCtor()) return null;
-    const mic = document.createElement('button');
-    mic.id = 'claudeComposerMic';
-    mic.type = 'button';
-    mic.className = 'micButton';
-    mic.setAttribute('aria-label', 'Voice input');
-    // Simple mic glyph: a rounded capsule (the mic body) over a stand stem.
-    mic.innerHTML =
-        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
-        'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
-        'stroke-linejoin="round" aria-hidden="true">' +
-        '<rect x="9" y="3" width="6" height="11" rx="3"></rect>' +
-        '<path d="M5 11a7 7 0 0 0 14 0"></path>' +
-        '<line x1="12" y1="18" x2="12" y2="21"></line></svg>';
-    mic.addEventListener('click', function() { toggleMicRecording(); });
-    return mic;
-}
-
-function micButtonEl() {
-    return sheetQuery('#claudeComposerMic');
-}
-
-// Reflect the current dictation state on the button. `denied` wins over the
-// recording flag so a permission failure shows the faded state even mid-attempt.
-function setMicState(state) {
-    const btn = micButtonEl();
-    if (!btn) return;
-    btn.classList.remove('micButton--recording', 'micButton--denied');
-    if (state === 'recording') {
-        btn.classList.add('micButton--recording');
-        btn.setAttribute('aria-label', 'Stop voice input');
-        btn.removeAttribute('title');
-    } else if (state === 'denied') {
-        btn.classList.add('micButton--denied');
-        btn.setAttribute('aria-label', 'Voice input');
-        btn.setAttribute('title',
-            'Microphone permission denied. Enable it in browser settings to use voice input.');
-    } else {
-        btn.setAttribute('aria-label', 'Voice input');
-        btn.removeAttribute('title');
-    }
-}
-
-function toggleMicRecording() {
-    if (micRecording) stopMicRecording();
-    else startMicRecording();
-}
-
-// Spin up a recognition instance and begin dictating into the composer. The iOS
-// PWA gotcha — `start()` sometimes throws or no-ops when permission must be
-// re-granted per session — is handled by retrying once with a fresh instance
-// before falling back to the denied state.
-function startMicRecording() {
-    const Ctor = getSpeechRecognitionCtor();
-    const input = sheetQuery('#claudeComposerInput');
-    if (!Ctor || !input) return;
-
-    micBaseValue = input.value || '';
-
-    const begin = function() {
-        const recognition = new Ctor();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
-        recognition.onresult = function(event) {
-            let transcript = '';
-            const results = event && event.results ? event.results : [];
-            for (let i = 0; i < results.length; i++) {
-                const alt = results[i] && results[i][0];
-                if (alt && alt.transcript) transcript += alt.transcript;
-            }
-            const trimmed = transcript.trim();
-            input.value = micBaseValue && trimmed
-                ? micBaseValue + ' ' + trimmed
-                : micBaseValue + trimmed;
-        };
-        recognition.onerror = function(event) {
-            const code = event && event.error;
-            if (code === 'not-allowed' || code === 'permission-denied' ||
-                code === 'service-not-allowed') {
-                micRecognition = null;
-                micRecording = false;
-                setMicState('denied');
-            }
-        };
-        // Recognition ends on its own after a pause (continuous = false) or when
-        // we stop it; either way the button returns to idle unless a denial
-        // already moved it to the denied state.
-        recognition.onend = function() {
-            micRecognition = null;
-            if (micRecording) {
-                micRecording = false;
-                setMicState('idle');
-            }
-        };
-        return recognition;
-    };
-
-    try {
-        micRecognition = begin();
-        micRecognition.start();
-    } catch (e) {
-        // Retry once with a fresh instance (iOS PWA re-grant path).
-        try {
-            micRecognition = begin();
-            micRecognition.start();
-        } catch (e2) {
-            micRecognition = null;
-            micRecording = false;
-            setMicState('denied');
-            return;
-        }
-    }
-    micRecording = true;
-    setMicState('recording');
-}
-
-// Stop an in-flight dictation, leaving the transcribed text in the composer for
-// the user to review/edit/send. Safe to call when not recording (used by the
-// sheet-close cleanup so a dismiss can't leave a recording dangling).
-function stopMicRecording() {
-    micRecording = false;
-    if (micRecognition) {
-        try { micRecognition.stop(); } catch (e) { /* already stopped */ }
-        micRecognition = null;
-    }
-    const btn = micButtonEl();
-    if (btn && btn.classList.contains('micButton--recording')) setMicState('idle');
+    return mountMicButton(function() { return sheetQuery('#claudeComposerInput'); }, {
+        id: 'claudeComposerMic',
+        className: 'micButton',
+    });
 }
 
 // ── FILE ATTACHMENTS ──
@@ -3253,7 +3112,7 @@ export function mountClaudeSheet(parent) {
     if (!parent) return;
     // A fresh mount starts with no active dictation — stop any recognition the
     // previous sheet left running before the old DOM is replaced.
-    stopMicRecording();
+    stopDictation();
     // Hydrate the persistent send-mode default before building the composer so the
     // split button paints the saved Fast/Deep choice on first render.
     loadChatMode();

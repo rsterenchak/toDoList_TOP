@@ -2124,6 +2124,104 @@ body:has(#settingsMenu) #claudeLauncher {
   50% { box-shadow: 0 0 0 4px transparent; }
 }
 
+/* Add-task voice mic — the .micButton at the trailing edge of the blank
+   "Add a task" placeholder row. Inherits the composer mic's look; flex-shrink
+   keeps it from collapsing as the input grows, and it never overlaps the mobile
+   due-chip row (which is the placeholder's next sibling, its own grid row). */
+.addTaskMic {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+/* ── VOICE LISTENING OVERLAY ──
+   Shared, on-demand "listening" surface appended to <body> while dictating from
+   a surface that opts in (currently the add-task row). A dimmed, blurred
+   backdrop centering a mono "Listening" label, an accent capsule with a ~7-bar
+   equalizer, and the live interim transcript below. Dismisses on tap or Escape,
+   both handled in voiceInput.js. */
+.voiceOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(8, 9, 13, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.voiceListenLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.voiceListenPill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 64px;
+  padding: 0 34px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  box-shadow: 0 0 0 0 var(--accent-glow);
+  animation: voicePillGlow 1.8s ease-in-out infinite;
+}
+.voiceBar {
+  display: block;
+  width: 4px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform-origin: center;
+  animation: voiceBarBounce 1.1s ease-in-out infinite;
+}
+.voiceBar:nth-child(1) { animation-delay: 0s; }
+.voiceBar:nth-child(2) { animation-delay: 0.12s; }
+.voiceBar:nth-child(3) { animation-delay: 0.24s; }
+.voiceBar:nth-child(4) { animation-delay: 0.36s; }
+.voiceBar:nth-child(5) { animation-delay: 0.24s; }
+.voiceBar:nth-child(6) { animation-delay: 0.12s; }
+.voiceBar:nth-child(7) { animation-delay: 0s; }
+/* Speech arriving (onresult) quickens the bars for a beat. */
+.voiceListenPill--speaking .voiceBar {
+  animation-duration: 0.55s;
+}
+.voiceInterim {
+  max-width: min(560px, 90vw);
+  min-height: 1.2em;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+@keyframes voiceBarBounce {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
+  50% { transform: scaleY(2.6); opacity: 1; }
+}
+@keyframes voicePillGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 14px 3px var(--accent-glow); }
+}
+/* Motion opt-out: freeze the equalizer and the pill glow to a static pill. */
+@media (prefers-reduced-motion: reduce) {
+  .voiceBar {
+    animation: none;
+    transform: scaleY(1.4);
+  }
+  .voiceListenPill,
+  .voiceListenPill--speaking .voiceBar {
+    animation: none;
+  }
+}
+
 /* CLAUDE ATTACHMENTS — file picker dropdown, chips, and thread intro row. */
 .claudeAttach {
   position: relative;

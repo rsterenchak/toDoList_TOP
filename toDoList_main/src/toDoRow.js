@@ -47,6 +47,7 @@ import {
 import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
 import { applyTaskFilter } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
+import { mountMicButton } from './voiceInput.js';
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -1417,6 +1418,28 @@ export function buildToDoRow(item, toDoName) {
         addGlyph.textContent = "+";
     }
 
+    // Voice capture — a mic button at the trailing edge of the blank
+    // placeholder row that dictates a new todo into this row's #toDoInput.
+    // Speech recognition, the shared listening overlay, the single-session
+    // lifecycle, and the iOS first-grant retry all live in voiceInput.js
+    // (also driving the Claude composer mic). mountMicButton returns null on
+    // browsers without SpeechRecognition, so the affordance is simply absent
+    // there. The dictated text streams into the input for the user to review
+    // and commit with Enter via the ordinary placeholder path — never
+    // auto-committed. focusTarget reveals the input (which the ≤420px layout
+    // hides until focus) so the transcript is visible; stopPropagation keeps
+    // the tap from also firing the row's focus/commit click handler.
+    const micBtn = !item.tit
+        ? mountMicButton(toDoInput, {
+            id: 'addTaskMic',
+            className: 'micButton addTaskMic',
+            ariaLabel: 'Add task by voice',
+            overlay: true,
+            focusTarget: true,
+            stopPropagation: true,
+        })
+        : null;
+
     closeButtonToDo.id = "closeButtonToDo";
     // Hide delete on blank placeholder rows — deleting the only available
     // input slot would leave the user with no way to create new items.
@@ -1549,6 +1572,7 @@ export function buildToDoRow(item, toDoName) {
     if (addGlyph) toDoChild.appendChild(addGlyph);
     toDoChild.appendChild(toDoTitleDisplay);
     toDoChild.appendChild(toDoInput);
+    if (micBtn) toDoChild.appendChild(micBtn);
     toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
