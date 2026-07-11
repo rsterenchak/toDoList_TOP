@@ -350,9 +350,9 @@
   - Completed:
   <!-- id: 89ae5c4c-4383-47f3-a35d-93df7b243d88 -->
 
-- [ ] **[MEDIUM]** Redesign #mobileProjHeader to a dense left-aligned layout (Variant C) for mobile and desktop
+- [x] **[MEDIUM]** Redesign #mobileProjHeader to a dense left-aligned layout (Variant C) for mobile and desktop
   - Type: feature
   - Description: Rebuild the mobile stacked header into a dense left-aligned row: a left column stacking the "PROJECT N OF M" label, then a name row (project name + ▾ dropdown chevron + run spinner inline), then an open/done counts line below; a vertically-stacked ‹/› chevron column sits to the right of this left column. Rebuild the desktop pill into a compact icon-first pill: truncated project name, a small rounded count badge showing "open/total" (e.g. "7/19") replacing the separate counts row, and the ▾ chevron, all inline. Preserve existing behaviors: tapping the name/chevron/pill still calls openMobileDrawer() on mobile and opens the projectPickerDropdown on desktop (via createProjectPicker); ‹/› chevrons still swipe/advance projects; #mobileProjRunSpinner still shows/hides on active runs; #mobileProjHeader[data-empty="true"] still hides the whole header. Preserve existing element ids (#mobileProjHeader, #mobileProjLabel, #mobileProjName, #mobileProjPrev, #mobileProjNext, #mobileProjCounts, #mobileProjChevron, #mobileProjRunSpinner, #mobileProjPill) so other code that queries them (main.js event wiring, placeDesktopHeader()) keeps working; add new wrapper elements/classes as needed for the new layout without renaming the originals. Likely code in main.js:1678-1751 (header construction) and style.css:10514+ (mobile block and the ≥1024px media query).
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-11
   <!-- id: e11d9444-feca-48f3-b804-27c28b3a28e8 -->
