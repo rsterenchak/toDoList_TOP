@@ -356,3 +356,16 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-11
   <!-- id: e11d9444-feca-48f3-b804-27c28b3a28e8 -->
+
+- [ ] **[LOW]** Agent cards: replace the "SHIPPED" text chip with the shipped check glyph
+  - Type: feature
+  - Description: On agent cards in the `shipped` state, render the green filled-check status glyph (the same mark used on task rows) in the card header instead of the "SHIPPED" text chip. Shipped cards already sit under the "Shipped" section header, so the text label is redundant — the icon keeps the signal and declutters. Only the shipped state changes; every other state keeps its text chip (Needs words, Drafted, Stuck, Queued, Running, No change).
+  - Behavior: A shipped card's header shows a small green check in the same slot the "SHIPPED" pill occupied (between the title and the × remove control), carrying a `title`/`aria-label` of "Shipped" so hover and screen readers still get the word. All non-shipped states render unchanged. The "Shipped 18" group header is untouched.
+  - Implementation notes:
+    - agentView.js: add `buildShippedGlyph()` returning `<span class="agentShippedGlyph" title="Shipped" aria-label="Shipped">` whose innerHTML is the shipped SVG at 16×16. In `buildCard`, change the header append — currently `head.appendChild(buildChip(row.state))` — to `head.appendChild(row.state === 'shipped' ? buildShippedGlyph() : buildChip(row.state))`. Leave `buildChip` generic and untouched.
+    - The SVG mirrors toDoRow.js's `RUN_STATUS_SHIPPED_SVG` (filled disc + knocked-out check) and differs in exactly one thing: the check stroke is `var(--bg-surface)` — the card's background — not `var(--bg-row)`, so the notch reads clean on the card surface. Because that knockout token differs, keep it as a local const here (not an import); add a comment noting it mirrors the task-row glyph so the two stay in sync.
+    - style.css: add `.agentShippedGlyph { flex:0 0 auto; display:inline-flex; align-items:center; color:var(--type-feature); }` and `.agentShippedGlyph svg { display:block; }`. Remove the now-dead `.agentChip--shipped` rule (buildChip no longer produces a shipped chip). Touches style.css — run sequentially, never in parallel with another style.css entry.
+  - Out of scope: The pending/other agent states (keep text chips). The "Shipped" section header. Task-row and TODO.md-viewer surfaces. The shipped state machine, Revert control, and PR link.
+  - File: toDoList_main/src/agentView.js, toDoList_main/src/style.css
+  - Completed:
+  <!-- id: 7d1427e6-0d87-44ef-a53e-9b6d5369abc7 -->
