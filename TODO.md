@@ -321,7 +321,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 78e119bd-8430-4d3a-b7ac-87deec5a6c1c -->
 
-- [ ] **[MEDIUM]** Make the shipped-run dot reliable and cross-device
+- [x] **[MEDIUM]** Make the shipped-run dot reliable and cross-device — Completed: 2026-07-11
   - Type: bug
   - Description: The run-status dot on a todo row (green = a shipped run correlates to the entry, amber = injected-but-pending) is unreliable and effectively never turns green, especially across devices. Three gaps cause it: (1) the green state reads `hasShippedRunForEntry(item.entryId)` against the local `todoapp_claudeRuns` store, but that store is only ever written by the chat "Ship it" flow with its own freshly-minted id — a task's `entryId` (minted only by the row Inject button) never lands there, so the two id-spaces never intersect and the dot stays amber even after the run merges; (2) `todoapp_claudeRuns` is localStorage-only and never mirrored to Supabase; (3) `entryId`/`injectedAt` are absent from `toTodoRowPayload`, so a synced task arrives on other devices with no id and shows no dot at all. Fix: sync the entry id onto the task, and drive the dot's shipped state from the routed target's TODO.md checkbox (the shared ground truth) instead of the device-local chat-runs store.
   - Behavior: On any device, a todo whose injected entry marker is present in the routed target's TODO.md shows the amber pending dot; once that entry's checkbox is `[x]`, the dot turns green. State is identical across devices because the entry id syncs (via Supabase) and shipped-truth is read from the shared TODO.md rather than device-local run records. The dot's look, placement, and amber/green colors are unchanged. The chat Runs tab and its local run records are untouched.
