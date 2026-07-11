@@ -71,6 +71,11 @@ function toTodoRowPayload(item, projectId) {
         completed: !!item.completed,
         status: normalizeTodoStatus(item.status),
         recurrence: item.recurrence || null,
+        // The injected-entry marker id, synced so a task's shipped-run dot reads
+        // identically across devices (the shared TODO.md checkbox is the truth).
+        // Nullable; the write path only forwards it when set, so the sync
+        // degrades to current local behavior when the column is absent.
+        entry_id: item.entryId || null,
     };
 }
 
@@ -2664,6 +2669,12 @@ export const listLogic = (function () {
                         status: normalizeTodoStatus(payload.status),
                         recurrence: payload.recurrence || null,
                     };
+                    // Only forward the entry marker id when set: this keeps the
+                    // write compatible with a server that predates the nullable
+                    // entry_id column — todos without an id (the vast majority)
+                    // upsert exactly as before, so the sync degrades gracefully
+                    // rather than failing every write on an unknown column.
+                    if (payload.entry_id) row.entry_id = payload.entry_id;
                 } else {
                     return;
                 }
@@ -2720,6 +2731,9 @@ export const listLogic = (function () {
                         status: normalizeTodoStatus(payload.status),
                         recurrence: payload.recurrence || null,
                     };
+                    // See the insert path: forward entry_id only when set so the
+                    // update stays compatible with a pre-migration server.
+                    if (payload.entry_id) row.entry_id = payload.entry_id;
                 } else {
                     return;
                 }
@@ -2938,6 +2952,11 @@ export const listLogic = (function () {
                         completed: !!t.completed,
                         status: normalizeTodoStatus(t.status),
                         recurrence: t.recurrence || null,
+                        // Round-trip the injected-entry marker id so the row's
+                        // shipped-run dot resolves cross-device. Absent column
+                        // (server predates the migration) → undefined, which
+                        // degrades to current local behavior (no synced id).
+                        entryId: t.entry_id || undefined,
                         created_at: t.created_at || null,
                     });
                 });

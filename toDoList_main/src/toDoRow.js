@@ -42,6 +42,7 @@ import {
     makeInjectButton,
     refreshInjectButton,
     hasShippedRunForEntry,
+    refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
@@ -148,10 +149,16 @@ function updateDescIndicator(toDoChild, item) {
 
 
 // Overlay a small run-status badge dot on the bottom-right of `#descIndicator`:
-//   • green (`.dot`)            — a SHIPPED run record correlates to item.entryId
-//   • amber (`.dot.dot--pending`) — the description was injected (item.injectedAt)
-//                                   but no SHIPPED run exists for it yet
-//   • no dot                    — the entry has never been injected
+//   • green (`.dot`)            — the entry's marker sits on a CHECKED (shipped)
+//                                 TODO.md entry in the routed target repo
+//   • amber (`.dot.dot--pending`) — the entry has an id (injected here or synced
+//                                 from another device) but hasn't shipped yet
+//   • no dot                    — the task carries no entry id at all
+// The shipped state is read from the shared TODO.md (via hasShippedRunForEntry
+// against the marker cache), not a device-local run store, so the dot agrees
+// across devices. The gate is the entry id, which syncs with the task — so a
+// task injected on another device still shows a dot here; injectedAt is kept as
+// a local fast-path so the injecting device paints amber instantly.
 // The dot lives INSIDE `#descIndicator`, so it inherits the indicator's
 // `data-has-desc` visibility gating and its 0.9 / 0.45 opacity rules for free,
 // and it never touches the inject button's own separate state glyph. Idempotent:
@@ -159,7 +166,7 @@ function updateDescIndicator(toDoChild, item) {
 function applyDescStatusDot(descIndicator, item) {
     if (!descIndicator) return;
     const existing = descIndicator.querySelector('.dot');
-    if (!item || !item.injectedAt) {
+    if (!item || !(item.entryId || item.injectedAt)) {
         if (existing) existing.remove();
         return;
     }
@@ -173,12 +180,25 @@ function applyDescStatusDot(descIndicator, item) {
 
 // Re-evaluate every rendered row's description-status dot in one pass, resolving
 // each live `#descIndicator` back to its row's `__item`. Called on the
-// run-status event so dots flip pending → shipped without a full re-render.
+// run-status event so dots flip pending → shipped without a full re-render. Also
+// kicks a shipped-marker refresh for every project with an injected entry on
+// screen; the refresh is TTL-cached per repo (so repeated calls coalesce) and
+// re-emits the run-status event when it resolves, re-running this sweep against
+// the fresh cache to flip amber → green cross-device.
 export function refreshDescStatusDots() {
     if (typeof document === 'undefined') return;
+    const projectsToRefresh = new Set();
     document.querySelectorAll('#descIndicator').forEach(function(indicator) {
         const row = indicator.closest('#toDoChild');
-        if (row && row.__item) applyDescStatusDot(indicator, row.__item);
+        if (row && row.__item) {
+            applyDescStatusDot(indicator, row.__item);
+            if (row.__item.entryId && row.dataset && row.dataset.value) {
+                projectsToRefresh.add(row.dataset.value);
+            }
+        }
+    });
+    projectsToRefresh.forEach(function(name) {
+        refreshShippedMarkersForProject(name);
     });
 }
 
@@ -1642,6 +1662,10 @@ export function buildToDoRow(item, toDoName) {
     // runs reconcile without a full re-render.
     ensureRunStatusDotListener();
     applyDescStatusDot(descIndicator, item);
+    // Kick a shipped-marker refresh for this project's routed target so the dot
+    // flips to green once the entry's TODO.md checkbox is [x]. TTL-cached per
+    // repo, so this is a no-op when already fresh.
+    if (item.entryId) refreshShippedMarkersForProject(toDoName);
 
     // Workflow-status badge — committed rows only. Sits right after the
     // checkbox, ahead of the title, and is itself the tap target for the
