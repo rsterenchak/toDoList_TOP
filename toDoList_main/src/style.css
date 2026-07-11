@@ -10566,10 +10566,15 @@ body.row-dragging * { cursor: grabbing !important; }
 
   /* The mobile title pill is the desktop project pill's own chrome's job
      (#mobileProjHeader). Make the wrapper transparent to layout here so the
-     name + ▾ lay out as direct title-row children exactly as before. */
+     name + badge + ▾ lay out as direct title-row children exactly as before. */
   #mobileProjPill {
     display: contents;
   }
+
+  /* The Variant C left column dissolves on desktop so the name row lays out
+     directly inside the compact pill; the ‹ › chevron column is mobile-only. */
+  #mobileProjMain { display: contents; }
+  #mobileProjChevCol { display: none; }
 
   #mobileProjName {
     font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -10599,6 +10604,28 @@ body.row-dragging * { cursor: grabbing !important; }
     cursor: pointer;
     user-select: none;
   }
+
+  /* Icon-first pill: a small rounded "open/total" count badge (e.g. "7/19")
+     sits inline between the name and the ▾ chevron, replacing the separate
+     open/done counts row that formerly rode in the top header. */
+  .mobileProjCountBadge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0 2px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(157, 147, 238, 0.14);
+    color: rgba(157, 147, 238, 0.9);
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+  /* No count badge when there is no active project — matches the empty-state
+     pill contract (the whole header hides on data-empty anyway). */
+  #mobileProjHeader[data-empty="true"] .mobileProjCountBadge { display: none; }
 
   /* The hamburger is retired as a desktop trigger — the pill owns
      opening the drawer now. The button stays in the DOM (Ctrl+Backspace
@@ -11032,24 +11059,13 @@ body.row-dragging * { cursor: grabbing !important; }
      left, so no extra spacer is needed now that the view tabs have moved out
      of #navBar into the sub-band. */
 
-  /* ── Stats container, inline beside the pill ── */
+  /* Stats container — hidden at desktop. The open/done counts are now carried
+     by the in-pill "open/total" badge (.mobileProjCountBadge), so the separate
+     counts row that placeDesktopHeader() still relocates into #navBar no longer
+     paints. Kept as a display:none rule (rather than dropping the relocation)
+     so the pill's drawer/swipe wiring is untouched. */
   #navBar #mobileProjStats {
-    display: inline-flex;
-    align-items: center;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
-    background: none;
-    border: none;
-  }
-  #navBar #mobileProjCounts {
-    display: inline-flex;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 8px;
-    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 11px;
-    letter-spacing: 0.04em;
+    display: none;
   }
   /* No active project → the empty pill hides (data-empty), and so do the
      counts that sit beside it. In the top header the counts are a sibling of
@@ -14300,88 +14316,83 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     text-transform: uppercase;
   }
 
-  /* ── Compressed single-row mobile header ──
-     Collapses the legacy stacked header (PROJECT N OF M label, centered
-     name flanked by ‹ ›, separate counts row) into ONE ~40px row: the
-     project name + ▾ dropdown chevron on the left, and the open/done
-     counts as inline plain text ("15 open · 127 done") pushed to the
-     right. The hamburger is hidden on mobile (see #sidebarToggle above);
-     the header keeps a right-side gap — formerly the hamburger's slot,
-     now free space for future header chips — so the inline counts sit
-     clear of the right edge. The legacy ‹ › carousel
-     chevrons and the PROJECT N OF M label hide here — the dropdown
-     chevron's tap-to-open-drawer affordance owns project switching on
-     mobile. */
+  /* ── Dense left-aligned mobile header (Variant C) ──
+     Rebuilds the stacked header into a dense, left-aligned row. A left
+     column (#mobileProjMain) stacks three bands flush to the left edge: the
+     PROJECT N OF M label, a name row (project name + ▾ dropdown chevron +
+     run spinner inline), and an open/done counts line below. A
+     vertically-stacked ‹ / › chevron column (#mobileProjChevCol) sits to the
+     right of that column. The hamburger is hidden on mobile (see
+     #sidebarToggle above), so the row runs from the left edge to a modest
+     right gap. The dropdown chevron's tap-to-open-drawer affordance and the
+     ‹ › carousel both switch projects. */
   #mobileProjHeader {
     flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-height: 40px;
-    /* Option A restyle: deep near-black header bar so the centered title
-       pill carries the visual weight on mobile. position:relative is the
-       containing block for the absolutely-positioned title-row pill, which
-       centers against the full bar width rather than leftover flex space. */
+    /* Deep near-black header bar; position:relative keeps the defensive
+       stacking context from the base block. */
     position: relative;
     background: #15151e;
-    /* Right padding keeps a gap at the right edge of the row — formerly
-       the hamburger's slot, now free space reserved for future header
-       chips — so the inline counts don't hug the edge. */
-    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px) 60px 6px 16px;
+    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px) 16px 6px 16px;
   }
 
-  #mobileProjLabel { display: none; }
-  .mobileProjChev  { display: none; }
+  /* Left column — label / name-row / counts, stacked and left-aligned. It
+     absorbs the horizontal slack so the chevron column parks at the right. */
+  #mobileProjMain {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
 
+  #mobileProjLabel {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    line-height: 1;
+  }
+
+  /* Name row — the name + ▾ pill and the run spinner, left-aligned. It stays
+     the swipe surface wired in main.js, so touch-action stays pan-y. */
   #mobileProjTitleRow {
+    position: static;
+    transform: none;
+    width: auto;
+    max-width: 100%;
     min-width: 0;
     min-height: 0;
-    gap: 2px;
+    gap: 6px;
     align-items: center;
-    /* True bar-centered placement: take the title group out of flow and
-       center it against the full header width (its containing block is
-       #mobileProjHeader, position:relative) rather than the leftover flex
-       space beside the counts — and center it vertically too so the one-line
-       title pill stays contained within the bar. width:max-content keeps the
-       group snug around its content; max-width caps it so a long name's pill
-       can't run into the inline counts. */
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: max-content;
-    max-width: 60%;
-    justify-content: center;
-    /* Dense layout: the swipe gesture is disabled here since the carousel
-       pattern is gone (the chevron-dropdown pattern owns project switching
-       now). */
-    touch-action: auto;
+    justify-content: flex-start;
+    touch-action: pan-y;
   }
 
-  /* Subtle title pill wrapping the name + ▾ as one centered unit. A hairline
-     accent-tinted border, a slightly elevated fill, and a ~10px radius give
-     gentle containment — not the heavy original chip. min-width:0 lets the
-     one-line name ellipsize inside it rather than forcing the pill wider than
-     the title row's max-width. */
+  /* The name + ▾ group reads as a clean left-aligned title here — no boxed
+     pill. min-width:0 lets a long one-line name ellipsize inside it. */
   #mobileProjPill {
     display: inline-flex;
     align-items: center;
     gap: 2px;
     min-width: 0;
     max-width: 100%;
-    padding: 6px 14px;
-    border: 0.5px solid rgba(157, 147, 238, 0.30);
-    background: #1a1b24;
-    border-radius: 10px;
+    padding: 0;
+    border: none;
+    background: none;
+    border-radius: 0;
     cursor: pointer;
   }
 
   #mobileProjName {
-    font-size: 15px;
-    /* Prominent centered title in the accent purple, the Void mono chrome
+    font-size: 16px;
+    /* Prominent left-aligned title in the accent purple, the Void mono chrome
        (font-family inherited from the STACK block above). */
     font-weight: 700;
-    line-height: 1.25;
-    text-align: center;
+    line-height: 1.2;
+    text-align: left;
     color: #9D93EE;
     /* One line that fits the mobile viewport: a name too long for the row
        ellipsizes rather than wrapping, so the ▾ chevron never gets pushed off
@@ -14406,10 +14417,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     cursor: pointer;
     /* Pad the chevron to a touch-friendly footprint without breaking
        the inline flow. */
-    padding: 6px 6px;
+    padding: 4px 4px;
     user-select: none;
     transition: opacity 0.12s ease;
   }
+
+  /* The in-pill "open/total" badge is a desktop affordance — on mobile the
+     counts render as their own line below (#mobileProjStats), so hide it. */
+  .mobileProjCountBadge { display: none; }
 
   /* Subtle pressed feedback — the whole header is the picker tap target
      (activateProjectPicker wiring), so dim the title + chevron on press. */
@@ -14418,19 +14433,39 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     opacity: 0.6;
   }
 
-  /* Stats container, pushed to the right edge of the row via
-     margin-left:auto so it lands just left of the absolute hamburger. */
+  /* Open/done counts line, the bottom band of the left column — left-aligned
+     directly under the name row. */
   #mobileProjStats {
     flex: 0 0 auto;
     min-height: 0;
     margin-top: 0;
-    margin-left: auto;
+    margin-left: 0;
+    justify-content: flex-start;
   }
   #mobileProjCounts {
     gap: 6px;
-    font-size: 11px;
-    letter-spacing: 0.02em;
+    font-size: 10px;
+    letter-spacing: 0.06em;
     align-items: baseline;
+  }
+
+  /* Vertically-stacked ‹ / › chevron column, seated at the right edge of the
+     row. The base .mobileProjChev 44×44 hit target is trimmed to a stacked
+     pair of tall, narrow tap targets so the column stays compact. */
+  #mobileProjChevCol {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    gap: 0;
+    margin-left: auto;
+  }
+  #mobileProjChevCol .mobileProjChev {
+    display: inline-flex;
+    width: 40px;
+    height: 26px;
+    font-size: 20px;
   }
   /* ── App-root safe-area paint ──
      Belt-and-suspenders for notched devices: the header already absorbs

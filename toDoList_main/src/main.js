@@ -1683,6 +1683,12 @@ function component() {
     const mobileProjNext     = document.createElement('button');
     const mobileProjStats    = document.createElement('div');
     const mobileProjCounts   = document.createElement('div');
+    // Variant C wrappers: a left column stacking label / name-row / counts,
+    // and a vertically-stacked ‹ / › chevron column seated to its right. Both
+    // dissolve on desktop (display:contents / display:none) so the compact
+    // pill layout is unaffected.
+    const mobileProjMain     = document.createElement('div');
+    const mobileProjChevCol  = document.createElement('div');
 
     mobileProjHeader.id   = 'mobileProjHeader';
     mobileProjLabel.id    = 'mobileProjLabel';
@@ -1692,6 +1698,8 @@ function component() {
     mobileProjNext.id     = 'mobileProjNext';
     mobileProjStats.id    = 'mobileProjStats';
     mobileProjCounts.id   = 'mobileProjCounts';
+    mobileProjMain.id     = 'mobileProjMain';
+    mobileProjChevCol.id  = 'mobileProjChevCol';
 
     mobileProjPrev.type = 'button';
     mobileProjNext.type = 'button';
@@ -1703,7 +1711,6 @@ function component() {
     mobileProjNext.setAttribute('aria-label', 'Next project');
 
     mobileProjStats.appendChild(mobileProjCounts);
-    mobileProjTitleRow.appendChild(mobileProjPrev);
 
     // Dense-mobile-header affordance (≤1023px only — hidden on desktop
     // via CSS): the ▾ chevron next to the project name advertises the
@@ -1726,9 +1733,20 @@ function component() {
     // taps on its padding bubble to the #mobileProjHeader handler, which the
     // name/chevron own-handler guard deliberately does not skip for it, so a
     // tap anywhere on the pill opens the picker exactly once.
+    // Icon-first desktop pill affordance: a small rounded "open/total" badge
+    // (e.g. "7/19") that sits inline between the project name and the ▾
+    // chevron. It replaces the separate open/done counts row at desktop
+    // widths; on mobile it is hidden (the counts render as their own line in
+    // the left column) so the same #mobileProjCounts writer isn't duplicated.
+    const mobileProjCountBadge = document.createElement('span');
+    mobileProjCountBadge.id = 'mobileProjCountBadge';
+    mobileProjCountBadge.className = 'mobileProjCountBadge';
+    mobileProjCountBadge.setAttribute('aria-hidden', 'true');
+
     const mobileProjPill = document.createElement('div');
     mobileProjPill.id = 'mobileProjPill';
     mobileProjPill.appendChild(mobileProjName);
+    mobileProjPill.appendChild(mobileProjCountBadge);
     mobileProjPill.appendChild(mobileProjChevron);
 
     // Cross-device run indicator: a small purple spinner that trails the
@@ -1745,10 +1763,17 @@ function component() {
 
     mobileProjTitleRow.appendChild(mobileProjPill);
     mobileProjTitleRow.appendChild(mobileProjRunSpinner);
-    mobileProjTitleRow.appendChild(mobileProjNext);
-    mobileProjHeader.appendChild(mobileProjLabel);
-    mobileProjHeader.appendChild(mobileProjTitleRow);
-    mobileProjHeader.appendChild(mobileProjStats);
+    // Variant C: the left column stacks label · name-row · counts; the ‹ ›
+    // carousel chevrons move into a vertical column seated to its right. The
+    // ‹ › buttons keep their own click handlers and disabled wiring — only
+    // their DOM home changes — and the swipe gesture stays on the title row.
+    mobileProjChevCol.appendChild(mobileProjPrev);
+    mobileProjChevCol.appendChild(mobileProjNext);
+    mobileProjMain.appendChild(mobileProjLabel);
+    mobileProjMain.appendChild(mobileProjTitleRow);
+    mobileProjMain.appendChild(mobileProjStats);
+    mobileProjHeader.appendChild(mobileProjMain);
+    mobileProjHeader.appendChild(mobileProjChevCol);
 
     // Tap on name/chevron opens the drawer (the project picker on
     // mobile). Desktop ignores the gesture because the drawer pattern is
@@ -2528,8 +2553,11 @@ function component() {
             if (mobileProjHeader.parentNode !== main2) {
                 main2.insertBefore(mobileProjHeader, taskFilterBar);
             }
-            if (mobileProjStats.parentNode !== mobileProjHeader) {
-                mobileProjHeader.appendChild(mobileProjStats);
+            // Variant C: the counts are the bottom line of the header's left
+            // column (#mobileProjMain), not a direct child of the header, so
+            // return them there when shuttling back from the desktop navBar.
+            if (mobileProjStats.parentNode !== mobileProjMain) {
+                mobileProjMain.appendChild(mobileProjStats);
             }
         }
     }
@@ -4341,6 +4369,9 @@ function component() {
         if (total > 0 && activeIdx >= 0) {
             mobileProjLabel.textContent = 'PROJECT ' + (activeIdx + 1) + ' OF ' + total;
             mobileProjName.textContent  = activeName;
+            // Counts for both surfaces: mobile left-column line + desktop badge.
+            mobileProjCounts.textContent = open + ' open · ' + done + ' done';
+            mobileProjCountBadge.textContent = open + '/' + (open + done);
             mobileProjHeader.removeAttribute('data-empty');
             // Per-project accent flows into the title via --proj-accent on
             // the header; mobileProjName resolves it through CSS
@@ -4349,6 +4380,8 @@ function component() {
         } else {
             mobileProjLabel.textContent = '';
             mobileProjName.textContent  = '';
+            mobileProjCounts.textContent = '';
+            mobileProjCountBadge.textContent = '';
             mobileProjHeader.setAttribute('data-empty', 'true');
             applyProjectAccent(mobileProjHeader, null);
         }
