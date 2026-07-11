@@ -1677,6 +1677,21 @@ body {
   color: var(--accent-text);
   border-color: var(--accent-text);
 }
+/* Launcher long-press voice capture — reuse the composer mic's recording /
+   denied treatment (same accent tokens + micPulse animation) on the launcher
+   FAB so the two voice affordances read identically. The id-scoped selector is
+   needed only to win over #claudeLauncher's own background / color / border
+   rules above; no new visual treatment is introduced. */
+#claudeLauncher.micButton--recording {
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  animation: micPulse 1.4s ease-in-out infinite;
+}
+#claudeLauncher.micButton--denied {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* Unavailable — the active project has no routed repo. Present the launcher as
    visible-but-inert, mirroring the dimmed .injectBtn--unconfigured call-to-fix
