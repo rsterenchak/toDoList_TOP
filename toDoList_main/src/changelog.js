@@ -11,14 +11,12 @@ export const changelog = [
         ],
         fixed: [
             "Voice-dictated todos are now added automatically when you stop talking, instead of leaving the text stranded in the field.",
+            "The voice mic button no longer lingers on a todo after you add it.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-10',
-        added: [
-            "Todo rows now show a status dot on the description glyph — amber once an entry is injected, turning green once its run has shipped.",
-        ],
         fixed: [
             "The \"That's all for this project\" ghost no longer appears in projects that still have todo items.",
             "A todo handed off from the Agent board to chat now settles to shipped, failed, or no-change once its run finishes, instead of staying stuck on \"Needs words\".",

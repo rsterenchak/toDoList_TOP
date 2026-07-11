@@ -1735,6 +1735,9 @@ export function buildToDoRow(item, toDoName) {
         // Strip the blank-row affordance cue — once committed, this row is a
         // real todo and the leading `+` glyph would be misleading.
         if (addGlyph && addGlyph.parentElement) addGlyph.remove();
+        // Same for the voice-dictation mic: it only belongs on the blank
+        // "Add a task" placeholder, so remove it once this row is committed.
+        if (micBtn && micBtn.parentElement) micBtn.remove();
         // The row was built as a blank placeholder, so it has no status badge
         // yet — add one now that it's a committed task. Guard against a repeat
         // insert if the same row somehow re-commits.

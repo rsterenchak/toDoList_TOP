@@ -62,6 +62,17 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
         expect(handler).not.toMatch(/keyHintBadge/);
     });
 
+    it('strips the voice mic button from the DOM when the blank row commits', () => {
+        // The mic is mounted only on the blank placeholder (gated on
+        // `!item.tit`), but committing reuses the same row DOM in place, so
+        // without an explicit removal it lingers on the now-committed todo.
+        // It must be stripped alongside the `+` glyph in the Enter handler.
+        const enterIdx = toDoRow.indexOf('toDoInput keydown — Enter to commit title');
+        expect(enterIdx).toBeGreaterThan(-1);
+        const handler = toDoRow.slice(enterIdx, enterIdx + 3500);
+        expect(handler).toMatch(/micBtn\b[\s\S]*?\.remove\(\)/);
+    });
+
     it('drops the bare `\\` toggle and the Ctrl+\\ chord handler from main.js', () => {
         // The cross-pane focus model now lives on ArrowLeft / ArrowRight —
         // the backslash bindings were the previous spec, superseded by this
