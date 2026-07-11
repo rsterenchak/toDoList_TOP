@@ -185,16 +185,19 @@ describe('desktop header consolidation', () => {
         expect(after[1]).toMatch(/background:\s*#9D93EE/);
     });
 
-    it('(d) the counts are relocated into the header beside the pill', () => {
-        // updateMobileProjHeader stays the single writer of the count text;
-        // placeDesktopHeader() just relocates #mobileProjStats into #navBar at
-        // desktop and the consolidation block styles it inline there.
+    it('(d) the desktop counts collapse into the in-pill count badge', () => {
+        // Variant C replaces the separate desktop counts row with the icon-first
+        // pill's inline "open/total" badge (.mobileProjCountBadge). The relocated
+        // #mobileProjStats therefore no longer paints in #navBar (display:none),
+        // though placeDesktopHeader() still relocates it (leaving the pill's
+        // drawer/swipe wiring untouched) — at mobile it returns into the header's
+        // left column (#mobileProjMain) as the bottom counts line.
         const block = consolidationBlock();
-        expect(block).toMatch(/#navBar\s+#mobileProjStats\s*\{[^}]*display:\s*inline-flex/);
+        expect(block).toMatch(/#navBar\s+#mobileProjStats\s*\{[^}]*display:\s*none/);
         const fnIdx = main.indexOf('function placeDesktopHeader(');
         const fn = main.slice(fnIdx, main.indexOf('placeDesktopHeader();', fnIdx));
         expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjStats\s*,\s*pomodoroToggle\s*\)/);
-        expect(fn).toMatch(/mobileProjHeader\.appendChild\(\s*mobileProjStats\s*\)/);
+        expect(fn).toMatch(/mobileProjMain\.appendChild\(\s*mobileProjStats\s*\)/);
     });
 
     it('(e) the SORT BY DUE / EXPAND ALL overlay drops onto the filter row, body data-view mirror stays wired', () => {

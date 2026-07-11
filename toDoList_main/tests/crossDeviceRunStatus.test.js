@@ -85,7 +85,7 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
 
     it('re-polls on a genuine active-project change via the single header writer', () => {
         const start = main.indexOf('function updateMobileProjHeader');
-        const block = main.slice(start, start + 2600);
+        const block = main.slice(start, start + 3200);
         expect(block).toMatch(/activeName\s*!==\s*projRunSpinnerLastProject/);
         expect(block).toMatch(/projRunSpinnerLastProject\s*=\s*activeName/);
         expect(block).toMatch(/refreshProjRunSpinner\(\)/);
