@@ -289,3 +289,14 @@
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 73d4e484-ca74-4768-9af6-b9e65696160f -->
+
+- [ ] **[MEDIUM]** Fix voice capture stranding the transcript — auto-commit on recording end
+  - Type: bug
+  - Description: After voice capture stops, the transcribed text is stranded in the "Add a task" input and no todo is created: on mobile you can't return keyboard focus to the field to press Enter yourself, so the entry can't be committed. Root cause is in `voiceInput.js` — `onend` (and `stopDictation`) close the listening overlay and deliberately leave the transcript in `activeTarget.value` for manual review, but iOS Safari won't reopen the soft keyboard on a programmatic focus after the async recognition-end event, so the Enter step is unreachable. Fix: when the add-task-row mic finishes recording with a non-empty transcript, commit it automatically through the field's existing Enter path instead of waiting for a manual keypress. Make this opt-in per mount so only the add-task mic auto-commits — the Claude composer mic must keep leaving its text for review before Send.
+  - Implementation notes:
+    - Add an optional `onFinal(finalText)` callback to `voiceInput`'s dictation opts, invoked from `onend` only when the final transcript is non-empty. The add-task-row mic (mounted in `toDoRow.js`, or `mobileTaskCreate.js` if that's where the prior PR placed it) passes an `onFinal` that dispatches a synthetic `Enter` keydown on `#toDoInput`, reusing the existing commit handler at `toDoRow.js` ~line 1644 so the mobile due-chip stamp (`applyChosenDueToItem`), `listLogic.commitBlankPlaceholder`, the fresh blank placeholder, the status badge, and persistence all fire exactly as a typed Enter would. Do not call `listLogic.addToDo` directly — that bypasses those side effects. (If the keydown handler ignores untrusted events, instead extract its body into a named function that both the handler and `onFinal` call.)
+    - Empty guard: never fire `onFinal` on a blank transcript — a silent or failed session must not create an empty todo.
+    - Keep a bail-out: since auto-commit removes the pre-commit review, tapping the backdrop (outside the pill) or pressing Escape should cancel — stop recognition and discard without committing — while a natural speech-pause end commits. Set a suppress-final flag on the cancel path so `onend` skips `onFinal`. Update the overlay hint copy (currently "Tap anywhere to stop") to reflect the new cancel-vs-commit semantics.
+  - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: fc02ce7a-333b-457f-9b4d-40121282debb -->
