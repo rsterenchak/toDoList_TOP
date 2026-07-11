@@ -369,3 +369,20 @@
   - File: toDoList_main/src/agentView.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: 7d1427e6-0d87-44ef-a53e-9b6d5369abc7 -->
+
+- [ ] **[MEDIUM]** Fix run-status dot missing on task rows for entries shipped through the agent flow
+  - Type: bug
+  - Description: The amber/green run-status dot on a tasks-view row (`applyDescStatusDot` in `toDoRow.js`) never appears when a task is routed through the Agent tab (triage → draft → dispatch → ship), even though it works for tasks injected via the inject button. Root cause: the dot reads two item-level signals — `item.injectedAt` (the render gate) and `item.entryId` matched against `SHIPPED` records in the `todoapp_claudeRuns` store — and both are written only by the inject-button/chat path (`item.injectedAt` in inject.js's `injectDescription`; the run records in `claudeSheet.js`). The agent subsystem tracks state on the `agent_queue` row via `setAgentRunState` and writes neither signal back to the source task, so the row's item has no `injectedAt` (the dot early-returns) and no matching shipped record (green couldn't fire even if it rendered). The link already exists — every agent card/row carries `todo_id` equal to the source item's `id` — so the fix is to have the agent flow write those same two signals back, keyed off `todo_id`.
+  - Behavior:
+    1. When an agent card is dispatched (its entry injected into TODO.md), the source task's row shows the amber (pending) dot.
+    2. When that run reconciles to shipped, the same row's dot flips to green.
+    3. Tasks injected via the inject button keep their current behavior unchanged.
+  - Implementation notes:
+    - Amber edge — in `agentView.js` `dispatchDraft`, after `injectEntry` succeeds, resolve the source task by the row's `todo_id` and stamp `item.entryId = <that entryId>` + `item.injectedAt = Date.now()` through a new `listLogic` method (data-model mutations must route through listLogic per CLAUDE.md — mirror how `injectDescription` stamps these), then call `emitTodoRunStatusChange()` so the dot reflows. Stamp both fields: `injectedAt` gates the dot, `entryId` is what the green check matches on.
+    - Green edge — in `agentView.js` `settleShipped`/`reconcileShipped`, record the shipped `entryId` in a synchronous correlation signal that `hasShippedRunForEntry` (inject.js) also consults, then `emitTodoRunStatusChange()`.
+    - Do NOT write agent runs into the `todoapp_claudeRuns` store to satisfy the green check — that store also drives the Claude sheet's Runs tab, iterate seeds, and revert, so agent-shipped entries would get duplicated into those surfaces. Add a dedicated shipped-entry signal (a small localStorage key + writer owned alongside `CLAUDE_RUNS_KEY` in inject.js) and extend `hasShippedRunForEntry` to return true for either source, leaving `toDoRow.js`'s `applyDescStatusDot` untouched.
+    - Amber lights at dispatch (when the entry actually reaches TODO.md), matching the dot's existing "injected, not yet shipped" meaning.
+  - Out of scope: lighting amber earlier in the agent pipeline (during triaging/drafting, before dispatch) — that's a broader change to the dot's semantics; any change to the dot's visual style or position; surfacing agent-shipped entries in the Claude sheet's Runs tab.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: df38cb9a-2839-4717-bce4-1fa04c8d3158 -->
