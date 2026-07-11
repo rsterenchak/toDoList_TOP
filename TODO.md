@@ -290,7 +290,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 73d4e484-ca74-4768-9af6-b9e65696160f -->
 
-- [ ] **[MEDIUM]** Fix voice capture stranding the transcript — auto-commit on recording end
+- [x] **[MEDIUM]** Fix voice capture stranding the transcript — auto-commit on recording end — Completed: 2026-07-11
   - Type: bug
   - Description: After voice capture stops, the transcribed text is stranded in the "Add a task" input and no todo is created: on mobile you can't return keyboard focus to the field to press Enter yourself, so the entry can't be committed. Root cause is in `voiceInput.js` — `onend` (and `stopDictation`) close the listening overlay and deliberately leave the transcript in `activeTarget.value` for manual review, but iOS Safari won't reopen the soft keyboard on a programmatic focus after the async recognition-end event, so the Enter step is unreachable. Fix: when the add-task-row mic finishes recording with a non-empty transcript, commit it automatically through the field's existing Enter path instead of waiting for a manual keypress. Make this opt-in per mount so only the add-task mic auto-commits — the Claude composer mic must keep leaving its text for review before Send.
   - Implementation notes:
