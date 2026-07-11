@@ -179,12 +179,12 @@ describe('mobile desc editor modal — touch-device tap opens it', () => {
         expect(coarseIdx).toBeLessThan(mobileIdx);
     });
 
-    it('coarse-pointer branch calls showDescEditorModal with the row\'s item and a refresh callback', () => {
+    it('coarse-pointer branch calls showDescEditorModal with the row\'s item and a save callback', () => {
         expect(toDoRow).toMatch(/showDescEditorModal\s*\(/);
-        // The refresh callback re-stamps the row\'s data-has-desc so the
-        // indicator icon paints/dims to match the saved desc immediately
-        // on modal close.
-        expect(toDoRow).toMatch(/showDescEditorModal\s*\([\s\S]{0,200}updateDescIndicator/);
+        // The onSave callback routes the desc write through listLogic so the
+        // edit persists to Supabase (see the desc-save-persistence suite); the
+        // leading-slot glyph no longer tracks the description.
+        expect(toDoRow).toMatch(/showDescEditorModal\s*\([\s\S]{0,400}listLogic\.editToDoItem/);
     });
 
     it('coarse-pointer branch is excluded from blank placeholder rows (no desc to edit yet)', () => {
@@ -234,30 +234,27 @@ describe('mobile desc editor modal — row description indicator', () => {
         expect(toDoRow).toMatch(/insertBefore\(\s*descIndicator\s*,\s*toDoInput\s*\)/);
     });
 
-    it('the indicator uses an inline SVG (no new icon-font dependency)', () => {
-        // CLAUDE.md: "No new dependencies. Use native browser APIs."
-        // The icon ships as a built-in SVG glyph in the row markup. The
-        // descIndicator id assignment uses either quote style depending on
-        // local source convention — accept both.
-        const indicatorIdx = toDoRow.search(/descIndicator\.id\s*=\s*['"]descIndicator['"]/);
-        expect(indicatorIdx).toBeGreaterThan(-1);
-        const tail = toDoRow.slice(indicatorIdx, indicatorIdx + 1200);
-        expect(tail).toMatch(/<svg/);
+    it('the run-status glyphs are inline SVG (no new icon-font dependency)', () => {
+        // CLAUDE.md: "No new dependencies. Use native browser APIs." The
+        // shipped/pending glyphs ship as built-in SVG markup applied to the
+        // #descIndicator slot by applyRunStatusGlyph.
+        expect(toDoRow).toMatch(/RUN_STATUS_SHIPPED_SVG\s*=\s*['"]<svg/);
+        expect(toDoRow).toMatch(/RUN_STATUS_PENDING_SVG\s*=\s*['"]<svg/);
     });
 
-    it('the indicator is CSS-hidden by default and revealed via data-has-desc on the row', () => {
-        // data-has-desc is already managed by updateDescIndicator. Driving
-        // the icon\'s visibility from the same attribute means the modal\'s
-        // onSave callback (which calls updateDescIndicator) flips the icon
-        // in lockstep with the saved description.
+    it('the indicator is CSS-hidden by default and revealed by a run-status state class', () => {
+        // The slot takes no space until applyRunStatusGlyph adds a
+        // runStatusGlyph--shipped / --pending class, so a task with no entry
+        // id shows nothing in the leading position.
         expect(css).toMatch(/#descIndicator\s*\{[\s\S]{0,200}display:\s*none/);
-        expect(css).toMatch(/#toDoChild\[data-has-desc="true"\]\s+#descIndicator\s*\{[\s\S]{0,200}display:\s*inline-flex/);
+        expect(css).toMatch(/#descIndicator\.runStatusGlyph--(shipped|pending)[\s\S]{0,120}display:\s*inline-flex/);
     });
 
-    it('the indicator paints in the accent color (purple per the task brief)', () => {
-        // Brief: "small purple note-style indicator icon". --accent-text
-        // is the existing purple token used by other accent surfaces.
-        expect(css).toMatch(/#descIndicator\s*\{[\s\S]{0,300}color:\s*var\(--accent[^)]*\)/);
+    it('the glyph paints in the feature/warning tokens per shipped/pending state', () => {
+        // Shipped = feature green, pending = warning amber — legible in both
+        // dark and light themes via the shared tokens.
+        expect(css).toMatch(/#descIndicator\.runStatusGlyph--shipped\s*\{[\s\S]{0,80}color:\s*var\(--type-feature\)/);
+        expect(css).toMatch(/#descIndicator\.runStatusGlyph--pending\s*\{[\s\S]{0,80}color:\s*var\(--text-warning\)/);
     });
 
     it('the indicator releases pointer events so clicks pass through to the row body', () => {
@@ -507,21 +504,19 @@ describe('mobile desc editor modal — desc save persistence', () => {
     const toDoRow = read('toDoRow.js');
 
     it('the row\'s onSave callback routes the desc write through listLogic.editToDoItem', () => {
-        // Regression: previously the onSave callback only called
-        // updateDescIndicator, so the modal's persist() routine mutated
-        // item.desc + saveToStorage (localStorage only) without firing the
-        // Supabase persistMutation gate. On the next hydrate the canonical
-        // backend snapshot overwrote the local desc edit, making the
-        // user's drafting silently disappear on hard refresh. Titles
-        // already routed through editToDoItem via onTitleSave; the desc
-        // path now mirrors that so localStorage and Supabase stay aligned.
+        // Regression: the modal's persist() routine mutated item.desc +
+        // saveToStorage (localStorage only) without firing the Supabase
+        // persistMutation gate. On the next hydrate the canonical backend
+        // snapshot overwrote the local desc edit, making the user's drafting
+        // silently disappear on hard refresh. Titles already routed through
+        // editToDoItem via onTitleSave; the desc path mirrors that so
+        // localStorage and Supabase stay aligned.
         const openIdx = toDoRow.indexOf('function openDescEditorForRow(');
         expect(openIdx).toBeGreaterThan(-1);
         const fn = toDoRow.slice(openIdx, openIdx + 1600);
         const onSaveMatch = fn.match(/onSave\s*:\s*function\s*\([^)]*\)\s*\{([\s\S]*?)\}\s*,/);
         expect(onSaveMatch).toBeTruthy();
         const body = onSaveMatch[1];
-        expect(body).toMatch(/updateDescIndicator\s*\(/);
         expect(body).toMatch(/listLogic\.editToDoItem\s*\(/);
     });
 });

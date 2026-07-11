@@ -75,46 +75,32 @@ describe('STACK mobile task interactions — undo toast for swipe-delete', () =>
 });
 
 
-describe('STACK mobile task interactions — ¶ description indicator', () => {
+describe('STACK mobile task interactions — description indicator', () => {
 
     const toDoRow = read('toDoRow.js');
     const css     = read('style.css');
 
-    it('toDoRow.js mirrors item.desc onto data-has-desc on the row', () => {
-        expect(toDoRow).toMatch(/function updateDescIndicator\(toDoChild,\s*item\)/);
-        expect(toDoRow).toMatch(/setAttribute\(\s*['"]data-has-desc['"]\s*,\s*['"]true['"]\s*\)/);
-        expect(toDoRow).toMatch(/removeAttribute\(\s*['"]data-has-desc['"]\s*\)/);
+    it('the note-glyph indicator and its data-has-desc mirroring are gone', () => {
+        // The #descIndicator leading slot now carries the run-status glyph
+        // (shipped/pending), not a "this row has a description" note glyph, so
+        // its old data-has-desc bookkeeping is removed entirely.
+        expect(toDoRow).not.toMatch(/function updateDescIndicator/);
+        expect(toDoRow).not.toMatch(/data-has-desc/);
     });
 
-    it('updateDescIndicator runs on initial row build', () => {
-        expect(toDoRow).toMatch(/updateDescIndicator\(toDoChild,\s*item\)/);
-    });
-
-    it('updateDescIndicator runs after every descInput change (keyup / blur / Enter)', () => {
-        // All three persistence paths must keep the indicator in sync —
-        // otherwise typing into the description leaves the row's
-        // collapsed view stale until the next render.
-        const keyupBlock = toDoRow.match(
-            /descInput\.addEventListener\(\s*['"]keyup['"][\s\S]{0,300}updateDescIndicator/
-        );
-        const blurBlock = toDoRow.match(
-            /descInput\.addEventListener\(\s*['"]blur['"][\s\S]{0,300}updateDescIndicator/
-        );
-        const enterBlock = toDoRow.match(
-            /descInput\.addEventListener\(\s*['"]keydown['"][\s\S]{0,500}updateDescIndicator/
-        );
-        expect(keyupBlock).toBeTruthy();
-        expect(blurBlock).toBeTruthy();
-        expect(enterBlock).toBeTruthy();
+    it('descInput changes no longer touch the removed updateDescIndicator', () => {
+        // The keyup / blur / Enter persistence paths still save the desc, but
+        // must not call the deleted note-glyph updater.
+        expect(toDoRow).not.toMatch(/updateDescIndicator\(/);
     });
 
     it('CSS no longer paints the ¶ glyph before the duePill on any breakpoint', () => {
-        // The pilcrow indicator was removed from collapsed mobile rows;
-        // the data-has-desc attribute is still written by toDoRow.js (so
-        // other indicators can react to it), but no CSS rule should be
-        // painting a ¶ via #duePill::before anywhere in the stylesheet.
+        // The pilcrow indicator was removed from collapsed mobile rows; no CSS
+        // rule should be painting a ¶ via #duePill::before anywhere in the
+        // stylesheet, and the data-has-desc selector is gone with it.
         expect(css).not.toMatch(/#toDoChild\[data-has-desc="true"\]\s*#duePill::before/);
         expect(css).not.toMatch(/#duePill::before[\s\S]{0,200}content:\s*['"]¶['"]/);
+        expect(css).not.toMatch(/data-has-desc/);
     });
 });
 

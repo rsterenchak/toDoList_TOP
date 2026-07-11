@@ -132,66 +132,65 @@ function copyTitleToClipboard(item, copyBtn) {
 }
 
 
-// Mirror `item.desc` onto `data-has-desc` on the row so CSS can surface a
-// small "¶" pilcrow next to the date pill when a collapsed row carries a
-// non-empty description. The data-attribute drives the indicator instead
-// of a JS-managed child element so descSibling edits / restores can keep
-// state in sync with a single attribute write per change.
-function updateDescIndicator(toDoChild, item) {
-    if (!toDoChild) return;
-    const has = !!(item && typeof item.desc === 'string' && item.desc.trim().length > 0);
-    if (has) {
-        toDoChild.setAttribute('data-has-desc', 'true');
-    } else {
-        toDoChild.removeAttribute('data-has-desc');
-    }
-}
+// Inline SVG for the two run-status glyphs that occupy the leading slot
+// (`#descIndicator`) after the checkbox. The shipped glyph is a filled
+// check-in-circle whose check is knocked out in the row fill; the pending glyph
+// is a dashed ring. Both paint in `currentColor` (set per state in CSS to the
+// feature-green / warning-amber token), so no inline color attributes are used.
+const RUN_STATUS_SHIPPED_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.8 8.3l2.1 2.1 4.3-4.7" fill="none" stroke="var(--bg-row)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.2" stroke-linecap="round"/></svg>';
 
 
-// Overlay a small run-status badge dot on the bottom-right of `#descIndicator`:
-//   • green (`.dot`)            — the entry's marker sits on a CHECKED (shipped)
-//                                 TODO.md entry in the routed target repo
-//   • amber (`.dot.dot--pending`) — the entry has an id (injected here or synced
-//                                 from another device) but hasn't shipped yet
-//   • no dot                    — the task carries no entry id at all
+// Render the run-status glyph in the leading `#descIndicator` slot, driven
+// purely by the task's entry id:
+//   • shipped (green filled check)  — the entry's marker sits on a CHECKED
+//                                     TODO.md entry in the routed target repo
+//   • pending (amber dashed ring)   — the entry has an id (injected here or
+//                                     synced from another device) but hasn't
+//                                     shipped yet
+//   • no glyph                      — the task carries no entry id at all
 // The shipped state is read from the shared TODO.md (via hasShippedRunForEntry
-// against the marker cache), not a device-local run store, so the dot agrees
+// against the marker cache), not a device-local run store, so the glyph agrees
 // across devices. The gate is the entry id, which syncs with the task — so a
-// task injected on another device still shows a dot here; injectedAt is kept as
-// a local fast-path so the injecting device paints amber instantly.
-// The dot lives INSIDE `#descIndicator`, so it inherits the indicator's
-// `data-has-desc` visibility gating and its 0.9 / 0.45 opacity rules for free,
-// and it never touches the inject button's own separate state glyph. Idempotent:
-// reuses the existing dot element so live refreshes don't thrash the DOM.
-function applyDescStatusDot(descIndicator, item) {
+// task injected on another device still shows the glyph here; injectedAt is no
+// longer consulted (it is local-only and doesn't survive a reload). Idempotent:
+// no-ops when the resolved state already matches so live refreshes never thrash
+// the DOM, and it never touches the inject button's own separate state glyph.
+function applyRunStatusGlyph(descIndicator, item) {
     if (!descIndicator) return;
-    const existing = descIndicator.querySelector('.dot');
-    if (!item || !(item.entryId || item.injectedAt)) {
-        if (existing) existing.remove();
+    const state = (item && item.entryId)
+        ? (hasShippedRunForEntry(item.entryId) ? 'shipped' : 'pending')
+        : '';
+    const current = descIndicator.classList.contains('runStatusGlyph--shipped')
+        ? 'shipped'
+        : descIndicator.classList.contains('runStatusGlyph--pending')
+            ? 'pending'
+            : '';
+    if (current === state) return;
+    descIndicator.classList.remove('runStatusGlyph--shipped', 'runStatusGlyph--pending');
+    if (!state) {
+        descIndicator.innerHTML = '';
         return;
     }
-    const shipped = hasShippedRunForEntry(item.entryId);
-    const dot = existing || document.createElement('span');
-    dot.className = 'dot' + (shipped ? '' : ' dot--pending');
-    dot.setAttribute('aria-hidden', 'true');
-    if (!existing) descIndicator.appendChild(dot);
+    descIndicator.classList.add('runStatusGlyph--' + state);
+    descIndicator.innerHTML = state === 'shipped' ? RUN_STATUS_SHIPPED_SVG : RUN_STATUS_PENDING_SVG;
 }
 
 
-// Re-evaluate every rendered row's description-status dot in one pass, resolving
+// Re-evaluate every rendered row's run-status glyph in one pass, resolving
 // each live `#descIndicator` back to its row's `__item`. Called on the
-// run-status event so dots flip pending → shipped without a full re-render. Also
-// kicks a shipped-marker refresh for every project with an injected entry on
-// screen; the refresh is TTL-cached per repo (so repeated calls coalesce) and
-// re-emits the run-status event when it resolves, re-running this sweep against
-// the fresh cache to flip amber → green cross-device.
+// run-status event so glyphs flip pending → shipped without a full re-render.
+// Also kicks a shipped-marker refresh for every project with an injected entry
+// on screen; the refresh is TTL-cached per repo (so repeated calls coalesce)
+// and re-emits the run-status event when it resolves, re-running this sweep
+// against the fresh cache to flip amber → green cross-device.
 export function refreshDescStatusDots() {
     if (typeof document === 'undefined') return;
     const projectsToRefresh = new Set();
     document.querySelectorAll('#descIndicator').forEach(function(indicator) {
         const row = indicator.closest('#toDoChild');
         if (row && row.__item) {
-            applyDescStatusDot(indicator, row.__item);
+            applyRunStatusGlyph(indicator, row.__item);
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
             }
@@ -457,7 +456,6 @@ function openDescEditorForRow(toDoChild) {
     showDescEditorModal(item, {
         projectName: projectName,
         onSave: function() {
-            updateDescIndicator(toDoChild, item);
             // Route through listLogic so Supabase persistMutation fires —
             // saveToStorage in the modal only writes localStorage, which
             // the next hydrate would overwrite with the backend snapshot.
@@ -1568,15 +1566,15 @@ export function buildToDoRow(item, toDoName) {
     }
     descInput.addEventListener("input", autoGrowDescInput);
 
-    // Description indicator — small note-style glyph that surfaces "this row
-    // carries a description" between the checkbox and the title. CSS-hidden
-    // by default; revealed via `data-has-desc="true"` on the row (managed by
-    // updateDescIndicator). Tap routes through the parent row click handler
-    // so it opens the desc editor modal on touch — no separate listener.
+    // Run-status indicator — occupies the leading slot between the checkbox and
+    // the title. Empty at build time; `applyRunStatusGlyph` fills it with the
+    // shipped (green check) or pending (amber dashed ring) glyph, or leaves it
+    // empty when the task carries no entry id. CSS gates its display on the
+    // presence of a `runStatusGlyph--*` state class. Tap routes through the
+    // parent row click handler — no separate listener.
     const descIndicator = document.createElement("span");
     descIndicator.id = "descIndicator";
     descIndicator.setAttribute("aria-hidden", "true");
-    descIndicator.innerHTML = '<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="8" height="9" rx="1"/><line x1="4.75" y1="5.5" x2="9.25" y2="5.5"/><line x1="4.75" y1="7.5" x2="9.25" y2="7.5"/><line x1="4.75" y1="9.5" x2="7.25" y2="9.5"/></svg>';
 
     // Swipe action panes — absolute-positioned fills revealed behind the row
     // on touch horizontal swipe. Kept as the first children so a default
@@ -1616,7 +1614,6 @@ export function buildToDoRow(item, toDoName) {
     updateDuePillLabel(duePill, item);
     applyDueUrgency(toDoChild, item);
     updateRecurringGlyph(toDoChild, item);
-    updateDescIndicator(toDoChild, item);
 
     // STACK mobile inline-expand chips — only the blank placeholder gets
     // the chip row, since it's the only row the chip controls (Today /
@@ -1653,18 +1650,18 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(statsToggle, toDoChild);
     const checkToDo = wireCheckbox(toDoChild, toDoInput, item);
     // Slot the descIndicator into the row right after the checkbox — visual
-    // order on desktop becomes: checkbox · note glyph · title. Insertion has
+    // order on desktop becomes: checkbox · status glyph · title. Insertion has
     // to wait until wireCheckbox runs so the checkbox is already in place;
     // inserting before toDoInput puts the indicator just past the checkbox.
     toDoChild.insertBefore(descIndicator, toDoInput);
-    // Overlay the run-status dot (shipped / pending / none) on the indicator,
-    // and make sure the live-refresh listener is attached so the dot updates as
-    // runs reconcile without a full re-render.
+    // Render the run-status glyph (shipped / pending / none) in the indicator,
+    // and make sure the live-refresh listener is attached so the glyph updates
+    // as runs reconcile without a full re-render.
     ensureRunStatusDotListener();
-    applyDescStatusDot(descIndicator, item);
-    // Kick a shipped-marker refresh for this project's routed target so the dot
-    // flips to green once the entry's TODO.md checkbox is [x]. TTL-cached per
-    // repo, so this is a no-op when already fresh.
+    applyRunStatusGlyph(descIndicator, item);
+    // Kick a shipped-marker refresh for this project's routed target so the
+    // glyph flips to green once the entry's TODO.md checkbox is [x]. TTL-cached
+    // per repo, so this is a no-op when already fresh.
     if (item.entryId) refreshShippedMarkersForProject(toDoName);
 
     // Workflow-status badge — committed rows only. Sits right after the
@@ -1866,7 +1863,6 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         descInput.style.border = "none";
-        updateDescIndicator(toDoChild, item);
         refreshInjectButton(injectBtn, item, toDoName);
         descInput.blur();
     });
@@ -1877,7 +1873,6 @@ export function buildToDoRow(item, toDoName) {
     descInput.addEventListener("keyup", function() {
         item.desc = descInput.value;
         listLogic.saveToStorage();
-        updateDescIndicator(toDoChild, item);
         refreshInjectButton(injectBtn, item, toDoName);
     });
 
@@ -1895,7 +1890,6 @@ export function buildToDoRow(item, toDoName) {
         item.desc = descInput.value;
         listLogic.saveToStorage();
         if (toDoName) listLogic.editToDoItem(toDoName, item);
-        updateDescIndicator(toDoChild, item);
         refreshInjectButton(injectBtn, item, toDoName);
     });
 

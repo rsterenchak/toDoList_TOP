@@ -18,14 +18,15 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Feature: a small run-status dot overlaid on #descIndicator — green once the
-// row's injected entry has shipped (its `<!-- id -->` marker sits on a `[x]`
-// entry in the routed target's TODO.md), amber while injected-but-pending, and
-// absent when the task carries no entry id. Shipped-truth is read from the
-// shared TODO.md (the cross-device source of truth), not the device-local
-// todoapp_claudeRuns store, so the dot agrees across devices. buildToDoRow is
-// too heavily wired to instantiate here, so the DOM behaviour is driven through
-// a light #toDoChild stand-in plus the marker cache the production code reads.
+// Feature: a run-status glyph occupying the leading #descIndicator slot — a
+// green filled check once the row's injected entry has shipped (its `<!-- id -->`
+// marker sits on a `[x]` entry in the routed target's TODO.md), an amber dashed
+// ring while injected-but-pending, and nothing when the task carries no entry
+// id. Shipped-truth is read from the shared TODO.md (the cross-device source of
+// truth), not the device-local todoapp_claudeRuns store, so the glyph agrees
+// across devices. buildToDoRow is too heavily wired to instantiate here, so the
+// DOM behaviour is driven through a light #toDoChild stand-in plus the marker
+// cache the production code reads.
 
 let realFetch;
 // Stub the Worker read so refreshShippedMarkers can populate its per-repo cache.
@@ -140,43 +141,54 @@ describe('hasShippedRunForEntry — shipped-marker correlation from TODO.md', ()
     });
 });
 
-describe('description-status dot — live refresh through the marker cache', () => {
-    it('renders no dot when the task carries no entry id', () => {
+describe('run-status glyph — live refresh through the marker cache', () => {
+    it('renders no glyph when the task carries no entry id', () => {
         const { indicator } = makeRow({ entryId: null, injectedAt: null });
         refreshDescStatusDots();
-        expect(indicator.querySelector('.dot')).toBeNull();
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.innerHTML).toBe('');
     });
 
-    it('renders an amber pending dot when the entry id is present but not shipped', () => {
-        const { indicator } = makeRow({ entryId: 'pending-dot-id', injectedAt: null });
+    it('shows no glyph for a task with only a local injectedAt and no entry id', () => {
+        // injectedAt is local-only and no longer a signal — the gate is the
+        // synced entry id, so an injectedAt without an id paints nothing.
+        const { indicator } = makeRow({ entryId: null, injectedAt: 1700000000000 });
         refreshDescStatusDots();
-        const dot = indicator.querySelector('.dot');
-        expect(dot).not.toBeNull();
-        expect(dot.classList.contains('dot--pending')).toBe(true);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.innerHTML).toBe('');
     });
 
-    it('renders a green shipped dot once the entry marker is on a checked TODO.md entry', async () => {
-        mockTodoMd('- [x] shipped\n  <!-- id: green-dot-id -->');
+    it('renders an amber pending glyph when the entry id is present but not shipped', () => {
+        const { indicator } = makeRow({ entryId: 'pending-glyph-id', injectedAt: null });
+        refreshDescStatusDots();
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(false);
+        expect(indicator.querySelector('svg')).not.toBeNull();
+    });
+
+    it('renders a green shipped glyph once the entry marker is on a checked TODO.md entry', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: green-glyph-id -->');
         await refreshShippedMarkers(freshTarget());
-        const { indicator } = makeRow({ entryId: 'green-dot-id', injectedAt: 1700000000000 });
+        const { indicator } = makeRow({ entryId: 'green-glyph-id', injectedAt: 1700000000000 });
         refreshDescStatusDots();
-        const dot = indicator.querySelector('.dot');
-        expect(dot).not.toBeNull();
-        expect(dot.classList.contains('dot--pending')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.querySelector('svg')).not.toBeNull();
     });
 
-    it('flips a pending dot to shipped in place when the marker cache resolves', async () => {
-        const { indicator } = makeRow({ entryId: 'flip-dot-id', injectedAt: 1700000000000 });
+    it('flips a pending glyph to shipped in place when the marker cache resolves', async () => {
+        const { indicator } = makeRow({ entryId: 'flip-glyph-id', injectedAt: 1700000000000 });
         refreshDescStatusDots();
-        expect(indicator.querySelector('.dot').classList.contains('dot--pending')).toBe(true);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
 
         // The routed TODO.md now shows the entry checked; refresh + re-sweep.
-        mockTodoMd('- [x] shipped\n  <!-- id: flip-dot-id -->');
+        mockTodoMd('- [x] shipped\n  <!-- id: flip-glyph-id -->');
         await refreshShippedMarkers(freshTarget());
         refreshDescStatusDots();
-        const dots = indicator.querySelectorAll('.dot');
-        expect(dots.length).toBe(1); // reused in place, not duplicated
-        expect(dots[0].classList.contains('dot--pending')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);
+        expect(indicator.querySelectorAll('svg').length).toBe(1); // reused, not duplicated
     });
 });
 
@@ -187,9 +199,9 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
     const claudeSheet = read('claudeSheet.js');
     const css = read('style.css');
 
-    it('buildToDoRow overlays the status dot right after inserting the indicator', () => {
+    it('buildToDoRow renders the status glyph right after inserting the indicator', () => {
         expect(toDoRow).toMatch(
-            /insertBefore\(descIndicator,\s*toDoInput\);[\s\S]{0,400}applyDescStatusDot\(descIndicator,\s*item\)/
+            /insertBefore\(descIndicator,\s*toDoInput\);[\s\S]{0,400}applyRunStatusGlyph\(descIndicator,\s*item\)/
         );
     });
 
@@ -230,6 +242,10 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
         expect(listLogic).toMatch(/entryId:\s*t\.entry_id\s*\|\|/);
     });
 
+    it('listLogic realtime carries entry_id only when present, never clobbering a local id', () => {
+        expect(listLogic).toMatch(/if\s*\(evt\.new\.entry_id\)\s*mapped\.entryId\s*=\s*evt\.new\.entry_id/);
+    });
+
     it('inject.js emits the run-status event after a successful inject', () => {
         expect(inject).toMatch(
             /refreshInjectButton\(btn,\s*item\);[\s\S]{0,200}emitTodoRunStatusChange\(\)/
@@ -242,9 +258,8 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
         );
     });
 
-    it('the dot is styled from theme tokens and anchored inside the indicator', () => {
-        expect(css).toMatch(/#descIndicator\s*\{[\s\S]{0,160}position:\s*relative/);
-        expect(css).toMatch(/#descIndicator\s+\.dot\s*\{[\s\S]{0,200}background:\s*var\(--type-feature\)/);
-        expect(css).toMatch(/#descIndicator\s+\.dot--pending\s*\{[\s\S]{0,120}background:\s*var\(--text-warning\)/);
+    it('the glyph states are colored from theme tokens in the leading slot', () => {
+        expect(css).toMatch(/#descIndicator\.runStatusGlyph--shipped\s*\{[\s\S]{0,80}color:\s*var\(--type-feature\)/);
+        expect(css).toMatch(/#descIndicator\.runStatusGlyph--pending\s*\{[\s\S]{0,80}color:\s*var\(--text-warning\)/);
     });
 });
