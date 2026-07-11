@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-11T11:08:39.641Z",
-  "sha": "ed5ef5e59b3e99fd59f3b2e581af1a15f44c550d",
+  "generatedAt": "2026-07-11T11:42:57.242Z",
+  "sha": "8cb8131c1917f1ca84fa2214528a49f70f5fddf2",
   "files": [
     "agentView.js",
     "auth.js",
@@ -58,11 +58,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 1434,
+      "line": 1435,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1434
+          "line": 1435
         },
         {
           "file": "style.css",
@@ -102,11 +102,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 1460,
+      "line": 1461,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1460
+          "line": 1461
         }
       ]
     },
@@ -638,11 +638,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 273,
+      "line": 274,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 273
+          "line": 274
         },
         {
           "file": "style.css",
@@ -1150,11 +1150,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 1474,
+      "line": 1475,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1474
+          "line": 1475
         },
         {
           "file": "style.css",
@@ -1358,11 +1358,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 1498,
+      "line": 1499,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1498
+          "line": 1499
         }
       ]
     },
@@ -1658,11 +1658,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 1576,
+      "line": 1577,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1576
+          "line": 1577
         },
         {
           "file": "style.css",
@@ -1674,11 +1674,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 1531,
+      "line": 1532,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1531
+          "line": 1532
         },
         {
           "file": "style.css",
@@ -1690,11 +1690,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 1529,
+      "line": 1530,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1529
+          "line": 1530
         },
         {
           "file": "style.css",
@@ -1706,11 +1706,11 @@
       "selector": "#descSpacer1",
       "label": "Desc Spacer1",
       "file": "toDoRow.js",
-      "line": 1530,
+      "line": 1531,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1530
+          "line": 1531
         }
       ]
     },
@@ -1718,11 +1718,11 @@
       "selector": "#descSpacer2",
       "label": "Desc Spacer2",
       "file": "toDoRow.js",
-      "line": 1532,
+      "line": 1533,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1532
+          "line": 1533
         }
       ]
     },
@@ -1738,7 +1738,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 1507
+          "line": 1508
         },
         {
           "file": "style.css",
@@ -1898,7 +1898,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 1384
+          "line": 1385
         },
         {
           "file": "style.css",
@@ -2318,11 +2318,11 @@
       "selector": "#injectAddTargetBtn",
       "label": "Inject Add Target Btn",
       "file": "inject.js",
-      "line": 1523,
+      "line": 1600,
       "files": [
         {
           "file": "inject.js",
-          "line": 1523
+          "line": 1600
         },
         {
           "file": "style.css",
@@ -2334,11 +2334,11 @@
       "selector": "#injectConnectionEditBtn",
       "label": "Inject Connection Edit Btn",
       "file": "inject.js",
-      "line": 1336,
+      "line": 1413,
       "files": [
         {
           "file": "inject.js",
-          "line": 1336
+          "line": 1413
         }
       ]
     },
@@ -2346,11 +2346,11 @@
       "selector": "#injectConnectionSection",
       "label": "Inject Connection Section",
       "file": "inject.js",
-      "line": 1322,
+      "line": 1399,
       "files": [
         {
           "file": "inject.js",
-          "line": 1322
+          "line": 1399
         }
       ]
     },
@@ -2358,11 +2358,11 @@
       "selector": "#injectProjectRoutingBody",
       "label": "Inject Project Routing Body",
       "file": "inject.js",
-      "line": 1633,
+      "line": 1710,
       "files": [
         {
           "file": "inject.js",
-          "line": 1633
+          "line": 1710
         },
         {
           "file": "style.css",
@@ -2374,11 +2374,11 @@
       "selector": "#injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 1643,
+      "line": 1720,
       "files": [
         {
           "file": "inject.js",
-          "line": 1643
+          "line": 1720
         }
       ]
     },
@@ -2386,11 +2386,11 @@
       "selector": "#injectProjectRoutingSection",
       "label": "Inject Project Routing Section",
       "file": "inject.js",
-      "line": 1621,
+      "line": 1698,
       "files": [
         {
           "file": "inject.js",
-          "line": 1621
+          "line": 1698
         }
       ]
     },
@@ -2398,11 +2398,11 @@
       "selector": "#injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 1659,
+      "line": 1736,
       "files": [
         {
           "file": "inject.js",
-          "line": 1659
+          "line": 1736
         }
       ]
     },
@@ -2410,11 +2410,11 @@
       "selector": "#injectProjectRoutingTitle",
       "label": "Inject Project Routing Title",
       "file": "inject.js",
-      "line": 1627,
+      "line": 1704,
       "files": [
         {
           "file": "inject.js",
-          "line": 1627
+          "line": 1704
         }
       ]
     },
@@ -2422,11 +2422,11 @@
       "selector": "#injectSettingsActions",
       "label": "Inject Settings Actions",
       "file": "inject.js",
-      "line": 1426,
+      "line": 1503,
       "files": [
         {
           "file": "inject.js",
-          "line": 1426
+          "line": 1503
         },
         {
           "file": "style.css",
@@ -2438,11 +2438,11 @@
       "selector": "#injectSettingsBackdrop",
       "label": "Inject Settings Backdrop",
       "file": "inject.js",
-      "line": 1292,
+      "line": 1369,
       "files": [
         {
           "file": "inject.js",
-          "line": 1292
+          "line": 1369
         },
         {
           "file": "style.css",
@@ -2454,11 +2454,11 @@
       "selector": "#injectSettingsBody",
       "label": "Inject Settings Body",
       "file": "inject.js",
-      "line": 1375,
+      "line": 1452,
       "files": [
         {
           "file": "inject.js",
-          "line": 1375
+          "line": 1452
         },
         {
           "file": "style.css",
@@ -2470,11 +2470,11 @@
       "selector": "#injectSettingsClear",
       "label": "Inject Settings Clear",
       "file": "inject.js",
-      "line": 1444,
+      "line": 1521,
       "files": [
         {
           "file": "inject.js",
-          "line": 1444
+          "line": 1521
         }
       ]
     },
@@ -2482,11 +2482,11 @@
       "selector": "#injectSettingsClose",
       "label": "Inject Settings Close",
       "file": "inject.js",
-      "line": 1307,
+      "line": 1384,
       "files": [
         {
           "file": "inject.js",
-          "line": 1307
+          "line": 1384
         },
         {
           "file": "style.css",
@@ -2498,11 +2498,11 @@
       "selector": "#injectSettingsHeader",
       "label": "Inject Settings Header",
       "file": "inject.js",
-      "line": 1302,
+      "line": 1379,
       "files": [
         {
           "file": "inject.js",
-          "line": 1302
+          "line": 1379
         },
         {
           "file": "style.css",
@@ -2514,11 +2514,11 @@
       "selector": "#injectSettingsModal",
       "label": "Inject Settings Modal",
       "file": "inject.js",
-      "line": 1295,
+      "line": 1372,
       "files": [
         {
           "file": "inject.js",
-          "line": 1295
+          "line": 1372
         },
         {
           "file": "style.css",
@@ -2530,11 +2530,11 @@
       "selector": "#injectSettingsSave",
       "label": "Inject Settings Save",
       "file": "inject.js",
-      "line": 1429,
+      "line": 1506,
       "files": [
         {
           "file": "inject.js",
-          "line": 1429
+          "line": 1506
         }
       ]
     },
@@ -2542,11 +2542,11 @@
       "selector": "#injectSettingsScroll",
       "label": "Inject Settings Scroll",
       "file": "inject.js",
-      "line": 1730,
+      "line": 1807,
       "files": [
         {
           "file": "inject.js",
-          "line": 1730
+          "line": 1807
         },
         {
           "file": "style.css",
@@ -2558,11 +2558,11 @@
       "selector": "#injectSettingsStatusRow",
       "label": "Inject Settings Status Row",
       "file": "inject.js",
-      "line": 1333,
+      "line": 1410,
       "files": [
         {
           "file": "inject.js",
-          "line": 1333
+          "line": 1410
         },
         {
           "file": "style.css",
@@ -2574,11 +2574,11 @@
       "selector": "#injectSettingsTest",
       "label": "Inject Settings Test",
       "file": "inject.js",
-      "line": 1435,
+      "line": 1512,
       "files": [
         {
           "file": "inject.js",
-          "line": 1435
+          "line": 1512
         }
       ]
     },
@@ -2586,11 +2586,11 @@
       "selector": "#injectSettingsTitle",
       "label": "Inject Settings Title",
       "file": "inject.js",
-      "line": 1304,
+      "line": 1381,
       "files": [
         {
           "file": "inject.js",
-          "line": 1304
+          "line": 1381
         },
         {
           "file": "style.css",
@@ -2602,11 +2602,11 @@
       "selector": "#injectSharedSecretInput",
       "label": "Inject Shared Secret Input",
       "file": "inject.js",
-      "line": 1395,
+      "line": 1472,
       "files": [
         {
           "file": "inject.js",
-          "line": 1395
+          "line": 1472
         },
         {
           "file": "style.css",
@@ -2618,11 +2618,11 @@
       "selector": "#injectTargetSubActions",
       "label": "Inject Target Sub Actions",
       "file": "inject.js",
-      "line": 1167,
+      "line": 1244,
       "files": [
         {
           "file": "inject.js",
-          "line": 1167
+          "line": 1244
         },
         {
           "file": "style.css",
@@ -2634,11 +2634,11 @@
       "selector": "#injectTargetSubBackdrop",
       "label": "Inject Target Sub Backdrop",
       "file": "inject.js",
-      "line": 1101,
+      "line": 1178,
       "files": [
         {
           "file": "inject.js",
-          "line": 1101
+          "line": 1178
         },
         {
           "file": "style.css",
@@ -2650,11 +2650,11 @@
       "selector": "#injectTargetSubBody",
       "label": "Inject Target Sub Body",
       "file": "inject.js",
-      "line": 1123,
+      "line": 1200,
       "files": [
         {
           "file": "inject.js",
-          "line": 1123
+          "line": 1200
         },
         {
           "file": "style.css",
@@ -2666,11 +2666,11 @@
       "selector": "#injectTargetSubCancel",
       "label": "Inject Target Sub Cancel",
       "file": "inject.js",
-      "line": 1170,
+      "line": 1247,
       "files": [
         {
           "file": "inject.js",
-          "line": 1170
+          "line": 1247
         }
       ]
     },
@@ -2678,11 +2678,11 @@
       "selector": "#injectTargetSubClose",
       "label": "Inject Target Sub Close",
       "file": "inject.js",
-      "line": 1115,
+      "line": 1192,
       "files": [
         {
           "file": "inject.js",
-          "line": 1115
+          "line": 1192
         },
         {
           "file": "style.css",
@@ -2694,11 +2694,11 @@
       "selector": "#injectTargetSubHeader",
       "label": "Inject Target Sub Header",
       "file": "inject.js",
-      "line": 1110,
+      "line": 1187,
       "files": [
         {
           "file": "inject.js",
-          "line": 1110
+          "line": 1187
         },
         {
           "file": "style.css",
@@ -2710,11 +2710,11 @@
       "selector": "#injectTargetSubModal",
       "label": "Inject Target Sub Modal",
       "file": "inject.js",
-      "line": 1104,
+      "line": 1181,
       "files": [
         {
           "file": "inject.js",
-          "line": 1104
+          "line": 1181
         },
         {
           "file": "style.css",
@@ -2726,11 +2726,11 @@
       "selector": "#injectTargetSubSave",
       "label": "Inject Target Sub Save",
       "file": "inject.js",
-      "line": 1176,
+      "line": 1253,
       "files": [
         {
           "file": "inject.js",
-          "line": 1176
+          "line": 1253
         }
       ]
     },
@@ -2738,11 +2738,11 @@
       "selector": "#injectTargetSubTitle",
       "label": "Inject Target Sub Title",
       "file": "inject.js",
-      "line": 1112,
+      "line": 1189,
       "files": [
         {
           "file": "inject.js",
-          "line": 1112
+          "line": 1189
         },
         {
           "file": "style.css",
@@ -2754,11 +2754,11 @@
       "selector": "#injectTargetsBody",
       "label": "Inject Targets Body",
       "file": "inject.js",
-      "line": 1499,
+      "line": 1576,
       "files": [
         {
           "file": "inject.js",
-          "line": 1499
+          "line": 1576
         },
         {
           "file": "style.css",
@@ -2770,11 +2770,11 @@
       "selector": "#injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 1509,
+      "line": 1586,
       "files": [
         {
           "file": "inject.js",
-          "line": 1509
+          "line": 1586
         }
       ]
     },
@@ -2782,11 +2782,11 @@
       "selector": "#injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 1515,
+      "line": 1592,
       "files": [
         {
           "file": "inject.js",
-          "line": 1515
+          "line": 1592
         }
       ]
     },
@@ -2794,11 +2794,11 @@
       "selector": "#injectTargetsSection",
       "label": "Inject Targets Section",
       "file": "inject.js",
-      "line": 1488,
+      "line": 1565,
       "files": [
         {
           "file": "inject.js",
-          "line": 1488
+          "line": 1565
         }
       ]
     },
@@ -2822,11 +2822,11 @@
       "selector": "#injectWorkerUrlInput",
       "label": "Inject Worker Url Input",
       "file": "inject.js",
-      "line": 1381,
+      "line": 1458,
       "files": [
         {
           "file": "inject.js",
-          "line": 1381
+          "line": 1458
         },
         {
           "file": "style.css",
@@ -4110,11 +4110,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 1389,
+      "line": 1390,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1389
+          "line": 1390
         },
         {
           "file": "style.css",
@@ -4138,11 +4138,11 @@
       "selector": "#statsModal",
       "label": "Stats Modal",
       "file": "toDoRow.js",
-      "line": 817,
+      "line": 818,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 817
+          "line": 818
         },
         {
           "file": "style.css",
@@ -4154,11 +4154,11 @@
       "selector": "#statsModalBackdrop",
       "label": "Stats Modal Backdrop",
       "file": "toDoRow.js",
-      "line": 814,
+      "line": 815,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 814
+          "line": 815
         },
         {
           "file": "style.css",
@@ -4170,11 +4170,11 @@
       "selector": "#statsModalBody",
       "label": "Stats Modal Body",
       "file": "toDoRow.js",
-      "line": 849,
+      "line": 850,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 849
+          "line": 850
         },
         {
           "file": "style.css",
@@ -4186,11 +4186,11 @@
       "selector": "#statsModalClose",
       "label": "Stats Modal Close",
       "file": "toDoRow.js",
-      "line": 840,
+      "line": 841,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 840
+          "line": 841
         },
         {
           "file": "style.css",
@@ -4202,11 +4202,11 @@
       "selector": "#statsModalHeader",
       "label": "Stats Modal Header",
       "file": "toDoRow.js",
-      "line": 823,
+      "line": 824,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 823
+          "line": 824
         },
         {
           "file": "style.css",
@@ -4218,11 +4218,11 @@
       "selector": "#statsModalSubtitle",
       "label": "Stats Modal Subtitle",
       "file": "toDoRow.js",
-      "line": 833,
+      "line": 834,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 833
+          "line": 834
         },
         {
           "file": "style.css",
@@ -4234,11 +4234,11 @@
       "selector": "#statsModalTitle",
       "label": "Stats Modal Title",
       "file": "toDoRow.js",
-      "line": 829,
+      "line": 830,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 829
+          "line": 830
         },
         {
           "file": "style.css",
@@ -4250,11 +4250,11 @@
       "selector": "#statsModalTitleWrap",
       "label": "Stats Modal Title Wrap",
       "file": "toDoRow.js",
-      "line": 826,
+      "line": 827,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 826
+          "line": 827
         },
         {
           "file": "style.css",
@@ -4266,11 +4266,11 @@
       "selector": "#statsSibling",
       "label": "Stats Sibling",
       "file": "toDoRow.js",
-      "line": 617,
+      "line": 618,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 617
+          "line": 618
         },
         {
           "file": "style.css",
@@ -4282,11 +4282,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 1520,
+      "line": 1521,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1520
+          "line": 1521
         },
         {
           "file": "style.css",
@@ -4450,11 +4450,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 1368,
+      "line": 1369,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1368
+          "line": 1369
         },
         {
           "file": "style.css",
@@ -4466,11 +4466,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 1404,
+      "line": 1405,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1404
+          "line": 1405
         },
         {
           "file": "style.css",
@@ -4482,11 +4482,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 1397,
+      "line": 1398,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1397
+          "line": 1398
         }
       ]
     },
@@ -4494,11 +4494,11 @@
       "selector": "#todoMdViewerCard",
       "label": "Todo Md Viewer Card",
       "file": "todoMdViewer.js",
-      "line": 504,
+      "line": 506,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 504
+          "line": 506
         },
         {
           "file": "style.css",
