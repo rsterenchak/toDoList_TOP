@@ -1,9 +1,12 @@
 // Shared browser-native voice dictation. A single SpeechRecognition session is
 // ever live at a time; any surface (the Claude composer, the "Add a task"
 // placeholder row) mounts a mic button via mountMicButton() and dictates into a
-// target <input>/<textarea>. Transcribed text lands in that field for the user
-// to review, edit, and commit through the field's ordinary path — there is no
-// auto-commit and no separate voice routing.
+// target <input>/<textarea>. Review-only surfaces (the Claude composer) leave
+// the transcribed text in the field for the user to edit and send manually.
+// Auto-commit surfaces (the add-task row) opt in with an onFinal callback: they
+// listen continuously and the user taps the overlay (or re-taps the mic) to add
+// the todo, which fires onFinal with the transcript; a natural pause no longer
+// ends or commits the session. Escape / surface-close cancel and discard.
 //
 // The optional "listening overlay" (a centered pill with an equalizer and the
 // live interim transcript over a dimmed, blurred backdrop) also lives here so
@@ -25,10 +28,17 @@ let activeButton = null;   // the mic button that started the session
 let overlayEl = null;      // the listening overlay element, while shown
 let overlayKeyHandler = null;
 let barTimer = null;
+let runawayTimer = null;   // continuous sessions never self-end, so a watchdog
+                           // commits/cancels a session left running too long
 let activeOnFinal = null;   // per-session opt-in: called with the final transcript
-                           // on a natural speech-pause end (never on a cancel)
+                           // when the user commits (overlay tap / mic re-tap),
+                           // never on a cancel (Escape / surface-close)
 let lastTranscript = '';    // most-recent trimmed transcript, for the onFinal payload/guard
-let suppressFinal = false;  // set on any manual stop (cancel) so onend skips onFinal
+let suppressFinal = false;  // set on the cancel path so onend skips onFinal
+
+// A continuous session has no natural end, so stop it after this long and commit
+// whatever was captured (or cancel if nothing was said).
+const RUNAWAY_MS = 60000;
 
 // Simple mic glyph: a rounded capsule (the mic body) over a stand stem. Shared
 // by every mic button so the affordance reads the same on all surfaces.
@@ -75,13 +85,15 @@ function resolveTarget(target) {
 //   stopPropagation — stop the click from bubbling (so a row-level click
 //                   handler doesn't also fire)
 //   onFinal(text) — auto-commit hook: called once with the final transcript
-//                   when a session ends on its own (a natural speech pause),
-//                   and NOT when the user cancels (backdrop tap / Escape / a
-//                   fresh session) or the transcript is empty. Surfaces that
-//                   want the dictated text committed for the user (the add-task
-//                   row, where iOS can't reopen the keyboard to press Enter)
-//                   pass this; review-only surfaces (the Claude composer) omit
-//                   it and keep the text in the field for a manual send.
+//                   when the user commits (tapping the overlay or re-tapping the
+//                   mic), and NOT when the user cancels (Escape / surface-close)
+//                   or the transcript is empty. Passing it also makes the session
+//                   listen continuously — it no longer ends on a speech pause, so
+//                   the user taps to add. Surfaces that want the dictated text
+//                   committed for them (the add-task row, where iOS can't reopen
+//                   the keyboard to press Enter) pass this; review-only surfaces
+//                   (the Claude composer) omit it and keep the text in the field
+//                   for a manual send.
 export function mountMicButton(target, opts = {}) {
     if (!getSpeechRecognitionCtor()) return null;
     const btn = document.createElement('button');
@@ -92,7 +104,10 @@ export function mountMicButton(target, opts = {}) {
     btn.innerHTML = MIC_SVG;
     btn.addEventListener('click', function(e) {
         if (opts.stopPropagation) { e.preventDefault(); e.stopPropagation(); }
-        if (recording && activeButton === btn) stopDictation();
+        // Re-tapping the active mic commits (same as tapping the overlay) so a
+        // continuous session has a way to finish; a review-only session with no
+        // transcript simply ends.
+        if (recording && activeButton === btn) commitDictation();
         else startDictation(target, btn, opts);
     });
     return btn;
@@ -141,9 +156,14 @@ export function startDictation(target, btn, opts = {}) {
         try { input.focus(); } catch (e) { /* not focusable */ }
     }
 
+    // Auto-commit surfaces (those passing onFinal) listen continuously so a
+    // speech pause doesn't end the session — the user taps to add. Review-only
+    // surfaces keep the old pause-ends-the-session behavior.
+    const continuous = activeOnFinal != null;
+
     const begin = function() {
         const rec = new Ctor();
-        rec.continuous = false;
+        rec.continuous = continuous;
         rec.interimResults = true;
         rec.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
         rec.onresult = function(event) {
@@ -165,30 +185,22 @@ export function startDictation(target, btn, opts = {}) {
             const code = event && event.error;
             if (code === 'not-allowed' || code === 'permission-denied' ||
                 code === 'service-not-allowed') {
+                // A denial is terminal — suppress any trailing onend commit.
+                suppressFinal = true;
                 activeRec = null;
                 recording = false;
+                clearRunaway();
                 setButtonState(btn, 'denied');
                 closeOverlay();
             }
         };
-        // Recognition ends on its own after a pause (continuous = false) or when
-        // we stop it; either way the button returns to idle unless a denial
-        // already moved it to the denied state.
+        // Recognition ends when we stop/abort it (commit or cancel), on a denial,
+        // or if the platform closes a continuous session on its own. finishSession
+        // does the teardown and fires onFinal only on the commit path (decoupled
+        // from `recording`: it commits iff !suppressFinal && onFinal && a transcript).
         rec.onend = function() {
             activeRec = null;
-            if (recording) {
-                // Reaching onend with recording still true means the session
-                // ended on its own (a natural speech pause) — a cancel routes
-                // through stopDictation, which clears recording and sets
-                // suppressFinal first. So this branch is the auto-commit path.
-                recording = false;
-                setButtonState(btn, 'idle');
-                const cb = activeOnFinal;
-                const finalText = lastTranscript;
-                const commit = !suppressFinal && typeof cb === 'function' && finalText;
-                closeOverlay();
-                if (commit) cb(finalText);
-            }
+            finishSession(btn);
         };
         return rec;
     };
@@ -212,25 +224,76 @@ export function startDictation(target, btn, opts = {}) {
     recording = true;
     setButtonState(btn, 'recording');
     if (opts.overlay) openOverlay();
+    // A continuous session has no natural end, so guard against one left running
+    // (e.g. the user walks away): commit what was captured, or cancel if silent.
+    if (continuous && typeof setTimeout === 'function') {
+        runawayTimer = setTimeout(function() {
+            runawayTimer = null;
+            if (lastTranscript) commitDictation();
+            else cancelDictation();
+        }, RUNAWAY_MS);
+    }
 }
 
-// Stop an in-flight dictation, leaving the transcribed text in the target for
-// the user to review/edit/commit. Safe to call when nothing is recording (used
-// by surface-close cleanup so a dismiss can't leave a session dangling).
-export function stopDictation() {
+function clearRunaway() {
+    if (runawayTimer) { clearTimeout(runawayTimer); runawayTimer = null; }
+}
+
+// Shared teardown for a session that has ended (via onend). Returns the button
+// to idle, closes the overlay, and fires onFinal only on the commit path — never
+// when suppressed (cancel), when there's no onFinal (review-only), or when the
+// transcript is empty. State is neutralized before the callback so a repeat
+// onend or a follow-up cancel can't re-fire it.
+function finishSession(btn) {
+    clearRunaway();
     recording = false;
-    // A manual stop is a cancel: the transcript stays in the field for review
-    // but must not auto-commit, so suppress the onFinal an onend would otherwise
-    // fire once the underlying recognition instance winds down.
+    setButtonState(btn || activeButton, 'idle');
+    const cb = activeOnFinal;
+    const finalText = lastTranscript;
+    const shouldCommit = !suppressFinal && typeof cb === 'function' && !!finalText;
+    activeOnFinal = null;
+    lastTranscript = '';
     suppressFinal = true;
+    closeOverlay();
+    if (shouldCommit) cb(finalText);
+}
+
+// Commit path — the user tapped the overlay or re-tapped the mic to finish.
+// Stop WITHOUT suppressing so onend fires onFinal with the transcript (when
+// non-empty). Safe to call when nothing is recording (a no-op).
+function commitDictation() {
+    if (!recording && !activeRec) return;
+    recording = false;
     if (activeRec) {
         try { activeRec.stop(); } catch (e) { /* already stopped */ }
         activeRec = null;
     }
-    if (activeButton && activeButton.classList.contains('micButton--recording')) {
-        setButtonState(activeButton, 'idle');
+    // If the instance never wired onend (or already fired), finalize directly.
+    finishSession(activeButton);
+}
+
+// Cancel path — Escape, backdrop dismiss, or surface-close cleanup. Suppress the
+// onFinal an onend would otherwise fire and abort so the mic releases promptly,
+// discarding the transcript.
+function cancelDictation() {
+    recording = false;
+    suppressFinal = true;
+    if (activeRec) {
+        try {
+            if (typeof activeRec.abort === 'function') activeRec.abort();
+            else activeRec.stop();
+        } catch (e) { /* already stopped */ }
+        activeRec = null;
     }
-    closeOverlay();
+    finishSession(activeButton);
+}
+
+// Stop an in-flight dictation without committing, leaving the transcribed text
+// in the target field. Used by surface-close cleanup (a dismiss must not leave a
+// session dangling) — a cancel, so it never fires onFinal. Safe to call when
+// nothing is recording.
+export function stopDictation() {
+    cancelDictation();
 }
 
 // ── Listening overlay ──
@@ -266,25 +329,26 @@ function openOverlay() {
     ov.appendChild(interim);
 
     // Hint copy — shown only on auto-commit surfaces (those that pass onFinal),
-    // where a natural pause adds the todo and a tap/Escape cancels it. Review-only
-    // surfaces (the Claude composer) never auto-commit, so the "cancel" framing
-    // would mislead there and is omitted.
+    // where a tap adds the todo. Review-only surfaces (the Claude composer) don't
+    // auto-commit, so the "add" framing would mislead there and is omitted.
     if (typeof activeOnFinal === 'function') {
         const hint = document.createElement('div');
         hint.className = 'voiceHint';
-        hint.textContent = 'Pause to add · tap to cancel';
+        hint.textContent = 'Tap to add';
         ov.appendChild(hint);
     }
 
-    // Tapping the backdrop or the pill dismisses (cancel — stops + keeps the
-    // transcript in the field, but suppresses any auto-commit).
-    ov.addEventListener('click', function() { stopDictation(); });
+    // Tapping the backdrop or the pill commits — it adds the todo through the
+    // field's Enter path (onFinal). Review-only surfaces have no onFinal, so a
+    // tap there simply ends the session with the text left in the field.
+    ov.addEventListener('click', function() { commitDictation(); });
 
     document.body.appendChild(ov);
     overlayEl = ov;
 
+    // Escape cancels — stop and discard, never commit.
     overlayKeyHandler = function(e) {
-        if (e.key === 'Escape') { e.preventDefault(); stopDictation(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelDictation(); }
     };
     document.addEventListener('keydown', overlayKeyHandler, true);
 }

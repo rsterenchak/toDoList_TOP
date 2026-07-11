@@ -308,7 +308,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 064afc34-a7b3-4cdd-83d2-017e812a189d -->
 
-- [ ] **[MEDIUM]** Change voice overlay to tap-to-add and remove pause-to-commit
+- [x] **[MEDIUM]** Change voice overlay to tap-to-add and remove pause-to-commit — Completed: 2026-07-11
   - Type: bug
   - Description: Rework the listening overlay's stop behavior so tapping adds the todo. Today a natural speech pause auto-commits ("pause to add") while tapping the overlay cancels ("tap to cancel") — backwards for quick capture: users tap to finish and expect the task added, and the pause-end cuts recording off early and, when the user taps to stop, strands the transcript uncommitted. Change to: tapping anywhere on the overlay commits the transcript (adds the todo) via the field's existing Enter path; the mic listens continuously so it no longer ends/adds on a pause; and the hint reads "Tap to add" (remove "Pause to add · tap to cancel"). Escape still discards on desktop; on mobile a mis-add is removed with the normal row delete.
   - Implementation notes:
