@@ -307,3 +307,16 @@
   - File: `toDoList_main/src/toDoRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 064afc34-a7b3-4cdd-83d2-017e812a189d -->
+
+- [ ] **[MEDIUM]** Change voice overlay to tap-to-add and remove pause-to-commit
+  - Type: bug
+  - Description: Rework the listening overlay's stop behavior so tapping adds the todo. Today a natural speech pause auto-commits ("pause to add") while tapping the overlay cancels ("tap to cancel") — backwards for quick capture: users tap to finish and expect the task added, and the pause-end cuts recording off early and, when the user taps to stop, strands the transcript uncommitted. Change to: tapping anywhere on the overlay commits the transcript (adds the todo) via the field's existing Enter path; the mic listens continuously so it no longer ends/adds on a pause; and the hint reads "Tap to add" (remove "Pause to add · tap to cancel"). Escape still discards on desktop; on mobile a mis-add is removed with the normal row delete.
+  - Implementation notes:
+    - In `voiceInput.js`, split stop into commit vs. cancel. The overlay click handler (and a mic re-tap) calls the commit-stop: `activeRec.stop()` WITHOUT setting `suppressFinal`, so `onend` fires `onFinal(lastTranscript)` when non-empty. Escape and surface-close cleanup call the cancel-stop: set `suppressFinal = true` and `activeRec.abort()` (discard). Decouple the `onend` commit check from the `recording` flag — commit iff `!suppressFinal && activeOnFinal && lastTranscript`.
+    - Make continuous listening opt-in on the same flag as `onFinal` (set `rec.continuous = true` only for surfaces that pass `onFinal`, i.e. the add-task row) so the Claude composer mic is unchanged (stays `continuous = false`, review-before-send).
+    - Update the overlay hint to "Tap to add"; drop the `activeOnFinal`-conditional "Pause to add · tap to cancel" copy.
+    - Guard a runaway session (continuous never self-ends): auto-stop after ~45–60s and commit whatever was captured, or cancel if empty.
+    - Prefer `.abort()` on the cancel path and null the recognition instance so the mic releases promptly.
+  - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 78e119bd-8430-4d3a-b7ac-87deec5a6c1c -->
