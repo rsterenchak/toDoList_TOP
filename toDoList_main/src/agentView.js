@@ -443,6 +443,24 @@ function buildChip(state) {
     return chip;
 }
 
+// The shipped-state header glyph, replacing the redundant "SHIPPED" text chip
+// (shipped cards already sit under the "Shipped" section header). Mirrors
+// toDoRow.js's RUN_STATUS_SHIPPED_SVG (filled disc + knocked-out check) and
+// differs in exactly one thing: the check stroke is `var(--bg-surface)` — the
+// card's own background — rather than `var(--bg-row)`, so the notch reads clean
+// on the card surface. Kept local (not imported) because of that knockout-token
+// difference; if the task-row glyph changes, update this to match.
+const SHIPPED_GLYPH_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.8 8.3l2.1 2.1 4.3-4.7" fill="none" stroke="var(--bg-surface)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function buildShippedGlyph() {
+    const glyph = document.createElement('span');
+    glyph.className = 'agentShippedGlyph';
+    glyph.title = 'Shipped';
+    glyph.setAttribute('aria-label', 'Shipped');
+    glyph.innerHTML = SHIPPED_GLYPH_SVG;
+    return glyph;
+}
+
 // State-appropriate secondary content under a card's title: the pending
 // question for needs_words, the failure reason for a stuck row, PR/queued
 // status for in-progress work. Returns null when there's nothing to show.
@@ -1845,7 +1863,7 @@ function buildCard(row) {
     title.title = text;
     head.appendChild(title);
 
-    head.appendChild(buildChip(row.state));
+    head.appendChild(row.state === 'shipped' ? buildShippedGlyph() : buildChip(row.state));
     // Every card except the in-flight thin states (dispatched/running) gets a
     // compact "×" remove control next to the chip. Thin rows have a run in
     // flight, so they're left to settle to Shipped/Stuck before they can be

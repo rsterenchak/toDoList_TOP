@@ -286,6 +286,26 @@ describe('AGENT view — bucket rendering', () => {
         expect(document.querySelector('.agentCard--thin')).toBeTruthy();
     });
 
+    it('renders the shipped check glyph instead of a "SHIPPED" text chip on a shipped card', async () => {
+        queueRows = [{ id: 's1', state: 'shipped', title: 'Landed thing' }];
+        await loadBoard();
+        const glyph = document.querySelector('.agentShippedGlyph');
+        expect(glyph).toBeTruthy();
+        expect(glyph.getAttribute('aria-label')).toBe('Shipped');
+        expect(glyph.getAttribute('title')).toBe('Shipped');
+        expect(glyph.querySelector('svg')).toBeTruthy();
+        // No text chip on a shipped card, and no stray "SHIPPED" label text.
+        expect(document.querySelector('.agentChip')).toBeFalsy();
+        expect(glyph.textContent).toBe('');
+    });
+
+    it('keeps the text chip for non-shipped states (e.g. drafted)', async () => {
+        queueRows = [{ id: 'd1', state: 'drafted', title: 'Draft thing' }];
+        await loadBoard();
+        expect(document.querySelector('.agentShippedGlyph')).toBeFalsy();
+        expect(document.querySelector('.agentChip').textContent).toBe('Drafted');
+    });
+
     it('falls back to "Untitled entry" when a row carries no title or context', async () => {
         queueRows = [{ id: '9', state: 'drafted' }];
         await loadBoard();
