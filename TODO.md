@@ -270,7 +270,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 240b05c3-f101-4c92-9e03-34498c4a3df6 -->
 
-- [ ] **[LOW]** Add a harmless CSS tweak to trigger a redeploy
+- [x] **[LOW]** Add a harmless CSS tweak to trigger a redeploy — Completed: 2026-07-11
   - Type: feature
   - Description: Make a trivial, purely cosmetic CSS change (e.g. adjust a comment or a 1px value on an existing rule) in the main stylesheet with no visible or functional effect, solely to trigger the build/deploy pipeline for testing purposes. No other files should be touched and no behavior should change.
   - File: `toDoList_main/src/style.css`
