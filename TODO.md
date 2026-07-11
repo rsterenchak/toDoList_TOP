@@ -350,7 +350,7 @@
   - Completed:
   <!-- id: 89ae5c4c-4383-47f3-a35d-93df7b243d88 -->
 
-- [ ] **[MEDIUM]** Task row status glyph: clear when the entry is deleted from TODO.md
+- [x] **[MEDIUM]** Task row status glyph: clear when the entry is deleted from TODO.md — Completed: 2026-07-11
   - Type: bug
   - Description: The pending (amber) glyph is sticky — deleting an entry from TODO.md leaves the amber ring on the task forever. Root cause: the glyph treats "pending" as `entryId present && not in the shipped(checked) set`, so it never checks whether the entry still exists. `parseShippedMarkerIds` only records CHECKED top-level markers, so an entry that's been deleted (or reverted) is indistinguishable from one that's still queued. Fix: parse TODO.md for BOTH the checked marker ids and the full set of present marker ids, and resolve three states — shipped (checked), pending (present but unchecked), and none (marker absent → no glyph).
   - Behavior: Glyph = green when the entry's marker is on a checked TODO.md entry, amber when its marker is present but unchecked, and nothing when the marker is absent from TODO.md (never injected, or deleted/reverted). Deleting an entry clears the amber ring; injecting still shows amber immediately (preserved via an optimistic local add — do not regress the instant-amber-on-inject behavior). Clears across all delete routes (viewer trash button, direct file edit, revert) on the next marker read; the in-app delete clears it promptly.
