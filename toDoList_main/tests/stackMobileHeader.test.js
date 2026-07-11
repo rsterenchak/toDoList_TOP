@@ -53,17 +53,19 @@ describe('STACK mobile project header', () => {
         expect(closeIdx).toBeGreaterThan(fnIdx);
     });
 
-    it('flanks the project name with prev/next chevron buttons inside a title row', () => {
-        // The chevrons replace the previous page-dot row; they double as
-        // visual affordances for the swipe-on-title gesture.
+    it('groups the ‹ › chevrons into a vertical column and the name pill in the title row', () => {
+        // Variant C: the ‹ › carousel chevrons move out of the title row into a
+        // vertically-stacked column (#mobileProjChevCol) seated to the right of
+        // the left column; they still double as affordances for the
+        // swipe-on-title gesture and keep their own click/disabled wiring.
         expect(main).toMatch(/mobileProjPrev\.id\s*=\s*['"]mobileProjPrev['"]/);
         expect(main).toMatch(/mobileProjNext\.id\s*=\s*['"]mobileProjNext['"]/);
-        expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjPrev\)/);
+        expect(main).toMatch(/mobileProjChevCol\.appendChild\(mobileProjPrev\)/);
+        expect(main).toMatch(/mobileProjChevCol\.appendChild\(mobileProjNext\)/);
         // The name + ▾ chevron are grouped inside the #mobileProjPill wrapper,
-        // which is the element appended into the title row between the chevrons.
+        // which is the element appended into the title row.
         expect(main).toMatch(/mobileProjPill\.appendChild\(mobileProjName\)/);
         expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjPill\)/);
-        expect(main).toMatch(/mobileProjTitleRow\.appendChild\(mobileProjNext\)/);
     });
 
     it('routes a chevron click through the matching #projChild click', () => {
@@ -150,15 +152,17 @@ describe('STACK mobile project header', () => {
         expect(css).toMatch(/@media \(min-width:\s*1024px\)\s*\{[\s\S]*?#mobileProjHeader\s*\{[\s\S]*?display:\s*inline-flex/);
     });
 
-    it('assembles the title row into the header and mounts the header into main2', () => {
+    it('assembles the left column into the header and mounts the header into main2', () => {
         // Regression pin against the "header not painting" failure mode
         // where an over-zealous overflow-button removal yanked the wrong
-        // append calls. Two prior passes around the same area scared
-        // the wiring, so anchor the three appends that together prove
-        // the header tree is intact: TitleRow into header, Stats into
-        // header, and header into main2.
-        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjTitleRow\)/);
-        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjStats\)/);
+        // append calls. Variant C nests the label / title row / stats inside
+        // the left column (#mobileProjMain), which — together with the ‹ ›
+        // chevron column — is appended into the header; anchor the appends
+        // that together prove the header tree is intact.
+        expect(main).toMatch(/mobileProjMain\.appendChild\(mobileProjTitleRow\)/);
+        expect(main).toMatch(/mobileProjMain\.appendChild\(mobileProjStats\)/);
+        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjMain\)/);
+        expect(main).toMatch(/mobileProjHeader\.appendChild\(mobileProjChevCol\)/);
         expect(main).toMatch(/main2\.appendChild\(mobileProjHeader\)/);
     });
 
