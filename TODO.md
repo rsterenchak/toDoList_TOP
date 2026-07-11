@@ -269,3 +269,23 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 240b05c3-f101-4c92-9e03-34498c4a3df6 -->
+
+- [ ] **[MEDIUM]** Add voice-to-todo capture from the add-task row with a listening overlay
+  - Type: feature
+  - Description: Add a mic button to the always-present "Add a task" placeholder row that dictates a new todo by voice. Tapping the mic starts speech recognition and shows a centered listening overlay; the recognized text streams into the existing `#toDoInput` for the current project, where the user reviews it and commits with Enter exactly as if they had typed it — no blind auto-commit. This supersedes the reverted attempt in PR #715/#716, which bolted a *second* SpeechRecognition session onto the Claude launcher via a ~500ms long-press and committed straight to `listLogic.addToDo`; that version died on first use (the mic permission prompt appeared but nothing recorded) because the delayed start broke the user-activation chain and it lacked the first-grant retry the composer mic already has. Do not reintroduce a long-press trigger or a second concurrent recognition instance.
+  - Behavior:
+    1. A mic button sits at the trailing edge of the blank placeholder row, mirroring the composer mic in `claudeSheet.js` (36px circle, `--bg-elevated` fill, hairline `--border-mid`). It renders only when `getSpeechRecognitionCtor()` returns a constructor.
+    2. Tapping the mic calls `recognition.start()` synchronously inside the tap handler — no `setTimeout`/hold delay in the activation path (this is the fix for #715) — and opens the listening overlay.
+    3. The overlay is a centered "listening pill": a capsule (`--accent-dim` fill, 0.5px `--accent` border, `micPulse`-style glow ring) containing a ~7-bar equalizer and no mic glyph, over a dimmed + blurred backdrop, with a mono "Listening" label above and the live interim transcript below. The bars quicken on each `onresult`.
+    4. Interim results stream into the active project's `#toDoInput`. On end (natural pause, tap-to-stop, or Escape) the final transcript is left in `#toDoInput` — not discarded, not auto-committed — and the overlay closes; the user commits with Enter via the existing placeholder path or edits first.
+    5. Dismissal: tapping the backdrop/anywhere on the overlay or pressing Escape stops recognition and closes it while keeping whatever was transcribed (adapts the "modals close multiple ways" convention).
+  - Implementation notes:
+    - Extract the recognition logic currently private to `claudeSheet.js` (`buildMicButton` / `startMicRecording` / the `micRecognition` module global) into a new shared `voiceInput.js` sibling exposing e.g. `mountMicButton(targetInput, opts)` + `startDictation(targetInput)`, and have both the Claude composer and the add-task row consume it. Carry over the existing retry-once-on-first-grant guard and the `onerror` handling for `not-allowed`/denied — that guard is exactly what #715 was missing.
+    - The listening overlay lives in `voiceInput.js`, appended to `document.body` on demand (no bootstrap wiring), shared by any surface that dictates. Only one recognition session is ever live — reuse the single shared instance; never start a second concurrent session.
+    - The placeholder-row mic targets the *current* project's `#toDoInput`, so voice todos inherit project context automatically. Mount the button where the placeholder input is built in `toDoRow.js`, and coordinate placement with the mobile due-chip row from `mobileTaskCreate.js` so they don't overlap.
+    - Native only — uses the browser SpeechRecognition API, no new dependencies.
+    - Respect `prefers-reduced-motion` in the overlay (freeze the bar animation and pulse).
+  - Out of scope: real voice-amplitude reactivity (bars pulse on `onresult`, not live mic level — a true analyser would need a second `getUserMedia` stream, deferred to a follow-up); any change to the Claude launcher long-press.
+  - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 73d4e484-ca74-4768-9af6-b9e65696160f -->
