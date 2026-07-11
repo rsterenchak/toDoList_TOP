@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "The \"Add a task\" row now has a mic button that dictates a new todo by voice, with a listening overlay and the transcript left in for you to review before adding.",
         ],
+        fixed: [
+            "Voice-dictated todos are now added automatically when you stop talking, instead of leaving the text stranded in the field.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-10',
         added: [
-            "Agent board section headers now fold and reopen with a caret, remembering each section's open or collapsed state between visits.",
             "Todo rows now show a status dot on the description glyph — amber once an entry is injected, turning green once its run has shipped.",
         ],
         fixed: [

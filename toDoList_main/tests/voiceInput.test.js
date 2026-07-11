@@ -225,6 +225,98 @@ describe('voiceInput — shared mic + dictation module', () => {
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
             expect(document.querySelector('.voiceOverlay')).toBeNull();
         });
+
+        it('shows the cancel-vs-commit hint only when a surface opts into auto-commit', () => {
+            // Auto-commit surface (onFinal): the hint tells the user a pause adds
+            // the todo and a tap cancels.
+            const a = mountMicButton(makeInput(), { overlay: true, onFinal() {} });
+            a.click();
+            const withCommit = document.querySelector('.voiceOverlay .voiceHint');
+            expect(withCommit).toBeTruthy();
+            expect(withCommit.textContent.toLowerCase()).toMatch(/cancel/);
+            stopDictation();
+            // Review-only surface (no onFinal, e.g. the Claude composer): no
+            // commit-on-pause, so no misleading cancel hint.
+            const b = mountMicButton(makeInput(), { overlay: true });
+            b.click();
+            const withoutCommit = document.querySelector('.voiceOverlay .voiceHint');
+            if (withoutCommit) {
+                expect(withoutCommit.textContent.toLowerCase()).not.toMatch(/cancel/);
+            }
+        });
+    });
+
+    // Regression: the add-task mic auto-commits on a natural speech-pause end so
+    // the transcript isn't stranded (iOS can't reopen the keyboard to press Enter
+    // after the async end). Cancelling (tap/Escape) must never auto-commit, an
+    // empty transcript must never fire, and review-only surfaces (no onFinal,
+    // e.g. the Claude composer) keep their text for manual send.
+    describe('onFinal auto-commit on natural end (opt-in)', () => {
+        it('fires onFinal with the final transcript when recognition ends naturally', () => {
+            const calls = [];
+            startDictation(makeInput(), null, { onFinal(t) { calls.push(t); } });
+            const rec = lastRecognition();
+            rec.emitResult('buy milk');
+            rec.onend(); // natural speech-pause end — nobody called stop()
+            expect(calls).toEqual(['buy milk']);
+        });
+
+        it('never fires onFinal on a blank transcript', () => {
+            const calls = [];
+            startDictation(makeInput(), null, { onFinal(t) { calls.push(t); } });
+            lastRecognition().onend(); // ended with nothing said
+            expect(calls).toEqual([]);
+        });
+
+        it('does NOT fire onFinal when cancelled via stopDictation', () => {
+            const input = makeInput();
+            const calls = [];
+            startDictation(input, null, { onFinal(t) { calls.push(t); } });
+            lastRecognition().emitResult('cancel me');
+            stopDictation(); // backdrop tap / Escape / surface cleanup all route here
+            expect(calls).toEqual([]);
+        });
+
+        it('does NOT fire onFinal when the overlay is tapped, keeping the transcript', () => {
+            const input = makeInput();
+            const calls = [];
+            startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
+            lastRecognition().emitResult('cancel me');
+            document.querySelector('.voiceOverlay').click();
+            expect(calls).toEqual([]);
+            expect(input.value).toBe('cancel me');
+        });
+
+        it('does NOT fire onFinal when cancelled via Escape', () => {
+            const calls = [];
+            startDictation(makeInput(), null, { overlay: true, onFinal(t) { calls.push(t); } });
+            lastRecognition().emitResult('cancel me');
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            expect(calls).toEqual([]);
+        });
+
+        it('review-only surfaces (no onFinal) leave the transcript untouched on natural end', () => {
+            const input = makeInput();
+            startDictation(input, null, {});
+            const rec = lastRecognition();
+            rec.emitResult('leave me for review');
+            rec.onend();
+            expect(input.value).toBe('leave me for review');
+        });
+
+        it('a fresh session does not inherit a prior session\'s suppress-final state', () => {
+            // Cancel the first session (sets the suppress flag)…
+            startDictation(makeInput(), null, { onFinal() {} });
+            lastRecognition().emitResult('first');
+            stopDictation();
+            // …then a new session must still auto-commit on a natural end.
+            const calls = [];
+            startDictation(makeInput(), null, { onFinal(t) { calls.push(t); } });
+            const rec = lastRecognition();
+            rec.emitResult('second');
+            rec.onend();
+            expect(calls).toEqual(['second']);
+        });
     });
 });
 
@@ -246,5 +338,24 @@ describe('toDoRow wires the shared voice mic onto the blank placeholder', () => 
     it('opts into the listening overlay and appends the mic into the row', () => {
         expect(toDoRow).toMatch(/overlay:\s*true/);
         expect(toDoRow).toMatch(/if\s*\(micBtn\)\s*toDoChild\.appendChild\(micBtn\)/);
+    });
+
+    it('passes an onFinal that commits through the input\'s Enter path', () => {
+        // The add-task mic auto-commits on a natural speech-pause end by
+        // dispatching a synthetic Enter keydown on #toDoInput, reusing the
+        // existing commit handler rather than calling listLogic.addToDo.
+        expect(toDoRow).toMatch(/onFinal/);
+        expect(toDoRow).toMatch(/new KeyboardEvent\(\s*['"]keydown['"]/);
+        expect(toDoRow).not.toMatch(/onFinal[\s\S]{0,120}listLogic\.addToDo/);
+    });
+});
+
+// The Claude composer mic stays review-only: no onFinal, so a natural end leaves
+// its text for the user to send manually.
+describe('claudeSheet composer mic does not auto-commit', () => {
+    const claudeSheet = read('claudeSheet.js');
+    it('mounts the composer mic without an onFinal callback', () => {
+        expect(claudeSheet).toMatch(/mountMicButton\(/);
+        expect(claudeSheet).not.toMatch(/onFinal/);
     });
 });
