@@ -357,7 +357,7 @@
   - Completed: 2026-07-11
   <!-- id: e11d9444-feca-48f3-b804-27c28b3a28e8 -->
 
-- [ ] **[LOW]** Agent cards: replace the "SHIPPED" text chip with the shipped check glyph
+- [x] **[LOW]** Agent cards: replace the "SHIPPED" text chip with the shipped check glyph — Completed: 2026-07-11
   - Type: feature
   - Description: On agent cards in the `shipped` state, render the green filled-check status glyph (the same mark used on task rows) in the card header instead of the "SHIPPED" text chip. Shipped cards already sit under the "Shipped" section header, so the text label is redundant — the icon keeps the signal and declutters. Only the shipped state changes; every other state keeps its text chip (Needs words, Drafted, Stuck, Queued, Running, No change).
   - Behavior: A shipped card's header shows a small green check in the same slot the "SHIPPED" pill occupied (between the title and the × remove control), carrying a `title`/`aria-label` of "Shipped" so hover and screen readers still get the word. All non-shipped states render unchanged. The "Shipped 18" group header is untouched.

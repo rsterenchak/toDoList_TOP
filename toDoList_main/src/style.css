@@ -4698,9 +4698,15 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   background: rgba(229, 83, 75, 0.14);
 }
 
-.agentChip--shipped {
-  color: #2ea043;
-  background: rgba(46, 160, 67, 0.14);
+.agentShippedGlyph {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--type-feature);
+}
+
+.agentShippedGlyph svg {
+  display: block;
 }
 
 .agentSecondary {
