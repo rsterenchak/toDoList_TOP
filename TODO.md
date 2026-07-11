@@ -269,10 +269,3 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 240b05c3-f101-4c92-9e03-34498c4a3df6 -->
-
-- [ ] **[LOW]** Add a harmless CSS tweak to trigger a redeploy
-  - Type: feature
-  - Description: Make a trivial, purely cosmetic CSS change (e.g. adjust a comment or a 1px value on an existing rule) in the main stylesheet with no visible or functional effect, solely to trigger the build/deploy pipeline for testing purposes. No other files should be touched and no behavior should change.
-  - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: a40973b3-04b4-4c8f-9a19-68042f16d6b0 -->
