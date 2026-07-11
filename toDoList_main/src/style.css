@@ -2202,6 +2202,15 @@ body:has(#settingsMenu) #claudeLauncher {
   line-height: 1.4;
   color: var(--text-primary);
 }
+/* Cancel-vs-commit hint — shown only on auto-commit surfaces (the add-task row):
+   a natural pause adds the todo, a tap/Escape cancels. */
+.voiceHint {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text-secondary);
+}
 @keyframes voiceBarBounce {
   0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
   50% { transform: scaleY(2.6); opacity: 1; }

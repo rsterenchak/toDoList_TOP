@@ -25,6 +25,10 @@ let activeButton = null;   // the mic button that started the session
 let overlayEl = null;      // the listening overlay element, while shown
 let overlayKeyHandler = null;
 let barTimer = null;
+let activeOnFinal = null;   // per-session opt-in: called with the final transcript
+                           // on a natural speech-pause end (never on a cancel)
+let lastTranscript = '';    // most-recent trimmed transcript, for the onFinal payload/guard
+let suppressFinal = false;  // set on any manual stop (cancel) so onend skips onFinal
 
 // Simple mic glyph: a rounded capsule (the mic body) over a stand stem. Shared
 // by every mic button so the affordance reads the same on all surfaces.
@@ -70,6 +74,14 @@ function resolveTarget(target) {
 //                   focus, e.g. the mobile placeholder row)
 //   stopPropagation — stop the click from bubbling (so a row-level click
 //                   handler doesn't also fire)
+//   onFinal(text) — auto-commit hook: called once with the final transcript
+//                   when a session ends on its own (a natural speech pause),
+//                   and NOT when the user cancels (backdrop tap / Escape / a
+//                   fresh session) or the transcript is empty. Surfaces that
+//                   want the dictated text committed for the user (the add-task
+//                   row, where iOS can't reopen the keyboard to press Enter)
+//                   pass this; review-only surfaces (the Claude composer) omit
+//                   it and keep the text in the field for a manual send.
 export function mountMicButton(target, opts = {}) {
     if (!getSpeechRecognitionCtor()) return null;
     const btn = document.createElement('button');
@@ -119,6 +131,11 @@ export function startDictation(target, btn, opts = {}) {
     activeTarget = input;
     activeButton = btn || null;
     baseValue = input.value || '';
+    // Fresh session — clear any suppress flag/transcript left by a prior one so
+    // a natural end here can auto-commit even if the last session was cancelled.
+    activeOnFinal = typeof opts.onFinal === 'function' ? opts.onFinal : null;
+    lastTranscript = '';
+    suppressFinal = false;
 
     if (opts.focusTarget) {
         try { input.focus(); } catch (e) { /* not focusable */ }
@@ -137,6 +154,7 @@ export function startDictation(target, btn, opts = {}) {
                 if (alt && alt.transcript) transcript += alt.transcript;
             }
             const trimmed = transcript.trim();
+            lastTranscript = trimmed;
             input.value = baseValue && trimmed
                 ? baseValue + ' ' + trimmed
                 : baseValue + trimmed;
@@ -159,9 +177,17 @@ export function startDictation(target, btn, opts = {}) {
         rec.onend = function() {
             activeRec = null;
             if (recording) {
+                // Reaching onend with recording still true means the session
+                // ended on its own (a natural speech pause) — a cancel routes
+                // through stopDictation, which clears recording and sets
+                // suppressFinal first. So this branch is the auto-commit path.
                 recording = false;
                 setButtonState(btn, 'idle');
+                const cb = activeOnFinal;
+                const finalText = lastTranscript;
+                const commit = !suppressFinal && typeof cb === 'function' && finalText;
                 closeOverlay();
+                if (commit) cb(finalText);
             }
         };
         return rec;
@@ -193,6 +219,10 @@ export function startDictation(target, btn, opts = {}) {
 // by surface-close cleanup so a dismiss can't leave a session dangling).
 export function stopDictation() {
     recording = false;
+    // A manual stop is a cancel: the transcript stays in the field for review
+    // but must not auto-commit, so suppress the onFinal an onend would otherwise
+    // fire once the underlying recognition instance winds down.
+    suppressFinal = true;
     if (activeRec) {
         try { activeRec.stop(); } catch (e) { /* already stopped */ }
         activeRec = null;
@@ -235,7 +265,19 @@ function openOverlay() {
     ov.appendChild(pill);
     ov.appendChild(interim);
 
-    // Tapping the backdrop or the pill dismisses (stops + keeps transcript).
+    // Hint copy — shown only on auto-commit surfaces (those that pass onFinal),
+    // where a natural pause adds the todo and a tap/Escape cancels it. Review-only
+    // surfaces (the Claude composer) never auto-commit, so the "cancel" framing
+    // would mislead there and is omitted.
+    if (typeof activeOnFinal === 'function') {
+        const hint = document.createElement('div');
+        hint.className = 'voiceHint';
+        hint.textContent = 'Pause to add · tap to cancel';
+        ov.appendChild(hint);
+    }
+
+    // Tapping the backdrop or the pill dismisses (cancel — stops + keeps the
+    // transcript in the field, but suppresses any auto-commit).
     ov.addEventListener('click', function() { stopDictation(); });
 
     document.body.appendChild(ov);
