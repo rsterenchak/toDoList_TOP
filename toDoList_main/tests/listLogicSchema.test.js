@@ -149,7 +149,9 @@ describe('listLogic.js — toTodoRowPayload carries the injected entry_id column
 
     it('hydrates item.entryId back from the row on the read/merge path', () => {
         // Round-trip: the Supabase-read merge builds items with entryId from the
-        // row's entry_id, degrading to undefined when the column is absent.
-        expect(SRC).toMatch(/entryId:\s*t\.entry_id\s*\|\|\s*undefined/);
+        // row's entry_id, falling back to a locally-known id when the column is
+        // null (pre-migration rows), and degrading to undefined when neither has
+        // it so the read path never throws.
+        expect(SRC).toMatch(/entryId:\s*t\.entry_id[\s\S]{0,120}\|\|\s*undefined/);
     });
 });

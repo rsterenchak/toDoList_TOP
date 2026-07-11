@@ -1397,49 +1397,28 @@ body {
   }
 }
 
-/* DESCRIPTION INDICATOR — tiny note glyph sitting between the checkbox and
-   the title on rows whose `desc` field is non-empty. CSS-driven via the
-   row's `data-has-desc` attribute (managed by updateDescIndicator). The
-   indicator paints in the accent color and is decorative — pointer-events
-   are released so clicks pass through to the row's own click handler
-   (which on touch opens the desc editor modal). */
+/* RUN-STATUS GLYPH — the leading slot between the checkbox and the title,
+   showing whether the row's injected entry has shipped. It carries no glyph
+   (and takes no space) until `applyRunStatusGlyph` adds a `runStatusGlyph--*`
+   state class: green filled check once the entry's TODO.md marker is `[x]`
+   (shipped), amber dashed ring while it is injected-but-pending. The glyph
+   paints in `currentColor` (set per state below), and pointer-events are
+   released so clicks pass through to the row's own click handler. */
 #descIndicator {
-  position: relative; /* anchor for the run-status dot overlay */
   display: none;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
-  color: var(--accent-text);
   pointer-events: none;
-  opacity: 0.9;
 }
-#toDoChild[data-has-desc="true"] #descIndicator {
+#descIndicator.runStatusGlyph--shipped,
+#descIndicator.runStatusGlyph--pending {
   display: inline-flex;
 }
-#toDoChild.completed #descIndicator { opacity: 0.45; }
-
-/* Run-status badge dot overlaid on the bottom-right corner of the description
-   indicator: green once the row's injected entry has shipped a run, amber while
-   it is injected-but-pending. Nested inside #descIndicator so it inherits the
-   indicator's data-has-desc visibility gating and 0.9 / 0.45 opacity. Theme
-   tokens keep both colors legible in dark and light modes; the ring uses the
-   row fill so the dot reads cleanly over the note glyph. */
-#descIndicator .dot {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--type-feature);
-  box-shadow: 0 0 0 1.5px var(--bg-row);
-  pointer-events: none;
-}
-#descIndicator .dot--pending {
-  background: var(--text-warning);
-}
+#descIndicator.runStatusGlyph--shipped { color: var(--type-feature); }
+#descIndicator.runStatusGlyph--pending { color: var(--text-warning); }
 
 /* HELP MODAL — opened by the floating `?` help button, the `?` key, and the
    "Help" item in the ghost menu. Mirrors the changelog modal's chrome

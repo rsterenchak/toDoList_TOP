@@ -2890,6 +2890,21 @@ export const listLogic = (function () {
                 if (e && e.id) localById[e.id] = { name: name, entry: e };
             });
 
+            // Index local todo items by their stable id so the merge below can
+            // preserve a locally-known entry id when the remote row's entry_id
+            // column is null (a server row that predates the migration). Without
+            // this, hydrating a pre-migration row would drop the id and the
+            // run-status glyph would vanish until the next mutation pushed it up.
+            const localTodosById = {};
+            Object.keys(allProjects).forEach(function(name) {
+                const items = allProjects[name] && allProjects[name].items;
+                if (Array.isArray(items)) {
+                    items.forEach(function(it) {
+                        if (it && it.id) localTodosById[it.id] = it;
+                    });
+                }
+            });
+
             // Server-acknowledged project ids from the previous hydrate.
             const lastSeenServerProjectIds = readLastSeenServerProjectIds();
 
@@ -2953,10 +2968,14 @@ export const listLogic = (function () {
                         status: normalizeTodoStatus(t.status),
                         recurrence: t.recurrence || null,
                         // Round-trip the injected-entry marker id so the row's
-                        // shipped-run dot resolves cross-device. Absent column
-                        // (server predates the migration) → undefined, which
-                        // degrades to current local behavior (no synced id).
-                        entryId: t.entry_id || undefined,
+                        // run-status glyph resolves cross-device. When the
+                        // column is null (server predates the migration), fall
+                        // back to a locally-known id so pre-migration rows keep
+                        // their glyph through the transition and push it up on
+                        // the next mutation; still undefined when neither has it.
+                        entryId: t.entry_id
+                            || (localTodosById[t.id] && localTodosById[t.id].entryId)
+                            || undefined,
                         created_at: t.created_at || null,
                     });
                 });
@@ -3194,6 +3213,11 @@ export const listLogic = (function () {
                 recurrence: evt.new.recurrence || null,
                 created_at: evt.new.created_at || null,
             };
+            // Carry the injected-entry marker id so the row's run-status glyph
+            // resolves cross-device — but ONLY when the column is present, so an
+            // unrelated UPDATE (which returns entry_id: null) never clobbers a
+            // good local id via the Object.assign below.
+            if (evt.new.entry_id) mapped.entryId = evt.new.entry_id;
             if (idx === -1) {
                 proj.items.push(mapped);
             } else {

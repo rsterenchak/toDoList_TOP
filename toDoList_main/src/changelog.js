@@ -6,14 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-11',
-        added: [
-            "The \"Add a task\" row now has a mic button that dictates a new todo by voice, with a listening overlay and the transcript left in for you to review before adding.",
-        ],
         fixed: [
             "Voice-dictated todos are now added automatically when you stop talking, instead of leaving the text stranded in the field.",
             "The voice mic button no longer lingers on a todo after you add it.",
             "Tapping the voice listening overlay now adds the dictated todo, and the mic keeps listening until you tap instead of ending on a pause.",
             "The shipped-run status dot on a todo now turns green reliably and shows the same state on every device, reading whether the run merged from the shared TODO.md instead of local run history.",
+        ],
+        changed: [
+            "Task rows now show a dedicated shipped/pending status icon in place of the description note glyph — a green check once the injected entry ships, an amber dashed ring until then.",
         ],
     },
 ];
