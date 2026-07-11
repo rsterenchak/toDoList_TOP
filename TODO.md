@@ -336,7 +336,7 @@
   - Completed:
   <!-- id: 6f0786b5-458e-4aa7-baa0-3f914bafb218 -->
 
-- [ ] **[MEDIUM]** Task row: replace the description note glyph with a shipped/pending status icon
+- [x] **[MEDIUM]** Task row: replace the description note glyph with a shipped/pending status icon — Completed: 2026-07-11
   - Type: feature
   - Description: On committed task rows, drop the paper "has-description" note glyph (`#descIndicator`) and the run-status dot overlaid on it, and replace that leading slot with a dedicated status icon — a filled check-in-circle in green (`--type-feature`) when the row's injected entry has shipped, and a dashed-ring circle in amber (`--text-warning`) when it's injected/dispatched but not yet shipped. No icon when the task has no entry id. This decouples the marker from the description gate (the old dot lived inside a `display:none`-until-`data-has-desc` glyph, so it disappeared on description-less or later-cleared tasks) and from `injectedAt` (a local-only field that doesn't survive a reload) — the two reasons it mostly never showed. Shipped-state source stays the TODO.md checkbox set already resolved by `hasShippedRunForEntry` / `shippedMarkerCache`.
   - Behavior: A row whose task carries an `entryId` shows the status icon: green filled-check once that entry's marker is checked off (`[x]`) in the routed target's TODO.md, amber dashed-ring until then. Rows with no `entryId` show nothing in that slot. Identical across devices — the marker id syncs via Supabase and shipped-truth reads from the shared TODO.md. Running state is not shown here (per-entry run state isn't tracked on task rows); it stays on the viewer's Running pill.
