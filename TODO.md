@@ -270,7 +270,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 240b05c3-f101-4c92-9e03-34498c4a3df6 -->
 
-- [ ] **[MEDIUM]** Add voice-to-todo capture from the add-task row with a listening overlay
+- [x] **[MEDIUM]** Add voice-to-todo capture from the add-task row with a listening overlay — Completed: 2026-07-11
   - Type: feature
   - Description: Add a mic button to the always-present "Add a task" placeholder row that dictates a new todo by voice. Tapping the mic starts speech recognition and shows a centered listening overlay; the recognized text streams into the existing `#toDoInput` for the current project, where the user reviews it and commits with Enter exactly as if they had typed it — no blind auto-commit. This supersedes the reverted attempt in PR #715/#716, which bolted a *second* SpeechRecognition session onto the Claude launcher via a ~500ms long-press and committed straight to `listLogic.addToDo`; that version died on first use (the mic permission prompt appeared but nothing recorded) because the delayed start broke the user-activation chain and it lacked the first-grant retry the composer mic already has. Do not reintroduce a long-press trigger or a second concurrent recognition instance.
   - Behavior:
