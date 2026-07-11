@@ -387,7 +387,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: df38cb9a-2839-4717-bce4-1fa04c8d3158 -->
 
-- [ ] **[MEDIUM]** Fix run-status dot missing on task rows for entries shipped through the agent flow
+- [x] **[MEDIUM]** Fix run-status dot missing on task rows for entries shipped through the agent flow — Completed: 2026-07-11 (already shipped via PR #730; this was a duplicate re-injection)
   - Type: bug
   - Description: The amber/green run-status dot on a tasks-view row (`applyDescStatusDot` in `toDoRow.js`) never appears when a task is routed through the Agent tab (triage → draft → dispatch → ship), even though it works for tasks injected via the inject button. Root cause: the dot reads two item-level signals — `item.injectedAt` (the render gate) and `item.entryId` matched against `SHIPPED` records in the `todoapp_claudeRuns` store — and both are written only by the inject-button/chat path (`item.injectedAt` in inject.js's `injectDescription`; the run records in `claudeSheet.js`). The agent subsystem tracks state on the `agent_queue` row via `setAgentRunState` and writes neither signal back to the source task, so the row's item has no `injectedAt` (the dot early-returns) and no matching shipped record (green couldn't fire even if it rendered). The link already exists — every agent card/row carries `todo_id` equal to the source item's `id` — so the fix is to have the agent flow write those same two signals back, keyed off `todo_id`.
   - Behavior:
