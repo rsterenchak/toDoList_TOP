@@ -23,6 +23,8 @@ import {
     requestPagesRebuild,
     revertEntry,
     showInjectToast,
+    forgetEntryMarkerLocally,
+    refreshShippedMarkers,
 } from './inject.js';
 
 // Entries reverted (merged) this session — once a completed row's change has
@@ -911,6 +913,7 @@ function buildTodoMdViewerCard(projectName, target) {
             } else {
                 showInjectToast('Update failed — ' + (res.reason || 'unknown error'), 'error');
             }
+            return res.ok;
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -998,7 +1001,16 @@ function buildTodoMdViewerCard(projectName, target) {
         showConfirmModal({
             message: 'Delete this entry' + named + ' from TODO.md? This can’t be undone.',
             confirmLabel: 'Delete',
-            onConfirm: function() { performRewrite('delete_entry', entryId, btn); },
+            onConfirm: function() {
+                performRewrite('delete_entry', entryId, btn).then(function(ok) {
+                    if (!ok) return;
+                    // The entry's marker is gone from TODO.md — clear the task
+                    // row's status glyph, then force a marker read so the cache
+                    // reconciles against the real (now-shortened) file.
+                    forgetEntryMarkerLocally(entryId);
+                    refreshShippedMarkers(target, true);
+                });
+            },
         });
     }
 

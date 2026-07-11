@@ -177,14 +177,17 @@ export const CLAUDE_RUNS_KEY = 'todoapp_claudeRuns';
 // the shipped edge.
 export const TODO_RUN_STATUS_EVENT = 'todoapp:todoRunStatusChange';
 
-// Per-repo cache of shipped-entry marker ids — the cross-device source of truth
-// for the row status dot's green (shipped) state. Keyed by `target.repo` →
-// `{ ids: Set<markerId>, fetchedAt: ms }`, populated by refreshShippedMarkers,
-// which reads the routed target's TODO.md through the Worker and records the
-// `<!-- id -->` markers of CHECKED top-level entries. A run has shipped iff its
-// injected entry's checkbox is `[x]` in the shared TODO.md, so every device that
-// syncs the entry id agrees — unlike the old device-local todoapp_claudeRuns
-// scan, whose freshly-minted ids never intersected a row's injected entry id.
+// Per-repo cache of TODO.md marker ids — the cross-device source of truth for
+// the row status glyph. Keyed by `target.repo` → `{ present: Set<markerId>,
+// shipped: Set<markerId>, fetchedAt: ms }`, populated by refreshShippedMarkers,
+// which reads the routed target's TODO.md through the Worker and records, for
+// every top-level entry, its `<!-- id -->` marker in `present` and — when that
+// entry's checkbox is `[x]` — also in `shipped`. So a marker in `present` but
+// not `shipped` is injected-but-unshipped; a marker absent from `present`
+// altogether means the entry is no longer in TODO.md (never injected, or
+// deleted/reverted). Every device that syncs the entry id agrees — unlike the
+// old device-local todoapp_claudeRuns scan, whose freshly-minted ids never
+// intersected a row's injected entry id.
 const shippedMarkerCache = new Map();
 const shippedMarkersInFlight = new Map();
 const SHIPPED_MARKERS_TTL_MS = 60 * 1000;
@@ -199,9 +202,62 @@ export function hasShippedRunForEntry(entryId) {
     if (!entryId) return false;
     let shipped = false;
     shippedMarkerCache.forEach(function(entry) {
-        if (entry && entry.ids && entry.ids.has(entryId)) shipped = true;
+        if (entry && entry.shipped && entry.shipped.has(entryId)) shipped = true;
     });
     return shipped;
+}
+
+// Resolve an entry id to its three-way run state for the row status glyph:
+//   'shipped' — the marker sits on a CHECKED top-level TODO.md entry
+//   'pending' — the marker is present in TODO.md but its entry is unchecked
+//   'none'    — the marker is absent from every cached TODO.md (never injected,
+//               or deleted/reverted) — so the glyph clears instead of sticking
+// Synchronous, reading the same cache hasShippedRunForEntry does. Entry ids are
+// globally-unique UUIDs, so scanning across repos is safe: a `shipped` hit in
+// any repo wins, else a `present` hit yields 'pending', else 'none'.
+export function resolveEntryRunState(entryId) {
+    if (!entryId) return 'none';
+    let state = 'none';
+    shippedMarkerCache.forEach(function(entry) {
+        if (!entry) return;
+        if (entry.shipped && entry.shipped.has(entryId)) {
+            state = 'shipped';
+        } else if (state !== 'shipped' && entry.present && entry.present.has(entryId)) {
+            state = 'pending';
+        }
+    });
+    return state;
+}
+
+// Optimistically record a just-injected entry's marker as present (unshipped)
+// in the target repo's cache so the amber pending glyph appears immediately,
+// before the next TODO.md read confirms it. Does NOT bump `fetchedAt`, so the
+// next TTL/forced refresh still reconciles against the real file. Creates the
+// per-repo cache entry if absent (with fetchedAt: 0 so it reads as stale).
+export function markEntryPresentLocally(repo, entryId) {
+    if (!repo || !entryId) return;
+    let entry = shippedMarkerCache.get(repo);
+    if (!entry) {
+        entry = { present: new Set(), shipped: new Set(), fetchedAt: 0 };
+        shippedMarkerCache.set(repo, entry);
+    }
+    if (!entry.present) entry.present = new Set();
+    entry.present.add(entryId);
+    emitTodoRunStatusChange();
+}
+
+// Optimistically drop an entry's marker from every cached repo's present and
+// shipped sets so its row glyph clears immediately on a delete/revert, before
+// the next TODO.md read confirms the removal. A forced refresh afterwards
+// reconciles against the real file.
+export function forgetEntryMarkerLocally(entryId) {
+    if (!entryId) return;
+    shippedMarkerCache.forEach(function(entry) {
+        if (!entry) return;
+        if (entry.present) entry.present.delete(entryId);
+        if (entry.shipped) entry.shipped.delete(entryId);
+    });
+    emitTodoRunStatusChange();
 }
 
 // Dispatch TODO_RUN_STATUS_EVENT so row-level status dots re-evaluate. Safe in
@@ -230,6 +286,12 @@ async function injectDescription(item, target) {
         await postToWorker(body);
         item.injectedAt = Date.now();
         listLogic.saveToStorage();
+        // Show the amber pending glyph immediately, then reconcile against the
+        // real TODO.md (forced past the TTL so the just-injected entry lands).
+        if (target && target.repo && item.entryId) {
+            markEntryPresentLocally(target.repo, item.entryId);
+            refreshShippedMarkers(target, true);
+        }
         return { ok: true };
     } catch (e) {
         return { ok: false, reason: describeError(e) };
@@ -363,20 +425,25 @@ export async function readTodoMdFromWorker(target) {
 // a toDoRow → todoMdViewer → inject cycle.
 const SHIPPED_MARKER_RE = /<!-- id: (\S+) -->/;
 
-// Parse a TODO.md body for the marker ids of CHECKED top-level entries. Mirrors
-// the viewer's entry→marker association (todoMdViewer.js parseTodoMdChecklist):
-// a top-level (unindented) `- [ ]`/`- [x]` line starts an entry block, and the
-// entry's `<!-- id -->` marker may sit on that line or on any following line of
-// the block up to the next top-level checkbox or heading — so we track the
-// current entry and attach the first marker found in its block, keeping the id
-// only when that entry's checkbox is `[x]`. Returns a Set of shipped marker ids;
-// a non-string body yields an empty set. Deliberately NOT a same-line regex.
-function parseShippedMarkerIds(text) {
-    const ids = new Set();
-    if (typeof text !== 'string') return ids;
+// Parse a TODO.md body for top-level entry markers, returning `{ present,
+// shipped }` — `present` holds every top-level entry's `<!-- id -->` marker,
+// `shipped` only those whose checkbox is `[x]`. Mirrors the viewer's
+// entry→marker association (todoMdViewer.js parseTodoMdChecklist): a top-level
+// (unindented) `- [ ]`/`- [x]` line starts an entry block, and the entry's
+// marker may sit on that line or on any following line of the block up to the
+// next top-level checkbox or heading — so we track the current entry and attach
+// the first marker found in its block. A non-string body yields two empty sets.
+// Deliberately NOT a same-line regex.
+function parseTodoMdMarkers(text) {
+    const present = new Set();
+    const shipped = new Set();
+    if (typeof text !== 'string') return { present: present, shipped: shipped };
     let current = null; // { checked, id } for the current top-level entry block
     function flush() {
-        if (current && current.checked && current.id) ids.add(current.id);
+        if (current && current.id) {
+            present.add(current.id);
+            if (current.checked) shipped.add(current.id);
+        }
     }
     text.split('\n').forEach(function(raw) {
         if (/^#{1,6}\s+/.test(raw)) {
@@ -399,34 +466,44 @@ function parseShippedMarkerIds(text) {
         }
     });
     flush();
-    return ids;
+    return { present: present, shipped: shipped };
 }
 
-// Read the routed target's TODO.md through the Worker and record the marker ids
-// of CHECKED top-level entries into the per-repo shipped-marker cache. This is
-// the cross-device source of truth for the row status dot's shipped (green)
-// state. Cached with a ~60s TTL keyed by `target.repo` (a fresh call inside the
-// window is a no-op) and coalesced so overlapping callers share one read. On a
-// resolved read it dispatches TODO_RUN_STATUS_EVENT so rendered dots
-// re-evaluate; a missing/malformed read stores an empty set (no green) and never
-// throws. Returns a promise that settles when the cache is up to date.
-export function refreshShippedMarkers(target) {
+// Read the routed target's TODO.md through the Worker and record every top-level
+// entry's marker id (present) plus the CHECKED subset (shipped) into the
+// per-repo marker cache. This is the cross-device source of truth for the row
+// status glyph. Cached with a ~60s TTL keyed by `target.repo` (a fresh call
+// inside the window is a no-op unless `force` is set) and coalesced so
+// overlapping callers share one read. Pass `force` after an inject/delete so the
+// real file reconciles promptly instead of waiting out the TTL. On a resolved
+// read it dispatches TODO_RUN_STATUS_EVENT so rendered glyphs re-evaluate; a
+// missing/malformed read stores two empty sets (no glyph) and never throws.
+// Returns a promise that settles when the cache is up to date.
+export function refreshShippedMarkers(target, force) {
     if (!target || !target.repo || !target.file_path) return Promise.resolve();
     const repo = target.repo;
     const cached = shippedMarkerCache.get(repo);
-    if (cached && (Date.now() - cached.fetchedAt) < SHIPPED_MARKERS_TTL_MS) {
+    if (!force && cached && (Date.now() - cached.fetchedAt) < SHIPPED_MARKERS_TTL_MS) {
         return Promise.resolve();
     }
     const inFlight = shippedMarkersInFlight.get(repo);
     if (inFlight) return inFlight;
     const p = readTodoMdFromWorker(target).then(function(res) {
-        const ids = (res && res.ok && typeof res.content === 'string')
-            ? parseShippedMarkerIds(res.content)
-            : new Set();
-        shippedMarkerCache.set(repo, { ids: ids, fetchedAt: Date.now() });
+        const markers = (res && res.ok && typeof res.content === 'string')
+            ? parseTodoMdMarkers(res.content)
+            : { present: new Set(), shipped: new Set() };
+        shippedMarkerCache.set(repo, {
+            present: markers.present,
+            shipped: markers.shipped,
+            fetchedAt: Date.now(),
+        });
         emitTodoRunStatusChange();
     }).catch(function() {
-        shippedMarkerCache.set(repo, { ids: new Set(), fetchedAt: Date.now() });
+        shippedMarkerCache.set(repo, {
+            present: new Set(),
+            shipped: new Set(),
+            fetchedAt: Date.now(),
+        });
     }).then(function() {
         shippedMarkersInFlight.delete(repo);
     });
