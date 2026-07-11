@@ -128,3 +128,28 @@ describe('listLogic.js — toProjectRowPayload carries the per-project stages/li
         expect(body).toMatch(/lifecycle:\s*entry\.lifecycle\s*\|\|/);
     });
 });
+
+
+describe('listLogic.js — toTodoRowPayload carries the injected entry_id column', () => {
+    // The cross-device shipped-run dot reads shipped-truth from the shared
+    // TODO.md, but needs the injected entry's marker id to sync with the task.
+    // toTodoRowPayload is the single funnel every todo write mirrors through, so
+    // it must carry entry_id or the id never reaches Supabase and the dot can
+    // never agree across devices — the green-but-does-nothing failure mode this
+    // codebase pins by test rather than by eye.
+    const body = functionBody(SRC, 'toTodoRowPayload');
+
+    it('exists as a declared function', () => {
+        expect(body).toBeTruthy();
+    });
+
+    it('includes `entry_id` sourced from the item, nullable', () => {
+        expect(body).toMatch(/entry_id:\s*item\.entryId\s*\|\|\s*null/);
+    });
+
+    it('hydrates item.entryId back from the row on the read/merge path', () => {
+        // Round-trip: the Supabase-read merge builds items with entryId from the
+        // row's entry_id, degrading to undefined when the column is absent.
+        expect(SRC).toMatch(/entryId:\s*t\.entry_id\s*\|\|\s*undefined/);
+    });
+});
