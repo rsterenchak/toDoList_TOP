@@ -5,6 +5,9 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
     hasShippedRunForEntry,
+    resolveEntryRunState,
+    markEntryPresentLocally,
+    forgetEntryMarkerLocally,
     refreshShippedMarkers,
     initInjectConfig,
 } from '../src/inject.js';
@@ -141,6 +144,74 @@ describe('hasShippedRunForEntry — shipped-marker correlation from TODO.md', ()
     });
 });
 
+describe('resolveEntryRunState — three-way shipped / pending / none', () => {
+    it('returns "none" for a falsy id and for an id absent from every cache', () => {
+        expect(resolveEntryRunState('')).toBe('none');
+        expect(resolveEntryRunState(null)).toBe('none');
+        expect(resolveEntryRunState('never-seen-anywhere')).toBe('none');
+    });
+
+    it('returns "pending" for a present-but-unchecked marker and "shipped" for a checked one', async () => {
+        const md = [
+            '- [ ] Not done',
+            '  <!-- id: state-pending -->',
+            '- [x] Done',
+            '  <!-- id: state-shipped -->',
+        ].join('\n');
+        mockTodoMd(md);
+        await refreshShippedMarkers(freshTarget());
+        expect(resolveEntryRunState('state-pending')).toBe('pending');
+        expect(resolveEntryRunState('state-shipped')).toBe('shipped');
+        // An id that was never in this (or any) TODO.md read resolves to none.
+        expect(resolveEntryRunState('state-absent')).toBe('none');
+    });
+
+    it('drops back to "none" when a previously-present marker is deleted from TODO.md', async () => {
+        // Regression: the amber ring used to be sticky — an id present but not
+        // shipped rendered pending forever, even after the entry was deleted.
+        const target = freshTarget();
+        mockTodoMd('- [ ] Queued\n  <!-- id: to-delete -->');
+        await refreshShippedMarkers(target);
+        expect(resolveEntryRunState('to-delete')).toBe('pending');
+
+        // The entry is deleted from TODO.md; a forced re-read of the same repo
+        // (as the viewer's delete path does) replaces the set without the id.
+        mockTodoMd('# TODO LIST\n');
+        await refreshShippedMarkers(target, true);
+        expect(resolveEntryRunState('to-delete')).toBe('none');
+    });
+});
+
+describe('optimistic marker helpers — instant amber on inject, instant clear on delete', () => {
+    it('markEntryPresentLocally makes an id resolve as pending before any read', () => {
+        expect(resolveEntryRunState('optimistic-id')).toBe('none');
+        markEntryPresentLocally('owner/opt-repo', 'optimistic-id');
+        expect(resolveEntryRunState('optimistic-id')).toBe('pending');
+    });
+
+    it('forgetEntryMarkerLocally clears an id from every cached repo', async () => {
+        mockTodoMd('- [ ] Queued\n  <!-- id: forget-id -->');
+        await refreshShippedMarkers(freshTarget());
+        expect(resolveEntryRunState('forget-id')).toBe('pending');
+        forgetEntryMarkerLocally('forget-id');
+        expect(resolveEntryRunState('forget-id')).toBe('none');
+    });
+
+    it('the row glyph clears in place when its entry marker is forgotten', async () => {
+        mockTodoMd('- [ ] Queued\n  <!-- id: glyph-clear-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { indicator } = makeRow({ entryId: 'glyph-clear-id', injectedAt: null });
+        refreshDescStatusDots();
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
+
+        forgetEntryMarkerLocally('glyph-clear-id');
+        refreshDescStatusDots();
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(false);
+        expect(indicator.innerHTML).toBe('');
+    });
+});
+
 describe('run-status glyph — live refresh through the marker cache', () => {
     it('renders no glyph when the task carries no entry id', () => {
         const { indicator } = makeRow({ entryId: null, injectedAt: null });
@@ -159,7 +230,11 @@ describe('run-status glyph — live refresh through the marker cache', () => {
         expect(indicator.innerHTML).toBe('');
     });
 
-    it('renders an amber pending glyph when the entry id is present but not shipped', () => {
+    it('renders an amber pending glyph when the entry marker is present but unchecked', async () => {
+        // Pending now requires the marker to actually be present (unchecked) in
+        // the routed TODO.md — an id absent from every read shows no glyph.
+        mockTodoMd('- [ ] not done\n  <!-- id: pending-glyph-id -->');
+        await refreshShippedMarkers(freshTarget());
         const { indicator } = makeRow({ entryId: 'pending-glyph-id', injectedAt: null });
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
@@ -178,6 +253,9 @@ describe('run-status glyph — live refresh through the marker cache', () => {
     });
 
     it('flips a pending glyph to shipped in place when the marker cache resolves', async () => {
+        // The routed TODO.md first shows the entry present-but-unchecked.
+        mockTodoMd('- [ ] not done yet\n  <!-- id: flip-glyph-id -->');
+        await refreshShippedMarkers(freshTarget());
         const { indicator } = makeRow({ entryId: 'flip-glyph-id', injectedAt: 1700000000000 });
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
@@ -197,7 +275,32 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
     const inject = read('inject.js');
     const listLogic = read('listLogic.js');
     const claudeSheet = read('claudeSheet.js');
+    const todoMdViewer = read('todoMdViewer.js');
     const css = read('style.css');
+
+    it('applyRunStatusGlyph resolves three-way state via resolveEntryRunState', () => {
+        expect(toDoRow).toMatch(
+            /function\s+applyRunStatusGlyph[\s\S]{0,200}resolveEntryRunState\(item[\s\S]{0,120}===\s*['"]none['"]/
+        );
+    });
+
+    it('injectDescription optimistically marks present and force-refreshes markers', () => {
+        expect(inject).toMatch(
+            /markEntryPresentLocally\(target\.repo,\s*item\.entryId\)[\s\S]{0,120}refreshShippedMarkers\(target,\s*true\)/
+        );
+    });
+
+    it('the viewer delete path forgets the marker and force-refreshes on success', () => {
+        expect(todoMdViewer).toMatch(
+            /performRewrite\(\s*['"]delete_entry['"][\s\S]{0,400}forgetEntryMarkerLocally\(entryId\)[\s\S]{0,120}refreshShippedMarkers\(target,\s*true\)/
+        );
+    });
+
+    it('parseTodoMdMarkers records both present and shipped marker sets', () => {
+        expect(inject).toMatch(
+            /function\s+parseTodoMdMarkers[\s\S]{0,400}present\.add\(current\.id\)[\s\S]{0,120}if\s*\(current\.checked\)\s*shipped\.add\(current\.id\)/
+        );
+    });
 
     it('buildToDoRow renders the status glyph right after inserting the indicator', () => {
         expect(toDoRow).toMatch(

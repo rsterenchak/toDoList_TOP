@@ -41,7 +41,7 @@ import {
 import {
     makeInjectButton,
     refreshInjectButton,
-    hasShippedRunForEntry,
+    resolveEntryRunState,
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
@@ -142,25 +142,26 @@ const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 
 
 // Render the run-status glyph in the leading `#descIndicator` slot, driven
-// purely by the task's entry id:
+// purely by the task's entry id resolved against the shared TODO.md:
 //   • shipped (green filled check)  — the entry's marker sits on a CHECKED
 //                                     TODO.md entry in the routed target repo
-//   • pending (amber dashed ring)   — the entry has an id (injected here or
-//                                     synced from another device) but hasn't
-//                                     shipped yet
-//   • no glyph                      — the task carries no entry id at all
-// The shipped state is read from the shared TODO.md (via hasShippedRunForEntry
-// against the marker cache), not a device-local run store, so the glyph agrees
-// across devices. The gate is the entry id, which syncs with the task — so a
-// task injected on another device still shows the glyph here; injectedAt is no
-// longer consulted (it is local-only and doesn't survive a reload). Idempotent:
-// no-ops when the resolved state already matches so live refreshes never thrash
-// the DOM, and it never touches the inject button's own separate state glyph.
+//   • pending (amber dashed ring)   — the marker is present in TODO.md but its
+//                                     entry is still unchecked (injected here or
+//                                     synced from another device)
+//   • no glyph                      — the marker is absent from TODO.md (the
+//                                     task carries no entry id, or its entry was
+//                                     deleted/reverted, so the ring clears)
+// State is read from the shared TODO.md (via resolveEntryRunState against the
+// marker cache), not a device-local run store, so the glyph agrees across
+// devices. Because 'pending' now requires the marker to actually be present in
+// TODO.md, a task's glyph is briefly absent on first load until its project's
+// marker read resolves — correctness (never a stuck/wrong amber) over the flash.
+// Idempotent: no-ops when the resolved state already matches so live refreshes
+// never thrash the DOM, and it never touches the inject button's own glyph.
 function applyRunStatusGlyph(descIndicator, item) {
     if (!descIndicator) return;
-    const state = (item && item.entryId)
-        ? (hasShippedRunForEntry(item.entryId) ? 'shipped' : 'pending')
-        : '';
+    const resolved = resolveEntryRunState(item && item.entryId);
+    const state = resolved === 'none' ? '' : resolved;
     const current = descIndicator.classList.contains('runStatusGlyph--shipped')
         ? 'shipped'
         : descIndicator.classList.contains('runStatusGlyph--pending')
