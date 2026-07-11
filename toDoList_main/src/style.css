@@ -1,5 +1,4 @@
 /* Global stylesheet: fonts, theme variables, and all app styling. */
-/* (deploy pipeline smoke-test tweak — no functional effect) */
 @font-face {
   font-family: 'MyFont';
   src: url('./Zector.otf');
