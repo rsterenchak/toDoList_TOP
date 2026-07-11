@@ -38,6 +38,10 @@ class FakeRecognition {
         this.started = false;
         if (this.onend) this.onend();
     }
+    abort() {
+        this.started = false;
+        if (this.onend) this.onend();
+    }
     emitResult(text) {
         if (this.onresult) this.onresult({ results: [[{ transcript: text }]] });
     }
@@ -226,39 +230,60 @@ describe('voiceInput — shared mic + dictation module', () => {
             expect(document.querySelector('.voiceOverlay')).toBeNull();
         });
 
-        it('shows the cancel-vs-commit hint only when a surface opts into auto-commit', () => {
-            // Auto-commit surface (onFinal): the hint tells the user a pause adds
-            // the todo and a tap cancels.
+        it('shows the tap-to-add hint only when a surface opts into auto-commit', () => {
+            // Auto-commit surface (onFinal): the hint tells the user a tap adds
+            // the todo.
             const a = mountMicButton(makeInput(), { overlay: true, onFinal() {} });
             a.click();
             const withCommit = document.querySelector('.voiceOverlay .voiceHint');
             expect(withCommit).toBeTruthy();
-            expect(withCommit.textContent.toLowerCase()).toMatch(/cancel/);
+            expect(withCommit.textContent.toLowerCase()).toMatch(/tap to add/);
             stopDictation();
             // Review-only surface (no onFinal, e.g. the Claude composer): no
-            // commit-on-pause, so no misleading cancel hint.
+            // auto-commit, so no add hint.
             const b = mountMicButton(makeInput(), { overlay: true });
             b.click();
             const withoutCommit = document.querySelector('.voiceOverlay .voiceHint');
-            if (withoutCommit) {
-                expect(withoutCommit.textContent.toLowerCase()).not.toMatch(/cancel/);
-            }
+            expect(withoutCommit).toBeNull();
         });
     });
 
-    // Regression: the add-task mic auto-commits on a natural speech-pause end so
-    // the transcript isn't stranded (iOS can't reopen the keyboard to press Enter
-    // after the async end). Cancelling (tap/Escape) must never auto-commit, an
-    // empty transcript must never fire, and review-only surfaces (no onFinal,
-    // e.g. the Claude composer) keep their text for manual send.
-    describe('onFinal auto-commit on natural end (opt-in)', () => {
-        it('fires onFinal with the final transcript when recognition ends naturally', () => {
+    // Regression: the add-task mic auto-commits when the user taps the overlay
+    // (or re-taps the mic) so the transcript isn't stranded (iOS can't reopen the
+    // keyboard to press Enter after the async end). Cancelling (Escape /
+    // surface-close) must never auto-commit, an empty transcript must never fire,
+    // and review-only surfaces (no onFinal, e.g. the Claude composer) keep their
+    // text for manual send.
+    describe('onFinal auto-commit on tap (opt-in)', () => {
+        it('opts into continuous listening when a surface passes onFinal', () => {
+            startDictation(makeInput(), null, { onFinal() {} });
+            expect(lastRecognition().continuous).toBe(true);
+        });
+
+        it('does not listen continuously without onFinal (review-only surface)', () => {
+            startDictation(makeInput(), null, {});
+            expect(lastRecognition().continuous).toBe(false);
+        });
+
+        it('fires onFinal with the final transcript when the overlay is tapped', () => {
+            const input = makeInput();
             const calls = [];
-            startDictation(makeInput(), null, { onFinal(t) { calls.push(t); } });
-            const rec = lastRecognition();
-            rec.emitResult('buy milk');
-            rec.onend(); // natural speech-pause end — nobody called stop()
+            startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
+            lastRecognition().emitResult('buy milk');
+            document.querySelector('.voiceOverlay').click();
             expect(calls).toEqual(['buy milk']);
+            expect(isDictating()).toBe(false);
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+        });
+
+        it('fires onFinal when the active mic is re-tapped', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { onFinal(t) { calls.push(t); } });
+            btn.click();
+            lastRecognition().emitResult('water plants');
+            btn.click(); // re-tap the active mic commits
+            expect(calls).toEqual(['water plants']);
         });
 
         it('never fires onFinal on a blank transcript', () => {
@@ -275,16 +300,6 @@ describe('voiceInput — shared mic + dictation module', () => {
             lastRecognition().emitResult('cancel me');
             stopDictation(); // backdrop tap / Escape / surface cleanup all route here
             expect(calls).toEqual([]);
-        });
-
-        it('does NOT fire onFinal when the overlay is tapped, keeping the transcript', () => {
-            const input = makeInput();
-            const calls = [];
-            startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
-            lastRecognition().emitResult('cancel me');
-            document.querySelector('.voiceOverlay').click();
-            expect(calls).toEqual([]);
-            expect(input.value).toBe('cancel me');
         });
 
         it('does NOT fire onFinal when cancelled via Escape', () => {

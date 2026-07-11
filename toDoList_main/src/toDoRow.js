@@ -1424,15 +1424,16 @@ export function buildToDoRow(item, toDoName) {
     // lifecycle, and the iOS first-grant retry all live in voiceInput.js
     // (also driving the Claude composer mic). mountMicButton returns null on
     // browsers without SpeechRecognition, so the affordance is simply absent
-    // there. The dictated text streams into the input; on a natural speech-pause
-    // end it auto-commits via onFinal, which dispatches a synthetic Enter keydown
-    // on #toDoInput so the transcript flows through the existing commit handler
+    // there. The mic listens continuously (onFinal makes voiceInput.js set
+    // continuous=true), so a speech pause no longer ends it; tapping the overlay
+    // adds the todo via onFinal, which dispatches a synthetic Enter keydown on
+    // #toDoInput so the transcript flows through the existing commit handler
     // below (mobile due-chip stamp, commitBlankPlaceholder, fresh placeholder,
     // status badge, persistence) exactly as a typed Enter would — never through
     // listLogic.addToDo, which would bypass those side effects. This fixes iOS
     // Safari refusing to reopen the keyboard after the async recognition-end
     // event, which stranded the transcript with no reachable Enter. Cancelling
-    // (backdrop tap / Escape) suppresses onFinal, so it discards rather than
+    // (Escape / surface-close) suppresses onFinal, so it discards rather than
     // commits. focusTarget reveals the input (which the ≤420px layout hides until
     // focus) so the transcript is visible; stopPropagation keeps the tap from
     // also firing the row's focus/commit click handler.
