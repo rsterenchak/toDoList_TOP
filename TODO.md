@@ -300,3 +300,10 @@
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: fc02ce7a-333b-457f-9b4d-40121282debb -->
+
+- [ ] **[MEDIUM]** Fix mic button lingering on committed todo rows after in-place commit
+  - Type: bug
+  - Description: The voice mic button stays attached to a todo after it's created. The mic is mounted only on the blank "Add a task" placeholder (guarded by `!item.tit`), but committing a placeholder reuses the same row DOM in place — the Enter-commit handler in `toDoRow.js` mutates the row and reveals the committed-row controls (checkbox, due pill, status badge) but never removes the mic, so it lingers on the now-committed todo (visible in the screenshot on "Test 12 test Change one to change"). Rows rendered from storage as committed never mount a mic, so this only affects rows committed live in the current session (typed or voice). Fix: in the commit handler, remove the mic element the same way the leading `+` add-glyph is stripped — e.g. `if (micBtn && micBtn.parentElement) micBtn.remove();` alongside the existing `addGlyph` removal (~line 1701). `micBtn` is already in the row closure's scope.
+  - File: `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 064afc34-a7b3-4cdd-83d2-017e812a189d -->
