@@ -16,6 +16,8 @@ import {
     isInjectConfigured,
     chatWithWorker,
     revertEntry,
+    markEntryPresentLocally,
+    refreshShippedMarkers,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
 import { showConfirmModal } from './modals.js';
@@ -1499,6 +1501,23 @@ async function dispatchDraft(row, draftText, existingEntryId) {
     const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });
     if (!injectResult || !injectResult.ok) {
         return { ok: false, error: 'Inject failed — ' + ((injectResult && injectResult.reason) || 'error') };
+    }
+
+    // Write the entry id back to the source task so its tasks-view row shows the
+    // run-status glyph — amber now (the marker is in TODO.md, unshipped), flipping
+    // to green once the run merges and the entry's checkbox goes `[x]`. The glyph
+    // resolves from `item.entryId` against the shared TODO.md marker cache, so
+    // stamping the id is all that's needed for both edges: greenness is driven by
+    // the checkbox the run itself sets, exactly as for inject-button tasks. The
+    // stamp routes through listLogic (data-model writes must), keyed by the row's
+    // `todo_id` (= the item's id); markEntryPresentLocally + a forced marker
+    // refresh light the amber immediately, mirroring injectDescription.
+    if (row.todo_id != null) {
+        Promise.resolve(listLogic.stampTodoEntryId(row.todo_id, entryId)).catch(function () {});
+        if (target && target.repo) {
+            markEntryPresentLocally(target.repo, entryId);
+            refreshShippedMarkers(target, true);
+        }
     }
 
     // Best-effort head start: poll the same on-main read the reconcile path uses
