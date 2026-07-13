@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-13',
         added: [
-            "Onboard a brand-new repository into the pipeline from Inject settings — scaffold, configure, and register it with a single tap.",
             "A live green dot on the Agent nav pill and mobile tab shows when the agent is working, and stays lit even after you switch to another view.",
         ],
         fixed: [
             "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",
             "The agent-working nav dot now lights the instant a triage sweep is dispatched, instead of lagging 30-45 seconds behind.",
             "The agent-working nav dot no longer stays lit after you switch to a project that has no triage sweep of its own running.",
+            "The agent-working nav dot now updates the instant you switch projects, instead of briefly showing the previous project's state.",
         ],
     },
 ];
