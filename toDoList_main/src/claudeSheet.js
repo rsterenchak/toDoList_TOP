@@ -35,6 +35,7 @@ import {
     isInjectConfigured,
     showInjectToast,
     emitTodoRunStatusChange,
+    refreshShippedMarkersForProject,
 } from './inject.js';
 import {
     readActiveRun,
@@ -2650,11 +2651,13 @@ function settleHandoffRow(record, status) {
 
 function setRunRecordStatus(correlationId, status) {
     let changed = false;
+    let changedProject = null;
     for (let i = 0; i < runRecords.length; i++) {
         if (runRecords[i].correlationId === correlationId &&
             runRecords[i].status !== status) {
             runRecords[i].status = status;
             changed = true;
+            changedProject = runRecords[i].project;
             // A run handed off from an Agent-board card just reached a new
             // status. When it's terminal, settle the originating row the same
             // way a board-dispatched card settles, so a card handed off to chat
@@ -2676,6 +2679,14 @@ function setRunRecordStatus(correlationId, status) {
             try {
                 document.dispatchEvent(new CustomEvent('requestSwUpdateCheck'));
             } catch (e) { /* defensive: CustomEvent unsupported */ }
+            // The shipped-marker cache only re-reads TODO.md once per its 60s
+            // TTL, so the TODO_RUN_STATUS_EVENT saveRunRecords() just emitted
+            // can be handled with stale markers, leaving the row's shipped dot
+            // amber for up to a minute. Force an immediate re-read for this
+            // run's project so the glyph flips to shipped promptly.
+            if (changedProject) {
+                refreshShippedMarkersForProject(changedProject, true);
+            }
         }
     }
 }

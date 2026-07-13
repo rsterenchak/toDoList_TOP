@@ -515,14 +515,15 @@ export function refreshShippedMarkers(target, force) {
 // getProjectTargetId → findTargetById path the inject button uses) and refresh
 // its shipped-marker cache. A no-op when inject isn't configured or the project
 // has no linked target. Lets the row layer kick a refresh with only a project
-// name in hand, without importing the target-cache internals.
-export function refreshShippedMarkersForProject(projectName) {
+// name in hand, without importing the target-cache internals. Pass `force` to
+// bypass the TTL so a just-shipped run reconciles the row glyph immediately.
+export function refreshShippedMarkersForProject(projectName, force) {
     if (!projectName || !isInjectConfigured()) return Promise.resolve();
     const targetId = listLogic.getProjectTargetId(projectName);
     if (!targetId) return Promise.resolve();
     const target = findTargetById(targetId);
     if (!target) return Promise.resolve();
-    return refreshShippedMarkers(target);
+    return refreshShippedMarkers(target, force);
 }
 
 

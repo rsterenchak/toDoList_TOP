@@ -340,6 +340,20 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
         expect(toDoRow).toMatch(/refreshShippedMarkersForProject\(/);
     });
 
+    it('refreshShippedMarkersForProject passes a force flag through to refreshShippedMarkers', () => {
+        expect(inject).toMatch(
+            /export\s+function\s+refreshShippedMarkersForProject\s*\(\s*projectName\s*,\s*force\s*\)[\s\S]{0,600}refreshShippedMarkers\(target,\s*force\)/
+        );
+    });
+
+    it('setRunRecordStatus force-refreshes the routed project markers when a run reaches SHIPPED', () => {
+        // Regression: without force, the 60s marker TTL kept the row glyph amber
+        // for up to a minute after a run actually shipped.
+        expect(claudeSheet).toMatch(
+            /status\s*===\s*['"]SHIPPED['"][\s\S]{0,900}refreshShippedMarkersForProject\(\s*changedProject\s*,\s*true\s*\)/
+        );
+    });
+
     it('listLogic syncs the entry id both ways (payload + hydrate)', () => {
         expect(listLogic).toMatch(/entry_id:\s*item\.entryId\s*\|\|\s*null/);
         expect(listLogic).toMatch(/entryId:\s*t\.entry_id\s*\|\|/);
