@@ -220,11 +220,18 @@ function fireTriageSweep(projectName) {
             function (res) {
                 _triageInFlight = false;
                 // If the dispatch itself failed, clear the optimistic Working
-                // state so the pill doesn't falsely report a sweep in flight.
-                if (res && res.ok === false) stopSweepTracking();
+                // state so neither the pill nor the nav dot falsely reports a
+                // sweep in flight (no run will ever register).
+                if (res && res.ok === false) { stopSweepTracking(); clearWorkingWatchSweepSeed(); pollAgentWorkingWatch(); }
                 return res;
             },
-            function () { _triageInFlight = false; stopSweepTracking(); return { ok: false }; }
+            function () {
+                _triageInFlight = false;
+                stopSweepTracking();
+                clearWorkingWatchSweepSeed();
+                pollAgentWorkingWatch();
+                return { ok: false };
+            }
         );
 }
 
@@ -241,7 +248,11 @@ function fireTriageSweep(projectName) {
 // already-completed run settles at once. `alreadyConfirmed` is true only for
 // the mount-time seed, where the seed fetch has already observed the run in
 // flight — otherwise we start unconfirmed so the grace window covers the
-// registration lag before the run appears.
+// registration lag before the run appears. This is also the single chokepoint
+// that seeds the persistent working watch (both local dispatch via
+// fireTriageSweep and the cross-device mount seed via seedSweepState), so the
+// nav "● Agent" dot lights the instant a sweep dispatches instead of waiting on
+// the watch's slow remote probe to observe the run once it registers.
 function startSweepTracking(alreadyConfirmed) {
     const now = Date.now();
     _sweepActive = true;
@@ -252,6 +263,9 @@ function startSweepTracking(alreadyConfirmed) {
     if (!_sweepPoller) {
         _sweepPoller = setInterval(pollSweepOnce, SWEEP_POLL_MS);
     }
+    // Seed the mount-independent working watch so the nav dot lights now, not
+    // 30-45s later when the probe finally observes the registered run.
+    seedWorkingWatchSweep(alreadyConfirmed);
     refreshStatusPill();
     pollSweepOnce();
 }
@@ -2731,6 +2745,18 @@ let _workingWatchStarted = false;
 let _workingWatchChannel = null;
 let _workingWatchPoller = null;
 let _workingWatchState = false;
+// The watch's own view of a locally-seeded triage sweep, independent of the
+// mounted board's `_sweepActive`/`_sweepSeenActive` (which are cleared on tab
+// exit). Seeded by startSweepTracking the instant a sweep dispatches so the nav
+// dot lights synchronously, then settled by the watch's poll: held true through
+// the registration window, and cleared once the probe has confirmed the run in
+// flight and then seen it gone (seen-active-then-gone), or once the grace / hard
+// cap elapses — mirroring pollSweepOnce's grace semantics so the optimistic seed
+// doesn't flicker off on the first pre-registration tick.
+let _workingWatchSweepSeeded = false;
+let _workingWatchSweepSeenActive = false;
+let _workingWatchSweepGraceDeadline = 0;
+let _workingWatchSweepHardDeadline = 0;
 
 // Background probe cadence for the persistent working watch. Slower than the
 // mounted sweep poller (SWEEP_POLL_MS) — this only drives a cosmetic nav dot, so
@@ -2748,12 +2774,65 @@ function setAgentWorkingClass(working) {
     if (document.body) document.body.classList.toggle('agentWorking', working);
 }
 
+// Seed the watch with a just-dispatched triage sweep: arm the grace / hard-cap
+// deadlines and light the nav dot immediately, so it lights from dispatch time
+// rather than from the first probe that observes the registered run. Called from
+// startSweepTracking (the shared chokepoint for local dispatch and the
+// cross-device mount seed). `alreadyConfirmed` marks the mount seed, whose fetch
+// already saw the run in flight, so the seen-active-then-gone settle applies at
+// once instead of waiting out the grace window.
+function seedWorkingWatchSweep(alreadyConfirmed) {
+    const now = Date.now();
+    _workingWatchSweepSeeded = true;
+    _workingWatchSweepSeenActive = !!alreadyConfirmed;
+    _workingWatchSweepGraceDeadline = now + SWEEP_GRACE_MS;
+    _workingWatchSweepHardDeadline = now + SWEEP_HARD_CAP_MS;
+    setAgentWorkingClass(true);
+}
+
+// Drop the watch's seeded-sweep state. Called when a dispatch fails (no run will
+// register) so the seed can't hold the dot lit through the grace window, and
+// from the watch's own settle logic once a sweep is confirmed finished.
+function clearWorkingWatchSweepSeed() {
+    _workingWatchSweepSeeded = false;
+    _workingWatchSweepSeenActive = false;
+    _workingWatchSweepGraceDeadline = 0;
+    _workingWatchSweepHardDeadline = 0;
+}
+
+// Resolve the sweep component of the working signal from the latest probe result
+// plus any local seed. A live probe (`active:true`) always means Working and
+// promotes a seed to seen-active. With the probe quiet, a seed still holds the
+// dot lit through the registration window and settles it only once the run has
+// been seen active and then gone, or the grace / hard cap elapses — the same
+// arc pollSweepOnce uses for the mounted pill. Without a seed the probe alone
+// decides (e.g. a sweep started on another device that this client never seeded).
+function resolveWatchSweepWorking(probeActive) {
+    if (probeActive) {
+        if (_workingWatchSweepSeeded) _workingWatchSweepSeenActive = true;
+        return true;
+    }
+    if (!_workingWatchSweepSeeded) return false;
+    const now = Date.now();
+    if (now >= _workingWatchSweepHardDeadline) { clearWorkingWatchSweepSeed(); return false; }
+    // Confirmed in flight and now gone → finished.
+    if (_workingWatchSweepSeenActive) { clearWorkingWatchSweepSeed(); return false; }
+    // Never registered within the grace window → give up.
+    if (now >= _workingWatchSweepGraceDeadline) { clearWorkingWatchSweepSeed(); return false; }
+    // Still inside the registration window → hold the dot lit.
+    return true;
+}
+
 // One watch tick: compute `working` = a triage sweep in flight OR any
 // dispatched/running row for the selected project — the same predicate the
 // header pill uses (refreshStatusPill), but resolved independently so it holds
-// off-tab where `_rows` / `_sweepActive` are cleared. Both probes degrade to
-// false on any error, and skip entirely when there is no selected project or no
-// routed target, so a pre-auth or repo-less state is a cheap no-op.
+// off-tab where `_rows` / `_sweepActive` are cleared. The sweep component folds
+// the raw probe with any local seed via resolveWatchSweepWorking, so a
+// just-dispatched sweep stays lit through the registration window instead of
+// blinking dark until the probe first observes the registered run. Both probes
+// degrade to false on any error, and skip entirely when there is no selected
+// project or no routed target, so a pre-auth or repo-less state is a cheap
+// no-op (a local seed is still honored — the probe simply resolves false).
 function pollAgentWorkingWatch() {
     const projectName = getSelectedProjectName();
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
@@ -2774,7 +2853,8 @@ function pollAgentWorkingWatch() {
         : Promise.resolve(false);
 
     return Promise.all([shipProbe, sweepProbe]).then(function (parts) {
-        setAgentWorkingClass(parts[0] || parts[1]);
+        const sweepWorking = resolveWatchSweepWorking(parts[1]);
+        setAgentWorkingClass(parts[0] || sweepWorking);
     });
 }
 
