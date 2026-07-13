@@ -443,7 +443,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 02989559-9550-4101-a302-aae61000b314 -->
 
-- [ ] **[HIGH]** Fix persistMutation dropping hide_dates from project insert/update payloads
+- [x] **[HIGH]** Fix persistMutation dropping hide_dates from project insert/update payloads — Completed: 2026-07-12
   - Type: bug
   - Description: The per-project dates toggle reverts after every Supabase hydrate because `persistMutation` never actually writes `hide_dates` to the server. For the `projects` table, `persistMutation` doesn't forward the payload as-is — it hand-rebuilds a fixed column whitelist in both the `insert` and `update` branches (`name, color, position, target_id, stages, lifecycle`), and `hide_dates` was never added to either. So `toProjectRowPayload` packs `hide_dates` correctly but `persistMutation` silently drops it: toggling updates localStorage (so it shows immediately and survives a bare reload from cache), but the UPDATE sent to Supabase omits the column, leaving the server row at its `false` default. When `hydrateFromSupabase` rebuilds the project from that server row (`chosenHideDates = !!p.hide_dates`) it reads false, and since local entries carry no `updated_at` the LWW can't keep the local value — so the pills reappear ("worked then came back"). Fix by adding `hide_dates: !!payload.hide_dates` to the `projects` row object in BOTH the insert and update branches of `persistMutation`.
   - Implementation notes:
