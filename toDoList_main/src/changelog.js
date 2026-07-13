@@ -12,13 +12,13 @@ export const changelog = [
         ],
         fixed: [
             "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",
+            "The agent-working nav dot now lights the instant a triage sweep is dispatched, instead of lagging 30-45 seconds behind.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-12',
         fixed: [
-            "Inject targets you've turned off no longer appear as selectable repos in the chat workspace pill or the Structure view's repo picker.",
             "Selecting a project routed to a disabled inject target no longer frames the chat on that turned-off repo.",
         ],
     },
