@@ -4683,6 +4683,52 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   padding: 8px 12px;
 }
 
+/* Not-assigned cards carry a left rail (the `.stripe`) that mirrors the
+   in_progress todo-row treatment: transparent by default, purple when the task
+   is in progress, over a lifted background with an "In progress" pill beneath
+   the title. The card is the positioning context for the absolutely-anchored
+   rail. */
+.agentCard--unassigned {
+  position: relative;
+}
+
+.agentCard--unassigned .stripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  border-radius: var(--radius-md, 10px) 0 0 var(--radius-md, 10px);
+}
+
+.agentCard--in-progress {
+  background: var(--bg-hover);
+}
+
+.agentCard--in-progress .stripe {
+  background: #9D93EE;
+}
+
+.agentCardBody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  align-self: flex-start;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #9D93EE;
+  background: rgba(157, 147, 238, 0.12);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .agentCardHead {
   display: flex;
   align-items: center;
