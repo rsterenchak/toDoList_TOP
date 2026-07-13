@@ -442,3 +442,17 @@
   - File: `toDoList_main/src/projectPicker.js`, `toDoList_main/src/projectMenu.js`, `toDoList_main/src/projectRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 02989559-9550-4101-a302-aae61000b314 -->
+
+- [ ] **[HIGH]** Fix persistMutation dropping hide_dates from project insert/update payloads
+  - Type: bug
+  - Description: The per-project dates toggle reverts after every Supabase hydrate because `persistMutation` never actually writes `hide_dates` to the server. For the `projects` table, `persistMutation` doesn't forward the payload as-is — it hand-rebuilds a fixed column whitelist in both the `insert` and `update` branches (`name, color, position, target_id, stages, lifecycle`), and `hide_dates` was never added to either. So `toProjectRowPayload` packs `hide_dates` correctly but `persistMutation` silently drops it: toggling updates localStorage (so it shows immediately and survives a bare reload from cache), but the UPDATE sent to Supabase omits the column, leaving the server row at its `false` default. When `hydrateFromSupabase` rebuilds the project from that server row (`chosenHideDates = !!p.hide_dates`) it reads false, and since local entries carry no `updated_at` the LWW can't keep the local value — so the pills reappear ("worked then came back"). Fix by adding `hide_dates: !!payload.hide_dates` to the `projects` row object in BOTH the insert and update branches of `persistMutation`.
+  - Implementation notes:
+    - In `listLogic.js` `persistMutation`: the `op === 'insert'` branch's `table === 'projects'` row and the `op === 'update'` branch's `table === 'projects'` row each need `hide_dates: !!payload.hide_dates` added. Two lines, one per branch.
+    - Send it unconditionally (`!!payload.hide_dates`), NOT conditionally like the adjacent `if (payload.entry_id) row.entry_id = ...` guard — un-hiding a project must persist `false`, so an only-when-true add would strand the off state.
+    - This also fixes two silent leaks through the same insert whitelist: creating a new project (single insert) and the wipe-and-rebuild full sync (the `rebuildSupabase` path fans out to per-row `persistMutation` inserts) both currently drop `hide_dates` as well.
+    - No other changes: `toProjectRowPayload`, the hydrate read-back (`chosenHideDates`), the realtime handler (`existing.hideDates = !!evt.new.hide_dates`), and JSON export/import already handle the field, and the Supabase `hide_dates` column is already in place.
+    - Optional regression guard: if the schema test harness (`tests/listLogicSchema.test.js`) can reach the projects payload builder, add an assertion that every `toProjectRowPayload` key survives `persistMutation`'s `projects` whitelist — this whitelist has now dropped a new column twice, so a parity check would catch the next one.
+  - Out of scope: no change to the `updated_at` / LWW behavior (it's fine once the server actually holds the value); no change to the toggle UI or the render gate; no touching the `todos` payload path or its `user_id`-free contract.
+  - File: `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: eb6c0f84-a4ce-4115-932c-ccf3fb8c8a82 -->
