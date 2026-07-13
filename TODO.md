@@ -506,7 +506,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e04b59e1-6bd5-43a0-8578-645ef560d4cc -->
 
-- [ ] **[MEDIUM]** Fix nav agent-working dot lighting up for projects with no sweep in flight
+- [x] **[MEDIUM]** Fix nav agent-working dot lighting up for projects with no sweep in flight — Completed: 2026-07-13
   - Type: bug
   - Description: The nav ".agentWorkingDot" (the small green dot leading "AGENT" in the nav pill / mobile tab, gated by body.agentWorking) is not scoped to the currently-viewed project. pollAgentWorkingWatch() in toDoList_main/src/agentView.js (around line 2836) computes the working signal from two probes: shipProbe correctly scopes to the selected project via fetchQueueRows(projectId) (agent_queue rows with state dispatched/running for that project_id, around line 412), but sweepProbe calls fetchActiveRuns(resolveDispatchTarget(), 'triage'), which only reports whether the TARGET REPO has any claude-triage.yml run in flight, with no project attribution. resolveDispatchTarget() resolves to a project's linked repo, or null (the Worker's shared default repo) when unlinked, so any other project sharing that same repo or default target reads the identical repo-wide active flag. Dispatching a triage sweep on one project and then switching to a different project (especially an unlinked one, or one explicitly routed to the same repo) leaves the dot lit even though nothing is running for the project on screen.
   - Behavior: The dot should only be lit while the currently selected project has a triage sweep actually in flight for its own flagged tasks, matching how shipProbe already scopes the ship-run half of the same signal.
