@@ -404,7 +404,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d3823a74-fed4-4241-85ec-9a1ce2c0e7ba -->
 
-- [ ] **[MEDIUM]** Add per-project toggle to hide due dates
+- [x] **[MEDIUM]** Add per-project toggle to hide due dates — Completed: 2026-07-12
   - Type: feature
   - Description: Add a per-project setting that hides the due-date pill (`duePill`) for every task in that project while leaving each task's stored `due` value untouched, so toggling it back on restores everything — a display-only view preference, not a data mutation. Surface it as a toggle switch row in the existing project context menu (`projectMenu.js`, invoked from `projectRow.js`), sitting directly under Edit and above the color-picker strip, mirroring how the color control is already threaded in. The setting persists per project and syncs across devices via the same Supabase project-row path that `color` and `target_id` use (it is NOT local-only like the existing `sortByDue` flag). Default is off (dates shown) for all existing and new projects, so nothing changes until a project is toggled.
   - Behavior:
