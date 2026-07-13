@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-13',
         added: [
-            "A live green dot on the Agent nav pill and mobile tab shows when the agent is working, and stays lit even after you switch to another view.",
+            "In-progress tasks now sort to the top of the Agent tab's Not-assigned list, marked with a purple stripe and an \"In progress\" badge.",
         ],
         fixed: [
             "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",

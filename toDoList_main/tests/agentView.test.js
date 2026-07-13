@@ -445,6 +445,50 @@ describe('AGENT view — Not-assigned bucket', () => {
         // Not the no-work empty state, because there is an unqueued task.
         expect(document.querySelector('.agentEmptyState')).toBeFalsy();
     });
+
+    it('sorts in-progress tasks to the top of the bucket (stable otherwise)', async () => {
+        const ids = seedTodos('EtaSort', ['First', 'Second', 'Third', 'Fourth']);
+        const items = listLogic.listItems('EtaSort') || [];
+        const byId = (id) => items.find((it) => it.id === id);
+        // Mark the 2nd and 4th tasks in progress; the rest stay active.
+        listLogic.setToDoStatus('EtaSort', byId(ids['Second']), 'in_progress');
+        listLogic.setToDoStatus('EtaSort', byId(ids['Fourth']), 'in_progress');
+        mountDom('EtaSort');
+        queueRows = [];
+        await loadBoard();
+
+        const cards = [...document.querySelectorAll('.agentCard--unassigned .agentCardTitle')].map((n) => n.textContent);
+        // In-progress tasks float up, keeping their relative order; the rest
+        // follow in their original relative order.
+        expect(cards).toEqual(['Second', 'Fourth', 'First', 'Third']);
+    });
+
+    it('marks an in-progress Not-assigned card with the stripe and pill', async () => {
+        const ids = seedTodos('EtaMark', ['Busy task', 'Idle task']);
+        const items = listLogic.listItems('EtaMark') || [];
+        listLogic.setToDoStatus('EtaMark', items.find((it) => it.id === ids['Busy task']), 'in_progress');
+        mountDom('EtaMark');
+        queueRows = [];
+        await loadBoard();
+
+        const cards = [...document.querySelectorAll('.agentCard--unassigned')];
+        const busy = cards.find((c) => c.querySelector('.agentCardTitle').textContent === 'Busy task');
+        const idle = cards.find((c) => c.querySelector('.agentCardTitle').textContent === 'Idle task');
+
+        // In-progress card: class, purple stripe, and a body pill reading "In progress".
+        expect(busy.classList.contains('agentCard--in-progress')).toBe(true);
+        expect(busy.querySelector('.stripe')).toBeTruthy();
+        const pill = busy.querySelector('.agentCardBody .pill');
+        expect(pill).toBeTruthy();
+        expect(pill.textContent).toBe('In progress');
+
+        // Non-in-progress card: no marker class, no body/pill, but still a stripe
+        // element (transparent via CSS).
+        expect(idle.classList.contains('agentCard--in-progress')).toBe(false);
+        expect(idle.querySelector('.stripe')).toBeTruthy();
+        expect(idle.querySelector('.agentCardBody')).toBeFalsy();
+        expect(idle.querySelector('.pill')).toBeFalsy();
+    });
 });
 
 describe('AGENT view — Give to agent action', () => {

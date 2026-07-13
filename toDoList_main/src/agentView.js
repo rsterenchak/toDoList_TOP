@@ -2274,8 +2274,15 @@ function computeNotAssigned(projectName, rows) {
     (rows || []).forEach(function (r) {
         if (r && r.todo_id != null) queued.add(r.todo_id);
     });
-    return items.filter(function (it) {
+    const filtered = items.filter(function (it) {
         return it && typeof it.tit === 'string' && it.tit.trim() !== '' && !it.completed && !queued.has(it.id);
+    });
+    // Float in-progress tasks to the top; the sort is stable so every other
+    // task keeps its existing relative order.
+    return filtered.sort(function (a, b) {
+        const ap = a.status === 'in_progress' ? 0 : 1;
+        const bp = b.status === 'in_progress' ? 0 : 1;
+        return ap - bp;
     });
 }
 
@@ -2288,8 +2295,16 @@ function computeNotAssigned(projectName, rows) {
 // error is surfaced beneath it.
 function buildGiveToAgentCard(item) {
     const card = document.createElement('div');
-    card.className = 'agentCard agentCard--unassigned';
+    const inProgress = !!(item && item.status === 'in_progress');
+    card.className = 'agentCard agentCard--unassigned' + (inProgress ? ' agentCard--in-progress' : '');
     card.setAttribute('data-todo-id', item.id || '');
+
+    // Left rail mirroring the in_progress todo-row stripe: purple when the task
+    // is in progress (via CSS), transparent otherwise. First child so it anchors
+    // to the card's left edge.
+    const stripe = document.createElement('span');
+    stripe.className = 'stripe';
+    card.appendChild(stripe);
 
     const head = document.createElement('div');
     head.className = 'agentCardHead';
@@ -2312,6 +2327,18 @@ function buildGiveToAgentCard(item) {
     btn.appendChild(btnLabel);
     head.appendChild(btn);
     card.appendChild(head);
+
+    // "In progress" pill beneath the title, in a body wrapper — only when the
+    // task is in progress.
+    if (inProgress) {
+        const cardBody = document.createElement('div');
+        cardBody.className = 'agentCardBody';
+        const pill = document.createElement('span');
+        pill.className = 'pill';
+        pill.textContent = 'In progress';
+        cardBody.appendChild(pill);
+        card.appendChild(cardBody);
+    }
 
     const errorEl = document.createElement('p');
     errorEl.className = 'agentGiveError';
