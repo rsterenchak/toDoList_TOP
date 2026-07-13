@@ -777,6 +777,73 @@ describe('listLogic — per-project color', () => {
 });
 
 
+// ── PER-PROJECT HIDE-DATES DISPLAY PREFERENCE ─────────────────────────
+// Display-only toggle that hides every task's due-date pill in a project
+// without touching the stored `due` values. Defaults off (dates shown),
+// backfills off on legacy caches, and round-trips through export/import.
+describe('listLogic — per-project hideDates', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Groceries');
+    });
+
+    it('new projects default to hideDates false (dates shown)', () => {
+        expect(listLogic.getProjectHideDates('Groceries')).toBe(false);
+    });
+
+    it('setProjectHideDates(true) hides dates and false restores them', () => {
+        listLogic.setProjectHideDates('Groceries', true);
+        expect(listLogic.getProjectHideDates('Groceries')).toBe(true);
+        listLogic.setProjectHideDates('Groceries', false);
+        expect(listLogic.getProjectHideDates('Groceries')).toBe(false);
+    });
+
+    it('hideDates survives save to localStorage', () => {
+        listLogic.setProjectHideDates('Groceries', true);
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        expect(parsed.Groceries.hideDates).toBe(true);
+    });
+
+    it('getProjectHideDates returns false for a missing project', () => {
+        expect(listLogic.getProjectHideDates('DoesNotExist')).toBe(false);
+    });
+
+    it('backfills hideDates false on a legacy cache lacking the field', async () => {
+        const legacy = {
+            Legacy: {
+                id: 'proj-legacy',
+                color: null,
+                sortByDue: false,
+                target_id: null,
+                items: [
+                    { id: 'todo-legacy', tit: 'Old task', desc: '', due: '',
+                      pri: 1, pos: 0, completed: false, recurrence: null },
+                ],
+            },
+        };
+        localStorage.setItem('allProjects', JSON.stringify(legacy));
+
+        const vitest = await import('vitest');
+        vitest.vi.resetModules();
+        const fresh = await import('../src/listLogic.js');
+
+        expect(fresh.listLogic.getProjectHideDates('Legacy')).toBe(false);
+
+        localStorage.clear();
+    });
+
+    it('hideDates round-trips through snapshotProjects / replaceAllProjects', () => {
+        listLogic.setProjectHideDates('Groceries', true);
+
+        const snapshot = listLogic.snapshotProjects();
+        listLogic._reset();
+        listLogic.replaceAllProjects(snapshot);
+
+        expect(listLogic.getProjectHideDates('Groceries')).toBe(true);
+    });
+});
+
+
 // ── PER-PROJECT INCOMPLETE COUNT ──────────────────────────────────
 // Backs the sidebar project-row badge: counts non-blank, non-completed
 // items per project. Blank placeholder must not be counted (it isn't

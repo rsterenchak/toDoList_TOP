@@ -346,10 +346,37 @@ export function attachProjectContextMenu(projChild, titleInput) {
         return { currentColor: listLogic.getProjectColor(name), onSelect: onColorSelect };
     }
 
+    function onDatesToggle() {
+        const name = titleInput.value;
+        if (!name || !listLogic.listProjectsArray().includes(name)) return;
+        listLogic.setProjectHideDates(name, !listLogic.getProjectHideDates(name));
+        // If this project is selected, re-render its task list so the due-date
+        // pills appear/disappear immediately without a manual refresh.
+        if (projChild.classList.contains('selectedProject')) {
+            const items = listLogic.listItems(name);
+            const mainDiv = document.getElementById('mainList');
+            if (mainDiv) {
+                while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
+                const hasReal = items && items.some(function(i){ return i.tit !== ''; });
+                if (hasReal) {
+                    addToDos_restore(items, name);
+                } else if (items) {
+                    addAllToDo_DOM(items, name);
+                }
+            }
+        }
+    }
+
+    function buildDatesContext() {
+        const name = titleInput.value;
+        if (!name || !listLogic.listProjectsArray().includes(name)) return null;
+        return { hidden: listLogic.getProjectHideDates(name), onToggle: onDatesToggle };
+    }
+
     // desktop right-click
     projChild.addEventListener('contextmenu', function(event) {
         event.preventDefault();
-        showProjectContextMenu(event.clientX, event.clientY, onEdit, onDelete, buildColorContext());
+        showProjectContextMenu(event.clientX, event.clientY, onEdit, onDelete, buildColorContext(), buildDatesContext());
     });
 
     // touch long-press (~500ms)
@@ -366,7 +393,7 @@ export function attachProjectContextMenu(projChild, titleInput) {
         lpFired  = false;
         lpTimer  = setTimeout(function() {
             lpFired = true;
-            showProjectContextMenu(lpStartX, lpStartY, onEdit, onDelete, buildColorContext());
+            showProjectContextMenu(lpStartX, lpStartY, onEdit, onDelete, buildColorContext(), buildDatesContext());
         }, 500);
     }, { passive: true });
 

@@ -67,10 +67,13 @@ function onProjContextKeydown(event) {
     if (event.key === 'Escape') hideProjectContextMenu();
 }
 
-// Collect the menu's interactive items (Edit, each color swatch, Delete) in DOM
-// order — the flat ring the roving tabindex + arrow keys walk over.
+// Collect the menu's interactive items (Edit, the Due-dates toggle, each color
+// swatch, Delete) in DOM order — the flat ring the roving tabindex + arrow keys
+// walk over. The Due-dates row is a menuitemcheckbox, so it's matched too.
 function getProjContextItems(menu) {
-    return Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]'));
+    return Array.prototype.slice.call(
+        menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]')
+    );
 }
 
 // Move focus to the item at `index`, keeping exactly one item in the tab order
@@ -153,7 +156,41 @@ function buildColorPicker(currentColorKey, onSelect) {
 }
 
 
-export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
+// Build the "Due dates" toggle-switch row that sits between Edit and the color
+// picker. The switch reads ON (accent track) when dates are shown — the default
+// — and OFF (muted track) when the project hides them, so it flips the project's
+// hideDates flag. Tapping it closes the menu and calls onToggle, matching how
+// Edit / color swatches / Delete already close on select.
+function buildDatesToggleRow(hidden, onToggle) {
+    const row = document.createElement('div');
+    row.className = 'projContextMenuItem projContextDatesItem';
+    row.setAttribute('role', 'menuitemcheckbox');
+    row.setAttribute('tabindex', '-1');
+
+    const datesShown = !hidden;
+    row.setAttribute('aria-checked', datesShown ? 'true' : 'false');
+
+    const label = document.createElement('span');
+    label.className = 'projContextDatesLabel';
+    label.textContent = 'Due dates';
+
+    const sw = document.createElement('span');
+    sw.className = 'projContextDatesToggle' + (datesShown ? ' on' : '');
+    const knob = document.createElement('span');
+    knob.className = 'projContextDatesKnob';
+    sw.appendChild(knob);
+
+    row.appendChild(label);
+    row.appendChild(sw);
+    row.addEventListener('click', function() {
+        hideProjectContextMenu();
+        onToggle();
+    });
+    return row;
+}
+
+
+export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext, datesContext) {
 
     hideProjectContextMenu();
 
@@ -185,6 +222,9 @@ export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext) {
     });
 
     menu.appendChild(editOpt);
+    if (datesContext && typeof datesContext.onToggle === 'function') {
+        menu.appendChild(buildDatesToggleRow(!!datesContext.hidden, datesContext.onToggle));
+    }
     if (colorContext && typeof colorContext.onSelect === 'function') {
         menu.appendChild(buildColorPicker(colorContext.currentColor || null, colorContext.onSelect));
     }
