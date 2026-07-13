@@ -514,3 +514,9 @@
   - Out of scope: the mounted Agent-tab header status pill (#agentStatusPill / refreshStatusPill(), driven by module-level _sweepActive) has a related but distinct scoping gap; leave it untouched here.
   - File: `toDoList_main/src/agentView.js`
   <!-- id: b41fca80-eab6-45eb-bbdf-2a96d5518fb9 -->
+
+- [ ] **[MEDIUM]** Re-poll the agent-working nav dot immediately on project switch
+  - Type: bug
+  - Description: The green "Agent working" nav/tab dot is driven by `body.agentWorking`, toggled from `pollAgentWorkingWatch()` (toDoList_main/src/agentView.js:2840-2878) via `setAgentWorkingClass`. That poll only runs on a 15s interval (`WORKING_WATCH_POLL_MS`, agentView.js:2765, wired at agentView.js:2900-2903) or on an agent_queue realtime push (agentView.js:2894) - never on a project switch. The working signal it computes is scoped to `getSelectedProjectName()` (agentView.js:2841-2842), so switching from a project with an active run/sweep to one without (or the reverse) leaves the dot showing the previous project's state for up to 15 seconds - it visibly hangs across project changes instead of updating immediately. `syncAgentAvailabilityForProject()` (agentView.js:2659) is already the documented project-switch hook, called from all three project-switch sites in main.js (main.js:4002, main.js:4428, main.js:5146) to resync AGENT-tab availability; it should also call `pollAgentWorkingWatch()` so the dot recomputes for the newly selected project the instant the switch happens, instead of waiting on the next interval tick or realtime push.
+  - File: `toDoList_main/src/agentView.js`
+  <!-- id: 0fe51bf8-e78e-4e4c-9fef-eb6ec289cdd8 -->
