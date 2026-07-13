@@ -2823,16 +2823,20 @@ function resolveWatchSweepWorking(probeActive) {
     return true;
 }
 
-// One watch tick: compute `working` = a triage sweep in flight OR any
-// dispatched/running row for the selected project — the same predicate the
-// header pill uses (refreshStatusPill), but resolved independently so it holds
-// off-tab where `_rows` / `_sweepActive` are cleared. The sweep component folds
-// the raw probe with any local seed via resolveWatchSweepWorking, so a
-// just-dispatched sweep stays lit through the registration window instead of
-// blinking dark until the probe first observes the registered run. Both probes
-// degrade to false on any error, and skip entirely when there is no selected
-// project or no routed target, so a pre-auth or repo-less state is a cheap
-// no-op (a local seed is still honored — the probe simply resolves false).
+// One watch tick: compute `working` = a triage sweep in flight for the selected
+// project OR any dispatched/running row for the selected project — the same
+// predicate the header pill uses (refreshStatusPill), but resolved independently
+// so it holds off-tab where `_rows` / `_sweepActive` are cleared. Both halves are
+// scoped to the selected project: the ship half reads its dispatched/running
+// rows, and the sweep half gates the repo-wide triage active-runs probe on the
+// project actually owning an in-flight 'triaging' row (see sweepProbe). The sweep
+// component then folds the raw probe with any local seed via
+// resolveWatchSweepWorking, so a just-dispatched sweep stays lit through the
+// registration window instead of blinking dark until the probe first observes
+// the registered run. Both probes degrade to false on any error, and skip
+// entirely when there is no selected project or no routed target, so a pre-auth
+// or repo-less state is a cheap no-op (a local seed is still honored — the probe
+// simply resolves false).
 function pollAgentWorkingWatch() {
     const projectName = getSelectedProjectName();
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
@@ -2846,9 +2850,24 @@ function pollAgentWorkingWatch() {
         }).catch(function () { return false; })
         : Promise.resolve(false);
 
-    const sweepProbe = target
-        ? Promise.resolve(fetchActiveRuns(target, 'triage')).then(function (res) {
-            return !!(res && res.ok !== false && res.active);
+    // Scope the sweep half to the selected project the same way shipProbe scopes
+    // the ship half. The repo-wide triage active-runs probe only reports whether
+    // the TARGET REPO has a claude-triage.yml run in flight, with no project
+    // attribution — on its own it lights the dot for every project sharing that
+    // repo (or the null default target). Gate it on the project owning an
+    // in-flight 'triaging' agent_queue row (the state flagTaskForAgent writes and
+    // reconcileStuckTriaging later clears), so the dot lights only while THIS
+    // project has a sweep actually processing its flagged tasks.
+    const sweepProbe = (target && projectId)
+        ? Promise.all([
+            Promise.resolve(fetchActiveRuns(target, 'triage')),
+            fetchQueueRows(projectId),
+        ]).then(function (parts) {
+            const repoActive = !!(parts[0] && parts[0].ok !== false && parts[0].active);
+            const projectTriaging = (Array.isArray(parts[1]) ? parts[1] : []).some(function (r) {
+                return r && r.state === 'triaging';
+            });
+            return repoActive && projectTriaging;
         }).catch(function () { return false; })
         : Promise.resolve(false);
 
