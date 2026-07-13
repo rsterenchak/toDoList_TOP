@@ -505,3 +505,12 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e04b59e1-6bd5-43a0-8578-645ef560d4cc -->
+
+- [ ] **[MEDIUM]** Fix nav agent-working dot lighting up for projects with no sweep in flight
+  - Type: bug
+  - Description: The nav ".agentWorkingDot" (the small green dot leading "AGENT" in the nav pill / mobile tab, gated by body.agentWorking) is not scoped to the currently-viewed project. pollAgentWorkingWatch() in toDoList_main/src/agentView.js (around line 2836) computes the working signal from two probes: shipProbe correctly scopes to the selected project via fetchQueueRows(projectId) (agent_queue rows with state dispatched/running for that project_id, around line 412), but sweepProbe calls fetchActiveRuns(resolveDispatchTarget(), 'triage'), which only reports whether the TARGET REPO has any claude-triage.yml run in flight, with no project attribution. resolveDispatchTarget() resolves to a project's linked repo, or null (the Worker's shared default repo) when unlinked, so any other project sharing that same repo or default target reads the identical repo-wide active flag. Dispatching a triage sweep on one project and then switching to a different project (especially an unlinked one, or one explicitly routed to the same repo) leaves the dot lit even though nothing is running for the project on screen.
+  - Behavior: The dot should only be lit while the currently selected project has a triage sweep actually in flight for its own flagged tasks, matching how shipProbe already scopes the ship-run half of the same signal.
+  - Implementation notes: Scope the sweep component the same way shipProbe scopes the ship-run component: query agent_queue by project_id for rows in state 'triaging' (already treated as an in-flight state via IN_FLIGHT_STATES at agentView.js line 63, alongside 'dispatched'/'running') instead of, or as a gate on, the repo-wide fetchActiveRuns probe. fetchQueueRows(projectId) (around line 412) already provides the per-project query pattern to reuse or mirror.
+  - Out of scope: the mounted Agent-tab header status pill (#agentStatusPill / refreshStatusPill(), driven by module-level _sweepActive) has a related but distinct scoping gap; leave it untouched here.
+  - File: `toDoList_main/src/agentView.js`
+  <!-- id: b41fca80-eab6-45eb-bbdf-2a96d5518fb9 -->
