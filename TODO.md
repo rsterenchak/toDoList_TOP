@@ -425,7 +425,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 28fcc82f-fcda-4ae4-97b2-414ab0e1dc9a -->
 
-- [ ] **[MEDIUM]** Fix due-dates toggle missing from desktop project dropdown menu
+- [x] **[MEDIUM]** Fix due-dates toggle missing from desktop project dropdown menu — Completed: 2026-07-12
   - Type: bug
   - Description: The per-project "Due dates" toggle shipped only to the drawer/mobile context menu (`projectMenu.js` → `showProjectContextMenu`), so the desktop project-picker dropdown's own context menu (`projectPicker.js` → `showProjectRowContextMenu`, the "Rename / Delete project…" menu) has no toggle — the feature is unreachable from the dropdown even though it works on mobile and via the sidebar drawer. Add the same "Due dates" switch row to the dropdown menu, between Rename and Delete, reusing the existing `buildDatesToggleRow` control and the existing `hideDates` getter/setter (no visual or data-model change — same switch, same synced flag). The switch reflects the project's current state on open; tapping it flips the flag and closes the context menu, leaving the picker open (matching Rename's in-place behavior).
   - Behavior:
