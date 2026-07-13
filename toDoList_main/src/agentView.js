@@ -2660,6 +2660,13 @@ export function syncAgentAvailabilityForProject(projectName) {
     const hasRepo = isInjectConfigured()
         && !!listLogic.getProjectTargetId(projectName);
     applyAgentAvailability(hasRepo);
+    // Recompute the nav "agent working" dot for the newly selected project right
+    // now. The working signal pollAgentWorkingWatch() computes is scoped to the
+    // selected project, but the watch otherwise only ticks on its 15s interval or
+    // an agent_queue realtime push — never on a project switch. Without this call
+    // the dot hangs on the previous project's state for up to WORKING_WATCH_POLL_MS
+    // after switching. This is the documented project-switch hook, so recompute here.
+    pollAgentWorkingWatch();
     return hasRepo;
 }
 
