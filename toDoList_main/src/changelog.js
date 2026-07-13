@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-12',
         added: [
             "Per-project toggle to hide due dates, hiding every task's date pill in that project while leaving the stored dates untouched.",
+            "Each inject target now has an on/off switch to enable or disable it in place, dimming disabled targets, with no database edit needed.",
         ],
         fixed: [
             "The per-project Due dates toggle is now reachable from the desktop project dropdown menu, not just the mobile drawer.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-11',
         fixed: [
-            "A task's pending status icon now clears when its entry is removed from TODO.md, instead of staying stuck forever.",
             "Todos handed to the Agent tab now show the run-status dot on their task row — amber once dispatched, green once the run ships — matching tasks injected directly.",
         ],
     },

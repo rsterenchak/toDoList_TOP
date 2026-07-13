@@ -1122,6 +1122,24 @@ async function updateInjectTarget(id, values) {
     }
 }
 
+// Persist ONLY the `enabled` flag for a target. Kept separate from
+// updateInjectTarget so the enable/disable toggle never touches the
+// nickname/repo/file_path columns (and never sends user_id — the table's
+// RLS gates on user_id = auth.uid() and the update must not overwrite it).
+async function setInjectTargetEnabled(id, enabled) {
+    try {
+        const res = await supabase
+            .from('inject_targets')
+            .update({ enabled: enabled })
+            .eq('id', id);
+        if (res && res.error) return { ok: false, reason: 'Save failed' };
+        notifyInjectTargetsChanged();
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, reason: 'Save failed' };
+    }
+}
+
 async function deleteInjectTarget(id) {
     try {
         const res = await supabase
@@ -1615,6 +1633,47 @@ export function showInjectSettingsModal(options) {
         row.className = 'injectTargetRow';
         row.dataset.targetId = target.id;
 
+        // Leading enable/disable switch. `target.enabled` comes straight
+        // off the fetched row (the panel selects all columns); dim the
+        // whole row when off so dormant targets read as inactive.
+        let enabled = target.enabled !== false;
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'injectTargetToggle';
+        toggle.setAttribute('role', 'switch');
+        const knob = document.createElement('span');
+        knob.className = 'injectTargetToggleKnob';
+        toggle.appendChild(knob);
+
+        function reflectEnabled() {
+            toggle.classList.toggle('on', enabled);
+            toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+            toggle.setAttribute('aria-label',
+                (enabled ? 'Disable' : 'Enable') + ' target ' + target.nickname);
+            toggle.title = enabled ? 'Enabled' : 'Disabled';
+            row.classList.toggle('injectTargetRow--disabled', !enabled);
+        }
+        reflectEnabled();
+
+        toggle.addEventListener('click', async function() {
+            if (toggle.disabled) return;
+            const next = !enabled;
+            // Optimistically flip both the switch and the dimmed state,
+            // then persist; revert the flip on failure.
+            enabled = next;
+            target.enabled = next;
+            reflectEnabled();
+            toggle.disabled = true;
+            const r = await setInjectTargetEnabled(target.id, next);
+            toggle.disabled = false;
+            if (!r.ok) {
+                enabled = !next;
+                target.enabled = !next;
+                reflectEnabled();
+                showInjectToast('Could not update target', 'error');
+            }
+        });
+
         const info = document.createElement('div');
         info.className = 'injectTargetInfo';
         const nick = document.createElement('div');
@@ -1675,6 +1734,7 @@ export function showInjectSettingsModal(options) {
             });
         });
 
+        row.appendChild(toggle);
         row.appendChild(info);
         row.appendChild(editIcon);
         row.appendChild(trashIcon);

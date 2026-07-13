@@ -14995,6 +14995,41 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 .injectTargetIconBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .injectTargetIconBtn:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
 .injectTargetIconBtn--danger:hover { color: var(--text-danger); }
+/* Leading enable/disable switch on each target row. Mirrors the project
+   context-menu dates toggle (34×20 track, 16px knob, accent when on) so
+   the app has one switch idiom. State is driven by the `.on` class — no
+   inline style writes. */
+.injectTargetToggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 10px;
+  background: var(--border-bright);
+  transition: background 0.15s ease;
+}
+.injectTargetToggle.on { background: var(--accent); }
+.injectTargetToggle:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+.injectTargetToggleKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform 0.15s ease;
+}
+.injectTargetToggle.on .injectTargetToggleKnob { transform: translateX(14px); }
+/* Disabled (dormant) target: drop the row background a step and mute the
+   text/icons so it reads as inactive without disappearing. */
+.injectTargetRow--disabled { background: var(--bg-base); }
+.injectTargetRow--disabled .injectTargetNickname { color: var(--text-secondary); }
+.injectTargetRow--disabled .injectTargetDetail,
+.injectTargetRow--disabled .injectTargetIconBtn { color: var(--text-muted); }
 #injectAddTargetBtn { align-self: flex-start; }
 
 
