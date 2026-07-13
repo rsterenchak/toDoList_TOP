@@ -100,6 +100,7 @@ function toProjectRowPayload(entry, name, position) {
         target_id: entry.target_id || null,
         stages: entry.stages || null,
         lifecycle: entry.lifecycle || DEFAULT_LIFECYCLE,
+        hide_dates: !!entry.hideDates,
     };
 }
 
@@ -365,9 +366,9 @@ export const listLogic = (function () {
     Object.keys(allProjects).forEach(function(key) {
         const entry = allProjects[key];
         if (Array.isArray(entry)) {
-            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
+            allProjects[key] = { id: genId(), items: entry, color: null, sortByDue: false, hideDates: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
         } else if (!entry || typeof entry !== 'object') {
-            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
+            allProjects[key] = { id: genId(), items: [], color: null, sortByDue: false, hideDates: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
         } else {
             if (!Array.isArray(entry.items)) entry.items = [];
             // Backfill the lifecycle shape + stages on projects saved before
@@ -414,6 +415,9 @@ export const listLogic = (function () {
                 entry.color = null;
             }
             if (typeof entry.sortByDue !== 'boolean') entry.sortByDue = false;
+            // Per-project display preference hiding due-date pills; legacy
+            // installs predate it and default to off (dates shown).
+            if (typeof entry.hideDates !== 'boolean') entry.hideDates = false;
             // Default to null when the field is absent; legacy installs predate
             // the inject-routing feature and have no per-project target.
             if (typeof entry.target_id !== 'string') entry.target_id = null;
@@ -492,7 +496,7 @@ export const listLogic = (function () {
         }
 
         const projectId = genId();
-        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
+        allProjects[projectName] = { id: projectId, items: [listItem], color: null, sortByDue: false, hideDates: false, target_id: null, stages: seedStages(), lifecycle: DEFAULT_LIFECYCLE };
 
         allProjectsTotal = Object.keys(allProjects).length;
 
@@ -1433,6 +1437,38 @@ export const listLogic = (function () {
         if (!entry) return;
         entry.sortByDue = !!on;
         saveToStorage();
+    }
+
+
+    // Per-project display preference that hides every task's due-date pill.
+    // Display-only: the stored `due` on each item is never read for display
+    // while this is on, but is never cleared or edited, so toggling off
+    // restores the pills untouched. Unlike sortByDue this DOES sync across
+    // devices, so the setter mirrors the change to Supabase through the same
+    // toProjectRowPayload + persistMutation funnel setProjectColor uses.
+    function getProjectHideDates(projectName) {
+        const entry = allProjects[projectName];
+        if (!entry) return false;
+        return !!entry.hideDates;
+    }
+
+    // @category: user-mutation-only
+    function setProjectHideDates(projectName, on) {
+        const entry = allProjects[projectName];
+        if (!entry) return;
+        entry.hideDates = !!on;
+        saveToStorage();
+        if (entry.id) {
+            persistMutation({
+                op: 'update',
+                table: 'projects',
+                payload: toProjectRowPayload(
+                    entry,
+                    projectName,
+                    Object.keys(allProjects).indexOf(projectName)
+                ),
+            });
+        }
     }
 
 
@@ -2516,11 +2552,12 @@ export const listLogic = (function () {
             });
 
             const sortByDue = typeof entry.sortByDue === 'boolean' ? entry.sortByDue : false;
+            const hideDates = typeof entry.hideDates === 'boolean' ? entry.hideDates : false;
             const lifecycle = (typeof entry.lifecycle === 'string' && entry.lifecycle.length > 0)
                 ? entry.lifecycle
                 : DEFAULT_LIFECYCLE;
             const stages = normalizeStages(entry.stages, lifecycle);
-            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, target_id: null, stages: stages, lifecycle: lifecycle };
+            allProjects[name] = { id: genId(), items: items, color: color, sortByDue: sortByDue, hideDates: hideDates, target_id: null, stages: stages, lifecycle: lifecycle };
             sortCompletedInPlace(allProjects[name].items);
         });
 
@@ -2579,7 +2616,7 @@ export const listLogic = (function () {
 
 
     // Snapshot the current project tree as a plain array of
-    // `{ name, items, color, sortByDue, target_id, stages, lifecycle }`
+    // `{ name, items, color, sortByDue, hideDates, target_id, stages, lifecycle }`
     // entries — the shape consumed by replaceAllProjects and the export
     // file. Iteration order matches Object.keys(allProjects), preserving
     // the user's project order.
@@ -2591,6 +2628,7 @@ export const listLogic = (function () {
                 items: Array.isArray(entry.items) ? entry.items.slice() : [],
                 color: entry.color || null,
                 sortByDue: !!entry.sortByDue,
+                hideDates: !!entry.hideDates,
                 target_id: entry.target_id || null,
                 stages: Array.isArray(entry.stages) ? entry.stages.slice() : [],
                 lifecycle: entry.lifecycle || DEFAULT_LIFECYCLE,
@@ -2983,18 +3021,24 @@ export const listLogic = (function () {
                 // entry is the newer write.
                 let chosenStages = stagesFromRow(p);
                 let chosenLifecycle = lifecycleFromRow(p);
+                // hideDates rides the whole-row LWW like color: adopt the
+                // remote value, but keep the local copy when the local entry
+                // is the newer write.
+                let chosenHideDates = !!p.hide_dates;
                 if (localEntry && localUpdatedAt > remoteUpdatedAt) {
                     chosenColor = localEntry.color;
                     if (Array.isArray(localEntry.stages) && localEntry.stages.length > 0) {
                         chosenStages = localEntry.stages;
                     }
                     if (localEntry.lifecycle) chosenLifecycle = localEntry.lifecycle;
+                    chosenHideDates = !!localEntry.hideDates;
                 }
                 merged[p.name] = {
                     id: p.id,
                     items: [],
                     color: chosenColor || null,
                     sortByDue: !!(localEntry && localEntry.sortByDue),
+                    hideDates: chosenHideDates,
                     target_id: p.target_id || null,
                     stages: chosenStages,
                     lifecycle: chosenLifecycle,
@@ -3054,6 +3098,7 @@ export const listLogic = (function () {
                     items: Array.isArray(local.items) ? local.items.slice() : [],
                     color: local.color || null,
                     sortByDue: !!local.sortByDue,
+                    hideDates: !!local.hideDates,
                     target_id: local.target_id || null,
                     stages: stagesFromRow(local),
                     lifecycle: lifecycleFromRow(local),
@@ -3195,6 +3240,9 @@ export const listLogic = (function () {
                 existing.color = evt.new.color || null;
                 existing.id = evt.new.id;
                 existing.target_id = evt.new.target_id || null;
+                // A hide-dates toggle made on another device arrives as a
+                // project UPDATE — apply it live so the pills appear/disappear.
+                existing.hideDates = !!evt.new.hide_dates;
                 // A stage edit made on another device arrives as a project
                 // UPDATE — apply it live (same null→SDLC backfill as hydrate).
                 existing.stages = stagesFromRow(evt.new);
@@ -3211,6 +3259,7 @@ export const listLogic = (function () {
                     items: [],
                     color: evt.new.color || null,
                     sortByDue: false,
+                    hideDates: !!evt.new.hide_dates,
                     target_id: evt.new.target_id || null,
                     stages: stagesFromRow(evt.new),
                     lifecycle: lifecycleFromRow(evt.new),
@@ -3332,6 +3381,8 @@ export const listLogic = (function () {
         setProjectColor,
         getProjectSortByDue,
         setProjectSortByDue,
+        getProjectHideDates,
+        setProjectHideDates,
         getProjectStages,
         getProjectLifecycle,
         setProjectStageBody,

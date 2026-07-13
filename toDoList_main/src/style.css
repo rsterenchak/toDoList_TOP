@@ -839,6 +839,43 @@ body {
 }
 .projContextColorSwatch.reset.active { border-color: var(--text-primary); box-shadow: none; }
 
+/* PROJECT DUE-DATES TOGGLE — switch row between Edit and the color picker.
+   Flips the project's hide-dates display preference. ON (accent track, knob
+   right) means dates are shown, the default; OFF (muted track, knob left)
+   hides every due-date pill in the project. State is driven by the `.on`
+   class — no inline style writes. */
+.projContextDatesItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.projContextDatesLabel {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.projContextDatesToggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--border-bright);
+  transition: background 0.15s ease;
+}
+.projContextDatesToggle.on { background: var(--accent); }
+.projContextDatesKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transition: transform 0.15s ease;
+}
+.projContextDatesToggle.on .projContextDatesKnob { transform: translateX(14px); }
+
 /* CONFIRM MODAL */
 #confirmModalBackdrop {
   position: fixed;

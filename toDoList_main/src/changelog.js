@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-11',
-        changed: [
-            "Shipped cards in the Agent tab now show a green check icon in place of the 'SHIPPED' text label.",
+        date: '2026-07-12',
+        added: [
+            "Per-project toggle to hide due dates, hiding every task's date pill in that project while leaving the stored dates untouched.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-11',
         fixed: [
             "Tapping the voice listening overlay now adds the dictated todo, and the mic keeps listening until you tap instead of ending on a pause.",
             "The shipped-run status dot on a todo now turns green reliably and shows the same state on every device, reading whether the run merged from the shared TODO.md instead of local run history.",

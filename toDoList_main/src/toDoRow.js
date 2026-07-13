@@ -1350,6 +1350,12 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
 // item and project name. Does NOT append to mainList — that's the caller's job.
 export function buildToDoRow(item, toDoName) {
 
+    // Per-project display preference: when on, this project's rows render with
+    // no due-date pill and no overdue/urgency tint. The stored `due` is never
+    // read for display while hidden, but is never cleared, so toggling back on
+    // restores the pills untouched.
+    const hideDates = listLogic.getProjectHideDates(toDoName);
+
     // create elements
     const toDoChild       = document.createElement("div");
     const toDoTitleDisplay = document.createElement("span");
@@ -1486,7 +1492,8 @@ export function buildToDoRow(item, toDoName) {
     // Blank placeholder rows hide the due-date pill for the same reason the
     // checkbox / toggle / close button hide above: there's no committed item
     // yet, so the "Set date" trigger would be visual noise. Revealed on commit.
-    if (!item.tit) {
+    // Projects with the hide-dates preference on hide the pill unconditionally.
+    if (!item.tit || hideDates) {
         duePill.style.display = "none";
     }
 
@@ -1613,7 +1620,14 @@ export function buildToDoRow(item, toDoName) {
     toDoChild.appendChild(closeButtonToDo);
 
     updateDuePillLabel(duePill, item);
-    applyDueUrgency(toDoChild, item);
+    // Skip the overdue/urgency row tint when the project hides dates — the
+    // stored `due` isn't read for display at all. applyDueUrgency already
+    // clears both classes up front, so this leaves the row untinted.
+    if (hideDates) {
+        toDoChild.classList.remove('due-soon', 'due-overdue');
+    } else {
+        applyDueUrgency(toDoChild, item);
+    }
     updateRecurringGlyph(toDoChild, item);
 
     // STACK mobile inline-expand chips — only the blank placeholder gets
@@ -1761,6 +1775,14 @@ export function buildToDoRow(item, toDoName) {
         // Same for the voice-dictation mic: it only belongs on the blank
         // "Add a task" placeholder, so remove it once this row is committed.
         if (micBtn && micBtn.parentElement) micBtn.remove();
+        // When the project hides due dates, undo the pill reveal and urgency
+        // tint the default block above just applied — committing a task must
+        // not surface a pill this project has opted out of. The stored `due`
+        // is untouched, so toggling dates back on restores it.
+        if (hideDates) {
+            duePill.style.display = "none";
+            toDoChild.classList.remove('due-soon', 'due-overdue');
+        }
         // The row was built as a blank placeholder, so it has no status badge
         // yet — add one now that it's a committed task. Guard against a repeat
         // insert if the same row somehow re-commits.
