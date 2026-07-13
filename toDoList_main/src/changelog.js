@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-13',
         added: [
             "Onboard a brand-new repository into the pipeline from Inject settings — scaffold, configure, and register it with a single tap.",
+            "A live green dot on the Agent nav pill and mobile tab shows when the agent is working, and stays lit even after you switch to another view.",
         ],
         fixed: [
             "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-12',
         fixed: [
-            "The per-project Due dates toggle now sticks across devices and syncs instead of reverting after the project reloads from the server.",
             "Inject targets you've turned off no longer appear as selectable repos in the chat workspace pill or the Structure view's repo picker.",
             "Selecting a project routed to a disabled inject target no longer frames the chat on that turned-off repo.",
         ],

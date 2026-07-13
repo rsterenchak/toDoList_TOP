@@ -2711,3 +2711,95 @@ export function unsubscribeAgentView() {
     // Stop the triage-sweep poller too; a reopen re-seeds it via seedSweepState.
     stopSweepTracking();
 }
+
+// ── PERSISTENT AGENT-WORKING WATCH ──
+// A lightweight, mount-INDEPENDENT watch on whether the agent is actively
+// working — a triage sweep in flight, or a ship run dispatched/running for the
+// selected project. The board subscription above is torn down by
+// unsubscribeAgentView() on tab-exit (a backgrounded board holds no open
+// socket), which also clears `_rows` and forces `_sweepActive` false via
+// stopSweepTracking — so the header pill's working signal goes dark the instant
+// you leave the Agent tab, exactly the context the nav "working" dot exists to
+// serve. This watch is therefore started once at app init and NEVER torn down.
+// It carries ONLY the working signal: its own minimal agent_queue realtime
+// subscription (separate from the board channel, to catch dispatched/running
+// transitions) plus a slow triage active-runs probe. It deliberately does NOT
+// keep the board subscription or the dispatch pollers alive off-tab, and never
+// rebuilds the board — it only toggles a `body.agentWorking` class the nav CSS
+// keys the dot off, mirroring the `agentUnavailable` body-flag pattern.
+let _workingWatchStarted = false;
+let _workingWatchChannel = null;
+let _workingWatchPoller = null;
+let _workingWatchState = false;
+
+// Background probe cadence for the persistent working watch. Slower than the
+// mounted sweep poller (SWEEP_POLL_MS) — this only drives a cosmetic nav dot, so
+// a gentle tick keeps Worker load low while still catching a triage sweep or a
+// project switch that no realtime push covers.
+const WORKING_WATCH_POLL_MS = 15000;
+
+// Toggle body.agentWorking to reflect the computed working signal, but only when
+// it actually changes so the class isn't churned every tick. No-op before
+// document.body exists.
+function setAgentWorkingClass(working) {
+    working = !!working;
+    if (working === _workingWatchState) return;
+    _workingWatchState = working;
+    if (document.body) document.body.classList.toggle('agentWorking', working);
+}
+
+// One watch tick: compute `working` = a triage sweep in flight OR any
+// dispatched/running row for the selected project — the same predicate the
+// header pill uses (refreshStatusPill), but resolved independently so it holds
+// off-tab where `_rows` / `_sweepActive` are cleared. Both probes degrade to
+// false on any error, and skip entirely when there is no selected project or no
+// routed target, so a pre-auth or repo-less state is a cheap no-op.
+function pollAgentWorkingWatch() {
+    const projectName = getSelectedProjectName();
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    const target = resolveDispatchTarget();
+
+    const shipProbe = projectId
+        ? fetchQueueRows(projectId).then(function (rows) {
+            return (Array.isArray(rows) ? rows : []).some(function (r) {
+                return r && (r.state === 'dispatched' || r.state === 'running');
+            });
+        }).catch(function () { return false; })
+        : Promise.resolve(false);
+
+    const sweepProbe = target
+        ? Promise.resolve(fetchActiveRuns(target, 'triage')).then(function (res) {
+            return !!(res && res.ok !== false && res.active);
+        }).catch(function () { return false; })
+        : Promise.resolve(false);
+
+    return Promise.all([shipProbe, sweepProbe]).then(function (parts) {
+        setAgentWorkingClass(parts[0] || parts[1]);
+    });
+}
+
+// Start the persistent working watch. Idempotent — guarded against double-init
+// (app-init code can evaluate more than once), so a second call is a no-op
+// rather than a second channel plus a second poller. Opens its own agent_queue
+// realtime channel (each push re-evaluates the working signal) and a slow
+// background poller, then kicks one immediate tick.
+export function startAgentWorkingWatch() {
+    if (_workingWatchStarted) return;
+    _workingWatchStarted = true;
+    if (!_workingWatchChannel && supabase && typeof supabase.channel === 'function') {
+        try {
+            _workingWatchChannel = supabase
+                .channel('agent-working-watch:agent_queue')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'agent_queue' },
+                    function () { pollAgentWorkingWatch(); })
+                .subscribe();
+        } catch (e) {
+            _workingWatchChannel = null;
+        }
+    }
+    if (!_workingWatchPoller) {
+        _workingWatchPoller = setInterval(pollAgentWorkingWatch, WORKING_WATCH_POLL_MS);
+    }
+    pollAgentWorkingWatch();
+}

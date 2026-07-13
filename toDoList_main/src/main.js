@@ -81,6 +81,7 @@ import {
     subscribeAgentView,
     unsubscribeAgentView,
     syncAgentAvailabilityForProject,
+    startAgentWorkingWatch,
 } from './agentView.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
@@ -1053,6 +1054,17 @@ function component() {
     mobileTabAgentMarker.setAttribute('aria-hidden', 'true');
     mobileTabAgent.appendChild(mobileTabAgentMarker);
 
+    // Small filled "working" dot leading the AGENT tab, shown only while
+    // body.agentWorking is set (the persistent working watch toggles that class
+    // from mount-independent state, so the dot stays lit even after the user
+    // leaves the Agent tab). Inserted as the FIRST child so it reads as a
+    // leading indicator; CSS keys its display and pulse off body.agentWorking,
+    // mirroring the agentNoRepoMarker conditional-marker pattern.
+    const mobileTabAgentWorkingDot = document.createElement('span');
+    mobileTabAgentWorkingDot.className = 'agentWorkingDot';
+    mobileTabAgentWorkingDot.setAttribute('aria-hidden', 'true');
+    mobileTabAgent.insertBefore(mobileTabAgentWorkingDot, mobileTabAgent.firstChild);
+
     // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
     // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
     // empty state) but carries the marker while body.agentUnavailable is set.
@@ -1952,6 +1964,15 @@ function component() {
     viewPillAgentMarker.className = 'agentNoRepoMarker';
     viewPillAgentMarker.setAttribute('aria-hidden', 'true');
     viewPillAgent.appendChild(viewPillAgentMarker);
+    // Small filled "working" dot leading the AGENT label ("● AGENT"), shown only
+    // while body.agentWorking is set. The persistent working watch keeps that
+    // class live independent of the Agent view being mounted, so the dot pulses
+    // even after switching to Tasks or Structure. Inserted before the label so
+    // it reads as a leading indicator; CSS mirrors the agentNoRepoMarker pattern.
+    const viewPillAgentWorkingDot = document.createElement('span');
+    viewPillAgentWorkingDot.className = 'agentWorkingDot';
+    viewPillAgentWorkingDot.setAttribute('aria-hidden', 'true');
+    viewPillAgent.insertBefore(viewPillAgentWorkingDot, viewPillAgent.firstChild);
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -4549,6 +4570,14 @@ function component() {
     // for the same reason as ensureCompanion above — document.body has to
     // exist before the class can be toggled.
     setTimeout(applyCompanionGhostPreference, 0);
+
+    // Start the persistent, mount-independent agent-working watch once the shell
+    // is up. It toggles body.agentWorking (driving the nav "● Agent" dot) from a
+    // slim always-on watch and is guarded against double-init internally, so a
+    // second component() call (or a re-evaluated bundle) won't stack a second
+    // channel/poller. Deferred a tick so document.body exists, matching the
+    // ensureCompanion / applyCompanionGhostPreference calls above.
+    setTimeout(startAgentWorkingWatch, 0);
 
     // Window-level drag-and-drop import. Dropping a .json file anywhere on
     // the page routes through the same parse → validate → confirm → replace
