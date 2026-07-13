@@ -258,11 +258,12 @@ describe('inject targets — workspace-source exports and change event', () => {
         expect(inject).toMatch(
             /\.update\([\s\S]{0,400}notifyInjectTargetsChanged\s*\(\s*\)[\s\S]{0,40}return\s*\{\s*ok:\s*true/
         );
-        // Four call sites total: the three target mutations (insert, update,
-        // delete) plus the per-project routing-assignment handler, which
-        // notifies so the sidebar inject bolts re-evaluate live. All are
-        // distinct from the single `function notifyInjectTargetsChanged()` def.
+        // Five call sites total: the four target mutations (insert, update,
+        // delete, and the enable/disable toggle) plus the per-project
+        // routing-assignment handler, which notifies so the sidebar inject
+        // bolts re-evaluate live. All are distinct from the single
+        // `function notifyInjectTargetsChanged()` def.
         const calls = inject.match(/notifyInjectTargetsChanged\(\);/g) || [];
-        expect(calls.length).toBe(4);
+        expect(calls.length).toBe(5);
     });
 });
