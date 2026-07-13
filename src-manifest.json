@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-13T02:12:33.429Z",
-  "sha": "5ad826634821d9b308cdf2cd23dc197672422d5c",
+  "generatedAt": "2026-07-13T02:36:19.080Z",
+  "sha": "9c43d10c0a7044952d70d2ebebfb474fca427a6f",
   "files": [
     "agentView.js",
     "auth.js",
@@ -3566,11 +3566,11 @@
       "selector": "#projContextMenu",
       "label": "Proj Context Menu",
       "file": "projectMenu.js",
-      "line": 198,
+      "line": 199,
       "files": [
         {
           "file": "projectMenu.js",
-          "line": 198
+          "line": 199
         },
         {
           "file": "style.css",
@@ -3598,11 +3598,11 @@
       "selector": "#projRowContextMenu",
       "label": "Proj Row Context Menu",
       "file": "projectPicker.js",
-      "line": 586,
+      "line": 587,
       "files": [
         {
           "file": "projectPicker.js",
-          "line": 586
+          "line": 587
         },
         {
           "file": "style.css",
