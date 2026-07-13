@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-13T05:54:23.805Z",
-  "sha": "dd6cf60f4f722050a08fb4f67ad7b711c7f30e9e",
+  "generatedAt": "2026-07-13T08:32:44.942Z",
+  "sha": "3e3be388540f86f4d3340b2f1bdba675fdcff37f",
   "files": [
     "agentView.js",
     "auth.js",
@@ -2318,11 +2318,11 @@
       "selector": "#injectAddTargetBtn",
       "label": "Inject Add Target Btn",
       "file": "inject.js",
-      "line": 1618,
+      "line": 1940,
       "files": [
         {
           "file": "inject.js",
-          "line": 1618
+          "line": 1940
         },
         {
           "file": "style.css",
@@ -2334,11 +2334,11 @@
       "selector": "#injectConnectionEditBtn",
       "label": "Inject Connection Edit Btn",
       "file": "inject.js",
-      "line": 1431,
+      "line": 1688,
       "files": [
         {
           "file": "inject.js",
-          "line": 1431
+          "line": 1688
         }
       ]
     },
@@ -2346,11 +2346,199 @@
       "selector": "#injectConnectionSection",
       "label": "Inject Connection Section",
       "file": "inject.js",
-      "line": 1417,
+      "line": 1674,
       "files": [
         {
           "file": "inject.js",
-          "line": 1417
+          "line": 1674
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardActions",
+      "label": "Inject Onboard Actions",
+      "file": "inject.js",
+      "line": 1544,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1544
+        },
+        {
+          "file": "style.css",
+          "line": 15267
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardBackdrop",
+      "label": "Inject Onboard Backdrop",
+      "file": "inject.js",
+      "line": 1482,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1482
+        },
+        {
+          "file": "style.css",
+          "line": 15202
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardBody",
+      "label": "Inject Onboard Body",
+      "file": "inject.js",
+      "line": 1504,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1504
+        },
+        {
+          "file": "style.css",
+          "line": 15246
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardCancel",
+      "label": "Inject Onboard Cancel",
+      "file": "inject.js",
+      "line": 1547,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1547
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardCard",
+      "label": "Inject Onboard Card",
+      "file": "inject.js",
+      "line": 1956,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1956
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardClose",
+      "label": "Inject Onboard Close",
+      "file": "inject.js",
+      "line": 1496,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1496
+        },
+        {
+          "file": "style.css",
+          "line": 15233
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardHeader",
+      "label": "Inject Onboard Header",
+      "file": "inject.js",
+      "line": 1491,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1491
+        },
+        {
+          "file": "style.css",
+          "line": 15222
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardModal",
+      "label": "Inject Onboard Modal",
+      "file": "inject.js",
+      "line": 1485,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1485
+        },
+        {
+          "file": "style.css",
+          "line": 15211
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardRepoError",
+      "label": "Inject Onboard Repo Error",
+      "file": "inject.js",
+      "line": 1519,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1519
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardRepoInput",
+      "label": "Inject Onboard Repo Input",
+      "file": "inject.js",
+      "line": 1511,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1511
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardShapeSelect",
+      "label": "Inject Onboard Shape Select",
+      "file": "inject.js",
+      "line": 1530,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1530
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardSubmit",
+      "label": "Inject Onboard Submit",
+      "file": "inject.js",
+      "line": 1553,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1553
+        },
+        {
+          "file": "style.css",
+          "line": 15274
+        }
+      ]
+    },
+    {
+      "selector": "#injectOnboardTitle",
+      "label": "Inject Onboard Title",
+      "file": "inject.js",
+      "line": 1493,
+      "files": [
+        {
+          "file": "inject.js",
+          "line": 1493
+        },
+        {
+          "file": "style.css",
+          "line": 15229
         }
       ]
     },
@@ -2358,15 +2546,15 @@
       "selector": "#injectProjectRoutingBody",
       "label": "Inject Project Routing Body",
       "file": "inject.js",
-      "line": 1770,
+      "line": 2125,
       "files": [
         {
           "file": "inject.js",
-          "line": 1770
+          "line": 2125
         },
         {
           "file": "style.css",
-          "line": 15127
+          "line": 15286
         }
       ]
     },
@@ -2374,11 +2562,11 @@
       "selector": "#injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 1780,
+      "line": 2135,
       "files": [
         {
           "file": "inject.js",
-          "line": 1780
+          "line": 2135
         }
       ]
     },
@@ -2386,11 +2574,11 @@
       "selector": "#injectProjectRoutingSection",
       "label": "Inject Project Routing Section",
       "file": "inject.js",
-      "line": 1758,
+      "line": 2113,
       "files": [
         {
           "file": "inject.js",
-          "line": 1758
+          "line": 2113
         }
       ]
     },
@@ -2398,11 +2586,11 @@
       "selector": "#injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 1796,
+      "line": 2151,
       "files": [
         {
           "file": "inject.js",
-          "line": 1796
+          "line": 2151
         }
       ]
     },
@@ -2410,11 +2598,11 @@
       "selector": "#injectProjectRoutingTitle",
       "label": "Inject Project Routing Title",
       "file": "inject.js",
-      "line": 1764,
+      "line": 2119,
       "files": [
         {
           "file": "inject.js",
-          "line": 1764
+          "line": 2119
         }
       ]
     },
@@ -2422,11 +2610,11 @@
       "selector": "#injectSettingsActions",
       "label": "Inject Settings Actions",
       "file": "inject.js",
-      "line": 1521,
+      "line": 1778,
       "files": [
         {
           "file": "inject.js",
-          "line": 1521
+          "line": 1778
         },
         {
           "file": "style.css",
@@ -2438,11 +2626,11 @@
       "selector": "#injectSettingsBackdrop",
       "label": "Inject Settings Backdrop",
       "file": "inject.js",
-      "line": 1387,
+      "line": 1644,
       "files": [
         {
           "file": "inject.js",
-          "line": 1387
+          "line": 1644
         },
         {
           "file": "style.css",
@@ -2454,11 +2642,11 @@
       "selector": "#injectSettingsBody",
       "label": "Inject Settings Body",
       "file": "inject.js",
-      "line": 1470,
+      "line": 1727,
       "files": [
         {
           "file": "inject.js",
-          "line": 1470
+          "line": 1727
         },
         {
           "file": "style.css",
@@ -2470,11 +2658,11 @@
       "selector": "#injectSettingsClear",
       "label": "Inject Settings Clear",
       "file": "inject.js",
-      "line": 1539,
+      "line": 1796,
       "files": [
         {
           "file": "inject.js",
-          "line": 1539
+          "line": 1796
         }
       ]
     },
@@ -2482,11 +2670,11 @@
       "selector": "#injectSettingsClose",
       "label": "Inject Settings Close",
       "file": "inject.js",
-      "line": 1402,
+      "line": 1659,
       "files": [
         {
           "file": "inject.js",
-          "line": 1402
+          "line": 1659
         },
         {
           "file": "style.css",
@@ -2498,11 +2686,11 @@
       "selector": "#injectSettingsHeader",
       "label": "Inject Settings Header",
       "file": "inject.js",
-      "line": 1397,
+      "line": 1654,
       "files": [
         {
           "file": "inject.js",
-          "line": 1397
+          "line": 1654
         },
         {
           "file": "style.css",
@@ -2514,11 +2702,11 @@
       "selector": "#injectSettingsModal",
       "label": "Inject Settings Modal",
       "file": "inject.js",
-      "line": 1390,
+      "line": 1647,
       "files": [
         {
           "file": "inject.js",
-          "line": 1390
+          "line": 1647
         },
         {
           "file": "style.css",
@@ -2530,11 +2718,11 @@
       "selector": "#injectSettingsSave",
       "label": "Inject Settings Save",
       "file": "inject.js",
-      "line": 1524,
+      "line": 1781,
       "files": [
         {
           "file": "inject.js",
-          "line": 1524
+          "line": 1781
         }
       ]
     },
@@ -2542,11 +2730,11 @@
       "selector": "#injectSettingsScroll",
       "label": "Inject Settings Scroll",
       "file": "inject.js",
-      "line": 1867,
+      "line": 2222,
       "files": [
         {
           "file": "inject.js",
-          "line": 1867
+          "line": 2222
         },
         {
           "file": "style.css",
@@ -2558,11 +2746,11 @@
       "selector": "#injectSettingsStatusRow",
       "label": "Inject Settings Status Row",
       "file": "inject.js",
-      "line": 1428,
+      "line": 1685,
       "files": [
         {
           "file": "inject.js",
-          "line": 1428
+          "line": 1685
         },
         {
           "file": "style.css",
@@ -2574,11 +2762,11 @@
       "selector": "#injectSettingsTest",
       "label": "Inject Settings Test",
       "file": "inject.js",
-      "line": 1530,
+      "line": 1787,
       "files": [
         {
           "file": "inject.js",
-          "line": 1530
+          "line": 1787
         }
       ]
     },
@@ -2586,11 +2774,11 @@
       "selector": "#injectSettingsTitle",
       "label": "Inject Settings Title",
       "file": "inject.js",
-      "line": 1399,
+      "line": 1656,
       "files": [
         {
           "file": "inject.js",
-          "line": 1399
+          "line": 1656
         },
         {
           "file": "style.css",
@@ -2602,11 +2790,11 @@
       "selector": "#injectSharedSecretInput",
       "label": "Inject Shared Secret Input",
       "file": "inject.js",
-      "line": 1490,
+      "line": 1747,
       "files": [
         {
           "file": "inject.js",
-          "line": 1490
+          "line": 1747
         },
         {
           "file": "style.css",
@@ -2754,11 +2942,11 @@
       "selector": "#injectTargetsBody",
       "label": "Inject Targets Body",
       "file": "inject.js",
-      "line": 1594,
+      "line": 1851,
       "files": [
         {
           "file": "inject.js",
-          "line": 1594
+          "line": 1851
         },
         {
           "file": "style.css",
@@ -2770,11 +2958,11 @@
       "selector": "#injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 1604,
+      "line": 1915,
       "files": [
         {
           "file": "inject.js",
-          "line": 1604
+          "line": 1915
         }
       ]
     },
@@ -2782,11 +2970,11 @@
       "selector": "#injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 1610,
+      "line": 1921,
       "files": [
         {
           "file": "inject.js",
-          "line": 1610
+          "line": 1921
         }
       ]
     },
@@ -2794,11 +2982,11 @@
       "selector": "#injectTargetsSection",
       "label": "Inject Targets Section",
       "file": "inject.js",
-      "line": 1583,
+      "line": 1840,
       "files": [
         {
           "file": "inject.js",
-          "line": 1583
+          "line": 1840
         }
       ]
     },
@@ -2814,7 +3002,7 @@
         },
         {
           "file": "style.css",
-          "line": 15192
+          "line": 15351
         }
       ]
     },
@@ -2822,11 +3010,11 @@
       "selector": "#injectWorkerUrlInput",
       "label": "Inject Worker Url Input",
       "file": "inject.js",
-      "line": 1476,
+      "line": 1733,
       "files": [
         {
           "file": "inject.js",
-          "line": 1476
+          "line": 1733
         },
         {
           "file": "style.css",
