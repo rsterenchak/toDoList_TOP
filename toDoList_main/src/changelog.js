@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-12',
         added: [
-            "Per-project toggle to hide due dates, hiding every task's date pill in that project while leaving the stored dates untouched.",
             "Each inject target now has an on/off switch to enable or disable it in place, dimming disabled targets, with no database edit needed.",
         ],
         fixed: [
             "The per-project Due dates toggle is now reachable from the desktop project dropdown menu, not just the mobile drawer.",
             "The per-project Due dates toggle now sticks across devices and syncs instead of reverting after the project reloads from the server.",
             "Inject targets you've turned off no longer appear as selectable repos in the chat workspace pill or the Structure view's repo picker.",
+            "Selecting a project routed to a disabled inject target no longer frames the chat on that turned-off repo.",
         ],
     },
 ];

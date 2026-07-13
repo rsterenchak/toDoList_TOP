@@ -3037,6 +3037,44 @@ describe('Claude sheet — disabled inject targets excluded from workspace repos
         await flush();
         expect(getAttachRepos()).toEqual([DEFAULT_REPO]);
     });
+
+    // Project-derived workspace swap (autoSwapWorkspaceForProject) must also
+    // honor `enabled`: a project routed to a target that was later disabled must
+    // NOT frame the chat on that disabled repo, since inject/dispatch would 400.
+    it('does not swap the workspace onto a project routed to a disabled target', async () => {
+        supaState.injectTargets = [
+            { id: 'tgt-0', nickname: DEFAULT_REPO, repo: DEFAULT_REPO, file_path: 'TODO.md', enabled: true },
+            { id: 'tgt-1', nickname: DISABLED_REPO, repo: DISABLED_REPO, file_path: 'TODO.md', enabled: false },
+        ];
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+
+        const proj = '__disabled-routed-proj';
+        listLogic.addProject(proj);
+        listLogic.setProjectTargetId(proj, 'tgt-1');
+        syncClaudeSheetForProject(proj);
+        await flush();
+        // Disabled target does not resolve → workspace stays on its enabled repo.
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+    });
+
+    it('still swaps the workspace onto a project routed to an enabled target', async () => {
+        supaState.injectTargets = [
+            { id: 'tgt-0', nickname: DEFAULT_REPO, repo: DEFAULT_REPO, file_path: 'TODO.md', enabled: true },
+            { id: 'tgt-1', nickname: ENABLED_REPO, repo: ENABLED_REPO, file_path: 'TODO.md', enabled: true },
+        ];
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(getActiveChatRepo()).toBe(DEFAULT_REPO);
+
+        const proj = '__enabled-routed-proj';
+        listLogic.addProject(proj);
+        listLogic.setProjectTargetId(proj, 'tgt-1');
+        syncClaudeSheetForProject(proj);
+        await flush();
+        expect(getActiveChatRepo()).toBe(ENABLED_REPO);
+    });
 });
 
 // The "Clear chat" control in the tab row: a text-only button, right of the

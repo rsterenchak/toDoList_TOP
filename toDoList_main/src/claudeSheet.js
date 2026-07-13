@@ -442,14 +442,18 @@ export function showClaudeUnavailableTooltip(anchorEl) {
 // "Clear chat" control, which deliberately wipes the current thread. Resolves
 // projectName → target_id → the cached inject target's repo; leaves the
 // workspace untouched when the project has no target, the target is no longer
-// cached, or the repo already matches the active workspace.
+// cached, the target is disabled, or the repo already matches the active
+// workspace.
 function autoSwapWorkspaceForProject(projectName) {
     const targetId = listLogic.getProjectTargetId(projectName);
     if (!targetId) return;
     const targets = getCachedTargets();
     let repo = null;
+    // Skip disabled targets (enabled === false): the Worker's allowlist drops
+    // them, so framing the chat on one would 400 at inject/dispatch. `!== false`
+    // keeps legacy rows with no `enabled` column selectable.
     for (let i = 0; i < targets.length; i++) {
-        if (targets[i] && targets[i].id === targetId) { repo = targets[i].repo; break; }
+        if (targets[i] && targets[i].id === targetId && targets[i].enabled !== false) { repo = targets[i].repo; break; }
     }
     if (!repo || repo === activeChatRepo) return;
 
